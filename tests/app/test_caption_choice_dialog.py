@@ -105,9 +105,10 @@ def test_the_window_names_the_language_and_the_kind(tk_root):
     tk_root.after(50, look)
     cc.ask_caption_choice(tk_root, kind="auto", language="Spanish")
     joined = " ".join(seen)
-    assert "Spanish subtitles (automatic)" in joined
+    assert "automatic Spanish subtitles" in joined
     assert "less accurate" in joined
-    assert "Use the existing subtitles (seconds) or transcribe (minutes)?" in joined
+    assert "the video itself is not downloaded" in joined
+    assert "Use the subtitles (ready in seconds) or transcribe the video (takes minutes)?" in joined
 
 
 @pytest.mark.parametrize(

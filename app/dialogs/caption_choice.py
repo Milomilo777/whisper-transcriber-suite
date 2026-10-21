@@ -34,7 +34,7 @@ def ask_caption_choice(master: "tk.Misc", *, kind: str, language: str) -> tuple[
     ``kind`` is ``"manual"`` or ``"auto"``, ``language`` the name shown to the user.
     """
     dialog = tk.Toplevel(master)
-    dialog.title(_("Subtitles already exist"))
+    dialog.title(_("This video already has subtitles"))
     dialog.transient(master)  # type: ignore[arg-type]
     dialog.resizable(False, False)
     result = {"choice": CHOICE_CANCEL}
@@ -47,20 +47,22 @@ def ask_caption_choice(master: "tk.Misc", *, kind: str, language: str) -> tuple[
     body = ttk.Frame(dialog, padding=16)
     body.pack(fill="both", expand=True)
     ttk.Label(
-        body, text=_("Use the existing subtitles (seconds) or transcribe (minutes)?"),
+        body, text=_("Use the subtitles (ready in seconds) or transcribe the video (takes minutes)?"),
         font=("TkDefaultFont", 10, "bold"),
     ).pack(anchor="w")
     if kind == "manual":
-        note = _("This video has {language} subtitles (made by the uploader). Using the "
-                 "subtitles saves no video or audio file.", language=language)
+        note = _("This video has {language} subtitles made by the uploader. Using them gives "
+                 "you a subtitle file only; the video itself is not downloaded.", language=language)
     else:
-        note = _("This video has {language} subtitles (automatic). Automatic subtitles can be "
-                 "less accurate than a transcription. Using the subtitles saves no video or "
-                 "audio file.", language=language)
+        note = _("This video has automatic {language} subtitles, which can be less accurate "
+                 "than a transcription. Using them gives you a subtitle file only; the video "
+                 "itself is not downloaded.", language=language)
     ttk.Label(body, text=note, foreground=tokens.themed(tokens.TEXT_MUTED), wraplength=px(440), justify="left").pack(
         anchor="w", pady=(6, 10)
     )
-    ttk.Checkbutton(body, text=_("Don't ask again"), variable=dont_ask).pack(anchor="w")
+    ttk.Checkbutton(
+        body, text=_("Don't ask again (change it in Advanced settings)"), variable=dont_ask,
+    ).pack(anchor="w")
     actions = ttk.Frame(body)
     actions.pack(fill="x", pady=(12, 0))
     transcribe = ttk.Button(
@@ -71,6 +73,8 @@ def ask_caption_choice(master: "tk.Misc", *, kind: str, language: str) -> tuple[
     ttk.Button(
         actions, text=_("Use the subtitles"), command=lambda: pick(CHOICE_CAPTIONS),
     ).pack(side="right", padx=(0, 8))
+    # A visible way out: before, only the window's X cancelled (code review, 2026-10-21).
+    ttk.Button(actions, text=_("Cancel"), command=lambda: pick(CHOICE_CANCEL)).pack(side="left")
     dialog.protocol("WM_DELETE_WINDOW", lambda: pick(CHOICE_CANCEL))
     dialog.bind("<Escape>", lambda _e: pick(CHOICE_CANCEL))  # as the close button
     def on_return(event: "tk.Event[tk.Misc]") -> None:

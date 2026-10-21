@@ -324,4 +324,4 @@ def test_texts_set_by_two_files_are_the_same_msgid() -> None:
     fmt_py = literals("app/services/format_service.py")
     assert {"Start web access", "Stop web access"} <= app_py
     assert "Start web access" in tabs_py
-    assert "Enter a URL to load available formats" in tabs_py & fmt_py
+    assert "Paste a video link above to load its formats" in tabs_py & fmt_py

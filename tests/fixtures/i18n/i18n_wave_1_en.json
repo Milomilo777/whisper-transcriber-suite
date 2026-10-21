@@ -98,20 +98,22 @@
  },
  "tk": {
   "caption_choice_manual": [
-   "Subtitles already exist",
-   "Use the existing subtitles (seconds) or transcribe (minutes)?",
-   "This video has «French» subtitles (made by the uploader). Using the subtitles saves no video or audio file.",
-   "Don't ask again",
+   "This video already has subtitles",
+   "Use the subtitles (ready in seconds) or transcribe the video (takes minutes)?",
+   "This video has «French» subtitles made by the uploader. Using them gives you a subtitle file only; the video itself is not downloaded.",
+   "Don't ask again (change it in Advanced settings)",
    "Transcribe",
-   "Use the subtitles"
+   "Use the subtitles",
+   "Cancel"
   ],
   "caption_choice_auto": [
-   "Subtitles already exist",
-   "Use the existing subtitles (seconds) or transcribe (minutes)?",
-   "This video has «French» subtitles (automatic). Automatic subtitles can be less accurate than a transcription. Using the subtitles saves no video or audio file.",
-   "Don't ask again",
+   "This video already has subtitles",
+   "Use the subtitles (ready in seconds) or transcribe the video (takes minutes)?",
+   "This video has automatic «French» subtitles, which can be less accurate than a transcription. Using them gives you a subtitle file only; the video itself is not downloaded.",
+   "Don't ask again (change it in Advanced settings)",
    "Transcribe",
-   "Use the subtitles"
+   "Use the subtitles",
+   "Cancel"
   ],
   "english_only": [
    "This model understands English only",

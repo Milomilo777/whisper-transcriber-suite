@@ -1154,7 +1154,7 @@
   ],
   [
    "tooltip",
-   "Unavailable: sherpa-onnx not present"
+   "Unavailable: speaker identification is not installed (the optional sherpa-onnx part)"
   ],
   [
    "help",
@@ -3642,7 +3642,7 @@
  "download": [
   [
    ".!frame5.!frame.!label",
-   "URL"
+   "Video link"
   ],
   [
    ".!frame5.!frame.!label2",
@@ -3762,7 +3762,7 @@
   ],
   [
    ".!frame5.!frame.!labelframe.!label3",
-   "format H:MM:SS — e.g. 0:00:51 to 0:01:25; leave at 0:00:00 for full video"
+   "Times as H:MM:SS, e.g. 0:00:51 to 0:01:25; 0:00:00 = the whole video. The sliders work once the link above is read."
   ],
   [
    ".!frame5.!frame.!label15",
@@ -3770,7 +3770,7 @@
   ],
   [
    ".!frame5.!frame.!frame3.!checkbutton",
-   "Download subtitles (auto + manual when present)"
+   "Download subtitles (the uploader's, or automatic ones)"
   ],
   [
    ".!frame5.!frame.!frame3.!combobox:values",
@@ -4198,7 +4198,7 @@
   ],
   [
    ".!frame5.!frame.!frame4.!button",
-   "Use captions instead"
+   "Use the subtitles"
   ],
   [
    ".!frame5.!frame.!frame5.!checkbutton",
@@ -4226,7 +4226,7 @@
   ],
   [
    ".!frame5.!frame.!frame7.!label",
-   "Enter a URL to load available formats"
+   "Paste a video link above to load its formats"
   ],
   [
    ".!frame5.!frame.!frame7.!button",
@@ -4290,7 +4290,7 @@
   ],
   [
    "help",
-   "Pick the browser you are logged in with. The download then uses that browser's log-in session, so videos that need an account (Instagram, Facebook, TikTok stories, age-restricted YouTube) work. The cookies are read on this computer only; nothing is uploaded. On Windows, close Chrome/Edge completely if it says it could not copy the cookie database. Same setting as Advanced › Downloads."
+   "Pick the browser you are signed in with, so videos that need an account (Instagram, Facebook, TikTok stories, age-restricted YouTube) can be downloaded. The sign-in is used on this computer only; nothing is uploaded. If Chrome or Edge reports a cookie error, close that browser completely and try again."
   ],
   [
    "help",
@@ -4494,7 +4494,7 @@
   ],
   [
    "status burning",
-   "♨ burning"
+   "♨ adding subtitles"
   ],
   [
    "status finished",

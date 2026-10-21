@@ -340,7 +340,7 @@ def _status_text(status: str) -> str:
         "running": pgettext("task status", "running"),
         "paused": pgettext("task status", "paused"),
         "transcribing": pgettext("task status", "transcribing"),
-        "burning": pgettext("task status", "burning"),
+        "burning": pgettext("task status", "adding subtitles"),
         "finished": pgettext("task status", "finished"),
         "error": pgettext("task status", "error"),
         "cancelled": pgettext("task status", "cancelled"),
@@ -667,7 +667,7 @@ def file_ready_state(text: str, duration: float | None = None) -> tuple[str, str
     if path.startswith(("http://", "https://")):
         return "link", _("Link: it downloads first, then transcribes.")
     if not os.path.isfile(path):
-        return "missing", _("File not found: check the path, or click Browse.")
+        return "missing", _("File not found: check the path, or click Browse files...")
     if not is_transcribable(path):
         return "not_media", _("{name} is not an audio or video file.", name=elide_middle(os.path.basename(path)))
     try:
@@ -768,7 +768,7 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
         _diar_reason = _diar.availability_reason() if not _diar_available else ""
     except Exception:  # noqa: BLE001
         _diar_available = False
-        _diar_reason = _("sherpa-onnx not present")
+        _diar_reason = _("speaker identification is not installed (the optional sherpa-onnx part)")
     app.diarization_var = tk.BooleanVar(
         value=bool(_diar_available) and bool(app.app_config.get("diarization_enabled", False))
     )
@@ -1488,7 +1488,7 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     top = ttk.Frame(parent, padding=10)
     top.pack(fill="x")
 
-    ttk.Label(top, text=pgettext("download form", "URL")).grid(row=0, column=0, sticky="w")
+    ttk.Label(top, text=pgettext("download form", "Video link")).grid(row=0, column=0, sticky="w")
     app.download_url_var = tk.StringVar()
     app.download_url_var.trace_add("write", lambda *_args: app.format_service.schedule_lookup())
     url_cell = ttk.Frame(top)
@@ -1539,12 +1539,11 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     ).pack(side="left", padx=(10, 0))
     help_icon(
         top,
-        _("Pick the browser you are logged in with. The download then uses "
-          "that browser's log-in session, so videos that need an account "
-          "(Instagram, Facebook, TikTok stories, age-restricted YouTube) work. "
-          "The cookies are read on this computer only; nothing is uploaded. "
-          "On Windows, close Chrome/Edge completely if it says it could not "
-          "copy the cookie database. Same setting as Advanced › Downloads."),
+        _("Pick the browser you are signed in with, so videos that need an account "
+          "(Instagram, Facebook, TikTok stories, age-restricted YouTube) can be "
+          "downloaded. The sign-in is used on this computer only; nothing is uploaded. "
+          "If Chrome or Edge reports a cookie error, close that browser completely "
+          "and try again."),
     ).grid(row=1, column=3, sticky="w", padx=(6, 0), pady=(8, 0))
 
     ttk.Label(top, text=pgettext("download form", "Folder")).grid(row=2, column=0, sticky="w", pady=(8, 0))
@@ -1684,7 +1683,8 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     app.download_end_scale.grid(row=1, column=2, sticky="ew", padx=(8, 0), pady=(2, 0))
     ttk.Label(
         trim_frame,
-        text=_("format H:MM:SS — e.g. 0:00:51 to 0:01:25; leave at 0:00:00 for full video"),
+        text=_("Times as H:MM:SS, e.g. 0:00:51 to 0:01:25; 0:00:00 = the whole video. "
+               "The sliders work once the link above is read."),
         foreground=tokens.themed(tokens.TEXT_MUTED),
     ).grid(row=2, column=0, columnspan=3, sticky="w", pady=(4, 0))
     app.download_duration_var = tk.StringVar(value="")
@@ -1699,7 +1699,7 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     app.download_subtitles_var = tk.BooleanVar(value=saved_sub_enabled)
     ttk.Checkbutton(
         sub_frame,
-        text=_("Download subtitles (auto + manual when present)"),
+        text=_("Download subtitles (the uploader's, or automatic ones)"),
         variable=app.download_subtitles_var,
         command=app.update_subtitle_state,
     ).pack(side="left")
@@ -1733,7 +1733,7 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
         "<<ComboboxSelected>>", lambda _e: app.update_caption_shortcut_state()
     )
 
-    # "Use captions instead" shortcut — a distinct action from the
+    # "Use the subtitles" shortcut — a distinct action from the
     # "Download subtitles" checkbox above (which fetches subtitles ALONGSIDE
     # the media). This one skips the media download and transcription
     # entirely. Hidden by default; App.update_caption_shortcut_state shows
@@ -1751,7 +1751,7 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     ).pack(side="left")
     app.caption_shortcut_button = ttk.Button(
         caption_shortcut_frame,
-        text=_("Use captions instead"),
+        text=_("Use the subtitles"),
         command=app.download_service.enqueue_caption_only_from_form,
     )
     # Not packed here — update_caption_shortcut_state packs/unpacks it on
@@ -1820,7 +1820,7 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     _toggle(visible=False)
     app._smtv_series_toggle = _toggle  # type: ignore[attr-defined]
 
-    app.format_status_var = tk.StringVar(value=_("Enter a URL to load available formats"))
+    app.format_status_var = tk.StringVar(value=_("Paste a video link above to load its formats"))
     app.format_lookup_error = ""
     status_frame = ttk.Frame(top)
     status_frame.grid(

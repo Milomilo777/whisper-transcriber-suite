@@ -1120,7 +1120,7 @@ class App(tk.Tk):
     # the link's formats are listed ("" = none waiting).
     pending_link_start: str = ""
     make_subbed_video_var: tk.BooleanVar
-    # "Use captions instead" shortcut (built in tabs.build_download_tab;
+    # "Use the subtitles" shortcut (built in tabs.build_download_tab;
     # shown/hidden by update_caption_shortcut_state based on what the most
     # recent format lookup found — see app.services.format_service).
     caption_shortcut_status_var: tk.StringVar
@@ -3905,7 +3905,7 @@ class App(tk.Tk):
             label.pack_forget()
 
     def update_caption_shortcut_state(self) -> None:
-        """Show/hide the "Use captions instead" shortcut.
+        """Show/hide the "Use the subtitles" shortcut.
 
         Called after every format lookup (see app.services.format_service)
         and whenever the subtitle-language combo changes. Independent of
@@ -3951,19 +3951,17 @@ class App(tk.Tk):
         )
         # Whole sentences: one with the language's name, one for "the detected language".
         if kind == "manual" and label:
-            text = _('Captions (creator-provided) are already available in "{language}" '
-                     "-- skip downloading and transcribing?", language=label)
+            text = _("This video already has {language} subtitles made by the uploader. "
+                     "Use them instead of transcribing?", language=label)
         elif kind == "manual":
-            text = _('Captions (creator-provided) are already available in "the detected '
-                     'language" -- skip downloading and transcribing?')
+            text = _("This video already has subtitles made by the uploader. "
+                     "Use them instead of transcribing?")
         elif label:
-            text = _('Auto-generated captions are already available in "{language}" -- '
-                     "skip downloading and transcribing? (may be less accurate than "
-                     "a real transcription)", language=label)
+            text = _("This video has automatic {language} subtitles. Use them instead of "
+                     "transcribing? (They can be less accurate.)", language=label)
         else:
-            text = _('Auto-generated captions are already available in "the detected '
-                     'language" -- skip downloading and transcribing? (may be less '
-                     "accurate than a real transcription)")
+            text = _("This video has automatic subtitles. Use them instead of "
+                     "transcribing? (They can be less accurate.)")
         status_var.set(text)
         button.pack(side="left", padx=(10, 0))
 
@@ -6297,8 +6295,8 @@ class App(tk.Tk):
         total = len(running) + len(running_dl)
         all_p = [t.progress for t in running] + [d.progress for d in running_dl]
         avg = sum(all_p) // len(all_p) if all_p else 0
-        self.title(ngettext("{title} — {n} task (avg {percent}%)",
-                            "{title} — {n} tasks (avg {percent}%)", total,
+        self.title(ngettext("{title} — {n} job running ({percent}%)",
+                            "{title} — {n} jobs running ({percent}%)", total,
                             title=base, percent=avg))
 
     def show_last_result(self, task: "TranscriptionTask") -> None:

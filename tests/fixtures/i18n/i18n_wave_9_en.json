@@ -492,7 +492,7 @@
  "format_no_url": [
   [
    "format_status",
-   "Enter a URL to load available formats"
+   "Paste a video link above to load its formats"
   ]
  ],
  "format_unreadable": [

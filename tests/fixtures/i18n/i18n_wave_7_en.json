@@ -1048,27 +1048,27 @@
   "caption_shortcut": [
    [
     "status",
-    "Captions (creator-provided) are already available in \"German\" -- skip downloading and transcribing?"
+    "This video already has German subtitles made by the uploader. Use them instead of transcribing?"
    ],
    [
     "status",
-    "Captions (creator-provided) are already available in \"French\" -- skip downloading and transcribing?"
+    "This video already has French subtitles made by the uploader. Use them instead of transcribing?"
    ],
    [
     "status",
-    "Captions (creator-provided) are already available in \"the detected language\" -- skip downloading and transcribing?"
+    "This video already has subtitles made by the uploader. Use them instead of transcribing?"
    ],
    [
     "status",
-    "Auto-generated captions are already available in \"German\" -- skip downloading and transcribing? (may be less accurate than a real transcription)"
+    "This video has automatic German subtitles. Use them instead of transcribing? (They can be less accurate.)"
    ],
    [
     "status",
-    "Auto-generated captions are already available in \"French\" -- skip downloading and transcribing? (may be less accurate than a real transcription)"
+    "This video has automatic French subtitles. Use them instead of transcribing? (They can be less accurate.)"
    ],
    [
     "status",
-    "Auto-generated captions are already available in \"the detected language\" -- skip downloading and transcribing? (may be less accurate than a real transcription)"
+    "This video has automatic subtitles. Use them instead of transcribing? (They can be less accurate.)"
    ]
   ],
   "convert": [
@@ -1632,7 +1632,7 @@
    ],
    [
     "window.title",
-    "Whisper Transcriber Suite v9.9.9 — 3 tasks (avg 32%)"
+    "Whisper Transcriber Suite v9.9.9 — 3 jobs running (32%)"
    ],
    [
     "window.title",
@@ -1652,7 +1652,7 @@
    ],
    [
     "window.title",
-    "Whisper Transcriber Suite v9.9.9 — Work offline — 3 tasks (avg 32%)"
+    "Whisper Transcriber Suite v9.9.9 — Work offline — 3 jobs running (32%)"
    ]
   ],
   "work_offline": [

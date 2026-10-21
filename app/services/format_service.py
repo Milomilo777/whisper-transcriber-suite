@@ -116,7 +116,7 @@ class FormatService:
         if callable(prompt):
             prompt(url)
         if not url:
-            self.app.format_status_var.set(_("Enter a URL to load available formats"))
+            self.app.format_status_var.set(_("Paste a video link above to load its formats"))
             return
         if offline.is_offline():
             # The lookup runs yt-dlp (or SMTV) against the site at once.

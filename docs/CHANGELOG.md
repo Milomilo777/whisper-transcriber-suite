@@ -77,6 +77,16 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Changed
 
+- **Plainer words on the Download tab and the subtitles question**: "URL" is now **Video link**;
+  the note under it says "This video already has German subtitles made by the uploader. Use them
+  instead of transcribing?" (was "Captions (creator-provided) are already available in "de" --
+  skip..."), with a **Use the subtitles** button; the question window is titled "This video already
+  has subtitles", says that using the subtitles saves no video file, has a **Cancel** button, and
+  says where "Don't ask again" can be changed. Also: a plain browser sign-in hover text, "adding
+  subtitles" instead of "burning", a clear reason when speaker identification is not installed,
+  the window title "2 jobs running (41%)" and "Browse files..." named as on the button. The
+  renamed texts show in English in the other languages until they are translated again.
+
 - **Download tab: buttons in sight**: Pause, Cancel, Open and the rest sat under the downloads table,
   below the visible part of the tab even in a large window; they now sit above it, and the table
   shows five rows. The status, format and time columns are no longer cut ("finishe", "00:00:"),
