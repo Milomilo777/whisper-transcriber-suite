@@ -240,6 +240,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   again for the whole file in one language, so its saved progress no longer matched. History now
   records both options and the resume puts them back.
 
+- **A download resumed right after it ended keeps running**: pausing and resuming a download in
+  the moment its previous attempt had just finished or failed could mark the resumed run as
+  finished or failed while it was still downloading, start its transcription early and let the
+  next waiting download run beside it. Each run's end report now only counts for that run.
 - **A locked settings file at launch no longer resets output formats**: when `config.json` could
   not be read for a moment (antivirus, backup, cloud sync), the next save of any setting wrote the
   new-install formats over the user's own choice. A headless first run that only recorded cloud

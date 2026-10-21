@@ -104,6 +104,21 @@ if TYPE_CHECKING:
     from app.domain.tasks import VideoDownloadTask
 
 
+class _RunEvent(tuple):
+    """``(kind, task, payload)`` plus the ``_run_generation`` of the run that
+    posted it. A plain tuple to every reader (unpacking, equality); the poll
+    reads ``generation`` to drop a terminal event that a newer run of the
+    same task has superseded (``DownloadService._dispatch_event``).
+    """
+
+    generation: int | None
+
+    def __new__(cls, kind: str, task: Any, payload: Any, generation: int | None) -> "_RunEvent":
+        self = super().__new__(cls, (kind, task, payload))
+        self.generation = generation
+        return self
+
+
 def _finalize_owned_process(task: Any, generation: int) -> None:
     """Reap/clear ``task.process`` only if it still belongs to this run.
 
@@ -1291,12 +1306,25 @@ class DownloadService:
         from core._threads import safe_thread
         safe_thread(self._run_task, args=(task,), name="download-task")
 
+    def _post_terminal(
+        self, kind: str, task: "VideoDownloadTask", payload: Any, generation: int | None,
+    ) -> None:
+        """Post a ``done`` / ``done_full`` / ``error`` event for one run of
+        ``task``. The event carries the run's generation, so the poll can
+        tell an event of a run that a pause + resume has since replaced from
+        one of the run it is finalising (the event waits in the queue for up
+        to one poll tick; the worker-side generation checks cannot take back
+        an event already posted). ``None`` marks an event no run owns, which
+        is always honoured."""
+        self.app.download_events.put(_RunEvent(kind, task, payload, generation))
+
     def _refused_offline(self, task: "VideoDownloadTask") -> bool:
         """Work offline is on: report it for ``task`` and start nothing.
 
         Asked before each yt-dlp start, so a task queued earlier, or one
         that was waiting (yt-dlp update, subtitle phase) when the switch
-        was turned on, does not start a new download.
+        was turned on, does not start a new download. The event carries no
+        run generation: every caller checks for a superseding run first.
         """
         if not offline.is_offline():
             return False
@@ -1363,7 +1391,7 @@ class DownloadService:
                     return
                 if task.cancelled:
                     app.download_events.put(("subtitle_status", task, pgettext("subtitles", "cancelled")))
-                    app.download_events.put(("done", task, "cancelled"))
+                    self._post_terminal("done", task, "cancelled", my_gen)
                     return
                 if getattr(task, "paused", False):
                     return
@@ -1372,7 +1400,7 @@ class DownloadService:
                 self._run_caption_only_task(task, run_generation=my_gen)
             except Exception as e:  # noqa: BLE001
                 if not _superseded():
-                    app.download_events.put(("error", task, str(e)))
+                    self._post_terminal("error", task, str(e), my_gen)
             finally:
                 _finalize_owned_process(task, my_gen)
                 yt_dlp_update.end_download(run_key)
@@ -1391,7 +1419,7 @@ class DownloadService:
             if _superseded():
                 return
             if task.cancelled:
-                app.download_events.put(("done", task, "cancelled"))
+                self._post_terminal("done", task, "cancelled", my_gen)
                 return
             if getattr(task, "paused", False):
                 return
@@ -1428,7 +1456,7 @@ class DownloadService:
             if task.cancelled:
                 # A resumed task still has its earlier run's partial files.
                 self.remove_partial_files(task)
-                app.download_events.put(("done", task, "cancelled"))
+                self._post_terminal("done", task, "cancelled", my_gen)
                 return
             if getattr(task, "paused", False):
                 return
@@ -1457,7 +1485,7 @@ class DownloadService:
                     self.remove_partial_files(task)
                     if not reported_cancel:
                         app.download_events.put(("subtitle_status", task, pgettext("subtitles", "cancelled")))
-                        app.download_events.put(("done", task, "cancelled"))
+                        self._post_terminal("done", task, "cancelled", my_gen)
                     return
                 if getattr(task, "paused", False):
                     return
@@ -1467,7 +1495,7 @@ class DownloadService:
             self._media_phase(task, run_generation=my_gen)
         except Exception as e:  # noqa: BLE001
             if not _superseded():
-                app.download_events.put(("error", task, str(e)))
+                self._post_terminal("error", task, str(e), my_gen)
         finally:
             _finalize_owned_process(task, my_gen)
             yt_dlp_update.end_download(run_key)
@@ -1668,7 +1696,7 @@ class DownloadService:
         if _superseded():
             return
         if task.cancelled:
-            app.download_events.put(("done", task, "cancelled"))
+            self._post_terminal("done", task, "cancelled", run_generation)
             return
         if getattr(task, "paused", False):
             return
@@ -1699,7 +1727,7 @@ class DownloadService:
 
         if task.cancelled:
             _quiet_unlink(part_path)
-            app.download_events.put(("done", task, "cancelled"))
+            self._post_terminal("done", task, "cancelled", run_generation)
             return
 
         try:
@@ -1718,8 +1746,8 @@ class DownloadService:
         self._write_smtv_transcript(
             task, episode, basename if mode.startswith("video") or mode == "audio" else None)
 
-        app.download_events.put(
-            ("done_full", task, {"status": "finished", "saved_path": target_path})
+        self._post_terminal(
+            "done_full", task, {"status": "finished", "saved_path": target_path}, run_generation,
         )
 
     def _write_smtv_transcript(
@@ -1773,10 +1801,12 @@ class DownloadService:
                 return
         except Exception as e:  # noqa: BLE001 - the fallback failing must still report once
             if getattr(task, "_run_generation", run_generation) == run_generation:
-                self.app.download_events.put(
-                    ("error", task, f"{official_error}; the YouTube copy failed too: {e}"))
+                self._post_terminal(
+                    "error", task, f"{official_error}; the YouTube copy failed too: {e}",
+                    run_generation,
+                )
             return
-        self.app.download_events.put(("error", task, str(official_error)))
+        self._post_terminal("error", task, str(official_error), run_generation)
 
     def _smtv_youtube_fallback(
         self, task: "VideoDownloadTask", official_error: Exception, run_generation: int,
@@ -1817,18 +1847,21 @@ class DownloadService:
         if getattr(task, "_run_generation", run_generation) != run_generation:
             return True  # a newer run owns the task now: stay silent
         if task.cancelled:
-            app.download_events.put(("done", task, "cancelled"))
+            self._post_terminal("done", task, "cancelled", run_generation)
         elif getattr(task, "paused", False):
-            app.download_events.put(("done", task, "paused"))
+            self._post_terminal("done", task, "paused", run_generation)
         elif return_code or not saved_path:
             reason = error_line or last_line or f"yt-dlp exit code {return_code}"
-            app.download_events.put(
-                ("error", task, f"{official_error}; the YouTube copy failed too: {reason}"))
+            self._post_terminal(
+                "error", task, f"{official_error}; the YouTube copy failed too: {reason}",
+                run_generation,
+            )
         else:
             if isinstance(episode, smtv_mod.SmtvEpisode):
                 self._write_smtv_transcript(task, episode, os.path.basename(saved_path))
-            app.download_events.put(
-                ("done_full", task, {"status": "finished", "saved_path": saved_path}))
+            self._post_terminal(
+                "done_full", task, {"status": "finished", "saved_path": saved_path}, run_generation,
+            )
         return True
 
     def _stream_smtv_file(
@@ -2039,7 +2072,7 @@ class DownloadService:
                         ("log", task, f"Could not remove partial subtitle file {partial}: {e}")
                     )
             app.download_events.put(("subtitle_status", task, pgettext("subtitles", "cancelled")))
-            app.download_events.put(("done", task, "cancelled"))
+            self._post_terminal("done", task, "cancelled", run_generation)
             return True
         if wrote_files:
             app.download_events.put(
@@ -2107,8 +2140,9 @@ class DownloadService:
         sub_lang = self.resolve_subtitle_lang(task)
         if not sub_lang:
             app.download_events.put(("subtitle_status", task, _("no language detected")))
-            app.download_events.put(
-                ("error", task, "Could not resolve a caption language for this video.")
+            self._post_terminal(
+                "error", task, "Could not resolve a caption language for this video.",
+                run_generation,
             )
             return
 
@@ -2137,7 +2171,7 @@ class DownloadService:
                 except OSError:
                     pass
             app.download_events.put(("subtitle_status", task, pgettext("subtitles", "cancelled")))
-            app.download_events.put(("done", task, "cancelled"))
+            self._post_terminal("done", task, "cancelled", run_generation)
             return
 
         if getattr(task, "paused", False):
@@ -2159,8 +2193,8 @@ class DownloadService:
             else:
                 reason, shown = "completed (no files written)", _("completed (no files written)")
             app.download_events.put(("subtitle_status", task, shown))
-            app.download_events.put(
-                ("error", task, f"Could not fetch captions for this video: {reason}")
+            self._post_terminal(
+                "error", task, f"Could not fetch captions for this video: {reason}", run_generation,
             )
             return
 
@@ -2182,8 +2216,8 @@ class DownloadService:
             ):
                 return
             app.download_events.put(("subtitle_status", task, _("conversion failed")))
-            app.download_events.put(
-                ("error", task, f"Captions were downloaded but could not be read: {e}")
+            self._post_terminal(
+                "error", task, f"Captions were downloaded but could not be read: {e}", run_generation,
             )
             return
 
@@ -2251,7 +2285,7 @@ class DownloadService:
                 except OSError:
                     pass
             app.download_events.put(("subtitle_status", task, pgettext("subtitles", "cancelled")))
-            app.download_events.put(("done", task, "cancelled"))
+            self._post_terminal("done", task, "cancelled", run_generation)
             return
         if getattr(task, "paused", False):
             app.download_events.put(("subtitle_status", task, pgettext("subtitles", "paused")))
@@ -2283,8 +2317,8 @@ class DownloadService:
             "--- Caption-only phase: wrote "
             + ", ".join(os.path.basename(w) for w in written) + " ---",
         ))
-        app.download_events.put(
-            ("done_full", task, {"status": "finished", "saved_path": written[0]})
+        self._post_terminal(
+            "done_full", task, {"status": "finished", "saved_path": written[0]}, run_generation,
         )
 
     def _run_media_process(
@@ -2417,13 +2451,13 @@ class DownloadService:
 
         if task.cancelled:
             self.remove_partial_files(task)
-            app.download_events.put(("done", task, "cancelled"))
+            self._post_terminal("done", task, "cancelled", run_generation)
         elif getattr(task, "paused", False):
             # R2 stop-and-continue "pause": the process was tree-killed by
             # pause_download, so the wait() returns nonzero — but this is a
             # deliberate hold, not a failure. Land on "paused" and keep the
             # partial .part so a later resume continues via -c/--continue.
-            app.download_events.put(("done", task, "paused"))
+            self._post_terminal("done", task, "paused", run_generation)
         elif return_code:
             # Surface the real reason (yt-dlp's ERROR line) rather than a
             # bare exit code, so a login-walled site (Facebook → enable
@@ -2486,12 +2520,12 @@ class DownloadService:
                 # No "Update it" bar here (the macOS app's yt-dlp cannot
                 # update itself), so say what does help.
                 msg += "  — " + yt_dlp_update.OUTDATED_HINT
-            app.download_events.put(("error", task, msg))
+            self._post_terminal("error", task, msg, run_generation)
             if yt_dlp_update.should_offer_update(reason):
                 self._offer_yt_dlp_update(reason)
         else:
             payload = {"status": "finished", "saved_path": saved_path}
-            app.download_events.put(("done_full", task, payload))
+            self._post_terminal("done_full", task, payload, run_generation)
 
     def poll(self) -> None:
         app = self.app
@@ -2502,13 +2536,17 @@ class DownloadService:
         processed_any = False
         while True:
             try:
-                kind, task, payload = app.download_events.get_nowait()
+                event = app.download_events.get_nowait()
+                kind, task, payload = event
             except Empty:
                 break
             processed_any = True
 
             try:
-                self._dispatch_event(app, kind, task, payload)
+                self._dispatch_event(
+                    app, kind, task, payload,
+                    generation=getattr(event, "generation", None),
+                )
             except Exception:  # noqa: BLE001
                 # One malformed/unexpected event must never wedge the whole
                 # download pump -- an uncaught exception here would skip the
@@ -2532,9 +2570,29 @@ class DownloadService:
 
     def _dispatch_event(
         self, app: "App", kind: str, task: "VideoDownloadTask", payload: Any,
+        *, generation: int | None = None,
     ) -> None:
         """The per-event body of :meth:`poll`, split out so it can be
-        wrapped in one try/except there without re-indenting every branch."""
+        wrapped in one try/except there without re-indenting every branch.
+
+        ``generation`` is the ``_run_generation`` of the run that posted a
+        terminal event (``_post_terminal``). A pause + resume in the gap
+        between the post and this poll tick re-dispatches the same task
+        object under a newer generation; the old run's event would then
+        finish or fail the resumed run and release the download slot its
+        process still holds (and could start its auto-transcription), so
+        it is dropped here. An event with no generation is always applied.
+        """
+        if (
+            kind in ("done", "done_full", "error")
+            and generation is not None
+            and getattr(task, "_run_generation", generation) != generation
+        ):
+            logger.debug(
+                "Dropping the %r event of a superseded download run (%s < %s)",
+                kind, generation, getattr(task, "_run_generation", None),
+            )
+            return
         if kind == "progress":
             # Defensive coercion: a non-numeric / NaN / inf percent
             # (a malformed yt-dlp progress JSON, a future event source)
