@@ -1375,7 +1375,8 @@ class App(tk.Tk):
             self, self._on_system_theme_change)
         self._sync_system_theme_watch(self.theme_var.get())
         remember_scale(self)
-        self.parallel_workers = max(1, int(self.app_config.get("parallel_workers", 2)))
+        # 0 = automatic: one job at a time on a CPU, two on a GPU (TranscriptionService.worker_limit).
+        self.parallel_workers = max(0, int(self.app_config.get("parallel_workers", 0)))
         self.next_worker_id = 1
         self.format_events: Queue = Queue(maxsize=2000)
         self.download_events: Queue = Queue(maxsize=2000)

@@ -68,7 +68,7 @@ def test_load_damaged_files(isolated_config, caplog):
     cfg = config.load_config(fetch_online=False)
     assert cfg["theme"] == "dark"
     # Should fall back to default
-    assert cfg["parallel_workers"] == 2
+    assert cfg["parallel_workers"] == config.DEFAULT_CONFIG["parallel_workers"]
 
     caplog.clear()
 
@@ -157,7 +157,7 @@ def test_load_damaged_files_drops_wrong_type(isolated_config, caplog):
     (isolated_config / "config.json").write_text('{"theme": "dark", "parallel_workers": "four"}')
     cfg = config.load_config(fetch_online=False)
 
-    assert cfg["parallel_workers"] == 2
+    assert cfg["parallel_workers"] == config.DEFAULT_CONFIG["parallel_workers"]
     assert "has wrong type" in caplog.text
     assert "parallel_workers" in caplog.text
 

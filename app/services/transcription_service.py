@@ -303,6 +303,17 @@ class TranscriptionService:
     def idle_workers(self) -> list[dict[str, Any]]:
         return [w for w in self.ready_workers() if w["task"] is None]
 
+    def worker_limit(self) -> int:
+        """How many jobs may run at once: the user's own ``parallel_workers``, or for 0
+        (automatic) one on a CPU and two once a ready worker reports a GPU. Two jobs on a CPU
+        each load the model and share the cores, so both crawl (deep review, 2026-10-21);
+        until a worker has said which device it got, one is started."""
+        configured = int(getattr(self.app, "parallel_workers", 0) or 0)
+        if configured > 0:
+            return configured
+        gpu = any(str(w.get("device") or "").lower() == "cuda" for w in self.ready_workers())
+        return 2 if gpu else 1
+
     def update_model_state(self) -> None:
         ready_count = len(self.ready_workers())
         self.app.worker_ready = ready_count > 0
@@ -1725,9 +1736,10 @@ class TranscriptionService:
             return
         active_count = len(self.active_workers())
         idle_count = len(self.idle_workers())
-        needed = min(len(waiting), app.parallel_workers) - idle_count
+        limit = self.worker_limit()
+        needed = min(len(waiting), limit) - idle_count
         for _ in range(max(0, needed)):
-            if active_count >= app.parallel_workers:
+            if active_count >= limit:
                 break
             self.start_worker(temporary=True)
             active_count += 1

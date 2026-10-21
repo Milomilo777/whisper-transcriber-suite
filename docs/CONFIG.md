@@ -139,7 +139,7 @@ Opening a link (Help menu, About dialog, release page) hands the URL to the syst
 | `device` | string | `"auto"` | `"auto"` / `"cuda"` / `"cpu"`. With `"auto"`, the autodetect only selects CUDA when ctranslate2 reports a GPU **and** the CUDA runtime library it needs actually loads (cuBLAS for CUDA 12; CTranslate2 before 4.6.3 also needed cuDNN) — found on the system path, in NVIDIA's pip wheels (`nvidia-cublas-cu12`, which Advanced › Re-detect hardware can install), a CUDA Toolkit, or a CUDA PyTorch; otherwise it falls back to CPU. At model-load time a CUDA load — or its one-pass GPU warm-up — that still fails self-heals to CPU `int8` instead of crashing the worker — the active tab shows a GPU/CPU badge and (once) a "running on CPU (slower)" warning. |
 | `compute_type` | string | `"int8"` | `faster-whisper` compute type. Common values: `int8`, `int8_float16`, `float16`, `float32`. `int8` is the smallest/fastest on CPU; `float16` is preferred on GPU. |
 | `cpu_warning_shown` | bool | `false` | Set to `true` after the one-time "running on CPU (slower)" warning has been shown, so it never repeats. The warning only appears when a GPU was detected-but-unusable or a CUDA→CPU downgrade happened — never on a genuine CPU-only machine. |
-| `parallel_workers` | int | `2` | Maximum simultaneous transcription worker subprocesses. Each loads the model and uses ~3 GB RAM (or VRAM on GPU). |
+| `parallel_workers` | int | `0` | Maximum simultaneous transcription worker subprocesses. Each loads the model and uses ~3 GB RAM (or VRAM on GPU). `0` = automatic: one job at a time on a CPU (two jobs there only share the cores), two once a worker reports a GPU. A stored `2`, the old default that earlier versions wrote into every `config.json`, reads as `0`; set `1`, `3` or more by hand to choose. |
 | `download_folder` | string | `""` | Default destination for video downloads. Updated by the Folder Browse button and by **Finish** in the quick start window (which pre-fills the user's Downloads folder). |
 | `download_subtitles_enabled` | bool | `false` | Last state of the subtitle checkbox on the Download Videos tab |
 | `download_subtitle_lang` | string | `"Automatic"` | Last-selected subtitle language (display name from `SUBTITLE_LANGUAGES`, not the code). |
@@ -596,7 +596,7 @@ When a new field is introduced, `load_config` will populate it with the default 
   "model_path": "",
   "device": "auto",
   "compute_type": "int8",
-  "parallel_workers": 2,
+  "parallel_workers": 0,
   "download_folder": ""
 }
 ```

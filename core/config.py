@@ -80,7 +80,9 @@ DEFAULT_CONFIG = {
     "model_path": "",
     "device": "auto",
     "compute_type": "int8",
-    "parallel_workers": 2,
+    # 0 = automatic: one job at a time on a CPU, two on a GPU (app worker_limit). A stored 2,
+    # the old default older versions wrote into every config.json, reads as 0 (load_config).
+    "parallel_workers": 0,
     "download_folder": "",
     "download_subtitles_enabled": False,
     "download_subtitle_lang": "Automatic",
@@ -1844,6 +1846,11 @@ def load_config(*, fetch_online: bool = True) -> dict[str, Any]:
         if local or os.path.exists(config_path() + ".corrupt"):
             merged["output_formats"] = list(LEGACY_OUTPUT_FORMATS)
         baseline.pop("output_formats", None)
+    # parallel_workers 2 was the shipped default, written into every config.json by older
+    # versions and never offered in a window: it reads as automatic now (one job at a time on
+    # a CPU). Any other number was set by hand and is kept. The next save writes the 0.
+    if local.get("parallel_workers") == 2:
+        merged["parallel_workers"] = 0
     # The yt-dlp update choice used to be a bool; true meant "update before a
     # download, once a day", which is the "auto" mode now. Read only from the
     # local file (the online layer can set neither key).
