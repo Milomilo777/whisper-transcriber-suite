@@ -244,10 +244,7 @@
 <li><a href="/fil/video-to-srt/" hreflang="fil" lang="fil" data-lang-pick="fil">Filipino</a></li>
 <!-- i18n:menu:end --></ul>
       </details>
-      <a class="btn-icon gh-btn" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" title="GitHub" aria-label="GitHub에서 Whisper Transcriber Suite 스타 주기">
-        <svg class="i" aria-hidden="true"><use href="#i-github"/></svg>
-      </a>
-      <a class="btn btn-primary btn-sm" href="/ko/#download">Download</a>
+      <a class="btn-icon gh-btn" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" title="GitHub" aria-label="GitHub에서 Whisper Transcriber Suite 스타 주기"> <svg class="i" aria-hidden="true"><use href="#i-github"/></svg> </a> <a class="btn btn-primary btn-sm" href="/ko/#download">다운로드</a>
     </div>
   </div>
 </header>
@@ -259,7 +256,7 @@
       <h1>동영상을 무료로 SRT 자막으로 변환하는 방법</h1>
       <p class="guide-sub">한 번 설치하여 사용하는 무료 데스크톱 앱입니다(Windows, macOS, Linux). 앱에 내장된 음성 인식 모델인 Whisper가 컴퓨터에서 직접 실행되므로, 기본 엔진을 사용하면 동영상이 업로드되지 않습니다.</p>
       <p class="guide-lede">동영상을 SRT 자막으로 변환하려면 전사 탭을 열고 동영상이나 오디오 파일을 끌어다 놓은 뒤, 고급 설정에서 SRT가 선택되어 있는지 확인하고 전사를 누르세요. Whisper가 원본 파일 옆에 범용 자막 형식인 SRT 파일을 생성하므로 동영상 플레이어, 편집기 또는 업로드에 바로 활용할 수 있습니다. 링크를 사용하려면 <a href="/ko/youtube-to-text/">YouTube 가이드</a>를 참조하세요.</p>
-      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
+      <aside class="try-box"><p><b>설치 없이 써 보고 싶으신가요?</b> <a href="/try/">브라우저에서 체험</a>: 짧은 파일(최대 10분)을 내 기기에서 전사하는 무료 페이지로, 업로드도 가입도 필요 없습니다. 더 긴 파일은 아래의 앱으로 처리하세요.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>무료 앱 다운로드</a>
       </div>
@@ -270,10 +267,10 @@
       <h2>1. SRT 만들기</h2>
       <ol class="guide-steps">
         <li><b>전사 탭을 열고</b> 동영상 또는 오디오 파일을 창으로 끌어다 놓거나 <b>파일 찾아보기...</b>를 클릭하세요. 여러 파일을 한 번에 선택할 수도 있습니다.</li>
-        <li><b>Set the Language</b>, or leave <b>Auto</b> to detect it. Picking it yourself is faster and can be more accurate for short or noisy clips. Next to it, <b>Accuracy</b> chooses the model: <b>Fast</b> for a quick draft, <b>Balanced</b>, or <b>Best</b> for the most careful result (slower). A model you picked in <b>Advanced settings</b> shows as <b>Custom</b> and is left alone.</li>
-        <li><b>Optional:</b> open <b>More options</b> and fill in <b>Time range</b> (H:MM:SS) to transcribe only part of the file.</li>
+        <li><b>언어를 설정</b>하거나 <b>자동</b>으로 두어 감지하게 하세요. 짧거나 잡음이 많은 클립은 직접 고르는 편이 더 빠르고 정확할 수 있습니다. 그 옆의 <b>정확도</b>가 모델을 정합니다. <b>빠름</b>은 빠른 초안용, <b>균형</b>, <b>최고</b>는 가장 꼼꼼한 결과(느림)입니다. <b>고급 설정</b>에서 직접 고른 모델은 <b>사용자 지정</b>으로 표시되며 그대로 유지됩니다.</li>
+        <li><b>선택 사항:</b> <b>추가 옵션</b>을 열고 <b>시간 범위</b>(H:MM:SS)를 입력하면 파일의 일부만 전사합니다.</li>
         <li><b>자막 형식을 선택합니다.</b> <b>고급 설정…</b>을 클릭하고 <b>출력 형식</b>을 찾으세요. 기본값은 SRT와 JSON입니다. 웹 동영상용으로는 <b>VTT</b>(웹 자막 형식)를 선택하고, 편집기에서 자막 스타일을 적용할 경우 <b>ASS (스타일 자막 / 노래방)</b>를 선택하세요. 선택한 모든 형식의 파일이 작업마다 생성됩니다. JSON은 선택된 상태로 유지하세요. 앱에서 전사본 보기를 열 때 이 JSON 파일이 필요합니다.</li>
-        <li><b>Optional:</b> under <b>More options</b>, tick <b>Per-word timestamps</b> to store a start and end time for every word; the files get larger. Your SRT cues still follow whole segments, one cue per segment of speech. Word timing is used by VTT and ASS for karaoke-style highlighting.</li>
+        <li><b>선택 사항:</b> <b>추가 옵션</b>에서 <b>단어별 타임스탬프</b>를 체크하면 모든 단어의 시작과 끝 시간이 저장됩니다. 파일 크기는 커집니다. SRT 자막은 여전히 발화 한 구간당 하나의 큐로 나뉩니다. 단어 타이밍은 VTT와 ASS에서 노래방 스타일 강조에 쓰입니다.</li>
         <li><b>전사를 클릭합니다.</b> 작업 진행 상황은 <b>전사 대기열</b> 탭에서 확인할 수 있습니다. 자막 파일은 원본 파일과 같은 위치에 동일한 이름과 새 확장자로 저장됩니다(예: talk.mp4는 talk.srt로 저장됨). <b>최근 결과</b> 카드에는 각 파일의 <b>열기</b> 버튼이 표시됩니다.</li>
       </ol>
       <figure class="guide-fig">
@@ -283,7 +280,7 @@
 
       <h2>다른 언어 자막</h2>
       <div class="guide-body">
-        <p>For English subtitles from non-English speech, open <b>More options</b> and tick <b>Output: English translation</b>; the files get an .en-translated name. It is off by default and does not work with every engine or model. For other languages, an optional AI Tools tab in the transcript viewer can write a bilingual SRT once you set up its AI layer (a local model you install, or an online provider you choose); it is off by default.</p>
+        <p>영어가 아닌 음성에 영어 자막을 만들려면 <b>추가 옵션</b>을 열고 <b>출력: 영어 번역</b>을 체크하세요. 파일 이름에 .en-translated가 붙습니다. 기본값은 꺼짐이며, 모든 엔진이나 모델에서 되는 것은 아닙니다. 다른 언어는 전사본 뷰어의 선택형 AI 도구 탭에서 AI 계층(직접 설치하는 로컬 모델 또는 직접 고르는 온라인 서비스)을 설정하면 이중 언어 SRT를 만들 수 있으며, 이 기능도 기본값은 꺼짐입니다.</p>
       </div>
       <h2>2. 수정하기(선택 사항)</h2>
       <div class="guide-body">

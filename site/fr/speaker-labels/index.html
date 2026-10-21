@@ -246,10 +246,7 @@
 <li><a href="/fil/speaker-labels/" hreflang="fil" lang="fil" data-lang-pick="fil">Filipino</a></li>
 <!-- i18n:menu:end --></ul>
       </details>
-      <a class="btn-icon gh-btn" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" title="GitHub" aria-label="Ajouter une étoile à Whisper Transcriber Suite sur GitHub">
-        <svg class="i" aria-hidden="true"><use href="#i-github"/></svg>
-      </a>
-      <a class="btn btn-primary btn-sm" href="/fr/#download">Download</a>
+      <a class="btn-icon gh-btn" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" title="GitHub" aria-label="Ajouter une étoile à Whisper Transcriber Suite sur GitHub"> <svg class="i" aria-hidden="true"><use href="#i-github"/></svg> </a> <a class="btn btn-primary btn-sm" href="/fr/#download">Télécharger</a>
     </div>
   </div>
 </header>
@@ -260,8 +257,8 @@
     <article>
       <h1>Transcrire un entretien avec étiquettes de locuteurs (qui a dit quoi)</h1>
       <p class="guide-sub">Une application de bureau gratuite à installer une seule fois (Windows, macOS, Linux). Votre enregistrement est traité sur votre ordinateur, sans aucun compte nécessaire.</p>
-      <p class="guide-lede">The app tells voices apart and labels them Speaker 00, Speaker 01 and so on. It does not know who anyone is until you rename them. Similar voices, short replies, overlapping speech and background noise can cause wrong labels. To start, open More options on the Transcribe tab, tick Identify speakers and press Transcribe.</p>
-      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
+      <p class="guide-lede">L'application distingue les voix et les étiquette Locuteur 00, Locuteur 01, etc. Elle ne sait pas qui est qui tant que vous ne les renommez pas. Des voix proches, des réponses courtes, des paroles qui se chevauchent et le bruit de fond peuvent provoquer de mauvaises étiquettes. Pour commencer, ouvrez Plus d'options dans l'onglet Transcrire, cochez Identifier les locuteurs et cliquez sur Transcrire.</p>
+      <aside class="try-box"><p><b>Pas d'installation ?</b> <a href="/try/">Essayez dans votre navigateur</a> : une page gratuite qui transcrit un court fichier (10 minutes maximum) sur votre appareil, sans envoi de fichier ni inscription. L'application ci-dessous gère les fichiers plus longs.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Télécharger l'application gratuite</a>
       </div>
@@ -273,15 +270,15 @@
       <ol class="guide-steps">
         <li><b>Ajoutez l'enregistrement.</b> Dans l'onglet <b>Transcrire</b>, glissez un fichier audio ou vidéo ou cliquez sur <b>Parcourir les fichiers...</b>. Un lien issu de l'onglet <b>Télécharger des vidéos</b> fonctionne tout aussi bien, car il utilise les mêmes paramètres de transcription.</li>
         <li><b>Choisissez la Langue</b>, ou laissez sur <b>Auto</b>.</li>
-        <li><b>Open More options and tick Identify speakers.</b> If the box reads <b>Identify speakers (unavailable)</b>, hover over it to see why. The <b>Speakers</b> picker below it switches on: leave it on <b>Auto</b>, or choose a number from 2 to 10 to force exactly that many people.</li>
-        <li><b>Optional:</b> in <b>More options</b>, tick <b>Per-word timestamps</b> to store a start and end time for every word instead of only every sentence. The output gets larger.</li>
+        <li><b>Ouvrez Plus d'options et cochez Identifier les locuteurs.</b> Si la case indique <b>Identifier les locuteurs (indisponible)</b>, survolez-la pour en voir la raison. Le sélecteur <b>Locuteurs</b> en dessous devient actif : laissez-le sur <b>Auto</b>, ou choisissez un nombre de 2 à 10 pour imposer exactement ce nombre de personnes.</li>
+        <li><b>Facultatif :</b> dans <b>Plus d'options</b>, cochez <b>Horodatage par mot</b> pour enregistrer un début et une fin pour chaque mot et non plus pour chaque phrase. Le résultat est plus volumineux.</li>
         <li><b>Choisissez les formats d'export.</b> Cliquez sur <b>Paramètres avancés…</b> et cochez <b>DOCX</b> et <b>PDF</b> sous <b>Formats de sortie</b>. Les formats SRT, TXT, Markdown et JSON intègrent également les étiquettes. Laissez JSON coché : l'application utilise ce fichier JSON pour ouvrir le visualiseur de transcription, indispensable pour la dernière étape.</li>
         <li><b>Cliquez sur Transcrire.</b> La détection des locuteurs s'exécute après la transcription et rallonge le temps de traitement. Ouvrez ensuite <b>Voir la transcription</b> depuis la carte <b>Dernier résultat</b>.</li>
         <li><b>Remplacez les étiquettes génériques par des noms.</b> Dans le visualiseur, faites un clic droit sur une cellule de la colonne <b>Locuteur</b>, choisissez <b>Renommer 'Speaker 00' (partout)...</b>, saisissez le nom et cliquez sur <b>Enregistrer les modifications (Ctrl+S)</b>. Les fichiers Word et texte voisins sont recréés s'ils correspondent toujours à la transcription d'origine ; ce n'est pas le cas des fichiers PDF, réexportez-les donc après avoir renommé les locuteurs.</li>
       </ol>
       <figure class="guide-fig">
         <img src="/assets/shots/transcribe.webp" alt="L&#39;onglet Transcrire avec les cases à cocher Identifier les locuteurs et Horodatage par mot sur la ligne Langue, la ligne Plage horaire en dessous, et le grand bouton Transcrire." width="1180" height="668" loading="lazy" decoding="async">
-        <figcaption>The Transcribe tab as it looked before version 2.2. Identify speakers and Per-word timestamps now sit under <b>More options</b>.</figcaption>
+        <figcaption>L'onglet Transcrire tel qu'il était avant la version 2.2. Identifier les locuteurs et Horodatage par mot se trouvent maintenant sous <b>Plus d'options</b>.</figcaption>
       </figure>
 
       <h2>À quoi ressemblent les étiquettes</h2>

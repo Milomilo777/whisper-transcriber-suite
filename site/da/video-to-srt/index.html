@@ -246,10 +246,7 @@
 <li><a href="/fil/video-to-srt/" hreflang="fil" lang="fil" data-lang-pick="fil">Filipino</a></li>
 <!-- i18n:menu:end --></ul>
       </details>
-      <a class="btn-icon gh-btn" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" title="GitHub" aria-label="Giv Whisper Transcriber Suite en stjerne på GitHub">
-        <svg class="i" aria-hidden="true"><use href="#i-github"/></svg>
-      </a>
-      <a class="btn btn-primary btn-sm" href="/da/#download">Download</a>
+      <a class="btn-icon gh-btn" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" title="GitHub" aria-label="Giv Whisper Transcriber Suite en stjerne på GitHub"> <svg class="i" aria-hidden="true"><use href="#i-github"/></svg> </a> <a class="btn btn-primary btn-sm" href="/da/#download">Hent</a>
     </div>
   </div>
 </header>
@@ -261,7 +258,7 @@
       <h1>Sådan konverterer du en video til SRT-undertekster gratis</h1>
       <p class="guide-sub">En gratis skrivebordsapp, du installerer én gang (Windows, macOS, Linux). Whisper, talegenkendelsesmodellen indeni, kører på din computer, så med standardmotorerne uploades din video ikke.</p>
       <p class="guide-lede">For at konvertere en video til SRT-undertekster skal du åbne fanen Transskribér, trække en video- eller lydfil ind, kontrollere, at der er sat kryds ved SRT under Avancerede indstillinger, og trykke på Transskribér. Whisper opretter SRT-filen, det gængse undertekstformat, ved siden af den oprindelige fil, klar til en afspiller, et redigeringsprogram eller et upload. Se <a href="/da/youtube-to-text/">YouTube-vejledningen</a>, hvis du vil bruge et link.</p>
-      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
+      <aside class="try-box"><p><b>Ingen installation?</b> <a href="/try/">Prøv det i din browser</a>: en gratis side, der transskriberer en kort fil (op til 10 minutter) på din enhed, uden upload og uden tilmelding. Appen nedenfor klarer længere filer.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Hent den gratis app</a>
       </div>
@@ -272,10 +269,10 @@
       <h2>1. Opret SRT-filen</h2>
       <ol class="guide-steps">
         <li><b>Åbn fanen Transskribér</b>, og træk din video- eller lydfil over i vinduet, eller klik på <b>Gennemse filer...</b>. Du kan vælge flere filer på én gang.</li>
-        <li><b>Set the Language</b>, or leave <b>Auto</b> to detect it. Picking it yourself is faster and can be more accurate for short or noisy clips. Next to it, <b>Accuracy</b> chooses the model: <b>Fast</b> for a quick draft, <b>Balanced</b>, or <b>Best</b> for the most careful result (slower). A model you picked in <b>Advanced settings</b> shows as <b>Custom</b> and is left alone.</li>
-        <li><b>Optional:</b> open <b>More options</b> and fill in <b>Time range</b> (H:MM:SS) to transcribe only part of the file.</li>
+        <li><b>Vælg Sprog</b>, eller lad <b>Auto</b> stå, så bliver det registreret automatisk. At vælge selv er hurtigere og kan være mere nøjagtigt til korte eller støjende klip. Ved siden af vælger <b>Nøjagtighed</b> modellen: <b>Hurtig</b> til et hurtigt udkast, <b>Balanceret</b> eller <b>Bedst</b> til det mest omhyggelige resultat (langsommere). En model, du har valgt under <b>Avancerede indstillinger</b>, vises som <b>Brugerdefineret</b> og bliver ikke rørt.</li>
+        <li><b>Valgfrit:</b> åbn <b>Flere muligheder</b>, og udfyld <b>Tidsinterval</b> (H:MM:SS) for kun at transskribere en del af filen.</li>
         <li><b>Vælg undertekstformaterne.</b> Klik på <b>Avancerede indstillinger…</b>, og find <b>Outputformater</b>. SRT plus JSON er standarden. Sæt kryds ved <b>VTT</b> (webundertekstformatet) til webvideo eller <b>ASS (formaterede undertekster / karaoke)</b>, hvis du formaterer undertekster i et redigeringsprogram. Der oprettes filer for alle afkrydsede formater for hver opgave. Lad krydset ved JSON stå: det er en JSON-fil, som appen bruger til at åbne transskriptionsvisningen.</li>
-        <li><b>Optional:</b> under <b>More options</b>, tick <b>Per-word timestamps</b> to store a start and end time for every word; the files get larger. Your SRT cues still follow whole segments, one cue per segment of speech. Word timing is used by VTT and ASS for karaoke-style highlighting.</li>
+        <li><b>Valgfrit:</b> under <b>Flere muligheder</b> sætter du kryds ved <b>Tidsstempler pr. ord</b> for at gemme en start- og sluttid for hvert ord. Filerne bliver større. Dine SRT-blokke følger stadig hele segmenter, én blok pr. taledel. Ordtiderne bruges af VTT og ASS til karaokelignende fremhævning.</li>
         <li><b>Klik på Transskribér.</b> Følg opgaven på fanen <b>Transskriberingskø</b>. Undertekstfilen placeres ved siden af din oprindelige fil med samme navn og et nyt filtypenavn – for eksempel bliver talk.mp4 til talk.srt – og kortet <b>Seneste resultat</b> har en <b>Åbn</b>-knap for hver fil.</li>
       </ol>
       <figure class="guide-fig">
@@ -285,7 +282,7 @@
 
       <h2>Undertekster på et andet sprog</h2>
       <div class="guide-body">
-        <p>For English subtitles from non-English speech, open <b>More options</b> and tick <b>Output: English translation</b>; the files get an .en-translated name. It is off by default and does not work with every engine or model. For other languages, an optional AI Tools tab in the transcript viewer can write a bilingual SRT once you set up its AI layer (a local model you install, or an online provider you choose); it is off by default.</p>
+        <p>For engelske undertekster fra tale på andre sprog åbner du <b>Flere muligheder</b> og sætter kryds ved <b>Output: engelsk oversættelse</b>. Filerne får et navn med .en-translated. Det er slået fra som standard og virker ikke med alle motorer eller modeller. Til andre sprog kan en valgfri fane AI-værktøjer i transskriptionsfremviseren lave en tosproget SRT, når du har sat dens AI-lag op (en lokal model, du installerer, eller en onlinetjeneste, du vælger). Den er slået fra som standard.</p>
       </div>
       <h2>2. Ret til (valgfrit)</h2>
       <div class="guide-body">

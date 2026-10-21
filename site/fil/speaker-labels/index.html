@@ -246,10 +246,7 @@
 <li><a href="/fil/speaker-labels/" hreflang="fil" lang="fil" data-lang-pick="fil" aria-current="true">Filipino</a></li>
 <!-- i18n:menu:end --></ul>
       </details>
-      <a class="btn-icon gh-btn" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" title="GitHub" aria-label="I-star ang Whisper Transcriber Suite sa GitHub">
-        <svg class="i" aria-hidden="true"><use href="#i-github"/></svg>
-      </a>
-      <a class="btn btn-primary btn-sm" href="/fil/#download">Download</a>
+      <a class="btn-icon gh-btn" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" title="GitHub" aria-label="I-star ang Whisper Transcriber Suite sa GitHub"> <svg class="i" aria-hidden="true"><use href="#i-github"/></svg> </a> <a class="btn btn-primary btn-sm" href="/fil/#download">I-download</a>
     </div>
   </div>
 </header>
@@ -260,8 +257,8 @@
     <article>
       <h1>I-transcribe ang isang interview na may mga label ng speaker (sino ang nagsabi ng ano)</h1>
       <p class="guide-sub">Isang libreng desktop app na i-install mo nang minsanan (Windows, macOS, Linux). Ang iyong recording ay pinoproseso sa iyong computer, at walang account na kailangan.</p>
-      <p class="guide-lede">The app tells voices apart and labels them Speaker 00, Speaker 01 and so on. It does not know who anyone is until you rename them. Similar voices, short replies, overlapping speech and background noise can cause wrong labels. To start, open More options on the Transcribe tab, tick Identify speakers and press Transcribe.</p>
-      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
+      <p class="guide-lede">Naiiba ng app ang mga boses at nilalagyan ito ng label na Speaker 00, Speaker 01 at iba pa. Hindi nito alam kung sino ang sino hanggang hindi mo pinapalitan ang pangalan. Ang magkakahawig na boses, maiikling sagot, magkakapatong na pagsasalita at ingay sa background ay maaaring magdulot ng maling label. Para magsimula, buksan ang Higit pang mga opsyon sa tab na I-transcribe, lagyan ng tick ang Tukuyin ang mga speaker at pindutin ang I-transcribe.</p>
+      <aside class="try-box"><p><b>Ayaw mag-install?</b> <a href="/try/">Subukan sa browser mo</a>: isang libreng page na nagta-transcribe ng maikling file (hanggang 10 minuto) sa device mo, walang upload at walang sign-up. Ang app sa ibaba ang bahala sa mas mahahabang file.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>I-download ang libreng app</a>
       </div>
@@ -273,15 +270,15 @@
       <ol class="guide-steps">
         <li><b>Idagdag ang recording.</b> Sa tab na <b>I-transcribe</b>, i-drag ang audio o video file o i-click ang <b>Mag-browse ng file...</b>. Ang link mula sa tab na <b>Mag-download ng Video</b> ay gumagana rin, dahil gumagamit ito ng parehong setting ng I-transcribe.</li>
         <li><b>Piliin ang Wika</b>, o iwanan ito sa <b>Auto</b>.</li>
-        <li><b>Open More options and tick Identify speakers.</b> If the box reads <b>Identify speakers (unavailable)</b>, hover over it to see why. The <b>Speakers</b> picker below it switches on: leave it on <b>Auto</b>, or choose a number from 2 to 10 to force exactly that many people.</li>
-        <li><b>Optional:</b> in <b>More options</b>, tick <b>Per-word timestamps</b> to store a start and end time for every word instead of only every sentence. The output gets larger.</li>
+        <li><b>Buksan ang Higit pang mga opsyon at lagyan ng tick ang Tukuyin ang mga speaker.</b> Kung nakasulat sa kahon ang <b>Tukuyin ang mga speaker (hindi available)</b>, itapat ang mouse dito para makita ang dahilan. Mag-o-on ang <b>Speakers</b> picker sa ibaba nito: iwan sa <b>Auto</b>, o pumili ng numero mula 2 hanggang 10 para pilitin ang eksaktong bilang ng tao.</li>
+        <li><b>Opsyonal:</b> sa <b>Higit pang mga opsyon</b>, lagyan ng tick ang <b>Timestamp kada salita</b> para mag-imbak ng simula at dulong oras ng bawat salita sa halip na bawat pangungusap lang. Lumalaki ang output.</li>
         <li><b>Piliin ang mga format ng export.</b> I-click ang <b>Mga advanced na setting…</b> at i-tick ang <b>DOCX</b> at <b>PDF</b> sa ilalim ng <b>Mga output format</b>. Ang SRT, TXT, Markdown at JSON ay may dalang label din. Panatilihing naka-tick ang JSON: ito ay isang JSON file na ginagamit ng app upang buksan ang transcript viewer, na kailangan mo para sa huling hakbang.</li>
         <li><b>I-click ang I-transcribe.</b> Tumatakbo ang pag-detect ng speaker pagkatapos ng transcription at nagdadagdag ng oras ng pagproseso. Pagkatapos ay buksan ang <b>Tingnan ang transcript</b> mula sa card na <b>Huling resulta</b>.</li>
         <li><b>Palitan ang mga generic na label ng pangalan.</b> Sa viewer, i-right-click ang isang cell sa column na <b>Speaker</b>, piliin ang <b>I-rename ang 'Speaker 00' (kahit saan)...</b>, i-type ang pangalan at i-click ang <b>I-save ang mga pagbabago (Ctrl+S)</b>. Ang mga Word at text file sa tabi nito ay na-rebuild kapag tumutugma pa rin ang mga ito sa orihinal na transcript; ang PDF ay hindi, kaya i-export itong muli pagkatapos mag-rename.</li>
       </ol>
       <figure class="guide-fig">
         <img src="/assets/shots/transcribe.webp" alt="Ang tab na Transcribe na may mga tick box na Tukuyin ang mga speaker at Timestamp kada salita sa hilera ng Wika, ang hilera ng Saklaw ng oras sa ibaba, at ang malaking button na I-transcribe." width="1180" height="668" loading="lazy" decoding="async">
-        <figcaption>The Transcribe tab as it looked before version 2.2. Identify speakers and Per-word timestamps now sit under <b>More options</b>.</figcaption>
+        <figcaption>Ang tab na I-transcribe noong bago ang bersyon 2.2. Nasa ilalim na ng <b>Higit pang mga opsyon</b> ang Tukuyin ang mga speaker at Timestamp kada salita.</figcaption>
       </figure>
 
       <h2>Ano ang hitsura ng mga label</h2>

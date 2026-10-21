@@ -246,10 +246,7 @@
 <li><a href="/fil/video-to-srt/" hreflang="fil" lang="fil" data-lang-pick="fil">Filipino</a></li>
 <!-- i18n:menu:end --></ul>
       </details>
-      <a class="btn-icon gh-btn" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" title="GitHub" aria-label="Whisper Transcriber Suite&#39;e GitHub&#39;da yıldız verin">
-        <svg class="i" aria-hidden="true"><use href="#i-github"/></svg>
-      </a>
-      <a class="btn btn-primary btn-sm" href="/tr/#download">Download</a>
+      <a class="btn-icon gh-btn" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" title="GitHub" aria-label="Whisper Transcriber Suite&#39;e GitHub&#39;da yıldız verin"> <svg class="i" aria-hidden="true"><use href="#i-github"/></svg> </a> <a class="btn btn-primary btn-sm" href="/tr/#download">İndir</a>
     </div>
   </div>
 </header>
@@ -261,7 +258,7 @@
       <h1>Bir videoyu ücretsiz olarak SRT altyazılarına dönüştürme</h1>
       <p class="guide-sub">Bir kez yüklediğiniz ücretsiz bir masaüstü uygulaması (Windows, macOS, Linux). İçindeki konuşma tanıma modeli olan Whisper bilgisayarınızda çalışır, bu nedenle varsayılan motorlarla videonuz karşıya yüklenmez.</p>
       <p class="guide-lede">Bir videoyu SRT altyazılarına dönüştürmek için Yazıya dök sekmesini açın, bir video veya ses dosyasını bırakın, Gelişmiş ayarlar altında SRT'nin işaretli olduğunu kontrol edin ve Yazıya dök'e basın. Whisper, yaygın altyazı dosya biçimi olan SRT'yi orijinal dosyanın yanına yazar; bir oynatıcı, düzenleyici veya karşıya yükleme için hazır hale getirir. Bir bağlantı için <a href="/tr/youtube-to-text/">YouTube kılavuzuna</a> bakın.</p>
-      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
+      <aside class="try-box"><p><b>Kurulum istemiyor musunuz?</b> <a href="/try/">Tarayıcınızda deneyin</a>: kısa bir dosyayı (10 dakikaya kadar) cihazınızda yazıya döken ücretsiz bir sayfa; yükleme yok, üyelik yok. Daha uzun dosyaları aşağıdaki uygulama halleder.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Ücretsiz uygulamayı indirin</a>
       </div>
@@ -272,10 +269,10 @@
       <h2>1. SRT'yi oluşturun</h2>
       <ol class="guide-steps">
         <li><b>Yazıya dök sekmesini açın</b> ve video veya ses dosyanızı pencereye sürükleyin ya da <b>Dosyalara gözat...</b> seçeneğine tıklayın. Aynı anda birden fazla dosya seçebilirsiniz.</li>
-        <li><b>Set the Language</b>, or leave <b>Auto</b> to detect it. Picking it yourself is faster and can be more accurate for short or noisy clips. Next to it, <b>Accuracy</b> chooses the model: <b>Fast</b> for a quick draft, <b>Balanced</b>, or <b>Best</b> for the most careful result (slower). A model you picked in <b>Advanced settings</b> shows as <b>Custom</b> and is left alone.</li>
-        <li><b>Optional:</b> open <b>More options</b> and fill in <b>Time range</b> (H:MM:SS) to transcribe only part of the file.</li>
+        <li><b>Dili seçin</b> ya da algılansın diye <b>Otomatik</b>'te bırakın. Kendiniz seçmek daha hızlıdır ve kısa ya da gürültülü klipler için daha doğru olabilir. Yanındaki <b>Doğruluk</b> modeli belirler: hızlı bir taslak için <b>Hızlı</b>, <b>Dengeli</b> ya da en özenli sonuç için <b>En iyi</b> (daha yavaş). <b>Gelişmiş ayarlar</b>'da seçtiğiniz bir model <b>Özel</b> olarak görünür ve olduğu gibi bırakılır.</li>
+        <li><b>İsteğe bağlı:</b> <b>Daha fazla seçenek</b>'i açın ve dosyanın yalnızca bir bölümünü yazıya dökmek için <b>Zaman aralığı</b> alanını (H:MM:SS) doldurun.</li>
         <li><b>Altyazı biçimlerini seçin.</b> <b>Gelişmiş ayarlar…</b> seçeneğine tıklayın ve <b>Çıktı biçimleri</b> bölümünü bulun. Varsayılan olarak SRT ve JSON seçilidir. Web videosu için <b>VTT</b>'yi (web altyazı biçimi) veya altyazıları bir düzenleyicide stillendiriyorsanız <b>ASS (stilli altyazılar / karaoke)</b> biçimini işaretleyin. İşaretlenen her biçim her iş için yazılır. JSON'u işaretli bırakın: Bu, uygulamanın transkript görüntüleyiciyi açmak için kullandığı bir JSON dosyasıdır.</li>
-        <li><b>Optional:</b> under <b>More options</b>, tick <b>Per-word timestamps</b> to store a start and end time for every word; the files get larger. Your SRT cues still follow whole segments, one cue per segment of speech. Word timing is used by VTT and ASS for karaoke-style highlighting.</li>
+        <li><b>İsteğe bağlı:</b> <b>Daha fazla seçenek</b> altında, her kelimenin başlangıç ve bitiş zamanını saklamak için <b>Kelime başına zaman damgaları</b> kutusunu işaretleyin; dosyalar büyür. SRT altyazılarınız yine bütün bölümleri izler: her konuşma bölümü için bir altyazı. Kelime zamanlaması, VTT ve ASS'de karaoke tarzı vurgulama için kullanılır.</li>
         <li><b>Yazıya dök'e tıklayın.</b> İşi <b>Yazıya dökme kuyruğu</b> sekmesinden takip edin. Altyazı dosyası, orijinal dosyanızın yanına aynı adla ve yeni bir uzantıyla kaydedilir; örneğin talk.mp4, talk.srt haline gelir ve <b>Son sonuç</b> kartında her dosya için bir <b>Aç</b> düğmesi bulunur.</li>
       </ol>
       <figure class="guide-fig">
@@ -285,7 +282,7 @@
 
       <h2>Başka bir dilde altyazılar</h2>
       <div class="guide-body">
-        <p>For English subtitles from non-English speech, open <b>More options</b> and tick <b>Output: English translation</b>; the files get an .en-translated name. It is off by default and does not work with every engine or model. For other languages, an optional AI Tools tab in the transcript viewer can write a bilingual SRT once you set up its AI layer (a local model you install, or an online provider you choose); it is off by default.</p>
+        <p>İngilizce olmayan konuşmadan İngilizce altyazı için <b>Daha fazla seçenek</b>'i açın ve <b>Çıktı: İngilizce çeviri</b> kutusunu işaretleyin; dosyaların adı .en-translated ile biter. Varsayılan olarak kapalıdır ve her motorda ya da modelde çalışmaz. Diğer diller için, transkript görüntüleyicideki isteğe bağlı Yapay Zekâ Araçları sekmesi, yapay zekâ katmanını (kurduğunuz yerel bir model ya da seçtiğiniz çevrimiçi bir sağlayıcı) ayarladığınızda iki dilli bir SRT yazabilir; bu da varsayılan olarak kapalıdır.</p>
       </div>
       <h2>2. Düzeltin (isteğe bağlı)</h2>
       <div class="guide-body">

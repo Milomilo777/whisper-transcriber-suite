@@ -246,10 +246,7 @@
 <li><a href="/fil/video-to-srt/" hreflang="fil" lang="fil" data-lang-pick="fil">Filipino</a></li>
 <!-- i18n:menu:end --></ul>
       </details>
-      <a class="btn-icon gh-btn" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" title="GitHub" aria-label="Ge Whisper Transcriber Suite en stjärna på GitHub">
-        <svg class="i" aria-hidden="true"><use href="#i-github"/></svg>
-      </a>
-      <a class="btn btn-primary btn-sm" href="/sv/#download">Download</a>
+      <a class="btn-icon gh-btn" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" title="GitHub" aria-label="Ge Whisper Transcriber Suite en stjärna på GitHub"> <svg class="i" aria-hidden="true"><use href="#i-github"/></svg> </a> <a class="btn btn-primary btn-sm" href="/sv/#download">Ladda ned</a>
     </div>
   </div>
 </header>
@@ -261,7 +258,7 @@
       <h1>Hur du konverterar en video till SRT-undertexter gratis</h1>
       <p class="guide-sub">En gratis skrivbordsapp som du installerar en gång (Windows, macOS, Linux). Whisper, taligenkänningsmodellen i den, körs på din dator, så med standardmotorerna laddas din video inte upp.</p>
       <p class="guide-lede">För att konvertera en video till SRT-undertexter öppnar du fliken Transkribera, släpper in en video- eller ljudfil, kontrollerar att SRT är ikryssat under Avancerade inställningar och trycker på Transkribera. Whisper sparar SRT-filen, det vanliga formatet för undertexter, bredvid originalfilen, redo för en mediaspelare, ett redigeringsprogram eller uppladdning. För en länk, se <a href="/sv/youtube-to-text/">YouTube-guiden</a>.</p>
-      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
+      <aside class="try-box"><p><b>Ingen installation?</b> <a href="/try/">Testa i webbläsaren</a>: en gratis sida som transkriberar en kort fil (upp till 10 minuter) på din enhet, utan uppladdning och utan registrering. Appen nedan hanterar längre filer.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Ladda ned gratisappen</a>
       </div>
@@ -272,10 +269,10 @@
       <h2>1. Skapa SRT-filen</h2>
       <ol class="guide-steps">
         <li><b>Öppna fliken Transkribera</b> och dra din video- eller ljudfil till fönstret, eller klicka på <b>Bläddra bland filer...</b>. Du kan välja flera filer samtidigt.</li>
-        <li><b>Set the Language</b>, or leave <b>Auto</b> to detect it. Picking it yourself is faster and can be more accurate for short or noisy clips. Next to it, <b>Accuracy</b> chooses the model: <b>Fast</b> for a quick draft, <b>Balanced</b>, or <b>Best</b> for the most careful result (slower). A model you picked in <b>Advanced settings</b> shows as <b>Custom</b> and is left alone.</li>
-        <li><b>Optional:</b> open <b>More options</b> and fill in <b>Time range</b> (H:MM:SS) to transcribe only part of the file.</li>
+        <li><b>Ange Språk</b>, eller lämna <b>Auto</b> så identifieras det automatiskt. Att välja själv är snabbare och kan vara mer exakt för korta eller brusiga klipp. Bredvid väljer <b>Noggrannhet</b> modell: <b>Snabb</b> för ett snabbt utkast, <b>Balanserad</b> eller <b>Bäst</b> för det mest noggranna resultatet (långsammare). En modell som du valt i <b>Avancerade inställningar</b> visas som <b>Anpassad</b> och lämnas orörd.</li>
+        <li><b>Valfritt:</b> öppna <b>Fler alternativ</b> och fyll i <b>Tidsintervall</b> (H:MM:SS) för att bara transkribera en del av filen.</li>
         <li><b>Välj undertextformat.</b> Klicka på <b>Avancerade inställningar…</b> och leta efter <b>Utdataformat</b>. SRT plus JSON är standard. Kryssa i <b>VTT</b> (webbformatet för undertexter) för webbvideo, eller <b>ASS (stilmallade undertexter / karaoke)</b> om du formaterar undertexter i ett redigeringsprogram. Varje ikryssat format skapas för varje jobb. Låt JSON vara ikryssat: det är en JSON-fil som appen använder för att öppna transkriptionsvisaren.</li>
-        <li><b>Optional:</b> under <b>More options</b>, tick <b>Per-word timestamps</b> to store a start and end time for every word; the files get larger. Your SRT cues still follow whole segments, one cue per segment of speech. Word timing is used by VTT and ASS for karaoke-style highlighting.</li>
+        <li><b>Valfritt:</b> under <b>Fler alternativ</b> kryssar du i <b>Tidsstämplar per ord</b> för att spara en start- och sluttid för varje ord. Filerna blir större. Dina SRT-block följer fortfarande hela segment, ett block per talsegment. Ordtiderna används av VTT och ASS för karaokeliknande markering.</li>
         <li><b>Klicka på Transkribera.</b> Följ jobbet på fliken <b>Transkriberingskö</b>. Undertextfilen hamnar bredvid ditt original med samma namn och en ny filändelse, till exempel blir talk.mp4 till talk.srt, och kortet <b>Senaste resultat</b> har en <b>Öppna</b>-knapp för varje fil.</li>
       </ol>
       <figure class="guide-fig">
@@ -285,7 +282,7 @@
 
       <h2>Undertexter på ett annat språk</h2>
       <div class="guide-body">
-        <p>For English subtitles from non-English speech, open <b>More options</b> and tick <b>Output: English translation</b>; the files get an .en-translated name. It is off by default and does not work with every engine or model. For other languages, an optional AI Tools tab in the transcript viewer can write a bilingual SRT once you set up its AI layer (a local model you install, or an online provider you choose); it is off by default.</p>
+        <p>För engelska undertexter från tal på andra språk, öppna <b>Fler alternativ</b> och kryssa i <b>Utdata: engelsk översättning</b>. Filerna får namn med .en-translated. Det är avstängt som standard och fungerar inte med alla motorer eller modeller. För andra språk kan en valfri flik AI-verktyg i transkriptionsvisaren skapa en tvåspråkig SRT när du har ställt in dess AI-lager (en lokal modell som du installerar, eller en onlinetjänst som du väljer). Den är avstängd som standard.</p>
       </div>
       <h2>2. Korrigera den (valfritt)</h2>
       <div class="guide-body">

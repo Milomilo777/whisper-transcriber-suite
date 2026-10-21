@@ -244,10 +244,7 @@
 <li><a href="/fil/video-to-srt/" hreflang="fil" lang="fil" data-lang-pick="fil">Filipino</a></li>
 <!-- i18n:menu:end --></ul>
       </details>
-      <a class="btn-icon gh-btn" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" title="GitHub" aria-label="在 GitHub 上为 Whisper Transcriber Suite 加星">
-        <svg class="i" aria-hidden="true"><use href="#i-github"/></svg>
-      </a>
-      <a class="btn btn-primary btn-sm" href="/zh-cn/#download">Download</a>
+      <a class="btn-icon gh-btn" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" title="GitHub" aria-label="在 GitHub 上为 Whisper Transcriber Suite 加星"> <svg class="i" aria-hidden="true"><use href="#i-github"/></svg> </a> <a class="btn btn-primary btn-sm" href="/zh-cn/#download">下载</a>
     </div>
   </div>
 </header>
@@ -259,7 +256,7 @@
       <h1>如何免费将视频转换为 SRT 字幕</h1>
       <p class="guide-sub">一款安装一次即可使用的免费桌面应用（支持 Windows、macOS、Linux）。它内置的语音识别模型 Whisper 在你的电脑上运行，因此使用默认引擎时，你的视频不会被上传。</p>
       <p class="guide-lede">要将视频转换为 SRT 字幕，请打开“转录”选项卡，拖入视频或音频文件，在“高级设置”下勾选 SRT，然后点击“转录”。Whisper 会将 SRT（一种常见的字幕文件格式）生成在原始文件旁边，可直接用于播放器、编辑器或上传。如果是链接，请参阅<a href="/zh-cn/youtube-to-text/">YouTube 指南</a>。</p>
-      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
+      <aside class="try-box"><p><b>不想安装？</b><a href="/try/">在浏览器中试用</a>：一个免费页面，在你的设备上转录短文件（最长 10 分钟），无需上传，无需注册。更长的文件请用下面的应用。</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>下载免费应用</a>
       </div>
@@ -270,10 +267,10 @@
       <h2>1. 创建 SRT</h2>
       <ol class="guide-steps">
         <li><b>打开“转录”选项卡</b>，将视频或音频文件拖到窗口中，或点击<b>浏览文件...</b>。你可以一次选择多个文件。</li>
-        <li><b>Set the Language</b>, or leave <b>Auto</b> to detect it. Picking it yourself is faster and can be more accurate for short or noisy clips. Next to it, <b>Accuracy</b> chooses the model: <b>Fast</b> for a quick draft, <b>Balanced</b>, or <b>Best</b> for the most careful result (slower). A model you picked in <b>Advanced settings</b> shows as <b>Custom</b> and is left alone.</li>
-        <li><b>Optional:</b> open <b>More options</b> and fill in <b>Time range</b> (H:MM:SS) to transcribe only part of the file.</li>
+        <li><b>设置语言</b>，或保持<b>自动</b>让应用检测。对于较短或噪音较大的片段，自己指定更快，也可能更准确。旁边的<b>准确度</b>决定使用的模型：<b>快速</b>适合快速出草稿，<b>均衡</b>，<b>最佳</b>结果最细致（较慢）。你在<b>高级设置</b>里选定的模型会显示为<b>自定义</b>，不会被改动。</li>
+        <li><b>可选：</b>展开<b>更多选项</b>，填写<b>时间范围</b>（H:MM:SS），只转录文件的一部分。</li>
         <li><b>选择字幕格式。</b>点击<b>高级设置…</b>并找到<b>输出格式</b>。默认为 SRT 和 JSON。如果是网络视频，请勾选<b>VTT</b>（网络字幕格式）；如果你要在编辑器中设计字幕样式，请勾选<b>ASS（样式化字幕 / 卡拉OK）</b>。每个任务都会生成所有勾选的格式。请保持勾选 JSON：应用需要使用该 JSON 文件来打开转录查看器。</li>
-        <li><b>Optional:</b> under <b>More options</b>, tick <b>Per-word timestamps</b> to store a start and end time for every word; the files get larger. Your SRT cues still follow whole segments, one cue per segment of speech. Word timing is used by VTT and ASS for karaoke-style highlighting.</li>
+        <li><b>可选：</b>在<b>更多选项</b>里勾选<b>逐词时间戳</b>，为每个词保存开始和结束时间；文件会变大。SRT 字幕仍按整段语音分割，每段一条。词级时间用于 VTT 和 ASS 的卡拉 OK 式高亮。</li>
         <li><b>点击“转录”。</b>在<b>转录队列</b>选项卡中跟踪任务进度。字幕文件将生成在原始文件旁边，名称相同但扩展名不同，例如 talk.mp4 会变成 talk.srt，并且<b>最后结果</b>卡片会为每个文件提供一个<b>打开</b>按钮。</li>
       </ol>
       <figure class="guide-fig">
@@ -283,7 +280,7 @@
 
       <h2>其他语言的字幕</h2>
       <div class="guide-body">
-        <p>For English subtitles from non-English speech, open <b>More options</b> and tick <b>Output: English translation</b>; the files get an .en-translated name. It is off by default and does not work with every engine or model. For other languages, an optional AI Tools tab in the transcript viewer can write a bilingual SRT once you set up its AI layer (a local model you install, or an online provider you choose); it is off by default.</p>
+        <p>要为非英语语音生成英语字幕，请展开<b>更多选项</b>并勾选<b>输出：英语翻译</b>；文件名会带 .en-translated。默认关闭，也并非所有引擎或模型都支持。其他语言可以使用转录查看器中可选的 AI 工具标签页，在设置好 AI 层（你自己安装的本地模型，或你选择的在线服务）后生成双语 SRT；它默认也是关闭的。</p>
       </div>
       <h2>2. 校对（可选）</h2>
       <div class="guide-body">

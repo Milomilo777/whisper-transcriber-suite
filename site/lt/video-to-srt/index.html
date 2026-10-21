@@ -246,10 +246,7 @@
 <li><a href="/fil/video-to-srt/" hreflang="fil" lang="fil" data-lang-pick="fil">Filipino</a></li>
 <!-- i18n:menu:end --></ul>
       </details>
-      <a class="btn-icon gh-btn" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" title="GitHub" aria-label="Suteikite žvaigždutę Whisper Transcriber Suite sistemoje GitHub">
-        <svg class="i" aria-hidden="true"><use href="#i-github"/></svg>
-      </a>
-      <a class="btn btn-primary btn-sm" href="/lt/#download">Download</a>
+      <a class="btn-icon gh-btn" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" title="GitHub" aria-label="Suteikite žvaigždutę Whisper Transcriber Suite sistemoje GitHub"> <svg class="i" aria-hidden="true"><use href="#i-github"/></svg> </a> <a class="btn btn-primary btn-sm" href="/lt/#download">Atsisiųsti</a>
     </div>
   </div>
 </header>
@@ -261,7 +258,7 @@
       <h1>Kaip nemokamai konvertuoti vaizdo įrašą į SRT subtitrus</h1>
       <p class="guide-sub">Nemokama darbalaukio programa, kurią įdiegiate vieną kartą (Windows, macOS, Linux). Joje esantis kalbos atpažinimo modelis Whisper veikia jūsų kompiuteryje, todėl naudojant numatytuosius variklius jūsų vaizdo įrašas niekur neįkeliamas.</p>
       <p class="guide-lede">Norėdami konvertuoti vaizdo įrašą į SRT subtitrus, atidarykite skirtuką „Transkribuoti“, įtempkite vaizdo ar garso failą, patikrinkite, ar skyriuje „Išplėstiniai nustatymai“ pažymėtas SRT, ir paspauskite „Transkribuoti“. Whisper įrašo SRT – įprastą subtitrų failo formatą – šalia pradinio failo, paruoštą leistuvei, redagavimo programai ar įkėlimui. Jei naudojate nuorodą, žiūrėkite <a href="/lt/youtube-to-text/">„YouTube“ vadovą</a>.</p>
-      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
+      <aside class="try-box"><p><b>Nenorite diegti?</b> <a href="/try/">Išbandykite naršyklėje</a>: nemokamas puslapis, kuris jūsų įrenginyje transkribuoja trumpą failą (iki 10 minučių), be įkėlimo ir be registracijos. Ilgesnius failus apdoroja žemiau esanti programa.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Atsisiųsti nemokamą programą</a>
       </div>
@@ -272,10 +269,10 @@
       <h2>1. Sukurkite SRT</h2>
       <ol class="guide-steps">
         <li><b>Atidarykite skirtuką „Transkribuoti“</b> ir nuvilkite vaizdo ar garso failą į langą arba spustelėkite <b>Naršyti failus...</b>. Vienu metu galite pasirinkti kelis failus.</li>
-        <li><b>Set the Language</b>, or leave <b>Auto</b> to detect it. Picking it yourself is faster and can be more accurate for short or noisy clips. Next to it, <b>Accuracy</b> chooses the model: <b>Fast</b> for a quick draft, <b>Balanced</b>, or <b>Best</b> for the most careful result (slower). A model you picked in <b>Advanced settings</b> shows as <b>Custom</b> and is left alone.</li>
-        <li><b>Optional:</b> open <b>More options</b> and fill in <b>Time range</b> (H:MM:SS) to transcribe only part of the file.</li>
+        <li><b>Nustatykite Kalbą</b> arba palikite <b>Automatinė</b>, kad ji būtų aptikta. Pasirinkus pačiam, veikia greičiau ir trumpiems ar triukšmingiems įrašams gali būti tikslesnis rezultatas. Šalia <b>Tikslumas</b> parenka modelį: <b>Greitas</b> greitam juodraščiui, <b>Subalansuotas</b> arba <b>Geriausias</b> kruopščiausiam rezultatui (lėčiau). Skiltyje <b>Išplėstiniai nustatymai</b> pasirinktas modelis rodomas kaip <b>Pasirinktinis</b> ir nekeičiamas.</li>
+        <li><b>Neprivaloma:</b> atidarykite <b>Daugiau parinkčių</b> ir užpildykite <b>Laiko intervalas</b> (H:MM:SS), kad transkribuotumėte tik dalį failo.</li>
         <li><b>Pasirinkite subtitrų formatus.</b> Spustelėkite <b>Išplėstiniai nustatymai…</b> ir ieškokite <b>Išvesties formatai</b>. SRT kartu su JSON yra numatytasis pasirinkimas. Pažymėkite <b>VTT</b> (žiniatinklio subtitrų formatą) vaizdo įrašams internete arba <b>ASS (stilizuoti subtitrai / karaokė)</b>, jei stilizuojate subtitrus redaktoriuje. Kiekvienas pažymėtas formatas įrašomas kiekvienai užduočiai. Palikite pažymėtą JSON: tai yra JSON failas, kurį programa naudoja transkripcijos peržiūros programai atidaryti.</li>
-        <li><b>Optional:</b> under <b>More options</b>, tick <b>Per-word timestamps</b> to store a start and end time for every word; the files get larger. Your SRT cues still follow whole segments, one cue per segment of speech. Word timing is used by VTT and ASS for karaoke-style highlighting.</li>
+        <li><b>Neprivaloma:</b> skiltyje <b>Daugiau parinkčių</b> pažymėkite <b>Žodžių laiko žymos</b>, kad būtų išsaugotas kiekvieno žodžio pradžios ir pabaigos laikas; failai tampa didesni. SRT eilutės tebeseka ištisus segmentus, po vieną eilutę kiekvienam kalbos segmentui. Žodžių laiką naudoja VTT ir ASS karaokės stiliaus paryškinimui.</li>
         <li><b>Spustelėkite „Transkribuoti“.</b> Stebėkite užduotį skirtuke <b>Transkribavimo eilė</b>. Subtitrų failas išsaugomas šalia pradinio failo tokiu pačiu pavadinimu ir nauju plėtiniu, pavyzdžiui, talk.mp4 tampa talk.srt, o kortelėje <b>Paskutinis rezultatas</b> yra mygtukas <b>Atidaryti</b> kiekvienam failui.</li>
       </ol>
       <figure class="guide-fig">
@@ -285,7 +282,7 @@
 
       <h2>Subtitrai kita kalba</h2>
       <div class="guide-body">
-        <p>For English subtitles from non-English speech, open <b>More options</b> and tick <b>Output: English translation</b>; the files get an .en-translated name. It is off by default and does not work with every engine or model. For other languages, an optional AI Tools tab in the transcript viewer can write a bilingual SRT once you set up its AI layer (a local model you install, or an online provider you choose); it is off by default.</p>
+        <p>Norėdami gauti subtitrus anglų kalba iš kitos kalbos kalbos, atidarykite <b>Daugiau parinkčių</b> ir pažymėkite <b>Išvestis: vertimas į anglų kalbą</b>; failų pavadinimuose atsiranda .en-translated. Pagal numatymą tai išjungta ir veikia ne su visais varikliais ar modeliais. Kitoms kalboms pasirenkamas skirtukas DI įrankiai transkripcijos peržiūros lange gali sukurti dvikalbį SRT, kai nustatysite jo DI sluoksnį (jūsų įdiegtą vietinį modelį arba jūsų pasirinktą internetinį teikėją); pagal numatymą jis išjungtas.</p>
       </div>
       <h2>2. Pataisykite (neprivaloma)</h2>
       <div class="guide-body">

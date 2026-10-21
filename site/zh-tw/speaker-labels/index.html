@@ -244,10 +244,7 @@
 <li><a href="/fil/speaker-labels/" hreflang="fil" lang="fil" data-lang-pick="fil">Filipino</a></li>
 <!-- i18n:menu:end --></ul>
       </details>
-      <a class="btn-icon gh-btn" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" title="GitHub" aria-label="在 GitHub 上為 Whisper Transcriber Suite 加上星標">
-        <svg class="i" aria-hidden="true"><use href="#i-github"/></svg>
-      </a>
-      <a class="btn btn-primary btn-sm" href="/zh-tw/#download">Download</a>
+      <a class="btn-icon gh-btn" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" title="GitHub" aria-label="在 GitHub 上為 Whisper Transcriber Suite 加上星標"> <svg class="i" aria-hidden="true"><use href="#i-github"/></svg> </a> <a class="btn btn-primary btn-sm" href="/zh-tw/#download">下載</a>
     </div>
   </div>
 </header>
@@ -258,8 +255,8 @@
     <article>
       <h1>轉錄訪談並加上說話者標籤（誰說了什麼）</h1>
       <p class="guide-sub">一次安裝即可使用的免費桌面軟體（Windows、macOS、Linux）。錄音檔案全程在您的電腦上處理，無需註冊帳號。</p>
-      <p class="guide-lede">The app tells voices apart and labels them Speaker 00, Speaker 01 and so on. It does not know who anyone is until you rename them. Similar voices, short replies, overlapping speech and background noise can cause wrong labels. To start, open More options on the Transcribe tab, tick Identify speakers and press Transcribe.</p>
-      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
+      <p class="guide-lede">應用程式會分辨不同的聲音，並標為「說話者 00」「說話者 01」等。在你重新命名之前，它並不知道誰是誰。聲音相似、回答很短、說話重疊和背景雜音都可能造成標籤錯誤。開始方式：在轉錄分頁展開更多選項，勾選「辨識說話者」，然後按下轉錄。</p>
+      <aside class="try-box"><p><b>不想安裝嗎？</b><a href="/try/">在瀏覽器中試用</a>：一個免費頁面，直接在你的裝置上轉錄短檔案（最長 10 分鐘），不上傳、免註冊。較長的檔案請用下方的應用程式。</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>下載免費軟體</a>
       </div>
@@ -271,15 +268,15 @@
       <ol class="guide-steps">
         <li><b>新增錄音檔案。</b>在 <b>轉錄</b> 分頁中，將音訊或影片檔案拖曳進來，或點選 <b>瀏覽檔案…</b>。使用 <b>下載影片</b> 分頁的連結也可以，因為兩者使用相同的轉錄設定。</li>
         <li><b>選擇語言</b>，或保留為 <b>自動</b>。</li>
-        <li><b>Open More options and tick Identify speakers.</b> If the box reads <b>Identify speakers (unavailable)</b>, hover over it to see why. The <b>Speakers</b> picker below it switches on: leave it on <b>Auto</b>, or choose a number from 2 to 10 to force exactly that many people.</li>
-        <li><b>Optional:</b> in <b>More options</b>, tick <b>Per-word timestamps</b> to store a start and end time for every word instead of only every sentence. The output gets larger.</li>
+        <li><b>展開更多選項，勾選「辨識說話者」。</b>如果核取方塊顯示為<b>辨識說話者（無法使用）</b>，把滑鼠停在上面可以看到原因。下方的<b>說話者</b>選擇器會隨之啟用：保持<b>自動</b>，或選擇 2 到 10 之間的數字，強制依這個人數區分。</li>
+        <li><b>選填：</b>在<b>更多選項</b>裡勾選<b>逐字時間戳記</b>，為每個字而不是每句話儲存開始和結束時間。輸出會變大。</li>
         <li><b>選取匯出格式。</b>點選 <b>進階設定…</b> 並在 <b>輸出格式</b> 下勾選 <b>DOCX</b> 與 <b>PDF</b>。SRT、TXT、Markdown 與 JSON 同樣會包含說話者標籤。請保持勾選 JSON：軟體需要使用此 JSON 檔案開啟逐字稿檢視器，最後一步將會用到它。</li>
         <li><b>按一下「轉錄」。</b>說話者偵測會在語音轉錄完成後執行，因此需要額外的處理時間。完成後，從 <b>最新結果</b> 卡片中開啟 <b>檢視逐字稿</b>。</li>
         <li><b>將預設標籤替換為姓名。</b>在檢視器中，於 <b>說話者</b> 欄位的儲存格按右鍵，選擇 <b>重新命名「Speaker 00」（所有位置）…</b>，輸入姓名後按一下 <b>儲存變更 (Ctrl+S)</b>。若旁邊的 Word 與文字檔案仍與原始逐字稿內容相符，則會自動重新產生；PDF 檔案不會自動更新，因此在重新命名後請再次手動匯出。</li>
       </ol>
       <figure class="guide-fig">
         <img src="/assets/shots/transcribe.webp" alt="「轉錄」分頁：語言那一列包含「辨識說話者」與「逐字時間戳記」核取方塊，下方為「時間範圍」列，以及顯眼的「轉錄」按鈕。" width="1180" height="668" loading="lazy" decoding="async">
-        <figcaption>The Transcribe tab as it looked before version 2.2. Identify speakers and Per-word timestamps now sit under <b>More options</b>.</figcaption>
+        <figcaption>2.2 版之前的轉錄分頁。「辨識說話者」和「逐字時間戳記」現在位於<b>更多選項</b>下。</figcaption>
       </figure>
 
       <h2>標籤外觀範例</h2>

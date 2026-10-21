@@ -246,10 +246,7 @@
 <li><a href="/fil/video-to-srt/" hreflang="fil" lang="fil" data-lang-pick="fil">Filipino</a></li>
 <!-- i18n:menu:end --></ul>
       </details>
-      <a class="btn-icon gh-btn" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" title="GitHub" aria-label="Anna tähti Whisper Transcriber Suite -projektille GitHubissa">
-        <svg class="i" aria-hidden="true"><use href="#i-github"/></svg>
-      </a>
-      <a class="btn btn-primary btn-sm" href="/fi/#download">Download</a>
+      <a class="btn-icon gh-btn" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" title="GitHub" aria-label="Anna tähti Whisper Transcriber Suite -projektille GitHubissa"> <svg class="i" aria-hidden="true"><use href="#i-github"/></svg> </a> <a class="btn btn-primary btn-sm" href="/fi/#download">Lataa</a>
     </div>
   </div>
 </header>
@@ -261,7 +258,7 @@
       <h1>Kuinka muuntaa video SRT-tekstityksiksi ilmaiseksi</h1>
       <p class="guide-sub">Ilmainen työpöytäsovellus, jonka asennat kerran (Windows, macOS, Linux). Sen sisältämä puheentunnistusmalli Whisper toimii omalla tietokoneellasi, joten oletusmoottoreilla videotasi ei ladata verkkoon.</p>
       <p class="guide-lede">Muuntaaksesi videon SRT-tekstityksiksi avaa Litteroi-välilehti, pudota video- tai äänitiedosto ohjelmaan, tarkista, että SRT on valittuna Lisäasetukset-kohdassa, ja paina Litteroi. Whisper luo yleisessä muodossa olevan SRT-tekstitystiedoston alkuperäisen tiedoston viereen valmiina toistinta, editoria tai verkkoon lataamista varten. Linkin käyttöä varten katso <a href="/fi/youtube-to-text/">YouTube-opas</a>.</p>
-      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
+      <aside class="try-box"><p><b>Ei asennusta?</b> <a href="/try/">Kokeile selaimessa</a>: ilmainen sivu, joka litteroi lyhyen tiedoston (enintään 10 minuuttia) laitteellasi, ilman latausta palvelimelle ja rekisteröitymistä. Alla oleva sovellus hoitaa pidemmät tiedostot.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Lataa ilmainen sovellus</a>
       </div>
@@ -272,10 +269,10 @@
       <h2>1. Luo SRT-tiedosto</h2>
       <ol class="guide-steps">
         <li><b>Avaa Litteroi-välilehti</b> ja vedä video- tai äänitiedostosi ikkunaan tai napsauta <b>Selaa tiedostoja...</b>. Voit valita useita tiedostoja kerralla.</li>
-        <li><b>Set the Language</b>, or leave <b>Auto</b> to detect it. Picking it yourself is faster and can be more accurate for short or noisy clips. Next to it, <b>Accuracy</b> chooses the model: <b>Fast</b> for a quick draft, <b>Balanced</b>, or <b>Best</b> for the most careful result (slower). A model you picked in <b>Advanced settings</b> shows as <b>Custom</b> and is left alone.</li>
-        <li><b>Optional:</b> open <b>More options</b> and fill in <b>Time range</b> (H:MM:SS) to transcribe only part of the file.</li>
+        <li><b>Aseta Kieli</b> tai jätä <b>Automaattinen</b>, jolloin kieli tunnistetaan itse. Itse valittuna se on nopeampi ja voi olla tarkempi lyhyille tai meluisille klipeille. Sen vieressä <b>Tarkkuus</b> valitsee mallin: <b>Nopea</b> nopeaan luonnokseen, <b>Tasapainoinen</b> tai <b>Paras</b> huolellisimpaan tulokseen (hitaampi). <b>Lisäasetuksissa</b> valittu malli näkyy nimellä <b>Mukautettu</b>, ja sitä ei muuteta.</li>
+        <li><b>Valinnainen:</b> avaa <b>Lisää vaihtoehtoja</b> ja täytä <b>Aikaväli</b> (H:MM:SS), jos haluat litteroida vain osan tiedostosta.</li>
         <li><b>Valitse tekstitysmuodot.</b> Napsauta <b>Lisäasetukset…</b> ja etsi kohta <b>Tulostemuodot</b>. SRT ja JSON ovat oletuksena valittuina. Valitse <b>VTT</b> (verkkotekstitysmuoto) verkkovideoita varten tai <b>ASS (tyylitellyt tekstitykset / karaoke)</b>, jos tyylittelet tekstityksiä editorissa. Jokainen valittu muoto luodaan jokaiselle tehtävälle. Pidä JSON valittuna: se on JSON-tiedosto, jota sovellus käyttää litteroinnin katseluohjelman avaamiseen.</li>
-        <li><b>Optional:</b> under <b>More options</b>, tick <b>Per-word timestamps</b> to store a start and end time for every word; the files get larger. Your SRT cues still follow whole segments, one cue per segment of speech. Word timing is used by VTT and ASS for karaoke-style highlighting.</li>
+        <li><b>Valinnainen:</b> valitse kohdassa <b>Lisää vaihtoehtoja</b> <b>Sanakohtaiset aikaleimat</b>, jotta jokaiselle sanalle tallennetaan alku- ja loppuaika. Tiedostot kasvavat. SRT-tekstitysrivit seuraavat edelleen kokonaisia jaksoja, yksi rivi puhejaksoa kohden. Sanojen ajoitusta käyttävät VTT ja ASS karaoke-tyyliseen korostukseen.</li>
         <li><b>Napsauta Litteroi.</b> Seuraa tehtävää <b>Litterointijono</b>-välilehdellä. Tekstitystiedosto ilmestyy alkuperäisen viereen samalla nimellä ja uudella tiedostopäätteellä – esimerkiksi tiedostosta talk.mp4 tulee talk.srt – ja <b>Viimeisin tulos</b> -kortissa on <b>Avaa</b>-painike jokaiselle tiedostolle.</li>
       </ol>
       <figure class="guide-fig">
@@ -285,7 +282,7 @@
 
       <h2>Tekstitykset toisella kielellä</h2>
       <div class="guide-body">
-        <p>For English subtitles from non-English speech, open <b>More options</b> and tick <b>Output: English translation</b>; the files get an .en-translated name. It is off by default and does not work with every engine or model. For other languages, an optional AI Tools tab in the transcript viewer can write a bilingual SRT once you set up its AI layer (a local model you install, or an online provider you choose); it is off by default.</p>
+        <p>Englanninkielisiä tekstityksiä varten muunkielisestä puheesta avaa <b>Lisää vaihtoehtoja</b> ja valitse <b>Tulos: englanninkielinen käännös</b>. Tiedostojen nimeen tulee .en-translated. Asetus on oletuksena pois päältä, eikä se toimi kaikkien moottorien tai mallien kanssa. Muille kielille litterointikatseluohjelman valinnainen Tekoälytyökalut-välilehti voi kirjoittaa kaksikielisen SRT-tiedoston, kun olet ottanut sen tekoälykerroksen käyttöön (itse asentamasi paikallinen malli tai valitsemasi verkkopalvelu). Se on oletuksena pois päältä.</p>
       </div>
       <h2>2. Korjaa tekstitystä (valinnainen)</h2>
       <div class="guide-body">

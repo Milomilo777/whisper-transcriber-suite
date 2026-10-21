@@ -246,10 +246,7 @@
 <li><a href="/fil/video-to-srt/" hreflang="fil" lang="fil" data-lang-pick="fil">Filipino</a></li>
 <!-- i18n:menu:end --></ul>
       </details>
-      <a class="btn-icon gh-btn" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" title="GitHub" aria-label="Pridať hviezdičku Whisper Transcriber Suite na GitHube">
-        <svg class="i" aria-hidden="true"><use href="#i-github"/></svg>
-      </a>
-      <a class="btn btn-primary btn-sm" href="/sk/#download">Download</a>
+      <a class="btn-icon gh-btn" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" title="GitHub" aria-label="Pridať hviezdičku Whisper Transcriber Suite na GitHube"> <svg class="i" aria-hidden="true"><use href="#i-github"/></svg> </a> <a class="btn btn-primary btn-sm" href="/sk/#download">Stiahnuť</a>
     </div>
   </div>
 </header>
@@ -261,7 +258,7 @@
       <h1>Ako zadarmo previesť video na titulky SRT</h1>
       <p class="guide-sub">Bezplatná desktopová aplikácia, ktorú si nainštalujete raz (Windows, macOS, Linux). Whisper, model na rozpoznávanie reči v jej vnútri, beží priamo na vašom počítači, takže pri predvolených motoroch sa vaše video nikam nenahráva.</p>
       <p class="guide-lede">Ak chcete previesť video na titulky SRT, otvorte kartu Prepísať, presuňte do nej video alebo zvukový súbor, v Rozšírených nastaveniach skontrolujte, či je začiarknutý formát SRT, a kliknite na Prepísať. Whisper vytvorí súbor SRT (bežný formát titulkov) hneď vedľa pôvodného súboru, pripravený na prehrávanie, úpravu v editore alebo nahranie na web. Ak máte odkaz, pozrite si <a href="/sk/youtube-to-text/">návod pre YouTube</a>.</p>
-      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
+      <aside class="try-box"><p><b>Bez inštalácie?</b> <a href="/try/">Vyskúšajte to v prehliadači</a>: bezplatná stránka prepíše krátky súbor (do 10 minút) priamo vo vašom zariadení, bez nahrávania a bez registrácie. Dlhšie súbory zvládne aplikácia nižšie.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Stiahnuť bezplatnú aplikáciu</a>
       </div>
@@ -272,10 +269,10 @@
       <h2>1. Vytvorte SRT</h2>
       <ol class="guide-steps">
         <li><b>Otvorte kartu Prepísať</b> a presuňte video či zvukový súbor do okna, alebo kliknite na <b>Prehľadávať súbory...</b>. Môžete vybrať aj viacero súborov naraz.</li>
-        <li><b>Set the Language</b>, or leave <b>Auto</b> to detect it. Picking it yourself is faster and can be more accurate for short or noisy clips. Next to it, <b>Accuracy</b> chooses the model: <b>Fast</b> for a quick draft, <b>Balanced</b>, or <b>Best</b> for the most careful result (slower). A model you picked in <b>Advanced settings</b> shows as <b>Custom</b> and is left alone.</li>
-        <li><b>Optional:</b> open <b>More options</b> and fill in <b>Time range</b> (H:MM:SS) to transcribe only part of the file.</li>
+        <li><b>Nastavte Jazyk</b>, alebo nechajte <b>Auto</b> a aplikácia ho rozpozná. Keď jazyk zvolíte sami, je to rýchlejšie a pri krátkych alebo hlučných nahrávkach aj presnejšie. Vedľa toho <b>Presnosť</b> určuje model: <b>Rýchly</b> pre rýchly koncept, <b>Vyvážený</b> alebo <b>Najlepší</b> pre najdôkladnejší (ale pomalší) výsledok. Model zvolený v <b>Rozšírených nastaveniach</b> sa zobrazí ako <b>Vlastné</b> a zostane bez zmeny.</li>
+        <li><b>Voliteľné:</b> otvorte <b>Ďalšie možnosti</b> a vyplňte <b>Časový rozsah</b> (H:MM:SS), ak chcete prepísať len časť súboru.</li>
         <li><b>Vyberte formáty titulkov.</b> Kliknite na <b>Rozšírené nastavenia…</b> a vyhľadajte sekciu <b>Výstupné formáty</b>. Predvolenou voľbou je SRT spolu s JSON. Pre webové video začiarknite <b>VTT</b> (formát pre webové titulky), alebo <b>ASS (štýlované titulky / karaoke)</b>, ak si upravujete štýl titulkov v editore. Každý začiarknutý formát sa vytvorí pre každú úlohu. Ponechajte JSON začiarknutý: ide o súbor JSON, ktorý aplikácia používa na otvorenie prehliadača prepisov.</li>
-        <li><b>Optional:</b> under <b>More options</b>, tick <b>Per-word timestamps</b> to store a start and end time for every word; the files get larger. Your SRT cues still follow whole segments, one cue per segment of speech. Word timing is used by VTT and ASS for karaoke-style highlighting.</li>
+        <li><b>Voliteľné:</b> v časti <b>Ďalšie možnosti</b> začiarknite <b>Časové značky jednotlivých slov</b>, aby sa uložil začiatok a koniec každého slova; súbory budú väčšie. Titulky SRT sa stále delia podľa celých úsekov reči, jeden titulok na jeden úsek. Časy slov využívajú VTT a ASS na zvýrazňovanie v štýle karaoke.</li>
         <li><b>Kliknite na Prepísať.</b> Priebeh úlohy môžete sledovať na karte <b>Front prepisov</b>. Súbor s titulkami sa uloží vedľa pôvodného súboru s rovnakým názvom a novou príponou (napríklad z talk.mp4 sa stane talk.srt) a na karte <b>Posledný výsledok</b> nájdete tlačidlo <b>Otvoriť</b> pre každý súbor.</li>
       </ol>
       <figure class="guide-fig">
@@ -285,7 +282,7 @@
 
       <h2>Titulky v inom jazyku</h2>
       <div class="guide-body">
-        <p>For English subtitles from non-English speech, open <b>More options</b> and tick <b>Output: English translation</b>; the files get an .en-translated name. It is off by default and does not work with every engine or model. For other languages, an optional AI Tools tab in the transcript viewer can write a bilingual SRT once you set up its AI layer (a local model you install, or an online provider you choose); it is off by default.</p>
+        <p>Ak chcete získať anglické titulky k reči v inom jazyku, otvorte <b>Ďalšie možnosti</b> a začiarknite <b>Výstup: anglický preklad</b>; súbory dostanú v názve .en-translated. V predvolenom stave je to vypnuté a nefunguje to s každým enginom alebo modelom. Pre iné jazyky vie voliteľná karta Nástroje AI v prehliadači prepisu vytvoriť dvojjazyčné SRT, keď nastavíte jej vrstvu AI (lokálny model, ktorý si nainštalujete, alebo online služba podľa vášho výberu); v predvolenom stave je vypnutá.</p>
       </div>
       <h2>2. Upravte titulky (voliteľné)</h2>
       <div class="guide-body">

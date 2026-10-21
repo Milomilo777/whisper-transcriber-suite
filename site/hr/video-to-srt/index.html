@@ -246,10 +246,7 @@
 <li><a href="/fil/video-to-srt/" hreflang="fil" lang="fil" data-lang-pick="fil">Filipino</a></li>
 <!-- i18n:menu:end --></ul>
       </details>
-      <a class="btn-icon gh-btn" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" title="GitHub" aria-label="Zvjezdica za Whisper Transcriber Suite na GitHubu">
-        <svg class="i" aria-hidden="true"><use href="#i-github"/></svg>
-      </a>
-      <a class="btn btn-primary btn-sm" href="/hr/#download">Download</a>
+      <a class="btn-icon gh-btn" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" title="GitHub" aria-label="Zvjezdica za Whisper Transcriber Suite na GitHubu"> <svg class="i" aria-hidden="true"><use href="#i-github"/></svg> </a> <a class="btn btn-primary btn-sm" href="/hr/#download">Preuzmi</a>
     </div>
   </div>
 </header>
@@ -261,7 +258,7 @@
       <h1>Kako besplatno pretvoriti videozapis u SRT podnaslove</h1>
       <p class="guide-sub">Besplatna desktop aplikacija koju instalirate jednom (Windows, macOS, Linux). Whisper, model za prepoznavanje govora unutar nje, radi na vašem računalu, tako da sa zadanim pogonima vaš videozapis se ne prenosi.</p>
       <p class="guide-lede">Da biste pretvorili videozapis u SRT podnaslove, otvorite karticu Transkribiraj, ubacite videozapis ili zvučnu datoteku, provjerite je li SRT označen pod Napredne postavke i kliknite Transkribiraj. Whisper zapisuje SRT, uobičajeni format datoteke podnaslova, pokraj izvorne datoteke, spreman za reproduktor, uređivač ili prijenos. Za poveznicu pogledajte <a href="/hr/youtube-to-text/">YouTube vodič</a>.</p>
-      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
+      <aside class="try-box"><p><b>Ne želite instalirati?</b> <a href="/try/">Isprobajte u pregledniku</a>: besplatna stranica transkribira kratku datoteku (do 10 minuta) na vašem uređaju, bez slanja datoteka i bez registracije. Aplikacija ispod obrađuje dulje datoteke.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Preuzmi besplatnu aplikaciju</a>
       </div>
@@ -272,10 +269,10 @@
       <h2>1. Stvaranje SRT-a</h2>
       <ol class="guide-steps">
         <li><b>Otvorite karticu Transkribiraj</b> i povucite videozapis ili zvučnu datoteku na prozor ili kliknite <b>Pregledaj datoteke...</b>. Možete odabrati nekoliko datoteka odjednom.</li>
-        <li><b>Set the Language</b>, or leave <b>Auto</b> to detect it. Picking it yourself is faster and can be more accurate for short or noisy clips. Next to it, <b>Accuracy</b> chooses the model: <b>Fast</b> for a quick draft, <b>Balanced</b>, or <b>Best</b> for the most careful result (slower). A model you picked in <b>Advanced settings</b> shows as <b>Custom</b> and is left alone.</li>
-        <li><b>Optional:</b> open <b>More options</b> and fill in <b>Time range</b> (H:MM:SS) to transcribe only part of the file.</li>
+        <li><b>Postavite Jezik</b> ili ostavite <b>Auto</b> da ga aplikacija prepozna. Ako jezik odaberete sami, brže je, a kod kratkih ili bučnih snimki i točnije. Pokraj toga <b>Točnost</b> određuje model: <b>Brzo</b> za brzu skicu, <b>Uravnoteženo</b> ili <b>Najbolje</b> za najpažljiviji (ali sporiji) rezultat. Model odabran u <b>Naprednim postavkama</b> prikazuje se kao <b>Prilagođeno</b> i ostaje nepromijenjen.</li>
+        <li><b>Neobavezno:</b> otvorite <b>Više opcija</b> i ispunite <b>Vremenski raspon</b> (H:MM:SS) ako želite transkribirati samo dio datoteke.</li>
         <li><b>Odaberite formate podnaslova.</b> Kliknite <b>Napredne postavke…</b> i potražite <b>Izlazni formati</b>. SRT plus JSON je zadano. Označite <b>VTT</b> (format web podnaslova) za web video, ili <b>ASS (stilizirani podnaslovi / karaoke)</b> ako stilizirate podnaslove u uređivaču. Svaki označeni format zapisuje se za svaki zadatak. Ostavite JSON označen: to je JSON datoteka koju aplikacija koristi za otvaranje preglednika transkripcije.</li>
-        <li><b>Optional:</b> under <b>More options</b>, tick <b>Per-word timestamps</b> to store a start and end time for every word; the files get larger. Your SRT cues still follow whole segments, one cue per segment of speech. Word timing is used by VTT and ASS for karaoke-style highlighting.</li>
+        <li><b>Neobavezno:</b> pod <b>Više opcija</b> označite <b>Vremenske oznake po riječi</b> da se spremi vrijeme početka i završetka svake riječi; datoteke postaju veće. SRT titlovi i dalje prate cijele dijelove govora, jedan titl po dijelu. Vrijeme riječi koriste VTT i ASS za isticanje u stilu karaokea.</li>
         <li><b>Kliknite Transkribiraj.</b> Pratite zadatak na kartici <b>Red čekanja transkripcije</b>. Datoteka podnaslova završava pokraj vaše izvorne s istim imenom i novim nastavkom, na primjer talk.mp4 postaje talk.srt, a kartica <b>Posljednji rezultat</b> ima gumb <b>Otvori</b> za svaku datoteku.</li>
       </ol>
       <figure class="guide-fig">
@@ -285,7 +282,7 @@
 
       <h2>Podnaslovi na drugom jeziku</h2>
       <div class="guide-body">
-        <p>For English subtitles from non-English speech, open <b>More options</b> and tick <b>Output: English translation</b>; the files get an .en-translated name. It is off by default and does not work with every engine or model. For other languages, an optional AI Tools tab in the transcript viewer can write a bilingual SRT once you set up its AI layer (a local model you install, or an online provider you choose); it is off by default.</p>
+        <p>Za engleske titlove uz govor na drugom jeziku otvorite <b>Više opcija</b> i označite <b>Izlaz: prijevod na engleski</b>; datoteke dobivaju naziv s .en-translated. Zadano je isključeno i ne radi sa svakim mehanizmom ili modelom. Za druge jezike neobavezna kartica AI alati u pregledu transkripcije može napraviti dvojezični SRT nakon što postavite njezin AI sloj (lokalni model koji instalirate ili online davatelj po vašem izboru); zadano je isključena.</p>
       </div>
       <h2>2. Ispravak (neobavezno)</h2>
       <div class="guide-body">
