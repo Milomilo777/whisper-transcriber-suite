@@ -75,7 +75,7 @@
 <link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
 
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 <style>
   .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
   .guide { padding: 108px 0 64px; }
@@ -86,6 +86,9 @@
   .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
   .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
   .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .try-box { margin-top: 22px; padding: 14px 18px; border-radius: var(--r); background: var(--teal-soft); border: 1px solid var(--line); color: var(--ink-2); }
+  .try-box p { margin: 0; }
+  .try-box a { color: var(--teal-ink); font-weight: 600; text-underline-offset: 3px; }
   .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
   .guide-body p { margin-top: 12px; color: var(--ink-2); }
   .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
@@ -256,6 +259,7 @@
       <h1>Транскрибируйте видео с YouTube в текст — бесплатно и офлайн</h1>
       <p class="guide-sub">Бесплатное приложение для компьютера, которое вы устанавливаете один раз (Windows, macOS, Linux). Для скачивания видео требуется интернет, а сама транскрипция выполняется на вашем компьютере.</p>
       <p class="guide-lede">Чтобы превратить видео с YouTube в текст, вставьте ссылку на вкладке «Скачать видео», выберите текстовый формат, отметьте «Транскрибировать после загрузки» и нажмите «Скачать». Приложение скачивает видео с помощью открытого загрузчика yt-dlp, транскрибирует его моделью распознавания речи Whisper прямо на вашем компьютере и сохраняет расшифровку в TXT, DOCX, PDF или SRT.</p>
+      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Скачать бесплатное приложение</a>
       </div>
@@ -266,10 +270,10 @@
       <h2>Как транскрибировать видео с YouTube</h2>
       <ol class="guide-steps">
         <li><b>Только при первом запуске.</b> В окне «Быстрый старт» будет предложено выбрать язык, а также <b>Быстро</b> или <b>Лучшее качество</b>; модель распознавания речи загружается один раз, при первом использовании.</li>
-        <li><b>Откройте вкладку «Скачать видео»</b> и вставьте ссылку на YouTube в <b>URL</b>. Приложение автоматически определит доступные форматы и субтитры.</li>
+        <li><b>Open the Download Videos tab</b> and paste the YouTube link into <b>Video link</b>. The app looks up the formats and any subtitles by itself.</li>
         <li><b>Выберите режим.</b> Вариант <b>Аудио</b> сохраняет только звук — такой файл меньше и скачивается быстрее, если вам нужна только расшифровка. Вариант <b>Аудио и видео</b> сохраняет и видеоряд.</li>
-        <li><b>Необязательно:</b> используйте поле <b>Временной диапазон (необязательно)</b>, чтобы скачать и транскрибировать только фрагмент. Формат времени — H:MM:SS, а значение 0:00:00 в обоих полях означает всё видео целиком.</li>
-        <li><b>Выберите тип файла перед скачиванием.</b> Перейдите на вкладку <b>Транскрибировать</b>, нажмите <b>Расширенные настройки…</b> и в разделе <b>Выходные форматы</b> отметьте <b>TXT</b> (или <b>DOCX</b>, или <b>PDF</b>). По умолчанию выбраны SRT и JSON — в этом случае вы получите субтитры, а не простой текстовый файл. Оставьте галочку у JSON: этот файл JSON используется приложением для открытия просмотра расшифровки. Выбранные на этой вкладке <b>Язык</b> и модель будут применяться и к загрузкам.</li>
+        <li><b>Optional:</b> open <b>More options</b> under the form and use <b>Time range (optional)</b> to download and transcribe only a part. The format is H:MM:SS, and 0:00:00 in both boxes means the whole video. <b>More options</b> opens by itself when a range is set.</li>
+        <li><b>Choose the file type before you download.</b> Switch to the <b>Transcribe</b> tab, click <b>Advanced settings…</b> and, under <b>Output formats</b>, tick <b>TXT</b> (or <b>DOCX</b> or <b>PDF</b>). The default is SRT plus JSON, which gives you subtitles, not a plain text file. Keep JSON ticked: it is a JSON file the app uses to open the transcript viewer. The <b>Language</b> and <b>Accuracy</b> level chosen on that tab apply to downloads too.</li>
         <li><b>Вернувшись на вкладку «Скачать видео», отметьте «Транскрибировать после загрузки»</b>, затем нажмите <b>Скачать</b>.</li>
         <li><b>Следите за ходом выполнения.</b> Строка в таблице будет заполняться, а на вкладке <b>Очередь транскрипции</b> отображаются скорость и оставшееся время. По завершении расшифровка сохранится рядом с исходным файлом, а в карточке <b>Последний результат</b> на вкладке «Транскрибировать» станут доступны действия <b>Открыть</b>, <b>Просмотреть расшифровку</b> и <b>Сохранить страницу для отправки</b>.</li>
       </ol>
@@ -284,7 +288,7 @@
       </div>
       <h2>Другие сайты и видео, требующие входа</h2>
       <div class="guide-body">
-        <p>Любой сайт, поддерживаемый этим загрузчиком, работает точно так же. Для видео, требующих аккаунта (например, Instagram, Facebook, историй TikTok или роликов на YouTube с возрастными ограничениями), выберите свой браузер в пункте <b>Cookies для входа</b>. Приложение считает сохранённый вход из этого браузера на данном компьютере и использует его только при скачивании с этого сайта — данные никуда больше не отправляются. Это может сработать не для всех видео с ограничениями.</p>
+        <p>Any site the same downloader supports works the same way. For videos that need an account, such as Instagram, Facebook, TikTok stories and age-restricted YouTube videos, open <b>More options</b> under the form and choose your browser under <b>Log-in cookies</b>. The app reads that browser's log-in on this computer and uses it only when downloading from that site; it is not sent anywhere else. This may not work for every restricted video.</p>
       </div>
 
       <h2>Полезно знать</h2>
@@ -298,7 +302,7 @@
         <article class="qa"><h3>Это действительно бесплатно?</h3><div class="faq-a"><p>Да: бесплатно и с открытым исходным кодом, без аккаунта, без подписки и без поминутной оплаты.</p></div></article>
         <article class="qa"><h3>Отправляются ли мои видео или расшифровки куда-либо?</h3><div class="faq-a"><p>Не с движками по умолчанию: Whisper работает прямо на вашем компьютере, и только скачивание с видеосайта использует сеть. Есть два облачных движка, но они отключены, пока вы сами их не включите.</p></div></article>
         <article class="qa"><h3>Можно ли транскрибировать видео без субтитров или на другом языке?</h3><div class="faq-a"><p>Да. Whisper слушает само аудио, поэтому субтитры не нужны. Выберите звучащий <b>Язык</b> или оставьте значение <b>Авто</b>. Опция <b>Результат: перевод на английский</b> преобразует речь на других языках в английский текст; она отключена по умолчанию и работает не со всеми движками или моделями.</p></div></article>
-        <article class="qa"><h3>Можно ли транскрибировать только часть длинного видео?</h3><div class="faq-a"><p>Да. Заполните поле <b>Временной диапазон (необязательно)</b> на вкладке «Скачать видео», указав время начала и окончания в формате H:MM:SS. Будет скачан только этот фрагмент, и он будет транскрибирован, если вы отметили «Транскрибировать после загрузки».</p></div></article>
+        <article class="qa"><h3>Можно ли транскрибировать только часть длинного видео?</h3><div class="faq-a"><p>Yes. Open <b>More options</b> on the Download Videos tab and fill in <b>Time range (optional)</b> with a start and end in H:MM:SS. Only that portion is downloaded, and transcribed if you ticked Transcribe after download.</p></div></article>
         <article class="qa"><h3>Можно ли вставить плейлист целиком?</h3><div class="faq-a"><p>Нет. Каждая задача рассчитана на одно видео. Ссылка, скопированная из плейлиста, скачивает только это видео, а не весь список.</p></div></article>
       </div>
 

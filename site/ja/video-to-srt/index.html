@@ -75,7 +75,7 @@
 <link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
 
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 <style>
   .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
   .guide { padding: 108px 0 64px; }
@@ -86,6 +86,9 @@
   .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
   .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
   .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .try-box { margin-top: 22px; padding: 14px 18px; border-radius: var(--r); background: var(--teal-soft); border: 1px solid var(--line); color: var(--ink-2); }
+  .try-box p { margin: 0; }
+  .try-box a { color: var(--teal-ink); font-weight: 600; text-underline-offset: 3px; }
   .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
   .guide-body p { margin-top: 12px; color: var(--ink-2); }
   .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
@@ -256,6 +259,7 @@
       <h1>動画を無料でSRT字幕に変換する方法</h1>
       <p class="guide-sub">一度インストールすれば使える無料のデスクトップアプリ（Windows、macOS、Linux対応）。内蔵された音声認識モデルWhisperはお使いのコンピューター上で動作するため、デフォルトのエンジンでは動画がアップロードされることはありません。</p>
       <p class="guide-lede">動画をSRT字幕に変換するには、「文字起こし」タブを開き、動画または音声ファイルをドロップします。「詳細設定」でSRTにチェックが入っていることを確認したら、「文字起こし」を押します。一般的な字幕ファイル形式であるSRTファイルが元のファイルと同じ場所に書き出され、プレーヤーでの再生、編集ソフトでの利用、またはアップロードにすぐに使用できます。リンクから変換する方法については、<a href="/ja/youtube-to-text/">YouTubeガイド</a>をご覧ください。</p>
+      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>無料アプリをダウンロード</a>
       </div>
@@ -266,10 +270,10 @@
       <h2>1. SRTを作成する</h2>
       <ol class="guide-steps">
         <li><b>「文字起こし」タブを開き</b>、動画または音声ファイルをウィンドウにドラッグするか、<b>ファイルを参照...</b>をクリックします。複数のファイルを一度に選択することも可能です。</li>
-        <li><b>言語を設定するか</b>、<b>自動</b>のままにして検出させます。手動で言語を指定すると処理が速くなり、短い音声やノイズの多いクリップでの精度が向上する場合があります。</li>
-        <li><b>任意：</b>ファイルの一部のみを文字起こししたい場合は、<b>時間範囲</b>（H:MM:SS）を入力します。</li>
+        <li><b>Set the Language</b>, or leave <b>Auto</b> to detect it. Picking it yourself is faster and can be more accurate for short or noisy clips. Next to it, <b>Accuracy</b> chooses the model: <b>Fast</b> for a quick draft, <b>Balanced</b>, or <b>Best</b> for the most careful result (slower). A model you picked in <b>Advanced settings</b> shows as <b>Custom</b> and is left alone.</li>
+        <li><b>Optional:</b> open <b>More options</b> and fill in <b>Time range</b> (H:MM:SS) to transcribe only part of the file.</li>
         <li><b>字幕の形式を選択します。</b><b>詳細設定…</b>をクリックし、<b>出力形式</b>を確認してください。デフォルトではSRTとJSONが選択されています。Web動画用には<b>VTT</b>（Web字幕形式）に、エディターで字幕を装飾する場合は<b>ASS（装飾字幕 / カラオケ）</b>にチェックを入れます。チェックを入れたすべての形式がタスクごとに書き出されます。JSONには必ずチェックを入れたままにしてください。文字起こしビューアを開くためにアプリが使用するJSONファイルです。</li>
-        <li><b>任意：</b><b>単語ごとのタイムスタンプ</b>にチェックを入れると、単語ごとの開始時間と終了時間が保存されます（ファイルサイズは大きくなります）。SRTのキューは通常通りセグメント全体に従い、発話セグメントごとに1つのキューとなります。単語レベルのタイミングは、VTTやASSでカラオケ風のハイライト表示を行う際に使用されます。</li>
+        <li><b>Optional:</b> under <b>More options</b>, tick <b>Per-word timestamps</b> to store a start and end time for every word; the files get larger. Your SRT cues still follow whole segments, one cue per segment of speech. Word timing is used by VTT and ASS for karaoke-style highlighting.</li>
         <li><b>「文字起こし」をクリックします。</b>処理の進捗は<b>文字起こしキュー</b>タブで確認できます。字幕ファイルは元のファイルと同じ場所に、同じ名前で新しい拡張子が付いて保存されます（例: talk.mp4 なら talk.srt）。また、<b>前回の結果</b>カードには各ファイルの<b>開く</b>ボタンが表示されます。</li>
       </ol>
       <figure class="guide-fig">
@@ -279,7 +283,7 @@
 
       <h2>他言語の字幕</h2>
       <div class="guide-body">
-        <p>英語以外の音声から英語の字幕を作成する場合は、<b>出力: 英語への翻訳</b>にチェックを入れます。ファイル名には .en-translated が付与されます。デフォルトではオフになっており、すべてのエンジンやモデルで動作するわけではありません。その他の言語については、文字起こしビューアのオプション機能である「AI ツール」タブのAI設定（インストールしたローカルモデル、または選択したオンラインプロバイダー）を行うことで、2言語併記のSRTを作成できます（こちらもデフォルトではオフです）。</p>
+        <p>For English subtitles from non-English speech, open <b>More options</b> and tick <b>Output: English translation</b>; the files get an .en-translated name. It is off by default and does not work with every engine or model. For other languages, an optional AI Tools tab in the transcript viewer can write a bilingual SRT once you set up its AI layer (a local model you install, or an online provider you choose); it is off by default.</p>
       </div>
       <h2>2. 修正する（任意）</h2>
       <div class="guide-body">

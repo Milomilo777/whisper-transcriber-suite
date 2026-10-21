@@ -82,7 +82,7 @@
 
 <link rel="preload" href="/assets/shots/transcribe.webp" as="image" type="image/webp" imagesrcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" imagesizes="(max-width: 1080px) 72vw, 480px">
 <script src="/js/motion-init.js?v=20260927b"></script>
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 
 <script type="application/ld+json">
 {
@@ -131,7 +131,7 @@
       "description": "אפליקציית שולחן עבודה שמריצה את מודל Whisper של OpenAI מקומית דרך faster-whisper, whisper.cpp או NVIDIA Parakeet. מתמללת שמע ווידאו ל־SRT, VTT, ASS, TSV, TXT, JSON, LRC, Markdown, DOCX ו־PDF. השמע שלך נשאר על המחשב שלך ולא נדרש חשבון.",
       "softwareVersion": "2.2.0",
       "datePublished": "2026-05-11",
-      "dateModified": "2026-10-21",
+      "dateModified": "2026-10-22",
       "operatingSystem": "Windows, macOS, Linux",
       "applicationCategory": "MultimediaApplication",
       "applicationSubCategory": "Speech-to-text transcription",
@@ -150,7 +150,14 @@
         "צור וידאו עם כתוביות: הורדה, תמלול וצריבת כתוביות לתוך קובץ MP4",
         "שמור תמלול כעמוד אינטרנט אחד ללא חיבור לרשת",
         "מתג עבודה ללא חיבור עם סטטוס רשת גלוי",
-        "תרגום דיבור ישירות לאנגלית"
+        "תרגום דיבור ישירות לאנגלית",
+        "Accuracy levels (Fast, Balanced, Best) that pick a model for the language and the computer",
+        "Models trained for one language: Persian, Chinese, Japanese, German, Thai, Swedish, Hebrew",
+        "Two-language audio (experimental)",
+        "Phone upload by QR code on the same Wi-Fi",
+        "Right-to-left window on Windows for Persian, Arabic and Hebrew",
+        "Interface in 42 languages",
+        "Free in-browser transcription page: no install, no upload"
       ],
       "offers": {
         "@type": "Offer",
@@ -318,10 +325,10 @@
     },
     {
       "@type": "Question",
-      "name": "מה חדש בגרסה 2.1?",
+      "name": "What is new in version 2.2?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "תפריטים, כפתורים והודעות מגיעים ב־42 שפות (מתורגמות מכונה ומסומנות ככאלה); תיוגי דוברים מגיעים עד סוף הקלטות ארוכות וניתן להגדיר כמה אנשים מדברים; תמלולים, ייצוא וכתוביות נכתבים במלואם לדיסק לפני שהם מחליפים את הקובץ הישן; תכונות מקוונות פועלות בכל מחשב Mac. גרסה 2.0 הוסיפה את המהירות והזמן שנותר לתור, וידאו עם כתוביות מקישור, תמלולים כעמוד אינטרנט אחד ללא חיבור לרשת, מצב עבודה ללא חיבור שניתן לסימון ותרגום לאנגלית."
+        "text": "Accuracy levels replace the engine and model pickers on the Transcribe tab: choose Fast, Balanced or Best and the app picks a model that fits your language and computer, and new installs start on Large v3 Turbo. The rarer options sit under More options. Persian, Chinese, Japanese, German, Thai, Swedish and Hebrew get models trained for that language; the Web / LAN access tab shows a QR code so you can send a recording from a phone on the same Wi-Fi; Windows mirrors the window for Persian, Arabic and Hebrew; two-language audio is available as an experimental option; and the Download form is more compact. All 42 interface languages are complete and 35 bugs were fixed. The site also has a page that transcribes a short file in your browser. Version 2.1 added the interface in 42 languages, reliable speaker labels and safer saving; version 2.0 added the queue's speed and time left, subtitled video from a link, transcripts as one offline web page, a checkable Work offline mode and translation to English."
       }
     },
     {
@@ -382,7 +389,14 @@
       <img class="brand-logo" src="/assets/logo.svg" alt="" width="32" height="32"> <span class="brand-name">Whisper Transcriber Suite</span>
     </a>
     <nav class="site-nav" aria-label="ראשי">
-      <a href="#showreel">סיור</a> <a href="#features">תכונות</a> <a href="#how-it-works">כיצד זה עובד</a> <a href="#download">הורד</a> <a href="#compare">השוואה</a> <a href="#faq">שאלות נפוצות</a> <a href="#contact">צור קשר</a>
+      <a href="#showreel">Tour</a>
+      <a href="#features">Features</a>
+      <a href="#how-it-works">How it works</a>
+      <a href="/try/">Try</a>
+      <a href="#download">Download</a>
+      <a href="#compare">Compare</a>
+      <a href="#faq">FAQ</a>
+      <a href="#contact">Contact</a>
     </nav>
     <div class="header-cta">
       <!-- i18n:english:start --><a class="btn btn-ghost btn-sm lang-en" href="/?lang=en" hreflang="en" lang="en" dir="ltr" data-lang-pick="en" translate="no">English</a><!-- i18n:english:end -->
@@ -468,7 +482,6 @@
         <div class="hero-actions reveal" style="--d:5">
           <a class="btn btn-primary btn-lg" data-os-cta data-auto-href="installer" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.2.0/WhisperTranscriberSuite-Installer-Windows-v2.2.0.exe" rel="noopener"> <svg class="i" aria-hidden="true"><use href="#i-download"/></svg><span data-os-label>הורדה ל-Windows</span> </a> <a class="btn btn-ghost btn-lg" href="#showreel">התחילו סיור<svg class="i i-trail" aria-hidden="true"><use href="#i-arrow"/></svg></a>
         </div>
-        <p class="hero-try reveal" style="--d:5"><a href="/try/">No install? Try a short file right in your browser</a></p>
         <ul class="proof reveal" style="--d:6" aria-label="במבט ראשון">
           <li><strong data-count="14">14</strong><span>פורמטי תמלילים</span></li>
           <li><strong data-auto="downloads">3,200+</strong><span>הורדות עד כה</span></li>
@@ -504,6 +517,20 @@
             <div class="chip-card off-card"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>תמלול לא מקוון</div>
           </div>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TRY IN THE BROWSER ============ -->
+  <section class="try-strip" aria-labelledby="try-strip-title">
+    <div class="wrap">
+      <div class="try-strip-card">
+        <div class="try-strip-copy">
+          <p class="eyebrow">No install</p>
+          <h2 id="try-strip-title">Try it in your browser</h2>
+          <p>Drop in an audio or video file of up to 10 minutes and get a transcript. Free, no upload, no sign-up: Whisper runs inside your browser tab. For longer files, use the <a href="#download">desktop app</a>.</p>
+        </div>
+        <a class="btn btn-primary btn-lg" href="/try/">Try it now<svg class="i i-trail" aria-hidden="true"><use href="#i-arrow"/></svg></a>
       </div>
     </div>
   </section>
@@ -551,20 +578,60 @@
     </div>
   </section>
 
-  <!-- ============ WHAT'S NEW IN 2.1 (AND 2.0) ============ -->
+  <!-- ============ WHAT'S NEW IN 2.2 (AND 2.1, 2.0) ============ -->
   <section class="section whatsnew" id="whats-new" aria-labelledby="new-title">
     <div class="wrap">
       <header class="section-head sr">
-        <p class="eyebrow">חדש ב-2.1</p>
-        <h2 id="new-title">מה חדש ב-2.1. <span class="h2-soft">עכשיו בשפה שלך.</span></h2>
-        <p class="section-lede">האפליקציה ב-42 שפות, תוויות דוברים שמגיעות עד לסוף הקלטות ארוכות, קבצים ששורדים הפסקת חשמל, ותכונות מקוונות שעובדות על כל Mac. מתחתיהן, מה שנוסף ב-2.0.</p>
+        <p class="eyebrow">New in 2.2</p>
+        <h2 id="new-title">What's new in 2.2. <span class="h2-soft">Simpler, and in your pocket.</span></h2>
+        <p class="section-lede">One Accuracy choice instead of engine and model pickers, models trained for one language, your phone as a way in, a mirrored window for Persian, Arabic and Hebrew, and a try-it page in the browser. Below them, what 2.1 and 2.0 added.</p>
       </header>
 
       <div class="new-grid">
         <article class="new-card sr">
+          <p class="new-tag">2.2 · All platforms</p>
+          <h3>A simpler Transcribe tab</h3>
+          <p>Pick <em>Accuracy</em> (Fast, Balanced or Best) and the app chooses a model that fits your language and your computer, with its download size shown. Speakers, per-word timestamps, English translation, a time range and mixed languages wait under <em>More options</em>. New installs start on Large v3 Turbo: several times faster than Large v3 with nearly the same accuracy.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.2 · All platforms</p>
+          <h3>Models trained for one language</h3>
+          <p>Pick Persian, Chinese, Japanese, German, Thai, Swedish or Hebrew and the app suggests a model built for that language, with its publisher's own accuracy figures, size and licence, and a <em>Use it</em> button.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.2 · All platforms</p>
+          <h3>Use it from your phone</h3>
+          <p>Turn on <em>Share on local network</em> on the Web / LAN access tab, scan the QR code and send a recording from a phone on the same Wi-Fi. The page has thumb-sized buttons, and the PC does the transcribing.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.2 · Windows</p>
+          <h3>Right-to-left window</h3>
+          <p>With a Persian, Arabic or Hebrew interface the tabs, lists, dialogs and tick boxes are mirrored so the window reads from the right. Paths, links and numbers keep reading left to right.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.2 · All platforms</p>
+          <h3>Two languages in one recording</h3>
+          <p>Experimental: a tick box under <em>More options</em> with a second language picker, for audio that switches between two languages. Each stretch is written in the language it sounds like instead of being translated into one of them.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.2 · All platforms</p>
+          <h3>A compact Download form</h3>
+          <p>The link, folder, quality choices and after-download ticks fit on a few lines. Log-in cookies and the time range moved under <em>More options</em>, which opens by itself when a time range is set.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.2 · Website</p>
+          <h3>Try it in your browser</h3>
+          <p>No install: a short file (up to 10 minutes, 5 on a phone) is transcribed by a small Whisper model inside your browser tab, and you save TXT, SRT or VTT. Your audio never leaves your device. <a href="/try/">Try it now</a>.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.2 · All platforms</p>
+          <h3>All 42 languages complete, 35 bugs fixed</h3>
+          <p>Every message of the app is translated in all 42 interface languages, and 35 bugs were fixed, many of them to keep your settings, history and finished work safe.</p>
+        </article>
+        <article class="new-card sr">
           <p class="new-tag">2.1 · כל הפלטפורמות</p>
           <h3>האפליקציה בשפה שלך</h3>
-          <p>תפריטים, כפתורים והודעות מגיעים ב-42 שפות (39 ב-macOS ו-Linux). האפליקציה עוקבת אחר שפת המערכת שלך, או שתוכל לבחור אחת ב<em>הגדרות מתקדמות</em>. כל שפה מלבד אנגלית היא תרגום מכונה ומסומנת ככזו; פרסית, ערבית ועברית מוצעות ב-Windows לעת עתה.</p>
+          <p>Menus, buttons and messages come in 42 languages (39 on macOS and Linux). The app follows your system language, or you pick one in <em>Advanced settings</em>. Every language except English is a machine translation and is marked as one.</p>
         </article>
         <article class="new-card sr">
           <p class="new-tag">2.1 · כל הפלטפורמות</p>
@@ -643,7 +710,7 @@
           <div class="cell-copy">
             <p class="chip-label">faster-whisper · whisper.cpp · Parakeet</p>
             <h3>תמלול מקומי ופרטי</h3>
-            <p>Whisper <code>large-v3</code> כברירת מחדל, בתוססת <code>large-v3-turbo</code> ו-<code>distil-large-v3.5</code>. בחרו את המנוע שמתאים לחומרה שלכם.</p>
+            <p>Whisper <code>large-v3-turbo</code> on new installs, plus <code>large-v3</code> and <code>distil-large-v3.5</code>. Choose Fast, Balanced or Best accuracy and the app picks a model for your language and computer, or pick the backend yourself in Advanced settings.</p>
           </div>
           <figure class="cell-shot" aria-hidden="true"><img src="/assets/shots/transcribe-640.webp" alt="" width="640" height="362" loading="lazy" decoding="async"></figure>
           <div class="viz viz-engines" aria-hidden="true">
@@ -824,7 +891,7 @@ python gui.py</code></pre>
         </div>
         <p class="mac-note">מעדיפים את הדרך הרגילה? פתחו את <code>.dmg</code> וגררו את האפליקציה אל Applications; ההפעלה הראשונה תדרוש לחיצה ימנית → <b>Open</b> (macOS 14 ומטה) או System Settings → Privacy &amp; Security → <b>Open Anyway</b> (macOS 15+).</p>
       </div>
-      <p class="dl-note sr">כל גרסה, עם הערות, נמצאת ב-<a href="https://github.com/Milomilo777/whisper-transcriber-suite/releases" rel="noopener">GitHub Releases</a>. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md" rel="noopener">מדריך התקנה</a>.</p>
+      <p class="dl-note sr">Not ready to install? <a href="/try/">Try a short file in your browser</a> first. Every release, with notes, lives on <a href="https://github.com/Milomilo777/whisper-transcriber-suite/releases" rel="noopener">GitHub Releases</a>. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md" rel="noopener">Install guide</a>.</p>
     </div>
   </section>
 
@@ -875,7 +942,7 @@ python gui.py</code></pre>
         <article class="qa"><h3>האם הוא יכול לשבט קול ולגרום לו לומר טקסט חדש?</h3><div class="faq-a"><p>כן, דרך לשונית שיבוט הקול שלך האופציונלית, באמצעות OmniVoice (Apache-2.0) לחלוטין במחשב שלך. כבוי כברירת מחדל; בחרו להפעיל בזמן ההתקנה, ועליכם לאשר שיש לכם הרשאה לשכפל את הקול המקורי.</p></div></article>
         <article class="qa"><h3>כיצד זה שונה מקריאה ישירות ל־Whisper API?</h3><div class="faq-a"><p>הוא מפעיל את המודל מקומית דרך faster-whisper כברירת מחדל, כך שאין עלות API לדקה ואף אודיו לא עוזב את המחשב שלך — אלא אם כן תבחרו במפורש באחד משני backends הענן.</p></div></article>
         <article class="qa"><h3>האם מספר אנשים באותה רשת יכולים להשתמש בו מבלי להתקין אותו על כל מכשיר?</h3><div class="faq-a"><p>כן — מצב גישה Web/LAN הופך את המחשב הזה לדף תמלול שבו יכולים להשתמש שאר המכשירים ברשת.</p></div></article>
-        <article class="qa"><h3>מה חדש בגרסה 2.1?</h3><div class="faq-a"><p>תפריטים, כפתורים והודעות מגיעים ב-42 שפות (מתורגמות במכונה ומסומנות ככאלה); תוויות דוברים מגיעות עד סוף הקלטות ארוכות וניתן להגדיר כמה אנשים מדברים; תמלילים, ייצוא וכתוביות נכתבים במלואם לדיסק לפני שהם מחליפים את הקובץ הישן; תכונות מקוונות עובדות בכל Mac. גרסה 2.0 הוסיפה את מהירות התור והזמן שנותר, וידאו עם כתוביות מקישור, תמלילים כדף אינטרנט לא מקוון אחד, מצב עבודה ללא חיבור שניתן לסמן ותרגום לאנגלית. ראו את <a href="#whats-new">מה חדש ב-2.1</a> ואת <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">יומן השינויים</a>.</p></div></article>
+        <article class="qa"><h3>What is new in version 2.2?</h3><div class="faq-a"><p>Accuracy levels replace the engine and model pickers on the Transcribe tab: choose Fast, Balanced or Best and the app picks a model that fits your language and computer, and new installs start on Large v3 Turbo. The rarer options sit under <em>More options</em>. Persian, Chinese, Japanese, German, Thai, Swedish and Hebrew get models trained for that language; the Web / LAN access tab shows a QR code so you can send a recording from a phone on the same Wi-Fi; Windows mirrors the window for Persian, Arabic and Hebrew; two-language audio is available as an experimental option; and the Download form is more compact. All 42 interface languages are complete and 35 bugs were fixed. The site also has a <a href="/try/">page that transcribes a short file in your browser</a>. Version 2.1 added the interface in 42 languages, reliable speaker labels and safer saving; version 2.0 added the queue's speed and time left, subtitled video from a link, transcripts as one offline web page, a checkable Work offline mode and translation to English. See <a href="#whats-new">What's new in 2.2</a> and the <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">changelog</a>.</p></div></article>
         <article class="qa"><h3>האם הוא יכול להפוך קישור וידאו לווידאו עם כתוביות?</h3><div class="faq-a"><p>כן. בלשונית הורדת סרטונים, סמנו את <b>צור וידאו עם כתוביות</b>: האפליקציה מורידה את הסרטון, מתמללת אותו עם Whisper וצורבת את הכתוביות עם ffmpeg, ומייצרת קובץ בעל שם זהה לסרטון עם <code>-subbed.mp4</code>. ההורדה והתמליל נשמרים, וקובץ <code>-subbed.mp4</code> קיים לעולם לא מוחלף.</p></div></article>
         <article class="qa"><h3>האם אוכל להשאיר את האפליקציה מנותקת מהרשת לחלוטין?</h3><div class="faq-a"><p>כן. <b>File → עבודה ללא חיבור</b> עוצר את בדיקת העדכונים, את סטטיסטיקת השימוש, את הורדות המודלים ואת ספקי ה-AI המרוחקים. כשהוא מופעל, שורה בתחתית החלון מציינת אם חיבור פתוח, ו-<em>אמת מצב לא מקוון עכשיו</em> מציג חיבורי בדיקה שנדחים. כשהוא כבוי, האפליקציה יוצרת קשר עם הרשת רק עבור הגדרות הרשת שלה בעלייה, בדיקת העדכונים היומית, סטטיסטיקת שימוש (שניתנת לכיבוי תחת עזרה → סטטיסטיקת שימוש) והורדות שתתחילו.</p></div></article>
         <article class="qa"><h3>כיצד אוכל ליצור קשר עם הפרויקט?</h3><div class="faq-a"><p>באגים ובקשות תכונות מופנים ל-<a href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener">GitHub Issues</a>, שאלות ל-<a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">Discussions</a>, וכל דבר אחר באימייל (הכתובת מוצגת לפי בקשה ב-<a href="#contact">סעיף יצירת קשר</a>). דוחות אבטחה מועברים דרך דיווח הפגיעויות הפרטי של GitHub.</p></div></article>

@@ -77,7 +77,7 @@
 
 <link rel="preload" href="/assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 <style>
   .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
   .guide { padding: 108px 0 64px; }
@@ -88,6 +88,9 @@
   .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
   .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
   .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .try-box { margin-top: 22px; padding: 14px 18px; border-radius: var(--r); background: var(--teal-soft); border: 1px solid var(--line); color: var(--ink-2); }
+  .try-box p { margin: 0; }
+  .try-box a { color: var(--teal-ink); font-weight: 600; text-underline-offset: 3px; }
   .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
   .guide-body p { margin-top: 12px; color: var(--ink-2); }
   .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
@@ -258,6 +261,7 @@
       <h1>YouTube-Video kostenlos und offline in Text transkribieren</h1>
       <p class="guide-sub">Eine kostenlose Desktop-App, die Sie einmalig installieren (Windows, macOS, Linux). Das Herunterladen des Videos erfordert Internet; die Transkription selbst läuft auf Ihrem Computer.</p>
       <p class="guide-lede">Um ein YouTube-Video in Text umzuwandeln, fügen Sie den Link in den Reiter „Videos herunterladen“ ein, wählen ein Textformat, setzen ein Häkchen bei „Nach dem Download transkribieren“ und klicken auf „Herunterladen“. Die App lädt das Video mit dem Open-Source-Downloader yt-dlp herunter, transkribiert es mit Whisper (einem Spracherkennungsmodell) auf Ihrem eigenen Computer und speichert ein TXT-, DOCX-, PDF- oder SRT-Transkript.</p>
+      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Kostenlose App herunterladen</a>
       </div>
@@ -268,10 +272,10 @@
       <h2>So transkribieren Sie ein YouTube-Video</h2>
       <ol class="guide-steps">
         <li><b>Nur beim ersten Start.</b> Das Fenster „Schnellstart“ fragt nach Ihrer Sprache und <b>Schnell</b> oder <b>Beste Qualität</b>; das Sprachmodell wird einmalig bei der ersten Nutzung heruntergeladen.</li>
-        <li><b>Öffnen Sie den Reiter „Videos herunterladen“</b> und fügen Sie den YouTube-Link unter <b>URL</b> ein. Die App sucht selbstständig nach Formaten und vorhandenen Untertiteln.</li>
+        <li><b>Open the Download Videos tab</b> and paste the YouTube link into <b>Video link</b>. The app looks up the formats and any subtitles by itself.</li>
         <li><b>Wählen Sie einen Modus.</b> <b>Audio</b> speichert nur den Ton, was kleiner und schneller ist, wenn Sie lediglich ein Transkript benötigen. <b>Audio und Video</b> behält auch das Bild bei.</li>
-        <li><b>Optional:</b> Nutzen Sie <b>Zeitbereich (optional)</b>, um nur einen Teil herunterzuladen und zu transkribieren. Das Format ist H:MM:SS, und 0:00:00 in beiden Feldern bedeutet das gesamte Video.</li>
-        <li><b>Wählen Sie vor dem Herunterladen den Dateityp.</b> Wechseln Sie zum Reiter <b>Transkribieren</b>, klicken Sie auf <b>Erweiterte Einstellungen…</b> und setzen Sie unter <b>Ausgabeformate</b> ein Häkchen bei <b>TXT</b> (oder <b>DOCX</b> oder <b>PDF</b>). Der Standard ist SRT plus JSON, was Untertitel liefert, keine reine Textdatei. Lassen Sie JSON ausgewählt: Es ist eine JSON-Datei, mit der die App die Transkriptansicht öffnet. Die auf diesem Reiter gewählte <b>Sprache</b> und das Modell gelten auch für Downloads.</li>
+        <li><b>Optional:</b> open <b>More options</b> under the form and use <b>Time range (optional)</b> to download and transcribe only a part. The format is H:MM:SS, and 0:00:00 in both boxes means the whole video. <b>More options</b> opens by itself when a range is set.</li>
+        <li><b>Choose the file type before you download.</b> Switch to the <b>Transcribe</b> tab, click <b>Advanced settings…</b> and, under <b>Output formats</b>, tick <b>TXT</b> (or <b>DOCX</b> or <b>PDF</b>). The default is SRT plus JSON, which gives you subtitles, not a plain text file. Keep JSON ticked: it is a JSON file the app uses to open the transcript viewer. The <b>Language</b> and <b>Accuracy</b> level chosen on that tab apply to downloads too.</li>
         <li><b>Setzen Sie auf „Videos herunterladen“ ein Häkchen bei „Nach dem Download transkribieren“</b> und klicken Sie dann auf <b>Herunterladen</b>.</li>
         <li><b>Verfolgen Sie den Fortschritt.</b> Die Zeile in der Tabelle füllt sich, und der Reiter <b>Transkriptions-Warteschlange</b> zeigt Geschwindigkeit und Restzeit an. Nach Abschluss liegt das Transkript neben der Ursprungsdatei, und die Karte <b>Letztes Ergebnis</b> auf dem Reiter „Transkribieren“ bietet <b>Öffnen</b>, <b>Transkript anzeigen</b> und <b>Teilbare Seite speichern</b>.</li>
       </ol>
@@ -286,7 +290,7 @@
       </div>
       <h2>Andere Websites und Videos, die eine Anmeldung erfordern</h2>
       <div class="guide-body">
-        <p>Jede vom selben Downloader unterstützte Website funktioniert auf die gleiche Weise. Für Videos, die ein Konto erfordern — wie Instagram, Facebook, TikTok-Storys und altersbeschränkte YouTube-Videos —, wählen Sie Ihren Browser unter <b>Anmelde-Cookies</b>. Die App liest die Anmeldung dieses Browsers auf diesem Computer aus und verwendet sie nur beim Download von dieser Website; sie wird nirgendwohin sonst übertragen. Dies funktioniert möglicherweise nicht bei jedem beschränkten Video.</p>
+        <p>Any site the same downloader supports works the same way. For videos that need an account, such as Instagram, Facebook, TikTok stories and age-restricted YouTube videos, open <b>More options</b> under the form and choose your browser under <b>Log-in cookies</b>. The app reads that browser's log-in on this computer and uses it only when downloading from that site; it is not sent anywhere else. This may not work for every restricted video.</p>
       </div>
 
       <h2>Gut zu wissen</h2>
@@ -300,7 +304,7 @@
         <article class="qa"><h3>Ist es wirklich kostenlos?</h3><div class="faq-a"><p>Ja: kostenlos und Open Source, kein Konto, kein Abonnement, keine Kosten pro Minute.</p></div></article>
         <article class="qa"><h3>Werden mein Video oder Transkript irgendwohin hochgeladen?</h3><div class="faq-a"><p>Nicht mit den Standard-Engines: Whisper läuft auf Ihrem eigenen Computer, und lediglich der Download von der Video-Website nutzt das Netzwerk. Es gibt zwei Cloud-Engines, diese bleiben jedoch deaktiviert, bis Sie sie selbst einschalten.</p></div></article>
         <article class="qa"><h3>Kann es ein Video ohne Untertitel oder in einer anderen Sprache transkribieren?</h3><div class="faq-a"><p>Ja. Whisper analysiert die Tonspur, Untertitel sind also nicht erforderlich. Wählen Sie die gesprochene <b>Sprache</b> oder belassen Sie es auf <b>Auto</b>. <b>Ausgabe: englische Übersetzung</b> wandelt nicht-englische Sprache in englischen Text um; die Option ist standardmäßig deaktiviert und funktioniert nicht mit jeder Engine oder jedem Modell.</p></div></article>
-        <article class="qa"><h3>Kann ich nur einen Teil eines langen Videos transkribieren?</h3><div class="faq-a"><p>Ja. Tragen Sie unter <b>Zeitbereich (optional)</b> auf dem Reiter „Videos herunterladen“ Beginn und Ende im Format H:MM:SS ein. Nur dieser Teil wird heruntergeladen und transkribiert, falls Sie „Nach dem Download transkribieren“ ausgewählt haben.</p></div></article>
+        <article class="qa"><h3>Kann ich nur einen Teil eines langen Videos transkribieren?</h3><div class="faq-a"><p>Yes. Open <b>More options</b> on the Download Videos tab and fill in <b>Time range (optional)</b> with a start and end in H:MM:SS. Only that portion is downloaded, and transcribed if you ticked Transcribe after download.</p></div></article>
         <article class="qa"><h3>Kann ich eine ganze Playlist einfügen?</h3><div class="faq-a"><p>Nein. Jede Aufgabe ist ein einzelnes Video. Ein aus einer Playlist kopierter Link lädt nur dieses eine Video herunter, nicht die gesamte Liste.</p></div></article>
       </div>
 

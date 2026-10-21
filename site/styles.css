@@ -583,10 +583,15 @@ html[data-motion="off"] .rail-pulse { transform: translateX(380px); }
 .hdr-no-name .site-header .brand-name { display: none; }
 .hdr-no-nav .site-header .site-nav { display: none; }
 .hdr-no-gh .site-header .gh-btn { display: none; }
-/* /try/ is English only for now: its link shows on the English home page only */
-.hero-try { margin-top: 14px; font-size: 0.95rem; }
-.hero-try a { color: var(--ink-2); text-underline-offset: 3px; }
-html:not([lang="en"]) .hero-try { display: none; }
+/* "Try it in your browser" card under the hero (the /try/ page itself is English only) */
+.try-strip { position: relative; padding-block: 4px 8px; }
+.try-strip-card { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px 28px; padding: clamp(20px, 3vw, 30px); border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-sm); }
+.try-strip-copy { flex: 1 1 380px; min-width: 0; }
+.try-strip-copy h2 { margin: 0; font-size: clamp(1.3rem, 2.6vw, 1.7rem); font-weight: 700; }
+.try-strip-copy p:not(.eyebrow) { margin-top: 8px; color: var(--ink-2); max-width: 66ch; }
+.try-strip-copy .eyebrow { margin-bottom: 8px; }
+.try-strip-copy a { color: var(--teal-ink); text-underline-offset: 3px; }
+@media (max-width: 560px) { .try-strip-card .btn { width: 100%; justify-content: center; } }
 .hdr-no-nav .site-header .site-nav + .header-cta { margin-inline-start: auto; }
 .hdr-no-lang .site-header .lang-current { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @media (max-width: 1500px) {

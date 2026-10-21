@@ -77,7 +77,7 @@
 
 <link rel="preload" href="/assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 <style>
   .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
   .guide { padding: 108px 0 64px; }
@@ -88,6 +88,9 @@
   .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
   .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
   .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .try-box { margin-top: 22px; padding: 14px 18px; border-radius: var(--r); background: var(--teal-soft); border: 1px solid var(--line); color: var(--ink-2); }
+  .try-box p { margin: 0; }
+  .try-box a { color: var(--teal-ink); font-weight: 600; text-underline-offset: 3px; }
   .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
   .guide-body p { margin-top: 12px; color: var(--ink-2); }
   .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
@@ -258,6 +261,7 @@
       <h1>I-transcribe ang YouTube video patungong teksto, libre at offline</h1>
       <p class="guide-sub">Isang libreng desktop app na iinstall mo nang minsanan (Windows, macOS, Linux). Kailangan ng internet ang pag-download ng video; ang transcription mismo ay tumatakbo sa iyong computer.</p>
       <p class="guide-lede">Para gawing teksto ang YouTube video, i-paste ang link nito sa tab na Mag-download ng Video, pumili ng format ng teksto, lagyan ng tsek ang I-transcribe pagkatapos ng download at pindutin ang I-download. Kinukuha ng app ang video gamit ang open-source downloader na yt-dlp, tinatranscribe gamit ang Whisper (isang speech-recognition model) sa sarili mong computer at nag-i-save ng TXT, DOCX, PDF o SRT na transcript.</p>
+      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>I-download ang libreng app</a>
       </div>
@@ -268,10 +272,10 @@
       <h2>Paano i-transcribe ang YouTube video</h2>
       <ol class="guide-steps">
         <li><b>Unang pagbukas lamang.</b> Hihilingin ng Mabilis na simula window ang iyong wika at <b>Mabilis</b> o <b>Pinakamahusay na kalidad</b>; magda-download nang minsahan ang speech model, sa unang paggamit.</li>
-        <li><b>Buksan ang tab na Mag-download ng Video</b> at i-paste ang YouTube link sa <b>URL</b>. Hahanapin ng app ang mga format at anumang subtitle nang mag-isa.</li>
+        <li><b>Open the Download Videos tab</b> and paste the YouTube link into <b>Video link</b>. The app looks up the formats and any subtitles by itself.</li>
         <li><b>Pumili ng mode.</b> Nag-i-save lamang ng tunog ang <b>Audio</b>, na mas maliit at mas mabilis kapag transcript lang ang gusto mo. Pinapanatili rin ang larawan ang <b>Audio and video</b>.</li>
-        <li><b>Opsyonal:</b> gamitin ang <b>Saklaw ng oras (opsyonal)</b> para mag-download at mag-transcribe lamang ng bahagi. Ang format ay H:MM:SS, at 0:00:00 sa parehong kahon ay nangangahulugang buong video.</li>
-        <li><b>Piliin ang uri ng file bago mag-download.</b> Lumipat sa tab na <b>I-transcribe</b>, i-click ang <b>Mga advanced na setting…</b> at, sa ilalim ng <b>Mga output format</b>, lagyan ng tsek ang <b>TXT</b> (o <b>DOCX</b> o <b>PDF</b>). Ang default ay SRT plus JSON, na nagbibigay ng subtitle, hindi plain text file. Panatilihang may tsek ang JSON: ito ang JSON file na ginagamit ng app para buksan ang transcript viewer. Ang <b>Language</b> at modelong pinili sa tab na iyon ay lumalapat din sa mga pag-download.</li>
+        <li><b>Optional:</b> open <b>More options</b> under the form and use <b>Time range (optional)</b> to download and transcribe only a part. The format is H:MM:SS, and 0:00:00 in both boxes means the whole video. <b>More options</b> opens by itself when a range is set.</li>
+        <li><b>Choose the file type before you download.</b> Switch to the <b>Transcribe</b> tab, click <b>Advanced settings…</b> and, under <b>Output formats</b>, tick <b>TXT</b> (or <b>DOCX</b> or <b>PDF</b>). The default is SRT plus JSON, which gives you subtitles, not a plain text file. Keep JSON ticked: it is a JSON file the app uses to open the transcript viewer. The <b>Language</b> and <b>Accuracy</b> level chosen on that tab apply to downloads too.</li>
         <li><b>Balik sa Mag-download ng Video, lagyan ng tsek ang I-transcribe pagkatapos ng download</b>, pagkatapos i-click ang <b>I-download</b>.</li>
         <li><b>Tingnan ang pag-unlad.</b> Napupuno ang hilera sa talahanayan, at ipinapakita ng tab na <b>Pila ng Transcription</b> ang bilis at natitirang oras. Kapag tapos na, nandoon ang transcript sa tabi ng file na pinanggalingan nito, at ang card na <b>Huling resulta</b> sa tab na I-transcribe ay nag-aalok ng <b>Open</b>, <b>Tingnan ang transcript</b> at <b>I-save ang page na maibabahagi</b>.</li>
       </ol>
@@ -286,7 +290,7 @@
       </div>
       <h2>Iba pang site at mga video na nangangailangan ng log-in</h2>
       <div class="guide-body">
-        <p>Anumang site na sinusuportahan ng parehong downloader ay gumagana nang pareho. Para sa mga video na nangangailangan ng account, tulad ng Instagram, Facebook, TikTok stories at age-restricted na YouTube video, piliin ang iyong browser sa ilalim ng <b>Log-in cookies</b>. Binabasa ng app ang log-in ng browser na iyon sa computer na ito at ginagamit lamang kapag nagda-download mula sa site na iyon; hindi ito ipinapadala kahit saan. Maaaring hindi gumana para sa lahat ng restricted na video.</p>
+        <p>Any site the same downloader supports works the same way. For videos that need an account, such as Instagram, Facebook, TikTok stories and age-restricted YouTube videos, open <b>More options</b> under the form and choose your browser under <b>Log-in cookies</b>. The app reads that browser's log-in on this computer and uses it only when downloading from that site; it is not sent anywhere else. This may not work for every restricted video.</p>
       </div>
 
       <h2>Magandang malaman</h2>
@@ -300,7 +304,7 @@
         <article class="qa"><h3>Libre ba talaga?</h3><div class="faq-a"><p>Oo: libre at open source, walang account, walang subscription, walang bayad bawat minuto.</p></div></article>
         <article class="qa"><h3>Naia-upload ba ang aking video o transcript kahit saan?</h3><div class="faq-a"><p>Hindi sa mga default na engine: tumatakbo ang Whisper sa sarili mong computer, at tanging ang pag-download mula sa site ng video ang gumagamit ng network. May dalawang cloud engine, ngunit nananatili silang nakapatay hanggang ikaw mismo ang mag-on nito.</p></div></article>
         <article class="qa"><h3>Kayang ba nitong i-transcribe ang video na walang caption, o ang nasa ibang wika?</h3><div class="faq-a"><p>Oo. Nakikinig ang Whisper sa audio, kaya hindi kailangan ng caption. Piliin ang sinasalitang <b>Wika</b> o iwanan ito sa <b>Auto</b>. Ang <b>Output: salin sa Ingles</b> ay nagiging Ingles na teksto ang di-Ingles na pananalita; nakapatay ito bilang default at hindi gumagana sa lahat ng engine o model.</p></div></article>
-        <article class="qa"><h3>Pwede ba akong mag-transcribe lamang ng bahagi ng mahabang video?</h3><div class="faq-a"><p>Oo. Punan ang <b>Saklaw ng oras (opsyonal)</b> sa tab na Mag-download ng Video gamit ang simula at pagtatapos sa H:MM:SS. Tanging ang bahaging iyon lang ang ida-download, at i-transcribe kung nag-tick ka ng I-transcribe pagkatapos ng download.</p></div></article>
+        <article class="qa"><h3>Pwede ba akong mag-transcribe lamang ng bahagi ng mahabang video?</h3><div class="faq-a"><p>Yes. Open <b>More options</b> on the Download Videos tab and fill in <b>Time range (optional)</b> with a start and end in H:MM:SS. Only that portion is downloaded, and transcribed if you ticked Transcribe after download.</p></div></article>
         <article class="qa"><h3>Pwede ba akong mag-paste ng buong playlist?</h3><div class="faq-a"><p>Hindi. Isang video ang bawat gawain. Ang link na kinopya mula sa loob ng isang playlist ay nagda-download lamang ng video na iyon, hindi ang buong listahan.</p></div></article>
       </div>
 

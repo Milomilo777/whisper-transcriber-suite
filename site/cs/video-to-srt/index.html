@@ -77,7 +77,7 @@
 
 <link rel="preload" href="/assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 <style>
   .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
   .guide { padding: 108px 0 64px; }
@@ -88,6 +88,9 @@
   .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
   .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
   .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .try-box { margin-top: 22px; padding: 14px 18px; border-radius: var(--r); background: var(--teal-soft); border: 1px solid var(--line); color: var(--ink-2); }
+  .try-box p { margin: 0; }
+  .try-box a { color: var(--teal-ink); font-weight: 600; text-underline-offset: 3px; }
   .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
   .guide-body p { margin-top: 12px; color: var(--ink-2); }
   .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
@@ -258,6 +261,7 @@
       <h1>Jak zdarma převést video na titulky SRT</h1>
       <p class="guide-sub">Bezplatná desktopová aplikace, kterou nainstalujete jen jednou (Windows, macOS, Linux). Whisper, model pro rozpoznávání řeči uvnitř aplikace, běží přímo na vašem počítači, takže s výchozími enginy se vaše video nikam nenahrává.</p>
       <p class="guide-lede">Chcete-li převést video na titulky SRT, otevřete kartu Přepsat, přetáhněte do okna video či audiosoubor, zkontrolujte, zda je v Pokročilá nastavení zaškrtnuto SRT, a klikněte na Přepsat. Whisper vytvoří soubor SRT (běžný formát titulků) vedle původního souboru, připravený pro přehrávač, editor nebo nahrání na web. Návod pro odkaz najdete v <a href="/cs/youtube-to-text/">průvodci pro YouTube</a>.</p>
+      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Stáhnout bezplatnou aplikaci</a>
       </div>
@@ -268,10 +272,10 @@
       <h2>1. Vytvořte SRT</h2>
       <ol class="guide-steps">
         <li><b>Otevřete kartu Přepsat</b> a přetáhněte video nebo audiosoubor do okna, případně klikněte na <b>Procházet soubory...</b>. Můžete vybrat i několik souborů najednou.</li>
-        <li><b>Nastavte Jazyk</b>, nebo ponechte volbu <b>Auto</b> pro automatické rozpoznání. Ruční výběr je rychlejší a u krátkých nebo zašuměných nahrávek může být přesnější.</li>
-        <li><b>Volitelné:</b> vyplňte pole <b>Časový rozsah</b> (H:MM:SS), chcete-li přepsat jen část souboru.</li>
+        <li><b>Set the Language</b>, or leave <b>Auto</b> to detect it. Picking it yourself is faster and can be more accurate for short or noisy clips. Next to it, <b>Accuracy</b> chooses the model: <b>Fast</b> for a quick draft, <b>Balanced</b>, or <b>Best</b> for the most careful result (slower). A model you picked in <b>Advanced settings</b> shows as <b>Custom</b> and is left alone.</li>
+        <li><b>Optional:</b> open <b>More options</b> and fill in <b>Time range</b> (H:MM:SS) to transcribe only part of the file.</li>
         <li><b>Vyberte formáty titulků.</b> Klikněte na <b>Pokročilá nastavení…</b> a vyhledejte sekci <b>Výstupní formáty</b>. Výchozí volbou je SRT a JSON. Zaškrtněte <b>VTT</b> (formát webových titulků) pro video na webu nebo <b>ASS (stylované titulky / karaoke)</b>, pokud titulky formátujete v editoru. Každý zaškrtnutý formát se vytvoří pro každou úlohu. Ponechte JSON zaškrtnutý: jde o soubor JSON, který aplikace používá k otevření prohlížeče přepisů.</li>
-        <li><b>Volitelné:</b> zaškrtněte volbu <b>Časové značky jednotlivých slov</b>, chcete-li uložit čas začátku a konce pro každé slovo; soubory pak budou větší. Bloky v SRT se nadále řídí celými segmenty – jeden titulek na segment řeči. Časování jednotlivých slov využívají formáty VTT a ASS pro zvýrazňování ve stylu karaoke.</li>
+        <li><b>Optional:</b> under <b>More options</b>, tick <b>Per-word timestamps</b> to store a start and end time for every word; the files get larger. Your SRT cues still follow whole segments, one cue per segment of speech. Word timing is used by VTT and ASS for karaoke-style highlighting.</li>
         <li><b>Klikněte na Přepsat.</b> Průběh úlohy můžete sledovat na kartě <b>Fronta přepisů</b>. Soubor s titulky se uloží vedle původního souboru se stejným názvem a novou příponou (například z talk.mp4 se stane talk.srt) a karta <b>Poslední výsledek</b> obsahuje tlačítko <b>Otevřít</b> pro každý soubor.</li>
       </ol>
       <figure class="guide-fig">
@@ -281,7 +285,7 @@
 
       <h2>Titulky v jiném jazyce</h2>
       <div class="guide-body">
-        <p>Chcete-li anglické titulky z neanglické řeči, zaškrtněte <b>Výstup: anglický překlad</b>; soubory získají do názvu .en-translated. Tato funkce je ve výchozím stavu vypnutá a nefunguje u každého enginu nebo modelu. V případě ostatních jazyků dokáže volitelná karta Nástroje AI v prohlížeči přepisů vytvořit dvojjazyčné SRT, jakmile nastavíte její vrstvu AI (místní model, který si nainstalujete, nebo online poskytovatele dle vlastního výběru); ve výchozím stavu je vypnutá.</p>
+        <p>For English subtitles from non-English speech, open <b>More options</b> and tick <b>Output: English translation</b>; the files get an .en-translated name. It is off by default and does not work with every engine or model. For other languages, an optional AI Tools tab in the transcript viewer can write a bilingual SRT once you set up its AI layer (a local model you install, or an online provider you choose); it is off by default.</p>
       </div>
       <h2>2. Opravte přepis (volitelné)</h2>
       <div class="guide-body">

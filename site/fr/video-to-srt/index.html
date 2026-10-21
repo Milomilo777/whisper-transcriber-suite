@@ -77,7 +77,7 @@
 
 <link rel="preload" href="/assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 <style>
   .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
   .guide { padding: 108px 0 64px; }
@@ -88,6 +88,9 @@
   .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
   .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
   .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .try-box { margin-top: 22px; padding: 14px 18px; border-radius: var(--r); background: var(--teal-soft); border: 1px solid var(--line); color: var(--ink-2); }
+  .try-box p { margin: 0; }
+  .try-box a { color: var(--teal-ink); font-weight: 600; text-underline-offset: 3px; }
   .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
   .guide-body p { margin-top: 12px; color: var(--ink-2); }
   .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
@@ -258,6 +261,7 @@
       <h1>Comment convertir gratuitement une vidéo en sous-titres SRT</h1>
       <p class="guide-sub">Une application de bureau gratuite à installer une seule fois (Windows, macOS, Linux). Whisper, le modèle de reconnaissance vocale intégré, s'exécute sur votre ordinateur : avec les moteurs par défaut, votre vidéo n'est donc jamais envoyée en ligne.</p>
       <p class="guide-lede">Pour convertir une vidéo en sous-titres SRT, ouvrez l'onglet Transcrire, déposez un fichier vidéo ou audio, vérifiez que SRT est coché sous Paramètres avancés et cliquez sur Transcrire. Whisper génère le fichier SRT, le format de sous-titres standard, à côté du fichier d'origine, prêt pour un lecteur, un éditeur ou une mise en ligne. Pour un lien, consultez le <a href="/fr/youtube-to-text/">guide YouTube</a>.</p>
+      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Télécharger l'application gratuite</a>
       </div>
@@ -268,10 +272,10 @@
       <h2>1. Créer le SRT</h2>
       <ol class="guide-steps">
         <li><b>Ouvrez l'onglet Transcrire</b> et glissez votre fichier vidéo ou audio dans la fenêtre, ou cliquez sur <b>Parcourir les fichiers...</b>. Vous pouvez sélectionner plusieurs fichiers à la fois.</li>
-        <li><b>Définissez la Langue</b>, ou laissez sur <b>Auto</b> pour la détecter automatiquement. La choisir vous-même est plus rapide et peut s'avérer plus précis pour les extraits courts ou bruités.</li>
-        <li><b>Facultatif :</b> renseignez la <b>Plage horaire</b> (H:MM:SS) pour ne transcrire qu'une partie du fichier.</li>
+        <li><b>Set the Language</b>, or leave <b>Auto</b> to detect it. Picking it yourself is faster and can be more accurate for short or noisy clips. Next to it, <b>Accuracy</b> chooses the model: <b>Fast</b> for a quick draft, <b>Balanced</b>, or <b>Best</b> for the most careful result (slower). A model you picked in <b>Advanced settings</b> shows as <b>Custom</b> and is left alone.</li>
+        <li><b>Optional:</b> open <b>More options</b> and fill in <b>Time range</b> (H:MM:SS) to transcribe only part of the file.</li>
         <li><b>Choisissez les formats de sous-titres.</b> Cliquez sur <b>Paramètres avancés…</b> et repérez <b>Formats de sortie</b>. SRT et JSON sont sélectionnés par défaut. Cochez <b>VTT</b> (le format de sous-titres web) pour les vidéos sur le web, ou <b>ASS (sous-titres stylisés / karaoké)</b> si vous mettez en forme vos sous-titres dans un éditeur. Chaque format coché est généré pour chaque tâche. Laissez JSON coché : l'application utilise ce fichier JSON pour ouvrir le visualiseur de transcription.</li>
-        <li><b>Facultatif :</b> cochez <b>Horodatage par mot</b> pour enregistrer l'heure de début et de fin de chaque mot ; les fichiers seront plus volumineux. Vos sous-titres SRT continuent de suivre des segments entiers, un sous-titre par segment de parole. L'horodatage des mots est utilisé par les formats VTT et ASS pour le surlignage de type karaoké.</li>
+        <li><b>Optional:</b> under <b>More options</b>, tick <b>Per-word timestamps</b> to store a start and end time for every word; the files get larger. Your SRT cues still follow whole segments, one cue per segment of speech. Word timing is used by VTT and ASS for karaoke-style highlighting.</li>
         <li><b>Cliquez sur Transcrire.</b> Suivez la tâche dans l'onglet <b>File d'attente de transcription</b>. Le fichier de sous-titres est créé à côté de votre fichier d'origine avec le même nom et une nouvelle extension (par exemple talk.mp4 devient talk.srt), et la carte <b>Dernier résultat</b> propose un bouton <b>Ouvrir</b> pour chaque fichier.</li>
       </ol>
       <figure class="guide-fig">
@@ -281,7 +285,7 @@
 
       <h2>Sous-titres dans une autre langue</h2>
       <div class="guide-body">
-        <p>Pour obtenir des sous-titres en anglais à partir de paroles dans une autre langue, cochez <b>Sortie : traduction anglaise</b> ; les fichiers porteront la mention .en-translated dans leur nom. Cette option est désactivée par défaut et ne fonctionne pas avec tous les moteurs ou modèles. Pour les autres langues, un onglet optionnel Outils IA dans le visualiseur de transcription permet de générer un fichier SRT bilingue une fois son module IA configuré (un modèle local que vous installez, ou un fournisseur en ligne de votre choix) ; il est désactivé par défaut.</p>
+        <p>For English subtitles from non-English speech, open <b>More options</b> and tick <b>Output: English translation</b>; the files get an .en-translated name. It is off by default and does not work with every engine or model. For other languages, an optional AI Tools tab in the transcript viewer can write a bilingual SRT once you set up its AI layer (a local model you install, or an online provider you choose); it is off by default.</p>
       </div>
       <h2>2. Corriger (facultatif)</h2>
       <div class="guide-body">

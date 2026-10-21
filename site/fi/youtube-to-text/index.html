@@ -77,7 +77,7 @@
 
 <link rel="preload" href="/assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 <style>
   .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
   .guide { padding: 108px 0 64px; }
@@ -88,6 +88,9 @@
   .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
   .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
   .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .try-box { margin-top: 22px; padding: 14px 18px; border-radius: var(--r); background: var(--teal-soft); border: 1px solid var(--line); color: var(--ink-2); }
+  .try-box p { margin: 0; }
+  .try-box a { color: var(--teal-ink); font-weight: 600; text-underline-offset: 3px; }
   .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
   .guide-body p { margin-top: 12px; color: var(--ink-2); }
   .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
@@ -258,6 +261,7 @@
       <h1>Litteroi YouTube-video tekstiksi, ilmaiseksi ja offline</h1>
       <p class="guide-sub">Ilmainen työpöytäsovellus, jonka asennat vain kerran (Windows, macOS, Linux). Videon lataaminen vaatii internetyhteyden; itse litterointi tapahtuu omalla tietokoneellasi.</p>
       <p class="guide-lede">Kun haluat muuntaa YouTube-videon tekstiksi, liitä sen linkki Lataa videoita -välilehdelle, valitse tekstimuoto, rastita Litteroi latauksen jälkeen ja paina Lataa. Sovellus noutaa videon avoimen lähdekoodin yt-dlp-latausohjelmalla, litteroi sen Whisperillä (puheentunnistusmallilla) omalla tietokoneellasi ja tallentaa TXT-, DOCX-, PDF- tai SRT-litteroinnin.</p>
+      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Lataa ilmainen sovellus</a>
       </div>
@@ -268,10 +272,10 @@
       <h2>Näin litteroit YouTube-videon</h2>
       <ol class="guide-steps">
         <li><b>Vain ensimmäisellä käynnistyksellä.</b> Pikaopas-ikkunassa kysytään kieltäsi sekä vaihtoehtoa <b>Nopea</b> tai <b>Paras laatu</b>; puhemalli ladataan vain kerran, ensimmäisellä käyttökerralla.</li>
-        <li><b>Avaa Lataa videoita -välilehti</b> ja liitä YouTube-linkki kohtaan <b>URL</b>. Sovellus hakee saatavilla olevat muodot ja mahdolliset tekstitykset automaattisesti.</li>
+        <li><b>Open the Download Videos tab</b> and paste the YouTube link into <b>Video link</b>. The app looks up the formats and any subtitles by itself.</li>
         <li><b>Valitse tila.</b> <b>Ääni</b> tallentaa pelkän äänen, mikä on pienempi ja nopeampi vaihtoehto, kun haluat vain litteroinnin. <b>Ääni ja video</b> säilyttää myös kuvan.</li>
-        <li><b>Valinnainen:</b> käytä asetusta <b>Aikaväli (valinnainen)</b> ladataksesi ja litteroidaksesi vain osan videosta. Muoto on H:MM:SS, ja 0:00:00 kummassakin kentässä tarkoittaa koko videota.</li>
-        <li><b>Valitse tiedostotyyppi ennen lataamista.</b> Siirry <b>Litteroi</b>-välilehdelle, napsauta <b>Lisäasetukset…</b> ja rastita kohdasta <b>Tulostemuodot</b> <b>TXT</b> (tai <b>DOCX</b> tai <b>PDF</b>). Oletusarvona on SRT ja JSON, jolloin saat tekstitykset pelkän tekstitiedoston sijaan. Pidä JSON rastitettuna: sovellus käyttää tätä JSON-tiedostoa litterointikatselimen avaamiseen. Kyseisellä välilehdellä valitut <b>Kieli</b> ja malli koskevat myös latauksia.</li>
+        <li><b>Optional:</b> open <b>More options</b> under the form and use <b>Time range (optional)</b> to download and transcribe only a part. The format is H:MM:SS, and 0:00:00 in both boxes means the whole video. <b>More options</b> opens by itself when a range is set.</li>
+        <li><b>Choose the file type before you download.</b> Switch to the <b>Transcribe</b> tab, click <b>Advanced settings…</b> and, under <b>Output formats</b>, tick <b>TXT</b> (or <b>DOCX</b> or <b>PDF</b>). The default is SRT plus JSON, which gives you subtitles, not a plain text file. Keep JSON ticked: it is a JSON file the app uses to open the transcript viewer. The <b>Language</b> and <b>Accuracy</b> level chosen on that tab apply to downloads too.</li>
         <li><b>Palaa Lataa videoita -välilehdelle ja rastita Litteroi latauksen jälkeen</b> ja napsauta sitten <b>Lataa</b>.</li>
         <li><b>Seuraa edistymistä.</b> Taulukon rivi täyttyy, ja <b>Litterointijono</b>-välilehti näyttää nopeuden ja jäljellä olevan ajan. Kun se valmistuu, litterointi tallentuu alkuperäisen tiedoston viereen, ja <b>Viimeisin tulos</b> -kortti Litteroi-välilehdellä tarjoaa toiminnot <b>Avaa</b>, <b>Näytä litterointi</b> ja <b>Tallenna jaettava sivu</b>.</li>
       </ol>
@@ -286,7 +290,7 @@
       </div>
       <h2>Muut sivustot ja kirjautumista vaativat videot</h2>
       <div class="guide-body">
-        <p>Kaikki saman latausohjelman tukemat sivustot toimivat samalla tavalla. Jos video vaatii käyttäjätilin, kuten Instagram, Facebook, TikTok-tarinat tai ikärajoitetut YouTube-videot, valitse selaimesi kohdasta <b>Kirjautumisevästeet</b>. Sovellus lukee kyseisen selaimen kirjautumistiedot tältä tietokoneelta ja käyttää niitä vain kyseiseltä sivustolta ladattaessa; niitä ei lähetetä minnekään muualle. Tämä ei välttämättä toimi kaikissa rajoitetuissa videoissa.</p>
+        <p>Any site the same downloader supports works the same way. For videos that need an account, such as Instagram, Facebook, TikTok stories and age-restricted YouTube videos, open <b>More options</b> under the form and choose your browser under <b>Log-in cookies</b>. The app reads that browser's log-in on this computer and uses it only when downloading from that site; it is not sent anywhere else. This may not work for every restricted video.</p>
       </div>
 
       <h2>Hyvä tietää</h2>
@@ -300,7 +304,7 @@
         <article class="qa"><h3>Onko se todella ilmainen?</h3><div class="faq-a"><p>Kyllä: ilmainen ja avointa lähdekoodia, ei käyttäjätiliä, ei tilausta, ei minuuttiveloitusta.</p></div></article>
         <article class="qa"><h3>Lähetetäänkö videoni tai litterointini minnekään?</h3><div class="faq-a"><p>Ei oletusmoottoreilla: Whisper toimii omalla tietokoneellasi, ja vain lataus videosivustolta käyttää verkkoa. Saatavilla on kaksi pilvimoottoria, mutta ne pysyvät pois päältä, ellet itse kytke niitä päälle.</p></div></article>
         <article class="qa"><h3>Voiko se litteroida videon, jossa ei ole tekstityksiä, tai videon, joka on toisella kielellä?</h3><div class="faq-a"><p>Kyllä. Whisper kuuntelee ääntä, joten tekstityksiä ei tarvita. Valitse puhuttu <b>Kieli</b> tai jätä valinnaksi <b>Automaattinen</b>. <b>Tuloste: englanninkielinen käännös</b> muuntaa muunkielisen puheen englanninkieliseksi tekstiksi; se on oletuksena pois päältä eikä toimi kaikilla moottoreilla tai malleilla.</p></div></article>
-        <article class="qa"><h3>Voinko litteroida pitkästä videosta vain osan?</h3><div class="faq-a"><p>Kyllä. Syötä Lataa videoita -välilehden kenttään <b>Aikaväli (valinnainen)</b> alku ja loppu muodossa H:MM:SS. Vain kyseinen osa ladataan, ja se litteroidaan, jos olet valinnut kohdan Litteroi latauksen jälkeen.</p></div></article>
+        <article class="qa"><h3>Voinko litteroida pitkästä videosta vain osan?</h3><div class="faq-a"><p>Yes. Open <b>More options</b> on the Download Videos tab and fill in <b>Time range (optional)</b> with a start and end in H:MM:SS. Only that portion is downloaded, and transcribed if you ticked Transcribe after download.</p></div></article>
         <article class="qa"><h3>Voinko liittää kokonaisen soittolistan?</h3><div class="faq-a"><p>Ei. Jokainen tehtävä on yksi video. Soittolistan sisältä kopioitu linkki lataa vain kyseisen videon, ei koko listaa.</p></div></article>
       </div>
 

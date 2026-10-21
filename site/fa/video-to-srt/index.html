@@ -75,7 +75,7 @@
 <link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
 
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 <style>
   .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
   .guide { padding: 108px 0 64px; }
@@ -86,6 +86,9 @@
   .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
   .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
   .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .try-box { margin-top: 22px; padding: 14px 18px; border-radius: var(--r); background: var(--teal-soft); border: 1px solid var(--line); color: var(--ink-2); }
+  .try-box p { margin: 0; }
+  .try-box a { color: var(--teal-ink); font-weight: 600; text-underline-offset: 3px; }
   .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
   .guide-body p { margin-top: 12px; color: var(--ink-2); }
   .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
@@ -256,6 +259,7 @@
       <h1>نحوه تبدیل رایگان ویدیو به زیرنویس SRT</h1>
       <p class="guide-sub">یک برنامه دسکتاپ رایگان که یک بار نصب می‌کنید (Windows، macOS، Linux). مدل تشخیص گفتار داخلی آن یعنی Whisper روی کامپیوتر شما اجرا می‌شود، بنابراین با موتورهای پیش‌فرض، ویدیوی شما آپلود نمی‌شود.</p>
       <p class="guide-lede">برای تبدیل یک ویدیو به زیرنویس SRT، تب رونویسی را باز کنید، یک فایل ویدیویی یا صوتی را به درون آن بکشید، بررسی کنید که SRT در تنظیمات پیشرفته علامت خورده باشد و روی رونویسی کلیک کنید. مدل Whisper فایل SRT (فرمت رایج زیرنویس) را در کنار فایل اصلی ذخیره می‌کند تا آماده استفاده در پخش‌کننده، ویرایشگر یا آپلود باشد. برای استفاده از لینک، <a href="/fa/youtube-to-text/">راهنمای YouTube</a> را ببینید.</p>
+      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>دانلود برنامه رایگان</a>
       </div>
@@ -266,10 +270,10 @@
       <h2>1. ساخت فایل SRT</h2>
       <ol class="guide-steps">
         <li><b>تب رونویسی را باز کنید</b> و فایل ویدیویی یا صوتی خود را روی پنجره بکشید، یا روی <b>مرور فایل‌ها...</b> کلیک نمایید. می‌توانید چند فایل را به طور هم‌زمان انتخاب کنید.</li>
-        <li><b>زبان را تنظیم کنید</b>، یا برای تشخیص خودکار آن را روی <b>Auto</b> رها کنید. انتخاب دستی زبان سریع‌تر است و برای کلیپ‌های کوتاه یا نویزدار می‌تواند دقیق‌تر باشد.</li>
-        <li><b>اختیاری:</b> قسمت <b>بازه زمانی</b> (H:MM:SS) را برای رونویسی تنها بخشی از فایل پر کنید.</li>
+        <li><b>Set the Language</b>, or leave <b>Auto</b> to detect it. Picking it yourself is faster and can be more accurate for short or noisy clips. Next to it, <b>Accuracy</b> chooses the model: <b>Fast</b> for a quick draft, <b>Balanced</b>, or <b>Best</b> for the most careful result (slower). A model you picked in <b>Advanced settings</b> shows as <b>Custom</b> and is left alone.</li>
+        <li><b>Optional:</b> open <b>More options</b> and fill in <b>Time range</b> (H:MM:SS) to transcribe only part of the file.</li>
         <li><b>فرمت‌های زیرنویس را انتخاب کنید.</b> روی <b>تنظیمات پیشرفته…</b> کلیک کرده و بخش <b>فرمت‌های خروجی</b> را پیدا کنید. SRT به همراه JSON حالت پیش‌فرض است. گزینه <b>VTT</b> (فرمت زیرنویس وب) را برای ویدیوهای وب، یا <b>ASS (زیرنویس‌های استایل‌دار / کارائوکه)</b> را در صورتی که زیرنویس‌ها را در ویرایشگر استایل‌دهی می‌کنید، علامت بزنید. هر فرمت علامت‌خورده برای هر کار ایجاد می‌شود. گزینه JSON را در حالت تیک‌خورده نگه دارید: این فایل JSON فایلی است که برنامه برای باز کردن نمایشگر متن رونویسی از آن استفاده می‌کند.</li>
-        <li><b>اختیاری:</b> گزینه <b>برچسب زمانی برای هر کلمه</b> را تیک بزنید تا زمان شروع و پایان برای تک‌تک کلمات ذخیره شود؛ در این حالت حجم فایل‌ها بیشتر می‌شود. بخش‌های SRT شما همچنان از بخش‌های کامل پیروی می‌کنند، یعنی یک بخش برای هر بخش گفتار. زمان‌بندی کلمات در VTT و ASS برای برجسته‌سازی سبک کارائوکه استفاده می‌شود.</li>
+        <li><b>Optional:</b> under <b>More options</b>, tick <b>Per-word timestamps</b> to store a start and end time for every word; the files get larger. Your SRT cues still follow whole segments, one cue per segment of speech. Word timing is used by VTT and ASS for karaoke-style highlighting.</li>
         <li><b>روی رونویسی کلیک کنید.</b> کار را در تب <b>صف رونویسی</b> دنبال کنید. فایل زیرنویس با همان نام و پسوندی جدید در کنار فایل اصلی شما قرار می‌گیرد، برای مثال talk.mp4 به talk.srt تبدیل می‌شود، و کارت <b>آخرین نتیجه</b> یک دکمه <b>باز کردن</b> برای هر فایل دارد.</li>
       </ol>
       <figure class="guide-fig">
@@ -279,7 +283,7 @@
 
       <h2>زیرنویس به زبانی دیگر</h2>
       <div class="guide-body">
-        <p>برای تهیه زیرنویس انگلیسی از گفتار غیرانگلیسی، گزینه <b>خروجی: ترجمه انگلیسی</b> را علامت بزنید؛ فایل‌ها نامی با پسوند .en-translated دریافت می‌کنند. این گزینه به طور پیش‌فرض خاموش است و با همه موتورها یا مدل‌ها کار نمی‌کند. برای سایر زبان‌ها، پس از راه‌اندازی لایه هوش مصنوعی (مدلی محلی که نصب می‌کنید یا ارائه‌دهنده‌ای آنلاین که انتخاب می‌کنید)، تب اختیاری ابزارهای هوش مصنوعی در نمایشگر متن رونویسی می‌تواند یک SRT دوزبانه ایجاد کند؛ این قابلیت به طور پیش‌فرض خاموش است.</p>
+        <p>For English subtitles from non-English speech, open <b>More options</b> and tick <b>Output: English translation</b>; the files get an .en-translated name. It is off by default and does not work with every engine or model. For other languages, an optional AI Tools tab in the transcript viewer can write a bilingual SRT once you set up its AI layer (a local model you install, or an online provider you choose); it is off by default.</p>
       </div>
       <h2>2. ویرایش و اصلاح (اختیاری)</h2>
       <div class="guide-body">

@@ -75,7 +75,7 @@
 <link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
 
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 <style>
   .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
   .guide { padding: 108px 0 64px; }
@@ -86,6 +86,9 @@
   .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
   .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
   .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .try-box { margin-top: 22px; padding: 14px 18px; border-radius: var(--r); background: var(--teal-soft); border: 1px solid var(--line); color: var(--ink-2); }
+  .try-box p { margin: 0; }
+  .try-box a { color: var(--teal-ink); font-weight: 600; text-underline-offset: 3px; }
   .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
   .guide-body p { margin-top: 12px; color: var(--ink-2); }
   .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
@@ -256,6 +259,7 @@
       <h1>วิธีแปลงวิดีโอเป็นคำบรรยาย SRT ฟรี</h1>
       <p class="guide-sub">แอปเดสก์ท็อปฟรีที่ติดตั้งครั้งเดียว (Windows, macOS, Linux) Whisper โมเดลจดจำคำพูดที่อยู่ภายใน ทำงานบนคอมพิวเตอร์ของคุณ ดังนั้นด้วยเอนจินเริ่มต้น วิดีโอของคุณจะไม่ถูกอัปโหลด</p>
       <p class="guide-lede">ในการแปลงวิดีโอเป็นคำบรรยาย SRT ให้เปิดแท็บถอดเสียง ลากไฟล์วิดีโอหรือเสียงมาวาง ตรวจสอบว่าติ๊ก SRT ใต้การตั้งค่าขั้นสูงแล้วกดถอดเสียง Whisper จะเขียนไฟล์ SRT ซึ่งเป็นรูปแบบไฟล์คำบรรยายทั่วไป ไว้ข้างไฟล์ต้นฉบับ พร้อมใช้งานสำหรับเครื่องเล่น โปรแกรมตัดต่อ หรืออัปโหลด สำหรับลิงก์ ดู<a href="/th/youtube-to-text/">คู่มือ YouTube</a></p>
+      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>ดาวน์โหลดแอปฟรี</a>
       </div>
@@ -266,10 +270,10 @@
       <h2>1. สร้างไฟล์ SRT</h2>
       <ol class="guide-steps">
         <li><b>เปิดแท็บถอดเสียง</b>และลากไฟล์วิดีโอหรือเสียงของคุณไปยังหน้าต่าง หรือคลิก<b>เรียกดูไฟล์...</b> คุณสามารถเลือกไฟล์ได้หลายไฟล์พร้อมกัน</li>
-        <li><b>ตั้งค่าภาษา</b> หรือปล่อยเป็น<b>อัตโนมัติ</b>เพื่อตรวจจับ เลือกเองจะเร็วกว่าและอาจแม่นยำกว่าสำหรับคลิปสั้น ๆ หรือมีเสียงรบกวน</li>
-        <li><b>ไม่บังคับ:</b> กรอก<b>ช่วงเวลา</b> (H:MM:SS) เพื่อถอดเสียงเฉพาะบางส่วนของไฟล์</li>
+        <li><b>Set the Language</b>, or leave <b>Auto</b> to detect it. Picking it yourself is faster and can be more accurate for short or noisy clips. Next to it, <b>Accuracy</b> chooses the model: <b>Fast</b> for a quick draft, <b>Balanced</b>, or <b>Best</b> for the most careful result (slower). A model you picked in <b>Advanced settings</b> shows as <b>Custom</b> and is left alone.</li>
+        <li><b>Optional:</b> open <b>More options</b> and fill in <b>Time range</b> (H:MM:SS) to transcribe only part of the file.</li>
         <li><b>เลือกรูปแบบคำบรรยาย</b> คลิก<b>การตั้งค่าขั้นสูง…</b>และมองหา<b>รูปแบบผลลัพธ์</b> ค่าเริ่มต้นคือ SRT และ JSON ติ๊ก<b>VTT</b> (รูปแบบคำบรรยายสำหรับเว็บ) สำหรับวิดีโอเว็บ หรือ<b>ASS (คำบรรยายมีสไตล์ / คาราโอเกะ)</b>หากคุณตกแต่งคำบรรยายในโปรแกรมตัดต่อ ทุกรูปแบบที่ติ๊กจะถูกเขียนสำหรับทุกงาน ควรติ๊ก JSON ไว้: เป็นไฟล์ JSON ที่แอปใช้เปิดตัวดูข้อความถอดเสียง</li>
-        <li><b>ไม่บังคับ:</b> ติ๊ก<b>เวลาประทับระดับคำ</b>เพื่อเก็บเวลาเริ่มต้นและสิ้นสุดของทุกคำ ไฟล์จะมีขนาดใหญ่ขึ้น คิว SRT ของคุณยังคงตามส่วนทั้งส่วน คิวละส่วนของคำพูด การกำหนดเวลาระดับคำจะถูกใช้โดย VTT และ ASS สำหรับการไฮไลต์แบบคาราโอเกะ</li>
+        <li><b>Optional:</b> under <b>More options</b>, tick <b>Per-word timestamps</b> to store a start and end time for every word; the files get larger. Your SRT cues still follow whole segments, one cue per segment of speech. Word timing is used by VTT and ASS for karaoke-style highlighting.</li>
         <li><b>คลิกถอดเสียง</b> ติดตามงานในแท็บ<b>คิวการถอดเสียง</b> ไฟล์คำบรรยายจะอยู่ข้างไฟล์ต้นฉบับพร้อมชื่อเดียวกันและนามสกุลใหม่ ตัวอย่างเช่น talk.mp4 กลายเป็น talk.srt และการ์ด<b>ผลลัพธ์ล่าสุด</b>จะมีปุ่ม<b>เปิด</b>สำหรับแต่ละไฟล์</li>
       </ol>
       <figure class="guide-fig">
@@ -279,7 +283,7 @@
 
       <h2>คำบรรยายในภาษาอื่น</h2>
       <div class="guide-body">
-        <p>สำหรับคำบรรยายภาษาอังกฤษจากคำพูดที่ไม่ใช่ภาษาอังกฤษ ให้ติ๊ก<b>ผลลัพธ์: คำแปลภาษาอังกฤษ</b> ไฟล์จะมีชื่อต่อท้ายด้วย .en-translated ค่าเริ่มต้นจะปิดอยู่และใช้ไม่ได้กับทุกเอนจินหรือโมเดล สำหรับภาษาอื่น แท็บเครื่องมือ AI ในตัวดูข้อความถอดเสียงสามารถเขียน SRT สองภาษาได้เมื่อคุณตั้งค่าเลเยอร์ AI (โมเดลในเครื่องที่คุณติดตั้ง หรือผู้ให้บริการออนไลน์ที่คุณเลือก) ค่าเริ่มต้นจะปิดอยู่</p>
+        <p>For English subtitles from non-English speech, open <b>More options</b> and tick <b>Output: English translation</b>; the files get an .en-translated name. It is off by default and does not work with every engine or model. For other languages, an optional AI Tools tab in the transcript viewer can write a bilingual SRT once you set up its AI layer (a local model you install, or an online provider you choose); it is off by default.</p>
       </div>
       <h2>2. แก้ไข (ไม่บังคับ)</h2>
       <div class="guide-body">

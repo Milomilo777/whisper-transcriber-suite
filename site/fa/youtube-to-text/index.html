@@ -75,7 +75,7 @@
 <link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
 
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 <style>
   .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
   .guide { padding: 108px 0 64px; }
@@ -86,6 +86,9 @@
   .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
   .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
   .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .try-box { margin-top: 22px; padding: 14px 18px; border-radius: var(--r); background: var(--teal-soft); border: 1px solid var(--line); color: var(--ink-2); }
+  .try-box p { margin: 0; }
+  .try-box a { color: var(--teal-ink); font-weight: 600; text-underline-offset: 3px; }
   .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
   .guide-body p { margin-top: 12px; color: var(--ink-2); }
   .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
@@ -256,6 +259,7 @@
       <h1>رونویسی ویدیوی YouTube به متن، رایگان و آفلاین</h1>
       <p class="guide-sub">یک برنامه رایگان دسکتاپ که یک بار نصب می‌کنید (Windows، macOS، Linux). دانلود ویدیو به اینترنت نیاز دارد؛ خود فرآیند رونویسی روی کامپیوتر شما انجام می‌شود.</p>
       <p class="guide-lede">برای تبدیل ویدیوی YouTube به متن، لینک آن را در تب دانلود ویدیو بچسبانید، یک فرمت متنی را انتخاب کنید، گزینه رونویسی پس از دانلود را علامت بزنید و روی دانلود کلیک کنید. برنامه ویدیو را با دانلودکننده متن‌باز yt-dlp دریافت می‌کند، آن را با Whisper (مدل تشخیص گفتار) روی کامپیوتر خودتان رونویسی می‌کند و متن رونویسی را با فرمت TXT، DOCX، PDF یا SRT ذخیره می‌نماید.</p>
+      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>دانلود برنامه رایگان</a>
       </div>
@@ -266,10 +270,10 @@
       <h2>نحوه رونویسی ویدیوی YouTube</h2>
       <ol class="guide-steps">
         <li><b>تنها در اولین اجرا.</b> پنجره شروع سریع، زبان و گزینه <b>سریع</b> یا <b>بهترین کیفیت</b> را از شما می‌پرسد؛ مدل گفتار تنها یک بار در اولین استفاده دانلود می‌شود.</li>
-        <li><b>تب دانلود ویدیو را باز کنید</b> و لینک YouTube را در قسمت <b>URL</b> بچسبانید. برنامه به صورت خودکار فرمت‌ها و زیرنویس‌های موجود را بررسی می‌کند.</li>
+        <li><b>Open the Download Videos tab</b> and paste the YouTube link into <b>Video link</b>. The app looks up the formats and any subtitles by itself.</li>
         <li><b>یک حالت را انتخاب کنید.</b> گزینه <b>صدا</b> فقط صدا را ذخیره می‌کند که وقتی فقط متن رونویسی را می‌خواهید، حجم کمتری دارد و سریع‌تر است. گزینه <b>صدا و ویدیو</b> تصویر را نیز نگه می‌دارد.</li>
-        <li><b>اختیاری:</b> از <b>بازه زمانی (اختیاری)</b> برای دانلود و رونویسی تنها بخشی از فایل استفاده کنید. فرمت آن H:MM:SS است و 0:00:00 در هر دو کادر به معنای کل ویدیو است.</li>
-        <li><b>نوع فایل را پیش از دانلود انتخاب کنید.</b> به تب <b>رونویسی</b> بروید، روی <b>تنظیمات پیشرفته…</b> کلیک کنید و در بخش <b>فرمت‌های خروجی</b>، گزینه <b>TXT</b> (یا <b>DOCX</b> یا <b>PDF</b>) را تیک بزنید. حالت پیش‌فرض SRT به همراه JSON است که به شما فایل زیرنویس می‌دهد نه یک فایل متنی ساده. گزینه JSON را در حالت تیک‌خورده نگه دارید: این یک فایل JSON است که برنامه برای باز کردن نمایشگر متن رونویسی از آن استفاده می‌کند. گزینه <b>زبان</b> و مدلی که در آن تب انتخاب شده است، روی دانلودها نیز اعمال می‌شود.</li>
+        <li><b>Optional:</b> open <b>More options</b> under the form and use <b>Time range (optional)</b> to download and transcribe only a part. The format is H:MM:SS, and 0:00:00 in both boxes means the whole video. <b>More options</b> opens by itself when a range is set.</li>
+        <li><b>Choose the file type before you download.</b> Switch to the <b>Transcribe</b> tab, click <b>Advanced settings…</b> and, under <b>Output formats</b>, tick <b>TXT</b> (or <b>DOCX</b> or <b>PDF</b>). The default is SRT plus JSON, which gives you subtitles, not a plain text file. Keep JSON ticked: it is a JSON file the app uses to open the transcript viewer. The <b>Language</b> and <b>Accuracy</b> level chosen on that tab apply to downloads too.</li>
         <li><b>در تب دانلود ویدیو، گزینه رونویسی پس از دانلود را علامت بزنید</b>، سپس روی <b>دانلود</b> کلیک کنید.</li>
         <li><b>پیشرفت کار را دنبال کنید.</b> ردیف جدول پر می‌شود و تب <b>صف رونویسی</b> سرعت و زمان باقی‌مانده را نمایش می‌دهد. پس از پایان، متن رونویسی در کنار فایل مبدأ قرار می‌گیرد و کارت <b>آخرین نتیجه</b> در تب رونویسی گزینه‌های <b>باز کردن</b>، <b>مشاهده متن رونویسی</b> و <b>ذخیره صفحه قابل‌اشتراک</b> را ارائه می‌دهد.</li>
       </ol>
@@ -284,7 +288,7 @@
       </div>
       <h2>سایر سایت‌ها و ویدیوهایی که نیاز به ورود دارند</h2>
       <div class="guide-body">
-        <p>هر سایتی که توسط همین دانلودکننده پشتیبانی شود به همین روش کار می‌کند. برای ویدیوهایی که به حساب کاربری نیاز دارند، مانند Instagram، Facebook، استوری‌های TikTok و ویدیوهای دارای محدودیت سنی YouTube، مرورگر خود را در قسمت <b>کوکی‌های ورود</b> انتخاب کنید. برنامه اطلاعات ورود آن مرورگر را روی همین کامپیوتر می‌خواند و تنها هنگام دانلود از آن سایت از آن استفاده می‌کند؛ این اطلاعات به هیچ جای دیگری ارسال نمی‌شود. ممکن است این روش برای همه ویدیوهای دارای محدودیت کار نکند.</p>
+        <p>Any site the same downloader supports works the same way. For videos that need an account, such as Instagram, Facebook, TikTok stories and age-restricted YouTube videos, open <b>More options</b> under the form and choose your browser under <b>Log-in cookies</b>. The app reads that browser's log-in on this computer and uses it only when downloading from that site; it is not sent anywhere else. This may not work for every restricted video.</p>
       </div>
 
       <h2>نکات مفید</h2>
@@ -298,7 +302,7 @@
         <article class="qa"><h3>آیا واقعاً رایگان است؟</h3><div class="faq-a"><p>بله: رایگان و متن‌باز، بدون حساب کاربری، بدون اشتراک و بدون هزینه دقیقه‌ای.</p></div></article>
         <article class="qa"><h3>آیا ویدیو یا متن رونویسی من در جایی آپلود می‌شود؟</h3><div class="faq-a"><p>با موتورهای پیش‌فرض خیر: Whisper روی کامپیوتر خودتان اجرا می‌شود و تنها دانلود از سایت ویدیو از شبکه استفاده می‌کند. دو موتور ابری نیز وجود دارند اما تا زمانی که خودتان آن‌ها را روشن نکنید، خاموش می‌مانند.</p></div></article>
         <article class="qa"><h3>آیا می‌تواند ویدیویی را که هیچ زیرنویسی ندارد یا ویدیویی به زبان دیگر را رونویسی کند؟</h3><div class="faq-a"><p>بله. Whisper به صدا گوش می‌دهد، بنابراین نیازی به زیرنویس نیست. گزینه <b>زبان</b> گفتاری را انتخاب کنید یا آن را روی <b>Auto</b> بگذارید. گزینه <b>خروجی: ترجمه انگلیسی</b> گفتار غیرانگلیسی را به متن انگلیسی تبدیل می‌کند؛ این قابلیت به طور پیش‌فرض خاموش است و با همه موتورها یا مدل‌ها کار نمی‌کند.</p></div></article>
-        <article class="qa"><h3>آیا می‌توانم فقط بخشی از یک ویدیوی طولانی را رونویسی کنم؟</h3><div class="faq-a"><p>بله. گزینه <b>بازه زمانی (اختیاری)</b> را در تب دانلود ویدیو با زمان شروع و پایان در قالب H:MM:SS پر کنید. تنها همان بخش دانلود می‌شود و در صورت علامت زدن رونویسی پس از دانلود، رونویسی خواهد شد.</p></div></article>
+        <article class="qa"><h3>آیا می‌توانم فقط بخشی از یک ویدیوی طولانی را رونویسی کنم؟</h3><div class="faq-a"><p>Yes. Open <b>More options</b> on the Download Videos tab and fill in <b>Time range (optional)</b> with a start and end in H:MM:SS. Only that portion is downloaded, and transcribed if you ticked Transcribe after download.</p></div></article>
         <article class="qa"><h3>آیا می‌توانم یک پلی‌لیست کامل را بچسبانم؟</h3><div class="faq-a"><p>خیر. هر کار مربوط به یک ویدیو است. لینکی که از داخل یک پلی‌لیست کپی شده باشد، تنها همان ویدیو را دانلود می‌کند نه کل لیست را.</p></div></article>
       </div>
 

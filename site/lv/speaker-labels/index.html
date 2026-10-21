@@ -77,7 +77,7 @@
 
 <link rel="preload" href="/assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 <style>
   .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
   .guide { padding: 108px 0 64px; }
@@ -88,6 +88,9 @@
   .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
   .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
   .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .try-box { margin-top: 22px; padding: 14px 18px; border-radius: var(--r); background: var(--teal-soft); border: 1px solid var(--line); color: var(--ink-2); }
+  .try-box p { margin: 0; }
+  .try-box a { color: var(--teal-ink); font-weight: 600; text-underline-offset: 3px; }
   .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
   .guide-body p { margin-top: 12px; color: var(--ink-2); }
   .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
@@ -257,7 +260,8 @@
     <article>
       <h1>Transkribējiet interviju ar runātāju etiķetēm (kurš teica ko)</h1>
       <p class="guide-sub">Bezmaksas darbvirsmas lietotne, ko instalējat vienreiz (Windows, macOS, Linux). Jūsu ieraksts tiek apstrādāts jūsu datorā, un nav nepieciešams konts.</p>
-      <p class="guide-lede">Lietotne atšķir balsis un atzīmē tās kā Speaker 00, Speaker 01 un tā tālāk. Tā nezina, kas ir kurš, kamēr jūs tos nepārdēvējat. Līdzīgas balsis, īsas atbildes, pārklājošās runas un fona trokšņi var izraisīt nepareizas etiķetes. Lai sāktu, atzīmējiet Identificēt runātājus cilnē Transkribēt un nospiediet Transkribēt.</p>
+      <p class="guide-lede">The app tells voices apart and labels them Speaker 00, Speaker 01 and so on. It does not know who anyone is until you rename them. Similar voices, short replies, overlapping speech and background noise can cause wrong labels. To start, open More options on the Transcribe tab, tick Identify speakers and press Transcribe.</p>
+      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Lejupielādēt bezmaksas lietotni</a>
       </div>
@@ -269,15 +273,15 @@
       <ol class="guide-steps">
         <li><b>Pievienojiet ierakstu.</b> Cilnē <b>Transkribēt</b> ievelciet audio vai video failu vai noklikšķiniet uz <b>Pārlūkot failus...</b>. Saite no cilnes <b>Lejupielādēt video</b> arī darbosies, jo tā izmanto tos pašus Transkribēt iestatījumus.</li>
         <li><b>Izvēlieties valodu</b> vai atstājiet to uz <b>Auto</b>.</li>
-        <li><b>Atzīmējiet Identificēt runātājus.</b> Ja rūtiņā rakstīts <b>Identificēt runātājus (nav pieejams)</b>, novietojiet virs tās kursoru, lai redzētu iemeslu. Zem tās ieslēdzas <b>Runātāju</b> izvēlētājs: atstājiet to uz <b>Auto</b> vai izvēlieties skaitli no 2 līdz 10, lai uzspiestu tieši tik daudz cilvēku.</li>
-        <li><b>Neobligāti:</b> atzīmējiet <b>Laikspiedoli katram vārdam</b>, lai saglabātu sākuma un beigu laiku katram vārdam, nevis tikai katram teikumam. Izvade kļūst lielāka.</li>
+        <li><b>Open More options and tick Identify speakers.</b> If the box reads <b>Identify speakers (unavailable)</b>, hover over it to see why. The <b>Speakers</b> picker below it switches on: leave it on <b>Auto</b>, or choose a number from 2 to 10 to force exactly that many people.</li>
+        <li><b>Optional:</b> in <b>More options</b>, tick <b>Per-word timestamps</b> to store a start and end time for every word instead of only every sentence. The output gets larger.</li>
         <li><b>Izvēlieties eksporta formātus.</b> Noklikšķiniet uz <b>Papildu iestatījumi…</b> un atzīmējiet <b>DOCX</b> un <b>PDF</b> zem <b>Izvades formāti</b>. SRT, TXT, Markdown un JSON arī satur etiķetes. Atstājiet JSON atzīmētu: tas ir JSON fails, ko lietotne izmanto, lai atvērtu transkripta skatītāju, kas jums būs nepieciešams pēdējam solim.</li>
         <li><b>Noklikšķiniet uz Transkribēt.</b> Runātāju noteikšana darbojas pēc transkripcijas un paildzina apstrādes laiku. Pēc tam atveriet <b>Skatīt transkriptu</b> no kartītes <b>Pēdējais rezultāts</b>.</li>
         <li><b>Aizstājiet vispārīgās etiķetes ar vārdiem.</b> Skatītājā ar peles labo pogu noklikšķiniet uz šūnas kolonnā <b>Runātājs</b>, izvēlieties <b>Pārdēvēt 'Speaker 00' (visur)...</b>, ierakstiet vārdu un noklikšķiniet uz <b>Saglabāt izmaiņas (Ctrl+S)</b>. Word un teksta faili blakus tam tiek atjaunoti, ja tie joprojām atbilst oriģinālajam transkriptam; PDF netiek atjaunots, tāpēc pēc pārdēvēšanas eksportējiet to vēlreiz.</li>
       </ol>
       <figure class="guide-fig">
         <img src="/assets/shots/transcribe.webp" alt="Cilne Transkribēt ar izvēles rūtiņām Identificēt runātājus un Laikspiedoli katram vārdam valodas rindā, laika diapazona rinda zemāk un liela poga Transkribēt." width="1180" height="668" loading="lazy" decoding="async">
-        <figcaption>Identificēt runātājus un Laikspiedoli katram vārdam atrodas valodas rindā cilnē Transkribēt.</figcaption>
+        <figcaption>The Transcribe tab as it looked before version 2.2. Identify speakers and Per-word timestamps now sit under <b>More options</b>.</figcaption>
       </figure>
 
       <h2>Kā izskatās etiķetes</h2>

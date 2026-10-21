@@ -82,7 +82,7 @@
 
 <link rel="preload" href="/assets/shots/transcribe.webp" as="image" type="image/webp" imagesrcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" imagesizes="(max-width: 1080px) 72vw, 480px">
 <script src="/js/motion-init.js?v=20260927b"></script>
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 
 <script type="application/ld+json">
 {
@@ -131,7 +131,7 @@
       "description": "faster-whisper、whisper.cpp、または NVIDIA Parakeet を介して、OpenAI の Whisper モデルをローカルで実行するデスクトップアプリ。音声や動画を SRT、VTT、ASS、TSV、TXT、JSON、LRC、Markdown、DOCX、PDF に文字起こしします。音声データはお使いのコンピューター内にとどまり、アカウントも不要です。",
       "softwareVersion": "2.2.0",
       "datePublished": "2026-05-11",
-      "dateModified": "2026-10-21",
+      "dateModified": "2026-10-22",
       "operatingSystem": "Windows, macOS, Linux",
       "applicationCategory": "MultimediaApplication",
       "applicationSubCategory": "Speech-to-text transcription",
@@ -150,7 +150,14 @@
         "字幕付き動画を作成：ダウンロードから文字起こし、MP4 への字幕焼き込みまで実行",
         "文字起こし結果を1つのオフライン Web ページとして保存",
         "ネットワーク状態がひと目でわかる「オフラインで作業」スイッチ",
-        "音声を直接英語に翻訳"
+        "音声を直接英語に翻訳",
+        "Accuracy levels (Fast, Balanced, Best) that pick a model for the language and the computer",
+        "Models trained for one language: Persian, Chinese, Japanese, German, Thai, Swedish, Hebrew",
+        "Two-language audio (experimental)",
+        "Phone upload by QR code on the same Wi-Fi",
+        "Right-to-left window on Windows for Persian, Arabic and Hebrew",
+        "Interface in 42 languages",
+        "Free in-browser transcription page: no install, no upload"
       ],
       "offers": {
         "@type": "Offer",
@@ -318,10 +325,10 @@
     },
     {
       "@type": "Question",
-      "name": "バージョン 2.1 の新機能は何ですか？",
+      "name": "What is new in version 2.2?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "メニュー、ボタン、メッセージが 42 言語に対応しました（機械翻訳であり、その旨が表示されます）。長時間の録音でも話者ラベルが最後まで付与されるようになり、話者人数の指定も可能になりました。文字起こし、エクスポート、字幕は古いファイルを置き換える前にディスクへ完全に書き込まれます。オンライン機能がすべての Mac で動作するようになりました。バージョン 2.0 では、キューの処理速度と残り時間表示、リンクからの字幕付き動画作成、1つのオフライン Web ページとしての文字起こし保存、確認可能な「オフラインで作業」モード、英語への翻訳が追加されました。"
+        "text": "Accuracy levels replace the engine and model pickers on the Transcribe tab: choose Fast, Balanced or Best and the app picks a model that fits your language and computer, and new installs start on Large v3 Turbo. The rarer options sit under More options. Persian, Chinese, Japanese, German, Thai, Swedish and Hebrew get models trained for that language; the Web / LAN access tab shows a QR code so you can send a recording from a phone on the same Wi-Fi; Windows mirrors the window for Persian, Arabic and Hebrew; two-language audio is available as an experimental option; and the Download form is more compact. All 42 interface languages are complete and 35 bugs were fixed. The site also has a page that transcribes a short file in your browser. Version 2.1 added the interface in 42 languages, reliable speaker labels and safer saving; version 2.0 added the queue's speed and time left, subtitled video from a link, transcripts as one offline web page, a checkable Work offline mode and translation to English."
       }
     },
     {
@@ -382,7 +389,14 @@
       <img class="brand-logo" src="/assets/logo.svg" alt="" width="32" height="32"> <span class="brand-name">Whisper Transcriber Suite</span>
     </a>
     <nav class="site-nav" aria-label="メイン">
-      <a href="#showreel">ツアー</a> <a href="#features">機能</a> <a href="#how-it-works">仕組み</a> <a href="#download">ダウンロード</a> <a href="#compare">比較</a> <a href="#faq">FAQ</a> <a href="#contact">お問い合わせ</a>
+      <a href="#showreel">Tour</a>
+      <a href="#features">Features</a>
+      <a href="#how-it-works">How it works</a>
+      <a href="/try/">Try</a>
+      <a href="#download">Download</a>
+      <a href="#compare">Compare</a>
+      <a href="#faq">FAQ</a>
+      <a href="#contact">Contact</a>
     </nav>
     <div class="header-cta">
       <!-- i18n:english:start --><a class="btn btn-ghost btn-sm lang-en" href="/?lang=en" hreflang="en" lang="en" dir="ltr" data-lang-pick="en" translate="no">English</a><!-- i18n:english:end -->
@@ -468,7 +482,6 @@
         <div class="hero-actions reveal" style="--d:5">
           <a class="btn btn-primary btn-lg" data-os-cta data-auto-href="installer" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.2.0/WhisperTranscriberSuite-Installer-Windows-v2.2.0.exe" rel="noopener"> <svg class="i" aria-hidden="true"><use href="#i-download"/></svg><span data-os-label>Windows版をダウンロード</span> </a> <a class="btn btn-ghost btn-lg" href="#showreel">ツアーを見る<svg class="i i-trail" aria-hidden="true"><use href="#i-arrow"/></svg></a>
         </div>
-        <p class="hero-try reveal" style="--d:5"><a href="/try/">No install? Try a short file right in your browser</a></p>
         <ul class="proof reveal" style="--d:6" aria-label="主な特長">
           <li><strong data-count="14">14</strong><span>種類の文字起こし形式</span></li>
           <li><strong data-auto="downloads">3,200+</strong><span>件の累計ダウンロード</span></li>
@@ -504,6 +517,20 @@
             <div class="chip-card off-card"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>オフライン文字起こし</div>
           </div>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TRY IN THE BROWSER ============ -->
+  <section class="try-strip" aria-labelledby="try-strip-title">
+    <div class="wrap">
+      <div class="try-strip-card">
+        <div class="try-strip-copy">
+          <p class="eyebrow">No install</p>
+          <h2 id="try-strip-title">Try it in your browser</h2>
+          <p>Drop in an audio or video file of up to 10 minutes and get a transcript. Free, no upload, no sign-up: Whisper runs inside your browser tab. For longer files, use the <a href="#download">desktop app</a>.</p>
+        </div>
+        <a class="btn btn-primary btn-lg" href="/try/">Try it now<svg class="i i-trail" aria-hidden="true"><use href="#i-arrow"/></svg></a>
       </div>
     </div>
   </section>
@@ -551,20 +578,60 @@
     </div>
   </section>
 
-  <!-- ============ WHAT'S NEW IN 2.1 (AND 2.0) ============ -->
+  <!-- ============ WHAT'S NEW IN 2.2 (AND 2.1, 2.0) ============ -->
   <section class="section whatsnew" id="whats-new" aria-labelledby="new-title">
     <div class="wrap">
       <header class="section-head sr">
-        <p class="eyebrow">2.1の新機能</p>
-        <h2 id="new-title">2.1の新機能。<span class="h2-soft">お使いの言語に対応しました。</span></h2>
-        <p class="section-lede">42言語に対応したアプリ、長時間の録音でも最後まで途切れない話者ラベル、停電時でも失われないファイル保存、すべてのMacで動作するオンライン機能。その下には、2.0で追加された機能も掲載しています。</p>
+        <p class="eyebrow">New in 2.2</p>
+        <h2 id="new-title">What's new in 2.2. <span class="h2-soft">Simpler, and in your pocket.</span></h2>
+        <p class="section-lede">One Accuracy choice instead of engine and model pickers, models trained for one language, your phone as a way in, a mirrored window for Persian, Arabic and Hebrew, and a try-it page in the browser. Below them, what 2.1 and 2.0 added.</p>
       </header>
 
       <div class="new-grid">
         <article class="new-card sr">
+          <p class="new-tag">2.2 · All platforms</p>
+          <h3>A simpler Transcribe tab</h3>
+          <p>Pick <em>Accuracy</em> (Fast, Balanced or Best) and the app chooses a model that fits your language and your computer, with its download size shown. Speakers, per-word timestamps, English translation, a time range and mixed languages wait under <em>More options</em>. New installs start on Large v3 Turbo: several times faster than Large v3 with nearly the same accuracy.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.2 · All platforms</p>
+          <h3>Models trained for one language</h3>
+          <p>Pick Persian, Chinese, Japanese, German, Thai, Swedish or Hebrew and the app suggests a model built for that language, with its publisher's own accuracy figures, size and licence, and a <em>Use it</em> button.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.2 · All platforms</p>
+          <h3>Use it from your phone</h3>
+          <p>Turn on <em>Share on local network</em> on the Web / LAN access tab, scan the QR code and send a recording from a phone on the same Wi-Fi. The page has thumb-sized buttons, and the PC does the transcribing.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.2 · Windows</p>
+          <h3>Right-to-left window</h3>
+          <p>With a Persian, Arabic or Hebrew interface the tabs, lists, dialogs and tick boxes are mirrored so the window reads from the right. Paths, links and numbers keep reading left to right.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.2 · All platforms</p>
+          <h3>Two languages in one recording</h3>
+          <p>Experimental: a tick box under <em>More options</em> with a second language picker, for audio that switches between two languages. Each stretch is written in the language it sounds like instead of being translated into one of them.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.2 · All platforms</p>
+          <h3>A compact Download form</h3>
+          <p>The link, folder, quality choices and after-download ticks fit on a few lines. Log-in cookies and the time range moved under <em>More options</em>, which opens by itself when a time range is set.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.2 · Website</p>
+          <h3>Try it in your browser</h3>
+          <p>No install: a short file (up to 10 minutes, 5 on a phone) is transcribed by a small Whisper model inside your browser tab, and you save TXT, SRT or VTT. Your audio never leaves your device. <a href="/try/">Try it now</a>.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.2 · All platforms</p>
+          <h3>All 42 languages complete, 35 bugs fixed</h3>
+          <p>Every message of the app is translated in all 42 interface languages, and 35 bugs were fixed, many of them to keep your settings, history and finished work safe.</p>
+        </article>
+        <article class="new-card sr">
           <p class="new-tag">2.1 · 全プラットフォーム</p>
           <h3>お使いの言語に対応</h3>
-          <p>メニュー、ボタン、メッセージが42言語に対応しています（macOSおよびLinuxでは39言語）。アプリはシステム言語に自動で従いますが、<em>詳細設定</em>で手動で選択することも可能です。英語以外の言語はすべて機械翻訳であり、その旨が明記されています。ペルシャ語、アラビア語、ヘブライ語は現在Windowsでのみ提供されています。</p>
+          <p>Menus, buttons and messages come in 42 languages (39 on macOS and Linux). The app follows your system language, or you pick one in <em>Advanced settings</em>. Every language except English is a machine translation and is marked as one.</p>
         </article>
         <article class="new-card sr">
           <p class="new-tag">2.1 · 全プラットフォーム</p>
@@ -643,7 +710,7 @@
           <div class="cell-copy">
             <p class="chip-label">faster-whisper · whisper.cpp · Parakeet</p>
             <h3>ローカルでプライベートな文字起こし</h3>
-            <p>デフォルトのWhisper <code>large-v3</code>に加え、<code>large-v3-turbo</code>および<code>distil-large-v3.5</code>にも対応。お使いのハードウェアに最適なバックエンドを選択できます。</p>
+            <p>Whisper <code>large-v3-turbo</code> on new installs, plus <code>large-v3</code> and <code>distil-large-v3.5</code>. Choose Fast, Balanced or Best accuracy and the app picks a model for your language and computer, or pick the backend yourself in Advanced settings.</p>
           </div>
           <figure class="cell-shot" aria-hidden="true"><img src="/assets/shots/transcribe-640.webp" alt="" width="640" height="362" loading="lazy" decoding="async"></figure>
           <div class="viz viz-engines" aria-hidden="true">
@@ -824,7 +891,7 @@ python gui.py</code></pre>
         </div>
         <p class="mac-note">従来の方法をご希望ですか？<code>.dmg</code> を開いてアプリを「アプリケーション」にドラッグしてください。初回起動時のみ、右クリック → <b>開く</b>（macOS 14 以前）、または「システム設定」→「プライバシーとセキュリティ」→ <b>このまま開く</b>（macOS 15+）の操作が必要です。</p>
       </div>
-      <p class="dl-note sr">すべてのリリースとリリースノートは <a href="https://github.com/Milomilo777/whisper-transcriber-suite/releases" rel="noopener">GitHub Releases</a> でご覧いただけます。<a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md" rel="noopener">インストールガイド</a>。</p>
+      <p class="dl-note sr">Not ready to install? <a href="/try/">Try a short file in your browser</a> first. Every release, with notes, lives on <a href="https://github.com/Milomilo777/whisper-transcriber-suite/releases" rel="noopener">GitHub Releases</a>. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md" rel="noopener">Install guide</a>.</p>
     </div>
   </section>
 
@@ -875,7 +942,7 @@ python gui.py</code></pre>
         <article class="qa"><h3>声をクローンして新しいテキストを話させることはできますか？</h3><div class="faq-a"><p>はい、オプションの「声のクローン」タブから利用でき、完全にお使いのコンピューター上で動作する OmniVoice (Apache-2.0) を使用します。デフォルトではオフになっており、インストール時にオプトインできます。なお、参照音声をクローンする権限があることを確認する必要があります。</p></div></article>
         <article class="qa"><h3>Whisper API を直接呼び出すのとどう違いますか？</h3><div class="faq-a"><p>デフォルトでは faster-whisper を使ってモデルをローカルで実行するため、分単位の API 費用は発生せず、音声が端末の外に出ることもありません — 2つのクラウドバックエンドのいずれかを明示的に有効にした場合を除きます。</p></div></article>
         <article class="qa"><h3>すべてのコンピューターにインストールすることなく、同一ネットワーク上の複数人で利用できますか？</h3><div class="faq-a"><p>はい — Web/LAN アクセスモードにより、このコンピューターをネットワーク上の他のデバイスから利用できる文字起こしページにすることができます。</p></div></article>
-        <article class="qa"><h3>バージョン 2.1 の新機能は何ですか？</h3><div class="faq-a"><p>メニュー、ボタン、メッセージは42言語に対応しています（機械翻訳であり、その旨が明記されています）。長時間の録音でも話者ラベルが最後まで正しく反映され、話者の人数を設定することもできます。文字起こし、エクスポートデータ、字幕は古いファイルを上書きする前にディスクへ完全に書き込まれます。オンライン機能はすべての Mac で動作します。バージョン 2.0 では、キューの処理速度と残り時間表示、リンクからの字幕付き動画作成、単一のオフライン Web ページとしての文字起こし出力、切り替え可能な「オフラインで作業」モード、英語への翻訳が追加されました。<a href="#whats-new">2.1 の新機能</a> と <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">変更履歴</a> をご覧ください。</p></div></article>
+        <article class="qa"><h3>What is new in version 2.2?</h3><div class="faq-a"><p>Accuracy levels replace the engine and model pickers on the Transcribe tab: choose Fast, Balanced or Best and the app picks a model that fits your language and computer, and new installs start on Large v3 Turbo. The rarer options sit under <em>More options</em>. Persian, Chinese, Japanese, German, Thai, Swedish and Hebrew get models trained for that language; the Web / LAN access tab shows a QR code so you can send a recording from a phone on the same Wi-Fi; Windows mirrors the window for Persian, Arabic and Hebrew; two-language audio is available as an experimental option; and the Download form is more compact. All 42 interface languages are complete and 35 bugs were fixed. The site also has a <a href="/try/">page that transcribes a short file in your browser</a>. Version 2.1 added the interface in 42 languages, reliable speaker labels and safer saving; version 2.0 added the queue's speed and time left, subtitled video from a link, transcripts as one offline web page, a checkable Work offline mode and translation to English. See <a href="#whats-new">What's new in 2.2</a> and the <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">changelog</a>.</p></div></article>
         <article class="qa"><h3>動画リンクから字幕付き動画を作成できますか？</h3><div class="faq-a"><p>はい。「動画のダウンロード」タブで <b>字幕付き動画を作成</b> にチェックを入れると、アプリが動画をダウンロードし、Whisper で文字起こしを行い、ffmpeg で字幕を焼き付けて、動画名に <code>-subbed.mp4</code> を付けたファイルを生成します。ダウンロードした動画と文字起こしデータは保持され、既存の <code>-subbed.mp4</code> が上書きされることはありません。</p></div></article>
         <article class="qa"><h3>アプリをネットワークから完全に切り離した状態に保つことはできますか？</h3><div class="faq-a"><p>はい。<b>ファイル → オフラインで作業</b> を選択すると、アップデート確認、使用統計、モデルのダウンロード、リモート AI プロバイダーへの通信が停止します。このモードがオンの間は、ウィンドウ下部のステータス行で接続が開かれているかどうかが表示され、<em>今すぐオフラインを確認</em> でテスト接続が拒否される様子を確認できます。オフの場合でも、アプリがネットワークに接続するのは、起動時のオンライン設定、毎日のアップデート確認、使用統計（ヘルプ → 使用統計 でオフに設定可能）、およびユーザーが開始したダウンロード時のみです。</p></div></article>
         <article class="qa"><h3>プロジェクトへはどのように問い合わせればよいですか？</h3><div class="faq-a"><p>バグ報告や機能リクエストは <a href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener">GitHub Issues</a> へ、質問は <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">Discussions</a> へ、その他の要件はメールでお送りください（アドレスは <a href="#contact">お問い合わせセクション</a> でリクエストに応じて表示されます）。セキュリティに関する報告は、GitHub の非公開の脆弱性報告機能をご利用ください。</p></div></article>

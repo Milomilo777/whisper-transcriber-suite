@@ -77,7 +77,7 @@
 
 <link rel="preload" href="/assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 <style>
   .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
   .guide { padding: 108px 0 64px; }
@@ -88,6 +88,9 @@
   .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
   .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
   .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .try-box { margin-top: 22px; padding: 14px 18px; border-radius: var(--r); background: var(--teal-soft); border: 1px solid var(--line); color: var(--ink-2); }
+  .try-box p { margin: 0; }
+  .try-box a { color: var(--teal-ink); font-weight: 600; text-underline-offset: 3px; }
   .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
   .guide-body p { margin-top: 12px; color: var(--ink-2); }
   .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
@@ -258,6 +261,7 @@
       <h1>Transkribiraj YouTube videozapis u tekst, besplatno i izvan mreže</h1>
       <p class="guide-sub">Besplatna aplikacija za radnu površinu koju instalirate jednom (Windows, macOS, Linux). Preuzmi i preuzimanje videozapisa zahtijeva internet; sama transkripcija radi na vašem računalu.</p>
       <p class="guide-lede">Da biste YouTube videozapis pretvorili u tekst, zalijepite njegovu poveznicu u karticu Preuzimanje videozapisa, odaberite tekstualni format, označite Transkribiraj nakon preuzimanja i pritisnite Preuzmi. Aplikacija dohvaća videozapis pomoću preuzimača otvorenog koda yt-dlp, transkribira ga pomoću Whispera (modela za prepoznavanje govora) na vašem računalu i sprema transkripciju u TXT, DOCX, PDF ili SRT formatu.</p>
+      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Preuzmi besplatnu aplikaciju</a>
       </div>
@@ -268,10 +272,10 @@
       <h2>Kako transkribirati YouTube videozapis</h2>
       <ol class="guide-steps">
         <li><b>Samo pri prvom pokretanju.</b> Prozor Brzi početak pita za vaš jezik i <b>Brzo</b> ili <b>Najbolja kvaliteta</b>; model govora preuzima se jednom, pri prvoj uporabi.</li>
-        <li><b>Otvorite karticu Preuzimanje videozapisa</b> i zalijepite YouTube poveznicu u <b>URL</b>. Aplikacija sama dohvaća formate i eventualne titlove. Preuzmi.</li>
+        <li><b>Open the Download Videos tab</b> and paste the YouTube link into <b>Video link</b>. The app looks up the formats and any subtitles by itself.</li>
         <li><b>Odaberite način.</b> <b>Zvuk</b> sprema samo zvuk, što je manje i brže kada vam treba samo transkripcija. <b>Zvuk i video</b> zadržava i sliku.</li>
-        <li><b>Neobavezno:</b> koristite <b>Vremenski raspon (neobavezno)</b> za preuzimanje i transkripciju samo jednog dijela. Format je H:MM:SS, a 0:00:00 u oba polja znači cijeli videozapis.</li>
-        <li><b>Odaberite vrstu datoteke prije preuzimanja.</b> Prebacite se na karticu <b>Transkribiraj</b>, kliknite <b>Napredne postavke…</b> i pod <b>Izlazni formati</b> označite <b>TXT</b> (ili <b>DOCX</b> ili <b>PDF</b>). Zadano je SRT plus JSON, što vam daje titlove, a ne običnu tekstualnu datoteku. Ostavite JSON označen: to je JSON datoteka koju aplikacija koristi za otvaranje preglednika transkripcije. <b>Jezik</b> i model odabrani na toj kartici primjenjuju se i na preuzimanja.</li>
+        <li><b>Optional:</b> open <b>More options</b> under the form and use <b>Time range (optional)</b> to download and transcribe only a part. The format is H:MM:SS, and 0:00:00 in both boxes means the whole video. <b>More options</b> opens by itself when a range is set.</li>
+        <li><b>Choose the file type before you download.</b> Switch to the <b>Transcribe</b> tab, click <b>Advanced settings…</b> and, under <b>Output formats</b>, tick <b>TXT</b> (or <b>DOCX</b> or <b>PDF</b>). The default is SRT plus JSON, which gives you subtitles, not a plain text file. Keep JSON ticked: it is a JSON file the app uses to open the transcript viewer. The <b>Language</b> and <b>Accuracy</b> level chosen on that tab apply to downloads too.</li>
         <li><b>Natrag na Preuzimanje videozapisa, označite Transkribiraj nakon preuzimanja</b>, a zatim kliknite <b>Preuzmi</b>.</li>
         <li><b>Pratite napredak.</b> Redak u tablici se popunjava, a kartica <b>Red čekanja transkripcije</b> prikazuje brzinu i preostalo vrijeme. Kada završi, transkripcija se nalazi pored datoteke iz koje je nastala, a pločica <b>Posljednji rezultat</b> na kartici Transkribiraj nudi <b>Otvori</b>, <b>Prikaži transkripciju</b> i <b>Spremi stranicu za dijeljenje</b>.</li>
       </ol>
@@ -286,7 +290,7 @@
       </div>
       <h2>Ostale stranice i videozapisi koji zahtijevaju prijavu</h2>
       <div class="guide-body">
-        <p>Svaka stranica koju isti preuzimač podržava radi na isti način. Za videozapise koji zahtijevaju račun, poput Instagrama, Facebooka, TikTok priča i YouTube videozapisa s dobne granice, odaberite svoj preglednik pod <b>Kolačići za prijavu</b>. Aplikacija čita prijavu tog preglednika na ovom računalu i koristi je samo prilikom preuzimanja s te stranice; nigdje se drugdje ne šalje. To možda neće raditi za svaki ograničeni videozapis.</p>
+        <p>Any site the same downloader supports works the same way. For videos that need an account, such as Instagram, Facebook, TikTok stories and age-restricted YouTube videos, open <b>More options</b> under the form and choose your browser under <b>Log-in cookies</b>. The app reads that browser's log-in on this computer and uses it only when downloading from that site; it is not sent anywhere else. This may not work for every restricted video.</p>
       </div>
 
       <h2>Dobro je znati</h2>
@@ -300,7 +304,7 @@
         <article class="qa"><h3>Je li doista besplatno?</h3><div class="faq-a"><p>Da: besplatan je i otvorenog koda, bez računa, bez pretplate, bez plaćanja po minuti.</p></div></article>
         <article class="qa"><h3>Prenosi li se moj videozapis ili transkripcija negdje?</h3><div class="faq-a"><p>Ne sa zadanim pogonima: Whisper radi na vašem vlastitom računalu, a mrežu koristi samo preuzimanje s video stranice. Postoje dva pogona u oblaku, ali oni ostaju isključeni dok ih sami ne uključite.</p></div></article>
         <article class="qa"><h3>Može li transkribirati videozapis koji nema podnaslove ili je na drugom jeziku?</h3><div class="faq-a"><p>Da. Whisper sluša zvuk, pa podnaslovi nisu potrebni. Odaberite govorni <b>Jezik</b> ili ostavite na <b>Auto</b>. <b>Izlaz: prijevod na engleski (Engleski)</b> pretvara govor koji nije na Engleski u Engleski tekst; prema zadanim je postavkama isključeno i ne radi sa svakim pogonom ili modelom.</p></div></article>
-        <article class="qa"><h3>Mogu li transkribirati samo dio dugog videozapisa?</h3><div class="faq-a"><p>Da. Ispunite <b>Vremenski raspon (neobavezno)</b> na kartici Preuzimanje videozapisa (Preuzmi) s početkom i završetkom u formatu H:MM:SS. Preuzima se samo taj dio, a transkribira se ako ste označili Transkribiraj nakon preuzimanja.</p></div></article>
+        <article class="qa"><h3>Mogu li transkribirati samo dio dugog videozapisa?</h3><div class="faq-a"><p>Yes. Open <b>More options</b> on the Download Videos tab and fill in <b>Time range (optional)</b> with a start and end in H:MM:SS. Only that portion is downloaded, and transcribed if you ticked Transcribe after download.</p></div></article>
         <article class="qa"><h3>Mogu li zalijepiti cijeli popis za reprodukciju?</h3><div class="faq-a"><p>Ne. Svaki zadatak je jedan videozapis. Poveznica kopirana iz popisa za reprodukciju preuzima samo taj videozapis, a ne cijeli popis.</p></div></article>
       </div>
 

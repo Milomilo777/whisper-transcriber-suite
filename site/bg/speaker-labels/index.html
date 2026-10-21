@@ -75,7 +75,7 @@
 <link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
 
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 <style>
   .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
   .guide { padding: 108px 0 64px; }
@@ -86,6 +86,9 @@
   .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
   .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
   .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .try-box { margin-top: 22px; padding: 14px 18px; border-radius: var(--r); background: var(--teal-soft); border: 1px solid var(--line); color: var(--ink-2); }
+  .try-box p { margin: 0; }
+  .try-box a { color: var(--teal-ink); font-weight: 600; text-underline-offset: 3px; }
   .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
   .guide-body p { margin-top: 12px; color: var(--ink-2); }
   .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
@@ -255,7 +258,8 @@
     <article>
       <h1>Транскрибиране на интервю с етикети за говорителите (кой какво е казал)</h1>
       <p class="guide-sub">Безплатно десктоп приложение, което инсталирате веднъж (Windows, macOS, Linux). Вашият запис се обработва на компютъра ви и не е необходим акаунт.</p>
-      <p class="guide-lede">Приложението разграничава гласовете и ги обозначава като Speaker 00, Speaker 01 и т.н. То не знае кой кой е, докато не ги преименувате. Сходни гласове, кратки реплики, застъпваща се реч и фонов шум могат да доведат до грешни етикети. За да започнете, отметнете „Разпознаване на говорителите“ в раздела „Транскрибирай“ и натиснете „Транскрибирай“.</p>
+      <p class="guide-lede">The app tells voices apart and labels them Speaker 00, Speaker 01 and so on. It does not know who anyone is until you rename them. Similar voices, short replies, overlapping speech and background noise can cause wrong labels. To start, open More options on the Transcribe tab, tick Identify speakers and press Transcribe.</p>
+      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Изтегли безплатното приложение</a>
       </div>
@@ -267,15 +271,15 @@
       <ol class="guide-steps">
         <li><b>Добавете записа.</b> В раздела <b>Транскрибирай</b> плъзнете аудио или видео файл или щракнете върху <b>Преглед на файлове...</b>. Връзка от раздела <b>Изтегляне на видео</b> също върши работа, тъй като използва същите настройки от „Транскрибирай“.</li>
         <li><b>Изберете езика</b> или го оставете на <b>Автоматично</b>.</li>
-        <li><b>Отметнете „Разпознаване на говорителите“.</b> Ако в полето пише <b>Разпознаване на говорителите (недостъпно)</b>, задръжте курсора над него, за да видите защо. Селекторът <b>Говорители</b> под него се активира: оставете го на <b>Автоматично</b> или изберете число от 2 до 10, за да зададете точно определен брой хора.</li>
-        <li><b>По избор:</b> отметнете <b>Времеви маркери за всяка дума</b>, за да запишете начално и крайно време за всяка дума вместо само за всяко изречение. Изходните файлове стават по-големи.</li>
+        <li><b>Open More options and tick Identify speakers.</b> If the box reads <b>Identify speakers (unavailable)</b>, hover over it to see why. The <b>Speakers</b> picker below it switches on: leave it on <b>Auto</b>, or choose a number from 2 to 10 to force exactly that many people.</li>
+        <li><b>Optional:</b> in <b>More options</b>, tick <b>Per-word timestamps</b> to store a start and end time for every word instead of only every sentence. The output gets larger.</li>
         <li><b>Изберете форматите за експортиране.</b> Щракнете върху <b>Разширени настройки…</b> и отметнете <b>DOCX</b> и <b>PDF</b> в <b>Изходни формати</b>. SRT, TXT, Markdown и JSON също съдържат етикетите. Оставете JSON отметнат: това е JSON файл, който приложението използва за отваряне на инструмента за преглед на транскрипцията, необходим за последната стъпка.</li>
         <li><b>Щракнете върху „Транскрибирай“.</b> Разпознаването на говорителите се изпълнява след транскрипцията и добавя време за обработка. След това отворете <b>Покажи транскрипцията</b> от картата <b>Последен резултат</b>.</li>
         <li><b>Заменете общите етикети с имена.</b> В инструмента за преглед щракнете с десния бутон върху клетка в колоната <b>Говорител</b>, изберете <b>Преименуване на „Speaker 00“ (навсякъде)...</b>, въведете името и щракнете върху <b>Запази промените (Ctrl+S)</b>. Файловете на Word и текстовите файлове до него се пресъздават, ако все още съответстват на оригиналната транскрипция; PDF файлът не се пресъздава, затова го експортирайте отново след преименуването.</li>
       </ol>
       <figure class="guide-fig">
         <img src="/assets/shots/transcribe.webp" alt="Разделът „Транскрибирай“ с полетата за отметка „Разпознаване на говорителите“ и „Времеви маркери за всяка дума“ на реда „Език“, реда „Времеви интервал“ отдолу и големия бутон „Транскрибирай“." width="1180" height="668" loading="lazy" decoding="async">
-        <figcaption>„Разпознаване на говорителите“ и „Времеви маркери за всяка дума“ се намират на реда „Език“ в раздела „Транскрибирай“.</figcaption>
+        <figcaption>The Transcribe tab as it looked before version 2.2. Identify speakers and Per-word timestamps now sit under <b>More options</b>.</figcaption>
       </figure>
 
       <h2>Как изглеждат етикетите</h2>

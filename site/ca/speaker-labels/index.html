@@ -77,7 +77,7 @@
 
 <link rel="preload" href="/assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 <style>
   .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
   .guide { padding: 108px 0 64px; }
@@ -88,6 +88,9 @@
   .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
   .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
   .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .try-box { margin-top: 22px; padding: 14px 18px; border-radius: var(--r); background: var(--teal-soft); border: 1px solid var(--line); color: var(--ink-2); }
+  .try-box p { margin: 0; }
+  .try-box a { color: var(--teal-ink); font-weight: 600; text-underline-offset: 3px; }
   .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
   .guide-body p { margin-top: 12px; color: var(--ink-2); }
   .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
@@ -257,7 +260,8 @@
     <article>
       <h1>Transcriu una entrevista amb etiquetes de parlant (qui va dir què)</h1>
       <p class="guide-sub">Una aplicació d'escriptori gratuïta que instal·les una vegada (Windows, macOS, Linux). La teva gravació es processa al teu ordinador, i no cal cap compte.</p>
-      <p class="guide-lede">L'aplicació diferencia les veus i les etiqueta com a Parlant 00, Parlant 01 i així successivament. No sap qui és ningú fins que tu no els canviïs el nom. Veus semblants, respostes curtes, parla superposada i el soroll de fons poden causar etiquetes errònies. Per començar, marca Identifica els parlants a la pestanya Transcriu i prem Transcriu.</p>
+      <p class="guide-lede">The app tells voices apart and labels them Speaker 00, Speaker 01 and so on. It does not know who anyone is until you rename them. Similar voices, short replies, overlapping speech and background noise can cause wrong labels. To start, open More options on the Transcribe tab, tick Identify speakers and press Transcribe.</p>
+      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Baixa l'aplicació gratuïta</a>
       </div>
@@ -269,15 +273,15 @@
       <ol class="guide-steps">
         <li><b>Afegeix la gravació.</b> A la pestanya <b>Transcriu</b>, arrossega un fitxer d'àudio o vídeo o fes clic a <b>Navega pels fitxers...</b>. Un enllaç des de la pestanya <b>Baixa vídeos</b> també funciona, perquè utilitza la mateixa configuració de Transcriu.</li>
         <li><b>Tria l'Idioma</b>, o deixa'l a <b>Auto</b>.</li>
-        <li><b>Marca Identifica els parlants.</b> Si la casella diu <b>Identifica els parlants (no disponible)</b>, passa el ratolí per sobre per veure'n el motiu. El selector de <b>Parlants</b> a sota d'això s'activa: deixa'l a <b>Auto</b>, o escull un número del 2 al 10 per forçar exactament aquesta quantitat de persones.</li>
-        <li><b>Opcional:</b> marca <b>Marques de temps per paraula</b> per emmagatzemar un temps d'inici i de final de cada paraula en lloc de només a cada frase. El resultat serà més gran.</li>
+        <li><b>Open More options and tick Identify speakers.</b> If the box reads <b>Identify speakers (unavailable)</b>, hover over it to see why. The <b>Speakers</b> picker below it switches on: leave it on <b>Auto</b>, or choose a number from 2 to 10 to force exactly that many people.</li>
+        <li><b>Optional:</b> in <b>More options</b>, tick <b>Per-word timestamps</b> to store a start and end time for every word instead of only every sentence. The output gets larger.</li>
         <li><b>Tria els formats d'exportació.</b> Fes clic a <b>Configuració avançada…</b> i marca <b>DOCX</b> i <b>PDF</b> sota els <b>Formats de sortida</b>. SRT, TXT, Markdown i JSON també contenen les etiquetes. Manté el JSON marcat: és el fitxer que l'aplicació utilitza per obrir el visor de transcripcions, el qual necessitaràs per a l'últim pas.</li>
         <li><b>Fes clic a Transcriu.</b> La detecció de parlants s'executa després de la transcripció i afegeix un temps de processament addicional. A continuació, obre <b>Mostra la transcripció</b> a la targeta <b>Darrer resultat</b>.</li>
         <li><b>Substitueix les etiquetes genèriques amb noms.</b> Al visor, fes clic dret en una cel·la de la columna del <b>Parlant</b>, tria <b>Canvia el nom 'Parlant 00' (a tot arreu)...</b>, escriu el nom i fes clic a <b>Desa els canvis (Ctrl+S)</b>. Els arxius de Word i de text al costat d'aquest es reconstrueixen quan encara coincideixen amb la transcripció original; un PDF no, de manera que hauràs d'exportar-lo un altre cop després de canviar-ne el nom.</li>
       </ol>
       <figure class="guide-fig">
         <img src="/assets/shots/transcribe.webp" alt="La pestanya Transcriu amb les caselles Identifica els parlants i Marques de temps per paraula a la fila de l&#39;Idioma, la fila de l&#39;Interval de temps a sota d&#39;això i el gran botó de Transcriu." width="1180" height="668" loading="lazy" decoding="async">
-        <figcaption>Identifica els parlants i Marques de temps per paraula es troben a la fila d'Idioma de la pestanya Transcriu.</figcaption>
+        <figcaption>The Transcribe tab as it looked before version 2.2. Identify speakers and Per-word timestamps now sit under <b>More options</b>.</figcaption>
       </figure>
 
       <h2>Quin aspecte tenen les etiquetes</h2>

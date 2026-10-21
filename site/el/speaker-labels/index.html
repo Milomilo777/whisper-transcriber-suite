@@ -75,7 +75,7 @@
 <link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
 
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 <style>
   .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
   .guide { padding: 108px 0 64px; }
@@ -86,6 +86,9 @@
   .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
   .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
   .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .try-box { margin-top: 22px; padding: 14px 18px; border-radius: var(--r); background: var(--teal-soft); border: 1px solid var(--line); color: var(--ink-2); }
+  .try-box p { margin: 0; }
+  .try-box a { color: var(--teal-ink); font-weight: 600; text-underline-offset: 3px; }
   .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
   .guide-body p { margin-top: 12px; color: var(--ink-2); }
   .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
@@ -255,7 +258,8 @@
     <article>
       <h1>Μεταγράψτε μια συνέντευξη με ετικέτες ομιλητών (ποιος είπε τι)</h1>
       <p class="guide-sub">Μια δωρεάν εφαρμογή υπολογιστή που εγκαθιστάτε μία φορά (Windows, macOS, Linux). Η επεξεργασία της ηχογράφησής σας γίνεται στον υπολογιστή σας και δεν απαιτείται λογαριασμός.</p>
-      <p class="guide-lede">Η εφαρμογή διαχωρίζει τις φωνές και τις επισημαίνει ως Speaker 00, Speaker 01 κ.ο.κ. Δεν γνωρίζει ποιος είναι ο καθένας μέχρι να τους μετονομάσετε. Παρόμοιες φωνές, σύντομες απαντήσεις, ταυτόχρονη ομιλία και θόρυβος παρασκηνίου μπορούν να προκαλέσουν εσφαλμένες ετικέτες. Για να ξεκινήσετε, επιλέξτε Αναγνώριση ομιλητών στην καρτέλα Μεταγραφή και πατήστε Μεταγραφή.</p>
+      <p class="guide-lede">The app tells voices apart and labels them Speaker 00, Speaker 01 and so on. It does not know who anyone is until you rename them. Similar voices, short replies, overlapping speech and background noise can cause wrong labels. To start, open More options on the Transcribe tab, tick Identify speakers and press Transcribe.</p>
+      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Κατεβάστε τη δωρεάν εφαρμογή</a>
       </div>
@@ -267,15 +271,15 @@
       <ol class="guide-steps">
         <li><b>Προσθέστε την ηχογράφηση.</b> Στην καρτέλα <b>Μεταγραφή</b>, σύρετε ένα αρχείο ήχου ή βίντεο ή κάντε κλικ στο <b>Περιήγηση αρχείων...</b>. Ένας σύνδεσμος από την καρτέλα <b>Λήψη βίντεο</b> λειτουργεί επίσης, επειδή χρησιμοποιεί τις ίδιες ρυθμίσεις Μεταγραφής.</li>
         <li><b>Επιλέξτε τη Γλώσσα</b> ή αφήστε την στο <b>Αυτόματο</b>.</li>
-        <li><b>Επιλέξτε Αναγνώριση ομιλητών.</b> Αν το πλαίσιο γράφει <b>Αναγνώριση ομιλητών (μη διαθέσιμη)</b>, τοποθετήστε τον δείκτη του ποντικιού πάνω του για να δείτε τον λόγο. Ο επιλογέας <b>Ομιλητές</b> από κάτω ενεργοποιείται: αφήστε τον στο <b>Αυτόματο</b> ή επιλέξτε έναν αριθμό από 2 έως 10 για να ορίσετε ακριβώς τόσα άτομα.</li>
-        <li><b>Προαιρετικά:</b> επιλέξτε <b>Χρονικές σημάνσεις ανά λέξη</b> για να αποθηκεύσετε χρόνο έναρξης και λήξης για κάθε λέξη αντί μόνο για κάθε πρόταση. Το αρχείο εξόδου γίνεται μεγαλύτερο.</li>
+        <li><b>Open More options and tick Identify speakers.</b> If the box reads <b>Identify speakers (unavailable)</b>, hover over it to see why. The <b>Speakers</b> picker below it switches on: leave it on <b>Auto</b>, or choose a number from 2 to 10 to force exactly that many people.</li>
+        <li><b>Optional:</b> in <b>More options</b>, tick <b>Per-word timestamps</b> to store a start and end time for every word instead of only every sentence. The output gets larger.</li>
         <li><b>Επιλέξτε τις μορφές εξαγωγής.</b> Κάντε κλικ στις <b>Ρυθμίσεις για προχωρημένους…</b> και επιλέξτε <b>DOCX</b> και <b>PDF</b> στις <b>Μορφές εξόδου</b>. Τα αρχεία SRT, TXT, Markdown και JSON περιλαμβάνουν επίσης τις ετικέτες. Διατηρήστε το JSON επιλεγμένο: είναι ένα αρχείο JSON που χρησιμοποιεί η εφαρμογή για να ανοίξει την προβολή μεταγραφής, την οποία χρειάζεστε για το τελευταίο βήμα.</li>
         <li><b>Πατήστε Μεταγραφή.</b> Ο εντοπισμός ομιλητών εκτελείται μετά τη μεταγραφή και προσθέτει χρόνο επεξεργασίας. Στη συνέχεια, ανοίξτε την <b>Προβολή μεταγραφής</b> από την κάρτα <b>Τελευταίο αποτέλεσμα</b>.</li>
         <li><b>Αντικαταστήστε τις γενικές ετικέτες με ονόματα.</b> Στην προβολή, κάντε δεξί κλικ σε ένα κελί στη στήλη <b>Ομιλητής</b>, επιλέξτε <b>Μετονομασία 'Speaker 00' (παντού)...</b>, πληκτρολογήστε το όνομα και κάντε κλικ στο <b>Αποθήκευση αλλαγών (Ctrl+S)</b>. Τα αρχεία Word και κειμένου δίπλα του ανακατασκευάζονται όταν εξακολουθούν να αντιστοιχούν στην αρχική μεταγραφή· το PDF όχι, επομένως εξάγετέ το ξανά μετά τη μετονομασία.</li>
       </ol>
       <figure class="guide-fig">
         <img src="/assets/shots/transcribe.webp" alt="Η καρτέλα Μεταγραφή με τα πλαίσια ελέγχου Αναγνώριση ομιλητών και Χρονικές σημάνσεις ανά λέξη στη σειρά Γλώσσα, τη σειρά Χρονικό διάστημα από κάτω και το μεγάλο κουμπί Μεταγραφή." width="1180" height="668" loading="lazy" decoding="async">
-        <figcaption>Οι επιλογές Αναγνώριση ομιλητών και Χρονικές σημάνσεις ανά λέξη βρίσκονται στη σειρά Γλώσσα της καρτέλας Μεταγραφή.</figcaption>
+        <figcaption>The Transcribe tab as it looked before version 2.2. Identify speakers and Per-word timestamps now sit under <b>More options</b>.</figcaption>
       </figure>
 
       <h2>Πώς εμφανίζονται οι ετικέτες</h2>

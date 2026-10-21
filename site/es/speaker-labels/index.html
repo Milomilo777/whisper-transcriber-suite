@@ -77,7 +77,7 @@
 
 <link rel="preload" href="/assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 <style>
   .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
   .guide { padding: 108px 0 64px; }
@@ -88,6 +88,9 @@
   .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
   .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
   .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .try-box { margin-top: 22px; padding: 14px 18px; border-radius: var(--r); background: var(--teal-soft); border: 1px solid var(--line); color: var(--ink-2); }
+  .try-box p { margin: 0; }
+  .try-box a { color: var(--teal-ink); font-weight: 600; text-underline-offset: 3px; }
   .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
   .guide-body p { margin-top: 12px; color: var(--ink-2); }
   .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
@@ -257,7 +260,8 @@
     <article>
       <h1>Transcribe una entrevista con etiquetas de hablantes (quién dijo qué)</h1>
       <p class="guide-sub">Una aplicación de escritorio gratuita que se instala una sola vez (Windows, macOS, Linux). Tu grabación se procesa en tu ordenador y no necesitas cuenta.</p>
-      <p class="guide-lede">La aplicación distingue las voces y las etiqueta como Speaker 00, Speaker 01, etc. No sabe quién es nadie hasta que los renombras. Voces similares, respuestas cortas, voces superpuestas y ruido de fondo pueden provocar etiquetas incorrectas. Para empezar, marca Identificar hablantes en la pestaña Transcribir y pulsa Transcribir.</p>
+      <p class="guide-lede">The app tells voices apart and labels them Speaker 00, Speaker 01 and so on. It does not know who anyone is until you rename them. Similar voices, short replies, overlapping speech and background noise can cause wrong labels. To start, open More options on the Transcribe tab, tick Identify speakers and press Transcribe.</p>
+      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Descargar la aplicación gratuita</a>
       </div>
@@ -269,15 +273,15 @@
       <ol class="guide-steps">
         <li><b>Añade la grabación.</b> En la pestaña <b>Transcribir</b>, arrastra un archivo de audio o video o haz clic en <b>Examinar archivos...</b>. Un enlace de la pestaña <b>Descargar videos</b> también sirve, ya que utiliza la misma configuración de Transcribir.</li>
         <li><b>Elige el Idioma</b> o déjalo en <b>Auto</b>.</li>
-        <li><b>Marca Identificar hablantes.</b> Si la casilla indica <b>Identificar hablantes (no disponible)</b>, pasa el cursor por encima para saber por qué. El selector <b>Hablantes</b> inferior se activará: déjalo en <b>Auto</b> o elige un número del 2 al 10 para forzar exactamente esa cantidad de personas.</li>
-        <li><b>Opcional:</b> marca <b>Marcas de tiempo por palabra</b> para guardar la hora de inicio y fin de cada palabra en lugar de solo por frase. La salida se hace más grande.</li>
+        <li><b>Open More options and tick Identify speakers.</b> If the box reads <b>Identify speakers (unavailable)</b>, hover over it to see why. The <b>Speakers</b> picker below it switches on: leave it on <b>Auto</b>, or choose a number from 2 to 10 to force exactly that many people.</li>
+        <li><b>Optional:</b> in <b>More options</b>, tick <b>Per-word timestamps</b> to store a start and end time for every word instead of only every sentence. The output gets larger.</li>
         <li><b>Elige los formatos de exportación.</b> Haz clic en <b>Configuración avanzada…</b> y marca <b>DOCX</b> y <b>PDF</b> en <b>Formatos de salida</b>. SRT, TXT, Markdown y JSON también llevan las etiquetas. Mantén marcado JSON: es un archivo JSON que la aplicación usa para abrir el visor de transcripciones, necesario para el último paso.</li>
         <li><b>Haz clic en Transcribir.</b> La detección de hablantes se ejecuta después de la transcripción y añade tiempo de procesamiento. Luego abre <b>Ver transcripción</b> desde la tarjeta <b>Último resultado</b>.</li>
         <li><b>Sustituye las etiquetas genéricas por nombres.</b> En el visor, haz clic derecho en una celda de la columna <b>Hablante</b>, elige <b>Renombrar 'Speaker 00' (en todas partes)...</b>, escribe el nombre y haz clic en <b>Guardar cambios (Ctrl+S)</b>. Los archivos de Word y de texto situados junto a él se reconstruyen si todavía coinciden con la transcripción original; un PDF no, así que expórtalo de nuevo tras renombrarlo.</li>
       </ol>
       <figure class="guide-fig">
         <img src="/assets/shots/transcribe.webp" alt="La pestaña Transcribir con las casillas de verificación Identificar hablantes y Marcas de tiempo por palabra en la fila Idioma, la fila Intervalo de tiempo debajo y el botón grande Transcribir." width="1180" height="668" loading="lazy" decoding="async">
-        <figcaption>Identificar hablantes y Marcas de tiempo por palabra se encuentran en la fila Idioma de la pestaña Transcribir.</figcaption>
+        <figcaption>The Transcribe tab as it looked before version 2.2. Identify speakers and Per-word timestamps now sit under <b>More options</b>.</figcaption>
       </figure>
 
       <h2>Cómo son las etiquetas</h2>

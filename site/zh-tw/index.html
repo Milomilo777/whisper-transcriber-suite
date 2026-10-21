@@ -82,7 +82,7 @@
 
 <link rel="preload" href="/assets/shots/transcribe.webp" as="image" type="image/webp" imagesrcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" imagesizes="(max-width: 1080px) 72vw, 480px">
 <script src="/js/motion-init.js?v=20260927b"></script>
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 
 <script type="application/ld+json">
 {
@@ -131,7 +131,7 @@
       "description": "這款桌面應用程式可透過 faster-whisper、whisper.cpp 或 NVIDIA Parakeet 在本機執行 OpenAI 的 Whisper 模型。能將音訊與影片轉錄為 SRT、VTT、ASS、TSV、TXT、JSON、LRC、Markdown、DOCX 與 PDF。您的音訊只會保留在電腦中，且完全不需要帳號。",
       "softwareVersion": "2.2.0",
       "datePublished": "2026-05-11",
-      "dateModified": "2026-10-21",
+      "dateModified": "2026-10-22",
       "operatingSystem": "Windows, macOS, Linux",
       "applicationCategory": "MultimediaApplication",
       "applicationSubCategory": "Speech-to-text transcription",
@@ -150,7 +150,14 @@
         "製作字幕影片：下載、轉錄並將字幕燒錄進 MP4",
         "將逐字稿另存為單一離線網頁",
         "具備清楚網路狀態顯示的「離線工作」開關",
-        "將語音直接翻譯為英文"
+        "將語音直接翻譯為英文",
+        "Accuracy levels (Fast, Balanced, Best) that pick a model for the language and the computer",
+        "Models trained for one language: Persian, Chinese, Japanese, German, Thai, Swedish, Hebrew",
+        "Two-language audio (experimental)",
+        "Phone upload by QR code on the same Wi-Fi",
+        "Right-to-left window on Windows for Persian, Arabic and Hebrew",
+        "Interface in 42 languages",
+        "Free in-browser transcription page: no install, no upload"
       ],
       "offers": {
         "@type": "Offer",
@@ -318,10 +325,10 @@
     },
     {
       "@type": "Question",
-      "name": "2.1 版本有哪些新功能？",
+      "name": "What is new in version 2.2?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "選單、按鈕與訊息現已支援 42 種語言（為機器翻譯並明確標註）；說話者標籤能完整涵蓋長音訊的結尾，且您可以指定說話人數；逐字稿、匯出檔案與字幕在取代舊檔前會完整寫入磁碟；線上功能可在每台 Mac 上順暢運作。2.0 版本則新增了佇列速度與剩餘時間顯示、從連結製作字幕影片、將逐字稿存為單一離線網頁、可勾選的「離線工作」模式，以及直接翻譯為英文的功能。"
+        "text": "Accuracy levels replace the engine and model pickers on the Transcribe tab: choose Fast, Balanced or Best and the app picks a model that fits your language and computer, and new installs start on Large v3 Turbo. The rarer options sit under More options. Persian, Chinese, Japanese, German, Thai, Swedish and Hebrew get models trained for that language; the Web / LAN access tab shows a QR code so you can send a recording from a phone on the same Wi-Fi; Windows mirrors the window for Persian, Arabic and Hebrew; two-language audio is available as an experimental option; and the Download form is more compact. All 42 interface languages are complete and 35 bugs were fixed. The site also has a page that transcribes a short file in your browser. Version 2.1 added the interface in 42 languages, reliable speaker labels and safer saving; version 2.0 added the queue's speed and time left, subtitled video from a link, transcripts as one offline web page, a checkable Work offline mode and translation to English."
       }
     },
     {
@@ -382,7 +389,14 @@
       <img class="brand-logo" src="/assets/logo.svg" alt="" width="32" height="32"> <span class="brand-name">Whisper Transcriber Suite</span>
     </a>
     <nav class="site-nav" aria-label="主要">
-      <a href="#showreel">導覽</a> <a href="#features">功能特色</a> <a href="#how-it-works">運作方式</a> <a href="#download">下載</a> <a href="#compare">比較</a> <a href="#faq">常見問題</a> <a href="#contact">聯絡我們</a>
+      <a href="#showreel">Tour</a>
+      <a href="#features">Features</a>
+      <a href="#how-it-works">How it works</a>
+      <a href="/try/">Try</a>
+      <a href="#download">Download</a>
+      <a href="#compare">Compare</a>
+      <a href="#faq">FAQ</a>
+      <a href="#contact">Contact</a>
     </nav>
     <div class="header-cta">
       <!-- i18n:english:start --><a class="btn btn-ghost btn-sm lang-en" href="/?lang=en" hreflang="en" lang="en" dir="ltr" data-lang-pick="en" translate="no">English</a><!-- i18n:english:end -->
@@ -468,7 +482,6 @@
         <div class="hero-actions reveal" style="--d:5">
           <a class="btn btn-primary btn-lg" data-os-cta data-auto-href="installer" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.2.0/WhisperTranscriberSuite-Installer-Windows-v2.2.0.exe" rel="noopener"> <svg class="i" aria-hidden="true"><use href="#i-download"/></svg><span data-os-label>下載 Windows 版</span> </a> <a class="btn btn-ghost btn-lg" href="#showreel">瀏覽導覽<svg class="i i-trail" aria-hidden="true"><use href="#i-arrow"/></svg></a>
         </div>
-        <p class="hero-try reveal" style="--d:5"><a href="/try/">No install? Try a short file right in your browser</a></p>
         <ul class="proof reveal" style="--d:6" aria-label="重點一覽">
           <li><strong data-count="14">14</strong><span> 種逐字稿格式</span></li>
           <li><strong data-auto="downloads">3,200+</strong><span> 次累積下載</span></li>
@@ -504,6 +517,20 @@
             <div class="chip-card off-card"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>離線轉錄</div>
           </div>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TRY IN THE BROWSER ============ -->
+  <section class="try-strip" aria-labelledby="try-strip-title">
+    <div class="wrap">
+      <div class="try-strip-card">
+        <div class="try-strip-copy">
+          <p class="eyebrow">No install</p>
+          <h2 id="try-strip-title">Try it in your browser</h2>
+          <p>Drop in an audio or video file of up to 10 minutes and get a transcript. Free, no upload, no sign-up: Whisper runs inside your browser tab. For longer files, use the <a href="#download">desktop app</a>.</p>
+        </div>
+        <a class="btn btn-primary btn-lg" href="/try/">Try it now<svg class="i i-trail" aria-hidden="true"><use href="#i-arrow"/></svg></a>
       </div>
     </div>
   </section>
@@ -551,20 +578,60 @@
     </div>
   </section>
 
-  <!-- ============ WHAT'S NEW IN 2.1 (AND 2.0) ============ -->
+  <!-- ============ WHAT'S NEW IN 2.2 (AND 2.1, 2.0) ============ -->
   <section class="section whatsnew" id="whats-new" aria-labelledby="new-title">
     <div class="wrap">
       <header class="section-head sr">
-        <p class="eyebrow">2.1 版新功能</p>
-        <h2 id="new-title">2.1 版新功能。<span class="h2-soft">現已支援您的語言。</span></h2>
-        <p class="section-lede">應用程式支援 42 種語言、長篇錄音至結尾皆能完整標記說話者標籤、即使突然斷電檔案也不會損毀，以及在每台 Mac 上皆可正常使用的線上功能。下方為 2.0 版新增的功能。</p>
+        <p class="eyebrow">New in 2.2</p>
+        <h2 id="new-title">What's new in 2.2. <span class="h2-soft">Simpler, and in your pocket.</span></h2>
+        <p class="section-lede">One Accuracy choice instead of engine and model pickers, models trained for one language, your phone as a way in, a mirrored window for Persian, Arabic and Hebrew, and a try-it page in the browser. Below them, what 2.1 and 2.0 added.</p>
       </header>
 
       <div class="new-grid">
         <article class="new-card sr">
+          <p class="new-tag">2.2 · All platforms</p>
+          <h3>A simpler Transcribe tab</h3>
+          <p>Pick <em>Accuracy</em> (Fast, Balanced or Best) and the app chooses a model that fits your language and your computer, with its download size shown. Speakers, per-word timestamps, English translation, a time range and mixed languages wait under <em>More options</em>. New installs start on Large v3 Turbo: several times faster than Large v3 with nearly the same accuracy.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.2 · All platforms</p>
+          <h3>Models trained for one language</h3>
+          <p>Pick Persian, Chinese, Japanese, German, Thai, Swedish or Hebrew and the app suggests a model built for that language, with its publisher's own accuracy figures, size and licence, and a <em>Use it</em> button.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.2 · All platforms</p>
+          <h3>Use it from your phone</h3>
+          <p>Turn on <em>Share on local network</em> on the Web / LAN access tab, scan the QR code and send a recording from a phone on the same Wi-Fi. The page has thumb-sized buttons, and the PC does the transcribing.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.2 · Windows</p>
+          <h3>Right-to-left window</h3>
+          <p>With a Persian, Arabic or Hebrew interface the tabs, lists, dialogs and tick boxes are mirrored so the window reads from the right. Paths, links and numbers keep reading left to right.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.2 · All platforms</p>
+          <h3>Two languages in one recording</h3>
+          <p>Experimental: a tick box under <em>More options</em> with a second language picker, for audio that switches between two languages. Each stretch is written in the language it sounds like instead of being translated into one of them.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.2 · All platforms</p>
+          <h3>A compact Download form</h3>
+          <p>The link, folder, quality choices and after-download ticks fit on a few lines. Log-in cookies and the time range moved under <em>More options</em>, which opens by itself when a time range is set.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.2 · Website</p>
+          <h3>Try it in your browser</h3>
+          <p>No install: a short file (up to 10 minutes, 5 on a phone) is transcribed by a small Whisper model inside your browser tab, and you save TXT, SRT or VTT. Your audio never leaves your device. <a href="/try/">Try it now</a>.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.2 · All platforms</p>
+          <h3>All 42 languages complete, 35 bugs fixed</h3>
+          <p>Every message of the app is translated in all 42 interface languages, and 35 bugs were fixed, many of them to keep your settings, history and finished work safe.</p>
+        </article>
+        <article class="new-card sr">
           <p class="new-tag">2.1 · 所有平台</p>
           <h3>支援您的語言</h3>
-          <p>選單、按鈕與訊息共提供 42 種語言（macOS 與 Linux 為 39 種）。應用程式會遵循您的系統語言設定，您也可以在<em>進階設定</em>中自行選擇。除了英文以外的所有語言皆為機器翻譯並已清楚標註；波斯文、阿拉伯文和希伯來文目前僅在 Windows 上提供。</p>
+          <p>Menus, buttons and messages come in 42 languages (39 on macOS and Linux). The app follows your system language, or you pick one in <em>Advanced settings</em>. Every language except English is a machine translation and is marked as one.</p>
         </article>
         <article class="new-card sr">
           <p class="new-tag">2.1 · 所有平台</p>
@@ -643,7 +710,7 @@
           <div class="cell-copy">
             <p class="chip-label">faster-whisper · whisper.cpp · Parakeet</p>
             <h3>本機處理，注重隱私的轉錄</h3>
-            <p>預設採用 Whisper <code>large-v3</code>，另支援 <code>large-v3-turbo</code> 與 <code>distil-large-v3.5</code>。自由挑選最符合您硬體配備的後端。</p>
+            <p>Whisper <code>large-v3-turbo</code> on new installs, plus <code>large-v3</code> and <code>distil-large-v3.5</code>. Choose Fast, Balanced or Best accuracy and the app picks a model for your language and computer, or pick the backend yourself in Advanced settings.</p>
           </div>
           <figure class="cell-shot" aria-hidden="true"><img src="/assets/shots/transcribe-640.webp" alt="" width="640" height="362" loading="lazy" decoding="async"></figure>
           <div class="viz viz-engines" aria-hidden="true">
@@ -824,7 +891,7 @@ python gui.py</code></pre>
         </div>
         <p class="mac-note">偏好一般的安裝方式？開啟 <code>.dmg</code> 並將應用程式拖移至「應用程式」夾；首次啟動時需按右鍵 → <b>打開</b>（macOS 14 及更舊版本），或是前往「系統設定」→「隱私權與安全性」→ <b>仍要打開</b>（macOS 15+）。</p>
       </div>
-      <p class="dl-note sr">所有版本與發行說明皆發布於 <a href="https://github.com/Milomilo777/whisper-transcriber-suite/releases" rel="noopener">GitHub Releases</a>。<a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md" rel="noopener">安裝指南</a>。</p>
+      <p class="dl-note sr">Not ready to install? <a href="/try/">Try a short file in your browser</a> first. Every release, with notes, lives on <a href="https://github.com/Milomilo777/whisper-transcriber-suite/releases" rel="noopener">GitHub Releases</a>. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md" rel="noopener">Install guide</a>.</p>
     </div>
   </section>
 
@@ -875,7 +942,7 @@ python gui.py</code></pre>
         <article class="qa"><h3>它可以複製聲音並讓它唸出新的文字嗎？</h3><div class="faq-a"><p>可以，透過選用的「複製您的聲音」分頁，完全在您的本機電腦上使用 OmniVoice (Apache-2.0) 執行。預設為關閉；可在安裝時選擇啟用，且您必須確認已取得複製參考聲音的授權許可。</p></div></article>
         <article class="qa"><h3>這與直接呼叫 Whisper API 有何不同？</h3><div class="faq-a"><p>預設透過 faster-whisper 在本機執行模型，因此沒有按分鐘計費的 API 費用，也沒有任何音訊會離開您的電腦——除非您明確選擇使用兩種雲端後端之一。</p></div></article>
         <article class="qa"><h3>同一個網路上的多人可以在不必每台電腦都安裝的情況下使用它嗎？</h3><div class="faq-a"><p>可以——Web/LAN 存取模式可將這台電腦轉變為轉錄網頁，供同網路上的其他裝置使用。</p></div></article>
-        <article class="qa"><h3>2.1 版本有哪些新功能？</h3><div class="faq-a"><p>選單、按鈕與訊息提供 42 種語言（經機器翻譯並明確標記）；說話者標籤能完整涵蓋長篇錄音的結尾，且您可以設定發言人數；逐字稿、匯出檔與字幕會在完全寫入磁碟後才取代舊檔案；線上功能在每台 Mac 上皆可正常運作。2.0 版本新增了佇列處理速度與剩餘時間顯示、透過連結製作含字幕影片、將逐字稿輸出為單一離線網頁、可勾選的「離線工作」模式，以及翻譯成英文功能。請參閱 <a href="#whats-new">2.1 版本新功能</a> 與 <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">更新紀錄</a>。</p></div></article>
+        <article class="qa"><h3>What is new in version 2.2?</h3><div class="faq-a"><p>Accuracy levels replace the engine and model pickers on the Transcribe tab: choose Fast, Balanced or Best and the app picks a model that fits your language and computer, and new installs start on Large v3 Turbo. The rarer options sit under <em>More options</em>. Persian, Chinese, Japanese, German, Thai, Swedish and Hebrew get models trained for that language; the Web / LAN access tab shows a QR code so you can send a recording from a phone on the same Wi-Fi; Windows mirrors the window for Persian, Arabic and Hebrew; two-language audio is available as an experimental option; and the Download form is more compact. All 42 interface languages are complete and 35 bugs were fixed. The site also has a <a href="/try/">page that transcribes a short file in your browser</a>. Version 2.1 added the interface in 42 languages, reliable speaker labels and safer saving; version 2.0 added the queue's speed and time left, subtitled video from a link, transcripts as one offline web page, a checkable Work offline mode and translation to English. See <a href="#whats-new">What's new in 2.2</a> and the <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">changelog</a>.</p></div></article>
         <article class="qa"><h3>它可以將影片連結轉換為帶有字幕的影片嗎？</h3><div class="faq-a"><p>可以。在「下載影片」分頁中，勾選 <b>製作字幕影片</b>：軟體會下載影片、使用 Whisper 進行轉錄，並以 ffmpeg 將字幕燒錄進影片中，產生一個以該影片命名並帶有 <code>-subbed.mp4</code> 的檔案。下載的原始檔案與逐字稿均會保留，且絕不會覆寫現有的 <code>-subbed.mp4</code>。</p></div></article>
         <article class="qa"><h3>我可以讓這款應用程式完全不連網嗎？</h3><div class="faq-a"><p>可以。<b>檔案 → 離線工作</b> 會停止檢查更新、使用狀況統計、模型下載以及遠端 AI 提供者。開啟此模式時，視窗底部會有一行字顯示是否有連線開啟，且 <em>立即驗證離線狀態</em> 會顯示測試連線已被拒絕。關閉此模式時，軟體僅在啟動時讀取其線上設定、執行每日更新檢查、傳送使用狀況統計（可於「說明」→「使用狀況統計」關閉），以及進行您手動發起的下載。</p></div></article>
         <article class="qa"><h3>我該如何聯絡專案團隊？</h3><div class="faq-a"><p>錯誤回報與功能建議請至 <a href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener">GitHub Issues</a>，提問請至 <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">Discussions</a>，其他事項請透過電子郵件聯絡（地址可在 <a href="#contact">聯絡資訊區塊</a> 點選顯示）。安全性回報請透過 GitHub 的私人漏洞回報機制。</p></div></article>

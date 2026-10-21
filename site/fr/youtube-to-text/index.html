@@ -77,7 +77,7 @@
 
 <link rel="preload" href="/assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 <style>
   .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
   .guide { padding: 108px 0 64px; }
@@ -88,6 +88,9 @@
   .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
   .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
   .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .try-box { margin-top: 22px; padding: 14px 18px; border-radius: var(--r); background: var(--teal-soft); border: 1px solid var(--line); color: var(--ink-2); }
+  .try-box p { margin: 0; }
+  .try-box a { color: var(--teal-ink); font-weight: 600; text-underline-offset: 3px; }
   .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
   .guide-body p { margin-top: 12px; color: var(--ink-2); }
   .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
@@ -258,6 +261,7 @@
       <h1>Transcrire une vidéo YouTube en texte, gratuit et hors ligne</h1>
       <p class="guide-sub">Une application de bureau gratuite à installer une seule fois (Windows, macOS, Linux). Le téléchargement de la vidéo nécessite Internet ; la transcription elle-même s'exécute sur votre ordinateur.</p>
       <p class="guide-lede">Pour convertir une vidéo YouTube en texte, collez son lien dans l'onglet Télécharger des vidéos, choisissez un format texte, cochez Transcrire après le téléchargement et cliquez sur Télécharger. L'application récupère la vidéo avec l'outil de téléchargement open source yt-dlp, la transcrit avec Whisper (un modèle de reconnaissance vocale) sur votre propre ordinateur et enregistre une transcription TXT, DOCX, PDF ou SRT.</p>
+      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Télécharger l'application gratuite</a>
       </div>
@@ -268,10 +272,10 @@
       <h2>Comment transcrire une vidéo YouTube</h2>
       <ol class="guide-steps">
         <li><b>Au premier lancement uniquement.</b> La fenêtre Démarrage rapide vous demande votre langue ainsi que <b>Rapide</b> ou <b>Meilleure qualité</b> ; le modèle vocal est téléchargé une seule fois, lors de la première utilisation.</li>
-        <li><b>Ouvrez l'onglet Télécharger des vidéos</b> et collez le lien YouTube dans <b>URL</b>. L'application recherche automatiquement les formats et les éventuels sous-titres.</li>
+        <li><b>Open the Download Videos tab</b> and paste the YouTube link into <b>Video link</b>. The app looks up the formats and any subtitles by itself.</li>
         <li><b>Choisissez un mode.</b> <b>Audio</b> n'enregistre que le son, ce qui est plus léger et plus rapide si vous ne souhaitez qu'une transcription. <b>Audio et vidéo</b> conserve également l'image.</li>
-        <li><b>Facultatif :</b> utilisez <b>Plage horaire (facultatif)</b> pour télécharger et transcrire seulement une partie. Le format est H:MM:SS, et indiquer 0:00:00 dans les deux champs sélectionne l'intégralité de la vidéo.</li>
-        <li><b>Choisissez le type de fichier avant de télécharger.</b> Rendez-vous sur l'onglet <b>Transcrire</b>, cliquez sur <b>Paramètres avancés…</b> et, sous <b>Formats de sortie</b>, cochez <b>TXT</b> (ou <b>DOCX</b> ou <b>PDF</b>). La valeur par défaut est SRT et JSON, ce qui génère des sous-titres et non un fichier texte brut. Laissez JSON coché : l'application utilise ce fichier JSON pour ouvrir le visualiseur de transcription. La <b>Langue</b> et le modèle sélectionnés dans cet onglet s'appliquent également aux téléchargements.</li>
+        <li><b>Optional:</b> open <b>More options</b> under the form and use <b>Time range (optional)</b> to download and transcribe only a part. The format is H:MM:SS, and 0:00:00 in both boxes means the whole video. <b>More options</b> opens by itself when a range is set.</li>
+        <li><b>Choose the file type before you download.</b> Switch to the <b>Transcribe</b> tab, click <b>Advanced settings…</b> and, under <b>Output formats</b>, tick <b>TXT</b> (or <b>DOCX</b> or <b>PDF</b>). The default is SRT plus JSON, which gives you subtitles, not a plain text file. Keep JSON ticked: it is a JSON file the app uses to open the transcript viewer. The <b>Language</b> and <b>Accuracy</b> level chosen on that tab apply to downloads too.</li>
         <li><b>De retour sur Télécharger des vidéos, cochez Transcrire après le téléchargement</b>, puis cliquez sur <b>Télécharger</b>.</li>
         <li><b>Suivez la progression.</b> La ligne du tableau se remplit, et l'onglet <b>File d'attente de transcription</b> affiche la vitesse et le temps restant. Une fois l'opération terminée, la transcription est placée à côté du fichier source, et la carte <b>Dernier résultat</b> de l'onglet Transcrire propose <b>Ouvrir</b>, <b>Voir la transcription</b> et <b>Enregistrer une page partageable</b>.</li>
       </ol>
@@ -286,7 +290,7 @@
       </div>
       <h2>Autres sites et vidéos nécessitant une connexion</h2>
       <div class="guide-body">
-        <p>Tous les sites pris en charge par cet outil de téléchargement fonctionnent de la même manière. Pour les vidéos nécessitant un compte (comme Instagram, Facebook, les stories TikTok ou les vidéos YouTube avec limite d'âge), sélectionnez votre navigateur sous <b>Cookies de connexion</b>. L'application lit la session de ce navigateur sur cet ordinateur et l'utilise uniquement lors du téléchargement depuis ce site ; elle n'est transmise nulle part ailleurs. Cela peut ne pas fonctionner pour toutes les vidéos restreintes.</p>
+        <p>Any site the same downloader supports works the same way. For videos that need an account, such as Instagram, Facebook, TikTok stories and age-restricted YouTube videos, open <b>More options</b> under the form and choose your browser under <b>Log-in cookies</b>. The app reads that browser's log-in on this computer and uses it only when downloading from that site; it is not sent anywhere else. This may not work for every restricted video.</p>
       </div>
 
       <h2>Bon à savoir</h2>
@@ -300,7 +304,7 @@
         <article class="qa"><h3>Est-ce vraiment gratuit ?</h3><div class="faq-a"><p>Oui : gratuit et open source, sans compte, sans abonnement, sans coût à la minute.</p></div></article>
         <article class="qa"><h3>Ma vidéo ou ma transcription est-elle téléversée quelque part ?</h3><div class="faq-a"><p>Pas avec les moteurs par défaut : Whisper s'exécute sur votre propre ordinateur, et seul le téléchargement depuis le site vidéo utilise le réseau. Deux moteurs dans le cloud existent, mais ils restent désactivés tant que vous ne les activez pas vous-même.</p></div></article>
         <article class="qa"><h3>Peut-elle transcrire une vidéo sans sous-titres, ou dans une autre langue ?</h3><div class="faq-a"><p>Oui. Whisper écoute l'audio, les sous-titres ne sont donc pas nécessaires. Choisissez la <b>Langue</b> parlée ou laissez sur <b>Auto</b>. <b>Sortie : traduction anglaise</b> convertit les paroles non anglaises en texte anglais ; cette option est désactivée par défaut et ne fonctionne pas avec tous les moteurs ou modèles.</p></div></article>
-        <article class="qa"><h3>Puis-je transcrire seulement une partie d'une longue vidéo ?</h3><div class="faq-a"><p>Oui. Renseignez la <b>Plage horaire (facultatif)</b> dans l'onglet Télécharger des vidéos avec un début et une fin au format H:MM:SS. Seule cette portion sera téléchargée, puis transcrite si vous avez coché Transcrire après le téléchargement.</p></div></article>
+        <article class="qa"><h3>Puis-je transcrire seulement une partie d'une longue vidéo ?</h3><div class="faq-a"><p>Yes. Open <b>More options</b> on the Download Videos tab and fill in <b>Time range (optional)</b> with a start and end in H:MM:SS. Only that portion is downloaded, and transcribed if you ticked Transcribe after download.</p></div></article>
         <article class="qa"><h3>Puis-je coller une playlist entière ?</h3><div class="faq-a"><p>Non. Chaque tâche correspond à une seule vidéo. Un lien copié depuis une playlist ne télécharge que cette vidéo, et non la liste complète.</p></div></article>
       </div>
 

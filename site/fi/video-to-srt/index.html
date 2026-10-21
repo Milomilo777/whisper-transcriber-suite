@@ -77,7 +77,7 @@
 
 <link rel="preload" href="/assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 <style>
   .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
   .guide { padding: 108px 0 64px; }
@@ -88,6 +88,9 @@
   .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
   .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
   .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .try-box { margin-top: 22px; padding: 14px 18px; border-radius: var(--r); background: var(--teal-soft); border: 1px solid var(--line); color: var(--ink-2); }
+  .try-box p { margin: 0; }
+  .try-box a { color: var(--teal-ink); font-weight: 600; text-underline-offset: 3px; }
   .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
   .guide-body p { margin-top: 12px; color: var(--ink-2); }
   .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
@@ -258,6 +261,7 @@
       <h1>Kuinka muuntaa video SRT-tekstityksiksi ilmaiseksi</h1>
       <p class="guide-sub">Ilmainen työpöytäsovellus, jonka asennat kerran (Windows, macOS, Linux). Sen sisältämä puheentunnistusmalli Whisper toimii omalla tietokoneellasi, joten oletusmoottoreilla videotasi ei ladata verkkoon.</p>
       <p class="guide-lede">Muuntaaksesi videon SRT-tekstityksiksi avaa Litteroi-välilehti, pudota video- tai äänitiedosto ohjelmaan, tarkista, että SRT on valittuna Lisäasetukset-kohdassa, ja paina Litteroi. Whisper luo yleisessä muodossa olevan SRT-tekstitystiedoston alkuperäisen tiedoston viereen valmiina toistinta, editoria tai verkkoon lataamista varten. Linkin käyttöä varten katso <a href="/fi/youtube-to-text/">YouTube-opas</a>.</p>
+      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Lataa ilmainen sovellus</a>
       </div>
@@ -268,10 +272,10 @@
       <h2>1. Luo SRT-tiedosto</h2>
       <ol class="guide-steps">
         <li><b>Avaa Litteroi-välilehti</b> ja vedä video- tai äänitiedostosi ikkunaan tai napsauta <b>Selaa tiedostoja...</b>. Voit valita useita tiedostoja kerralla.</li>
-        <li><b>Aseta kieli</b> tai jätä valinnaksi <b>Auto</b> sen automaattista tunnistusta varten. Kielen valitseminen itse on nopeampaa ja voi olla tarkempaa lyhyissä tai taustamelua sisältävissä leikkeissä.</li>
-        <li><b>Valinnainen:</b> määritä <b>Aikaväli</b> (H:MM:SS) litteroidaksesi vain osan tiedostosta.</li>
+        <li><b>Set the Language</b>, or leave <b>Auto</b> to detect it. Picking it yourself is faster and can be more accurate for short or noisy clips. Next to it, <b>Accuracy</b> chooses the model: <b>Fast</b> for a quick draft, <b>Balanced</b>, or <b>Best</b> for the most careful result (slower). A model you picked in <b>Advanced settings</b> shows as <b>Custom</b> and is left alone.</li>
+        <li><b>Optional:</b> open <b>More options</b> and fill in <b>Time range</b> (H:MM:SS) to transcribe only part of the file.</li>
         <li><b>Valitse tekstitysmuodot.</b> Napsauta <b>Lisäasetukset…</b> ja etsi kohta <b>Tulostemuodot</b>. SRT ja JSON ovat oletuksena valittuina. Valitse <b>VTT</b> (verkkotekstitysmuoto) verkkovideoita varten tai <b>ASS (tyylitellyt tekstitykset / karaoke)</b>, jos tyylittelet tekstityksiä editorissa. Jokainen valittu muoto luodaan jokaiselle tehtävälle. Pidä JSON valittuna: se on JSON-tiedosto, jota sovellus käyttää litteroinnin katseluohjelman avaamiseen.</li>
-        <li><b>Valinnainen:</b> valitse <b>Sanakohtaiset aikaleimat</b> tallentaaksesi alku- ja loppuajan jokaiselle sanalle; tiedostokoko kasvaa. SRT-tekstityksen repliikit noudattavat silti kokonaisia segmenttejä, yksi repliikki puhesegmenttiä kohden. VTT ja ASS käyttävät sanojen ajoitusta karaoketyyliseen korostukseen.</li>
+        <li><b>Optional:</b> under <b>More options</b>, tick <b>Per-word timestamps</b> to store a start and end time for every word; the files get larger. Your SRT cues still follow whole segments, one cue per segment of speech. Word timing is used by VTT and ASS for karaoke-style highlighting.</li>
         <li><b>Napsauta Litteroi.</b> Seuraa tehtävää <b>Litterointijono</b>-välilehdellä. Tekstitystiedosto ilmestyy alkuperäisen viereen samalla nimellä ja uudella tiedostopäätteellä – esimerkiksi tiedostosta talk.mp4 tulee talk.srt – ja <b>Viimeisin tulos</b> -kortissa on <b>Avaa</b>-painike jokaiselle tiedostolle.</li>
       </ol>
       <figure class="guide-fig">
@@ -281,7 +285,7 @@
 
       <h2>Tekstitykset toisella kielellä</h2>
       <div class="guide-body">
-        <p>Jos haluat englanninkieliset tekstitykset muunkielisestä puheesta, valitse <b>Tuloste: englanninkielinen käännös</b>; tiedostojen nimeen lisätään .en-translated. Toiminto on oletuksena pois päältä eikä toimi kaikilla moottoreilla tai malleilla. Muille kielille litteroinnin katseluohjelman valinnainen Tekoälytyökalut-välilehti voi luoda kaksikielisen SRT-tiedoston, kun olet määrittänyt sen tekoälykerroksen (asentamasi paikallinen malli tai valitsemasi verkkopalveluntarjoaja); se on oletuksena pois päältä.</p>
+        <p>For English subtitles from non-English speech, open <b>More options</b> and tick <b>Output: English translation</b>; the files get an .en-translated name. It is off by default and does not work with every engine or model. For other languages, an optional AI Tools tab in the transcript viewer can write a bilingual SRT once you set up its AI layer (a local model you install, or an online provider you choose); it is off by default.</p>
       </div>
       <h2>2. Korjaa tekstitystä (valinnainen)</h2>
       <div class="guide-body">

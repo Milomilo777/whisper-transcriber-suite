@@ -75,7 +75,7 @@
 <link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
 
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 <style>
   .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
   .guide { padding: 108px 0 64px; }
@@ -86,6 +86,9 @@
   .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
   .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
   .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .try-box { margin-top: 22px; padding: 14px 18px; border-radius: var(--r); background: var(--teal-soft); border: 1px solid var(--line); color: var(--ink-2); }
+  .try-box p { margin: 0; }
+  .try-box a { color: var(--teal-ink); font-weight: 600; text-underline-offset: 3px; }
   .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
   .guide-body p { margin-top: 12px; color: var(--ink-2); }
   .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
@@ -255,7 +258,8 @@
     <article>
       <h1>화자 라벨(누가 어떤 말을 했는지)과 함께 인터뷰 전사하기</h1>
       <p class="guide-sub">한 번 설치하면 되는 무료 데스크톱 앱입니다(Windows, macOS, Linux). 녹음 파일은 사용자의 컴퓨터에서 처리되며 계정이 필요하지 않습니다.</p>
-      <p class="guide-lede">앱이 목소리를 구분하여 Speaker 00, Speaker 01 등으로 라벨을 지정합니다. 사용자가 이름을 변경하기 전까지는 누구인지 알 수 없습니다. 목소리가 비슷하거나 짧은 대답, 말이 겹치는 구간, 배경 소음이 있으면 라벨이 잘못 지정될 수 있습니다. 시작하려면 전사 탭에서 화자 식별을 선택하고 전사를 누르세요.</p>
+      <p class="guide-lede">The app tells voices apart and labels them Speaker 00, Speaker 01 and so on. It does not know who anyone is until you rename them. Similar voices, short replies, overlapping speech and background noise can cause wrong labels. To start, open More options on the Transcribe tab, tick Identify speakers and press Transcribe.</p>
+      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>무료 앱 다운로드</a>
       </div>
@@ -267,15 +271,15 @@
       <ol class="guide-steps">
         <li><b>녹음 파일을 추가합니다.</b> <b>전사</b> 탭에서 오디오 또는 동영상 파일을 끌어다 놓거나 <b>파일 찾아보기...</b>를 클릭하세요. <b>동영상 다운로드</b> 탭의 링크도 동일한 전사 설정을 사용하므로 마찬가지로 작동합니다.</li>
         <li><b>언어를 선택</b>하거나 <b>자동</b>으로 둡니다.</li>
-        <li><b>화자 식별을 선택하세요.</b> 확인란에 <b>화자 식별(사용 불가)</b>로 표시되면 마우스를 올려 이유를 확인하세요. 그 아래의 <b>화자 수</b> 선택기가 활성화됩니다. <b>자동</b>으로 두거나 2에서 10 사이의 숫자를 선택하여 정확한 인원수를 지정할 수 있습니다.</li>
-        <li><b>선택 사항:</b> 문장 단위뿐만 아니라 모든 단어의 시작과 끝 시간을 저장하려면 <b>단어별 타임스탬프</b>를 선택하세요. 출력 파일의 크기가 더 커집니다.</li>
+        <li><b>Open More options and tick Identify speakers.</b> If the box reads <b>Identify speakers (unavailable)</b>, hover over it to see why. The <b>Speakers</b> picker below it switches on: leave it on <b>Auto</b>, or choose a number from 2 to 10 to force exactly that many people.</li>
+        <li><b>Optional:</b> in <b>More options</b>, tick <b>Per-word timestamps</b> to store a start and end time for every word instead of only every sentence. The output gets larger.</li>
         <li><b>내보내기 형식을 선택합니다.</b> <b>고급 설정…</b>을 클릭하고 <b>출력 형식</b>에서 <b>DOCX</b> 및 <b>PDF</b>를 선택하세요. SRT, TXT, Markdown, JSON 형식에도 화자 라벨이 포함됩니다. JSON은 선택된 상태로 유지하세요. 마지막 단계에 필요한 전사 뷰어를 열 때 앱에서 이 JSON 파일을 사용합니다.</li>
         <li><b>전사를 클릭하세요.</b> 화자 감지는 전사가 끝난 후 실행되며 처리 시간이 추가됩니다. 완료되면 <b>최근 결과</b> 카드에서 <b>전사본 보기</b>를 여세요.</li>
         <li><b>기본 라벨을 실제 이름으로 바꿉니다.</b> 전사본 보기 창에서 <b>화자</b> 열의 셀을 마우스 오른쪽 버튼으로 클릭하고 <b>'Speaker 00' 이름 바꾸기(모든 위치)...</b>를 선택한 후 이름을 입력하고 <b>변경 사항 저장(Ctrl+S)</b>을 클릭하세요. 원본 전사본과 일치하는 경우 옆에 있는 Word 및 텍스트 파일이 다시 생성되지만, PDF는 다시 생성되지 않으므로 이름을 바꾼 후 다시 내보내야 합니다.</li>
       </ol>
       <figure class="guide-fig">
         <img src="/assets/shots/transcribe.webp" alt="언어 행에 화자 식별 및 단어별 타임스탬프 확인란이 있고 그 아래에 시간 범위 행과 커다란 전사 버튼이 있는 전사 탭." width="1180" height="668" loading="lazy" decoding="async">
-        <figcaption>화자 식별과 단어별 타임스탬프는 전사 탭의 언어 행에 있습니다.</figcaption>
+        <figcaption>The Transcribe tab as it looked before version 2.2. Identify speakers and Per-word timestamps now sit under <b>More options</b>.</figcaption>
       </figure>
 
       <h2>라벨이 표시되는 방식</h2>

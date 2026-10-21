@@ -6,13 +6,15 @@ Whisper Transcriber Suite runs faster-whisper, whisper.cpp or NVIDIA Parakeet lo
 
 Common questions this page answers: Is it free? Yes — BSD-3-Clause, no subscription, no per-minute fee; only the ~1-3GB Whisper model itself downloads once, on first launch. Does it upload recordings anywhere? No, not by default — the two cloud backends above are opt-in and stay off until enabled. What platforms does it run on? Windows, macOS and Linux, with published Windows and macOS installers and a from-source build for Linux. How is this different from calling the Whisper API directly? No per-minute cost and no audio leaves the machine, because transcription runs locally by default instead of through a paid cloud API.
 
+## Tools
+- [Try it in your browser](https://whisper-transcriber-suite.com/try/): free online audio transcription with no upload and no sign-up. Whisper Tiny (41 MB) or Base (77 MB) runs inside the browser tab, for MP3, WAV, M4A or MP4 files of up to 10 minutes (5 on a phone); download TXT, SRT or VTT. The audio never leaves the device (only the model downloads, from Hugging Face). English page; the desktop app handles longer files.
+
 ## Download
 - [Latest release](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest): v2.2.0 — free Windows installer, Windows portable ZIP and macOS DMG, no account or sign-up required; Linux builds from source.
 - [All releases](https://github.com/Milomilo777/whisper-transcriber-suite/releases): full version history, every past release kept published with its own changelog.
 - [Support the project — Buy Me a Coffee](https://buymeacoffee.com/mehraz1358): funds continued cross-platform development and testing.
 
 ## Guides
-- [Try it in the browser](https://whisper-transcriber-suite.com/try/): transcribe a short file (up to 10 minutes) with Whisper inside the browser, no install and no upload; download TXT, SRT or VTT. English page.
 - [Transcribe a YouTube video to text](https://whisper-transcriber-suite.com/youtube-to-text/): paste a link, download with yt-dlp, transcribe locally, save TXT, DOCX, PDF or SRT.
 - [Convert a video to SRT subtitles](https://whisper-transcriber-suite.com/video-to-srt/): SRT, VTT or ASS from a file or a link, correcting them, and burning them into the video.
 - [Transcribe with speaker labels](https://whisper-transcriber-suite.com/speaker-labels/): who said what in an interview, renaming speakers, Word and PDF export.
@@ -52,6 +54,7 @@ The website, including the three guides, is also published in 41 more languages;
 - Also: speaker diarisation, live microphone/system-audio transcription, a batch queue, yt-dlp downloads, and a local-network server mode.
 - New in 2.0: the queue shows each transcription's speed and time left; Make subtitled video turns a link into an MP4 with burned-in subtitles; a finished transcript can be saved as one offline web page; Work offline shows whether anything is connected; speech can be translated straight to English; native Mac menus, Dark mode and notifications; Windows taskbar progress and dark title bars; a quick start window with a sample clip. The Video Tiling tab was removed.
 - New in 2.1: the app comes in 42 interface languages (machine-translated, marked as such; Persian, Arabic and Hebrew on Windows); speaker labels reach the end of long recordings and the number of speakers can be set; files are fully written to disk before they replace the old ones; online features work on every Mac.
+- New in 2.2: an Accuracy level (Fast, Balanced or Best) replaces the Engine and Model pickers on the Transcribe tab and picks a model fitted to the language and the computer, with the rarer options under More options; new installs start on Large v3 Turbo; models trained for one language (Persian, Chinese, Japanese, German, Thai, Swedish, Hebrew); two-language audio (experimental); phone upload by QR code on the Web / LAN access tab (same Wi-Fi); a right-to-left window on Windows for Persian, Arabic and Hebrew; a compact Download form with log-in cookies and time range under More options; all 42 interface languages complete; 35 bugs fixed. The website also has a free in-browser transcription page at /try/.
 - Latest version v2.2.0, released 2026-10-21; repository created 2026-05-11 and actively maintained.
 - Author: translation-robot.
 
@@ -115,9 +118,9 @@ It runs the model locally via faster-whisper by default, so there is no per-minu
 
 Yes, Web/LAN access mode turns this machine into a transcription page the other devices on the network can use.
 
-### What is new in version 2.1?
+### What is new in version 2.2?
 
-Menus, buttons and messages come in 42 languages (machine-translated and marked as such); speaker labels reach the end of long recordings and you can set how many people talk; transcripts, exports and subtitles are fully written to disk before they replace the old file; online features work on every Mac. Version 2.0 added the queue's speed and time left, subtitled video from a link, transcripts as one offline web page, a checkable Work offline mode and translation to English.
+Accuracy levels replace the engine and model pickers on the Transcribe tab: choose Fast, Balanced or Best and the app picks a model that fits your language and computer, and new installs start on Large v3 Turbo. The rarer options sit under More options. Persian, Chinese, Japanese, German, Thai, Swedish and Hebrew get models trained for that language; the Web / LAN access tab shows a QR code so you can send a recording from a phone on the same Wi-Fi; Windows mirrors the window for Persian, Arabic and Hebrew; two-language audio is available as an experimental option; and the Download form is more compact. All 42 interface languages are complete and 35 bugs were fixed. The site also has a page that transcribes a short file in your browser. Version 2.1 added the interface in 42 languages, reliable speaker labels and safer saving; version 2.0 added the queue's speed and time left, subtitled video from a link, transcripts as one offline web page, a checkable Work offline mode and translation to English.
 
 ### Can it turn a video link into a video with subtitles?
 
@@ -142,6 +145,9 @@ Bugs and feature requests go to GitHub Issues, questions to GitHub Discussions, 
 ### [Download for Windows](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest)
 
 macOS and Linux: see [Download](#download).
+
+No install? **[Try it in your browser](https://whisper-transcriber-suite.com/try/)**: transcribe a short file
+(up to 10 minutes) right in the page and get TXT, SRT or VTT. The audio never leaves your device.
 
 Step-by-step guides: [YouTube video to text](https://whisper-transcriber-suite.com/youtube-to-text/) · [video to SRT subtitles](https://whisper-transcriber-suite.com/video-to-srt/) · [transcripts with speaker labels](https://whisper-transcriber-suite.com/speaker-labels/)
 

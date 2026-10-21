@@ -77,7 +77,7 @@
 
 <link rel="preload" href="/assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 <style>
   .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
   .guide { padding: 108px 0 64px; }
@@ -88,6 +88,9 @@
   .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
   .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
   .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .try-box { margin-top: 22px; padding: 14px 18px; border-radius: var(--r); background: var(--teal-soft); border: 1px solid var(--line); color: var(--ink-2); }
+  .try-box p { margin: 0; }
+  .try-box a { color: var(--teal-ink); font-weight: 600; text-underline-offset: 3px; }
   .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
   .guide-body p { margin-top: 12px; color: var(--ink-2); }
   .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
@@ -257,7 +260,8 @@
     <article>
       <h1>Litteroi haastattelu puhujatunnisteilla (kuka sanoi mitä)</h1>
       <p class="guide-sub">Ilmainen työpöytäsovellus, jonka asennat kerran (Windows, macOS, Linux). Nauhoitteesi käsitellään omalla tietokoneellasi, eikä käyttäjätiliä tarvita.</p>
-      <p class="guide-lede">Sovellus erottaa äänet toisistaan ja merkitsee ne tunnisteilla Speaker 00, Speaker 01 ja niin edelleen. Se ei tiedä kuka kukin on, ennen kuin nimeät heidät uudelleen. Samankaltaiset äänet, lyhyet vastaukset, päällekkäinen puhe ja taustahäly voivat aiheuttaa vääriä tunnisteita. Aloita valitsemalla Tunnista puhujat Litteroi-välilehdellä ja paina Litteroi.</p>
+      <p class="guide-lede">The app tells voices apart and labels them Speaker 00, Speaker 01 and so on. It does not know who anyone is until you rename them. Similar voices, short replies, overlapping speech and background noise can cause wrong labels. To start, open More options on the Transcribe tab, tick Identify speakers and press Transcribe.</p>
+      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Lataa ilmainen sovellus</a>
       </div>
@@ -269,15 +273,15 @@
       <ol class="guide-steps">
         <li><b>Lisää nauhoite.</b> Vedä ääni- tai videotiedosto <b>Litteroi</b>-välilehdelle tai napsauta <b>Selaa tiedostoja...</b>. Linkki <b>Lataa videoita</b> -välilehdeltä toimii myös, sillä se käyttää samoja Litteroi-asetuksia.</li>
         <li><b>Valitse kieli</b> tai jätä valinnaksi <b>Auto</b>.</li>
-        <li><b>Valitse Tunnista puhujat.</b> Jos ruudussa lukee <b>Tunnista puhujat (ei käytettävissä)</b>, vie hiiren osoitin sen päälle nähdäksesi syyn. Sen alla oleva <b>Puhujat</b>-valitsin aktivoituu: jätä se valintaan <b>Auto</b> tai valitse numero 2–10 määrittääksesi tarkan henkilömäärän.</li>
-        <li><b>Valinnainen:</b> valitse <b>Sanakohtaiset aikaleimat</b> tallentaaksesi alku- ja loppuajan jokaiselle sanalle eikä vain jokaiselle lauseelle. Tulosteen koko kasvaa.</li>
+        <li><b>Open More options and tick Identify speakers.</b> If the box reads <b>Identify speakers (unavailable)</b>, hover over it to see why. The <b>Speakers</b> picker below it switches on: leave it on <b>Auto</b>, or choose a number from 2 to 10 to force exactly that many people.</li>
+        <li><b>Optional:</b> in <b>More options</b>, tick <b>Per-word timestamps</b> to store a start and end time for every word instead of only every sentence. The output gets larger.</li>
         <li><b>Valitse vientimuodot.</b> Napsauta <b>Lisäasetukset…</b> ja valitse <b>DOCX</b> sekä <b>PDF</b> kohdasta <b>Tulostemuodot</b>. Myös SRT, TXT, Markdown ja JSON sisältävät tunnisteet. Pidä JSON valittuna: se on JSON-tiedosto, jota sovellus käyttää litteroinnin katseluohjelman avaamiseen, jota tarvitset viimeisessä vaiheessa.</li>
         <li><b>Napsauta Litteroi.</b> Puhujantunnistus suoritetaan litteroinnin jälkeen, ja se pidentää käsittelyaikaa. Avaa sen jälkeen <b>Näytä litterointi</b> kohdasta <b>Viimeisin tulos</b>.</li>
         <li><b>Korvaa yleiset tunnisteet nimillä.</b> Napsauta katseluohjelmassa solua hiiren kakkospainikkeella <b>Puhuja</b>-sarakkeessa, valitse <b>Nimeä 'Speaker 00' uudelleen (kaikkialla)...</b>, kirjoita nimi ja napsauta <b>Tallenna muutokset (Ctrl+S)</b>. Vieressä olevat Word- ja tekstitiedostot luodaan uudelleen, jos ne vastaavat yhä alkuperäistä litterointia; PDF-tiedostoa ei luoda uudelleen, joten vie se uudelleen nimeämisen jälkeen.</li>
       </ol>
       <figure class="guide-fig">
         <img src="/assets/shots/transcribe.webp" alt="Litteroi-välilehti, jossa Tunnista puhujat - ja Sanakohtaiset aikaleimat -valintaruudut ovat Kieli-rivillä, Aikaväli-rivi niiden alapuolella ja suuri Litteroi-painike." width="1180" height="668" loading="lazy" decoding="async">
-        <figcaption>Tunnista puhujat ja Sanakohtaiset aikaleimat sijaitsevat Litteroi-välilehden Kieli-rivillä.</figcaption>
+        <figcaption>The Transcribe tab as it looked before version 2.2. Identify speakers and Per-word timestamps now sit under <b>More options</b>.</figcaption>
       </figure>
 
       <h2>Miltä tunnisteet näyttävät</h2>

@@ -77,7 +77,7 @@
 
 <link rel="preload" href="/assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 <style>
   .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
   .guide { padding: 108px 0 64px; }
@@ -88,6 +88,9 @@
   .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
   .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
   .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .try-box { margin-top: 22px; padding: 14px 18px; border-radius: var(--r); background: var(--teal-soft); border: 1px solid var(--line); color: var(--ink-2); }
+  .try-box p { margin: 0; }
+  .try-box a { color: var(--teal-ink); font-weight: 600; text-underline-offset: 3px; }
   .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
   .guide-body p { margin-top: 12px; color: var(--ink-2); }
   .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
@@ -258,6 +261,7 @@
       <h1>Hogyan konvertálhatsz ingyen videót SRT-felirattá</h1>
       <p class="guide-sub">Ingyenes asztali alkalmazás, amelyet csak egyszer kell telepítened (Windows, macOS, Linux). A benne található Whisper beszédfelismerő modell a saját számítógépeden fut, így az alapértelmezett motorokkal a videód nem töltődik fel sehova.</p>
       <p class="guide-lede">Videó SRT-felirattá alakításához nyisd meg az Átírás lapot, dobd be a videó- vagy hangfájlt, ellenőrizd a Speciális beállítások alatt, hogy be van-e jelölve az SRT, majd kattints az Átírás gombra. A Whisper közvetlenül az eredeti fájl mellé menti az elterjedt SRT feliratformátumot, amely azonnal készen áll lejátszóhoz, szerkesztőhöz vagy feltöltéshez. Hivatkozások esetén lásd a <a href="/hu/youtube-to-text/">YouTube-útmutatót</a>.</p>
+      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Töltsd le az ingyenes alkalmazást</a>
       </div>
@@ -268,10 +272,10 @@
       <h2>1. Az SRT létrehozása</h2>
       <ol class="guide-steps">
         <li><b>Nyisd meg az Átírás lapot</b>, és húzd a videó- vagy hangfájlodat az ablakra, vagy kattints a <b>Fájlok tallózása...</b> gombra. Egyszerre több fájlt is kiválaszthatsz.</li>
-        <li><b>Állítsd be a nyelvet</b>, vagy hagyd az <b>Auto</b> beállításon az automatikus felismeréshez. Ha magad választod ki, az gyorsabb, és pontosabb lehet rövid vagy zajos felvételek esetén.</li>
-        <li><b>Nem kötelező:</b> add meg az <b>Időtartomány</b> mezőt (H:MM:SS), ha a fájlnak csak egy részét szeretnéd átírni.</li>
+        <li><b>Set the Language</b>, or leave <b>Auto</b> to detect it. Picking it yourself is faster and can be more accurate for short or noisy clips. Next to it, <b>Accuracy</b> chooses the model: <b>Fast</b> for a quick draft, <b>Balanced</b>, or <b>Best</b> for the most careful result (slower). A model you picked in <b>Advanced settings</b> shows as <b>Custom</b> and is left alone.</li>
+        <li><b>Optional:</b> open <b>More options</b> and fill in <b>Time range</b> (H:MM:SS) to transcribe only part of the file.</li>
         <li><b>Válaszd ki a feliratformátumokat.</b> Kattints a <b>Speciális beállítások…</b> lehetőségre, és keresd meg a <b>Kimeneti formátumok</b> szakaszt. Az alapértelmezett az SRT és a JSON. Webes videókhoz jelöld be a <b>VTT</b> formátumot (internetes feliratformátum), ha pedig szerkesztőben formázod a feliratokat, válaszd az <b>ASS (formázott feliratok / karaoke)</b> opciót. Minden bejelölt formátum elkészül minden egyes feladathoz. A JSON maradjon bejelölve: az alkalmazás ezt a JSON-fájlt használja az átiratmegtekintő megnyitásához.</li>
-        <li><b>Nem kötelező:</b> jelöld be a <b>Szónkénti időbélyegek</b> opciót, hogy minden szóhoz külön kezdő és záró időbélyeg kerüljön mentésre; a fájlok mérete így nagyobb lesz. Az SRT feliratblokkjai továbbra is a teljes szegmenseket követik, egy blokk jut a beszéd minden szakaszára. A szószintű időzítést a VTT és az ASS a karaoke jellegű kiemeléshez használja.</li>
+        <li><b>Optional:</b> under <b>More options</b>, tick <b>Per-word timestamps</b> to store a start and end time for every word; the files get larger. Your SRT cues still follow whole segments, one cue per segment of speech. Word timing is used by VTT and ASS for karaoke-style highlighting.</li>
         <li><b>Kattints az Átírás gombra.</b> A feladatot az <b>Átírási várólista</b> lapon követheted nyomon. A feliratfájl közvetlenül az eredeti fájl mellé kerül azonos néven, de új kiterjesztéssel (például a talk.mp4 fájlból talk.srt lesz), az <b>Utolsó eredmény</b> kártyán pedig minden fájl mellett megjelenik egy <b>Megnyitás</b> gomb.</li>
       </ol>
       <figure class="guide-fig">
@@ -281,7 +285,7 @@
 
       <h2>Feliratok más nyelven</h2>
       <div class="guide-body">
-        <p>Nem angol nyelvű beszédből készült angol feliratokhoz jelöld be a <b>Kimenet: angol fordítás</b> lehetőséget; a fájlok neve .en-translated utótagot kap. Ez alapértelmezés szerint ki van kapcsolva, és nem működik minden motorral vagy modellel. Más nyelvekhez az átiratmegtekintő opcionális AI-eszközök lapja kétnyelvű SRT-t is tud készíteni, miután beállítottad az AI-rétegét (egy általad telepített helyi modellt vagy egy kiválasztott online szolgáltatót); ez alapértelmezés szerint ki van kapcsolva.</p>
+        <p>For English subtitles from non-English speech, open <b>More options</b> and tick <b>Output: English translation</b>; the files get an .en-translated name. It is off by default and does not work with every engine or model. For other languages, an optional AI Tools tab in the transcript viewer can write a bilingual SRT once you set up its AI layer (a local model you install, or an online provider you choose); it is off by default.</p>
       </div>
       <h2>2. Javítás (nem kötelező)</h2>
       <div class="guide-body">

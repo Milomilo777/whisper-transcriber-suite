@@ -77,7 +77,7 @@
 
 <link rel="preload" href="/assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 <style>
   .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
   .guide { padding: 108px 0 64px; }
@@ -88,6 +88,9 @@
   .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
   .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
   .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .try-box { margin-top: 22px; padding: 14px 18px; border-radius: var(--r); background: var(--teal-soft); border: 1px solid var(--line); color: var(--ink-2); }
+  .try-box p { margin: 0; }
+  .try-box a { color: var(--teal-ink); font-weight: 600; text-underline-offset: 3px; }
   .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
   .guide-body p { margin-top: 12px; color: var(--ink-2); }
   .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
@@ -257,7 +260,8 @@
     <article>
       <h1>Transkripsi temubual dengan label penutur (siapa kata apa)</h1>
       <p class="guide-sub">Aplikasi desktop percuma yang anda pasang sekali (Windows, macOS, Linux). Rakaman anda diproses pada komputer anda, dan tiada akaun diperlukan.</p>
-      <p class="guide-lede">Aplikasi membezakan suara dan melabelkannya Speaker 00, Speaker 01 dan seterusnya. Ia tidak tahu siapa sesiapa sehingga anda menamakan semula mereka. Suara yang serupa, balasan pendek, pertuturan bertindih dan bunyi latar boleh menyebabkan label salah. Untuk mula, tanda Kenal pasti penutur pada tab Transkripsi dan tekan Transkripsi.</p>
+      <p class="guide-lede">The app tells voices apart and labels them Speaker 00, Speaker 01 and so on. It does not know who anyone is until you rename them. Similar voices, short replies, overlapping speech and background noise can cause wrong labels. To start, open More options on the Transcribe tab, tick Identify speakers and press Transcribe.</p>
+      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Muat turun aplikasi percuma</a>
       </div>
@@ -269,15 +273,15 @@
       <ol class="guide-steps">
         <li><b>Tambah rakaman.</b> Pada tab <b>Transkripsi</b>, seret fail audio atau video atau klik <b>Layari fail...</b>. Pautan dari tab <b>Muat turun Video</b> juga berfungsi, kerana ia menggunakan tetapan Transkripsi yang sama.</li>
         <li><b>Pilih Bahasa</b>, atau biarkan pada <b>Auto</b>.</li>
-        <li><b>Tanda Kenal pasti penutur.</b> Jika kotak memaparkan <b>Kenal pasti penutur (tidak tersedia)</b>, larikan tetikus ke atasnya untuk melihat sebabnya. Pemilih <b>Penutur</b> di bawahnya dihidupkan: biarkan pada <b>Auto</b>, atau pilih nombor dari 2 hingga 10 untuk memaksa bilangan orang yang tepat.</li>
-        <li><b>Pilihan:</b> tanda <b>Cap masa setiap perkataan</b> untuk menyimpan masa mula dan tamat bagi setiap perkataan dan bukan hanya setiap ayat. Output menjadi lebih besar.</li>
+        <li><b>Open More options and tick Identify speakers.</b> If the box reads <b>Identify speakers (unavailable)</b>, hover over it to see why. The <b>Speakers</b> picker below it switches on: leave it on <b>Auto</b>, or choose a number from 2 to 10 to force exactly that many people.</li>
+        <li><b>Optional:</b> in <b>More options</b>, tick <b>Per-word timestamps</b> to store a start and end time for every word instead of only every sentence. The output gets larger.</li>
         <li><b>Pilih format eksport.</b> Klik <b>Tetapan lanjutan…</b> dan tanda <b>DOCX</b> dan <b>PDF</b> di bawah <b>Format output</b>. SRT, TXT, Markdown dan JSON juga membawa label. Biarkan JSON ditanda: ia adalah fail JSON yang digunakan aplikasi untuk membuka pelihat transkrip, yang anda perlukan untuk langkah terakhir.</li>
         <li><b>Klik Transkripsi.</b> Pengesanan penutur berjalan selepas transkripsi dan menambah masa pemprosesan. Kemudian buka <b>Lihat transkrip</b> dari kad <b>Hasil terakhir</b>.</li>
         <li><b>Gantikan label generik dengan nama.</b> Dalam pelihat, klik kanan sel dalam lajur <b>Penutur</b>, pilih <b>Nama semula 'Speaker 00' (di mana sahaja)...</b>, taip nama dan klik <b>Simpan perubahan (Ctrl+S)</b>. Fail Word dan teks di sebelahnya dibina semula apabila ia masih sepadan dengan transkrip asal; PDF tidak, jadi eksport semula selepas menamakan semula.</li>
       </ol>
       <figure class="guide-fig">
         <img src="/assets/shots/transcribe.webp" alt="Tab Transkripsi dengan kotak tanda Kenal pasti penutur dan Cap masa setiap perkataan pada baris Bahasa, baris Julat masa di bawah, dan butang Transkripsi yang besar." width="1180" height="668" loading="lazy" decoding="async">
-        <figcaption>Kenal pasti penutur dan Cap masa setiap perkataan terletak pada baris Bahasa dalam tab Transkripsi.</figcaption>
+        <figcaption>The Transcribe tab as it looked before version 2.2. Identify speakers and Per-word timestamps now sit under <b>More options</b>.</figcaption>
       </figure>
 
       <h2>Rupa label tersebut</h2>

@@ -75,7 +75,7 @@
 <link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
 
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 <style>
   .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
   .guide { padding: 108px 0 64px; }
@@ -86,6 +86,9 @@
   .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
   .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
   .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .try-box { margin-top: 22px; padding: 14px 18px; border-radius: var(--r); background: var(--teal-soft); border: 1px solid var(--line); color: var(--ink-2); }
+  .try-box p { margin: 0; }
+  .try-box a { color: var(--teal-ink); font-weight: 600; text-underline-offset: 3px; }
   .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
   .guide-body p { margin-top: 12px; color: var(--ink-2); }
   .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
@@ -256,6 +259,7 @@
       <h1>Μεταγραφή βίντεο YouTube σε κείμενο, δωρεάν και εκτός σύνδεσης</h1>
       <p class="guide-sub">Μια δωρεάν εφαρμογή για υπολογιστή που εγκαθιστάτε μία φορά (Windows, macOS, Linux). Η λήψη του βίντεο απαιτεί διαδίκτυο· η ίδια η μεταγραφή εκτελείται στον υπολογιστή σας.</p>
       <p class="guide-lede">Για να μετατρέψετε ένα βίντεο YouTube σε κείμενο, επικολλήστε τον σύνδεσμό του στην καρτέλα Λήψη βίντεο, επιλέξτε μια μορφή κειμένου, επιλέξτε Μεταγραφή μετά τη λήψη και πατήστε Λήψη. Η εφαρμογή κατεβάζει το βίντεο με το πρόγραμμα λήψης ανοιχτού κώδικα yt-dlp, το μεταγράφει με το Whisper (ένα μοντέλο αναγνώρισης ομιλίας) στον δικό σας υπολογιστή και αποθηκεύει μια μεταγραφή σε TXT, DOCX, PDF ή SRT.</p>
+      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Κατεβάστε τη δωρεάν εφαρμογή</a>
       </div>
@@ -266,10 +270,10 @@
       <h2>Πώς να μεταγράψετε ένα βίντεο YouTube</h2>
       <ol class="guide-steps">
         <li><b>Μόνο κατά την πρώτη εκκίνηση.</b> Το παράθυρο Γρήγορη εκκίνηση ζητά τη γλώσσα σας και <b>Γρήγορο</b> ή <b>Καλύτερη ποιότητα</b>· το μοντέλο ομιλίας λαμβάνεται μία φορά, κατά την πρώτη χρήση.</li>
-        <li><b>Ανοίξτε την καρτέλα Λήψη βίντεο</b> και επικολλήστε τον σύνδεσμο YouTube στο <b>URL</b>. Η εφαρμογή αναζητά αυτόματα τις μορφές και τυχόν υπότιτλους.</li>
+        <li><b>Open the Download Videos tab</b> and paste the YouTube link into <b>Video link</b>. The app looks up the formats and any subtitles by itself.</li>
         <li><b>Επιλέξτε λειτουργία.</b> Η επιλογή <b>Ήχος</b> αποθηκεύει μόνο τον ήχο, ο οποίος έχει μικρότερο μέγεθος και είναι ταχύτερος όταν το μόνο που θέλετε είναι μια μεταγραφή. Η επιλογή <b>Ήχος και βίντεο</b> διατηρεί και την εικόνα.</li>
-        <li><b>Προαιρετικά:</b> χρησιμοποιήστε το <b>Χρονικό διάστημα (προαιρετικό)</b> για να κατεβάσετε και να μεταγράψετε μόνο ένα μέρος. Η μορφή είναι H:MM:SS, και το 0:00:00 και στα δύο πεδία σημαίνει ολόκληρο το βίντεο.</li>
-        <li><b>Επιλέξτε τον τύπο αρχείου πριν από τη λήψη.</b> Μεταβείτε στην καρτέλα <b>Μεταγραφή</b>, κάντε κλικ στις <b>Ρυθμίσεις για προχωρημένους…</b> και, στην ενότητα <b>Μορφές εξόδου</b>, επιλέξτε <b>TXT</b> (ή <b>DOCX</b> ή <b>PDF</b>). Η προεπιλογή είναι SRT συν JSON, η οποία σας δίνει υπότιτλους και όχι ένα απλό αρχείο κειμένου. Διατηρήστε το JSON επιλεγμένο: είναι ένα αρχείο JSON που χρησιμοποιεί η εφαρμογή για να ανοίξει την προβολή μεταγραφής. Η <b>Γλώσσα</b> και το μοντέλο που επιλέγονται σε αυτήν την καρτέλα ισχύουν και για τις λήψεις.</li>
+        <li><b>Optional:</b> open <b>More options</b> under the form and use <b>Time range (optional)</b> to download and transcribe only a part. The format is H:MM:SS, and 0:00:00 in both boxes means the whole video. <b>More options</b> opens by itself when a range is set.</li>
+        <li><b>Choose the file type before you download.</b> Switch to the <b>Transcribe</b> tab, click <b>Advanced settings…</b> and, under <b>Output formats</b>, tick <b>TXT</b> (or <b>DOCX</b> or <b>PDF</b>). The default is SRT plus JSON, which gives you subtitles, not a plain text file. Keep JSON ticked: it is a JSON file the app uses to open the transcript viewer. The <b>Language</b> and <b>Accuracy</b> level chosen on that tab apply to downloads too.</li>
         <li><b>Επιστρέφοντας στην καρτέλα Λήψη βίντεο, επιλέξτε Μεταγραφή μετά τη λήψη</b> και μετά κάντε κλικ στο <b>Λήψη</b>.</li>
         <li><b>Παρακολουθήστε την πρόοδο.</b> Η γραμμή στον πίνακα συμπληρώνεται και η καρτέλα <b>Ουρά μεταγραφής</b> εμφανίζει την ταχύτητα και τον χρόνο που απομένει. Όταν ολοκληρωθεί, η μεταγραφή αποθηκεύεται δίπλα στο αρχείο από το οποίο προήλθε και η κάρτα <b>Τελευταίο αποτέλεσμα</b> στην καρτέλα Μεταγραφή προσφέρει τις επιλογές <b>Άνοιγμα</b>, <b>Προβολή μεταγραφής</b> και <b>Αποθήκευση σελίδας για κοινή χρήση</b>.</li>
       </ol>
@@ -284,7 +288,7 @@
       </div>
       <h2>Άλλοι ιστότοποι και βίντεο που απαιτούν σύνδεση</h2>
       <div class="guide-body">
-        <p>Οποιοσδήποτε ιστότοπος υποστηρίζεται από το ίδιο πρόγραμμα λήψης λειτουργεί με τον ίδιο τρόπο. Για βίντεο που απαιτούν λογαριασμό, όπως ιστορίες σε Instagram, Facebook, TikTok και βίντεο YouTube με ηλικιακό περιορισμό, επιλέξτε το πρόγραμμα περιήγησής σας στην ενότητα <b>Cookies σύνδεσης</b>. Η εφαρμογή διαβάζει τα στοιχεία σύνδεσης αυτού του προγράμματος περιήγησης σε αυτόν τον υπολογιστή και τα χρησιμοποιεί μόνο κατά τη λήψη από τον συγκεκριμένο ιστότοπο· δεν αποστέλλονται πουθενά αλλού. Αυτό ενδέχεται να μην λειτουργεί για κάθε βίντεο με περιορισμό.</p>
+        <p>Any site the same downloader supports works the same way. For videos that need an account, such as Instagram, Facebook, TikTok stories and age-restricted YouTube videos, open <b>More options</b> under the form and choose your browser under <b>Log-in cookies</b>. The app reads that browser's log-in on this computer and uses it only when downloading from that site; it is not sent anywhere else. This may not work for every restricted video.</p>
       </div>
 
       <h2>Καλό είναι να γνωρίζετε</h2>
@@ -298,7 +302,7 @@
         <article class="qa"><h3>Είναι πραγματικά δωρεάν;</h3><div class="faq-a"><p>Ναι: δωρεάν και ανοιχτού κώδικα, χωρίς λογαριασμό, χωρίς συνδρομή, χωρίς χρέωση ανά λεπτό.</p></div></article>
         <article class="qa"><h3>Μεταφορτώνεται το βίντεο ή η μεταγραφή μου κάπου;</h3><div class="faq-a"><p>Όχι με τις προεπιλεγμένες μηχανές: το Whisper εκτελείται στον δικό σας υπολογιστή και μόνο η λήψη από τον ιστότοπο του βίντεο χρησιμοποιεί το δίκτυο. Υπάρχουν δύο μηχανές cloud, αλλά παραμένουν απενεργοποιημένες μέχρι να τις ενεργοποιήσετε εσείς οι ίδιοι.</p></div></article>
         <article class="qa"><h3>Μπορεί να μεταγράψει ένα βίντεο που δεν έχει υπότιτλους ή ένα βίντεο σε άλλη γλώσσα;</h3><div class="faq-a"><p>Ναι. Το Whisper ακούει τον ήχο, επομένως δεν χρειάζονται υπότιτλοι. Επιλέξτε την ομιλούμενη <b>Γλώσσα</b> ή αφήστε την στο <b>Αυτόματο</b>. Η επιλογή <b>Έξοδος: αγγλική μετάφραση</b> μετατρέπει την ομιλία που δεν είναι στα αγγλικά σε αγγλικό κείμενο· είναι απενεργοποιημένη από προεπιλογή και δεν λειτουργεί με κάθε μηχανή ή μοντέλο.</p></div></article>
-        <article class="qa"><h3>Μπορώ να μεταγράψω μόνο ένα μέρος ενός μεγάλου βίντεο;</h3><div class="faq-a"><p>Ναι. Συμπληρώστε το πεδίο <b>Χρονικό διάστημα (προαιρετικό)</b> στην καρτέλα Λήψη βίντεο με έναρξη και λήξη σε H:MM:SS. Θα πραγματοποιηθεί λήψη μόνο αυτού του τμήματος, και μεταγραφή αν έχετε επιλέξει το Μεταγραφή μετά τη λήψη.</p></div></article>
+        <article class="qa"><h3>Μπορώ να μεταγράψω μόνο ένα μέρος ενός μεγάλου βίντεο;</h3><div class="faq-a"><p>Yes. Open <b>More options</b> on the Download Videos tab and fill in <b>Time range (optional)</b> with a start and end in H:MM:SS. Only that portion is downloaded, and transcribed if you ticked Transcribe after download.</p></div></article>
         <article class="qa"><h3>Μπορώ να επικολλήσω ολόκληρη λίστα αναπαραγωγής;</h3><div class="faq-a"><p>Όχι. Κάθε εργασία αφορά ένα βίντεο. Ένας σύνδεσμος που αντιγράφεται μέσα από μια λίστα αναπαραγωγής πραγματοποιεί λήψη μόνο αυτού του βίντεο, όχι ολόκληρης της λίστας.</p></div></article>
       </div>
 

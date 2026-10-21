@@ -77,7 +77,7 @@
 
 <link rel="preload" href="/assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 <style>
   .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
   .guide { padding: 108px 0 64px; }
@@ -88,6 +88,9 @@
   .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
   .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
   .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .try-box { margin-top: 22px; padding: 14px 18px; border-radius: var(--r); background: var(--teal-soft); border: 1px solid var(--line); color: var(--ink-2); }
+  .try-box p { margin: 0; }
+  .try-box a { color: var(--teal-ink); font-weight: 600; text-underline-offset: 3px; }
   .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
   .guide-body p { margin-top: 12px; color: var(--ink-2); }
   .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
@@ -258,6 +261,7 @@
       <h1>Transcribeer een YouTube-video naar tekst, gratis en offline</h1>
       <p class="guide-sub">Een gratis desktop-app die je eenmalig installeert (Windows, macOS, Linux). Voor het downloaden van de video is internet nodig; de transcriptie zelf draait op je computer.</p>
       <p class="guide-lede">Om een YouTube-video om te zetten in tekst, plak je de link in het tabblad Video's downloaden, kies je een tekstformaat, vink je Transcriberen na download aan en klik je op Downloaden. De app haalt de video op met de opensource-downloader yt-dlp, transcribeert deze met Whisper (een spraakherkenningsmodel) op je eigen computer en slaat een transcript op als TXT, DOCX, PDF of SRT.</p>
+      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Download de gratis app</a>
       </div>
@@ -268,10 +272,10 @@
       <h2>Hoe je een YouTube-video transcribeert</h2>
       <ol class="guide-steps">
         <li><b>Alleen bij de eerste start.</b> Het venster Snel aan de slag vraagt om je taal en <b>Snel</b> of <b>Beste kwaliteit</b>; het spraakmodel wordt eenmalig gedownload bij het eerste gebruik.</li>
-        <li><b>Open het tabblad Video's downloaden</b> en plak de YouTube-link in <b>URL</b>. De app zoekt zelf de formaten en eventuele ondertitels op.</li>
+        <li><b>Open the Download Videos tab</b> and paste the YouTube link into <b>Video link</b>. The app looks up the formats and any subtitles by itself.</li>
         <li><b>Kies een modus.</b> <b>Audio</b> slaat alleen het geluid op, wat kleiner en sneller is als je alleen een transcript wilt. <b>Audio en video</b> behoudt ook het beeld.</li>
-        <li><b>Optioneel:</b> gebruik <b>Tijdsbereik (optioneel)</b> om slechts een deel te downloaden en te transcriberen. Het formaat is H:MM:SS, en 0:00:00 in beide velden betekent de hele video.</li>
-        <li><b>Kies het bestandstype voordat je downloadt.</b> Ga naar het tabblad <b>Transcriberen</b>, klik op <b>Geavanceerde instellingen…</b> en vink onder <b>Uitvoerformaten</b> <b>TXT</b> (of <b>DOCX</b> of <b>PDF</b>) aan. De standaardinstelling is SRT plus JSON; dit levert ondertitels op, geen plat tekstbestand. Laat JSON aangevinkt: dit is een JSON-bestand dat de app gebruikt om de transcriptviewer te openen. De op dat tabblad gekozen <b>Taal</b> en het gekozen model gelden ook voor downloads.</li>
+        <li><b>Optional:</b> open <b>More options</b> under the form and use <b>Time range (optional)</b> to download and transcribe only a part. The format is H:MM:SS, and 0:00:00 in both boxes means the whole video. <b>More options</b> opens by itself when a range is set.</li>
+        <li><b>Choose the file type before you download.</b> Switch to the <b>Transcribe</b> tab, click <b>Advanced settings…</b> and, under <b>Output formats</b>, tick <b>TXT</b> (or <b>DOCX</b> or <b>PDF</b>). The default is SRT plus JSON, which gives you subtitles, not a plain text file. Keep JSON ticked: it is a JSON file the app uses to open the transcript viewer. The <b>Language</b> and <b>Accuracy</b> level chosen on that tab apply to downloads too.</li>
         <li><b>Ga terug naar Video's downloaden en vink Transcriberen na download aan</b>, klik daarna op <b>Downloaden</b>.</li>
         <li><b>Volg de voortgang.</b> De rij in de tabel loopt vol en het tabblad <b>Transcriptiewachtrij</b> toont de snelheid en de resterende tijd. Zodra het klaar is, staat het transcript naast het bronbestand en biedt de kaart <b>Laatste resultaat</b> op het tabblad Transcriberen de opties <b>Openen</b>, <b>Transcript bekijken</b> en <b>Deelbare pagina opslaan</b>.</li>
       </ol>
@@ -286,7 +290,7 @@
       </div>
       <h2>Andere sites en video's waarvoor je moet inloggen</h2>
       <div class="guide-body">
-        <p>Elke site die door dezelfde downloader wordt ondersteund, werkt op dezelfde manier. Voor video's waarvoor een account nodig is, zoals Instagram, Facebook, TikTok-stories en YouTube-video's met een leeftijdsbeperking, kies je je browser onder <b>Inlogcookies</b>. De app leest de inloggegevens van die browser op deze computer en gebruikt deze uitsluitend bij het downloaden van die site; ze worden nergens anders naartoe verzonden. Dit werkt mogelijk niet voor elke video met beperkingen.</p>
+        <p>Any site the same downloader supports works the same way. For videos that need an account, such as Instagram, Facebook, TikTok stories and age-restricted YouTube videos, open <b>More options</b> under the form and choose your browser under <b>Log-in cookies</b>. The app reads that browser's log-in on this computer and uses it only when downloading from that site; it is not sent anywhere else. This may not work for every restricted video.</p>
       </div>
 
       <h2>Goed om te weten</h2>
@@ -300,7 +304,7 @@
         <article class="qa"><h3>Is het echt gratis?</h3><div class="faq-a"><p>Ja: gratis en open source, geen account, geen abonnement, geen kosten per minuut.</p></div></article>
         <article class="qa"><h3>Wordt mijn video of transcript ergens naartoe geüpload?</h3><div class="faq-a"><p>Niet met de standaard-engines: Whisper draait op je eigen computer en alleen het downloaden vanaf de videosite maakt gebruik van het netwerk. Er zijn twee cloud-engines, maar die blijven uitgeschakeld totdat je ze zelf inschakelt.</p></div></article>
         <article class="qa"><h3>Kan het een video transcriberen die geen ondertitels heeft, of een in een andere taal?</h3><div class="faq-a"><p>Ja. Whisper luistert naar de audio, dus ondertitels zijn niet nodig. Kies de gesproken <b>Taal</b> of laat deze op <b>Auto</b> staan. <b>Uitvoer: Engelse vertaling</b> zet niet-Engelstalige spraak om in Engelse tekst; dit staat standaard uit en werkt niet met elke engine of elk model.</p></div></article>
-        <article class="qa"><h3>Kan ik slechts een deel van een lange video transcriberen?</h3><div class="faq-a"><p>Ja. Vul <b>Tijdsbereik (optioneel)</b> op het tabblad Video's downloaden in met een begin en einde in H:MM:SS. Alleen dat deel wordt gedownload, en getranscribeerd als je Transcriberen na download hebt aangevinkt.</p></div></article>
+        <article class="qa"><h3>Kan ik slechts een deel van een lange video transcriberen?</h3><div class="faq-a"><p>Yes. Open <b>More options</b> on the Download Videos tab and fill in <b>Time range (optional)</b> with a start and end in H:MM:SS. Only that portion is downloaded, and transcribed if you ticked Transcribe after download.</p></div></article>
         <article class="qa"><h3>Kan ik een hele afspeellijst plakken?</h3><div class="faq-a"><p>Nee. Elke taak is één video. Een link die vanuit een afspeellijst is gekopieerd, downloadt alleen die video, niet de hele lijst.</p></div></article>
       </div>
 

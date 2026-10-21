@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Transcribe a Short Audio File in Your Browser, Free</title>
-<meta name="description" content="Drop a short audio or video file and get a transcript and SRT subtitles. Whisper runs in your browser: the audio never leaves your device.">
+<title>Free Online Audio Transcription, No Upload (Whisper)</title>
+<meta name="description" content="Drop an MP3, WAV, M4A or MP4 (up to 10 min) for a transcript and SRT/VTT. Whisper runs in your browser, so audio never leaves your device. Free, no sign-up.">
 <meta name="author" content="translation-robot">
 <meta name="theme-color" content="#f5f7fb">
 <meta name="color-scheme" content="light">
@@ -12,8 +12,8 @@
 <link rel="canonical" href="https://whisper-transcriber-suite.com/try/">
 
 <meta property="og:type" content="website">
-<meta property="og:title" content="Transcribe a Short Audio File in Your Browser, Free">
-<meta property="og:description" content="Drop a short audio or video file and get a transcript and SRT subtitles. Whisper runs in your browser: the audio never leaves your device.">
+<meta property="og:title" content="Free Online Audio Transcription, No Upload (Whisper)">
+<meta property="og:description" content="Drop an MP3, WAV, M4A or MP4 (up to 10 min) for a transcript and SRT/VTT. Whisper runs in your browser, so audio never leaves your device. Free, no sign-up.">
 <meta property="og:url" content="https://whisper-transcriber-suite.com/try/">
 <meta property="og:image" content="https://whisper-transcriber-suite.com/assets/social-card-2026-09b.png">
 <meta property="og:image:width" content="1200">
@@ -22,8 +22,8 @@
 <meta property="og:site_name" content="Whisper Transcriber Suite">
 <meta property="og:locale" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Transcribe a Short Audio File in Your Browser, Free">
-<meta name="twitter:description" content="Drop a short audio or video file and get a transcript and SRT subtitles. Whisper runs in your browser: the audio never leaves your device.">
+<meta name="twitter:title" content="Free Online Audio Transcription, No Upload (Whisper)">
+<meta name="twitter:description" content="Drop an MP3, WAV, M4A or MP4 (up to 10 min) for a transcript and SRT/VTT. Whisper runs in your browser, so audio never leaves your device. Free, no sign-up.">
 <meta name="twitter:image" content="https://whisper-transcriber-suite.com/assets/social-card-2026-09b.png">
 
 <link rel="icon" href="../assets/logo.svg" type="image/svg+xml">
@@ -32,7 +32,7 @@
 
 <link rel="preload" href="../assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="../assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="../styles.css?v=20261020a">
+<link rel="stylesheet" href="../styles.css?v=20261022a">
 <style>
   .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
   .guide { padding: 108px 0 64px; }
@@ -97,16 +97,98 @@
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@type": "WebApplication",
-  "name": "Whisper Transcriber Suite — try in the browser",
-  "url": "https://whisper-transcriber-suite.com/try/",
-  "applicationCategory": "MultimediaApplication",
-  "operatingSystem": "Any (a current web browser)",
-  "browserRequirements": "Requires WebAssembly",
-  "description": "Transcribe a short audio or video file with Whisper inside the browser and download TXT, SRT or VTT. The audio is not uploaded.",
-  "isAccessibleForFree": true,
-  "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"},
-  "publisher": {"@type": "Person", "name": "translation-robot", "url": "https://github.com/translation-robot"}
+  "@graph": [
+    {
+      "@type": "WebApplication",
+      "@id": "https://whisper-transcriber-suite.com/try/#webapp",
+      "name": "Whisper Transcriber Suite: try it in the browser",
+      "url": "https://whisper-transcriber-suite.com/try/",
+      "applicationCategory": "MultimediaApplication",
+      "operatingSystem": "Any (a current web browser)",
+      "browserRequirements": "Requires WebAssembly",
+      "description": "Free online audio transcription with no upload: Whisper runs inside your browser and turns an MP3, WAV, M4A or video file of up to 10 minutes into text, SRT and VTT. No sign-up. The audio never leaves your device.",
+      "featureList": [
+        "Transcribe an MP3, WAV, M4A, OGG or MP4 file of up to 10 minutes (5 on a phone)",
+        "Whisper Tiny (41 MB) or Base (77 MB) runs in the browser tab",
+        "Download TXT, SRT or VTT",
+        "No upload: the audio never leaves your device",
+        "No sign-up and no cost"
+      ],
+      "inLanguage": "en",
+      "dateModified": "2026-10-22",
+      "isAccessibleForFree": true,
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "isRelatedTo": {
+        "@id": "https://whisper-transcriber-suite.com/#app"
+      },
+      "isPartOf": {
+        "@id": "https://whisper-transcriber-suite.com/#website"
+      },
+      "publisher": {
+        "@type": "Person",
+        "name": "translation-robot",
+        "url": "https://github.com/translation-robot"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://whisper-transcriber-suite.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Try in the browser",
+          "item": "https://whisper-transcriber-suite.com/try/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Is my audio uploaded?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. The file is read by this page and transcribed inside your browser. The only download is the speech model itself, from Hugging Face, the first time you use it."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Why is it slower than the desktop app?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A browser tab runs small models with limited access to your processor. The desktop app uses the full Whisper models and your graphics card when there is one."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which files work?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Most audio files (MP3, WAV, M4A, OGG) and MP4 or WebM videos with sound, up to 10 minutes. What a browser can open varies; the desktop app opens nearly any format."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which browsers?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Current Chrome, Edge, Firefox and Safari. On a phone it works best with Tiny and a short file."
+          }
+        }
+      ]
+    }
+  ]
 }
 </script>
 </head>
@@ -133,6 +215,7 @@
       <a href="../#showreel">Tour</a>
       <a href="../#features">Features</a>
       <a href="../#how-it-works">How it works</a>
+      <a href="./" aria-current="page">Try</a>
       <a href="../#download">Download</a>
       <a href="../#compare">Compare</a>
       <a href="../#faq">FAQ</a>
@@ -199,8 +282,8 @@
   <div class="guide-wrap">
     <nav class="crumbs" aria-label="Breadcrumb"><a href="../">Home</a> &rsaquo; Try in the browser</nav>
     <article>
-      <h1>Transcribe a short file in your browser</h1>
-      <p class="guide-lede">Drop a short audio or video file, and Whisper turns the speech into text right here in this browser tab. Nothing is uploaded: the speech model is downloaded once and runs on your device, so your audio never leaves it.</p>
+      <h1>Transcribe audio to text online, free, with no upload</h1>
+      <p class="guide-lede">A free online way to turn an MP3 into text, with no sign-up and nothing to install. Drop in an audio or video file, and Whisper turns the speech into text right here in this browser tab. It is private: the speech model is downloaded once and runs on your device, so your audio never leaves it.</p>
       <p class="guide-sub">Up to 10 minutes per file (5 on a phone). For longer files, many files at once, speaker labels and much faster results, use the <a href="../#download">free desktop app</a>.</p>
 
       <noscript><p class="try-err">This page needs JavaScript to run the speech model in your browser.</p></noscript>

@@ -77,7 +77,7 @@
 
 <link rel="preload" href="/assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 <style>
   .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
   .guide { padding: 108px 0 64px; }
@@ -88,6 +88,9 @@
   .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
   .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
   .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .try-box { margin-top: 22px; padding: 14px 18px; border-radius: var(--r); background: var(--teal-soft); border: 1px solid var(--line); color: var(--ink-2); }
+  .try-box p { margin: 0; }
+  .try-box a { color: var(--teal-ink); font-weight: 600; text-underline-offset: 3px; }
   .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
   .guide-body p { margin-top: 12px; color: var(--ink-2); }
   .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
@@ -257,7 +260,8 @@
     <article>
       <h1>Transskribér et interview med talermarkører (hvem sagde hvad)</h1>
       <p class="guide-sub">En gratis skrivebordsapp, du installerer én gang (Windows, macOS, Linux). Din optagelse behandles på din computer, og der kræves ingen konto.</p>
-      <p class="guide-lede">Appen skelner mellem stemmerne og navngiver dem Speaker 00, Speaker 01 osv. Den ved ikke, hvem personerne er, før du omdøber dem. Ensartede stemmer, korte svar, overlappende tale og baggrundsstøj kan føre til forkerte markeringer. For at starte skal du sætte kryds ved Identificér talere på fanen Transskribér og trykke på Transskribér.</p>
+      <p class="guide-lede">The app tells voices apart and labels them Speaker 00, Speaker 01 and so on. It does not know who anyone is until you rename them. Similar voices, short replies, overlapping speech and background noise can cause wrong labels. To start, open More options on the Transcribe tab, tick Identify speakers and press Transcribe.</p>
+      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Hent den gratis app</a>
       </div>
@@ -269,15 +273,15 @@
       <ol class="guide-steps">
         <li><b>Tilføj optagelsen.</b> På fanen <b>Transskribér</b> trækker du en lyd- eller videofil ind eller klikker på <b>Gennemse filer...</b>. Et link fra fanen <b>Hent videoer</b> fungerer også, fordi det bruger de samme indstillinger for Transskribér.</li>
         <li><b>Vælg sproget</b>, eller lad det stå på <b>Auto</b>.</li>
-        <li><b>Sæt kryds ved Identificér talere.</b> Hvis der i feltet står <b>Identificér talere (ikke tilgængelig)</b>, kan du holde musen over det for at se hvorfor. Vælgeren <b>Talere</b> nedenunder aktiveres: lad den stå på <b>Auto</b>, eller vælg et antal fra 2 til 10 for at gennemtvinge præcis det antal personer.</li>
-        <li><b>Valgfrit:</b> Sæt kryds ved <b>Tidsstempler pr. ord</b> for at gemme en start- og sluttid for hvert ord i stedet for kun hver sætning. Outputtet bliver større.</li>
+        <li><b>Open More options and tick Identify speakers.</b> If the box reads <b>Identify speakers (unavailable)</b>, hover over it to see why. The <b>Speakers</b> picker below it switches on: leave it on <b>Auto</b>, or choose a number from 2 to 10 to force exactly that many people.</li>
+        <li><b>Optional:</b> in <b>More options</b>, tick <b>Per-word timestamps</b> to store a start and end time for every word instead of only every sentence. The output gets larger.</li>
         <li><b>Vælg eksportformaterne.</b> Klik på <b>Avancerede indstillinger…</b>, og sæt kryds ved <b>DOCX</b> og <b>PDF</b> under <b>Outputformater</b>. SRT, TXT, Markdown og JSON indeholder også etiketterne. Lad krydset ved JSON stå: det er en JSON-fil, som appen bruger til at åbne transskriptionsviseren, hvilket du skal bruge i det sidste trin.</li>
         <li><b>Klik på Transskribér.</b> Talergenkendelsen kører efter transskriberingen og forlænger behandlingstiden. Åbn derefter <b>Vis transskription</b> fra kortet <b>Seneste resultat</b>.</li>
         <li><b>Erstat de generiske markører med navne.</b> Højreklik på en celle i kolonnen <b>Taler</b> i transskriptionsvisningen, vælg <b>Omdøb 'Speaker 00' (overalt)...</b>, indtast navnet, og klik på <b>Gem ændringer (Ctrl+S)</b>. Word- og tekstfilerne ved siden af genopbygges, hvis de stadig matcher den oprindelige transskription; det gælder ikke en PDF, så eksportér den igen efter omdøbningen.</li>
       </ol>
       <figure class="guide-fig">
         <img src="/assets/shots/transcribe.webp" alt="Fanen Transskribér med afkrydsningsfelterne Identificér talere og Tidsstempler pr. ord på Sprog-rækken, rækken med tidsinterval nedenunder og den store Transskribér-knap." width="1180" height="668" loading="lazy" decoding="async">
-        <figcaption>Identificér talere og Tidsstempler pr. ord findes på Sprog-rækken på fanen Transskribér.</figcaption>
+        <figcaption>The Transcribe tab as it looked before version 2.2. Identify speakers and Per-word timestamps now sit under <b>More options</b>.</figcaption>
       </figure>
 
       <h2>Sådan ser markørerne ud</h2>

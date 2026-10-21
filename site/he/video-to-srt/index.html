@@ -75,7 +75,7 @@
 <link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
 
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 <style>
   .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
   .guide { padding: 108px 0 64px; }
@@ -86,6 +86,9 @@
   .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
   .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
   .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .try-box { margin-top: 22px; padding: 14px 18px; border-radius: var(--r); background: var(--teal-soft); border: 1px solid var(--line); color: var(--ink-2); }
+  .try-box p { margin: 0; }
+  .try-box a { color: var(--teal-ink); font-weight: 600; text-underline-offset: 3px; }
   .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
   .guide-body p { margin-top: 12px; color: var(--ink-2); }
   .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
@@ -256,6 +259,7 @@
       <h1>כיצד להמיר סרטון לכתוביות SRT בחינם</h1>
       <p class="guide-sub">אפליקציית שולחן עבודה חינמית שמתקינים פעם אחת (Windows, macOS, Linux). Whisper, מודל זיהוי הדיבור שבתוכה, פועל על המחשב שלך, כך שעם מנועי ברירת המחדל הסרטון שלך אינו מועלה.</p>
       <p class="guide-lede">כדי להמיר סרטון לכתוביות SRT, פתחו את לשונית תמלל, גררו קובץ וידאו או שמע, ודאו ש-SRT מסומן תחת הגדרות מתקדמות ולחצו על תמלל. Whisper כותב את קובץ ה-SRT, פורמט קובץ הכתוביות הנפוץ, ליד הקובץ המקורי, מוכן לנגן, עורך או העלאה. לקישור, ראו את <a href="/he/youtube-to-text/">מדריך YouTube</a>.</p>
+      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>הורד את האפליקציה בחינם</a>
       </div>
@@ -266,10 +270,10 @@
       <h2>1. יצירת ה-SRT</h2>
       <ol class="guide-steps">
         <li><b>פתחו את לשונית תמלל</b> וגררו את קובץ הווידאו או השמע אל החלון, או לחצו על <b>עיון בקבצים...</b>. ניתן לבחור מספר קבצים בו-זמנית.</li>
-        <li><b>הגדירו את השפה</b>, או השאירו על <b>אוטומטי</b> כדי לזהות אותה. בחירה ידנית מהירה יותר ויכולה להיות מדויקת יותר עבור קטעים קצרים או רועשים.</li>
-        <li><b>אופציונלי:</b> מלאו את <b>טווח זמן</b> (H:MM:SS) כדי לתמלל רק חלק מהקובץ.</li>
+        <li><b>Set the Language</b>, or leave <b>Auto</b> to detect it. Picking it yourself is faster and can be more accurate for short or noisy clips. Next to it, <b>Accuracy</b> chooses the model: <b>Fast</b> for a quick draft, <b>Balanced</b>, or <b>Best</b> for the most careful result (slower). A model you picked in <b>Advanced settings</b> shows as <b>Custom</b> and is left alone.</li>
+        <li><b>Optional:</b> open <b>More options</b> and fill in <b>Time range</b> (H:MM:SS) to transcribe only part of the file.</li>
         <li><b>בחרו את פורמטי הכתוביות.</b> לחצו על <b>הגדרות מתקדמות…</b> וחפשו את <b>פורמטי פלט</b>. ברירת המחדל היא SRT בתוספת JSON. סמנו <b>VTT</b> (פורמט כתוביות האינטרנט) עבור וידאו באינטרנט, או <b>ASS (כתוביות מעוצבות / קריוקי)</b> אם אתם מעצבים כתוביות בעורך. כל פורמט מסומן נכתב עבור כל משימה. השאירו את JSON מסומן: זהו קובץ JSON שהאפליקציה משתמשת בו כדי לפתוח את מציג התמליל.</li>
-        <li><b>אופציונלי:</b> סמנו את <b>חותמות זמן לכל מילה</b> כדי לאחסן זמן התחלה וסיום עבור כל מילה; הקבצים יגדלו. תגי ה-SRT שלכם עדיין יעקבו אחר פלחים שלמים, תג אחד לכל פלח דיבור. תזמון מילים משמש את VTT ו-ASS להדגשה בסגנון קריוקי.</li>
+        <li><b>Optional:</b> under <b>More options</b>, tick <b>Per-word timestamps</b> to store a start and end time for every word; the files get larger. Your SRT cues still follow whole segments, one cue per segment of speech. Word timing is used by VTT and ASS for karaoke-style highlighting.</li>
         <li><b>לחצו על תמלל.</b> עקבו אחר המשימה בלשונית <b>תור התמלול</b>. קובץ הכתוביות ייווצר ליד הקובץ המקורי עם אותו השם וסיומת קובץ חדשה, למשל talk.mp4 יהפוך ל-talk.srt, ובכרטיס <b>התוצאה האחרונה</b> יש לחצן <b>פתח</b> עבור כל קובץ.</li>
       </ol>
       <figure class="guide-fig">
@@ -279,7 +283,7 @@
 
       <h2>כתוביות בשפה אחרת</h2>
       <div class="guide-body">
-        <p>עבור כתוביות באנגלית מתוך דיבור שאינו באנגלית, סמנו את <b>פלט: תרגום לאנגלית</b>; הקבצים יקבלו את הסיומת .en-translated. האפשרות כבויה כברירת מחדל ואינה פועלת עם כל מנוע או מודל. עבור שפות אחרות, לשונית כלי בינה מלאכותית אופציונלית במציג התמליל יכולה לכתוב SRT דו-לשוני לאחר שתגדירו את שכבת הבינה המלאכותית שלה (מודל מקומי שתתקינו, או ספק מקוון שתבחרו); היא כבויה כברירת מחדל.</p>
+        <p>For English subtitles from non-English speech, open <b>More options</b> and tick <b>Output: English translation</b>; the files get an .en-translated name. It is off by default and does not work with every engine or model. For other languages, an optional AI Tools tab in the transcript viewer can write a bilingual SRT once you set up its AI layer (a local model you install, or an online provider you choose); it is off by default.</p>
       </div>
       <h2>2. תיקון (אופציונלי)</h2>
       <div class="guide-body">

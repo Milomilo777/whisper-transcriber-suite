@@ -75,7 +75,7 @@
 <link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
 
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 <style>
   .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
   .guide { padding: 108px 0 64px; }
@@ -86,6 +86,9 @@
   .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
   .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
   .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .try-box { margin-top: 22px; padding: 14px 18px; border-radius: var(--r); background: var(--teal-soft); border: 1px solid var(--line); color: var(--ink-2); }
+  .try-box p { margin: 0; }
+  .try-box a { color: var(--teal-ink); font-weight: 600; text-underline-offset: 3px; }
   .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
   .guide-body p { margin-top: 12px; color: var(--ink-2); }
   .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
@@ -255,7 +258,8 @@
     <article>
       <h1>वक्ता लेबल (किसने क्या कहा) के साथ इंटरव्यू ट्रांसक्राइब करें</h1>
       <p class="guide-sub">एक मुफ़्त डेस्कटॉप ऐप जिसे आप एक बार इंस्टॉल करते हैं (Windows, macOS, Linux)। आपकी रिकॉर्डिंग आपके कंप्यूटर पर प्रोसेस होती है, और किसी अकाउंट की ज़रूरत नहीं है।</p>
-      <p class="guide-lede">ऐप आवाज़ों में अंतर करता है और उन्हें Speaker 00, Speaker 01 आदि के रूप में लेबल करता है। जब तक आप उनका नाम नहीं बदलते, तब तक इसे पता नहीं होता कि कोई कौन है। समान आवाज़ें, छोटे जवाब, ओवरलैपिंग भाषण और बैकग्राउंड शोर गलत लेबल का कारण बन सकते हैं। शुरू करने के लिए, ट्रांसक्राइब करें टैब पर वक्ताओं की पहचान करें टिक करें और ट्रांसक्राइब करें दबाएं।</p>
+      <p class="guide-lede">The app tells voices apart and labels them Speaker 00, Speaker 01 and so on. It does not know who anyone is until you rename them. Similar voices, short replies, overlapping speech and background noise can cause wrong labels. To start, open More options on the Transcribe tab, tick Identify speakers and press Transcribe.</p>
+      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>फ़्री ऐप डाउनलोड करें</a>
       </div>
@@ -267,15 +271,15 @@
       <ol class="guide-steps">
         <li><b>रिकॉर्डिंग जोड़ें।</b> <b>ट्रांसक्राइब करें</b> टैब पर, कोई ऑडियो या वीडियो फ़ाइल खींचें या <b>फ़ाइलें ब्राउज़ करें...</b> पर क्लिक करें। <b>वीडियो डाउनलोड करें</b> टैब से लिंक भी काम करता है, क्योंकि यह उन्हीं ट्रांसक्राइब करें सेटिंग्स का उपयोग करता है।</li>
         <li><b>भाषा चुनें</b>, या इसे <b>ऑटो</b> पर छोड़ दें।</li>
-        <li><b>वक्ताओं की पहचान करें टिक करें।</b> यदि बॉक्स में <b>वक्ताओं की पहचान करें (उपलब्ध नहीं)</b> लिखा हो, तो कारण देखने के लिए उस पर माउस लाएं। उसके नीचे का <b>वक्ता</b> पिकर चालू हो जाता है: इसे <b>ऑटो</b> पर छोड़ दें, या ठीक उतने ही लोगों को फ़ोर्स करने के लिए 2 से 10 तक कोई संख्या चुनें।</li>
-        <li><b>वैकल्पिक:</b> केवल हर वाक्य के बजाय हर शब्द के लिए शुरुआत और समाप्ति समय स्टोर करने के लिए <b>हर शब्द के टाइमस्टैम्प</b> टिक करें। आउटपुट बड़ा हो जाता है।</li>
+        <li><b>Open More options and tick Identify speakers.</b> If the box reads <b>Identify speakers (unavailable)</b>, hover over it to see why. The <b>Speakers</b> picker below it switches on: leave it on <b>Auto</b>, or choose a number from 2 to 10 to force exactly that many people.</li>
+        <li><b>Optional:</b> in <b>More options</b>, tick <b>Per-word timestamps</b> to store a start and end time for every word instead of only every sentence. The output gets larger.</li>
         <li><b>निर्यात फ़ॉर्मेट चुनें।</b> <b>उन्नत सेटिंग्स…</b> पर क्लिक करें और <b>आउटपुट फ़ॉर्मेट</b> के तहत <b>DOCX</b> और <b>PDF</b> टिक करें। SRT, TXT, Markdown और JSON में भी लेबल आते हैं। JSON को टिक रखें: यह एक JSON फ़ाइल है जिसका उपयोग ऐप ट्रांसक्रिप्ट व्यूअर खोलने के लिए करता है, जिसकी आपको आखिरी कदम के लिए ज़रूरत है।</li>
         <li><b>ट्रांसक्राइब करें क्लिक करें।</b> स्पीकर डिटेक्शन ट्रांसक्रिप्शन के बाद चलता है और प्रोसेसिंग समय बढ़ाता है। फिर <b>आखिरी नतीजा</b> कार्ड से <b>ट्रांसक्रिप्ट देखें</b> खोलें।</li>
         <li><b>जेनेरिक लेबल को नामों से बदलें।</b> व्यूअर में, <b>वक्ता</b> कॉलम में किसी सेल पर राइट-क्लिक करें, <b>'Speaker 00' का नाम बदलें (हर जगह)...</b> चुनें, नाम टाइप करें और <b>बदलाव सहेजें (Ctrl+S)</b> पर क्लिक करें। बगल की Word और टेक्स्ट फ़ाइलें तब फिर से बनाई जाती हैं जब वे अभी भी मूल ट्रांसक्रिप्ट से मेल खाती हैं; PDF नहीं, इसलिए नाम बदलने के बाद इसे फिर से निर्यात करें।</li>
       </ol>
       <figure class="guide-fig">
         <img src="/assets/shots/transcribe.webp" alt="ट्रांसक्राइब करें टैब में भाषा रो पर वक्ताओं की पहचान करें और हर शब्द के टाइमस्टैम्प टिक बॉक्स, नीचे समय अंतराल रो, और बड़ा ट्रांसक्राइब करें बटन है।" width="1180" height="668" loading="lazy" decoding="async">
-        <figcaption>वक्ताओं की पहचान करें और हर शब्द के टाइमस्टैम्प ट्रांसक्राइब करें टैब की भाषा रो पर स्थित हैं।</figcaption>
+        <figcaption>The Transcribe tab as it looked before version 2.2. Identify speakers and Per-word timestamps now sit under <b>More options</b>.</figcaption>
       </figure>
 
       <h2>लेबल कैसे दिखते हैं</h2>

@@ -77,7 +77,7 @@
 
 <link rel="preload" href="/assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 <style>
   .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
   .guide { padding: 108px 0 64px; }
@@ -88,6 +88,9 @@
   .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
   .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
   .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .try-box { margin-top: 22px; padding: 14px 18px; border-radius: var(--r); background: var(--teal-soft); border: 1px solid var(--line); color: var(--ink-2); }
+  .try-box p { margin: 0; }
+  .try-box a { color: var(--teal-ink); font-weight: 600; text-underline-offset: 3px; }
   .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
   .guide-body p { margin-top: 12px; color: var(--ink-2); }
   .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
@@ -258,6 +261,7 @@
       <h1>Paano i-convert ang video sa SRT subtitles nang libre</h1>
       <p class="guide-sub">Isang libreng desktop app na i-install mo nang minsanan (Windows, macOS, Linux). Ang Whisper, ang model ng pag-kilala sa pananalita na nasa loob nito, ay tumatakbo sa iyong computer, kaya sa mga default na engine, hindi naka-upload ang iyong video.</p>
       <p class="guide-lede">Upang i-convert ang video sa SRT subtitles, buksan ang tab na Transcribe, i-drop ang video o audio file, suriin na naka-tick ang SRT sa ilalim ng Mga advanced na setting at pindutin ang I-transcribe. Sinusulat ng Whisper ang SRT, ang pangkaraniwang format ng subtitle file, sa tabi ng orihinal na file, handa na para sa player, editor, o upload. Para sa isang link, tingnan ang <a href="/fil/youtube-to-text/">gabay sa YouTube</a>.</p>
+      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>I-download ang libreng app</a>
       </div>
@@ -268,10 +272,10 @@
       <h2>1. Gumawa ng SRT</h2>
       <ol class="guide-steps">
         <li><b>Buksan ang tab na I-transcribe</b> at i-drag ang iyong video o audio file patungo sa window, o i-click ang <b>Mag-browse ng file...</b>. Maaari kang pumili ng ilang file nang sabay-sabay.</li>
-        <li><b>Itakda ang Wika</b>, o iwanan ang <b>Auto</b> upang matukoy ito. Ang pagpili nito mismo ay mas mabilis at maaaring mas tumpak para sa maikli o maingay na clip.</li>
-        <li><b>Opsyonal:</b> punan ang <b>Saklaw ng oras</b> (H:MM:SS) upang i-transcribe lamang ang bahagi ng file.</li>
+        <li><b>Set the Language</b>, or leave <b>Auto</b> to detect it. Picking it yourself is faster and can be more accurate for short or noisy clips. Next to it, <b>Accuracy</b> chooses the model: <b>Fast</b> for a quick draft, <b>Balanced</b>, or <b>Best</b> for the most careful result (slower). A model you picked in <b>Advanced settings</b> shows as <b>Custom</b> and is left alone.</li>
+        <li><b>Optional:</b> open <b>More options</b> and fill in <b>Time range</b> (H:MM:SS) to transcribe only part of the file.</li>
         <li><b>Piliin ang mga format ng subtitle.</b> I-click ang <b>Mga advanced na setting…</b> at hanapin ang <b>Mga output format</b>. Ang SRT kasama ang JSON ang default. I-tick ang <b>VTT</b> (ang format ng subtitle para sa web) para sa web video, o <b>ASS (may istilong subtitle / karaoke)</b> kung nag-e-style ka ng subtitle sa isang editor. Bawat naka-tick na format ay sinusulat para sa bawat gawain. Panatilihing naka-tick ang JSON: ito ay isang JSON file na ginagamit ng app upang buksan ang transcript viewer.</li>
-        <li><b>Opsyonal:</b> i-tick ang <b>Timestamp kada salita</b> upang i-store ang oras ng simula at pagtatapos para sa bawat salita; mas lalaki ang mga file. Ang mga SRT cue mo ay sumusunod pa rin sa buong segment, isang cue kada segment ng pananalita. Ang timing ng salita ay ginagamit ng VTT at ASS para sa karaoke-style na pag-highlight.</li>
+        <li><b>Optional:</b> under <b>More options</b>, tick <b>Per-word timestamps</b> to store a start and end time for every word; the files get larger. Your SRT cues still follow whole segments, one cue per segment of speech. Word timing is used by VTT and ASS for karaoke-style highlighting.</li>
         <li><b>I-click ang I-transcribe.</b> Sundan ang gawain sa tab na <b>Pila ng Transcription</b>. Ang subtitle file ay mapupunta sa tabi ng iyong orihinal na may parehong pangalan at bagong extension, halimbawa ang talk.mp4 ay nagiging talk.srt, at ang card na <b>Huling resulta</b> ay may <b>Buksan</b> na button para sa bawat file.</li>
       </ol>
       <figure class="guide-fig">
@@ -281,7 +285,7 @@
 
       <h2>Mga subtitle sa ibang wika</h2>
       <div class="guide-body">
-        <p>Para sa mga subtitle sa Ingles mula sa di-Ingles na pananalita, i-tick ang <b>Output: salin sa Ingles</b>; makakakuha ang mga file ng pangalang .en-translated. Nakapatay ito bilang default at hindi gumagana sa lahat ng engine o model. Para sa iba pang wika, isang opsyonal na tab na Mga AI Tool sa transcript viewer ang makakasulat ng bilingual SRT kapag na-set up mo na ang AI layer nito (isang lokal na model na i-install mo, o isang online provider na pipiliin mo); nakapatay ito bilang default.</p>
+        <p>For English subtitles from non-English speech, open <b>More options</b> and tick <b>Output: English translation</b>; the files get an .en-translated name. It is off by default and does not work with every engine or model. For other languages, an optional AI Tools tab in the transcript viewer can write a bilingual SRT once you set up its AI layer (a local model you install, or an online provider you choose); it is off by default.</p>
       </div>
       <h2>2. Itama ito (opsyonal)</h2>
       <div class="guide-body">

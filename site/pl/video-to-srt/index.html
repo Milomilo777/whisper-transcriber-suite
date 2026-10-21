@@ -77,7 +77,7 @@
 
 <link rel="preload" href="/assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 <style>
   .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
   .guide { padding: 108px 0 64px; }
@@ -88,6 +88,9 @@
   .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
   .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
   .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .try-box { margin-top: 22px; padding: 14px 18px; border-radius: var(--r); background: var(--teal-soft); border: 1px solid var(--line); color: var(--ink-2); }
+  .try-box p { margin: 0; }
+  .try-box a { color: var(--teal-ink); font-weight: 600; text-underline-offset: 3px; }
   .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
   .guide-body p { margin-top: 12px; color: var(--ink-2); }
   .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
@@ -258,6 +261,7 @@
       <h1>Jak bezpłatnie przekonwertować wideo na napisy SRT</h1>
       <p class="guide-sub">Bezpłatna aplikacja desktopowa, którą instalujesz raz (Windows, macOS, Linux). Działający w niej model rozpoznawania mowy Whisper pracuje na Twoim komputerze, więc przy domyślnych silnikach Twoje wideo nie jest nigdzie przesyłane.</p>
       <p class="guide-lede">Aby przekonwertować wideo na napisy SRT, otwórz zakładkę Transkrybuj, upuść plik wideo lub audio, upewnij się, że w sekcji Ustawienia zaawansowane zaznaczono format SRT, i kliknij Transkrybuj. Whisper zapisze plik SRT — popularny format napisów — obok oryginalnego pliku, gotowy do odtworzenia, edycji lub publikacji. W przypadku linku zapoznaj się z <a href="/pl/youtube-to-text/">poradnikiem YouTube</a>.</p>
+      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Pobierz bezpłatną aplikację</a>
       </div>
@@ -268,10 +272,10 @@
       <h2>1. Utwórz plik SRT</h2>
       <ol class="guide-steps">
         <li><b>Otwórz zakładkę Transkrybuj</b> i przeciągnij plik wideo lub audio na okno programu albo kliknij <b>Przeglądaj pliki...</b>. Możesz wybrać kilka plików naraz.</li>
-        <li><b>Ustaw Język</b> lub pozostaw opcję <b>Auto</b>, aby wykryć go automatycznie. Samodzielny wybór jest szybszy i może być dokładniejszy w przypadku krótkich lub zaszumionych nagrań.</li>
-        <li><b>Opcjonalnie:</b> wypełnij pole <b>Zakres czasu</b> (H:MM:SS), aby transkrybować tylko część pliku.</li>
+        <li><b>Set the Language</b>, or leave <b>Auto</b> to detect it. Picking it yourself is faster and can be more accurate for short or noisy clips. Next to it, <b>Accuracy</b> chooses the model: <b>Fast</b> for a quick draft, <b>Balanced</b>, or <b>Best</b> for the most careful result (slower). A model you picked in <b>Advanced settings</b> shows as <b>Custom</b> and is left alone.</li>
+        <li><b>Optional:</b> open <b>More options</b> and fill in <b>Time range</b> (H:MM:SS) to transcribe only part of the file.</li>
         <li><b>Wybierz formaty napisów.</b> Kliknij <b>Ustawienia zaawansowane…</b> i znajdź sekcję <b>Formaty wyjściowe</b>. Formaty SRT i JSON są zaznaczone domyślnie. Zaznacz <b>VTT</b> (format napisów internetowych) w przypadku wideo w sieci lub <b>ASS (stylizowane napisy / karaoke)</b>, jeśli stylizujesz napisy w edytorze. Każdy zaznaczony format jest generowany dla każdego zadania. Pozostaw zaznaczony format JSON: jest to plik JSON, którego aplikacja używa do otwierania przeglądarki transkrypcji.</li>
-        <li><b>Opcjonalnie:</b> zaznacz <b>Znaczniki czasu dla słów</b>, aby zapisać czas rozpoczęcia i zakończenia każdego słowa; pliki będą większe. Kwestie w pliku SRT nadal obejmują całe segmenty — po jednej na segment mowy. Synchronizacja na poziomie słów jest wykorzystywana przez formaty VTT i ASS do wyróżniania tekstu w stylu karaoke.</li>
+        <li><b>Optional:</b> under <b>More options</b>, tick <b>Per-word timestamps</b> to store a start and end time for every word; the files get larger. Your SRT cues still follow whole segments, one cue per segment of speech. Word timing is used by VTT and ASS for karaoke-style highlighting.</li>
         <li><b>Kliknij Transkrybuj.</b> Śledź zadanie w zakładce <b>Kolejka transkrypcji</b>. Plik z napisami pojawi się obok oryginalnego pliku pod tą samą nazwą i z nowym rozszerzeniem, na przykład talk.mp4 zmieni się w talk.srt, a karta <b>Ostatni wynik</b> zawiera przycisk <b>Otwórz</b> dla każdego pliku.</li>
       </ol>
       <figure class="guide-fig">
@@ -281,7 +285,7 @@
 
       <h2>Napisy w innym języku</h2>
       <div class="guide-body">
-        <p>Aby uzyskać angielskie napisy z mowy w innym języku, zaznacz <b>Wynik: tłumaczenie na angielski</b>; pliki otrzymają dopisek .en-translated w nazwie. Opcja ta jest domyślnie wyłączona i nie działa z każdym silnikiem ani modelem. W przypadku innych języków opcjonalna zakładka Narzędzia AI w przeglądarce transkrypcji pozwala wygenerować dwujęzyczny plik SRT po skonfigurowaniu warstwy AI (zainstalowanego modelu lokalnego lub wybranego dostawcy online); opcja ta jest domyślnie wyłączona.</p>
+        <p>For English subtitles from non-English speech, open <b>More options</b> and tick <b>Output: English translation</b>; the files get an .en-translated name. It is off by default and does not work with every engine or model. For other languages, an optional AI Tools tab in the transcript viewer can write a bilingual SRT once you set up its AI layer (a local model you install, or an online provider you choose); it is off by default.</p>
       </div>
       <h2>2. Popraw tekst (opcjonalnie)</h2>
       <div class="guide-body">

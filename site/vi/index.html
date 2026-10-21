@@ -84,7 +84,7 @@
 <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/shots/transcribe.webp" as="image" type="image/webp" imagesrcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" imagesizes="(max-width: 1080px) 72vw, 480px">
 <script src="/js/motion-init.js?v=20260927b"></script>
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 
 <script type="application/ld+json">
 {
@@ -133,7 +133,7 @@
       "description": "Ứng dụng Màn hình nền chạy Mô hình Whisper của OpenAI cục bộ thông qua faster-whisper, whisper.cpp hoặc NVIDIA Parakeet. Chép lời âm thanh và video sang SRT, VTT, ASS, TSV, TXT, JSON, LRC, Markdown, DOCX và PDF. Âm thanh của bạn nằm trên máy tính và không cần tài khoản.",
       "softwareVersion": "2.2.0",
       "datePublished": "2026-05-11",
-      "dateModified": "2026-10-21",
+      "dateModified": "2026-10-22",
       "operatingSystem": "Windows, macOS, Linux",
       "applicationCategory": "MultimediaApplication",
       "applicationSubCategory": "Speech-to-text transcription",
@@ -152,7 +152,14 @@
         "Tạo video có phụ đề: tải xuống, chép lời và ghi phụ đề vào tệp MP4",
         "Lưu bản chép lời dưới dạng một trang web ngoại tuyến",
         "Chuyển đổi Làm việc ngoại tuyến với trạng thái mạng hiển thị",
-        "Dịch giọng nói trực tiếp sang Tiếng Anh"
+        "Dịch giọng nói trực tiếp sang Tiếng Anh",
+        "Accuracy levels (Fast, Balanced, Best) that pick a model for the language and the computer",
+        "Models trained for one language: Persian, Chinese, Japanese, German, Thai, Swedish, Hebrew",
+        "Two-language audio (experimental)",
+        "Phone upload by QR code on the same Wi-Fi",
+        "Right-to-left window on Windows for Persian, Arabic and Hebrew",
+        "Interface in 42 languages",
+        "Free in-browser transcription page: no install, no upload"
       ],
       "offers": {
         "@type": "Offer",
@@ -320,10 +327,10 @@
     },
     {
       "@type": "Question",
-      "name": "Có gì mới trong phiên bản 2.1?",
+      "name": "What is new in version 2.2?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Menu, nút và thông báo có 42 ngôn ngữ (dịch bằng máy và được đánh dấu như vậy); nhãn người nói kéo dài đến cuối các bản ghi dài và bạn có thể đặt số người nói; bản chép lời, bản xuất và phụ đề được ghi hoàn toàn vào ổ đĩa trước khi chúng thay thế tệp cũ; các tính năng trực tuyến hoạt động trên mọi máy Mac. Phiên bản 2.0 đã thêm tốc độ và thời gian còn lại của hàng đợi, video có phụ đề từ một liên kết, bản chép lời dưới dạng một trang web ngoại tuyến, chế độ Làm việc ngoại tuyến có thể đánh dấu và dịch sang Tiếng Anh."
+        "text": "Accuracy levels replace the engine and model pickers on the Transcribe tab: choose Fast, Balanced or Best and the app picks a model that fits your language and computer, and new installs start on Large v3 Turbo. The rarer options sit under More options. Persian, Chinese, Japanese, German, Thai, Swedish and Hebrew get models trained for that language; the Web / LAN access tab shows a QR code so you can send a recording from a phone on the same Wi-Fi; Windows mirrors the window for Persian, Arabic and Hebrew; two-language audio is available as an experimental option; and the Download form is more compact. All 42 interface languages are complete and 35 bugs were fixed. The site also has a page that transcribes a short file in your browser. Version 2.1 added the interface in 42 languages, reliable speaker labels and safer saving; version 2.0 added the queue's speed and time left, subtitled video from a link, transcripts as one offline web page, a checkable Work offline mode and translation to English."
       }
     },
     {
@@ -384,7 +391,14 @@
       <img class="brand-logo" src="/assets/logo.svg" alt="" width="32" height="32"> <span class="brand-name">Whisper Transcriber Suite</span>
     </a>
     <nav class="site-nav" aria-label="Chính">
-      <a href="#showreel">Hướng dẫn</a> <a href="#features">Tính năng</a> <a href="#how-it-works">Cách hoạt động</a> <a href="#download">Tải xuống</a> <a href="#compare">So sánh</a> <a href="#faq">FAQ</a> <a href="#contact">Liên hệ</a>
+      <a href="#showreel">Tour</a>
+      <a href="#features">Features</a>
+      <a href="#how-it-works">How it works</a>
+      <a href="/try/">Try</a>
+      <a href="#download">Download</a>
+      <a href="#compare">Compare</a>
+      <a href="#faq">FAQ</a>
+      <a href="#contact">Contact</a>
     </nav>
     <div class="header-cta">
       <!-- i18n:english:start --><a class="btn btn-ghost btn-sm lang-en" href="/?lang=en" hreflang="en" lang="en" dir="ltr" data-lang-pick="en" translate="no">English</a><!-- i18n:english:end -->
@@ -470,7 +484,6 @@
         <div class="hero-actions reveal" style="--d:5">
           <a class="btn btn-primary btn-lg" data-os-cta data-auto-href="installer" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/download/v2.2.0/WhisperTranscriberSuite-Installer-Windows-v2.2.0.exe" rel="noopener"> <svg class="i" aria-hidden="true"><use href="#i-download"/></svg><span data-os-label>Tải xuống cho Windows</span> </a> <a class="btn btn-ghost btn-lg" href="#showreel">Xem hướng dẫn<svg class="i i-trail" aria-hidden="true"><use href="#i-arrow"/></svg></a>
         </div>
-        <p class="hero-try reveal" style="--d:5"><a href="/try/">No install? Try a short file right in your browser</a></p>
         <ul class="proof reveal" style="--d:6" aria-label="Tổng quan nhanh">
           <li><strong data-count="14">14</strong><span>định dạng bản chép lời</span></li>
           <li><strong data-auto="downloads">3,200+</strong><span>lượt tải xuống</span></li>
@@ -506,6 +519,20 @@
             <div class="chip-card off-card"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>Chép lời ngoại tuyến</div>
           </div>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TRY IN THE BROWSER ============ -->
+  <section class="try-strip" aria-labelledby="try-strip-title">
+    <div class="wrap">
+      <div class="try-strip-card">
+        <div class="try-strip-copy">
+          <p class="eyebrow">No install</p>
+          <h2 id="try-strip-title">Try it in your browser</h2>
+          <p>Drop in an audio or video file of up to 10 minutes and get a transcript. Free, no upload, no sign-up: Whisper runs inside your browser tab. For longer files, use the <a href="#download">desktop app</a>.</p>
+        </div>
+        <a class="btn btn-primary btn-lg" href="/try/">Try it now<svg class="i i-trail" aria-hidden="true"><use href="#i-arrow"/></svg></a>
       </div>
     </div>
   </section>
@@ -553,20 +580,60 @@
     </div>
   </section>
 
-  <!-- ============ WHAT'S NEW IN 2.1 (AND 2.0) ============ -->
+  <!-- ============ WHAT'S NEW IN 2.2 (AND 2.1, 2.0) ============ -->
   <section class="section whatsnew" id="whats-new" aria-labelledby="new-title">
     <div class="wrap">
       <header class="section-head sr">
-        <p class="eyebrow">Mới trong 2.1</p>
-        <h2 id="new-title">Có gì mới trong 2.1. <span class="h2-soft">Giờ đã có ngôn ngữ của bạn.</span></h2>
-        <p class="section-lede">Ứng dụng với 42 ngôn ngữ, nhãn người nói kéo dài đến hết bản ghi dài, tệp không hỏng khi mất điện, và các tính năng trực tuyến hoạt động trên mọi Mac. Bên dưới là những gì 2.0 thêm vào.</p>
+        <p class="eyebrow">New in 2.2</p>
+        <h2 id="new-title">What's new in 2.2. <span class="h2-soft">Simpler, and in your pocket.</span></h2>
+        <p class="section-lede">One Accuracy choice instead of engine and model pickers, models trained for one language, your phone as a way in, a mirrored window for Persian, Arabic and Hebrew, and a try-it page in the browser. Below them, what 2.1 and 2.0 added.</p>
       </header>
 
       <div class="new-grid">
         <article class="new-card sr">
+          <p class="new-tag">2.2 · All platforms</p>
+          <h3>A simpler Transcribe tab</h3>
+          <p>Pick <em>Accuracy</em> (Fast, Balanced or Best) and the app chooses a model that fits your language and your computer, with its download size shown. Speakers, per-word timestamps, English translation, a time range and mixed languages wait under <em>More options</em>. New installs start on Large v3 Turbo: several times faster than Large v3 with nearly the same accuracy.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.2 · All platforms</p>
+          <h3>Models trained for one language</h3>
+          <p>Pick Persian, Chinese, Japanese, German, Thai, Swedish or Hebrew and the app suggests a model built for that language, with its publisher's own accuracy figures, size and licence, and a <em>Use it</em> button.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.2 · All platforms</p>
+          <h3>Use it from your phone</h3>
+          <p>Turn on <em>Share on local network</em> on the Web / LAN access tab, scan the QR code and send a recording from a phone on the same Wi-Fi. The page has thumb-sized buttons, and the PC does the transcribing.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.2 · Windows</p>
+          <h3>Right-to-left window</h3>
+          <p>With a Persian, Arabic or Hebrew interface the tabs, lists, dialogs and tick boxes are mirrored so the window reads from the right. Paths, links and numbers keep reading left to right.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.2 · All platforms</p>
+          <h3>Two languages in one recording</h3>
+          <p>Experimental: a tick box under <em>More options</em> with a second language picker, for audio that switches between two languages. Each stretch is written in the language it sounds like instead of being translated into one of them.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.2 · All platforms</p>
+          <h3>A compact Download form</h3>
+          <p>The link, folder, quality choices and after-download ticks fit on a few lines. Log-in cookies and the time range moved under <em>More options</em>, which opens by itself when a time range is set.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.2 · Website</p>
+          <h3>Try it in your browser</h3>
+          <p>No install: a short file (up to 10 minutes, 5 on a phone) is transcribed by a small Whisper model inside your browser tab, and you save TXT, SRT or VTT. Your audio never leaves your device. <a href="/try/">Try it now</a>.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.2 · All platforms</p>
+          <h3>All 42 languages complete, 35 bugs fixed</h3>
+          <p>Every message of the app is translated in all 42 interface languages, and 35 bugs were fixed, many of them to keep your settings, history and finished work safe.</p>
+        </article>
+        <article class="new-card sr">
           <p class="new-tag">2.1 · Tất cả nền tảng</p>
           <h3>Ứng dụng bằng ngôn ngữ của bạn</h3>
-          <p>Menu, nút và thông báo có 42 ngôn ngữ (39 trên macOS và Linux). Ứng dụng theo ngôn ngữ hệ thống của bạn, hoặc bạn chọn trong <em>Cài đặt nâng cao</em>. Mọi ngôn ngữ trừ Tiếng Anh đều là bản dịch máy và được đánh dấu như vậy; Tiếng Ba Tư, Tiếng Ả Rập và Tiếng Do Thái hiện chỉ có trên Windows.</p>
+          <p>Menus, buttons and messages come in 42 languages (39 on macOS and Linux). The app follows your system language, or you pick one in <em>Advanced settings</em>. Every language except English is a machine translation and is marked as one.</p>
         </article>
         <article class="new-card sr">
           <p class="new-tag">2.1 · Tất cả nền tảng</p>
@@ -645,7 +712,7 @@
           <div class="cell-copy">
             <p class="chip-label">faster-whisper · whisper.cpp · Parakeet</p>
             <h3>Chép lời cục bộ, riêng tư</h3>
-            <p>Whisper <code>large-v3</code> theo mặc định, cộng thêm <code>large-v3-turbo</code> và <code>distil-large-v3.5</code>. Chọn backend phù hợp với phần cứng của bạn.</p>
+            <p>Whisper <code>large-v3-turbo</code> on new installs, plus <code>large-v3</code> and <code>distil-large-v3.5</code>. Choose Fast, Balanced or Best accuracy and the app picks a model for your language and computer, or pick the backend yourself in Advanced settings.</p>
           </div>
           <figure class="cell-shot" aria-hidden="true"><img src="/assets/shots/transcribe-640.webp" alt="" width="640" height="362" loading="lazy" decoding="async"></figure>
           <div class="viz viz-engines" aria-hidden="true">
@@ -826,7 +893,7 @@ python gui.py</code></pre>
         </div>
         <p class="mac-note">Thích cách thông thường? Mở <code>.dmg</code> và kéo ứng dụng vào Applications; lần mở đầu tiên cần nhấp chuột phải → <b>Open</b> (macOS 14 trở xuống) hoặc System Settings → Quyền riêng tư &amp; Security → <b>Open Anyway</b> (macOS 15+).</p>
       </div>
-      <p class="dl-note sr">Mỗi bản phát hành, kèm ghi chú, đều có trên <a href="https://github.com/Milomilo777/whisper-transcriber-suite/releases" rel="noopener">GitHub Releases</a>. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md" rel="noopener">Hướng dẫn cài đặt</a>.</p>
+      <p class="dl-note sr">Not ready to install? <a href="/try/">Try a short file in your browser</a> first. Every release, with notes, lives on <a href="https://github.com/Milomilo777/whisper-transcriber-suite/releases" rel="noopener">GitHub Releases</a>. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md" rel="noopener">Install guide</a>.</p>
     </div>
   </section>
 
@@ -877,7 +944,7 @@ python gui.py</code></pre>
         <article class="qa"><h3>Nó có thể nhân bản giọng nói và khiến giọng đó đọc văn bản mới không?</h3><div class="faq-a"><p>Có, qua tab Clone Your Giọng nói tùy chọn, dùng OmniVoice (Apache-2.0) hoàn toàn trên máy của bạn. Mặc định tắt; bật khi cài đặt, và bạn phải xác nhận có quyền nhân bản Giọng nói tham chiếu.</p></div></article>
         <article class="qa"><h3>Điều này khác gì so với việc gọi trực tiếp Whisper API?</h3><div class="faq-a"><p>Nó chạy mô hình cục bộ qua faster-whisper theo mặc định, nên không có chi phí API tính theo phút và âm thanh không rời máy của bạn — trừ khi bạn chủ động bật một trong hai backend đám mây.</p></div></article>
         <article class="qa"><h3>Nhiều người trên cùng một mạng có thể sử dụng nó mà không cần cài đặt trên mọi máy không?</h3><div class="faq-a"><p>Có — chế độ truy cập Web/LAN biến máy này thành trang phiên âm để các thiết bị khác trên mạng dùng.</p></div></article>
-        <article class="qa"><h3>Có gì mới trong phiên bản 2.1?</h3><div class="faq-a"><p>Menu, nút và thông điệp có 42 ngôn ngữ (dịch máy và được đánh dấu); nhãn người nói vẫn được gán đến cuối bản ghi dài và bạn có thể đặt số người nói; bản ghi, bản xuất và phụ đề được ghi đầy đủ vào đĩa trước khi thay tệp cũ; các tính năng trực tuyến hoạt động trên mọi Mac. Phiên bản 2.0 thêm tốc độ và thời gian còn lại của hàng đợi, video có phụ đề từ đường dẫn, bản ghi thành một trang web ngoại tuyến, chế độ Làm việc ngoại tuyến có thể kiểm tra và dịch sang Tiếng Anh. Xem <a href="#whats-new">Có gì mới trong 2.1</a> và <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">nhật ký thay đổi</a>.</p></div></article>
+        <article class="qa"><h3>What is new in version 2.2?</h3><div class="faq-a"><p>Accuracy levels replace the engine and model pickers on the Transcribe tab: choose Fast, Balanced or Best and the app picks a model that fits your language and computer, and new installs start on Large v3 Turbo. The rarer options sit under <em>More options</em>. Persian, Chinese, Japanese, German, Thai, Swedish and Hebrew get models trained for that language; the Web / LAN access tab shows a QR code so you can send a recording from a phone on the same Wi-Fi; Windows mirrors the window for Persian, Arabic and Hebrew; two-language audio is available as an experimental option; and the Download form is more compact. All 42 interface languages are complete and 35 bugs were fixed. The site also has a <a href="/try/">page that transcribes a short file in your browser</a>. Version 2.1 added the interface in 42 languages, reliable speaker labels and safer saving; version 2.0 added the queue's speed and time left, subtitled video from a link, transcripts as one offline web page, a checkable Work offline mode and translation to English. See <a href="#whats-new">What's new in 2.2</a> and the <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">changelog</a>.</p></div></article>
         <article class="qa"><h3>Nó có thể biến một liên kết video thành video có phụ đề không?</h3><div class="faq-a"><p>Có. Trong tab Tải video, đánh dấu <b>Tạo video có phụ đề</b>: ứng dụng Tải xuống video, phiên âm bằng Whisper và ghi phụ đề vào bằng ffmpeg, tạo tệp đặt theo tên video với <code>-subbed.mp4</code>. Bản Tải xuống và bản ghi được giữ lại, và <code>-subbed.mp4</code> sẵn có không bao giờ bị thay.</p></div></article>
         <article class="qa"><h3>Tôi có thể giữ ứng dụng hoàn toàn ngoại tuyến không?</h3><div class="faq-a"><p>Có. <b>File → Làm việc ngoại tuyến</b> dừng kiểm tra cập nhật, thống kê sử dụng, tải mô hình và nhà cung cấp AI từ xa. Khi bật, một dòng dưới cửa sổ cho biết kết nối có đang mở hay không, và <em>Kiểm tra ngoại tuyến ngay</em> cho thấy các kết nối thử bị từ chối. Khi tắt, ứng dụng chỉ kết nối mạng cho cài đặt trực tuyến khi khởi động, kiểm tra cập nhật hàng ngày, thống kê sử dụng (có thể tắt trong Trợ giúp → Thống kê sử dụng) và các lượt tải bạn khởi tạo.</p></div></article>
         <article class="qa"><h3>Tôi có thể liên hệ với dự án như thế nào?</h3><div class="faq-a"><p>Lỗi và yêu cầu tính năng gửi đến <a href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener">GitHub Issues</a>, câu hỏi đến <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">Discussions</a>, và còn lại qua email (địa chỉ hiện khi yêu cầu trong <a href="#contact">phần Liên hệ</a>). Báo cáo bảo mật gửi qua tính năng báo lỗ hổng riêng tư của GitHub.</p></div></article>

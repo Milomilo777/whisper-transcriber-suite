@@ -77,7 +77,7 @@
 
 <link rel="preload" href="/assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 <style>
   .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
   .guide { padding: 108px 0 64px; }
@@ -88,6 +88,9 @@
   .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
   .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
   .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .try-box { margin-top: 22px; padding: 14px 18px; border-radius: var(--r); background: var(--teal-soft); border: 1px solid var(--line); color: var(--ink-2); }
+  .try-box p { margin: 0; }
+  .try-box a { color: var(--teal-ink); font-weight: 600; text-underline-offset: 3px; }
   .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
   .guide-body p { margin-top: 12px; color: var(--ink-2); }
   .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
@@ -257,7 +260,8 @@
     <article>
       <h1>Interjú átírása beszélőcímkékkel (ki mit mondott)</h1>
       <p class="guide-sub">Egy ingyenes asztali alkalmazás, amelyet csak egyszer kell telepítened (Windows, macOS, Linux). A felvételed feldolgozása a saját gépeden történik, és nincs szükség felhasználói fiókra.</p>
-      <p class="guide-lede">Az alkalmazás megkülönbözteti a hangokat, és Speaker 00, Speaker 01 stb. címkével látja el őket. Nem tudja, hogy ki kicsoda, amíg át nem nevezed őket. A hasonló hangok, a rövid válaszok, az egymás szavába vágás és a háttérzaj téves címkéket okozhatnak. A kezdéshez jelöld be a Beszélők azonosítása opciót az Átírás lapon, majd kattints az Átírás gombra.</p>
+      <p class="guide-lede">The app tells voices apart and labels them Speaker 00, Speaker 01 and so on. It does not know who anyone is until you rename them. Similar voices, short replies, overlapping speech and background noise can cause wrong labels. To start, open More options on the Transcribe tab, tick Identify speakers and press Transcribe.</p>
+      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Töltsd le az ingyenes alkalmazást</a>
       </div>
@@ -269,15 +273,15 @@
       <ol class="guide-steps">
         <li><b>Add hozzá a felvételt.</b> Az <b>Átírás</b> lapon húzz be egy hang- vagy videófájlt, vagy kattints a <b>Fájlok tallózása...</b> gombra. A <b>Videók letöltése</b> lapról származó hivatkozás is használható, mivel ugyanazokat az Átírás-beállításokat használja.</li>
         <li><b>Válaszd ki a nyelvet</b>, vagy hagyd az <b>Auto</b> beállításon.</li>
-        <li><b>Jelöld be a Beszélők azonosítása opciót.</b> Ha a jelölőnégyzeten a <b>Beszélők azonosítása (nem érhető el)</b> szöveg látható, vidd fölé az egeret az ok megtekintéséhez. Az alatta lévő <b>Beszélők</b> választó bekapcsol: hagyd <b>Auto</b> értéken, vagy válassz egy számot 2-től 10-ig, hogy pontosan ennyi személyre szűkítsd.</li>
-        <li><b>Nem kötelező:</b> jelöld be a <b>Szónkénti időbélyegek</b> lehetőséget, ha a mondatok helyett minden egyes szóhoz szeretnél kezdő és záró időpontot tárolni. A kimenet mérete így nagyobb lesz.</li>
+        <li><b>Open More options and tick Identify speakers.</b> If the box reads <b>Identify speakers (unavailable)</b>, hover over it to see why. The <b>Speakers</b> picker below it switches on: leave it on <b>Auto</b>, or choose a number from 2 to 10 to force exactly that many people.</li>
+        <li><b>Optional:</b> in <b>More options</b>, tick <b>Per-word timestamps</b> to store a start and end time for every word instead of only every sentence. The output gets larger.</li>
         <li><b>Válaszd ki az exportálási formátumokat.</b> Kattints a <b>Speciális beállítások…</b> lehetőségre, és jelöld be a <b>DOCX</b> és a <b>PDF</b> formátumot a <b>Kimeneti formátumok</b> alatt. Az SRT, TXT, Markdown és JSON fájlok szintén tartalmazzák a címkéket. A JSON maradjon bejelölve: az alkalmazás ezt a JSON-fájlt használja az átiratmegtekintő megnyitásához, amire az utolsó lépésben szükséged lesz.</li>
         <li><b>Kattints az Átírás gombra.</b> A beszélők felismerése az átírás után fut le, és növeli a feldolgozási időt. Ezután nyisd meg az <b>Átirat megtekintése</b> lehetőséget az <b>Utolsó eredmény</b> kártyáról.</li>
         <li><b>Cseréld le az általános címkéket nevekre.</b> A megtekintőben kattints jobb gombbal a <b>Beszélő</b> oszlop egy cellájára, válaszd a <b>'Speaker 00' átnevezése (mindenhol)...</b> parancsot, írd be a nevet, majd kattints a <b>Módosítások mentése (Ctrl+S)</b> gombra. A mellette lévő Word- és szövegfájlok automatikusan újraépülnek, amennyiben még megegyeznek az eredeti átirattal; a PDF viszont nem, ezért azt az átnevezés után exportáld újra.</li>
       </ol>
       <figure class="guide-fig">
         <img src="/assets/shots/transcribe.webp" alt="Az Átírás lap a Nyelv sorában található Beszélők azonosítása és Szónkénti időbélyegek jelölőnégyzetekkel, az alatta lévő Időtartomány sorral és a nagy Átírás gombbal." width="1180" height="668" loading="lazy" decoding="async">
-        <figcaption>A Beszélők azonosítása és a Szónkénti időbélyegek az Átírás lap Nyelv sorában találhatók.</figcaption>
+        <figcaption>The Transcribe tab as it looked before version 2.2. Identify speakers and Per-word timestamps now sit under <b>More options</b>.</figcaption>
       </figure>
 
       <h2>Hogyan néznek ki a címkék</h2>

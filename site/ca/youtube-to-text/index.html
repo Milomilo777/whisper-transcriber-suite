@@ -77,7 +77,7 @@
 
 <link rel="preload" href="/assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 <style>
   .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
   .guide { padding: 108px 0 64px; }
@@ -88,6 +88,9 @@
   .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
   .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
   .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .try-box { margin-top: 22px; padding: 14px 18px; border-radius: var(--r); background: var(--teal-soft); border: 1px solid var(--line); color: var(--ink-2); }
+  .try-box p { margin: 0; }
+  .try-box a { color: var(--teal-ink); font-weight: 600; text-underline-offset: 3px; }
   .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
   .guide-body p { margin-top: 12px; color: var(--ink-2); }
   .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
@@ -258,6 +261,7 @@
       <h1>Transcriu un vídeo de YouTube a text de forma gratuïta i sense connexió</h1>
       <p class="guide-sub">Una aplicació d'escriptori gratuïta que instal·les una vegada (Windows, macOS, Linux). Baixar el vídeo requereix accés a Internet; la mateixa transcripció s'executa a l'ordinador.</p>
       <p class="guide-lede">Per convertir un vídeo de YouTube a text, enganxa el seu enllaç a la pestanya Baixa vídeos, tria un format de text, marca l'opció Transcriu després de baixar i prem Baixa. L'aplicació obté el vídeo amb el descarregador de codi obert yt-dlp, el transcriu amb Whisper (un model de reconeixement de la parla) des del mateix ordinador, i el desa com a transcripció en TXT, DOCX, PDF o SRT.</p>
+      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Baixa l'aplicació gratuïta</a>
       </div>
@@ -268,10 +272,10 @@
       <h2>Com transcriure un vídeo de YouTube</h2>
       <ol class="guide-steps">
         <li><b>Només el primer cop que s'inicia.</b> La finestra Inici ràpid et demana pel teu idioma i si vols <b>Ràpid</b> o <b>Màxima qualitat</b>; el model de parla es descarrega una vegada, el primer cop que s'usa.</li>
-        <li><b>Obre la pestanya Baixa vídeos</b> i enganxa l'enllaç de YouTube a l'<b>URL</b>. L'aplicació busca per ella mateixa els formats i qualsevol subtítol.</li>
+        <li><b>Open the Download Videos tab</b> and paste the YouTube link into <b>Video link</b>. The app looks up the formats and any subtitles by itself.</li>
         <li><b>Escull un mode.</b> <b>Àudio</b> tan sols desarà el so, la qual cosa serà més petita i ràpida si l'única cosa que desitges és la transcripció. <b>Àudio i vídeo</b> conservarà també la imatge.</li>
-        <li><b>Opcional:</b> utilitza l'<b>Interval de temps (opcional)</b> per descarregar i transcriure tan sols una part. El format és H:MM:SS, i si les dues caselles contenen 0:00:00 significarà el vídeo complet.</li>
-        <li><b>Escull quin format d'arxiu vols abans de descarregar-lo.</b> Canvia a la pestanya <b>Transcriu</b>, fes clic a <b>Configuració avançada…</b> i, a <b>Formats de sortida</b>, marca <b>TXT</b> (o <b>DOCX</b> o <b>PDF</b>). L'opció per defecte és SRT a més de JSON, la qual et dona els subtítols i no un arxiu de text net. Deixa JSON marcada: el JSON és un arxiu usat per obrir el visor de transcripció de l'aplicació. L'<b>Idioma</b> i el model escollits en aquella pestanya també s'aplicaran a les baixades.</li>
+        <li><b>Optional:</b> open <b>More options</b> under the form and use <b>Time range (optional)</b> to download and transcribe only a part. The format is H:MM:SS, and 0:00:00 in both boxes means the whole video. <b>More options</b> opens by itself when a range is set.</li>
+        <li><b>Choose the file type before you download.</b> Switch to the <b>Transcribe</b> tab, click <b>Advanced settings…</b> and, under <b>Output formats</b>, tick <b>TXT</b> (or <b>DOCX</b> or <b>PDF</b>). The default is SRT plus JSON, which gives you subtitles, not a plain text file. Keep JSON ticked: it is a JSON file the app uses to open the transcript viewer. The <b>Language</b> and <b>Accuracy</b> level chosen on that tab apply to downloads too.</li>
         <li><b>Torna a Baixa vídeos, marca l'opció Transcriu després de baixar</b>, i després fes clic a <b>Baixa</b>.</li>
         <li><b>Mira com progressa.</b> La fila de la taula s'omple, i la pestanya <b>Cua de transcripció</b> mostra la velocitat i temps restants. Quan hagi finalitzat, la transcripció es trobarà just al costat del fitxer de què prové, i la targeta de <b>Darrer resultat</b> a la pestanya de Transcriu mostrarà l'opció d'<b>Obre</b>, <b>Mostra la transcripció</b> i <b>Desa una pàgina per compartir</b>.</li>
       </ol>
@@ -286,7 +290,7 @@
       </div>
       <h2>Altres llocs i vídeos on fa falta haver iniciat la sessió</h2>
       <div class="guide-body">
-        <p>Qualsevol altre lloc compatible amb l'esmentat descarregador també funcionarà de la mateixa manera. En el cas dels vídeos on es requereixi tenir un compte, ja bé sigui Instagram, Facebook, històries de TikTok i vídeos amb límit d'edat de YouTube, escull l'opció del teu navegador a <b>Galetes d'inici de sessió</b>. L'aplicació llegirà quin ha sigut l'inici de sessió al navegador des del teu ordinador, i només la farà servir al moment de la baixada des d'aquell lloc, per la qual cosa no s'enviarà mai enlloc més. Val a dir que tot això no té per què arribar a funcionar amb qualsevol tipus de vídeo limitat per l'edat.</p>
+        <p>Any site the same downloader supports works the same way. For videos that need an account, such as Instagram, Facebook, TikTok stories and age-restricted YouTube videos, open <b>More options</b> under the form and choose your browser under <b>Log-in cookies</b>. The app reads that browser's log-in on this computer and uses it only when downloading from that site; it is not sent anywhere else. This may not work for every restricted video.</p>
       </div>
 
       <h2>És bo saber-ho</h2>
@@ -300,7 +304,7 @@
         <article class="qa"><h3>De veritat que és gratuït?</h3><div class="faq-a"><p>Sí: de franc, de codi obert, ni comptes ni subscripcions i cap cost per minut.</p></div></article>
         <article class="qa"><h3>Al capdavall, el meu vídeo o transcripció s'està pujant cap algun lloc?</h3><div class="faq-a"><p>Amb els motors de defecte, no pas: Whisper s'executa des del teu ordinador i la xarxa únicament s'usa per descarregar des de la pàgina on hi hagi el vídeo. Disposem de dos motors per núvol, tot i que no es faran funcionar si abans no els actives tu.</p></div></article>
         <article class="qa"><h3>Podria transcriure un vídeo el qual manqués de subtítols, o d'algun el qual estigués dins de qualsevol altre idioma?</h3><div class="faq-a"><p>Sí. Whisper llegeix l'àudio, així doncs els subtítols no hi faran falta. Tria el teu <b>Idioma</b> de la parla o ho podràs deixar com <b>Auto</b>. L'opció <b>Sortida: traducció a l'anglès</b> convertirà la parla que no sigui en anglès en text anglès; aquesta vindrà inactiva de defecte, sense que arribi a funcionar en qualsevol model o motor.</p></div></article>
-        <article class="qa"><h3>És possible transcriure només un tros d'un llarg vídeo?</h3><div class="faq-a"><p>Doncs sí. Només has d'omplir l'<b>Interval de temps (opcional)</b> que trobaràs a la pestanya de Baixa vídeos amb un inici i final on s'hi fixi l'H:MM:SS. Així és com tan sols es baixarà un fragment en lloc de tota la resta, i farà la transcripció si marques el camp corresponent a Transcriure després de baixar.</p></div></article>
+        <article class="qa"><h3>És possible transcriure només un tros d'un llarg vídeo?</h3><div class="faq-a"><p>Yes. Open <b>More options</b> on the Download Videos tab and fill in <b>Time range (optional)</b> with a start and end in H:MM:SS. Only that portion is downloaded, and transcribed if you ticked Transcribe after download.</p></div></article>
         <article class="qa"><h3>Hi podria enganxar tota una llista de reproducció?</h3><div class="faq-a"><p>Això no. Les tasques només abasten un vídeo alhora. Si es fes una còpia d'un enllaç situat dins d'una llista de reproducció i aquest es descarregués, llavors l'únic vídeo que hi apareixeria només seria un en lloc de la totalitat de la llista.</p></div></article>
       </div>
 

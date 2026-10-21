@@ -75,7 +75,7 @@
 <link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
 
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 <style>
   .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
   .guide { padding: 108px 0 64px; }
@@ -86,6 +86,9 @@
   .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
   .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
   .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .try-box { margin-top: 22px; padding: 14px 18px; border-radius: var(--r); background: var(--teal-soft); border: 1px solid var(--line); color: var(--ink-2); }
+  .try-box p { margin: 0; }
+  .try-box a { color: var(--teal-ink); font-weight: 600; text-underline-offset: 3px; }
   .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
   .guide-body p { margin-top: 12px; color: var(--ink-2); }
   .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
@@ -256,6 +259,7 @@
       <h1>如何免費將影片轉換為 SRT 字幕</h1>
       <p class="guide-sub">一次安裝即可使用的免費桌面軟體（Windows、macOS、Linux）。其內建的 Whisper 語音辨識模型會在您的電腦上執行，因此使用預設引擎時，影片不會被上傳。</p>
       <p class="guide-lede">若要將影片轉換為 SRT 字幕，請開啟「轉錄」分頁，將影片或音訊檔案拖放進來，確認「進階設定」中的 SRT 已勾選，然後按下「轉錄」。Whisper 會在原始檔案旁產生通用的 SRT 字幕檔案，方便直接用於播放器、剪輯軟體或上傳。若要透過連結轉換，請參閱 <a href="/zh-tw/youtube-to-text/">YouTube 指南</a>。</p>
+      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>下載免費軟體</a>
       </div>
@@ -266,10 +270,10 @@
       <h2>1. 製作 SRT</h2>
       <ol class="guide-steps">
         <li><b>開啟「轉錄」分頁</b>，並將影片或音訊檔案拖曳至視窗中，或點擊 <b>瀏覽檔案…</b>。您可以一次選取多個檔案。</li>
-        <li><b>設定語言</b>，或保留為 <b>自動</b> 進行偵測。自行選取語言處理速度更快，且對於較短或有雜音的片段能更為精準。</li>
-        <li><b>選填：</b>填入 <b>時間範圍</b>（H:MM:SS），即可僅轉錄檔案的特定片段。</li>
+        <li><b>Set the Language</b>, or leave <b>Auto</b> to detect it. Picking it yourself is faster and can be more accurate for short or noisy clips. Next to it, <b>Accuracy</b> chooses the model: <b>Fast</b> for a quick draft, <b>Balanced</b>, or <b>Best</b> for the most careful result (slower). A model you picked in <b>Advanced settings</b> shows as <b>Custom</b> and is left alone.</li>
+        <li><b>Optional:</b> open <b>More options</b> and fill in <b>Time range</b> (H:MM:SS) to transcribe only part of the file.</li>
         <li><b>選擇字幕格式。</b>點選 <b>進階設定…</b> 並找到 <b>輸出格式</b>。預設格式為 SRT 與 JSON。網路影片可勾選 <b>VTT</b>（網頁字幕格式），若要在編輯器中自訂字幕樣式則可勾選 <b>ASS（樣式字幕／卡拉 OK）</b>。每個任務都會輸出所有已勾選的格式。請保持勾選 JSON：軟體需要透過此 JSON 檔案開啟逐字稿檢視器。</li>
-        <li><b>選用：</b>勾選 <b>逐字時間戳記</b> 可儲存每個單字的開始與結束時間；檔案會因此變大。您的 SRT 字幕仍會以完整片段為單位，每段語音對應一則字幕。VTT 與 ASS 會使用逐字時間資訊來實現卡拉 OK 般的反白效果。</li>
+        <li><b>Optional:</b> under <b>More options</b>, tick <b>Per-word timestamps</b> to store a start and end time for every word; the files get larger. Your SRT cues still follow whole segments, one cue per segment of speech. Word timing is used by VTT and ASS for karaoke-style highlighting.</li>
         <li><b>點擊轉錄。</b>您可以在 <b>轉錄佇列</b> 分頁追蹤任務進度。字幕檔案會以相同檔名與新的副檔名儲存在原始檔案旁（例如 talk.mp4 會產生 talk.srt），而 <b>最新結果</b> 卡片也會為每個檔案提供 <b>開啟</b> 按鈕。</li>
       </ol>
       <figure class="guide-fig">
@@ -279,7 +283,7 @@
 
       <h2>其他語言的字幕</h2>
       <div class="guide-body">
-        <p>若要將非英文語音產生為英文字幕，請勾選 <b>輸出：英文翻譯</b>；產生的檔案名稱會加上 .en-translated。此功能預設為關閉，且並非適用於所有引擎或模型。若需要其他語言，在設定好 AI 層（您自行安裝的本機模型或選擇的線上服務提供商）後，逐字稿檢視器中選用的「AI 工具」分頁即可輸出雙語 SRT；該功能預設同樣為關閉。</p>
+        <p>For English subtitles from non-English speech, open <b>More options</b> and tick <b>Output: English translation</b>; the files get an .en-translated name. It is off by default and does not work with every engine or model. For other languages, an optional AI Tools tab in the transcript viewer can write a bilingual SRT once you set up its AI layer (a local model you install, or an online provider you choose); it is off by default.</p>
       </div>
       <h2>2. 校對字幕（選用）</h2>
       <div class="guide-body">

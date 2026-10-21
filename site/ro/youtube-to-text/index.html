@@ -77,7 +77,7 @@
 
 <link rel="preload" href="/assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 <style>
   .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
   .guide { padding: 108px 0 64px; }
@@ -88,6 +88,9 @@
   .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
   .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
   .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .try-box { margin-top: 22px; padding: 14px 18px; border-radius: var(--r); background: var(--teal-soft); border: 1px solid var(--line); color: var(--ink-2); }
+  .try-box p { margin: 0; }
+  .try-box a { color: var(--teal-ink); font-weight: 600; text-underline-offset: 3px; }
   .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
   .guide-body p { margin-top: 12px; color: var(--ink-2); }
   .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
@@ -258,6 +261,7 @@
       <h1>Transcrieți un videoclip YouTube în text, gratuit și offline</h1>
       <p class="guide-sub">O aplicație desktop gratuită pe care o instalați o singură dată (Windows, macOS, Linux). Descărcarea videoclipului necesită internet; transcrierea propriu-zisă rulează pe computerul dumneavoastră.</p>
       <p class="guide-lede">Pentru a transforma un videoclip YouTube în text, lipiți linkul în fila Descărcare videoclipuri, alegeți un format de text, bifați Transcrie după descărcare și apăsați Descărcați. Aplicația preia videoclipul cu instrumentul de descărcare open-source yt-dlp, îl transcrie cu Whisper (un model de recunoaștere a vorbirii) pe propriul computer și salvează o transcriere TXT, DOCX, PDF sau SRT.</p>
+      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Descărcați aplicația gratuită</a>
       </div>
@@ -268,10 +272,10 @@
       <h2>Cum să transcrieți un videoclip YouTube</h2>
       <ol class="guide-steps">
         <li><b>Doar la prima lansare.</b> Fereastra Pornire rapidă vă solicită limba și opțiunea <b>Rapid</b> sau <b>Cea mai bună calitate</b>; modelul vocal se descarcă o singură dată, la prima utilizare.</li>
-        <li><b>Deschideți fila Descărcare videoclipuri</b> și lipiți linkul YouTube în <b>URL</b>. Aplicația caută automat formatele și subtitrările disponibile.</li>
+        <li><b>Open the Download Videos tab</b> and paste the YouTube link into <b>Video link</b>. The app looks up the formats and any subtitles by itself.</li>
         <li><b>Alegeți un mod.</b> <b>Audio</b> salvează doar sunetul, fiind mai mic și mai rapid când doriți doar o transcriere. <b>Audio și video</b> păstrează și imaginea.</li>
-        <li><b>Opțional:</b> folosiți <b>Interval de timp (opțional)</b> pentru a descărca și transcrie doar o porțiune. Formatul este H:MM:SS, iar 0:00:00 în ambele casete înseamnă întregul videoclip.</li>
-        <li><b>Alegeți tipul de fișier înainte de descărcare.</b> Comutați la fila <b>Transcrieți</b>, faceți clic pe <b>Setări avansate…</b> și, la <b>Formate de ieșire</b>, bifați <b>TXT</b> (sau <b>DOCX</b> ori <b>PDF</b>). Opțiunea implicită este SRT plus JSON, care vă oferă subtitrări, nu un fișier text simplu. Păstrați JSON bifat: este un fișier JSON pe care aplicația îl folosește pentru a deschide vizualizatorul de transcrieri. Opțiunea de <b>Limbă</b> și modelul ales în acea filă se aplică și descărcărilor.</li>
+        <li><b>Optional:</b> open <b>More options</b> under the form and use <b>Time range (optional)</b> to download and transcribe only a part. The format is H:MM:SS, and 0:00:00 in both boxes means the whole video. <b>More options</b> opens by itself when a range is set.</li>
+        <li><b>Choose the file type before you download.</b> Switch to the <b>Transcribe</b> tab, click <b>Advanced settings…</b> and, under <b>Output formats</b>, tick <b>TXT</b> (or <b>DOCX</b> or <b>PDF</b>). The default is SRT plus JSON, which gives you subtitles, not a plain text file. Keep JSON ticked: it is a JSON file the app uses to open the transcript viewer. The <b>Language</b> and <b>Accuracy</b> level chosen on that tab apply to downloads too.</li>
         <li><b>Reveniți la Descărcare videoclipuri, bifați Transcrie după descărcare</b>, apoi faceți clic pe <b>Descărcați</b>.</li>
         <li><b>Urmăriți progresul.</b> Rândul din tabel se completează, iar fila <b>Coadă de transcriere</b> indică viteza și timpul rămas. Când se finalizează, transcrierea se află lângă fișierul de origine, iar caseta <b>Ultimul rezultat</b> din fila Transcrieți oferă <b>Deschideți</b>, <b>Vizualizați transcrierea</b> și <b>Salvați pagina de partajat</b>.</li>
       </ol>
@@ -286,7 +290,7 @@
       </div>
       <h2>Alte site-uri și videoclipuri care necesită autentificare</h2>
       <div class="guide-body">
-        <p>Orice site acceptat de același instrument de descărcare funcționează la fel. Pentru videoclipurile care necesită un cont, cum ar fi poveștile de pe Instagram, Facebook, TikTok și videoclipurile YouTube cu restricție de vârstă, alegeți browserul la <b>Cookie-uri de autentificare</b>. Aplicația citește datele de conectare ale acelui browser de pe acest computer și le folosește doar la descărcarea de pe acel site; nu sunt trimise nicăieri altundeva. Este posibil ca acest lucru să nu funcționeze pentru toate videoclipurile restricționate.</p>
+        <p>Any site the same downloader supports works the same way. For videos that need an account, such as Instagram, Facebook, TikTok stories and age-restricted YouTube videos, open <b>More options</b> under the form and choose your browser under <b>Log-in cookies</b>. The app reads that browser's log-in on this computer and uses it only when downloading from that site; it is not sent anywhere else. This may not work for every restricted video.</p>
       </div>
 
       <h2>Bine de știut</h2>
@@ -300,7 +304,7 @@
         <article class="qa"><h3>Este într-adevăr gratuit?</h3><div class="faq-a"><p>Da: gratuit și open-source, fără cont, fără abonament, fără costuri pe minut.</p></div></article>
         <article class="qa"><h3>Videoclipul sau transcrierea mea sunt încărcate undeva?</h3><div class="faq-a"><p>Nu cu motoarele implicite: Whisper rulează pe propriul computer, și doar descărcarea de pe site-ul video folosește rețeaua. Există două motoare cloud, dar acestea rămân dezactivate până când le activați personal.</p></div></article>
         <article class="qa"><h3>Poate transcrie un videoclip care nu are subtitrări sau unul într-o altă limbă?</h3><div class="faq-a"><p>Da. Whisper ascultă conținutul audio, așa că subtitrările nu sunt necesare. Alegeți <b>Limba</b> vorbită sau lăsați pe <b>Auto</b>. Opțiunea <b>Ieșire: traducere în engleză</b> transformă vorbirea în alte limbi în text în limba engleză; este dezactivată în mod implicit și nu funcționează cu orice motor sau model.</p></div></article>
-        <article class="qa"><h3>Pot transcrie doar o parte dintr-un videoclip lung?</h3><div class="faq-a"><p>Da. Completați <b>Interval de timp (opțional)</b> în fila Descărcare videoclipuri cu un început și un sfârșit în format H:MM:SS. Va fi descărcată doar acea porțiune, și transcrisă dacă ați bifat Transcrie după descărcare.</p></div></article>
+        <article class="qa"><h3>Pot transcrie doar o parte dintr-un videoclip lung?</h3><div class="faq-a"><p>Yes. Open <b>More options</b> on the Download Videos tab and fill in <b>Time range (optional)</b> with a start and end in H:MM:SS. Only that portion is downloaded, and transcribed if you ticked Transcribe after download.</p></div></article>
         <article class="qa"><h3>Pot lipi o listă întreagă de redare?</h3><div class="faq-a"><p>Nu. Fiecare sarcină este pentru un singur videoclip. Un link copiat dintr-o listă de redare descarcă doar acel videoclip, nu întreaga listă.</p></div></article>
       </div>
 

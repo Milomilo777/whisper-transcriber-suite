@@ -77,7 +77,7 @@
 
 <link rel="preload" href="/assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 <style>
   .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
   .guide { padding: 108px 0 64px; }
@@ -88,6 +88,9 @@
   .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
   .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
   .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .try-box { margin-top: 22px; padding: 14px 18px; border-radius: var(--r); background: var(--teal-soft); border: 1px solid var(--line); color: var(--ink-2); }
+  .try-box p { margin: 0; }
+  .try-box a { color: var(--teal-ink); font-weight: 600; text-underline-offset: 3px; }
   .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
   .guide-body p { margin-top: 12px; color: var(--ink-2); }
   .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
@@ -258,6 +261,7 @@
       <h1>Transkripsikan video YouTube ke teks, gratis dan luring</h1>
       <p class="guide-sub">Aplikasi desktop gratis yang Anda pasang sekali (Windows, macOS, Linux). Unduh video memerlukan internet; transkripsi itu sendiri berjalan di komputer Anda.</p>
       <p class="guide-lede">Untuk mengubah video YouTube menjadi teks, tempel tautannya ke tab Unduh Video, pilih format teks, centang Transkripsikan setelah diunduh dan tekan Unduh. Aplikasi mengambil video dengan pengunduh sumber terbuka yt-dlp, mentranskripsikannya dengan Whisper (model pengenalan ucapan) di komputer Anda sendiri dan menyimpan transkrip TXT, DOCX, PDF, atau SRT.</p>
+      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Unduh aplikasi gratis</a>
       </div>
@@ -268,10 +272,10 @@
       <h2>Cara mentranskripsikan video YouTube</h2>
       <ol class="guide-steps">
         <li><b>Hanya peluncuran pertama.</b> Jendela Mulai cepat menanyakan bahasa Anda dan <b>Cepat</b> atau <b>Kualitas terbaik</b>; model ucapan diunduh sekali, saat penggunaan pertama.</li>
-        <li><b>Buka tab Unduh Video</b> dan tempel tautan YouTube ke <b>URL</b>. Aplikasi mencari format dan subjudul apa pun secara otomatis.</li>
+        <li><b>Open the Download Videos tab</b> and paste the YouTube link into <b>Video link</b>. The app looks up the formats and any subtitles by itself.</li>
         <li><b>Pilih mode.</b> <b>Audio</b> hanya menyimpan suara, yang lebih kecil dan lebih cepat bila Anda hanya menginginkan transkrip. <b>Audio dan video</b> juga menyimpan gambar.</li>
-        <li><b>Opsional:</b> gunakan <b>Rentang waktu (opsional)</b> untuk mengunduh dan mentranskripsikan hanya sebagian. Formatnya adalah H:MM:SS, dan 0:00:00 di kedua kotak berarti seluruh video.</li>
-        <li><b>Pilih tipe file sebelum Anda mengunduh.</b> Beralihlah ke tab <b>Transkripsikan</b>, klik <b>Pengaturan lanjutan…</b> dan, di bawah <b>Format keluaran</b>, centang <b>TXT</b> (atau <b>DOCX</b> atau <b>PDF</b>). Default-nya adalah SRT plus JSON, yang memberi Anda subtitel, bukan file teks biasa. Biarkan JSON tetap tercentang: itu adalah file JSON yang digunakan aplikasi untuk membuka penampil transkrip. <b>Bahasa</b> dan model yang dipilih pada tab itu berlaku untuk unduhan juga.</li>
+        <li><b>Optional:</b> open <b>More options</b> under the form and use <b>Time range (optional)</b> to download and transcribe only a part. The format is H:MM:SS, and 0:00:00 in both boxes means the whole video. <b>More options</b> opens by itself when a range is set.</li>
+        <li><b>Choose the file type before you download.</b> Switch to the <b>Transcribe</b> tab, click <b>Advanced settings…</b> and, under <b>Output formats</b>, tick <b>TXT</b> (or <b>DOCX</b> or <b>PDF</b>). The default is SRT plus JSON, which gives you subtitles, not a plain text file. Keep JSON ticked: it is a JSON file the app uses to open the transcript viewer. The <b>Language</b> and <b>Accuracy</b> level chosen on that tab apply to downloads too.</li>
         <li><b>Kembali ke Unduh Video, centang Transkripsikan setelah diunduh</b>, lalu klik <b>Unduh</b>.</li>
         <li><b>Pantau kemajuannya.</b> Baris dalam tabel akan terisi, dan tab <b>Antrean Transkripsi</b> menampilkan kecepatan dan waktu tersisa. Setelah selesai, transkrip berada di sebelah file asalnya, dan kartu <b>Hasil terakhir</b> pada tab Transkripsikan menawarkan <b>Buka</b>, <b>Lihat transkrip</b>, dan <b>Simpan halaman yang dapat dibagikan</b>.</li>
       </ol>
@@ -286,7 +290,7 @@
       </div>
       <h2>Situs dan video lain yang memerlukan login</h2>
       <div class="guide-body">
-        <p>Situs apa pun yang didukung oleh pengunduh yang sama bekerja dengan cara yang sama. Untuk video yang memerlukan akun, seperti Instagram, Facebook, TikTok stories, dan video YouTube yang dibatasi usia, pilih browser Anda di bawah <b>Cookie login</b>. Aplikasi membaca login browser tersebut di komputer ini dan menggunakannya hanya saat mengunduh dari situs itu; tidak dikirim ke tempat lain. Hal ini mungkin tidak berhasil untuk setiap video yang dibatasi.</p>
+        <p>Any site the same downloader supports works the same way. For videos that need an account, such as Instagram, Facebook, TikTok stories and age-restricted YouTube videos, open <b>More options</b> under the form and choose your browser under <b>Log-in cookies</b>. The app reads that browser's log-in on this computer and uses it only when downloading from that site; it is not sent anywhere else. This may not work for every restricted video.</p>
       </div>
 
       <h2>Perlu diketahui</h2>
@@ -300,7 +304,7 @@
         <article class="qa"><h3>Apakah ini benar-benar gratis?</h3><div class="faq-a"><p>Ya: gratis dan sumber terbuka, tanpa akun, tanpa langganan, tanpa biaya per menit.</p></div></article>
         <article class="qa"><h3>Apakah video atau transkrip saya diunggah ke mana pun?</h3><div class="faq-a"><p>Tidak dengan mesin bawaan: Whisper berjalan di komputer Anda sendiri, dan hanya pengunduhan dari situs video yang menggunakan jaringan. Ada dua mesin cloud, tetapi keduanya tidak aktif sampai Anda mengaktifkannya sendiri.</p></div></article>
         <article class="qa"><h3>Bisakah ia mentranskripsikan video yang tidak memiliki takarir, atau video dalam bahasa lain?</h3><div class="faq-a"><p>Ya. Whisper mendengarkan audio, jadi teks tidak diperlukan. Pilih <b>Bahasa</b> yang diucapkan atau biarkan di <b>Otomatis</b>. <b>Keluaran: terjemahan bahasa Inggris</b> mengubah ucapan non-Inggris menjadi teks bahasa Inggris; secara default mati dan tidak berfungsi dengan setiap mesin atau model.</p></div></article>
-        <article class="qa"><h3>Bisakah saya mentranskripsikan sebagian saja dari video yang panjang?</h3><div class="faq-a"><p>Bisa. Isi <b>Rentang waktu (opsional)</b> pada tab Unduh Video dengan awal dan akhir dalam format H:MM:SS. Hanya bagian tersebut yang diunduh, dan ditranskripsikan jika Anda mencentang Transkripsikan setelah diunduh.</p></div></article>
+        <article class="qa"><h3>Bisakah saya mentranskripsikan sebagian saja dari video yang panjang?</h3><div class="faq-a"><p>Yes. Open <b>More options</b> on the Download Videos tab and fill in <b>Time range (optional)</b> with a start and end in H:MM:SS. Only that portion is downloaded, and transcribed if you ticked Transcribe after download.</p></div></article>
         <article class="qa"><h3>Bisakah saya menempelkan seluruh daftar putar?</h3><div class="faq-a"><p>Tidak. Setiap tugas adalah satu video. Tautan yang disalin dari dalam daftar putar hanya mengunduh video tersebut, bukan seluruh daftarnya.</p></div></article>
       </div>
 

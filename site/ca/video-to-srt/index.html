@@ -77,7 +77,7 @@
 
 <link rel="preload" href="/assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 <style>
   .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
   .guide { padding: 108px 0 64px; }
@@ -88,6 +88,9 @@
   .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
   .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
   .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .try-box { margin-top: 22px; padding: 14px 18px; border-radius: var(--r); background: var(--teal-soft); border: 1px solid var(--line); color: var(--ink-2); }
+  .try-box p { margin: 0; }
+  .try-box a { color: var(--teal-ink); font-weight: 600; text-underline-offset: 3px; }
   .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
   .guide-body p { margin-top: 12px; color: var(--ink-2); }
   .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
@@ -258,6 +261,7 @@
       <h1>Com convertir un vídeo a subtítols SRT de manera gratuïta</h1>
       <p class="guide-sub">Una aplicació d'escriptori gratuïta que només caldrà instal·lar un cop (Windows, macOS, Linux). Whisper, el model per al reconeixement de veu que en conté al seu interior, s'executa des del teu ordinador, motiu pel qual el vídeo no estarà sent pujat si ho fas mitjançant els motors de defecte.</p>
       <p class="guide-lede">Si ets a punt de convertir un vídeo a subtítols en el format SRT, llavors ves cap a la pestanya de Transcriu, deixa anar dins d'ella l'arxiu del vídeo o àudio que desitgis, comprova si s'ha fet clic damunt d'SRT dins de la Configuració avançada i prem a Transcriure. Posteriorment el Whisper escriurà el seu SRT que, malgrat tot, serà un format de fitxer prou freqüent entre els subtítols, al mateix temps que crearà un altre d'igual amb les teves preferències prop del teu original sense que els calgui ni afegir-ho als reproductors d'àudio o vídeo ni a aquells del cinema en ser obtinguts com arxius directament des dels descarregadors. Per veure'n un enllaç, referiu-vos a la <a href="/ca/youtube-to-text/">guia de YouTube</a>.</p>
+      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Baixa l'aplicació gratuïta</a>
       </div>
@@ -268,10 +272,10 @@
       <h2>1. Crea un SRT</h2>
       <ol class="guide-steps">
         <li><b>Obre la pestanya per a la transcripció (Transcriu)</b> tot arrosegant-hi dins els teus fitxers o directament des del ratolí fent un <b>Cerca els fitxers...</b>. També hi podràs escollir diversos d'aquests simultàniament.</li>
-        <li><b>Estableix l'Idioma</b>, o deixa-ho a <b>Auto</b> perquè ho detecti automàticament. Si ho tries de forma manual el resultat serà més ràpid, podent fer que també resultin més precisos aquells clips més curts o en els que n'hagi cert soroll.</li>
-        <li><b>Opcional:</b> si desitja realitzar l'extracció i/o de forma subseqüent només transcriure en part a algun dels continguts dels teus arxius multimèdia de vídeo, o en defecte la dels teus clips d'àudios, si us plau empleneu també de pas aquests respectius camps lliures, on s'especifica per començar l'inici, per d'altre banda finalitzar a la part final (en format H:MM:SS), de l'<b>Interval de temps</b>.</li>
+        <li><b>Set the Language</b>, or leave <b>Auto</b> to detect it. Picking it yourself is faster and can be more accurate for short or noisy clips. Next to it, <b>Accuracy</b> chooses the model: <b>Fast</b> for a quick draft, <b>Balanced</b>, or <b>Best</b> for the most careful result (slower). A model you picked in <b>Advanced settings</b> shows as <b>Custom</b> and is left alone.</li>
+        <li><b>Optional:</b> open <b>More options</b> and fill in <b>Time range</b> (H:MM:SS) to transcribe only part of the file.</li>
         <li><b>Escull els formats pels subtítols.</b> Fes clic on diu <b>Configuració avançada…</b> i després fixa't on s'esmenten els <b>Formats de sortida</b>. Tal qual com està veuràs que SRT sumat a un JSON són aquells per defecte. Marca l'opció de <b>VTT</b> (format web de subtítols) quan en tinguis cap interès sobre l'àrea del web de vídeo o, si n'estil·litzessis cap a qualsevol editor, sempre podries provar el d'<b>ASS (subtítols amb estil / karaoke)</b>. Cal esmentar, també, que cadascun dels seleccionats es desaran d'igual forma quan el programa ja els hagi tramitat del tot. Sobretot si mantens l'opció del JSON així: és la mateixa amb el qual aconseguiràs disposar o visualitzar els teus, d'on el llegeix el mateix visor de transcripcions del qual hi disposem cap al sistema d'aquest, a continuació.</li>
-        <li><b>Opcional:</b> marca <b>Marques de temps per paraula</b> per emmagatzemar l'inici i final de cada paraula, fent així que els arxius de les lletres pesin bastant més. Aquelles guies teves als subtítols del format d'SRT seguirien igual cadascun d'aquests grans segments o blocs formats amb diàlegs d'unes mides en concret ja estipulades al procés de la transcripció original. Pel que respectaria, si tenim per cas a referència als fitxers dels temps on totes les seccions del temps a nivell de cada paraula (format VTT per citar i a la mateixa d'en ASS), aquestes, doncs vindrien usant-se allà també mitjançant els ressantaments als textos per a l'efecte conegut als estils de karaoke.</li>
+        <li><b>Optional:</b> under <b>More options</b>, tick <b>Per-word timestamps</b> to store a start and end time for every word; the files get larger. Your SRT cues still follow whole segments, one cue per segment of speech. Word timing is used by VTT and ASS for karaoke-style highlighting.</li>
         <li><b>Fes clic a Transcriu.</b> Segueix la feina a la pestanya <b>Cua de transcripció</b>. El fitxer de subtítols aterra al costat de l'original amb el mateix nom i una extensió nova, per exemple talk.mp4 es converteix en talk.srt, i la targeta de <b>Darrer resultat</b> té un botó d'<b>Obre</b> per a cada fitxer.</li>
       </ol>
       <figure class="guide-fig">
@@ -281,7 +285,7 @@
 
       <h2>Subtítols en un altre idioma</h2>
       <div class="guide-body">
-        <p>Per obtenir subtítols en anglès d'un discurs que no és en anglès, marca <b>Sortida: traducció a l'anglès</b>; els fitxers obtenen un nom acabat en .en-translated. Està desactivat per defecte i no funciona amb tots els motors o models. Per a altres idiomes, una pestanya Eines d'IA opcional al visor de transcripcions pot escriure un SRT bilingüe un cop configuris la seva capa d'IA (un model local que instal·lis o un proveïdor en línia que triïs); està desactivat per defecte.</p>
+        <p>For English subtitles from non-English speech, open <b>More options</b> and tick <b>Output: English translation</b>; the files get an .en-translated name. It is off by default and does not work with every engine or model. For other languages, an optional AI Tools tab in the transcript viewer can write a bilingual SRT once you set up its AI layer (a local model you install, or an online provider you choose); it is off by default.</p>
       </div>
       <h2>2. Corregeix-ho (opcional)</h2>
       <div class="guide-body">

@@ -75,7 +75,7 @@
 <link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
 
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 <style>
   .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
   .guide { padding: 108px 0 64px; }
@@ -86,6 +86,9 @@
   .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
   .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
   .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .try-box { margin-top: 22px; padding: 14px 18px; border-radius: var(--r); background: var(--teal-soft); border: 1px solid var(--line); color: var(--ink-2); }
+  .try-box p { margin: 0; }
+  .try-box a { color: var(--teal-ink); font-weight: 600; text-underline-offset: 3px; }
   .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
   .guide-body p { margin-top: 12px; color: var(--ink-2); }
   .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
@@ -256,6 +259,7 @@
       <h1>একটি YouTube ভিডিওকে টেক্সটে ট্রান্সক্রাইব করুন, ফ্রি এবং অফলাইনে</h1>
       <p class="guide-sub">একটি ফ্রি ডেস্কটপ অ্যাপ যা আপনি একবার ইনস্টল করেন (Windows, macOS, Linux)। ভিডিও ডাউনলোড করতে ইন্টারনেট প্রয়োজন; ট্রান্সক্রিপশনটি নিজেই আপনার কম্পিউটারে চলে।</p>
       <p class="guide-lede">একটি YouTube ভিডিওকে টেক্সটে রূপান্তর করতে, এর লিংকটি ভিডিও ডাউনলোড ট্যাবে পেস্ট করুন, একটি টেক্সট ফরম্যাট বেছে নিন, ডাউনলোডের পর ট্রান্সক্রাইব করুন টিক চিহ্ন দিন এবং ডাউনলোড করুন চাপুন। অ্যাপটি ওপেন-সোর্স ডাউনলোডার yt-dlp দিয়ে ভিডিওটি আনে, আপনার নিজের কম্পিউটারে Whisper (একটি স্পিচ-রিকগনিশন মডেল) দিয়ে এটি ট্রান্সক্রাইব করে এবং TXT, DOCX, PDF বা SRT ট্রান্সক্রিপ্ট সংরক্ষণ করে।</p>
+      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>ফ্রি অ্যাপটি ডাউনলোড করুন</a>
       </div>
@@ -266,10 +270,10 @@
       <h2>কীভাবে একটি YouTube ভিডিও ট্রান্সক্রাইব করবেন</h2>
       <ol class="guide-steps">
         <li><b>শুধুমাত্র প্রথমবার চালানোর জন্য।</b> দ্রুত শুরু উইন্ডোটি আপনার ভাষা এবং <b>দ্রুত</b> বা <b>সেরা গুণমান</b> জিজ্ঞাসা করে; স্পিচ মডেলটি প্রথম ব্যবহারে একবার ডাউনলোড হয়।</li>
-        <li><b>ভিডিও ডাউনলোড ট্যাবটি খুলুন</b> এবং YouTube লিংকটি <b>URL</b>-এ পেস্ট করুন। অ্যাপটি নিজে থেকেই ফরম্যাটগুলো এবং যেকোনো সাবটাইটেল খুঁজে বের করে।</li>
+        <li><b>Open the Download Videos tab</b> and paste the YouTube link into <b>Video link</b>. The app looks up the formats and any subtitles by itself.</li>
         <li><b>একটি মোড বেছে নিন।</b> <b>অডিও</b> শুধুমাত্র শব্দ সংরক্ষণ করে, যা ছোট এবং দ্রুত হয় যখন আপনার শুধু একটি ট্রান্সক্রিপ্ট প্রয়োজন। <b>অডিও এবং ভিডিও</b> ছবিও রাখে।</li>
-        <li><b>ঐচ্ছিক:</b> শুধুমাত্র একটি অংশ ডাউনলোড এবং ট্রান্সক্রাইব করতে <b>সময়সীমা (ঐচ্ছিক)</b> ব্যবহার করুন। ফরম্যাটটি হলো H:MM:SS, এবং উভয় বাক্সে 0:00:00 মানে পুরো ভিডিও।</li>
-        <li><b>ডাউনলোড করার আগে ফাইলের ধরন বেছে নিন।</b> <b>ট্রান্সক্রাইব করুন</b> ট্যাবে যান, <b>উন্নত সেটিংস…</b> ক্লিক করুন এবং <b>আউটপুট ফরম্যাট</b>-এর অধীনে <b>TXT</b> (বা <b>DOCX</b> বা <b>PDF</b>) টিক চিহ্ন দিন। ডিফল্ট হলো SRT এবং JSON, যা আপনাকে সাবটাইটেল দেয়, সাধারণ টেক্সট ফাইল নয়। JSON টিক চিহ্ন দেওয়া রাখুন: অ্যাপটি ট্রান্সক্রিপ্ট ভিউয়ার খুলতে এই JSON ফাইলটি ব্যবহার করে। সেই ট্যাবে নির্বাচিত <b>Language</b> এবং মডেল ডাউনলোডের ক্ষেত্রেও প্রযোজ্য।</li>
+        <li><b>Optional:</b> open <b>More options</b> under the form and use <b>Time range (optional)</b> to download and transcribe only a part. The format is H:MM:SS, and 0:00:00 in both boxes means the whole video. <b>More options</b> opens by itself when a range is set.</li>
+        <li><b>Choose the file type before you download.</b> Switch to the <b>Transcribe</b> tab, click <b>Advanced settings…</b> and, under <b>Output formats</b>, tick <b>TXT</b> (or <b>DOCX</b> or <b>PDF</b>). The default is SRT plus JSON, which gives you subtitles, not a plain text file. Keep JSON ticked: it is a JSON file the app uses to open the transcript viewer. The <b>Language</b> and <b>Accuracy</b> level chosen on that tab apply to downloads too.</li>
         <li><b>ভিডিও ডাউনলোড-এ ফিরে গিয়ে, ডাউনলোডের পর ট্রান্সক্রাইব করুন টিক চিহ্ন দিন</b>, তারপর <b>ডাউনলোড করুন</b> ক্লিক করুন।</li>
         <li><b>অগ্রগতি দেখুন।</b> টেবিলের সারিটি পূরণ হতে থাকে, এবং <b>ট্রান্সক্রিপশন সারি</b> ট্যাবটি গতি এবং অবশিষ্ট সময় দেখায়। এটি শেষ হলে, ট্রান্সক্রিপ্টটি যে ফাইল থেকে এসেছে তার পাশে থাকে, এবং Transcribe ট্যাবের <b>Last result</b> কার্ডটি <b>ওপেন করুন</b>, <b>View transcript</b> এবং <b>শেয়ারযোগ্য পৃষ্ঠা সংরক্ষণ করুন</b> অফার করে।</li>
       </ol>
@@ -284,7 +288,7 @@
       </div>
       <h2>অন্যান্য সাইট এবং এমন ভিডিও যাদের লগইন প্রয়োজন</h2>
       <div class="guide-body">
-        <p>একই ডাউনলোডার যে সাইটগুলোকে সমর্থন করে সেগুলো একইভাবে কাজ করে। যেসব ভিডিওর অ্যাকাউন্ট প্রয়োজন, যেমন Instagram, Facebook, TikTok স্টোরি এবং বয়স-সীমাবদ্ধ YouTube ভিডিও, সেগুলোর জন্য <b>লগইন কুকি</b>-এর অধীনে আপনার ব্রাউজার বেছে নিন। অ্যাপটি এই কম্পিউটারে সেই ব্রাউজারের লগইন পড়ে এবং কেবল সেই সাইট থেকে ডাউনলোড করার সময় এটি ব্যবহার করে; এটি অন্য কোথাও পাঠানো হয় না। এটি প্রতিটি সীমাবদ্ধ ভিডিওর ক্ষেত্রে কাজ নাও করতে পারে।</p>
+        <p>Any site the same downloader supports works the same way. For videos that need an account, such as Instagram, Facebook, TikTok stories and age-restricted YouTube videos, open <b>More options</b> under the form and choose your browser under <b>Log-in cookies</b>. The app reads that browser's log-in on this computer and uses it only when downloading from that site; it is not sent anywhere else. This may not work for every restricted video.</p>
       </div>
 
       <h2>জেনে রাখা ভালো</h2>
@@ -298,7 +302,7 @@
         <article class="qa"><h3>এটি কি সত্যিই ফ্রি?</h3><div class="faq-a"><p>হ্যাঁ: ফ্রি এবং ওপেন সোর্স, কোনো অ্যাকাউন্ট নেই, কোনো সাবস্ক্রিপশন নেই, প্রতি মিনিটের কোনো খরচ নেই।</p></div></article>
         <article class="qa"><h3>আমার ভিডিও বা ট্রান্সক্রিপ্ট কি কোথাও আপলোড হয়?</h3><div class="faq-a"><p>ডিফল্ট ইঞ্জিনের ক্ষেত্রে নয়: Whisper আপনার নিজের কম্পিউটারে চলে, এবং কেবল ভিডিও সাইট থেকে ডাউনলোড করার সময়ই নেটওয়ার্ক ব্যবহৃত হয়। দুটি ক্লাউড ইঞ্জিন রয়েছে, তবে আপনি নিজে চালু না করা পর্যন্ত সেগুলো বন্ধ থাকে।</p></div></article>
         <article class="qa"><h3>এটি কি এমন একটি ভিডিও ট্রান্সক্রাইব করতে পারে যাতে কোনো ক্যাপশন নেই, বা অন্য ভাষার একটি ভিডিও?</h3><div class="faq-a"><p>হ্যাঁ। Whisper অডিও শোনে, তাই ক্যাপশনের প্রয়োজন নেই। কথ্য <b>ভাষা</b> নির্বাচন করুন বা <b>অটো</b>-তে রাখুন। <b>আউটপুট: ইংরেজি অনুবাদ</b> অ-ইংরেজি বক্তৃতাকে ইংরেজি টেক্সটে রূপান্তর করে; এটি ডিফল্টভাবে বন্ধ থাকে এবং প্রতিটি ইঞ্জিন বা মডেলের সাথে কাজ করে না।</p></div></article>
-        <article class="qa"><h3>আমি কি একটি দীর্ঘ ভিডিওর শুধুমাত্র একটি অংশ ট্রান্সক্রাইব করতে পারি?</h3><div class="faq-a"><p>হ্যাঁ। ভিডিও ডাউনলোড ট্যাবে <b>সময়সীমা (ঐচ্ছিক)</b>-এ H:MM:SS ফরম্যাটে শুরু এবং শেষের সময় পূরণ করুন। শুধুমাত্র সেই অংশটি ডাউনলোড করা হবে, এবং আপনি যদি ডাউনলোডের পর ট্রান্সক্রাইব করুন টিক চিহ্নিত করে থাকেন তবে তা ট্রান্সক্রাইবও করা হবে।</p></div></article>
+        <article class="qa"><h3>আমি কি একটি দীর্ঘ ভিডিওর শুধুমাত্র একটি অংশ ট্রান্সক্রাইব করতে পারি?</h3><div class="faq-a"><p>Yes. Open <b>More options</b> on the Download Videos tab and fill in <b>Time range (optional)</b> with a start and end in H:MM:SS. Only that portion is downloaded, and transcribed if you ticked Transcribe after download.</p></div></article>
         <article class="qa"><h3>আমি কি একটি সম্পূর্ণ প্লেলিস্ট পেস্ট করতে পারি?</h3><div class="faq-a"><p>না। প্রতিটি কাজ হলো একটি ভিডিও। কোনো প্লেলিস্টের ভেতর থেকে কপি করা একটি লিঙ্ক শুধুমাত্র সেই ভিডিওটি ডাউনলোড করে, পুরো তালিকাটি নয়।</p></div></article>
       </div>
 

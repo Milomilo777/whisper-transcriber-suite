@@ -77,7 +77,7 @@
 
 <link rel="preload" href="/assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 <style>
   .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
   .guide { padding: 108px 0 64px; }
@@ -88,6 +88,9 @@
   .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
   .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
   .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .try-box { margin-top: 22px; padding: 14px 18px; border-radius: var(--r); background: var(--teal-soft); border: 1px solid var(--line); color: var(--ink-2); }
+  .try-box p { margin: 0; }
+  .try-box a { color: var(--teal-ink); font-weight: 600; text-underline-offset: 3px; }
   .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
   .guide-body p { margin-top: 12px; color: var(--ink-2); }
   .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
@@ -257,7 +260,8 @@
     <article>
       <h1>Přepis rozhovoru s označením mluvčích (kdo co řekl)</h1>
       <p class="guide-sub">Bezplatná desktopová aplikace, kterou nainstalujete jen jednou (Windows, macOS, Linux). Nahrávka se zpracovává přímo ve vašem počítači a není potřeba žádný účet.</p>
-      <p class="guide-lede">Aplikace dokáže rozlišit hlasy a označí je jako Speaker 00, Speaker 01 a tak dále. Dokud je sami nepřejmenujete, aplikace neví, o koho jde. Podobné hlasy, krátké odpovědi, překrývající se řeč a hluk v pozadí mohou způsobit nesprávné označení. Chcete-li začít, zaškrtněte na kartě Přepsat možnost Identifikovat mluvčí a stiskněte Přepsat.</p>
+      <p class="guide-lede">The app tells voices apart and labels them Speaker 00, Speaker 01 and so on. It does not know who anyone is until you rename them. Similar voices, short replies, overlapping speech and background noise can cause wrong labels. To start, open More options on the Transcribe tab, tick Identify speakers and press Transcribe.</p>
+      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Stáhnout bezplatnou aplikaci</a>
       </div>
@@ -269,15 +273,15 @@
       <ol class="guide-steps">
         <li><b>Přidejte nahrávku.</b> Na kartě <b>Přepsat</b> přetáhněte audiosoubor nebo videosoubor, případně klikněte na <b>Procházet soubory...</b>. Funguje i odkaz z karty <b>Stáhnout videa</b>, protože používá stejná nastavení jako Přepsat.</li>
         <li><b>Zvolte Jazyk</b>, nebo ponechte volbu <b>Auto</b>.</li>
-        <li><b>Zaškrtněte Identifikovat mluvčí.</b> Pokud je u pole uvedeno <b>Identifikovat mluvčí (nedostupné)</b>, najeďte na něj myší a zjistíte důvod. Níže se aktivuje výběr <b>Mluvčí</b>: ponechte volbu <b>Auto</b>, nebo zvolte číslo od 2 do 10 a vynutíte přesně daný počet osob.</li>
-        <li><b>Volitelné:</b> zaškrtněte <b>Časové značky jednotlivých slov</b>, chcete-li ukládat čas začátku a konce pro každé slovo namísto pouhých vět. Výstupní soubor bude větší.</li>
+        <li><b>Open More options and tick Identify speakers.</b> If the box reads <b>Identify speakers (unavailable)</b>, hover over it to see why. The <b>Speakers</b> picker below it switches on: leave it on <b>Auto</b>, or choose a number from 2 to 10 to force exactly that many people.</li>
+        <li><b>Optional:</b> in <b>More options</b>, tick <b>Per-word timestamps</b> to store a start and end time for every word instead of only every sentence. The output gets larger.</li>
         <li><b>Vyberte formáty pro export.</b> Klikněte na <b>Pokročilá nastavení…</b> a v části <b>Výstupní formáty</b> zaškrtněte <b>DOCX</b> a <b>PDF</b>. Označení mluvčích obsahují i formáty SRT, TXT, Markdown a JSON. Ponechte zaškrtnutý JSON: jedná se o soubor JSON, který aplikace používá k otevření prohlížeče přepisů, což budete potřebovat pro poslední krok.</li>
         <li><b>Klikněte na Přepsat.</b> Detekce mluvčích probíhá po samotném přepisu a prodlouží dobu zpracování. Poté otevřete <b>Zobrazit přepis</b> z karty <b>Poslední výsledek</b>.</li>
         <li><b>Nahraďte obecná označení skutečnými jmény.</b> V prohlížeči klikněte pravým tlačítkem myši na buňku ve sloupci <b>Mluvčí</b>, zvolte možnost <b>Přejmenovat 'Speaker 00' (všude)...</b>, zadejte jméno a klikněte na <b>Uložit změny (Ctrl+S)</b>. Soubory Wordu a textové soubory vedle něj se znovu vygenerují, pokud stále odpovídají původnímu přepisu; soubor PDF se znovu nevytváří, proto jej po přejmenování exportujte znovu.</li>
       </ol>
       <figure class="guide-fig">
         <img src="/assets/shots/transcribe.webp" alt="Karta Přepsat se zaškrtávacími políčky Identifikovat mluvčí a Časové značky jednotlivých slov na řádku Jazyk, pod nimi řádek Časový rozsah a velké tlačítko Přepsat." width="1180" height="668" loading="lazy" decoding="async">
-        <figcaption>Možnosti Identifikovat mluvčí a Časové značky jednotlivých slov se nacházejí na řádku Jazyk na kartě Přepsat.</figcaption>
+        <figcaption>The Transcribe tab as it looked before version 2.2. Identify speakers and Per-word timestamps now sit under <b>More options</b>.</figcaption>
       </figure>
 
       <h2>Jak označení mluvčích vypadá</h2>

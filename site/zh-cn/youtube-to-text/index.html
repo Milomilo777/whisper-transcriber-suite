@@ -75,7 +75,7 @@
 <link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
 
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 <style>
   .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
   .guide { padding: 108px 0 64px; }
@@ -86,6 +86,9 @@
   .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
   .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
   .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .try-box { margin-top: 22px; padding: 14px 18px; border-radius: var(--r); background: var(--teal-soft); border: 1px solid var(--line); color: var(--ink-2); }
+  .try-box p { margin: 0; }
+  .try-box a { color: var(--teal-ink); font-weight: 600; text-underline-offset: 3px; }
   .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
   .guide-body p { margin-top: 12px; color: var(--ink-2); }
   .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
@@ -256,6 +259,7 @@
       <h1>将 YouTube 视频转录为文本，免费且离线</h1>
       <p class="guide-sub">一款安装一次即可使用的免费桌面应用（支持 Windows、macOS、Linux）。下载视频需要联网；转录过程本身则在您的电脑上本地运行。</p>
       <p class="guide-lede">要将 YouTube 视频转换为文本，请将其链接粘贴到“下载视频”选项卡中，选择一种文本格式，勾选“下载后转录”，然后按下“下载”。应用会使用开源下载器 yt-dlp 获取视频，在您自己的电脑上通过 Whisper（一种语音识别模型）进行转录，并保存为 TXT、DOCX、PDF 或 SRT 转录文件。</p>
+      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>下载免费应用</a>
       </div>
@@ -266,10 +270,10 @@
       <h2>如何转录 YouTube 视频</h2>
       <ol class="guide-steps">
         <li><b>仅限首次启动。</b> 快速启动窗口会要求您选择语言以及 <b>快速</b> 或 <b>最佳质量</b>；语音模型将在首次使用时下载一次。</li>
-        <li><b>打开“下载视频”选项卡</b>，并将 YouTube 链接粘贴到 <b>URL</b> 中。应用会自动查找格式和字幕。</li>
+        <li><b>Open the Download Videos tab</b> and paste the YouTube link into <b>Video link</b>. The app looks up the formats and any subtitles by itself.</li>
         <li><b>选择模式。</b> <b>音频</b> 仅保存声音，如果您只需要转录文本，这样文件更小、速度更快。<b>音频和视频</b> 则会同时保留画面。</li>
-        <li><b>可选：</b>使用 <b>时间范围（可选）</b> 仅下载并转录一部分内容。格式为 H:MM:SS，如果两个输入框都填 0:00:00，则表示整个视频。</li>
-        <li><b>下载前请选择文件类型。</b> 切换到 <b>转录</b> 选项卡，点击 <b>高级设置…</b>，在 <b>输出格式</b> 下，勾选 <b>TXT</b>（或 <b>DOCX</b> 或 <b>PDF</b>）。默认格式为 SRT 加上 JSON，这会生成字幕，而不是纯文本文件。请保持勾选 JSON：应用需要使用该 JSON 文件来打开转录查看器。在该选项卡上选择的 <b>语言</b> 和模型同样适用于下载。</li>
+        <li><b>Optional:</b> open <b>More options</b> under the form and use <b>Time range (optional)</b> to download and transcribe only a part. The format is H:MM:SS, and 0:00:00 in both boxes means the whole video. <b>More options</b> opens by itself when a range is set.</li>
+        <li><b>Choose the file type before you download.</b> Switch to the <b>Transcribe</b> tab, click <b>Advanced settings…</b> and, under <b>Output formats</b>, tick <b>TXT</b> (or <b>DOCX</b> or <b>PDF</b>). The default is SRT plus JSON, which gives you subtitles, not a plain text file. Keep JSON ticked: it is a JSON file the app uses to open the transcript viewer. The <b>Language</b> and <b>Accuracy</b> level chosen on that tab apply to downloads too.</li>
         <li><b>返回“下载视频”，勾选“下载后转录”</b>，然后点击 <b>下载</b>。</li>
         <li><b>查看进度。</b> 表格中的对应行会逐渐填充，<b>转录队列</b> 选项卡会显示速度和剩余时间。完成后，转录文件会保存在源文件旁边，并且“转录”选项卡上的 <b>最近结果</b> 卡片会提供 <b>打开</b>、<b>查看转录</b> 和 <b>保存可分享页面</b> 选项。</li>
       </ol>
@@ -284,7 +288,7 @@
       </div>
       <h2>其他网站及需要登录的视频</h2>
       <div class="guide-body">
-        <p>该下载器支持的任何网站都以相同方式工作。对于需要账户的视频（如 Instagram、Facebook、TikTok 快拍和有年龄限制的 YouTube 视频），请在 <b>登录 Cookie</b> 下选择您的浏览器。应用会读取该浏览器在本机上的登录信息，并仅在从该网站下载时使用；这些信息不会被发送到其他任何地方。此方法可能不适用于所有受限视频。</p>
+        <p>Any site the same downloader supports works the same way. For videos that need an account, such as Instagram, Facebook, TikTok stories and age-restricted YouTube videos, open <b>More options</b> under the form and choose your browser under <b>Log-in cookies</b>. The app reads that browser's log-in on this computer and uses it only when downloading from that site; it is not sent anywhere else. This may not work for every restricted video.</p>
       </div>
 
       <h2>须知</h2>
@@ -298,7 +302,7 @@
         <article class="qa"><h3>真的免费吗？</h3><div class="faq-a"><p>是的：免费且开源，无需账户，无需订阅，无按分钟计费。</p></div></article>
         <article class="qa"><h3>我的视频或转录文本会被上传到任何地方吗？</h3><div class="faq-a"><p>使用默认引擎时不会：Whisper 在你自己的电脑上运行，只有从视频网站下载时才会使用网络。虽然存在两个云引擎，但在你自行开启之前，它们都会保持关闭状态。</p></div></article>
         <article class="qa"><h3>它能转录没有字幕的视频，或者另一种语言的视频吗？</h3><div class="faq-a"><p>可以。Whisper 识别的是音频，因此不需要字幕。选择口语的<b>语言</b>，或保持<b>自动</b>。<b>输出：英文翻译</b>能将非英语语音转换为英文文本；该功能默认关闭，且并非适用于所有引擎或模型。</p></div></article>
-        <article class="qa"><h3>我可以只转录长视频的一部分吗？</h3><div class="faq-a"><p>可以。在“下载视频”选项卡中填写<b>时间范围（可选）</b>，格式为 H:MM:SS 的开始和结束时间。只会下载该部分，如果你勾选了“下载后转录”，则该部分会被转录。</p></div></article>
+        <article class="qa"><h3>我可以只转录长视频的一部分吗？</h3><div class="faq-a"><p>Yes. Open <b>More options</b> on the Download Videos tab and fill in <b>Time range (optional)</b> with a start and end in H:MM:SS. Only that portion is downloaded, and transcribed if you ticked Transcribe after download.</p></div></article>
         <article class="qa"><h3>我可以粘贴整个播放列表吗？</h3><div class="faq-a"><p>不可以。每个任务对应一个视频。从播放列表内部复制的链接只会下载该视频，而不是整个列表。</p></div></article>
       </div>
 

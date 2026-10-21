@@ -75,7 +75,7 @@
 <link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
 
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 <style>
   .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
   .guide { padding: 108px 0 64px; }
@@ -86,6 +86,9 @@
   .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
   .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
   .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .try-box { margin-top: 22px; padding: 14px 18px; border-radius: var(--r); background: var(--teal-soft); border: 1px solid var(--line); color: var(--ink-2); }
+  .try-box p { margin: 0; }
+  .try-box a { color: var(--teal-ink); font-weight: 600; text-underline-offset: 3px; }
   .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
   .guide-body p { margin-top: 12px; color: var(--ink-2); }
   .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
@@ -255,7 +258,8 @@
     <article>
       <h1>轉錄訪談並加上說話者標籤（誰說了什麼）</h1>
       <p class="guide-sub">一次安裝即可使用的免費桌面軟體（Windows、macOS、Linux）。錄音檔案全程在您的電腦上處理，無需註冊帳號。</p>
-      <p class="guide-lede">軟體能辨別不同聲音，並依序標記為 Speaker 00、Speaker 01 等。在您重新命名之前，它無法得知說話者的真實身分。聲音相近、簡短回答、多人重疊發話或背景雜音都可能導致標籤有誤。開始時，請在「轉錄」分頁勾選「辨識說話者」，然後按下「轉錄」。</p>
+      <p class="guide-lede">The app tells voices apart and labels them Speaker 00, Speaker 01 and so on. It does not know who anyone is until you rename them. Similar voices, short replies, overlapping speech and background noise can cause wrong labels. To start, open More options on the Transcribe tab, tick Identify speakers and press Transcribe.</p>
+      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>下載免費軟體</a>
       </div>
@@ -267,15 +271,15 @@
       <ol class="guide-steps">
         <li><b>新增錄音檔案。</b>在 <b>轉錄</b> 分頁中，將音訊或影片檔案拖曳進來，或點選 <b>瀏覽檔案…</b>。使用 <b>下載影片</b> 分頁的連結也可以，因為兩者使用相同的轉錄設定。</li>
         <li><b>選擇語言</b>，或保留為 <b>自動</b>。</li>
-        <li><b>勾選辨識說話者。</b>若該方塊顯示為 <b>辨識說話者（無法使用）</b>，請將滑鼠游標懸停在上方查看原因。其下方的 <b>說話者人數</b> 選取器將會啟用：可保留為 <b>自動</b>，或手動指定 2 到 10 人以強制設定確切的人數。</li>
-        <li><b>選用：</b>勾選 <b>逐字時間戳記</b> 可儲存每個單字的開始與結束時間，而非僅有每個句子。輸出的檔案會隨之變大。</li>
+        <li><b>Open More options and tick Identify speakers.</b> If the box reads <b>Identify speakers (unavailable)</b>, hover over it to see why. The <b>Speakers</b> picker below it switches on: leave it on <b>Auto</b>, or choose a number from 2 to 10 to force exactly that many people.</li>
+        <li><b>Optional:</b> in <b>More options</b>, tick <b>Per-word timestamps</b> to store a start and end time for every word instead of only every sentence. The output gets larger.</li>
         <li><b>選取匯出格式。</b>點選 <b>進階設定…</b> 並在 <b>輸出格式</b> 下勾選 <b>DOCX</b> 與 <b>PDF</b>。SRT、TXT、Markdown 與 JSON 同樣會包含說話者標籤。請保持勾選 JSON：軟體需要使用此 JSON 檔案開啟逐字稿檢視器，最後一步將會用到它。</li>
         <li><b>按一下「轉錄」。</b>說話者偵測會在語音轉錄完成後執行，因此需要額外的處理時間。完成後，從 <b>最新結果</b> 卡片中開啟 <b>檢視逐字稿</b>。</li>
         <li><b>將預設標籤替換為姓名。</b>在檢視器中，於 <b>說話者</b> 欄位的儲存格按右鍵，選擇 <b>重新命名「Speaker 00」（所有位置）…</b>，輸入姓名後按一下 <b>儲存變更 (Ctrl+S)</b>。若旁邊的 Word 與文字檔案仍與原始逐字稿內容相符，則會自動重新產生；PDF 檔案不會自動更新，因此在重新命名後請再次手動匯出。</li>
       </ol>
       <figure class="guide-fig">
         <img src="/assets/shots/transcribe.webp" alt="「轉錄」分頁：語言那一列包含「辨識說話者」與「逐字時間戳記」核取方塊，下方為「時間範圍」列，以及顯眼的「轉錄」按鈕。" width="1180" height="668" loading="lazy" decoding="async">
-        <figcaption>「辨識說話者」與「逐字時間戳記」位於「轉錄」分頁的「語言」列。</figcaption>
+        <figcaption>The Transcribe tab as it looked before version 2.2. Identify speakers and Per-word timestamps now sit under <b>More options</b>.</figcaption>
       </figure>
 
       <h2>標籤外觀範例</h2>

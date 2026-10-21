@@ -75,7 +75,7 @@
 <link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
 
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 <style>
   .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
   .guide { padding: 108px 0 64px; }
@@ -86,6 +86,9 @@
   .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
   .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
   .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .try-box { margin-top: 22px; padding: 14px 18px; border-radius: var(--r); background: var(--teal-soft); border: 1px solid var(--line); color: var(--ink-2); }
+  .try-box p { margin: 0; }
+  .try-box a { color: var(--teal-ink); font-weight: 600; text-underline-offset: 3px; }
   .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
   .guide-body p { margin-top: 12px; color: var(--ink-2); }
   .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
@@ -256,6 +259,7 @@
       <h1>תמלול סרטון YouTube לטקסט, בחינם וללא חיבור</h1>
       <p class="guide-sub">אפליקציית שולחן עבודה בחינם שמתקינים פעם אחת (Windows, macOS, Linux). הורדת הסרטון דורשת אינטרנט; התמלול עצמו פועל על המחשב שלך.</p>
       <p class="guide-lede">כדי להפוך סרטון YouTube לטקסט, הדביקו את הקישור שלו בלשונית הורדת סרטונים, בחרו פורמט טקסט, סמנו את תמלל לאחר ההורדה ולחצו על הורד. האפליקציה מורידה את הסרטון באמצעות כלי ההורדה בקוד פתוח yt-dlp, מתמללת אותו עם Whisper (מודל לזיהוי דיבור) על המחשב שלכם ושומרת תמליל בפורמט TXT, DOCX, PDF או SRT.</p>
+      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>הורד את האפליקציה בחינם</a>
       </div>
@@ -266,10 +270,10 @@
       <h2>כיצד לתמלל סרטון YouTube</h2>
       <ol class="guide-steps">
         <li><b>הפעלה ראשונה בלבד.</b> חלון התחלה מהירה מבקש את השפה שלך ואת <b>מהיר</b> או <b>האיכות הטובה ביותר</b>; מודל הדיבור מורד פעם אחת, בשימוש הראשון.</li>
-        <li><b>פתחו את לשונית הורדת סרטונים</b> והדביקו את קישור ה-YouTube לתוך <b>URL</b>. האפליקציה מאתרת בעצמה את הפורמטים וכל הכתוביות.</li>
+        <li><b>Open the Download Videos tab</b> and paste the YouTube link into <b>Video link</b>. The app looks up the formats and any subtitles by itself.</li>
         <li><b>בחרו מצב.</b> <b>שמע</b> שומר רק את הצליל, שהוא קטן ומהיר יותר כשכל מה שרוצים הוא תמליל. <b>שמע ווידאו</b> שומר גם את התמונה.</li>
-        <li><b>אופציונלי:</b> השתמשו ב<b>טווח זמן (אופציונלי)</b> כדי להוריד ולתמלל רק חלק. הפורמט הוא H:MM:SS, ו-0:00:00 בשתי התיבות פירושו הסרטון המלא.</li>
-        <li><b>בחרו את סוג הקובץ לפני ההורדה.</b> עברו ללשונית <b>תמלל</b>, לחצו על <b>הגדרות מתקדמות…</b> ותחת <b>פורמטי פלט</b>, סמנו את <b>TXT</b> (או <b>DOCX</b> או <b>PDF</b>). ברירת המחדל היא SRT בתוספת JSON, שמעניק לכם כתוביות, לא קובץ טקסט רגיל. השאירו את JSON מסומן: זהו קובץ JSON שהאפליקציה משתמשת בו כדי לפתוח את מציג התמליל. ה<b>שפה</b> והמודל שנבחרו בלשונית זו חלים גם על הורדות.</li>
+        <li><b>Optional:</b> open <b>More options</b> under the form and use <b>Time range (optional)</b> to download and transcribe only a part. The format is H:MM:SS, and 0:00:00 in both boxes means the whole video. <b>More options</b> opens by itself when a range is set.</li>
+        <li><b>Choose the file type before you download.</b> Switch to the <b>Transcribe</b> tab, click <b>Advanced settings…</b> and, under <b>Output formats</b>, tick <b>TXT</b> (or <b>DOCX</b> or <b>PDF</b>). The default is SRT plus JSON, which gives you subtitles, not a plain text file. Keep JSON ticked: it is a JSON file the app uses to open the transcript viewer. The <b>Language</b> and <b>Accuracy</b> level chosen on that tab apply to downloads too.</li>
         <li><b>בחזרה בהורדת סרטונים, סמנו את תמלל לאחר ההורדה</b>, ואז לחצו על <b>הורד</b>.</li>
         <li><b>צפו בהתקדמות.</b> השורה בטבלה מתמלאת, ולשונית <b>תור התמלול</b> מציגה את המהירות ואת הזמן שנותר. כשזה מסתיים, התמליל נמצא ליד הקובץ ממנו הגיע, והכרטיס <b>התוצאה האחרונה</b> בלשונית תמלל מציע <b>פתח</b>, <b>הצג תמליל</b> ו<b>שמור דף לשיתוף</b>.</li>
       </ol>
@@ -284,7 +288,7 @@
       </div>
       <h2>אתרים אחרים וסרטונים שדורשים התחברות</h2>
       <div class="guide-body">
-        <p>כל אתר שאותו כלי ההורדה תומך עובד באותה דרך. עבור סרטונים שדורשים חשבון, כמו Instagram, Facebook, סיפורי TikTok וסרטוני YouTube עם הגבלת גיל, בחרו את הדפדפן שלכם תחת <b>קובצי Cookie של התחברות</b>. האפליקציה קוראת את ההתחברות של אותו דפדפן במחשב זה ומשתמשת בה רק בעת הורדה מאותו אתר; היא אינה נשלחת לשום מקום אחר. ייתכן שזה לא יעבוד עבור כל סרטון מוגבל.</p>
+        <p>Any site the same downloader supports works the same way. For videos that need an account, such as Instagram, Facebook, TikTok stories and age-restricted YouTube videos, open <b>More options</b> under the form and choose your browser under <b>Log-in cookies</b>. The app reads that browser's log-in on this computer and uses it only when downloading from that site; it is not sent anywhere else. This may not work for every restricted video.</p>
       </div>
 
       <h2>חשוב לדעת</h2>
@@ -298,7 +302,7 @@
         <article class="qa"><h3>האם זה באמת בחינם?</h3><div class="faq-a"><p>כן: חינמי ובקוד פתוח, ללא חשבון, ללא מנוי, ללא עלות לדקה.</p></div></article>
         <article class="qa"><h3>האם הסרטון או התמליל שלי מועלים לאיזשהו מקום?</h3><div class="faq-a"><p>לא עם מנועי ברירת המחדל: Whisper פועל על המחשב שלך, ורק ההורדה מאתר הווידאו משתמשת ברשת. קיימים שני מנועי ענן, אך הם נשארים כבויים עד שתפעיל אותם בעצמך.</p></div></article>
         <article class="qa"><h3>האם הוא יכול לתמלל סרטון ללא כתוביות, או סרטון בשפה אחרת?</h3><div class="faq-a"><p>כן. Whisper מקשיב לשמע, כך שאין צורך בכתוביות. בחרו את <b>השפה</b> המדוברת או השאירו על <b>אוטומטי</b>. <b>פלט: תרגום לאנגלית</b> הופך דיבור שאינו באנגלית לטקסט באנגלית; הוא כבוי כברירת מחדל ואינו פועל עם כל מנוע או מודל.</p></div></article>
-        <article class="qa"><h3>האם אוכל לתמלל רק חלק מסרטון ארוך?</h3><div class="faq-a"><p>כן. מלאו את <b>טווח זמן (אופציונלי)</b> בלשונית הורדת סרטונים עם התחלה וסיום בפורמט H:MM:SS. רק חלק זה יורד, ויתומלל אם סימנתם את תמלל לאחר ההורדה.</p></div></article>
+        <article class="qa"><h3>האם אוכל לתמלל רק חלק מסרטון ארוך?</h3><div class="faq-a"><p>Yes. Open <b>More options</b> on the Download Videos tab and fill in <b>Time range (optional)</b> with a start and end in H:MM:SS. Only that portion is downloaded, and transcribed if you ticked Transcribe after download.</p></div></article>
         <article class="qa"><h3>האם אוכל להדביק רשימת השמעה שלמה?</h3><div class="faq-a"><p>לא. כל משימה היא סרטון אחד. קישור שהועתק מתוך רשימת השמעה מוריד רק את הסרטון הזה, ולא את כל הרשימה.</p></div></article>
       </div>
 

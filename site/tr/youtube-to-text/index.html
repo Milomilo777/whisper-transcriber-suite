@@ -77,7 +77,7 @@
 
 <link rel="preload" href="/assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/styles.css?v=20261020a">
+<link rel="stylesheet" href="/styles.css?v=20261022a">
 <style>
   .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
   .guide { padding: 108px 0 64px; }
@@ -88,6 +88,9 @@
   .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
   .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
   .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .try-box { margin-top: 22px; padding: 14px 18px; border-radius: var(--r); background: var(--teal-soft); border: 1px solid var(--line); color: var(--ink-2); }
+  .try-box p { margin: 0; }
+  .try-box a { color: var(--teal-ink); font-weight: 600; text-underline-offset: 3px; }
   .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
   .guide-body p { margin-top: 12px; color: var(--ink-2); }
   .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
@@ -258,6 +261,7 @@
       <h1>Bir YouTube videosunu metin olarak yazıya dökün, ücretsiz ve çevrimdışı</h1>
       <p class="guide-sub">Bir kez yükleyeceğiniz ücretsiz bir masaüstü uygulaması (Windows, macOS, Linux). Videoyu indirmek internet gerektirir; yazıya dökme işleminin kendisi ise bilgisayarınızda çalışır.</p>
       <p class="guide-lede">Bir YouTube videosunu metne dönüştürmek için bağlantısını Video İndir sekmesine yapıştırın, bir metin biçimi seçin, İndirdikten sonra yazıya dök seçeneğini işaretleyin ve İndir'e basın. Uygulama, açık kaynaklı indirici yt-dlp ile videoyu alır, kendi bilgisayarınızda Whisper (bir konuşma tanıma modeli) ile yazıya döker ve TXT, DOCX, PDF veya SRT transkripti kaydeder.</p>
+      <aside class="try-box"><p><b>No install?</b> <a href="/try/">Try it in your browser</a>: a free page that transcribes a short file (up to 10 minutes) on your device, with no upload and no sign-up. The app below handles longer files.</p></aside>
       <div class="guide-cta">
         <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Ücretsiz uygulamayı indirin</a>
       </div>
@@ -268,10 +272,10 @@
       <h2>Bir YouTube videosu nasıl yazıya dökülür</h2>
       <ol class="guide-steps">
         <li><b>Yalnızca ilk açılışta.</b> Hızlı başlangıç penceresi dilinizi ve <b>Hızlı</b> ya da <b>En iyi kalite</b> seçeneğini sorar; konuşma modeli ilk kullanımda bir defaya mahsus indirilir.</li>
-        <li><b>Video İndir sekmesini açın</b> ve YouTube bağlantısını <b>URL</b> alanına yapıştırın. Uygulama, biçimleri ve varsa altyazıları kendiliğinden bulur.</li>
+        <li><b>Open the Download Videos tab</b> and paste the YouTube link into <b>Video link</b>. The app looks up the formats and any subtitles by itself.</li>
         <li><b>Bir mod seçin.</b> <b>Ses</b> yalnızca sesi kaydeder; tek istediğiniz bir transkript olduğunda bu daha küçük boyutlu ve daha hızlıdır. <b>Ses ve video</b> görüntüyü de saklar.</li>
-        <li><b>İsteğe bağlı:</b> Yalnızca bir bölümü indirip yazıya dökmek için <b>Zaman aralığı (isteğe bağlı)</b> özelliğini kullanın. Biçim H:MM:SS şeklindedir ve her iki kutuda da 0:00:00 olması videonun tamamı anlamına gelir.</li>
-        <li><b>İndirmeden önce dosya türünü seçin.</b> <b>Yazıya dök</b> sekmesine geçin, <b>Gelişmiş ayarlar…</b> seçeneğine tıklayın ve <b>Çıktı biçimleri</b> altında <b>TXT</b> (veya <b>DOCX</b> ya da <b>PDF</b>) seçeneğini işaretleyin. Varsayılan ayar SRT ve JSON'dur; bu da size düz bir metin dosyası değil, altyazı sağlar. JSON seçeneğini işaretli bırakın: Bu, uygulamanın transkript görüntüleyiciyi açmak için kullandığı bir JSON dosyasıdır. O sekmede seçilen <b>Dil</b> ve model indirmeler için de geçerlidir.</li>
+        <li><b>Optional:</b> open <b>More options</b> under the form and use <b>Time range (optional)</b> to download and transcribe only a part. The format is H:MM:SS, and 0:00:00 in both boxes means the whole video. <b>More options</b> opens by itself when a range is set.</li>
+        <li><b>Choose the file type before you download.</b> Switch to the <b>Transcribe</b> tab, click <b>Advanced settings…</b> and, under <b>Output formats</b>, tick <b>TXT</b> (or <b>DOCX</b> or <b>PDF</b>). The default is SRT plus JSON, which gives you subtitles, not a plain text file. Keep JSON ticked: it is a JSON file the app uses to open the transcript viewer. The <b>Language</b> and <b>Accuracy</b> level chosen on that tab apply to downloads too.</li>
         <li><b>Video İndir sekmesine dönüp İndirdikten sonra yazıya dök seçeneğini işaretleyin</b>, ardından <b>İndir</b>'e tıklayın.</li>
         <li><b>İlerlemeyi izleyin.</b> Tablodaki satır dolar ve <b>Yazıya dökme kuyruğu</b> sekmesi hızı ile kalan süreyi gösterir. İşlem tamamlandığında transkript, alındığı dosyanın yanında yer alır ve Yazıya dök sekmesindeki <b>Son sonuç</b> kartı <b>Aç</b>, <b>Transkripti görüntüle</b> ve <b>Paylaşılabilir sayfayı kaydet</b> seçeneklerini sunar.</li>
       </ol>
@@ -286,7 +290,7 @@
       </div>
       <h2>Diğer siteler ve oturum açma gerektiren videolar</h2>
       <div class="guide-body">
-        <p>Aynı indiricinin desteklediği tüm siteler aynı şekilde çalışır. Instagram, Facebook, TikTok hikâyeleri ve yaş kısıtlamalı YouTube videoları gibi hesap gerektiren videolar için <b>Oturum açma çerezleri</b> altından tarayıcınızı seçin. Uygulama, bu bilgisayarda o tarayıcının oturumunu okur ve bunu yalnızca ilgili siteden indirme yaparken kullanır; başka hiçbir yere gönderilmez. Bu, kısıtlanmış her video için çalışmayabilir.</p>
+        <p>Any site the same downloader supports works the same way. For videos that need an account, such as Instagram, Facebook, TikTok stories and age-restricted YouTube videos, open <b>More options</b> under the form and choose your browser under <b>Log-in cookies</b>. The app reads that browser's log-in on this computer and uses it only when downloading from that site; it is not sent anywhere else. This may not work for every restricted video.</p>
       </div>
 
       <h2>Bilmenizde fayda var</h2>
@@ -300,7 +304,7 @@
         <article class="qa"><h3>Gerçekten ücretsiz mi?</h3><div class="faq-a"><p>Evet: ücretsiz ve açık kaynaklı, hesap yok, abonelik yok, dakika başı ücret yok.</p></div></article>
         <article class="qa"><h3>Videom veya transkriptim herhangi bir yere yüklenir mi?</h3><div class="faq-a"><p>Varsayılan motorlarla hayır: Whisper kendi bilgisayarınızda çalışır ve yalnızca video sitesinden indirme işlemi ağı kullanır. İki bulut motoru mevcuttur, ancak siz kendiniz açana kadar kapalı kalırlar.</p></div></article>
         <article class="qa"><h3>Altyazısı olmayan veya başka bir dildeki bir videoyu yazıya dökebilir mi?</h3><div class="faq-a"><p>Evet. Whisper sesi dinler, bu nedenle altyazıya gerek yoktur. Konuşulan <b>Dili</b> seçin veya <b>Otomatik</b> olarak bırakın. <b>Çıktı: İngilizce çeviri</b>, İngilizce dışındaki konuşmaları İngilizce metne dönüştürür; varsayılan olarak kapalıdır ve her motor veya modelle çalışmaz.</p></div></article>
-        <article class="qa"><h3>Uzun bir videonun yalnızca bir kısmını yazıya dökebilir miyim?</h3><div class="faq-a"><p>Evet. Video İndir sekmesindeki <b>Zaman aralığı (isteğe bağlı)</b> alanını H:MM:SS biçiminde bir başlangıç ve bitişle doldurun. Yalnızca o bölüm indirilir ve İndirdikten sonra yazıya dök seçeneğini işaretlediyseniz yazıya dökülür.</p></div></article>
+        <article class="qa"><h3>Uzun bir videonun yalnızca bir kısmını yazıya dökebilir miyim?</h3><div class="faq-a"><p>Yes. Open <b>More options</b> on the Download Videos tab and fill in <b>Time range (optional)</b> with a start and end in H:MM:SS. Only that portion is downloaded, and transcribed if you ticked Transcribe after download.</p></div></article>
         <article class="qa"><h3>Tüm bir oynatma listesini yapıştırabilir miyim?</h3><div class="faq-a"><p>Hayır. Her görev bir videodur. Oynatma listesinin içinden kopyalanan bir bağlantı, listenin tamamını değil, yalnızca o videoyu indirir.</p></div></article>
       </div>
 
