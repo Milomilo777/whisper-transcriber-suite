@@ -78,6 +78,7 @@ STICKIES = st.sampled_from(["", "n", "s", "e", "w", "ns", "ew", "new", "sew", "n
 PADS = st.one_of(st.integers(0, 9), st.tuples(st.integers(0, 9), st.integers(0, 9)))
 
 
+@settings(deadline=None, suppress_health_check=[HealthCheck.too_slow])  # slow shared CI runners
 @given(SIDES, ANCHORS, STICKIES, st.sampled_from(["left", "right", "center"]), PADS)
 def test_property_every_flip_is_an_involution(side: str, anchor: str, sticky: str, justify: str,
                                               padx: Any) -> None:
@@ -186,6 +187,35 @@ class _OldTkLabel(ttk.Label):
         return super().configure(options)
 
 
+class _RejectingOldTkLabel(_OldTkLabel):
+    """Like ``_OldTkLabel``, but ``""`` is not a settable value (Tk raises, as 8.6.15 does here):
+    the unset state cannot be restored, only its meaning (the left default)."""
+
+    def configure(self, cnf: Any = None, **kw: Any) -> Any:  # type: ignore[override]
+        options = dict(cnf or {}, **kw)
+        for key in self._DEFAULTS:
+            if options.get(key) == "":
+                raise tk.TclError(f'ambiguous {key} "": must be a valid value')
+        return super().configure(options)
+
+
+def test_blank_options_a_tk_cannot_set_back_end_as_the_explicit_left_default(frame: ttk.Frame,
+                                                                          rtl: None) -> None:
+    # Regression: Hypothesis tree [[('left', 'n', 0)]] on CI (Windows, Python 3.11): the second
+    # pass could only write "w" / "left", and the snapshot compared them with the original "".
+    label = _RejectingOldTkLabel(frame, text="Name")
+    label.pack(side="left", anchor="n")
+    assert str(label.cget("anchor")) == "" and str(label.cget("justify")) == ""
+    before = _snapshot(frame)
+    first = rtl_layout.mirror_tree(frame)
+    assert str(label.cget("anchor")) == "e" and str(label.cget("justify")) == "right"
+    assert rtl_layout.mirror_tree(frame) == first
+    assert _snapshot(frame) == before  # "" and the explicit left default are the same state
+    assert str(label.cget("anchor")) == "w" and str(label.cget("justify")) == "left"
+    assert not getattr(label, rtl_layout.BLANK_ATTR)
+    assert _snapshot(label)[0][3] == ["w", "left"]
+
+
 def test_blank_anchor_and_justify_count_as_the_left_default(frame: ttk.Frame, rtl: None) -> None:
     label = _OldTkLabel(frame, text="Name")
     entry = ttk.Entry(frame, width=12)
@@ -228,7 +258,9 @@ PACK_ROW = st.lists(st.tuples(SIDES, ANCHORS, PADS), min_size=1, max_size=4)
 GRID_ROW = st.tuples(st.lists(st.tuples(st.integers(1, 3), STICKIES, PADS), min_size=1, max_size=4),
                      st.lists(st.integers(0, 3), min_size=0, max_size=6))
 TREE = st.lists(st.one_of(PACK_ROW, GRID_ROW), min_size=1, max_size=4)
-KINDS = [ttk.Label, ttk.Entry, ttk.Button, tk.Label, tk.Checkbutton, ttk.LabelFrame, tk.LabelFrame]
+# The stand-ins come first so every generated tree (its first widget) covers CI's Tk.
+KINDS = [_RejectingOldTkLabel, _OldTkLabel, ttk.Label, ttk.Entry, ttk.Button, tk.Label, tk.Checkbutton,
+         ttk.LabelFrame, tk.LabelFrame]
 
 
 def _build(master: tk.Misc, tree: list[Any]) -> None:
@@ -258,8 +290,9 @@ def _snapshot(w: tk.Misc) -> list[Any]:
     info = dict(w.pack_info()) if manager == "pack" else dict(w.grid_info()) if manager == "grid" else {}
     info.pop("in", None)
     keys = w.keys()
-    rows: list[Any] = [(type(w).__name__, manager, sorted(info.items()),
-                        [str(w.cget(o)) for o in ("anchor", "justify", "labelanchor") if o in keys])]
+    unset = {"anchor": "w", "justify": "left"} if isinstance(w, ttk.Label) else {}
+    texts = [str(w.cget(o)) or unset.get(o, "") for o in ("anchor", "justify", "labelanchor") if o in keys]
+    rows: list[Any] = [(type(w).__name__, manager, sorted(info.items()), texts)]
     if w.grid_slaves():
         rows.append([sorted(w.grid_columnconfigure(c).items()) for c in range(w.grid_size()[0])])
     rows.extend(_snapshot(child) for child in w.winfo_children())

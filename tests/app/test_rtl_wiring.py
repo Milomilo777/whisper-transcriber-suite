@@ -207,9 +207,22 @@ def test_pack_kw_flips_only_into_a_master_the_pass_has_visited(rtl_app) -> None:
     assert link.pack_info()["side"] == "right" and _x(link) < _x(link.master.pack_slaves()[0])
 
 
-def test_check_and_radio_indicators_sit_right_of_their_text(monkeypatch) -> None:
-    """The indicator element is at the right edge of a mirrored check/radio button (Tk's
-    ``identify`` names the element under a point); twice gives the base style back."""
+def _element_spans(widget: ttk.Widget, kind: str) -> tuple[list[int], list[int]]:
+    """x positions on the middle row of ``widget`` where ``identify`` names an indicator
+    element and a label element. The element names depend on the theme ("Checkbutton.indicator",
+    "indicator", a nested "focus" wrapper around both), so match on the words only."""
+    y = max(widget.winfo_height() // 2, 1)
+    names = [(x, str(widget.identify(x, y)).lower()) for x in range(widget.winfo_width())]
+    return ([x for x, n in names if "indicator" in n],
+            [x for x, n in names if "label" in n and "indicator" not in n])
+
+
+@pytest.mark.parametrize("theme", [None, "default", "clam", "alt"])
+def test_check_and_radio_indicators_sit_right_of_their_text(monkeypatch, theme: str | None) -> None:
+    """Mirrored check/radio buttons carry the indicator at the right of their text: the twin
+    style's layout puts it on the right side, and the elements ``identify`` finds in a scan of
+    the row are ordered label then indicator (theme independent); twice gives the base style
+    back."""
     _force_rtl(monkeypatch)
     try:
         root = tk.Tk()
@@ -221,18 +234,30 @@ def test_check_and_radio_indicators_sit_right_of_their_text(monkeypatch) -> None
         radio = ttk.Radiobutton(root, text="pick me please")
         check.pack(anchor="w")
         radio.pack(anchor="w")
+        if theme is not None:
+            try:
+                ttk.Style(root).theme_use(theme)
+            except tk.TclError:
+                pytest.skip(f"theme {theme} is not available on this Tk")
         root.update()
         width, height = check.winfo_width(), check.winfo_height()
-        assert check.identify(4, 8) == "Checkbutton.indicator"
+        base_spec = str(ttk.Style(root).layout("TCheckbutton"))
+        has_indicator = "indicator" in base_spec.lower()
+        if has_indicator:
+            ind, lab = _element_spans(check, "check")
+            assert ind and lab and max(ind) < min(lab)  # base: indicator left of the text
         assert rtl_layout.mirror_tree(root) > 0
         root.update()
         assert str(check.cget("style")) == "Rtl.TCheckbutton"
         assert str(radio.cget("style")) == "Rtl.TRadiobutton"
-        assert check.identify(width - 8, 8) == "Checkbutton.indicator"
-        assert check.identify(4, 8) != "Checkbutton.indicator"
-        assert radio.identify(radio.winfo_width() - 8, 8) == "Radiobutton.indicator"
         spec = ttk.Style(root).layout("Rtl.TCheckbutton")
-        assert "'side': 'right'" in str(spec) and "'side': 'left'" not in str(spec)
+        assert ("indicator" in str(spec).lower()) == has_indicator
+        if has_indicator:
+            for widget in (check, radio):
+                ind, lab = _element_spans(widget, "mirrored")
+                assert ind and lab and min(ind) > max(lab), (theme, widget)
+            assert "'side': 'right'" in str(spec) and "'side': 'left'" not in str(spec)
+            assert "'side': 'right'" in str(ttk.Style(root).layout("Rtl.TRadiobutton"))
         assert "Frame.border" in str(spec)  # the gap between the indicator and the text
         assert abs(check.winfo_height() - height) <= 2 * rtl_layout.INDICATOR_GAP
         rtl_layout.mirror_tree(root)  # the involution: back to the base style
@@ -240,7 +265,9 @@ def test_check_and_radio_indicators_sit_right_of_their_text(monkeypatch) -> None
         rtl_layout.mirror_tree(root)
         assert rtl_layout.refresh_styles(root) >= 2  # what a theme switch calls
         root.update()
-        assert check.identify(width - 8, 8) == "Checkbutton.indicator"
+        if has_indicator:
+            ind, lab = _element_spans(check, "refreshed")
+            assert ind and lab and min(ind) > max(lab)
     finally:
         root.destroy()
 
