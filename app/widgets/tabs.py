@@ -2028,12 +2028,12 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     dl_clear_btn.pack(side="right")
     bind_tooltip(dl_clear_btn, _("Takes every finished, failed or cancelled download off this list. "
                                  "No file is deleted."))
-    ttk.Label(
-        dl_action_bar,
-        text=_("(Pause stops the download but keeps the partial file; "
-               "Resume continues it)"),
-        foreground=tokens.themed(tokens.TEXT_MUTED),
-    ).pack(side="left", padx=(8, 0))
+    # A hover text on Pause and Resume, not a sentence always on screen beside them (round-2
+    # screenshot critics, 2026-10-21). Same message id (41 translations), without its brackets.
+    pause_hint = _("(Pause stops the download but keeps the partial file; "
+                   "Resume continues it)").strip(" ()（）")
+    for key in ("pause", "resume"):
+        bind_tooltip(app.download_action_buttons[key], pause_hint)
     app.download_tree.bind(
         "<<TreeviewSelect>>", lambda _e: app._update_download_action_bar()
     )

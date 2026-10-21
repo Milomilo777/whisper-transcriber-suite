@@ -3579,35 +3579,35 @@
    "Queue is empty.  Go to the Transcribe tab and pick a file to add one."
   ],
   [
-   ".!frame4.!frame4.!button",
+   ".!frame4.!frame5.!button",
    "Pause"
   ],
   [
-   ".!frame4.!frame4.!button2",
+   ".!frame4.!frame5.!button2",
    "Resume"
   ],
   [
-   ".!frame4.!frame4.!button3",
+   ".!frame4.!frame5.!button3",
    "Cancel"
   ],
   [
-   ".!frame4.!frame4.!button4",
+   ".!frame4.!frame5.!button4",
    "Re-run"
   ],
   [
-   ".!frame4.!frame4.!button5",
+   ".!frame4.!frame5.!button5",
    "Remove"
   ],
   [
-   ".!frame4.!frame4.!label",
+   ".!frame4.!frame5.!label",
    "Select a job in the list to use these buttons"
   ],
   [
-   ".!frame4.!frame4.!button6",
+   ".!frame4.!frame5.!button6",
    "View transcript"
   ],
   [
-   ".!frame4.!frame4.!button7",
+   ".!frame4.!frame5.!button7",
    "Open output folder"
   ],
   [
@@ -3651,6 +3651,14 @@
   [
    ".!frame5.!frame.!label",
    "Video link"
+  ],
+  [
+   ".!frame5.!frame.!frame.!frame.!label",
+   "Paste a video link above to load its formats"
+  ],
+  [
+   ".!frame5.!frame.!frame.!frame.!button",
+   "Install YouTube helper"
   ],
   [
    ".!frame5.!frame.!label2",
@@ -4233,14 +4241,6 @@
    " ⓘ "
   ],
   [
-   ".!frame5.!frame.!frame7.!label",
-   "Paste a video link above to load its formats"
-  ],
-  [
-   ".!frame5.!frame.!frame7.!button",
-   "Install YouTube helper"
-  ],
-  [
    ".!frame5.!frame.!button2",
    "⬇    Download"
   ],
@@ -4271,10 +4271,6 @@
   [
    ".!frame5.!frame3.!button7",
    "Remove ended downloads"
-  ],
-  [
-   ".!frame5.!frame3.!label",
-   "(Pause stops the download but keeps the partial file; Resume continues it)"
   ],
   [
    ".!frame5.!frame.!frame2.!combobox:current",
@@ -4351,6 +4347,14 @@
   [
    "tooltip",
    "Takes every finished, failed or cancelled download off this list. No file is deleted."
+  ],
+  [
+   "tooltip",
+   "Pause stops the download but keeps the partial file; Resume continues it"
+  ],
+  [
+   "tooltip",
+   "Pause stops the download but keeps the partial file; Resume continues it"
   ],
   [
    "heading:name",
