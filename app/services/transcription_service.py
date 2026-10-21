@@ -2028,7 +2028,11 @@ class TranscriptionService:
         history = getattr(app, "history", None)
         # Best-effort word count + audio duration from the produced JSON
         # sidecar (computed once; reused by history + the usage-stats POST).
-        word_count, audio_duration = self._derive_transcript_stats(task)
+        # Only a run that finished has words: for a cancelled or failed run the
+        # file fallback would count the ``<stem>.json`` an earlier run left.
+        word_count, audio_duration = (
+            self._derive_transcript_stats(task) if newly_finished else (0, 0.0)
+        )
         if history is not None and getattr(task, "history_id", 0):
             import time as _time
             try:
@@ -2183,6 +2187,10 @@ class TranscriptionService:
             duration = float(getattr(task, "audio_duration", 0.0) or 0.0)
             if wc > 0 or duration > 0.0:
                 return wc, duration
+            if getattr(task, "no_speech", False):
+                # No words by definition; the file-based fallback below would read
+                # the ``<stem>.json`` an earlier run of the same file left behind.
+                return 0, duration
             paths = list(getattr(task, "output_paths", None) or [])
             # The transcript JSON, never the auto-chapters sidecar.
             json_path = task_transcript_json(task, must_exist=True) or ""

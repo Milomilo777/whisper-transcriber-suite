@@ -125,6 +125,53 @@ def test_derive_stats_skips_a_listed_path_that_does_not_exist_on_disk(tmp_path):
     assert duration == 4.0
 
 
+def test_derive_stats_never_reads_an_older_run_for_a_no_speech_run(tmp_path):
+    """A run that found no speech reports 0 words and no files; the fallback must not
+    open the ``clip.json`` an earlier run of the same file left next to it."""
+    media = tmp_path / "clip.mp4"
+    media.write_bytes(b"")
+    _write_json_segments(tmp_path / "clip.json", [{"start": 0.0, "end": 10.0, "text": "one two three"}])
+    task = SimpleNamespace(
+        output_paths=[], file_path=str(media), no_speech=True, word_count=0, audio_duration=0.0,
+    )
+
+    assert _service()._derive_transcript_stats(task) == (0, 0.0)
+
+
+def _finish_app(rows: list[dict]) -> SimpleNamespace:
+    return SimpleNamespace(
+        app_config={"output_formats": ["srt", "json"]},
+        history=SimpleNamespace(finish_transcription=lambda rid, **k: rows.append(k) or True),
+        log=lambda m: None, update_overall_progress=lambda: None, queue=[],
+        show_last_result=lambda t: None, note_job_success=lambda: None,
+        refresh_download_queue=lambda: None,
+    )
+
+
+@pytest.mark.parametrize("status, written", [("cancelled", []), ("error", None)])
+def test_finish_task_records_no_words_for_a_run_that_did_not_finish(
+    tmp_path, monkeypatch, status, written,
+):
+    """The old ``clip.json`` next to the source gave a cancelled or failed re-run the
+    previous run's word count in History."""
+    media = tmp_path / "clip.mp4"
+    media.write_bytes(b"")
+    _write_json_segments(tmp_path / "clip.json", [{"start": 0.0, "end": 10.0, "text": "one two three"}])
+    rows: list[dict] = []
+    svc = TranscriptionService(_finish_app(rows))
+    monkeypatch.setattr("app.services.transcription_service.desktop_alert.job_ended", lambda *a: None)
+    task = SimpleNamespace(
+        file_path=str(media), status=status, cancelled=(status == "cancelled"), end_time=None,
+        start_time=time.time() - 5, history_id=1, output_paths=written, no_speech=False,
+        word_count=0, audio_duration=0.0, source_download=None, recovery_note="",
+    )
+
+    svc.finish_task({"task": task, "temporary": False}, keep_status=True)
+
+    assert rows[-1]["status"] == status
+    assert rows[-1]["word_count"] == 0
+
+
 def test_derive_stats_never_raises_on_a_task_with_no_paths_at_all():
     task = SimpleNamespace(output_paths=None, file_path="")
     assert _service()._derive_transcript_stats(task) == (0, 0.0)

@@ -236,6 +236,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **No borrowed word counts**: a run that found no speech, was cancelled or failed could take the
+  word count of an earlier transcription of the same file (its `.json` next to the source) into
+  History and the usage statistics. Such a run now records 0 words.
+
 - **Finished files are found after a crash**: when the transcription process stopped right after
   writing its files, the app checked only the plain names (`clip.srt`), so a re-run whose files are
   `clip (1).srt`, or an ELAN / InqScribe file, was recorded as failed although its files were on
