@@ -238,3 +238,71 @@ def test_a_new_link_drops_the_previous_links_formats_at_once():
     FormatService(app).schedule_lookup()  # type: ignore[arg-type]
     assert app.audio_format_map == {} and app.video_format_map == {}
     assert app.format_lookup_error == "" and app.format_lookup_after == "after#1"
+
+
+# --- review round 3 (2026-10-21): plain words, an emptied link, the title ----
+
+
+@pytest.mark.parametrize("text, expected", [
+    ("https://www.youtube.com/watch?v=jNQXAC9IVRw", True),
+    ("youtu.be/jNQXAC9IVRw", True),
+    ("www.example.com/video", True),
+    ("example.com", True),
+    ("jNQXAC9IVRw", True),             # a bare YouTube video id
+    ("ytsearch:me at the zoo", True),
+    ("hello world", False),
+    ("hello", False),
+    ("", False),
+    ("   ", False),
+])
+def test_looks_like_link(text, expected):
+    from app.services.format_service import looks_like_link
+
+    assert looks_like_link(text) is expected
+
+
+class _ReadyApp(_LookupApp):
+    def __init__(self, url: str = "https://www.youtube.com/watch?v=jNQXAC9IVRw"):
+        super().__init__()
+        self.download_url_var = _Var(url)
+        self.durations: list[float] = []
+        self.pending_link_start = ""
+
+    def set_download_duration(self, seconds):
+        self.durations.append(seconds)
+
+    def update_download_mode(self):
+        pass
+
+    def update_caption_shortcut_state(self):
+        pass
+
+
+def test_plain_words_are_not_looked_up(monkeypatch):
+    import subprocess
+
+    def no_run(*_a, **_k):
+        raise AssertionError("yt-dlp must not run for plain words")
+
+    monkeypatch.setattr(subprocess, "run", no_run)
+    app = _ReadyApp("hello world")
+    FormatService(app).lookup_formats()  # type: ignore[arg-type]
+    assert app.format_status_var.get().startswith("That is not a video link.")
+    assert app.format_lookup_error == app.format_status_var.get()
+
+
+def test_an_emptied_link_clears_the_video_length():
+    app = _ReadyApp("")
+    FormatService(app).lookup_formats()  # type: ignore[arg-type]
+    assert app.durations == [0.0]
+
+
+@pytest.mark.parametrize("payload, expected", [
+    ({"title": "Me at the zoo", "duration": 19, "formats": []}, "Found: Me at the zoo (0:19)"),
+    ({"title": "Me at the zoo", "formats": []}, "Found: Me at the zoo"),
+    ({"formats": []}, "1 audio and 1 video formats loaded"),
+])
+def test_a_read_link_names_its_video(payload, expected):
+    app = _ReadyApp()
+    FormatService(app)._handle_event("formats", app.download_url_var.get(), payload)  # type: ignore[arg-type]
+    assert app.format_status_var.get() == expected

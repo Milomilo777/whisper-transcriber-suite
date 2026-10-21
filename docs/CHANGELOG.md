@@ -86,6 +86,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   subtitles" instead of "burning", a clear reason when speaker identification is not installed,
   the window title "2 jobs running (41%)" and "Browse files..." named as on the button. The
   renamed texts show in English in the other languages until they are translated again.
+  Words that are not a link ("hello world") get "That is not a video link..." at once instead of
+  yt-dlp's raw error; a read link shows its title ("Found: Me at the zoo (0:19)"); emptying the
+  link box clears the old video length.
 
 - **Download tab: buttons in sight**: Pause, Cancel, Open and the rest sat under the downloads table,
   below the visible part of the tab even in a large window; they now sit above it, and the table

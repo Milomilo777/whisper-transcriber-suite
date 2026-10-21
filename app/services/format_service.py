@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import subprocess
 from queue import Empty
 from typing import TYPE_CHECKING, Any
@@ -67,6 +68,28 @@ def caption_lang_map(payload: dict) -> dict[str, str]:
     return result
 
 
+_LINK_RE = re.compile(
+    r"^(?:[a-z][a-z0-9+.-]*://\S+"           # https://..., ftp://...
+    r"|www\.\S+"                              # www.example.com/...
+    r"|[\w-]+(?:\.[\w-]+)*\.[a-z]{2,}(?:[/?#]\S*)?"  # youtu.be/x, example.com
+    r"|[A-Za-z0-9_-]{11}"                     # a bare YouTube video id
+    r"|ytsearch\d*:.+)$",                     # a yt-dlp search
+    re.IGNORECASE,
+)
+
+
+def looks_like_link(text: str) -> bool:
+    """True when ``text`` can be a video link: an address with a scheme, a "www." or
+    "site.tld/..." address, a bare 11-character YouTube id or a yt-dlp search. Plain words
+    ("hello world") are not looked up. No Tk."""
+    return bool(_LINK_RE.match((text or "").strip()))
+
+
+def not_a_link_text() -> str:
+    return _("That is not a video link. Copy the full address (it starts with https://) "
+             "from your browser and paste it here.")
+
+
 class FormatService:
     def __init__(self, app: "App") -> None:
         self.app = app
@@ -117,6 +140,18 @@ class FormatService:
             prompt(url)
         if not url:
             self.app.format_status_var.set(_("Paste a video link above to load its formats"))
+            # The previous link's "video length 0:00:19" and sliders went stale (review, 2026-10-21).
+            try:
+                self.app.set_download_duration(0.0)
+            except AttributeError:
+                pass
+            return
+        if not looks_like_link(url):
+            # Plain text ("hello world") went to yt-dlp, whose raw "ERROR: [generic] ..." came back
+            # twice (review, 2026-10-21): say it in words, without a lookup.
+            text = not_a_link_text()
+            self.app.format_status_var.set(text)
+            self.app.format_lookup_error = text
             return
         if offline.is_offline():
             # The lookup runs yt-dlp (or SMTV) against the site at once.
@@ -434,7 +469,18 @@ class FormatService:
         except (AttributeError, TypeError, ValueError):
             pass
         app.update_download_mode()
-        if audio_values or video_values:
+        title = str(payload.get("title") or "").strip()
+        if (audio_values or video_values) and title:
+            # Which video the link is: the counts said nothing a person checks (review, 2026-10-21).
+            from app.widgets.tabs import clock_length, elide_middle
+
+            seconds = payload.get("duration")
+            if isinstance(seconds, (int, float)) and seconds > 0:
+                app.format_status_var.set(_("Found: {title} ({length})", title=elide_middle(title, 70),
+                                            length=clock_length(float(seconds))))
+            else:
+                app.format_status_var.set(_("Found: {title}", title=elide_middle(title, 70)))
+        elif audio_values or video_values:
             app.format_status_var.set(_(
                 "{audio} audio and {video} video formats loaded",
                 audio=len(audio_values), video=len(video_values),
