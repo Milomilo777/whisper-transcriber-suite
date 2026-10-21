@@ -6146,7 +6146,7 @@ class App(tk.Tk):
             self._anim_running = False
 
     def refresh(self) -> None:
-        from app.widgets.tabs import fit_tree_cell, queue_language_cell, status_label
+        from app.widgets.tabs import fit_tree_cell, queue_language_cell, task_status_label
 
         # Snapshot the SELECTED tasks (by identity) before we tear the tree
         # down: refresh() runs every 500ms via loop(), and a plain
@@ -6162,12 +6162,15 @@ class App(tk.Tk):
         rows: list[tuple[Any, tuple[str, ...], tuple[str, ...]]] = []
         for t in self.queue:
             lang = getattr(t, "detected_language", "") or ""
-            lang_str = queue_language_cell(lang, getattr(t, "language_probability", None))
+            # No speech: the detection guessed from noise ("English (not sure)" for a horse);
+            # the history row drops it the same way.
+            lang_str = ("" if getattr(t, "no_speech", False)
+                        else queue_language_cell(lang, getattr(t, "language_probability", None)))
             name = os.path.basename(t.file_path)
             tags = script_fonts.tree_row_tags(self.tree, name, language=t.language or lang)
             values = (
                 ltr_base(fit_tree_cell(self.tree, "file", name, tuple(tags))),
-                status_label(t.status),
+                task_status_label(t),
                 self._row_progress_text(t.status, t.progress),
                 speed_cell_text(t),
                 lang_str,
@@ -6384,9 +6387,11 @@ class App(tk.Tk):
             ]
             existing = [p for p in candidates if os.path.isfile(p)]
 
+        no_speech = bool(getattr(task, "no_speech", False))
         ttk.Label(
             self.last_result_body,
-            text=ltr_base(f"✓ {os.path.basename(task.file_path)}"),
+            # A tick read as success over empty files (round-2 screenshot critics, 2026-10-21).
+            text=ltr_base(f"{'⚠' if no_speech else '✓'} {os.path.basename(task.file_path)}"),
             font=("TkDefaultFont", 10, "bold"),
         ).pack(anchor="w")
         speed_line = task_summary_text(task)
@@ -6396,12 +6401,18 @@ class App(tk.Tk):
                 text=speed_line,
                 foreground=tokens.themed(tokens.TEXT_MUTED),
             ).pack(anchor="w", pady=(2, 0))
-        if getattr(task, "no_speech", False):
+        if no_speech:
             ttk.Label(
                 self.last_result_body,
                 text=_("No speech was recognised in this file, so the output files are empty."),
                 foreground=tokens.themed(tokens.WARNING_TEXT),
             ).pack(anchor="w", pady=(2, 0))
+            ttk.Label(
+                self.last_result_body,
+                text=_("Check that the recording has sound. If the speech is quiet or in "
+                       "another language, choose that language and transcribe it again."),
+                foreground=tokens.themed(tokens.WARNING_TEXT),
+            ).pack(anchor="w")
         if existing:
             ttk.Label(
                 self.last_result_body,
@@ -6453,7 +6464,8 @@ class App(tk.Tk):
         # "View transcript" launches the in-app viewer with the JSON
         # next to the source media (or the file picker if no JSON
         # found). Discoverable single click into the new viewer.
-        json_output = pick_transcript_json(existing, task.file_path)
+        # Nothing to view, share or time when no speech was found: the files are empty.
+        json_output = None if no_speech else pick_transcript_json(existing, task.file_path)
         if json_output is not None:
             ttk.Button(
                 button_row, text=_("View transcript"),
@@ -6469,7 +6481,7 @@ class App(tk.Tk):
             ).pack(side="left", padx=(8, 0))
         # Windows only: open the best subtitle file in Subtitle Edit
         # (waveform editor) for fine timing work.
-        subtitle_output = subtitle_edit.pick_subtitle_file(existing)
+        subtitle_output = None if no_speech else subtitle_edit.pick_subtitle_file(existing)
         if subtitle_output is not None and subtitle_edit.is_supported():
             ttk.Button(
                 button_row, text=translate(subtitle_edit_ui.BUTTON_TEXT),

@@ -353,6 +353,15 @@ def status_label(status: str) -> str:
     return STATUS_ICON.get(status, "") + _status_text(status)
 
 
+def task_status_label(task: object) -> str:
+    """The Queue row's status: ``status_label``, except that a finished job that found no
+    speech says so instead of a plain "✓ finished" (round-2 screenshot critics, 2026-10-21)."""
+    status = str(getattr(task, "status", "") or "")
+    if status == "finished" and getattr(task, "no_speech", False):
+        return "⚠ " + pgettext("task status", "no speech found")
+    return status_label(status)
+
+
 # Whisper codes the subtitle language list spells differently, and the Whisper languages it
 # lacks: without them the Language cell showed a bare "he" or "yue".
 _WHISPER_CODE_ALIASES = {"he": "iw", "jw": "jv", "nn": "no"}

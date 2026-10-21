@@ -886,6 +886,8 @@ def capture_tk(mp: pytest.MonkeyPatch, tmp_path: Path) -> dict[str, list[str]]:
         js.write_text("{}", encoding="utf-8")
         for name, outputs, no_speech in (("two_files", [str(out), str(js)], False),
                                          ("one_file", [str(out)], True),
+                                         # no speech: no viewer or share buttons over empty files
+                                         ("silent_two_files", [str(out), str(js)], True),
                                          ("no_files", [str(tmp_path / "gone.srt")], False)):
             task = types.SimpleNamespace(file_path=str(tmp_path / "talk one.mp4"),
                                          output_paths=outputs, no_speech=no_speech, language="",

@@ -180,6 +180,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **A file with no speech no longer looks like a success**: the Queue said "✓ finished" with a
+  guessed language ("English (not sure)" for a horse sound) and the result card showed a tick and
+  **View transcript** over empty files. The row now says "⚠ no speech found" with no language, and
+  the card shows a warning mark, what to check next, and no viewer, share or Subtitle Edit buttons.
+
 - **Hover texts in the dark theme**: the pale yellow box glared on the dark panels; the dark theme
   now draws them dark grey with light text.
 
