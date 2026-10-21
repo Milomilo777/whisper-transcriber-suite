@@ -103,7 +103,15 @@ class FormatService:
         self.app.audio_format_map = {}
         self.app.video_format_map = {}
         self.app.format_lookup_error = ""
+        # The previous link's title, language and caption tracks go with its formats: the
+        # "Use the subtitles" button built from them stayed on and queued the new link under
+        # the old link's title, language and caption kind within the same wait.
+        self.app.current_video_title = ""
+        self.app.current_video_language = ""
+        self.app.current_video_caption_langs = {}
         self.app.format_lookup_after = self.app.after(800, self.lookup_formats)
+        if hasattr(self.app, "update_caption_shortcut_state"):
+            self.app.update_caption_shortcut_state()
 
     def lookup_formats(self) -> None:
         url = smtv_mod.clean_url(self.app.download_url_var.get())

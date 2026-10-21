@@ -1232,7 +1232,14 @@ class DownloadService:
         lang_code_csv = next(
             (code for name, code in SUBTITLE_LANGUAGES if name == sub_lang_name), ""
         )
-        caption_langs = getattr(app, "current_video_caption_langs", None) or {}
+        # A pending lookup means the caption metadata is not this link's (it belongs to the
+        # previous link, or nothing has been read yet): no caption task until this link's
+        # own lookup has found a track.
+        lookup_pending = getattr(app, "format_lookup_after", None) is not None
+        caption_langs = (
+            {} if lookup_pending
+            else getattr(app, "current_video_caption_langs", None) or {}
+        )
         kind = resolve_caption_kind(
             caption_langs, lang_code_csv, fallback_lang=app.current_video_language
         )
