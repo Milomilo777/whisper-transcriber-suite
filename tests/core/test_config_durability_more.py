@@ -360,6 +360,44 @@ def test_an_unreadable_file_with_no_last_good_copy_reads_closed(cfg_dir, monkeyp
     assert disk["work_offline"] is False and disk.get("telemetry_opt_in", True) is True
 
 
+def test_a_locked_file_at_launch_does_not_save_new_install_values(cfg_dir, monkeypatch):
+    # The file exists but cannot be read: it belongs to someone who already uses the
+    # app, so neither the new-install formats nor the quick start apply, and a later
+    # save of another key must not write the defaults over their saved choices.
+    _write(cfg_dir, {"output_formats": ["srt"], "quick_start_done": True, "theme": "dark"})
+    monkeypatch.setattr(cfgmod, "_READ_RETRY_SECONDS", 0.05)
+    real = builtins.open
+
+    def locked(file, *args, **kwargs):  # noqa: ANN001, ANN002, ANN003
+        if str(file).endswith("config.json"):
+            raise PermissionError(13, "The process cannot access the file", str(file))
+        return real(file, *args, **kwargs)
+
+    monkeypatch.setattr(cfgmod, "open", locked, raising=False)
+    cfg = cfgmod.load_config(fetch_online=False)
+    monkeypatch.delattr(cfgmod, "open")
+    assert cfg["quick_start_done"] is True
+    cfg["batch_size"] = 12
+    cfgmod.save_config(cfg)
+    disk = _disk(cfg_dir)
+    assert disk["batch_size"] == 12
+    assert disk["output_formats"] == ["srt"] and disk["quick_start_done"] is True
+
+
+@pytest.mark.parametrize("counter", [
+    {"cloud_stt_minutes_used": 3.0},
+    {"gcloud_stt_minutes_used": 1.5, "gcloud_stt_minutes_month": "2026-10"},
+])
+def test_a_usage_counter_alone_does_not_make_an_install_look_used(cfg_dir, counter):
+    # A headless first run (the server with a cloud engine) writes only its minute
+    # counter; the next launch is still a new install.
+    first = cfgmod.load_config(fetch_online=False)
+    cfgmod.update_config(lambda d: d.update(counter))
+    second = cfgmod.load_config(fetch_online=False)
+    assert second["output_formats"] == first["output_formats"]
+    assert second["quick_start_done"] is first["quick_start_done"] is False
+
+
 # --- 13. N1: turning stats back on is saved -----------------------------------
 
 

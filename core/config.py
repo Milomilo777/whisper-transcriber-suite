@@ -71,6 +71,11 @@ def _default_transcribe_backend() -> str:
 
 # The output formats of every install made before plain text (.txt) joined the default.
 LEGACY_OUTPUT_FORMATS: tuple[str, ...] = ("srt", "json")
+# Keys a transcription run writes into config.json by itself (update_config), with
+# no window ever opened: alone they do not mean the install was set up before.
+_COUNTER_ONLY_KEYS = frozenset({
+    "cloud_stt_minutes_used", "gcloud_stt_minutes_used", "gcloud_stt_minutes_month",
+})
 
 DEFAULT_CONFIG = {
     "model": {
@@ -1835,15 +1840,26 @@ def load_config(*, fetch_online: bool = True) -> dict[str, Any]:
     # an unreadable one (renamed to ".corrupt"): Finish would otherwise reset a
     # custom model folder that the old first-run picker lets them pick again.
     # A deleted config.json (or --safe-mode) is a deliberate fresh start.
+    # A file that exists but could not be read (locked, no last good copy) is
+    # someone's too; what it holds is unknown, so neither value below may be saved
+    # from this read: both go into the baseline as well.
+    if read_closed and not local:
+        for key, value in (("quick_start_done", True),
+                           ("output_formats", list(LEGACY_OUTPUT_FORMATS))):
+            merged[key] = value
+            baseline[key] = copy.deepcopy(value)
+    # A file that holds only a usage counter came from a headless run (the server
+    # with a cloud engine) of a new install, not from someone who set the app up.
+    used_before = bool(set(local) - _COUNTER_ONLY_KEYS)
     if "quick_start_done" not in local and (
-        local or os.path.exists(config_path() + ".corrupt")
+        used_before or os.path.exists(config_path() + ".corrupt")
     ):
         merged["quick_start_done"] = True
     # Plain text joined the default formats for new installs only: a config.json
     # from before keeps the formats it ran with. Either way the next save writes the
     # value, so a new install's first save does not read as an earlier one later.
-    if "output_formats" not in local:
-        if local or os.path.exists(config_path() + ".corrupt"):
+    if "output_formats" not in local and not (read_closed and not local):
+        if used_before or os.path.exists(config_path() + ".corrupt"):
             merged["output_formats"] = list(LEGACY_OUTPUT_FORMATS)
         baseline.pop("output_formats", None)
     # parallel_workers 2 was the shipped default, written into every config.json by older
