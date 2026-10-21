@@ -7,7 +7,7 @@ Whisper Transcriber Suite runs faster-whisper, whisper.cpp or NVIDIA Parakeet lo
 Common questions this page answers: Is it free? Yes — BSD-3-Clause, no subscription, no per-minute fee; only the ~1-3GB Whisper model itself downloads once, on first launch. Does it upload recordings anywhere? No, not by default — the two cloud backends above are opt-in and stay off until enabled. What platforms does it run on? Windows, macOS and Linux, with published Windows and macOS installers and a from-source build for Linux. How is this different from calling the Whisper API directly? No per-minute cost and no audio leaves the machine, because transcription runs locally by default instead of through a paid cloud API.
 
 ## Download
-- [Latest release](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest): v2.1.0 — free Windows installer, Windows portable ZIP and macOS DMG, no account or sign-up required; Linux builds from source.
+- [Latest release](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest): v2.2.0 — free Windows installer, Windows portable ZIP and macOS DMG, no account or sign-up required; Linux builds from source.
 - [All releases](https://github.com/Milomilo777/whisper-transcriber-suite/releases): full version history, every past release kept published with its own changelog.
 - [Support the project — Buy Me a Coffee](https://buymeacoffee.com/mehraz1358): funds continued cross-platform development and testing.
 
@@ -52,7 +52,7 @@ The website, including the three guides, is also published in 41 more languages;
 - Also: speaker diarisation, live microphone/system-audio transcription, a batch queue, yt-dlp downloads, and a local-network server mode.
 - New in 2.0: the queue shows each transcription's speed and time left; Make subtitled video turns a link into an MP4 with burned-in subtitles; a finished transcript can be saved as one offline web page; Work offline shows whether anything is connected; speech can be translated straight to English; native Mac menus, Dark mode and notifications; Windows taskbar progress and dark title bars; a quick start window with a sample clip. The Video Tiling tab was removed.
 - New in 2.1: the app comes in 42 interface languages (machine-translated, marked as such; Persian, Arabic and Hebrew on Windows); speaker labels reach the end of long recordings and the number of speakers can be set; files are fully written to disk before they replace the old ones; online features work on every Mac.
-- Latest version v2.1.0, released 2026-10-12; repository created 2026-05-11 and actively maintained.
+- Latest version v2.2.0, released 2026-10-21; repository created 2026-05-11 and actively maintained.
 - Author: translation-robot.
 
 ## Contact
@@ -155,15 +155,15 @@ Drop in an audio or video file and the transcript is written next to it. The spe
 no per-minute cost and, once the model is downloaded, no internet connection
 is needed.
 
-## What's new in 2.1
+## What's new in 2.2
 
-- **The app in your language:** menus, buttons and messages in 42 languages (39 on macOS and Linux), machine-translated and marked as such. It follows your system language, or you pick one in Advanced settings.
-- **Speaker labels you can trust:** names reach the end of long recordings, and you can set how many people talk (2 to 10) instead of Auto.
-- **Your work is safer:** transcripts, exports and subtitles are fully written to disk before they replace the old file.
-- **Online features work on every Mac:** the update check and problem reports no longer fail with "certificate verify failed".
-- **Word counts for Chinese, Japanese, Thai, Lao, Khmer and Burmese** count characters or syllables.
+- **A simpler Transcribe tab:** pick **Accuracy** (Fast, Balanced or Best) and the app chooses a model that fits your language and your computer, with its download size shown. The rarer options wait under **More options**.
+- **Right to left:** with a Persian, Arabic, Hebrew or Urdu interface the tabs, lists, dialogs and tick boxes mirror (Windows).
+- **From your phone:** turn on *Share on local network*, scan the QR code and send a recording from a phone on the same Wi-Fi.
+- **A compact Download form** and a calmer Queue, with plainer words throughout.
+- **Every message translated** in all 42 interface languages, and many fixes that keep your settings, history and finished work safe.
 
-Version 2.0 added the queue's speed and time left, [subtitled video from a link](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/SUBTITLED_VIDEO.md), transcripts as an offline web page, a checkable Work offline mode and translation to English. Full list: [CHANGELOG](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md).
+Version 2.1 added the interface in 42 languages, reliable speaker labels and safer saving; version 2.0 added the queue's speed and time left, [subtitled video from a link](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/SUBTITLED_VIDEO.md), transcripts as an offline web page, a checkable Work offline mode and translation to English. Full list: [CHANGELOG](https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md).
 
 ## Features
 

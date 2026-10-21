@@ -1,8 +1,8 @@
 {
   "name": "Whisper Transcriber Suite",
   "summary": "Free, offline desktop app that transcribes audio and video locally with OpenAI Whisper models.",
-  "version": "v2.1.0",
-  "released": "2026-10-12",
+  "version": "v2.2.0",
+  "released": "2026-10-21",
   "license": "BSD-3-Clause",
   "platforms": {
     "windows": "Installer and portable ZIP",
