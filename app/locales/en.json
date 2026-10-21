@@ -66,6 +66,11 @@
   "Action items failed: {error}": "Action items failed: {error}",
   "Action items…": "Action items…",
   "Add a “{footer}” link at the bottom": "Add a “{footer}” link at the bottom",
+  "Add files": "Add files",
+  "Add {n} file to the queue? Each one becomes its own transcription job.": [
+   "Add {n} file to the queue? Each one becomes its own transcription job.",
+   "Add {n} files to the queue? Each one becomes its own transcription job."
+  ],
   "Advanced settings": "Advanced settings",
   "Advanced settings…": "Advanced settings…",
   "Afrikaans": "Afrikaans",

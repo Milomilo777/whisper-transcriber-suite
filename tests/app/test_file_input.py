@@ -558,3 +558,29 @@ def test_a_finished_job_leaves_the_user_on_their_tab() -> None:
     the Last result card say that it finished."""
     assert not hasattr(app_mod, "return_to_transcribe_tab")
     assert ".nb.select" not in inspect.getsource(App.show_last_result)
+
+
+@pytest.mark.parametrize("answer", [True, False])
+def test_browse_with_several_files_asks_once_before_queueing(monkeypatch, tmp_path, answer: bool) -> None:
+    """Several files picked with Browse started every one at once, without a word (deep review,
+    2026-10-21): one question first, and No queues nothing."""
+    picked = [str(tmp_path / f"part{i}.mp3") for i in range(3)]
+    asked: list[str] = []
+    queued: list[list[str]] = []
+    monkeypatch.setattr("app.app.filedialog.askopenfilenames", lambda **_kw: tuple(picked))
+    monkeypatch.setattr("app.app.messagebox.askyesno",
+                        lambda title, message, **_kw: asked.append(message) or answer)
+    fake = _fake_app(_bulk_enqueue=lambda paths: queued.append(paths) or len(paths))
+    App.browse(fake)  # type: ignore[arg-type]
+    assert asked == ["Add 3 files to the queue? Each one becomes its own transcription job."]
+    assert queued == ([picked] if answer else [])
+
+
+def test_browse_with_one_file_asks_nothing(monkeypatch, tmp_path) -> None:
+    one = str(tmp_path / "talk.mp3")
+    monkeypatch.setattr("app.app.filedialog.askopenfilenames", lambda **_kw: (one,))
+    monkeypatch.setattr("app.app.messagebox.askyesno", lambda *a, **k: pytest.fail("asked"))
+    monkeypatch.setattr("app.app._show_file_in_box", lambda app, path: app.fv.set(path))
+    fake = _fake_app()
+    App.browse(fake)  # type: ignore[arg-type]
+    assert fake.fv.get() == one

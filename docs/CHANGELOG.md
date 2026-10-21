@@ -90,6 +90,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   the Transcribe tab under a user who had just clicked a row). The notification, the chime and the
   Last result card still say that the job finished.
 
+- **Browse with several files asks first**: "Add 3 files to the queue? Each one becomes its own
+  transcription job." (it queued them all at once without a word). One file still just goes into
+  the box; a drop is not asked.
+
 - **Plainer words on the Download tab and the subtitles question**: "URL" is now **Video link**;
   the note under it says "This video already has German subtitles made by the uploader. Use them
   instead of transcribing?" (was "Captions (creator-provided) are already available in "de" --

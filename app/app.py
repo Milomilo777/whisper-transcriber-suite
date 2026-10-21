@@ -3782,6 +3782,16 @@ class App(tk.Tk):
         if len(chosen) == 1:
             _show_file_in_box(self, chosen[0])
             return
+        # Several files started every one at once without a word (deep review, 2026-10-21):
+        # one question first. A drop is a deliberate act and is not asked.
+        if not messagebox.askyesno(
+            _("Add files"),
+            ngettext("Add {n} file to the queue? Each one becomes its own transcription job.",
+                     "Add {n} files to the queue? Each one becomes its own transcription job.",
+                     len(chosen)),
+            parent=self,
+        ):
+            return
         count = self._bulk_enqueue(list(chosen))
         if count:
             self.log(f"Enqueued {count} files via Browse...")
