@@ -1186,6 +1186,7 @@ class App(tk.Tk):
     download_row_map: dict[str, Any]
     # R2 per-download action bar (assigned in tabs.build_download_tab).
     download_action_buttons: dict[str, "ttk.Button"]
+    download_action_bar: "ttk.Frame"  # above the downloads table
     # Set by format_service.lookup_formats / _apply_smtv_formats
     _smtv_episode: Any | None
     # Set by tabs.build_download_tab — toggles the series checkbox.
@@ -3924,7 +3925,7 @@ class App(tk.Tk):
             return
 
         from app.domain.languages import (
-            SUBTITLE_LANGUAGES, resolve_caption_kind, subtitle_language_label,
+            SUBTITLE_LANGUAGES, caption_language_name, resolve_caption_kind, subtitle_language_label,
         )
 
         sub_lang_name = self.subtitle_lang_var.get() if hasattr(self, "subtitle_lang_var") else ""
@@ -3941,10 +3942,12 @@ class App(tk.Tk):
             return
 
         # sub_lang_name is the stored English name: shown translated. The detected
-        # language is a caption code, shown as it is.
+        # language is a caption code ("en"), shown by its name: the bar said "en" (screenshot
+        # reviews, 2026-10-21); a code with no known name stays as it is.
+        code = self.current_video_language
         label = subtitle_language_label(sub_lang_name) if (
             sub_lang_name and sub_lang_name != "Automatic") else (
-            self.current_video_language
+            subtitle_language_label(caption_language_name(code)) if code else code
         )
         # Whole sentences: one with the language's name, one for "the detected language".
         if kind == "manual" and label:

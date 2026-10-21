@@ -1557,8 +1557,9 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     ttk.Entry(top, textvariable=app.download_folder_var, width=70).grid(
         row=2, column=1, sticky="ew", padx=(6, 0), pady=(8, 0)
     )
+    # Natural width: stretched across its column it was ~700 px wide (screenshot review, 2026-10-21).
     ttk.Button(top, text=_("Browse"), command=app.browse_download_folder).grid(
-        row=2, column=2, sticky="ew", padx=(6, 0), pady=(8, 0)
+        row=2, column=2, sticky="w", padx=(6, 0), pady=(8, 0)
     )
     help_icon(
         top,
@@ -1871,7 +1872,7 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     cols = ("name", "url", "format", "status", "progress", "time")
     bottom.rowconfigure(0, weight=1)
     bottom.columnconfigure(0, weight=1)
-    app.download_tree = ttk.Treeview(bottom, columns=cols, show="headings", height=8)
+    app.download_tree = ttk.Treeview(bottom, columns=cols, show="headings", height=5)
     # Column ids stay English (App reads rows by id); the headings show the same words translated.
     download_headings = {
         "name": pgettext("download column", "name"),
@@ -1884,12 +1885,14 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     for c in cols:
         app.download_tree.heading(c, text=download_headings[c])
     app.download_tree.column("name", width=px(220))
-    app.download_tree.column("url", width=px(420))
-    app.download_tree.column("format", width=px(180))
-    app.download_tree.column("status", width=px(100))
+    # Status, format and time were cut ("finishe", "Audio and video -> m", "00:00:");
+    # the link column gives up the room.
+    app.download_tree.column("url", width=px(300))
+    app.download_tree.column("format", width=px(220))
+    app.download_tree.column("status", width=px(130))
     app.download_tree.column("progress", anchor="w")
     fit_progress_column(app.download_tree)
-    app.download_tree.column("time", width=px(80))
+    app.download_tree.column("time", width=px(90))
     _dvsb = _AutoScrollbar(bottom, orient="vertical", command=app.download_tree.yview)
     app.download_tree.configure(yscrollcommand=_dvsb.set)
     app.download_tree.grid(row=0, column=0, sticky="nsew")
@@ -1904,8 +1907,12 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
 
     # R2 — Download action bar mirroring the Queue tab. Pause is the
     # stop-and-continue semantics (tooltip below); SMTV downloads disable it.
-    dl_action_bar = ttk.Frame(parent, padding=(10, 0, 10, 4))
-    dl_action_bar.pack(fill="x")
+    # Packed ABOVE the table: below it the bar sat under the fold of this scrollable tab, so
+    # Pause / Cancel / Open were out of sight even in a 1440x1010 window (click-through test
+    # and three screenshot reviews, 2026-10-21). A 5-row table keeps the tab shorter too.
+    dl_action_bar = ttk.Frame(parent, padding=(10, 6, 10, 4))
+    dl_action_bar.pack(fill="x", before=bottom)
+    app.download_action_bar = dl_action_bar
     app.download_action_buttons = {
         "pause": ttk.Button(
             dl_action_bar, text=pgettext("button", "Pause"),

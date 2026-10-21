@@ -1052,7 +1052,7 @@
    ],
    [
     "status",
-    "Captions (creator-provided) are already available in \"fr\" -- skip downloading and transcribing?"
+    "Captions (creator-provided) are already available in \"French\" -- skip downloading and transcribing?"
    ],
    [
     "status",
@@ -1064,7 +1064,7 @@
    ],
    [
     "status",
-    "Auto-generated captions are already available in \"fr\" -- skip downloading and transcribing? (may be less accurate than a real transcription)"
+    "Auto-generated captions are already available in \"French\" -- skip downloading and transcribing? (may be less accurate than a real transcription)"
    ],
    [
     "status",

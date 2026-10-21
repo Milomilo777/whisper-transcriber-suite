@@ -1168,14 +1168,16 @@ class DownloadService:
         # spec calls these per-job, not persistent. Done in a try/
         # except so a missing var (e.g. headless test harness) is
         # never fatal.
+        # Back to the tab's own "0:00:00" (= whole video), not "": blank boxes looked like
+        # the range had been lost (screenshot reviews, 2026-10-21).
         if start_var is not None:
             try:
-                start_var.set("")
+                start_var.set("0:00:00")
             except Exception:  # noqa: BLE001
                 pass
         if end_var is not None:
             try:
-                end_var.set("")
+                end_var.set("0:00:00")
             except Exception:  # noqa: BLE001
                 pass
 
