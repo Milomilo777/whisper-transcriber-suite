@@ -230,6 +230,9 @@ def _show_file_in_box(app: Any, path: str) -> None:
     if entry is not None:
         entry.icursor("end")
         entry.xview_moveto(1.0)
+        # Again once Tk has laid out a tab that was just shown (a drop or a Recent file from
+        # another tab): an Entry that is not mapped has no width to scroll against.
+        entry.after_idle(lambda: entry.xview_moveto(1.0))
 
 
 def _select_the_running_task(tree: Any, row_map: dict[str, Any], tasks: list[Any],
@@ -2043,8 +2046,8 @@ class App(tk.Tk):
                 parent=self,
             )
             return
+        self.nb.select(self.t1)  # first: the box scrolls best once its tab is shown
         _show_file_in_box(self, path)
-        self.nb.select(self.t1)
 
     def _clear_recent(self) -> None:
         """Clear the File > Recent files list.
@@ -7780,8 +7783,8 @@ class App(tk.Tk):
                 )
         if paths:
             if len(paths) == 1:
+                self.nb.select(self.t1)  # first: the box scrolls best once its tab is shown
                 _show_file_in_box(self, paths[0])
-                self.nb.select(self.t1)
                 self.log(f"Picked: {os.path.basename(paths[0])} (drag-and-drop)")
             else:
                 count = self._bulk_enqueue(paths)

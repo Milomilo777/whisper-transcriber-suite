@@ -53,3 +53,12 @@ def test_long_words_keep_their_closing_quote():
     line = status_line("[file=audio.flac] [12%] 00:01:37 --> 00:01:38 | " + "word " * 60)
     assert line is not None and len(line) <= MAX_CHARS
     assert line.endswith("…”") and "12% done — “word" in line
+
+
+@pytest.mark.parametrize("name_len", range(70, 120))
+def test_a_long_file_name_never_leaves_an_unclosed_quote(name_len):
+    # Every length where the words have little or no room (review of 58aeab8f, 2026-10-21).
+    name = ("n" * name_len)[:-4] + ".mp4"
+    line = status_line(f"[file={name}] [12%] 00:01:37 --> 00:01:38 | some words here")
+    assert line is not None and len(line) <= MAX_CHARS
+    assert "“" not in line or line.endswith("”")

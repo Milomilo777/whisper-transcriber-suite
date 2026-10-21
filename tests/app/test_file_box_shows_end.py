@@ -48,3 +48,32 @@ def test_a_double_without_the_box_still_gets_the_path():
     fake.fv.set = seen.append
     _show_file_in_box(fake, LONG)
     assert seen == [LONG]
+
+
+def test_a_path_set_while_its_tab_is_hidden_shows_its_end_once_shown():
+    # A drop or a Recent file from another tab (code review of 284745d9, 2026-10-21).
+    try:
+        root = tk.Tk()
+    except tk.TclError as exc:  # pragma: no cover - no display
+        pytest.skip(f"no Tk display: {exc}")
+    try:
+        root.geometry("500x150")
+        nb = ttk.Notebook(root)
+        nb.pack(fill="both", expand=True)
+        tab1, tab2 = ttk.Frame(nb), ttk.Frame(nb)
+        nb.add(tab1, text="1")
+        nb.add(tab2, text="2")
+        var = tk.StringVar(master=root)
+        entry = ttk.Entry(tab1, textvariable=var)
+        entry.pack(fill="x", padx=10, pady=10)
+        root.update()
+        nb.select(tab2)
+        root.update()
+        box = types.SimpleNamespace(fv=var, file_entry=entry)
+        nb.select(tab1)
+        _show_file_in_box(box, LONG)
+        root.update()
+        first, last = entry.xview()
+        assert last == 1.0 and first > 0.0
+    finally:
+        root.destroy()

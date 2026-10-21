@@ -57,6 +57,8 @@ def status_line(message: str) -> str | None:
             return _clip(head)
         # Clip the words, not the line, so the closing quote stays.
         room = MAX_CHARS - len(_("{progress} — “{words}”", progress=head, words=""))
+        if room < 8:  # a long file name leaves no room for words worth reading
+            return _clip(head)
         words = " ".join(text.split())
         if len(words) > room:
             words = words[: max(1, room - 1)].rstrip() + "…"
