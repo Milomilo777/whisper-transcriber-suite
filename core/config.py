@@ -632,20 +632,35 @@ def _legacy_config_path() -> str:
     return os.path.abspath(os.path.join(base, "..", "config.json"))
 
 
+# Puts every per-user folder (config, cache, logs, data) under one root, for GUI
+# test runs on a machine whose own profile must stay as it is. Nothing is migrated
+# into such a profile (no pre-rebrand profile, no next-to-source config.json).
+PROFILE_ENV = "WTS_PROFILE_DIR"
+
+
+def _profile_root() -> Path | None:
+    raw = os.environ.get(PROFILE_ENV, "").strip()
+    return Path(raw) if raw else None
+
+
 def user_config_dir() -> Path:
-    return Path(platformdirs.user_config_dir(APP_NAME, APP_AUTHOR))
+    root = _profile_root()
+    return root / "config" if root else Path(platformdirs.user_config_dir(APP_NAME, APP_AUTHOR))
 
 
 def user_cache_dir() -> Path:
-    return Path(platformdirs.user_cache_dir(APP_NAME, APP_AUTHOR))
+    root = _profile_root()
+    return root / "cache" if root else Path(platformdirs.user_cache_dir(APP_NAME, APP_AUTHOR))
 
 
 def user_log_dir() -> Path:
-    return Path(platformdirs.user_log_dir(APP_NAME, APP_AUTHOR))
+    root = _profile_root()
+    return root / "logs" if root else Path(platformdirs.user_log_dir(APP_NAME, APP_AUTHOR))
 
 
 def user_data_dir() -> Path:
-    return Path(platformdirs.user_data_dir(APP_NAME, APP_AUTHOR))
+    root = _profile_root()
+    return root / "data" if root else Path(platformdirs.user_data_dir(APP_NAME, APP_AUTHOR))
 
 
 def config_path() -> str:
@@ -674,7 +689,7 @@ def migrate_config_location() -> str:
         )
         return new_path
 
-    if not os.path.exists(legacy):
+    if _profile_root() is not None or not os.path.exists(legacy):
         return new_path
     if os.path.abspath(legacy) == os.path.abspath(new_path):
         return new_path
@@ -718,6 +733,8 @@ _legacy_migration_done = False
 
 def _legacy_app_dirs() -> dict[str, Path] | None:
     """Per-user dirs of the pre-rebrand app. Patched to None by the test suite."""
+    if _profile_root() is not None:
+        return None
     return {
         "config": Path(platformdirs.user_config_dir(LEGACY_APP_NAME, APP_AUTHOR)),
         "data": Path(platformdirs.user_data_dir(LEGACY_APP_NAME, APP_AUTHOR)),

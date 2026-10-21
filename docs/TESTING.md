@@ -84,6 +84,12 @@ python gui.py
 (Needs the dependencies above. The first transcription downloads the
 ~3 GB Whisper model once.)
 
+For a manual or click-through GUI test that must not touch your own settings,
+history or models, give the run its own profile: set `WTS_PROFILE_DIR` to an empty
+folder (config, cache, logs and data go into subfolders there; nothing is migrated
+in from your profile). Point `hub_folder` in its `config/config.json` at an existing
+model folder to skip the model download.
+
 ## When a test fails
 
 Scroll up in the `run_tests.bat` output:

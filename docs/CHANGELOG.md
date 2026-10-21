@@ -6,6 +6,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- **`WTS_PROFILE_DIR`** for test runs: every per-user folder (settings, history, logs, model cache)
+  goes under that folder, and nothing is migrated in, so a GUI test leaves the machine's own
+  profile alone. See `docs/TESTING.md`.
+
 - **Models trained for one language**: picking Persian, Chinese, Japanese, German, Thai, Swedish or Hebrew on the
   Transcribe tab now suggests a model built for that language, with its publisher's own accuracy
   figures, size and licence, and a **Use it** button (and **Switch back** when another language is
