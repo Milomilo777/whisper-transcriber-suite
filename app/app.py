@@ -4925,9 +4925,7 @@ class App(tk.Tk):
         # action bar uses (button_states_for_status), so the two can never
         # disagree about which actions a status offers.
         from app.widgets.tabs import button_states_for_status
-        states = button_states_for_status(
-            task.status, self._task_has_checkpoint(task)
-        )
+        states = button_states_for_status(task.status)
         m = tk.Menu(self, tearoff=0)
         if states["pause"]:
             m.add_command(label=_("Pause"), command=lambda: self.pause(task))
@@ -5702,9 +5700,9 @@ class App(tk.Tk):
 
         merged = {k: False for k in QUEUE_ACTION_KEYS}
         for t in self._selected_tasks():
-            states = button_states_for_status(
-                getattr(t, "status", ""), self._task_has_checkpoint(t)
-            )
+            # No checkpoint probe: a cancelled job offers Re-run only, and a disk check here
+            # ran every 500 ms for a selected row.
+            states = button_states_for_status(getattr(t, "status", ""))
             for k, v in states.items():
                 if v:
                     merged[k] = True

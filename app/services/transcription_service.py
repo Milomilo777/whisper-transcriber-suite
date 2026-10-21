@@ -85,6 +85,10 @@ def failure_reason(file_path: str, message: object) -> str:
     return _("Transcription failed: {message}", message=text) if text else ""
 
 
+# Engines that send the audio to a web service (core.backends): they report no device.
+CLOUD_BACKENDS = frozenset({"cloud_stt", "google_cloud_stt", "nvidia_asr"})
+
+
 def _mark_stopped_early(task: Any) -> None:
     """Give a job ended by a worker teardown a reason when it has none yet."""
     if not getattr(task, "error_reason", ""):
@@ -311,6 +315,10 @@ class TranscriptionService:
         configured = int(getattr(self.app, "parallel_workers", 0) or 0)
         if configured > 0:
             return configured
+        # A cloud engine waits on the network, not the cores: two at once, as before.
+        backend = str((getattr(self.app, "app_config", None) or {}).get("transcribe_backend") or "")
+        if backend.strip().lower() in CLOUD_BACKENDS:
+            return 2
         gpu = any(str(w.get("device") or "").lower() == "cuda" for w in self.ready_workers())
         return 2 if gpu else 1
 

@@ -108,7 +108,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 - **One job at a time on a CPU**: two jobs at once each loaded the model and shared the cores, so
   both ran at half speed and the computer slowed down. `parallel_workers` is now automatic (`0`):
-  one job on a CPU, two once a GPU is in use. A number set by hand other than the old default 2
+  one job on a CPU, two once a GPU is in use (and for a cloud engine). A number set by hand other than the old default 2
   is kept.
 
 - **Double-click a finished Queue job to read it**: it opens the transcript viewer, as **View

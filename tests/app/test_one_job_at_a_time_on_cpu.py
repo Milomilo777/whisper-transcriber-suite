@@ -67,3 +67,14 @@ def test_the_stored_setting(isolated_config, stored, expected) -> None:
     data = {"theme": "dark"} if stored is None else {"parallel_workers": stored}
     (isolated_config / "config.json").write_text(json.dumps(data), encoding="utf-8")
     assert config.load_config(fetch_online=False)["parallel_workers"] == expected
+
+
+@pytest.mark.parametrize("backend, expected", [
+    ("cloud_stt", 2), ("google_cloud_stt", 2), ("nvidia_asr", 2), ("whisper_cpp", 1), ("faster_whisper", 1),
+])
+def test_cloud_engines_keep_two_jobs(backend: str, expected: int) -> None:
+    """A cloud engine reports no device and waits on the network, not the cores (review of the
+    batch, 2026-10-21): automatic keeps two jobs for it. whisper.cpp runs on the CPU."""
+    svc = _svc(0, [_worker("cpu")])
+    svc.app.app_config = {"transcribe_backend": backend}
+    assert svc.worker_limit() == expected

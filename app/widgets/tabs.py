@@ -1368,7 +1368,7 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
         threading.Thread(target=_work, name="ready-line-length", daemon=True).start()
 
     # While a job this tab started runs, the line names it instead (running_job_line) and this
-    # button opens its Queue row; App.refresh() calls _sync_ready every 500 ms to keep the
+    # button opens its Queue row; App.refresh() calls _tick every 500 ms to keep the
     # percentage current.
     app.transcribe_show_in_queue_btn = ttk.Button(
         cta_row, text=_("Show in Queue"),
