@@ -86,6 +86,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   cell no longer pauses it (a user picking the row to read it paused the work without noticing).
   Pause and Resume are on the buttons and the right-click menu.
 
+- **No jump to the Transcribe tab when a job ends**: the Queue tab stays in front (it switched to
+  the Transcribe tab under a user who had just clicked a row). The notification, the chime and the
+  Last result card still say that the job finished.
+
 - **Plainer words on the Download tab and the subtitles question**: "URL" is now **Video link**;
   the note under it says "This video already has German subtitles made by the uploader. Use them
   instead of transcribing?" (was "Captions (creator-provided) are already available in "de" --

@@ -552,20 +552,6 @@ def _point_on_a_monitor(x: int, y: int) -> bool:
         return True
 
 
-def return_to_transcribe_tab(app: Any) -> None:
-    """After a job finishes, show the Last Result card on the Transcribe tab.
-
-    Mirrors the auto-switch to Queue when a transcription starts, so only from the Queue tab: a
-    user who went on to another tab (Download, Live, settings) stays where they are. Never
-    raises (a window being closed, a test double without tabs).
-    """
-    try:
-        if app.nb.select() == str(app.t2):
-            app.nb.select(app.t1)
-    except Exception:  # noqa: BLE001
-        pass
-
-
 def _clean_pasted_path(text: str) -> str:
     """The path inside what a user pasted into the file field.
 
@@ -6527,7 +6513,8 @@ class App(tk.Tk):
             f"Done: {os.path.basename(task.file_path)} → "
             f"{len(existing)} file(s) in {folder}"
         )
-        return_to_transcribe_tab(self)
+        # No jump to the Transcribe tab: from the Queue it took the tab away from a user who had
+        # just clicked a row (deep review, 2026-10-21). The notification above says it is done.
 
     def _open_file(self, path: str) -> None:
         """Open a single file with the OS default handler.

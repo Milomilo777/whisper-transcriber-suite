@@ -10,6 +10,7 @@
 """
 from __future__ import annotations
 
+import inspect
 import io
 import sys
 import types
@@ -551,21 +552,9 @@ def test_browse_offers_audio_and_video_first(monkeypatch) -> None:
     assert last[1] == "*.*"  # anything else stays one choice away
 
 
-def test_a_finished_job_returns_to_the_transcribe_tab_only_from_the_queue() -> None:
-    from app.app import return_to_transcribe_tab
-
-    # Click-through test 2026-10-21: finishing jobs pulled the user off any tab they were on.
-    class _Nb:
-        def __init__(self, current: str) -> None:
-            self.current = current
-
-        def select(self, tab=None):
-            if tab is None:
-                return self.current
-            self.current = str(tab)
-            return None
-
-    for current, expected in (("queue", "transcribe"), ("download", "download"), ("live", "live")):
-        fake = types.SimpleNamespace(nb=_Nb(current), t1="transcribe", t2="queue")
-        return_to_transcribe_tab(fake)
-        assert fake.nb.current == expected
+def test_a_finished_job_leaves_the_user_on_their_tab() -> None:
+    """No jump to the Transcribe tab when a job ends, not even from the Queue: a user who had
+    just clicked a Queue row found the tab gone (deep review, 2026-10-21). The notification and
+    the Last result card say that it finished."""
+    assert not hasattr(app_mod, "return_to_transcribe_tab")
+    assert ".nb.select" not in inspect.getsource(App.show_last_result)
