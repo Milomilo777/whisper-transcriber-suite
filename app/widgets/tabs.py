@@ -1889,10 +1889,11 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
 
     app.format_status_var = tk.StringVar(value=_("Paste a video link above to load its formats"))
     app.format_lookup_error = ""
-    status_frame = ttk.Frame(top)
-    status_frame.grid(
-        row=11, column=1, columnspan=2, sticky="w", padx=(6, 0), pady=(4, 0)
-    )
+    # Right under the link box ("Found: Me at the zoo (0:19)", or why the link cannot be read): it
+    # sat ~350 px lower, under the subtitle options, far from the box it is about (round-2
+    # screenshot critics, 2026-10-21). The subtitles line (App.update_caption_bar) packs after it.
+    status_frame = ttk.Frame(url_cell)
+    status_frame.pack(anchor="w", pady=(2, 0))
     # wraplength: a yt-dlp error is often one very long line; unwrapped it
     # widened the whole form and squeezed out the helper button below.
     app.format_status_label = ttk.Label(

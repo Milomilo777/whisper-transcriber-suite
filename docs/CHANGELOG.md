@@ -87,7 +87,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   the window title "2 jobs running (41%)" and "Browse files..." named as on the button. The
   renamed texts show in English in the other languages until they are translated again.
   Words that are not a link ("hello world") get "That is not a video link..." at once instead of
-  yt-dlp's raw error; a read link shows its title ("Found: Me at the zoo (0:19)"); a new link, an
+  yt-dlp's raw error; a read link shows its title ("Found: Me at the zoo (0:19)") right under the link box; a new link, an
   emptied box or plain words clear the old video length. The "Cannot load this link" warning gives
   the reason once, without a lead sentence that said the same again.
 
