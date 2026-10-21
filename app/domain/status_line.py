@@ -50,7 +50,10 @@ def status_line(message: str) -> str | None:
         text = segment.group("text").strip()
         head = _("{name}: {percent}% done", name=name, percent=segment.group("pct")) if name else \
             _("{percent}% done", percent=segment.group("pct"))
-        return _clip(f"{head} — {text}" if text else head)
+        # The words in quotes: a bare fragment ("1% done — Mum告诉我的") read as the app switching
+        # language (round-2 screenshot critics, 2026-10-21). A template, so a translation picks
+        # its own quote marks.
+        return _clip(_("{progress} — “{words}”", progress=head, words=text) if text else head)
     processing = _PROCESSING.match(message)
     if processing:
         return _clip(_("Transcribing {name}…", name=os.path.basename(processing.group("path").strip())))

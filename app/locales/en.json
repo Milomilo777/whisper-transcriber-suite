@@ -1674,6 +1674,7 @@
   "{percent}% done": "{percent}% done",
   "{process} (pid {pid}) {protocol} incoming {remote}": "{process} (pid {pid}) {protocol} incoming {remote}",
   "{process} (pid {pid}) {protocol} outgoing {remote}": "{process} (pid {pid}) {protocol} outgoing {remote}",
+  "{progress} — “{words}”": "{progress} — “{words}”",
   "{refused} refused, {n} automatic request not sent since {time}": [
    "{refused} refused, {n} automatic request not sent since {time}",
    "{refused} refused, {n} automatic requests not sent since {time}"

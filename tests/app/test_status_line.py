@@ -20,7 +20,7 @@ def test_diagnostics_keep_the_current_status(message):
 
 def test_a_segment_line_becomes_progress_and_text():
     line = status_line("[file=audio.flac] [12%] 00:01:37 --> 00:01:38 | 我给你")
-    assert line == "audio.flac: 12% done — 我给你"
+    assert line == "audio.flac: 12% done — “我给你”"  # quoted: they are the recording's words
 
 
 def test_a_segment_without_text_or_file_name():

@@ -111,7 +111,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   on releases that Download row instead of leaving it "transcribing". A second Transcribe click on a file that
   is already waiting or running shows its Queue row instead of queueing it again (another part of
   the same file still goes in); after Cancel the status line says "cancelled at 7%" instead of
-  keeping the last progress line; the result card's Open buttons sit next to their files. A job that
+  keeping the last progress line, and the recording's latest words on that line are in quotes
+  ("12% done — “I told you”"), so they no longer read as app text; the result card's Open buttons sit next to their files. A job that
   starts is selected even when a finished row was left selected (Pause and Cancel stayed grey), the
   list is titled "Your transcription jobs", and a hint says to select a job while the buttons are grey.
 
