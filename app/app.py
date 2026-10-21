@@ -1065,6 +1065,7 @@ class App(tk.Tk):
     row_map: dict[str, Any]
     # R2 per-task action bar (assigned in tabs.build_queue_tab).
     queue_action_buttons: dict[str, "ttk.Button"]
+    queue_result_buttons: dict[str, "ttk.Button"]  # "view", "folder": a finished job's result
     # Download tab
     download_url_var: tk.StringVar
     # Download tab "Log-in cookies" picker (mirrors Advanced › Downloads).
@@ -5601,7 +5602,33 @@ class App(tk.Tk):
                     merged[k] = True
         for key, btn in buttons.items():
             _set_enabled(btn, bool(merged.get(key)))
+        from app.widgets.tabs import queue_result_task
+
+        has_result = queue_result_task(list(self._selected_tasks())) is not None
+        for btn in getattr(self, "queue_result_buttons", {}).values():
+            _set_enabled(btn, has_result)
         self._sync_queue_failure_line()
+
+    def _action_bar_view_transcript(self) -> None:
+        """"View transcript" under the Queue: the selected finished job's transcript."""
+        from app.widgets.tabs import queue_result_task
+
+        task = queue_result_task(list(self._selected_tasks()))
+        if task is not None:
+            self.open_transcript_viewer_for(
+                task.file_path, self._task_json_output(task), task.language or task.detected_language,
+            )
+
+    def _action_bar_open_folder(self) -> None:
+        """"Open output folder" under the Queue: where the selected finished job's files are."""
+        from app.widgets.tabs import queue_result_task
+
+        task = queue_result_task(list(self._selected_tasks()))
+        if task is not None:
+            self._open_task_output_folder(task)
+
+    def _open_task_output_folder(self, task: "TranscriptionTask") -> None:
+        self._open_folder(task_output_folder(task), select=task_output_file(task))
 
     def _sync_queue_failure_line(self) -> None:
         """Show why the selected failed job failed under the action bar, or hide the line."""
@@ -6012,7 +6039,7 @@ class App(tk.Tk):
             self._anim_running = False
 
     def refresh(self) -> None:
-        from app.widgets.tabs import status_label
+        from app.widgets.tabs import queue_language_cell, status_label
 
         # Snapshot the SELECTED tasks (by identity) before we tear the tree
         # down: refresh() runs every 500ms via loop(), and a plain
@@ -6028,8 +6055,7 @@ class App(tk.Tk):
         rows: list[tuple[Any, tuple[str, ...], tuple[str, ...]]] = []
         for t in self.queue:
             lang = getattr(t, "detected_language", "") or ""
-            prob = getattr(t, "language_probability", None)
-            lang_str = f"{lang} ({prob * 100:.0f}%)" if (lang and isinstance(prob, (int, float))) else lang
+            lang_str = queue_language_cell(lang, getattr(t, "language_probability", None))
             name = os.path.basename(t.file_path)
             values = (
                 ltr_base(name),
@@ -7696,7 +7722,8 @@ class App(tk.Tk):
             pass
 
     def queue_row_double_click(self, event: tk.Event) -> None:
-        """Double-click on a finished Queue row opens its folder.
+        """Double-click on a finished Queue row opens its output folder (where the
+        transcript is, which an output-folder setting can put away from the source).
 
         For waiting/running/error/cancelled rows the action is a
         no-op (no useful destination yet).
@@ -7707,7 +7734,7 @@ class App(tk.Tk):
         task = self.row_map.get(item)
         if not task or task.status != "finished":
             return
-        self._open_folder(os.path.dirname(task.file_path) or ".", select=task.file_path)
+        self._open_task_output_folder(task)
 
     def log(self, msg: str) -> None:
         # The log file gets the text without the right-to-left marks; the panel keeps them.

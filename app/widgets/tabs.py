@@ -8,12 +8,14 @@ from __future__ import annotations
 
 import logging
 import sys
+import threading
 import tkinter as tk
+from tkinter import font as tkfont
 from tkinter import ttk
 from typing import TYPE_CHECKING, Any, Callable
 
 from app.domain.cookies import cookie_browser_choices, cookie_browser_label
-from app.domain.languages import SUBTITLE_LANGUAGES, subtitle_language_label
+from app.domain.languages import SUBTITLE_LANGUAGES, caption_language_name, subtitle_language_label
 from app.dpi import px
 from app.i18n import N_, _, pgettext, translate
 from app.theme import tokens
@@ -351,6 +353,39 @@ def status_label(status: str) -> str:
     return STATUS_ICON.get(status, "") + _status_text(status)
 
 
+# Whisper codes the subtitle language list spells differently, and the Whisper languages it
+# lacks: without them the Language cell showed a bare "he" or "yue".
+_WHISPER_CODE_ALIASES = {"he": "iw", "jw": "jv", "nn": "no"}
+_WHISPER_ONLY_NAMES = {
+    "as": N_("Assamese"), "ba": N_("Bashkir"), "bo": N_("Tibetan"), "br": N_("Breton"),
+    "fo": N_("Faroese"), "ln": N_("Lingala"), "oc": N_("Occitan"), "sa": N_("Sanskrit"),
+    "tk": N_("Turkmen"), "tt": N_("Tatar"), "yue": N_("Cantonese"),
+}
+
+
+def queue_language_cell(code: str, probability: object = None) -> str:
+    """The Queue's Language cell: the detected language by name, "Chinese" rather than
+    "zh (88%)" (screenshot review, 2026-10-21); "(not sure)" when the detection was
+    below even odds. 0 means no detection ran (some engines report it for a chosen
+    language). An unknown code stays as it is. No Tk."""
+    if not code:
+        return ""
+    if code in _WHISPER_ONLY_NAMES:
+        name = translate(_WHISPER_ONLY_NAMES[code])
+    else:
+        # Whisper reports bare codes ("zh", "pt") where the list has "zh-Hans,zh-CN".
+        bare = _WHISPER_CODE_ALIASES.get(code, code).lower()
+        english = next(
+            (name.split(" (")[0] for name, codes in SUBTITLE_LANGUAGES
+             if codes and codes.split(",")[0].strip().split("-")[0].lower() == bare),
+            "",
+        )
+        name = subtitle_language_label(english or caption_language_name(code))
+    if isinstance(probability, (int, float)) and not isinstance(probability, bool) and 0 < probability < 0.5:
+        return _("{language} (not sure)", language=name)
+    return name
+
+
 def queue_failure_line(selected: list[Any]) -> str:
     """The red line under the Queue's buttons: why the one selected failed job failed.
 
@@ -361,6 +396,16 @@ def queue_failure_line(selected: list[Any]) -> str:
         return ""
     reason = str(getattr(selected[0], "error_reason", "") or "")
     return reason or _("This job failed and no reason was recorded; try Re-run.")
+
+
+def queue_result_task(selected: list[Any]) -> Any | None:
+    """The task whose result the Queue's "View transcript" / "Open output folder" buttons
+    open: exactly one selected row that finished, else None. Before these buttons a
+    finished row offered its result only by right-click or double-click (screenshot
+    review, 2026-10-21). No Tk."""
+    if len(selected) == 1 and getattr(selected[0], "status", "") == "finished":
+        return selected[0]
+    return None
 
 
 _PROGRESS_SEGMENTS = 10
@@ -403,6 +448,40 @@ def marquee_cell(frame: int, percent: float | int = 0) -> str:
         # OverflowError: int(round(inf)) on a non-finite percent.
         pct = 0
     return "".join(track) + f" {pct:>3d}%"
+
+
+def progress_column_width(measure: Callable[[str], int]) -> int:
+    """Width of a Treeview progress column that shows ``progress_cell(100)`` whole.
+
+    ``measure`` = the row font's ``measure``. A fixed px(150) cut "100%" to "10(" on
+    Windows 10, where the block glyphs come from a wider fallback font (screenshot
+    review, 2026-10-21). No Tk.
+    """
+    return max(px(150), measure(progress_cell(100)) + px(20))
+
+
+def fit_progress_column(tree: ttk.Treeview, column: str = "progress") -> None:
+    """Size ``column`` to its widest cell in the tree's own row font, now and after
+    every <<ThemeChanged>> (a theme switch or a script font changes that font)."""
+
+    def _fit() -> None:
+        try:
+            style_name = str(tree.cget("style")) or "Treeview"
+            font_name = str(ttk.Style(tree).lookup(style_name, "font")) or "TkDefaultFont"
+            try:
+                font = tkfont.nametofont(font_name, root=tree)
+            except tk.TclError:
+                font = tkfont.Font(root=tree, font=font_name)
+            width = progress_column_width(font.measure)
+            tree.column(column, width=width, minwidth=width, stretch=False)
+        except tk.TclError:
+            pass  # the tree was destroyed before an after_idle refit ran
+
+    def _on_theme_changed(_event: tk.Event) -> None:
+        tree.after_idle(_fit)
+
+    _fit()
+    tree.bind("<<ThemeChanged>>", _on_theme_changed, add="+")
 
 
 # Transcription action keys surfaced by the per-row action bar AND the
@@ -1135,9 +1214,12 @@ def build_queue_tab(app: "App", parent: ttk.Frame) -> None:
           "were transcribed per second of work; below 1x is slower than the "
           "recording plays. The time left is a rough estimate."),
     ).pack(side="left")
-    ttk.Button(top_row, text=_("Clear completed"), command=app.clear_completed).pack(
-        side="right"
-    )
+    # "Clear completed" also took failed and cancelled jobs off the list, and did not say
+    # whether files go too (screenshot review, 2026-10-21).
+    clear_btn = ttk.Button(top_row, text=_("Remove ended jobs"), command=app.clear_completed)
+    clear_btn.pack(side="right")
+    bind_tooltip(clear_btn, _("Takes every finished, failed or cancelled job off this list. "
+                              "No file is deleted."))
 
     cols = ("file", "status", "progress", "speed", "language", "time")
     tree_frame = ttk.Frame(parent)
@@ -1156,7 +1238,8 @@ def build_queue_tab(app: "App", parent: ttk.Frame) -> None:
     for c in cols:
         app.tree.heading(c, text=headings[c])
     app.tree.column("language", width=px(140))
-    app.tree.column("progress", width=px(150), anchor="w")
+    app.tree.column("progress", anchor="w")
+    fit_progress_column(app.tree)
     app.tree.column("speed", width=px(190), anchor="w")
     app.tree.column("time", width=px(80), anchor="center")
     app.tree.column("status", width=px(120))
@@ -1230,6 +1313,14 @@ def build_queue_tab(app: "App", parent: ttk.Frame) -> None:
     for key in ("pause", "resume", "cancel", "rerun", "remove"):
         app.queue_action_buttons[key].pack(side="left", padx=(0, 6))
         app.queue_action_buttons[key].state(["disabled"])
+    # The finished job's result (queue_result_task), on the right of the same bar.
+    app.queue_result_buttons = {
+        "view": ttk.Button(action_bar, text=_("View transcript"), command=app._action_bar_view_transcript),
+        "folder": ttk.Button(action_bar, text=_("Open output folder"), command=app._action_bar_open_folder),
+    }
+    for key in ("folder", "view"):  # side="right": the first one packed sits rightmost
+        app.queue_result_buttons[key].pack(side="right", padx=(6, 0))
+        app.queue_result_buttons[key].state(["disabled"])
     # Why the selected failed job failed (queue_failure_line); packed by
     # App._update_queue_action_bar only while it has text.
     app.queue_failure_var = tk.StringVar(master=parent, value="")
@@ -1637,7 +1728,8 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     app.download_tree.column("url", width=px(420))
     app.download_tree.column("format", width=px(180))
     app.download_tree.column("status", width=px(100))
-    app.download_tree.column("progress", width=px(150), anchor="w")
+    app.download_tree.column("progress", anchor="w")
+    fit_progress_column(app.download_tree)
     app.download_tree.column("time", width=px(80))
     _dvsb = _AutoScrollbar(bottom, orient="vertical", command=app.download_tree.yview)
     app.download_tree.configure(yscrollcommand=_dvsb.set)
@@ -1685,11 +1777,14 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
         app.download_action_buttons[key].pack(side="left", padx=(0, 6))
         app.download_action_buttons[key].state(["disabled"])
     # Global list action (not tied to a selection), so it lives on the
-    # right like the Queue tab's own "Clear completed" -- mirrors that
+    # right like the Queue tab's own "Remove ended jobs" -- mirrors that
     # button, which this tab was missing.
-    ttk.Button(
-        dl_action_bar, text=_("Clear completed"), command=app.clear_completed_downloads,
-    ).pack(side="right")
+    dl_clear_btn = ttk.Button(
+        dl_action_bar, text=_("Remove ended downloads"), command=app.clear_completed_downloads,
+    )
+    dl_clear_btn.pack(side="right")
+    bind_tooltip(dl_clear_btn, _("Takes every finished, failed or cancelled download off this list. "
+                                 "No file is deleted."))
     ttk.Label(
         dl_action_bar,
         text=_("(Pause stops the download but keeps the partial file; "

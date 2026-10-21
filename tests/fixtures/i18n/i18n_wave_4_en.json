@@ -3568,7 +3568,7 @@
   ],
   [
    ".!frame4.!frame.!button",
-   "Clear completed"
+   "Remove ended jobs"
   ],
   [
    ".!frame4.!label",
@@ -3595,8 +3595,20 @@
    "Remove"
   ],
   [
+   ".!frame4.!frame4.!button6",
+   "View transcript"
+  ],
+  [
+   ".!frame4.!frame4.!button7",
+   "Open output folder"
+  ],
+  [
    "help",
    "Every transcription job you start is tracked here. Use the buttons below the list (or right-click a row) to pause, resume, cancel, re-run, or remove it; double-click a finished row to open its output folder. Speed: 4.8x means 4.8 seconds of audio were transcribed per second of work; below 1x is slower than the recording plays. The time left is a rough estimate."
+  ],
+  [
+   "tooltip",
+   "Takes every finished, failed or cancelled job off this list. No file is deleted."
   ],
   [
    "heading:file",
@@ -4246,7 +4258,7 @@
   ],
   [
    ".!frame5.!frame3.!button7",
-   "Clear completed"
+   "Remove ended downloads"
   ],
   [
    ".!frame5.!frame3.!label",
@@ -4323,6 +4335,10 @@
   [
    "tooltip",
    "YouTube downloads need a small JavaScript engine (Deno, one-time download of about 40 MB from its official GitHub page, checked against its published checksum). Without it some or all YouTube formats are missing and downloads can fail."
+  ],
+  [
+   "tooltip",
+   "Takes every finished, failed or cancelled download off this list. No file is deleted."
   ],
   [
    "heading:name",

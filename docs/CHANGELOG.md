@@ -77,6 +77,13 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Changed
 
+- **A clearer Queue**: the Progress column is as wide as "100%" in the row font (Windows 10 cut it to
+  "10("); the Language column names the language ("Chinese", "German (not sure)") instead of
+  "zh (88%)"; a selected finished job offers **View transcript** and **Open output folder**, and a
+  double-click opens the folder that holds its transcript rather than the source's folder. "Clear
+  completed" is now **Remove ended jobs** (**Remove ended downloads** on the Download tab), with a
+  hover text saying no file is deleted. Found in a screenshot review of the first tabs.
+
 - **The Transcribe button shows when a file is ready**: it is plain until the Selected file box holds a
   file that exists or a link, then turns blue, with "Ready: name (size)" (or "Link: it downloads first,
   then transcribes", or "File not found") beside it. Clicking it with nothing chosen opens Browse

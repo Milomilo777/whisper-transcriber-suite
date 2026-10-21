@@ -6,7 +6,7 @@ graphical trend and the number in one column.
 """
 from __future__ import annotations
 
-from app.widgets.tabs import marquee_cell, progress_cell
+from app.widgets.tabs import marquee_cell, progress_cell, progress_column_width
 
 
 def _bar(cell: str) -> str:
@@ -82,3 +82,33 @@ def test_marquee_cell_still_shows_the_percentage():
     assert marquee_cell(0, 0).endswith("  0%")
     assert marquee_cell(3, 7).endswith("  7%")
     assert marquee_cell(3, 100).endswith("100%")
+
+
+# --- progress_column_width: the column fits "100%" ---------------------------
+
+
+def _wide_blocks(text: str) -> int:
+    # Windows 10 draws the block glyphs from a fallback font about 21 px wide.
+    return sum(21 if ch in "█░▓" else 8 for ch in text)
+
+
+def test_progress_column_fits_a_full_cell_in_wide_glyphs():
+    # A fixed 150 px column cut "100%" to "10(" (screenshot review, 2026-10-21).
+    assert progress_column_width(_wide_blocks) > _wide_blocks(progress_cell(100))
+
+
+def test_progress_column_keeps_its_old_width_for_narrow_glyphs():
+    from app.dpi import px
+
+    assert progress_column_width(lambda text: 5 * len(text)) == px(150)
+
+
+def test_both_progress_columns_are_fitted():
+    import inspect
+
+    from app.widgets import tabs
+
+    for build, tree in ((tabs.build_queue_tab, "app.tree"), (tabs.build_download_tab, "app.download_tree")):
+        src = inspect.getsource(build)
+        assert f"fit_progress_column({tree})" in src
+        assert '"progress", width=' not in src
