@@ -23,6 +23,7 @@ from app.domain.cookies import (
     login_required_hint,
 )
 from core import offline, yt_dlp_update
+from core._proc import new_session_kwargs
 from core.integrations import smtv as smtv_mod
 from core.js_runtime import (
     mentions_missing_js_runtime,
@@ -168,6 +169,9 @@ class FormatService:
                 # One probe took ~30 s on a macOS 10.15 machine (onefile
                 # yt-dlp unpacking + Deno solving YouTube's challenge).
                 timeout=120,
+                # No console window: from the windowed app every lookup popped a
+                # black yt-dlp window over it (click-through test, 2026-10-21).
+                **new_session_kwargs(),
             )
 
         def run() -> None:

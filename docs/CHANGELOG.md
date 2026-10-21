@@ -119,6 +119,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **No black window when a link is looked up**: on Windows, every format lookup on the Download tab
+  opened a black yt-dlp console window over the app. The lookup now runs hidden, like the app's
+  other helper programs.
+
 - **Hebrew on the web page**: the language picker of the web / LAN page listed Hebrew as "he"; it now
   says Hebrew.
 

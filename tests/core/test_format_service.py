@@ -197,3 +197,29 @@ def test_login_wall_with_cookies_on_says_to_check_the_browser_login():
     app.app_config = {"cookies_from_browser": "edge"}  # type: ignore[attr-defined]
     FormatService(app)._handle_event("error", "http://x", _INSTAGRAM_WALL)  # type: ignore[arg-type]
     assert "logged in to it in edge" in app.format_status_var.get()
+
+
+def test_lookup_opens_no_console_window(monkeypatch):
+    """From the windowed app every lookup popped a black yt-dlp console window
+    (click-through test, 2026-10-21): the probe runs with the no-window flags."""
+    import subprocess
+    import types
+
+    import app.services.format_service as fs
+    import core._threads as threads
+    from core._proc import new_session_kwargs
+
+    seen: list[dict] = []
+
+    def fake_run(_cmd, **kw):
+        seen.append(kw)
+        return types.SimpleNamespace(returncode=0, stdout="{}", stderr="")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setattr(fs, "yt_dlp_js_args", lambda _path=None: [])
+    monkeypatch.setattr(threads, "safe_thread", lambda fn, name="": fn())
+    monkeypatch.setattr(fs.smtv_mod, "parse_episode_id", lambda _u: None)
+    FormatService(_LookupApp("")).lookup_formats()  # type: ignore[arg-type]
+    assert seen
+    for key, value in new_session_kwargs().items():
+        assert seen[0].get(key) == value
