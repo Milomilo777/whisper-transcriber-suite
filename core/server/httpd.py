@@ -90,6 +90,7 @@ from core.server.jobs import (
     Job,
     JobManager,
     QueueFull,
+    redact_paths,
 )
 from core.server import mcp
 from core.writers import get_writer, supported_formats
@@ -821,7 +822,7 @@ def language_model_notes() -> dict[str, dict[str, Any]]:
             elif progress and progress.get("state") in ("downloading", "failed"):
                 note["state"] = progress["state"]
                 note["percent"] = progress.get("percent")
-                note["message"] = progress.get("message") or ""
+                note["message"] = redact_paths(str(progress.get("message") or ""))
             elif not whisper_server:
                 note["state"] = "other_engine"
             else:

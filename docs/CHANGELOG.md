@@ -241,6 +241,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   new-install formats over the user's own choice. A headless first run that only recorded cloud
   minutes also made the next launch treat the install as an old one.
 
+- **Web page warnings no longer show this computer's folders**: when a language model failed to
+  load, the job's warning and the language list sent its full file path (with the Windows user
+  name) to every device on the network. They now show the file name only, as errors already did.
+
 - **Dropping several files no longer queues one twice**: dragging in, or choosing with
   **Browse...**, a set of files that includes one already waiting or running added that file to
   the queue again. It is now skipped with a line in the log, as a single file already was.

@@ -401,6 +401,35 @@ def test_public_dict_shape(tmp_path):
         mgr.stop()
 
 
+def test_public_warning_shows_no_local_paths():
+    # A language model that fails to load puts its OSError text into the warning;
+    # LAN clients must not read the host's user name and folders from it.
+    job = jobs_mod.Job(job_id="j1", kind="upload", formats=["srt"])
+    job.warning = ("The model trained for this language could not load ([Errno 2] No such "
+                   "file or directory: 'C:\\Users\\Owner\\AppData\\Local\\models\\model.nemo'); "
+                   "the general model transcribed this file instead.")
+    shown = job.public_dict()["warning"]
+    assert "Owner" not in shown and "AppData" not in shown
+    assert "model.nemo" in shown and "general model" in shown
+
+
+def test_language_model_note_message_shows_no_local_paths(monkeypatch):
+    from core import language_model_fetch as fetch
+    from core import language_models as lm
+    from core.server import httpd
+
+    code = next(c for c in lm.LANGUAGE_MODELS if c in httpd.WEB_LANGUAGE_CODES)
+    monkeypatch.setattr(fetch, "status", lambda c: {
+        "state": "failed", "percent": None,
+        "message": "[Errno 13] Permission denied: 'D:\\Users\\Mo\\models\\x.nemo'"})
+    monkeypatch.setattr(lm, "active", lambda cfg: None)
+    monkeypatch.setattr(lm, "web_job_model", lambda cfg, c: None)
+    note = httpd.language_model_notes()[code]
+    assert note["state"] == "failed"
+    assert "Users" not in note["message"] and "Mo" not in note["message"]
+    assert "x.nemo" in note["message"]
+
+
 def test_is_safe_url_module_level():
     assert jobs_mod.is_safe_url("https://x.test/a") is True
     assert jobs_mod.is_safe_url("file:///x") is False

@@ -240,7 +240,9 @@ class Job:
                         for fmt, p in self.outputs],
         }
         if self.warning:
-            data["warning"] = self.warning
+            # Some warnings carry an engine's OSError text (a language model that
+            # did not load): clients see file names, never the host's folders.
+            data["warning"] = redact_paths(self.warning)
         if self.language_model_name:
             data["language_model"] = self.language_model_name
         return data
