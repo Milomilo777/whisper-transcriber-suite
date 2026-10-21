@@ -1439,13 +1439,24 @@ def _open_paths_host(tmp_path: Any) -> types.SimpleNamespace:
         log=MagicMock(), _bulk_enqueue=MagicMock(return_value=0))
 
 
-def test_a_non_media_file_from_finder_is_refused_with_the_drop_message(tmp_path: Any) -> None:
+def test_a_non_media_file_from_finder_is_refused_with_the_drop_message(
+    tmp_path: Any, ffprobe_finds_no_audio: None,
+) -> None:
     note = tmp_path / "notes.txt"
     note.write_text("x", encoding="utf-8")
     fake = _open_paths_host(tmp_path)
     App.open_paths(fake, [str(note)], require_media=True)  # type: ignore[arg-type]
     fake.fv.set.assert_not_called()
     assert "Ignored 1 dropped item(s)" in fake.log.call_args[0][0]
+
+
+@pytest.fixture
+def ffprobe_finds_no_audio(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Finder open asks ffprobe about an unlisted extension; a test machine may have no ffprobe."""
+    from core import watcher
+
+    monkeypatch.setattr(watcher, "_ffprobe_has_audio", lambda _path: False)
+    watcher._probe_cache.clear()
 
 
 def test_a_media_file_from_finder_is_picked_like_a_drop(tmp_path: Any) -> None:
@@ -1456,7 +1467,9 @@ def test_a_media_file_from_finder_is_picked_like_a_drop(tmp_path: Any) -> None:
     fake.fv.set.assert_called_once_with(str(song))
 
 
-def test_only_the_media_files_of_a_mixed_finder_open_are_queued(tmp_path: Any) -> None:
+def test_only_the_media_files_of_a_mixed_finder_open_are_queued(
+    tmp_path: Any, ffprobe_finds_no_audio: None,
+) -> None:
     a, b, note = tmp_path / "a.mp3", tmp_path / "b.mkv", tmp_path / "n.txt"
     for f in (a, b, note):
         f.write_bytes(b"x")
