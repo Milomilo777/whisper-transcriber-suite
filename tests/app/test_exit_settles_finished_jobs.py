@@ -81,6 +81,23 @@ def test_a_job_finished_inside_the_stop_window_is_recorded_as_finished(tmp_path:
     assert row["finished_at"]
 
 
+def test_a_job_settled_on_exit_keeps_its_detected_language_and_speed(tmp_path: Path) -> None:
+    """An Auto-language job starts its row with language "" and learns the language while it
+    runs; the exit path saved the row with "" (and no speed or device) although the task knew."""
+    svc, app, db, rid, task = _setup(tmp_path, language="")
+    task.detected_language = "es"
+    srt = _write(tmp_path / "talk.srt")
+    app.worker_events.put(_done(task, [srt], speed_x=5.2, device="cuda", model="small"))
+    app.worker_events.put(_exit())
+
+    assert svc.settle_done_on_exit(wait_s=2.0) == 1
+
+    row = _row(db, rid)
+    assert row["status"] == "finished"
+    assert row["language"] == "es"
+    assert (row["speed_x"], row["device"], row["model"]) == (5.2, "cuda", "small")
+
+
 def test_a_no_speech_run_with_empty_output_files_is_finished_with_its_note(
     tmp_path: Path,
 ) -> None:

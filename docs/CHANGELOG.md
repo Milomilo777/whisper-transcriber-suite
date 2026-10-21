@@ -236,6 +236,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **A job that finishes while the app closes keeps its details**: such a job was saved in History
+  without the language it had detected (Auto jobs showed none), its speed or its device. The
+  exit path now saves the same details as a normal finish.
+
 - **History lists no files for a stopped run**: a cancelled or failed transcription was saved in
   History with the file names it would have written (`clip.srt`, `clip.json`) although no such
   files exist. It is now saved with no files.

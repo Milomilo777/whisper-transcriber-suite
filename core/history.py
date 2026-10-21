@@ -620,25 +620,31 @@ class HistoryDB:
 
     def mark_transcription_finished_after_exit(
         self, row_id: int, output_paths: Iterable[str], duration_seconds: float,
-        word_count: int, error: str = "",
+        word_count: int, error: str = "", language: str = "",
+        speed_x: float = 0.0, device: str = "", model: str = "",
     ) -> bool:
         """Finish a row whose job completed while the app was exiting.
 
         The exit had already moved the row to ``interrupted``; the worker then
         finished and wrote its outputs, so the next launch must not offer to run
         the file again. Touches only a row that is still open (``running``,
-        ``waiting`` or ``interrupted``), never a ``cancelled``/``finished`` one, and
-        leaves ``language`` as it was. Returns True iff a row was updated.
+        ``waiting`` or ``interrupted``), never a ``cancelled``/``finished`` one. A
+        non-empty ``language`` or ``model`` replaces the row's value (an Auto
+        job's row starts with ""); an empty one leaves it as it was. Returns True
+        iff a row was updated.
         """
         if int(row_id or 0) <= 0:
             return False
         with self._txn() as conn:
             n = conn.execute(
                 "UPDATE transcriptions SET status='finished', finished_at=?, output_paths=?,"
-                " duration_seconds=?, word_count=?, error=?"
+                " duration_seconds=?, word_count=?, error=?,"
+                " language=COALESCE(NULLIF(?, ''), language), speed_x=?, device=?,"
+                " model=COALESCE(NULLIF(?, ''), model)"
                 " WHERE id=? AND status IN ('running','waiting','interrupted')",
                 (int(time.time()), json.dumps(list(output_paths)), float(duration_seconds),
-                 int(word_count or 0), error, int(row_id)),
+                 int(word_count or 0), error, str(language or ""), float(speed_x or 0.0),
+                 str(device or ""), str(model or ""), int(row_id)),
             ).rowcount
         return n == 1
 

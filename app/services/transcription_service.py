@@ -1095,13 +1095,21 @@ class TranscriptionService:
             task.audio_duration = float(event.get("audio_duration") or 0.0)
         except (TypeError, ValueError):
             pass
+        task.no_speech = no_speech
+        apply_final_speed(task, event)
         word_count, _duration = self._derive_transcript_stats(task)
         import time as _time
         started = getattr(task, "start_time", None)
         elapsed = (_time.time() - started) if started else 0.0
+        # The same facts finish_task records: the language detected while the
+        # job ran (its row started with "" for Auto), speed, device and model.
         ok = bool(history.mark_transcription_finished_after_exit(
             int(task.history_id), paths, elapsed, word_count,
             error=NO_SPEECH_NOTE if no_speech else "",
+            language=_reported_language(task),
+            speed_x=float(getattr(task, "speed_x", 0.0) or 0.0),
+            device=str(getattr(task, "speed_device", "") or ""),
+            model=str(getattr(task, "speed_model", "") or ""),
         ))
         if ok:
             logger.info("Job finished while the app was closing; recorded as finished: %s",
