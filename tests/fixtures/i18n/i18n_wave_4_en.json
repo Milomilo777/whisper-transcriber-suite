@@ -1098,6 +1098,10 @@
   ],
   [
    ".!frame.!frame4.!button2",
+   "Show in Queue"
+  ],
+  [
+   ".!frame.!frame4.!button3",
    "Advanced settings…"
   ],
   [
@@ -2288,6 +2292,10 @@
   ],
   [
    ".!frame2.!frame4.!button2",
+   "Show in Queue"
+  ],
+  [
+   ".!frame2.!frame4.!button3",
    "Advanced settings…"
   ],
   [
@@ -3474,6 +3482,10 @@
   ],
   [
    ".!frame3.!frame4.!button2",
+   "Show in Queue"
+  ],
+  [
+   ".!frame3.!frame4.!button3",
    "Advanced settings…"
   ],
   [
