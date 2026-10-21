@@ -1186,7 +1186,6 @@
     "Total: unknown": "Укупно: непознато",
     "Total: {done} / {total}": "Укупно: {done} / {total}",
     "Total: {size}": "Укупно: {size}",
-    "Transcribe": "Транскрибуј",
     "Transcribe after download": "Транскрибуј после преузимања",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "Транскрибуј само овај део датотеке (формат H:MM:SS). Оставите оба на 0:00:00 да бисте транскрибовали целу датотеку.",
     "Transcribing on {device}": "Транскрипција на {device}",

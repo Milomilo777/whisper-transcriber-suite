@@ -65,13 +65,15 @@ def ask_caption_choice(master: "tk.Misc", *, kind: str, language: str) -> tuple[
     ).pack(anchor="w")
     actions = ttk.Frame(body)
     actions.pack(fill="x", pady=(12, 0))
+    # Each button says what it downloads: "Transcribe" / "Use the subtitles" did not say
+    # whether the video comes too (deep review, 2026-10-21).
     transcribe = ttk.Button(
-        actions, text=_("Transcribe"), style="Accent.TButton",
+        actions, text=_("Download and transcribe"), style="Accent.TButton",
         command=lambda: pick(CHOICE_TRANSCRIBE),
     )
     transcribe.pack(side="right")
     ttk.Button(
-        actions, text=_("Use the subtitles"), command=lambda: pick(CHOICE_CAPTIONS),
+        actions, text=_("Subtitles only (no video)"), command=lambda: pick(CHOICE_CAPTIONS),
     ).pack(side="right", padx=(0, 8))
     # A visible way out: before, only the window's X cancelled (code review, 2026-10-21).
     ttk.Button(actions, text=_("Cancel"), command=lambda: pick(CHOICE_CANCEL)).pack(side="left")

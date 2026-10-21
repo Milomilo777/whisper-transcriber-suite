@@ -1164,7 +1164,6 @@
     "Total: unknown": "Yhteensä: tuntematon",
     "Total: {done} / {total}": "Yhteensä: {done} / {total}",
     "Total: {size}": "Yhteensä: {size}",
-    "Transcribe": "Litteroi",
     "Transcribe after download": "Litteroi latauksen jälkeen",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "Litteroi vain tämä osa tiedostosta (muoto H:MM:SS). Jätä molemmat arvoon 0:00:00, jos haluat litteroida koko tiedoston.",
     "Transcribing on {device}": "Litteroidaan laitteella {device}",

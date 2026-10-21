@@ -1186,7 +1186,6 @@
     "Total: unknown": "Total: necunoscut",
     "Total: {done} / {total}": "Total: {done} / {total}",
     "Total: {size}": "Total: {size}",
-    "Transcribe": "Transcrieți",
     "Transcribe after download": "Transcrie după descărcare",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "Transcrieți doar această porțiune a fișierului (format H:MM:SS). Lăsați ambele la 0:00:00 pentru a transcrie tot fișierul.",
     "Transcribing on {device}": "Se transcrie pe {device}",

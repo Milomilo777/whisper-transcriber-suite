@@ -1142,7 +1142,6 @@
     "Total: unknown": "总计：未知",
     "Total: {done} / {total}": "总计：{done} / {total}",
     "Total: {size}": "总计：{size}",
-    "Transcribe": "转录",
     "Transcribe after download": "下载后转录",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "只转录文件的这一部分（格式 H:MM:SS）。两者都保留 0:00:00 则转录整个文件。",
     "Transcribing on {device}": "正在 {device} 上转录",

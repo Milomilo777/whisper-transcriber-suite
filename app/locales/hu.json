@@ -1164,7 +1164,6 @@
     "Total: unknown": "Összesen: ismeretlen",
     "Total: {done} / {total}": "Összesen: {done} / {total}",
     "Total: {size}": "Összesen: {size}",
-    "Transcribe": "Átírás",
     "Transcribe after download": "Átírás letöltés után",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "Csak a fájl ezen részének átírása (formátum: Ó:PP:MM). A teljes fájl átírásához hagyja mindkettőt 0:00:00 értéken.",
     "Transcribing on {device}": "Átírás ezen: {device}",

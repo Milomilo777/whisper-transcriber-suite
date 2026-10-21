@@ -1142,7 +1142,6 @@
     "Total: unknown": "合計: 不明",
     "Total: {done} / {total}": "合計: {done} / {total}",
     "Total: {size}": "合計: {size}",
-    "Transcribe": "文字起こし",
     "Transcribe after download": "ダウンロード後に文字起こし",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "ファイルのこの部分だけを文字起こしします（形式 H:MM:SS）。ファイル全体を文字起こしするには両方を 0:00:00 のままにしてください。",
     "Transcribing on {device}": "{device} で文字起こししています",

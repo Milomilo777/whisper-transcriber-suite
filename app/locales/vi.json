@@ -1142,7 +1142,6 @@
     "Total: unknown": "Tổng: không rõ",
     "Total: {done} / {total}": "Tổng: {done} / {total}",
     "Total: {size}": "Tổng: {size}",
-    "Transcribe": "Chép lời",
     "Transcribe after download": "Chép lời sau khi tải xuống",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "Chỉ chép lời phần này của tệp (định dạng H:MM:SS). Để cả hai là 0:00:00 để chép lời toàn bộ tệp.",
     "Transcribing on {device}": "Đang chép lời trên {device}",

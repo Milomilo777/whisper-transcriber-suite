@@ -1186,7 +1186,6 @@
     "Total: unknown": "Iš viso: nežinoma",
     "Total: {done} / {total}": "Iš viso: {done} / {total}",
     "Total: {size}": "Iš viso: {size}",
-    "Transcribe": "Transkribuoti",
     "Transcribe after download": "Transkribuoti po atsisiuntimo",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "Transkribuoti tik šią failo dalį (formatas H:MM:SS). Norėdami transkribuoti visą failą, palikite abu 0:00:00.",
     "Transcribing on {device}": "Transkribuojama naudojant {device}",

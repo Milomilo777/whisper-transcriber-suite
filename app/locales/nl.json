@@ -1164,7 +1164,6 @@
     "Total: unknown": "Totaal: onbekend",
     "Total: {done} / {total}": "Totaal: {done} / {total}",
     "Total: {size}": "Totaal: {size}",
-    "Transcribe": "Transcriberen",
     "Transcribe after download": "Transcriberen na download",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "Transcribeer alleen dit deel van het bestand (formaat H:MM:SS). Laat beide op 0:00:00 staan om het hele bestand te transcriberen.",
     "Transcribing on {device}": "Transcriberen op {device}",

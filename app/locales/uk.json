@@ -1186,7 +1186,6 @@
     "Total: unknown": "Усього: невідомо",
     "Total: {done} / {total}": "Усього: {done} / {total}",
     "Total: {size}": "Усього: {size}",
-    "Transcribe": "Транскрибувати",
     "Transcribe after download": "Транскрибувати після завантаження",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "Транскрибувати лише цей фрагмент файлу (формат Г:ХХ:СС). Залиште обидва поля 0:00:00, щоб транскрибувати весь файл.",
     "Transcribing on {device}": "Транскрипція на {device}",

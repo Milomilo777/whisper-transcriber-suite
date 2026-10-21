@@ -1186,7 +1186,6 @@
     "Total: unknown": "Kopā: nezināms",
     "Total: {done} / {total}": "Kopā: {done} / {total}",
     "Total: {size}": "Kopā: {size}",
-    "Transcribe": "Transkribēt",
     "Transcribe after download": "Transkribēt pēc lejupielādes",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "Transkribēt tikai šo faila daļu (formāts H:MM:SS). Lai transkribētu visu failu, atstājiet abus kā 0:00:00.",
     "Transcribing on {device}": "Transkribē ar {device}",

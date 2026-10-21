@@ -1186,7 +1186,6 @@
     "Total: unknown": "סה\"כ: לא ידוע",
     "Total: {done} / {total}": "סה\"כ: {done} / {total}",
     "Total: {size}": "סה\"כ: {size}",
-    "Transcribe": "תמלל",
     "Transcribe after download": "תמלל לאחר ההורדה",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "תמלל רק את החלק הזה של הקובץ (פורמט H:MM:SS). השאר את שניהם על 0:00:00 כדי לתמלל את כל הקובץ.",
     "Transcribing on {device}": "מתמלל על {device}",

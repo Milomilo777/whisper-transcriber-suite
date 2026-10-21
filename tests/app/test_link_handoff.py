@@ -34,7 +34,7 @@ def _transcribe_tab_app() -> types.SimpleNamespace:
         fv=_Var(URL), download_url_var=_Var(""), auto_transcribe_var=_Var(False),
         app_config={"auto_transcribe_after_download": False}, log=logs.append, logs=logs,
         nb=types.SimpleNamespace(select=selected.append), selected=selected,
-        t1="t1", t3="t3", pending_link_start="",
+        t1="t1", t3="t3", pending_link_start="", update_caption_shortcut_state=lambda: None,
     )
     fake._save_auto_transcribe_pref = lambda: App._save_auto_transcribe_pref(fake)  # type: ignore[arg-type]
     return fake

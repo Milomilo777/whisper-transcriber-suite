@@ -1142,7 +1142,6 @@
     "Total: unknown": "รวม: ไม่ทราบ",
     "Total: {done} / {total}": "รวม: {done} / {total}",
     "Total: {size}": "รวม: {size}",
-    "Transcribe": "ถอดเสียง",
     "Transcribe after download": "ถอดเสียงหลังดาวน์โหลด",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "ถอดเสียงเฉพาะส่วนนี้ของไฟล์ (รูปแบบ H:MM:SS) ปล่อยทั้งสองค่าเป็น 0:00:00 เพื่อถอดเสียงทั้งไฟล์",
     "Transcribing on {device}": "กำลังถอดเสียงบน {device}",

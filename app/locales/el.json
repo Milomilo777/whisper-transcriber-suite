@@ -1164,7 +1164,6 @@
     "Total: unknown": "Σύνολο: άγνωστο",
     "Total: {done} / {total}": "Σύνολο: {done} / {total}",
     "Total: {size}": "Σύνολο: {size}",
-    "Transcribe": "Μεταγραφή",
     "Transcribe after download": "Μεταγραφή μετά τη λήψη",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "Μεταγραφή μόνο αυτού του τμήματος του αρχείου (μορφή H:MM:SS). Αφήστε και τα δύο στο 0:00:00 για μεταγραφή ολόκληρου του αρχείου.",
     "Transcribing on {device}": "Μεταγραφή σε {device}",

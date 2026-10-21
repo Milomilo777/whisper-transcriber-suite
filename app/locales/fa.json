@@ -1164,7 +1164,6 @@
     "Total: unknown": "مجموع: نامعلوم",
     "Total: {done} / {total}": "مجموع: {done} / {total}",
     "Total: {size}": "مجموع: {size}",
-    "Transcribe": "رونویسی",
     "Transcribe after download": "رونویسی پس از دانلود",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "فقط همین بخش از فایل رونویسی شود (فرمت H:MM:SS). برای رونویسی کل فایل، هر دو را روی 0:00:00 بگذارید.",
     "Transcribing on {device}": "رونویسی روی {device}",

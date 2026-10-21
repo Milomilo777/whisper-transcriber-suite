@@ -1142,7 +1142,6 @@
     "Total: unknown": "Jumlah: tidak diketahui",
     "Total: {done} / {total}": "Jumlah: {done} / {total}",
     "Total: {size}": "Jumlah: {size}",
-    "Transcribe": "Transkripsi",
     "Transcribe after download": "Transkripsi selepas muat turun",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "Transkripsi hanya bahagian fail ini (format H:MM:SS). Biarkan kedua-duanya pada 0:00:00 untuk mentranskripsi seluruh fail.",
     "Transcribing on {device}": "Mentranskripsi pada {device}",

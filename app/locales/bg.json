@@ -1164,7 +1164,6 @@
     "Total: unknown": "Общо: неизвестно",
     "Total: {done} / {total}": "Общо: {done} / {total}",
     "Total: {size}": "Общо: {size}",
-    "Transcribe": "Транскрибирай",
     "Transcribe after download": "Транскрибиране след изтегляне",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "Транскрибира само тази част от файла (формат H:MM:SS). Оставете двете на 0:00:00, за да транскрибирате целия файл.",
     "Transcribing on {device}": "Транскрибиране на {device}",

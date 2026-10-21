@@ -1164,7 +1164,6 @@
     "Total: unknown": "Gesamt: unbekannt",
     "Total: {done} / {total}": "Gesamt: {done} / {total}",
     "Total: {size}": "Gesamt: {size}",
-    "Transcribe": "Transkribieren",
     "Transcribe after download": "Nach dem Download transkribieren",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "Nur diesen Abschnitt der Datei transkribieren (Format H:MM:SS). Lassen Sie beide Werte auf 0:00:00, um die ganze Datei zu transkribieren.",
     "Transcribing on {device}": "Transkription auf {device}",

@@ -1186,7 +1186,6 @@
     "Total: unknown": "Celkovo: neznáme",
     "Total: {done} / {total}": "Celkovo: {done} / {total}",
     "Total: {size}": "Celkovo: {size}",
-    "Transcribe": "Prepísať",
     "Transcribe after download": "Po stiahnutí prepísať",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "Prepísať len túto časť súboru (formát H:MM:SS). Na prepis celého súboru ponechajte obe hodnoty na 0:00:00.",
     "Transcribing on {device}": "Prepisuje sa na {device}",

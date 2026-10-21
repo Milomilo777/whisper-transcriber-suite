@@ -1164,7 +1164,6 @@
     "Total: unknown": "Totalt: ukjent",
     "Total: {done} / {total}": "Totalt: {done} / {total}",
     "Total: {size}": "Totalt: {size}",
-    "Transcribe": "Transkriber",
     "Transcribe after download": "Transkriber etter nedlasting",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "Transkriber bare denne delen av filen (format T:MM:SS). La begge stå på 0:00:00 for å transkribere hele filen.",
     "Transcribing on {device}": "Transkriberer på {device}",

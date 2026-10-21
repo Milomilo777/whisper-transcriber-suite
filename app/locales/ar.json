@@ -1252,7 +1252,6 @@
     "Total: unknown": "الإجمالي: غير معروف",
     "Total: {done} / {total}": "الإجمالي: {done} / {total}",
     "Total: {size}": "الإجمالي: {size}",
-    "Transcribe": "تفريغ",
     "Transcribe after download": "التفريغ بعد التنزيل",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "فرِّغ هذا الجزء فقط من الملف (التنسيق H:MM:SS). اترك الحقلين على 0:00:00 لتفريغ الملف كله.",
     "Transcribing on {device}": "جارٍ التفريغ على {device}",

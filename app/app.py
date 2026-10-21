@@ -2906,6 +2906,7 @@ class App(tk.Tk):
             # silently reverts on the next launch.
             logger.exception("Failed to save auto-transcribe preference")
             self.log(f"Could not save preference: {e}")
+        self.update_caption_shortcut_state()  # its offer shows only while the box is ticked
 
     def _on_download_cookies_selected(self) -> None:
         """Download tab "Log-in cookies" pick: save it and re-check the URL.
@@ -3958,7 +3959,10 @@ class App(tk.Tk):
         button = getattr(self, "caption_shortcut_button", None)
         if status_var is None or button is None:
             return
-        if getattr(self, "_smtv_episode", None) is not None:
+        # "Use them instead of transcribing?" makes sense only when the download will be
+        # transcribed (deep review, 2026-10-21); _save_auto_transcribe_pref calls this again.
+        tick = getattr(self, "auto_transcribe_var", None)
+        if getattr(self, "_smtv_episode", None) is not None or (tick is not None and not tick.get()):
             status_var.set("")
             button.pack_forget()
             return

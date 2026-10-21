@@ -1186,7 +1186,6 @@
     "Total: unknown": "Ukupno: nepoznato",
     "Total: {done} / {total}": "Ukupno: {done} / {total}",
     "Total: {size}": "Ukupno: {size}",
-    "Transcribe": "Transkribiraj",
     "Transcribe after download": "Transkribiraj nakon preuzimanja",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "Transkribiraj samo ovaj dio datoteke (format H:MM:SS). Ostavite oba na 0:00:00 za transkripciju cijele datoteke.",
     "Transcribing on {device}": "Transkripcija na {device}",

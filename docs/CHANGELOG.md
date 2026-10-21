@@ -102,6 +102,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **Plain text (`.txt`) among the default outputs** of a new install, next to `.srt` and `.json`, so
   there is always a file any text editor opens. Existing settings keep the formats they had.
 
+- **The subtitles question says what each answer downloads**: its buttons are now **Download and
+  transcribe** and **Subtitles only (no video)**. The "Use them instead of transcribing?" offer
+  under the link shows only while **Transcribe after download** is ticked.
+
 - **Plainer words on the Download tab and the subtitles question**: "URL" is now **Video link**;
   the note under it says "This video already has German subtitles made by the uploader. Use them
   instead of transcribing?" (was "Captions (creator-provided) are already available in "de" --

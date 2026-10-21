@@ -1164,7 +1164,6 @@
     "Total: unknown": "Kabuuan: hindi alam",
     "Total: {done} / {total}": "Kabuuan: {done} / {total}",
     "Total: {size}": "Kabuuan: {size}",
-    "Transcribe": "I-transcribe",
     "Transcribe after download": "I-transcribe pagkatapos ng download",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "I-transcribe lang ang bahaging ito ng file (format H:MM:SS). Iwan ang dalawa sa 0:00:00 para i-transcribe ang buong file.",
     "Transcribing on {device}": "Nagta-transcribe sa {device}",

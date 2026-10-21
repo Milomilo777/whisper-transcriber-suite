@@ -1164,7 +1164,6 @@
     "Total: unknown": "মোট: অজানা",
     "Total: {done} / {total}": "মোট: {done} / {total}",
     "Total: {size}": "মোট: {size}",
-    "Transcribe": "ট্রান্সক্রাইব করুন",
     "Transcribe after download": "ডাউনলোডের পর ট্রান্সক্রাইব করুন",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "ফাইলের শুধু এই অংশটি ট্রান্সক্রাইব করুন (ফরম্যাট H:MM:SS)। পুরো ফাইল ট্রান্সক্রাইব করতে দুটোই 0:00:00-এ রাখুন।",
     "Transcribing on {device}": "{device}-এ ট্রান্সক্রাইব করা হচ্ছে",

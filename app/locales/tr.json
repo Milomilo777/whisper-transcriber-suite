@@ -1164,7 +1164,6 @@
     "Total: unknown": "Toplam: bilinmiyor",
     "Total: {done} / {total}": "Toplam: {done} / {total}",
     "Total: {size}": "Toplam: {size}",
-    "Transcribe": "Yazıya dök",
     "Transcribe after download": "İndirdikten sonra yazıya dök",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "Dosyanın yalnızca bu bölümünü yazıya dökün (biçim H:MM:SS). Dosyanın tamamını yazıya dökmek için ikisini de 0:00:00 olarak bırakın.",
     "Transcribing on {device}": "{device} üzerinde yazıya dökülüyor",
