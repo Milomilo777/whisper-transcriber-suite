@@ -156,6 +156,10 @@ def apply_run_options(task: TranscriptionTask, options: Any) -> None:
         if isinstance(value, (int, float)) and not isinstance(value, bool) \
                 and value == value and 0 <= value < float("inf"):
             setattr(task, key, float(value))
+    # An end at or before the start is no window (core.server's parse_clip rule):
+    # keep the start and run to the end of the file.
+    if task.clip_start is not None and task.clip_end is not None and task.clip_end <= task.clip_start:
+        task.clip_end = None
     languages = options.get("languages")
     if (isinstance(languages, list) and len(languages) == 2
             and all(isinstance(code, str) and code for code in languages)):

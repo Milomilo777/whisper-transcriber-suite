@@ -84,3 +84,10 @@ def test_an_older_history_db_gains_the_column(tmp_path: Path) -> None:
         assert db.list_transcriptions(limit=1)[0]["run_options"]["languages"] == ["fa", "en"]
     finally:
         db.close()
+
+
+def test_an_inverted_range_keeps_its_start_only() -> None:
+    for end in (30.0, 60.0):
+        fresh = TranscriptionTask("a.wav")
+        apply_run_options(fresh, {"clip_start": 60.0, "clip_end": end})
+        assert (fresh.clip_start, fresh.clip_end) == (60.0, None), end
