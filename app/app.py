@@ -220,6 +220,27 @@ def _set_enabled(button: "ttk.Button", enabled: bool) -> None:
         button.state(["!disabled"] if enabled else ["disabled"])
 
 
+def _select_the_running_task(tree: Any, row_map: dict[str, Any], tasks: list[Any],
+                             last: Any) -> Any | None:
+    """Select the one running task in ``tree`` and return it, or return None and change nothing.
+
+    Only when nothing is selected or only ended rows are, exactly one task runs, and it is not
+    ``last`` (the task picked before: a selection the user cleared stays cleared)."""
+    selected = [row_map.get(i) for i in tree.selection()]
+    if any(t is not None and getattr(t, "status", "") not in ("finished", "cancelled", "error")
+           for t in selected):
+        return None
+    running = [t for t in tasks if getattr(t, "status", "") == "running"]
+    if len(running) != 1 or running[0] is last:
+        return None
+    iids = _iids_for_tasks(row_map, running)
+    if not iids:
+        return None
+    tree.selection_set(iids)
+    tree.see(iids[0])
+    return running[0]
+
+
 def _same_rows(
     shown: "list[tuple[Any, tuple[str, ...], tuple[str, ...]]] | None",
     rows: "list[tuple[Any, tuple[str, ...], tuple[str, ...]]]",
@@ -6215,19 +6236,20 @@ class App(tk.Tk):
         runs, once per job: a waiting/running/paused row the user picked, or a selection the
         user cleared, is left alone.
         """
-        selected = [self.row_map.get(i) for i in self.tree.selection()]
-        if any(t is not None and getattr(t, "status", "") not in ("finished", "cancelled", "error")
-               for t in selected):
-            return
-        running = [t for t in self.queue if t.status == "running"]
-        if len(running) != 1 or running[0] is getattr(self, "_auto_selected_task", None):
-            return
-        iids = _iids_for_tasks(self.row_map, running)
-        if not iids:
-            return
-        self._auto_selected_task = running[0]
-        self.tree.selection_set(iids)
-        self.tree.see(iids[0])
+        picked = _select_the_running_task(self.tree, self.row_map, self.queue,
+                                          getattr(self, "_auto_selected_task", None))
+        if picked is not None:
+            self._auto_selected_task = picked
+
+    def _auto_select_running_download(self) -> None:
+        """The Download tab's copy of _auto_select_running_row: Pause, Cancel and Open stayed
+        grey while a download ran until the user found its row (round-2 screenshot critics,
+        2026-10-21). The row stays selected when it finishes, so Open works at once."""
+        picked = _select_the_running_task(self.download_tree, self.download_row_map,
+                                          self.download_queue,
+                                          getattr(self, "_auto_selected_download", None))
+        if picked is not None:
+            self._auto_selected_download = picked
 
     def refresh_download_queue(self) -> None:
         from app.widgets.tabs import status_label
@@ -6268,6 +6290,7 @@ class App(tk.Tk):
         restore = _iids_for_tasks(self.download_row_map, prev_selected)
         if restore:
             self.download_tree.selection_set(restore)
+        self._auto_select_running_download()
         self._refresh_window_title()
         self._ensure_animation()
         self._update_download_action_bar()

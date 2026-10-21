@@ -225,7 +225,7 @@ def test_download_row_shows_the_marked_title_but_not_the_url(aqua):
         _download_row_progress=lambda _t: 0, _row_progress_text=lambda *_a: "",
         fmt_time=lambda _t: "", _refresh_window_title=lambda: None,
         _ensure_animation=lambda: None, _update_download_action_bar=lambda: None,
-        _selected_downloads=lambda: [],
+        _selected_downloads=lambda: [], _auto_select_running_download=lambda: None,
     )
     appmod.App.refresh_download_queue(app)  # type: ignore[arg-type]
     (values, _tags), = app.download_tree.rows

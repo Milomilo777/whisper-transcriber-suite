@@ -95,7 +95,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   below the visible part of the tab even in a large window; they now sit above it, and the table
   shows five rows. The status, format and time columns are no longer cut ("finishe", "00:00:"),
   Browse is button-sized, the time boxes go back to 0:00:00 after a download is queued instead of
-  going blank, and the subtitle note names the language ("French", not "fr").
+  going blank, and the subtitle note names the language ("French", not "fr"). A download that
+  starts is selected, as a Queue job is, so Pause and Cancel work at once and Open works when it
+  finishes.
 
 - **A clearer Queue**: the Progress column is as wide as "100%" in the row font (Windows 10 cut it to
   "10("); the Language column names the language ("Chinese", "German (not sure)") instead of

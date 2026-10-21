@@ -177,6 +177,7 @@ def _fake_download_refresh_app(queue):
         _refresh_window_title=lambda: None,
         _ensure_animation=lambda: None,
         _update_download_action_bar=lambda: None,
+        _auto_select_running_download=lambda: None,
     )
     app._selected_downloads = lambda: App._selected_downloads(app)  # type: ignore[arg-type]
     return app
