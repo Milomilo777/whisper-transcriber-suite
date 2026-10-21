@@ -208,7 +208,7 @@ python gui.py
 - **Σφάλματα και αιτήματα για νέες λειτουργίες:** [GitHub Issues](https://github.com/Milomilo777/whisper-transcriber-suite/issues)
 - **Ερωτήσεις και ιδέες:** [GitHub Discussions](https://github.com/Milomilo777/whisper-transcriber-suite/discussions)
 - **Οτιδήποτε άλλο:** μέσω email, από την
-  [ενότητα Επικοινωνίας (Contact) του ιστότοπου](https://whisper-transcriber-suite.com/#contact)
+  [ενότητα Επικοινωνίας (Contact) του ιστότοπου](https://whisper-transcriber-suite.com/#contact) · ✉ [admin@whisper-transcriber-suite.com](mailto:admin@whisper-transcriber-suite.com)
 - **Αναφορές ασφαλείας:** [../../SECURITY.md](../../SECURITY.md)
 
 Αυτό το έργο ακολουθεί τον [Κώδικα Δεοντολογίας Συνεισφερόντων (Contributor Covenant)](../../.github/CODE_OF_CONDUCT.md). 

@@ -180,7 +180,7 @@ Python 3.11 이상이 필요합니다. 빌드 파이프라인: [../BUILD.md](../
 - **버그 및 기능 요청:** [GitHub Issues](https://github.com/Milomilo777/whisper-transcriber-suite/issues)
 - **질문 및 아이디어:** [GitHub Discussions](https://github.com/Milomilo777/whisper-transcriber-suite/discussions)
 - **그 외 모든 문의:** 이메일이나
-  [웹사이트의 연락처 섹션](https://whisper-transcriber-suite.com/#contact)
+  [웹사이트의 연락처 섹션](https://whisper-transcriber-suite.com/#contact) · ✉ [admin@whisper-transcriber-suite.com](mailto:admin@whisper-transcriber-suite.com)
 - **보안 보고서:** [../../SECURITY.md](../../SECURITY.md)
 
 이 프로젝트는 [Contributor Covenant](../../.github/CODE_OF_CONDUCT.md)를 따릅니다.

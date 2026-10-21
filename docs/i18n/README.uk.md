@@ -170,7 +170,7 @@ python gui.py
 
 - **Помилки та запити нових функцій:** [GitHub Issues](https://github.com/Milomilo777/whisper-transcriber-suite/issues)
 - **Запитання та ідеї:** [GitHub Discussions](https://github.com/Milomilo777/whisper-transcriber-suite/discussions)
-- **Все інше:** електронною поштою, через [розділ контактів на сайті](https://whisper-transcriber-suite.com/#contact)
+- **Все інше:** електронною поштою, через [розділ контактів на сайті](https://whisper-transcriber-suite.com/#contact) · ✉ [admin@whisper-transcriber-suite.com](mailto:admin@whisper-transcriber-suite.com)
 - **Повідомлення про вразливості:** [../../SECURITY.md](../../SECURITY.md)
 
 Цей проєкт дотримується [Кодексу поведінки](../../.github/CODE_OF_CONDUCT.md). Якщо застосунок економить ваш час, зірочка (Star) у верхній частині цієї сторінки допоможе іншим людям знайти його.

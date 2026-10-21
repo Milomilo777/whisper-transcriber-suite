@@ -214,7 +214,7 @@ Necesită Python 3.11 sau mai nou. Procesul de construcție: [docs/BUILD.md](../
 - **Probleme (Bugs) și cereri de noi funcții:** [GitHub Issues](https://github.com/Milomilo777/whisper-transcriber-suite/issues)
 - **Întrebări și idei:** [GitHub Discussions](https://github.com/Milomilo777/whisper-transcriber-suite/discussions)
 - **Orice altceva:** prin e-mail, folosind
-  [secțiunea de Contact a site-ului](https://whisper-transcriber-suite.com/#contact)
+  [secțiunea de Contact a site-ului](https://whisper-transcriber-suite.com/#contact) · ✉ [admin@whisper-transcriber-suite.com](mailto:admin@whisper-transcriber-suite.com)
 - **Raportare probleme de securitate:** [SECURITY.md](../../SECURITY.md)
 
 Acest proiect respectă [Contributor Covenant](../../.github/CODE_OF_CONDUCT.md).

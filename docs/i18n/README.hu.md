@@ -168,7 +168,7 @@ Működéséhez Python 3.11 vagy újabb verzió szükséges. Build folyamatok: [
 
 - **Hibák és új funkciók kérése:** [GitHub Issues](https://github.com/Milomilo777/whisper-transcriber-suite/issues)
 - **Kérdések és ötletek:** [GitHub Discussions](https://github.com/Milomilo777/whisper-transcriber-suite/discussions)
-- **Minden egyéb:** e-mailben, a weboldal [Kapcsolat részén keresztül](https://whisper-transcriber-suite.com/#contact)
+- **Minden egyéb:** e-mailben, a weboldal [Kapcsolat részén keresztül](https://whisper-transcriber-suite.com/#contact) · ✉ [admin@whisper-transcriber-suite.com](mailto:admin@whisper-transcriber-suite.com)
 - **Biztonsági bejelentések:** [SECURITY.md](../../SECURITY.md)
 
 Ez a projekt követi a [Contributor Covenant](../../.github/CODE_OF_CONDUCT.md) irányelveit.

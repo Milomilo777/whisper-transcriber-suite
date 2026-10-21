@@ -174,7 +174,7 @@ Python 3.11 বা নতুন সংস্করণ প্রয়োজন�
 
 - **বাগ এবং ফিচারের অনুরোধ:** [GitHub Issues](https://github.com/Milomilo777/whisper-transcriber-suite/issues)
 - **প্রশ্ন এবং ধারণা:** [GitHub Discussions](https://github.com/Milomilo777/whisper-transcriber-suite/discussions)
-- **অন্য সবকিছু:** ইমেলের মাধ্যমে, [ওয়েবসাইটের কন্টাক্ট সেকশনের](https://whisper-transcriber-suite.com/#contact) মাধ্যমে
+- **অন্য সবকিছু:** ইমেলের মাধ্যমে, [ওয়েবসাইটের কন্টাক্ট সেকশনের](https://whisper-transcriber-suite.com/#contact) মাধ্যমে · ✉ [admin@whisper-transcriber-suite.com](mailto:admin@whisper-transcriber-suite.com)
 - **সিকিউরিটি রিপোর্ট:** [SECURITY.md](../../SECURITY.md)
 
 এই প্রজেক্টটি [কন্ট্রিবিউটর কভেন্যান্ট (Contributor Covenant)](../../.github/CODE_OF_CONDUCT.md) অনুসরণ করে।

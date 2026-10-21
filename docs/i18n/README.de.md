@@ -215,7 +215,7 @@ Benötigt Python 3.11 oder neuer. Build-Pipelines: [docs/BUILD.md](../BUILD.md).
 - **Bugs und Funktionsanfragen:** [GitHub Issues](https://github.com/Milomilo777/whisper-transcriber-suite/issues)
 - **Fragen und Ideen:** [GitHub Discussions](https://github.com/Milomilo777/whisper-transcriber-suite/discussions)
 - **Alles andere:** per E-Mail, über den
-  [Kontaktbereich der Website](https://whisper-transcriber-suite.com/#contact)
+  [Kontaktbereich der Website](https://whisper-transcriber-suite.com/#contact) · ✉ [admin@whisper-transcriber-suite.com](mailto:admin@whisper-transcriber-suite.com)
 - **Sicherheitsberichte:** [SECURITY.md](../../SECURITY.md)
 
 Dieses Projekt befolgt den [Contributor Covenant](../../.github/CODE_OF_CONDUCT.md).

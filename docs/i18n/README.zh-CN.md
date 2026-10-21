@@ -179,7 +179,7 @@ python gui.py
 - **程序错误与功能建议：** [GitHub Issues](https://github.com/Milomilo777/whisper-transcriber-suite/issues)
 - **疑问与想法讨论：** [GitHub Discussions](https://github.com/Milomilo777/whisper-transcriber-suite/discussions)
 - **其他一切事宜：** 请发邮件或通过
-  [网站上的联系区](https://whisper-transcriber-suite.com/#contact) 联络。
+  [网站上的联系区](https://whisper-transcriber-suite.com/#contact) 联络。 · ✉ [admin@whisper-transcriber-suite.com](mailto:admin@whisper-transcriber-suite.com)
 - **安全问题报告：** [../../SECURITY.md](../../SECURITY.md)
 
 本项目遵守 [Contributor Covenant（贡献者公约）](../../.github/CODE_OF_CONDUCT.md)。

@@ -215,7 +215,7 @@ Requereix Python 3.11 o posterior. Processos de compilació (pipelines): [../BUI
 - **Errors i peticions de funcionalitats:** [GitHub Issues](https://github.com/Milomilo777/whisper-transcriber-suite/issues)
 - **Dubtes i idees:** [GitHub Discussions](https://github.com/Milomilo777/whisper-transcriber-suite/discussions)
 - **Tota la resta:** per correu electrònic, a través de la
-  [secció Contact del lloc web](https://whisper-transcriber-suite.com/#contact)
+  [secció Contact del lloc web](https://whisper-transcriber-suite.com/#contact) · ✉ [admin@whisper-transcriber-suite.com](mailto:admin@whisper-transcriber-suite.com)
 - **Informes de seguretat:** [../../SECURITY.md](../../SECURITY.md)
 
 Aquest projecte segueix el [Contributor Covenant](../../.github/CODE_OF_CONDUCT.md).

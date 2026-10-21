@@ -178,7 +178,7 @@ Python 3.11 以降が必要です。ビルドパイプライン：[../BUILD.md](
 - **バグや機能リクエスト：** [GitHub Issues](https://github.com/Milomilo777/whisper-transcriber-suite/issues)
 - **質問やアイデア：** [GitHub Discussions](https://github.com/Milomilo777/whisper-transcriber-suite/discussions)
 - **その他すべて：** メール、または
-  [ウェブサイトの連絡先セクション（Contact）](https://whisper-transcriber-suite.com/#contact) から
+  [ウェブサイトの連絡先セクション（Contact）](https://whisper-transcriber-suite.com/#contact) から · ✉ [admin@whisper-transcriber-suite.com](mailto:admin@whisper-transcriber-suite.com)
 - **セキュリティの報告：** [../../SECURITY.md](../../SECURITY.md)
 
 このプロジェクトは [Contributor Covenant（行動規範）](../../.github/CODE_OF_CONDUCT.md) に従っています。

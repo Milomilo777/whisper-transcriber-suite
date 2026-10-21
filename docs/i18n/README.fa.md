@@ -183,7 +183,7 @@ python gui.py
 
 - **باگ‌ها و درخواست امکانات:** [GitHub Issues](https://github.com/Milomilo777/whisper-transcriber-suite/issues)
 - **سؤالات و ایده‌ها:** [GitHub Discussions](https://github.com/Milomilo777/whisper-transcriber-suite/discussions)
-- **موارد دیگر:** از طریق ایمیل، بخش [تماس در وب‌سایت](https://whisper-transcriber-suite.com/#contact)
+- **موارد دیگر:** از طریق ایمیل، بخش [تماس در وب‌سایت](https://whisper-transcriber-suite.com/#contact) · ✉ [admin@whisper-transcriber-suite.com](mailto:admin@whisper-transcriber-suite.com)
 - **گزارش‌های امنیتی:** [SECURITY.md](../../SECURITY.md)
 
 این پروژه از [پیمان مشارکت‌کنندگان (Contributor Covenant)](../../.github/CODE_OF_CONDUCT.md) پیروی می‌کند.

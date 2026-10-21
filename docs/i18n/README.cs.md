@@ -215,7 +215,7 @@ Vyžaduje Python 3.11 nebo novější. Procesy sestavení (pipelines): [docs/BUI
 - **Chyby a návrhy funkcí:** [GitHub Issues](https://github.com/Milomilo777/whisper-transcriber-suite/issues)
 - **Dotazy a nápady:** [GitHub Discussions](https://github.com/Milomilo777/whisper-transcriber-suite/discussions)
 - **Všechno ostatní:** e-mailem, přes
-  [Kontaktní sekci na webu](https://whisper-transcriber-suite.com/#contact)
+  [Kontaktní sekci na webu](https://whisper-transcriber-suite.com/#contact) · ✉ [admin@whisper-transcriber-suite.com](mailto:admin@whisper-transcriber-suite.com)
 - **Hlášení bezpečnostních chyb:** [SECURITY.md](../../SECURITY.md)
 
 Tento projekt se řídí kodexem chování [Contributor Covenant](../../.github/CODE_OF_CONDUCT.md).

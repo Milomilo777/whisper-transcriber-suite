@@ -209,7 +209,7 @@ Yêu cầu Python 3.11 trở lên. Các đường dẫn dựng ứng dụng (Bui
 - **Lỗi và yêu cầu tính năng:** [GitHub Issues](https://github.com/Milomilo777/whisper-transcriber-suite/issues)
 - **Câu hỏi và ý tưởng:** [GitHub Discussions](https://github.com/Milomilo777/whisper-transcriber-suite/discussions)
 - **Mọi vấn đề khác:** qua email, thông qua
-  [Phần liên hệ (Contact) của website](https://whisper-transcriber-suite.com/#contact)
+  [Phần liên hệ (Contact) của website](https://whisper-transcriber-suite.com/#contact) · ✉ [admin@whisper-transcriber-suite.com](mailto:admin@whisper-transcriber-suite.com)
 - **Báo cáo bảo mật:** [../../SECURITY.md](../../SECURITY.md)
 
 Dự án này tuân thủ theo [Bộ quy tắc ứng xử (Contributor Covenant)](../../.github/CODE_OF_CONDUCT.md).

@@ -215,7 +215,7 @@ Krever Python 3.11 eller nyere. Bygge-pipelines: [../BUILD.md](../BUILD.md). Tes
 - **Feil og funksjonsforespørsler:** [GitHub Issues](https://github.com/Milomilo777/whisper-transcriber-suite/issues)
 - **Spørsmål og ideer:** [GitHub Discussions](https://github.com/Milomilo777/whisper-transcriber-suite/discussions)
 - **Alt annet:** via e-post, gjennom
-  [kontaktseksjonen på nettstedet](https://whisper-transcriber-suite.com/#contact)
+  [kontaktseksjonen på nettstedet](https://whisper-transcriber-suite.com/#contact) · ✉ [admin@whisper-transcriber-suite.com](mailto:admin@whisper-transcriber-suite.com)
 - **Sikkerhetsrapporter:** [../../SECURITY.md](../../SECURITY.md)
 
 Dette prosjektet følger [Contributor Covenant](../../.github/CODE_OF_CONDUCT.md).

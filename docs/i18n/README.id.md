@@ -213,7 +213,7 @@ Memerlukan Python 3.11 atau yang lebih baru. Pipeline build: [../BUILD.md](../BU
 - **Laporan bug dan permintaan fitur:** [GitHub Issues](https://github.com/Milomilo777/whisper-transcriber-suite/issues)
 - **Pertanyaan dan ide:** [GitHub Discussions](https://github.com/Milomilo777/whisper-transcriber-suite/discussions)
 - **Hal lainnya:** melalui email, melalui
-  [Contact section of the website](https://whisper-transcriber-suite.com/#contact)
+  [Contact section of the website](https://whisper-transcriber-suite.com/#contact) · ✉ [admin@whisper-transcriber-suite.com](mailto:admin@whisper-transcriber-suite.com)
 - **Laporan keamanan:** [../../SECURITY.md](../../SECURITY.md)
 
 Proyek ini mengikuti [Contributor Covenant](../../.github/CODE_OF_CONDUCT.md).

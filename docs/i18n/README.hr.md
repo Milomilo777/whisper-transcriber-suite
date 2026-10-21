@@ -213,7 +213,7 @@ Zahtijeva Python 3.11 ili noviji. Proces izgradnje: [../BUILD.md](../BUILD.md). 
 - **Bugovi i zahtjevi za novim značajkama:** [GitHub Issues](https://github.com/Milomilo777/whisper-transcriber-suite/issues)
 - **Pitanja i ideje:** [GitHub Discussions](https://github.com/Milomilo777/whisper-transcriber-suite/discussions)
 - **Sve ostalo:** putem e-pošte, preko
-  [odjeljka Contact na web stranici](https://whisper-transcriber-suite.com/#contact)
+  [odjeljka Contact na web stranici](https://whisper-transcriber-suite.com/#contact) · ✉ [admin@whisper-transcriber-suite.com](mailto:admin@whisper-transcriber-suite.com)
 - **Prijave sigurnosnih propusta:** [../../SECURITY.md](../../SECURITY.md)
 
 Ovaj projekt prati [Zavjet suradnika (Contributor Covenant)](../../.github/CODE_OF_CONDUCT.md).
