@@ -288,9 +288,9 @@ class FormatService:
         app.video_format_map = video_map
         app.current_video_title = episode.title
         app.current_video_language = episode.lang_prefix
-        # SMTV already writes its own transcript alongside every download
-        # (see DownloadService._run_smtv_task) -- the "use captions instead"
-        # shortcut is yt-dlp-specific and must never be offered here.
+        # SMTV downloads from the site's own server (DownloadService._run_smtv_task;
+        # the page text it saves is a description, not a transcript) -- the
+        # "use captions instead" shortcut is yt-dlp-specific and never offered here.
         app.current_video_caption_langs = {}
         app._smtv_episode = episode  # type: ignore[attr-defined]
 

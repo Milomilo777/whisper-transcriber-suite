@@ -1725,22 +1725,26 @@ class DownloadService:
     def _write_smtv_transcript(
         self, task: "VideoDownloadTask", episode: smtv_mod.SmtvEpisode, media_basename: str | None,
     ) -> None:
-        """Save the page's article text as ``<media stem>.txt`` beside the download (or under
-        the episode's own name when there is no media name). A write failure is logged only:
-        the download itself succeeded."""
+        """Save the page's text as ``<media stem>.description.txt`` beside the download (or
+        under the episode's own name when there is no media name). A write failure is logged
+        only: the download itself succeeded.
+
+        It is the page's description: for long programmes a short summary, for some news
+        clips the script, often nothing (measured on real pages, 2026-10-21). As
+        ``<stem>.txt`` it took the name the transcription's own .txt needs, which moved every
+        transcript of such a download to ``<stem> (1).*``.
+        """
         transcript_text = (episode.transcript_text or "").strip()
         if not transcript_text:
             return
-        if media_basename:
-            transcript_basename = os.path.splitext(media_basename)[0] + ".txt"
-        else:
-            transcript_basename = smtv_mod.transcript_filename(episode)
+        stem = os.path.splitext(media_basename or smtv_mod.transcript_filename(episode))[0]
+        transcript_basename = stem + ".description.txt"
         transcript_path = os.path.join(task.folder, transcript_basename)
         try:
             with open(transcript_path, "w", encoding="utf-8", newline="\n") as f:
                 f.write(transcript_text + "\n")
             self.app.download_events.put(
-                ("log", task, f"--- SMTV transcript saved: {transcript_basename} ---")
+                ("log", task, f"--- SMTV page text saved: {transcript_basename} ---")
             )
         except OSError as e:
             self.app.download_events.put(

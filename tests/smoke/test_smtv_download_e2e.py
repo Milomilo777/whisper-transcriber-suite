@@ -175,9 +175,9 @@ def test_smtv_real_download_writes_video_and_transcript(tmp_path: Path) -> None:
     leftovers = [f for f in os.listdir(tmp_path) if f.endswith(".part")]
     assert leftovers == [], f".part files still on disk: {leftovers}"
 
-    # 7. Transcript text file written alongside.
+    # 7. The page's text written alongside, under its own name (the transcription owns <stem>.txt).
     stem, _ = os.path.splitext(os.path.basename(saved_path))
-    txt_path = tmp_path / f"{stem}.txt"
+    txt_path = tmp_path / f"{stem}.description.txt"
     assert txt_path.is_file(), f"transcript .txt not written: {txt_path}"
     txt_content = txt_path.read_text(encoding="utf-8")
     assert len(txt_content) > 100, f"transcript suspiciously short: {len(txt_content)} chars"

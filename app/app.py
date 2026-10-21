@@ -3952,9 +3952,9 @@ class App(tk.Tk):
         Called after every format lookup (see app.services.format_service)
         and whenever the subtitle-language combo changes. Independent of
         the "Download subtitles" checkbox above it -- this is a separate
-        action, not a modifier of the main Download button. SMTV already
-        writes its own transcript alongside every download, so the
-        shortcut never applies while an SMTV episode is loaded.
+        action, not a modifier of the main Download button. The shortcut
+        is yt-dlp-specific (SMTV episodes download from the site's own
+        server), so it never applies while an SMTV episode is loaded.
         """
         self.update_caption_bar()
         status_var = getattr(self, "caption_shortcut_status_var", None)

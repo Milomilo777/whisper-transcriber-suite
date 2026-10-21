@@ -82,7 +82,8 @@ def test_a_failed_site_download_takes_the_youtube_copy(tmp_path) -> None:
     got = _drain(events)
     assert got[-1][0] == "done_full" and got[-1][2]["saved_path"] == str(saved)
     assert any(kind == "log" and "YouTube" in str(msg) for kind, _t, msg in got)
-    assert (tmp_path / "Some Episode.txt").read_text(encoding="utf-8") == "The page text.\n"
+    assert (tmp_path / "Some Episode.description.txt").read_text(encoding="utf-8") == "The page text.\n"
+    assert not (tmp_path / "Some Episode.txt").exists()  # that name is the transcription's
 
 
 def test_video_mode_stays_video(tmp_path) -> None:
@@ -118,3 +119,22 @@ def test_a_working_site_download_never_touches_youtube(tmp_path) -> None:
     svc, events, commands, _saved = _svc(tmp_path, fail_official=False)
     svc._run_smtv_with_fallback(_task(tmp_path), 1, object())  # type: ignore[arg-type]
     assert commands == [] and _drain(events)[-1][0] == "done_full"
+
+
+def test_the_site_download_names_the_page_text_apart_from_the_transcript(tmp_path) -> None:
+    """The page holds a short description (for long programmes a summary, not the speech).
+    Saved as "<name>.txt" it took the name the transcription's own .txt needs, so every
+    transcript of such a download moved to "<name> (1).txt" (2026-10-21)."""
+    events: queue.Queue = queue.Queue()
+    svc = DownloadService(types.SimpleNamespace(download_events=events))  # type: ignore[arg-type]
+
+    def fake_stream(task, url, dest_path, **_kw):
+        with open(dest_path, "wb") as f:
+            f.write(b"data")
+
+    svc._stream_smtv_file = fake_stream  # type: ignore[method-assign]
+    task = _task(tmp_path)
+    task.format_info["audio"]["url"] = "https://cdn.example/download-mp4.php?file=Clip.mp3"
+    svc._run_smtv_task(task)  # type: ignore[arg-type]
+    names = sorted(p.name for p in tmp_path.iterdir())
+    assert "Clip.description.txt" in names and "Clip.txt" not in names
