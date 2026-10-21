@@ -41,23 +41,20 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   picked). Persian gets `mehdi-hf/nemotron-asr-streaming-farsi` on the local transformers engine:
   8.8% word errors on FLEURS by its author's test, with timed lines cut at pauses. See ADR 0015.
 
-- **Mixed-language audio (experimental)**: a tick box under the Transcribe tab's options, with a
+- **Mixed-language audio (experimental)**: a tick box under More options, with a
   second language picker, for recordings that switch between two languages. Each stretch is written
   in whichever of the two it sounds like, instead of being translated into one of them (which a
   hand-picked single language can do). Auto stays the default; faster-whisper engine only, not with
   English translation. See ADR 0014 in `docs/DECISIONS.md`.
-  The web / LAN page (and a phone that opened it from the QR code) has the same option: a
-  **Two languages in this file** tick and a second-language picker (`language2` in the job API).
 
 - **Phone and web jobs use the model trained for their language**: a job sent from the web / LAN page
-  (or a phone) in Persian now runs on the Persian model when it is installed on the PC, instead of
-  the desktop's general model; only one of the two stays in memory. The page says under the language
-  picker whether that model is used here, and how to add it on the PC when it is not. A real Persian
-  phone call through the page had lost its first 30 seconds on the general model. See ADR 0016.
-  This now covers every language with such a model (Chinese, Japanese, German, Thai, Swedish and
-  Hebrew too), and when the model is not on the PC yet the page offers **Download it to the PC**:
-  the PC fetches it in the background (the page shows the percentage) without changing the
-  desktop's own engine or model. See ADR 0018.
+  (or a phone) in Persian, Chinese, Japanese, German, Thai, Swedish or Hebrew runs on that language's
+  model when it is installed on the PC, instead of the desktop's general model; only one of the two
+  stays in memory. The page says under the language picker whether the model is used here, and when it
+  is not on the PC yet it offers **Download it to the PC**: the PC fetches it in the background (the
+  page shows the percentage) without changing the desktop's own engine or model. The page also has the
+  mixed-language option: a **Two languages in this file** tick and a second-language picker
+  (`language2` in the job API). See ADRs 0016 and 0018.
 
 - **Use the app from your phone**: with "Share on local network" on, the Web / LAN access tab shows a
   QR code of the network address. Scanning it opens the transcription page on a phone on the same
@@ -148,34 +145,23 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   apart. The Resume button, the right-click menu and the menu for several rows no longer offer
   Resume for a cancelled job; a paused job still resumes as before.
 
-- **Queue buttons above the list**, as on the Download tab: Pause, Resume, Cancel, Re-run, Remove,
-  View transcript and Open output folder sat under the table, out of sight in a small window. The
-  line that says why a selected job failed follows them.
+- **Plainer words on the Download tab and the subtitles question**: "URL" is now **Video link**; the
+  note under it says "This video already has German subtitles made by the uploader. Use them instead
+  of transcribing?", with a **Use the subtitles** button, and the question window says that using the
+  subtitles saves no video file and where "Don't ask again" can be undone. Words that are not a link
+  ("hello world") get "That is not a video link..." at once instead of yt-dlp's raw error, and a read
+  link shows its title ("Found: Me at the zoo (0:19)") right under the link box.
 
-- **Plainer words on the Download tab and the subtitles question**: "URL" is now **Video link**;
-  the note under it says "This video already has German subtitles made by the uploader. Use them
-  instead of transcribing?" (was "Captions (creator-provided) are already available in "de" --
-  skip..."), with a **Use the subtitles** button; the question window is titled "This video already
-  has subtitles", says that using the subtitles saves no video file, has a **Cancel** button, and
-  says where "Don't ask again" can be undone (Advanced settings, on the Transcribe tab). Also: a plain browser sign-in hover text, "adding
-  subtitles" instead of "burning", a clear reason when speaker identification is not installed,
-  the window title "2 jobs running (41%)" and "Browse files..." named as on the button. The
-  renamed texts show in English in the other languages until they are translated again.
-  Words that are not a link ("hello world") get "That is not a video link..." at once instead of
-  yt-dlp's raw error; a read link shows its title ("Found: Me at the zoo (0:19)") right under the link box; a new link, an
-  emptied box or plain words clear the old video length. The "Cannot load this link" warning gives
-  the reason once, without a lead sentence that said the same again.
+- **Download tab: buttons in sight**: Pause, Cancel, Open and the rest sit above the downloads table
+  instead of below the visible part of the tab. The status, format and time columns are no longer cut
+  ("finishe", "00:00:"), the time boxes go back to 0:00:00 after a download is queued instead of going
+  blank, and the subtitle note names the language ("French", not "fr"). A download that starts is
+  selected, as a Queue job is, so Pause and Cancel work at once and Open works when it finishes. What
+  Pause and Resume do is a hover text on those buttons.
 
-- **Download tab: buttons in sight**: Pause, Cancel, Open and the rest sat under the downloads table,
-  below the visible part of the tab even in a large window; they now sit above it, and the table
-  shows five rows. The status, format and time columns are no longer cut ("finishe", "00:00:"),
-  Browse is button-sized, the time boxes go back to 0:00:00 after a download is queued instead of
-  going blank, and the subtitle note names the language ("French", not "fr"). A download that
-  starts is selected, as a Queue job is, so Pause and Cancel work at once and Open works when it
-  finishes. What Pause and Resume do is a hover text on those buttons instead of a sentence
-  always shown beside them.
-
-- **A clearer Queue**: the Progress column is as wide as "100%" in the row font (Windows 10 cut it to
+- **A clearer Queue**: Pause, Resume, Cancel, Re-run, Remove, View transcript and Open output folder
+  sit above the list, as on the Download tab, instead of under the table out of sight in a small
+  window, and the line that says why a selected job failed follows them. The Progress column is as wide as "100%" in the row font (Windows 10 cut it to
   "10("); the Language column names the language ("Chinese", "German (not sure)") instead of
   "zh (88%)"; a selected finished job offers **View transcript** and **Open output folder**, and a
   double-click opens the folder that holds its transcript rather than the source's folder. "Clear
@@ -194,22 +180,19 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   The thin overall bar under the list shows only while two or more jobs run, labelled
   ("2 jobs running: 41% done in all"); with one job it only repeated that job's bar.
 
-- **Transcribe tab, plainer**: the ready line gives the recording's length ("Ready: class.flac
-  (1:46:12, 52.3 MB)"); the box is labelled **File or video link**, since a link works there too;
-  **Browse files** comes before the sample clip; "(whole recording)" shows while the time range is
-  0:00:00 to 0:00:00, and a red "Not a time: use H:MM:SS" when a box holds text that is not a time
-  (such text counts as unset, so the whole recording would be transcribed); the Speakers count shows
-  only while **Identify speakers** is ticked. The Language list offers "Auto" once (an "Automatic"
-  row meant the same); Enter in the file box starts the job and Enter in the Download link box
-  starts the download (a held Enter counts once); Transcribe with a path that does not exist opens
-  the file picker; the Engine and Model lists are wide enough for their longest entry; a link
-  changed within the moment before its lookup no longer downloads with the previous link's formats.
-  A long file name is cut in the middle on the ready line ("Interview with the … 1 of 3).mp4"),
-  so it no longer pushes **Advanced settings…** out of the window. The Queue's File column cuts
-  a long name the same way to the column's width, keeping half the room for its end ("part 1 of
-  3).mp4") and getting a wider share of the table, instead of
-  stopping at the column edge. A long path picked with Browse, dropped, or opened from Recent
-  files shows its end (name and extension) in the File or video link box.
+- **Transcribe tab, plainer**: the box is labelled **File or video link**, since a link works there
+  too, and **Browse files** comes before the sample clip. The Transcribe button is plain until the box
+  holds a file that exists or a link, then turns blue, with "Ready: class.flac (1:46:12, 52.3 MB)" (or
+  "Link: it downloads first, then transcribes", or "File not found") beside it; with nothing chosen it
+  opens Browse. "(whole recording)" shows while the time range is 0:00:00 to 0:00:00, and a red "Not a
+  time: use H:MM:SS" when a box holds text that is not a time (such text counts as unset). The Language
+  list offers "Auto" once; Enter in the file box starts the job and Enter in the Download link box
+  starts the download (a held Enter counts once); Transcribe with a path that does not exist opens the
+  file picker; a link changed within the moment before its lookup no longer downloads with the
+  previous link's formats. A long file name is cut in the middle on the ready line, so it no longer
+  pushes **Advanced settings...** out of the window, and the Queue's File column cuts a long name the
+  same way, keeping half the room for its end ("part 1 of 3).mp4"). A long path picked with Browse,
+  dropped, or opened from Recent files shows its end (name and extension) in the box.
 
 - **Speed cell while it measures**: the Queue said only "measuring speed..." for about a minute on a
   CPU run (the speed needs two 30-second chunks of speech); it now says how much audio is done
@@ -219,16 +202,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **Plain processor note**: "CPU (slower)" instead of "CPU - int8_float32 (slower)" beside the
   Transcribe button and under the Queue; the hover text keeps the technical detail.
 
-- **The Transcribe button shows when a file is ready**: it is plain until the File or video link box holds a
-  file that exists or a link, then turns blue, with "Ready: name (size)" (or "Link: it downloads first,
-  then transcribes", or "File not found") beside it. Clicking it with nothing chosen opens Browse
-  instead of writing a log line. Found in a click-through test of the app with real mouse clicks.
-
 - The on-demand local transformers engine now installs transformers 5.18 to 5.20.2 (the Persian
   model needs 5.18); the bundled `tokenizers` and `huggingface-hub` pins move with it. A copy
   installed by an earlier version is upgraded on the next use (only transformers, not torch).
-
-- **"What's new" in the README now describes 2.1.**
 
 - **The roadmap matches the shipped app**: `docs/ROADMAP.md` was checked item by item against the 2.1.0 code
   and now lists only what shipped, what is still open and what the project does not do; the original plan stays
@@ -254,6 +230,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   words, silent stretches, the update banner and the Stop button; the catalog is marked
   "reviewed". A catalog test now rejects Chinese/Japanese punctuation outside those catalogs (one
   slipped into a Hindi line).
+
+- **Every message of 2.2 is translated** in the 40 machine-translated interface languages (about 150
+  new messages each, so the new tabs, the phone page and the notices no longer show in English). The
+  newest 13 Persian messages were reviewed by a native speaker and Hindi by a contributor (#11); each
+  catalog keeps its "machine" or "reviewed" status.
 
 - `tools/make_i18n_readmes.py` now only writes the block of language links in `README.md` and the
   translations (text links, no flag images); the translations are edited directly instead of
