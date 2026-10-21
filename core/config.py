@@ -1894,6 +1894,12 @@ def load_config(*, fetch_online: bool = True) -> dict[str, Any]:
         if used_before or os.path.exists(config_path() + ".corrupt"):
             merged["output_formats"] = list(LEGACY_OUTPUT_FORMATS)
         baseline.pop("output_formats", None)
+    # The same holds when the read fell back to a backup (the file was busy or
+    # damaged, read_closed): the backup may be older than the file, so what these
+    # repairs derive from it is shown but never saved over the real file.
+    if read_closed:
+        for key in ("quick_start_done", "output_formats"):
+            baseline[key] = copy.deepcopy(merged.get(key))
     # parallel_workers 2 was the shipped default, written into every config.json by older
     # versions and never offered in a window: it reads as automatic now (one job at a time on
     # a CPU). Any other number was set by hand and is kept. The next save writes the 0.

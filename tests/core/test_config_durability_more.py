@@ -537,3 +537,19 @@ def test_a_file_another_process_replaced_is_never_quarantined(cfg_dir, monkeypat
     assert reads["n"] == at_read
     assert p.read_text(encoding="utf-8") == good
     assert not (cfg_dir / "config.json.corrupt").exists()
+
+
+def test_a_read_that_fell_back_to_a_backup_saves_no_derived_values(cfg_dir, monkeypatch):
+    # The file was busy or damaged, so load_config got an older backup (read_closed).
+    # What it derives from that backup (legacy formats, the quick start flag) must not
+    # be written over the real file by a later save of another key.
+    _write(cfg_dir, {"output_formats": ["srt"], "quick_start_done": False, "theme": "dark"})
+    real = cfgmod._read_local_config_state
+    monkeypatch.setattr(cfgmod, "_read_local_config_state", lambda: ({"theme": "dark"}, True))
+    cfg = cfgmod.load_config(fetch_online=False)
+    monkeypatch.setattr(cfgmod, "_read_local_config_state", real)
+    cfg["batch_size"] = 12
+    cfgmod.save_config(cfg)
+    disk = _disk(cfg_dir)
+    assert disk["batch_size"] == 12
+    assert disk["output_formats"] == ["srt"] and disk["quick_start_done"] is False
