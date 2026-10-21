@@ -633,17 +633,38 @@ def time_range_hint(start: str, end: str) -> tuple[str, bool]:
     return "", False
 
 
+def popdown_extra_px(wanted_px: int, box_px: int) -> int:
+    """How much wider than its box a Combobox's drop-down list must be to show
+    ``wanted_px`` of text: 0 when the box is already that wide. No Tk."""
+    return max(0, wanted_px - box_px)
+
+
 def widen_popdown(combo: ttk.Combobox, chars: int) -> None:
-    """Let a Combobox's drop-down list be wider than its box. A format entry such as
-    "251 | webm | medium | 130k | a:opus" is longer than the box the Download tab's
-    Quality row has room for; the list is the place to read it whole. Tk's drop-down
-    is a private widget (``ttk::combobox::PopdownWindow``), so a Tk without it is left
-    alone."""
-    try:
-        popdown = combo.tk.call("ttk::combobox::PopdownWindow", str(combo))
-        combo.tk.call(f"{popdown}.f.l", "configure", "-width", chars)
-    except tk.TclError:
-        pass
+    """Let a Combobox's drop-down list be wider than its box, ``chars`` characters wide.
+
+    A format entry such as "251 | webm | medium | 130k | a:opus" is longer than the box
+    the Download tab's Quality row has room for; the list is the place to read it whole.
+    Tk sizes the drop-down from the box on every post (``ttk::combobox::PlacePopdown``),
+    so a width set on the list itself is overridden; what it does honour is the style's
+    ``-postoffset`` (x, y, width, height deltas). The combo gets a derived style of its own
+    ("Wide48.TCombobox": inherits everything else, so other comboboxes are untouched) and
+    the delta is computed right before each post (``postcommand``) from the box's current
+    width and font, which also covers a theme switch (sv_ttk styles are per theme) and a
+    resized window. Returns the style name through ``combo.cget("style")``."""
+    base = str(combo.cget("style") or "TCombobox")
+    name = f"Wide{chars}.{base}"
+    style = ttk.Style(combo)
+
+    def _before_post() -> None:
+        try:
+            font = tkfont.nametofont(str(combo.cget("font") or "TkTextFont"))
+            wanted = font.measure("0" * chars) + px(28)  # the text plus the list's scrollbar
+            extra = popdown_extra_px(wanted, combo.winfo_width())
+            style.configure(name, postoffset=(0, 0, extra, 0))
+        except tk.TclError:
+            pass
+
+    combo.configure(style=name, postcommand=_before_post)
 
 
 def download_range_is_set(start: str, end: str) -> bool:
@@ -1882,6 +1903,7 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     # WrapRow, so a long language flows onto a second line instead of leaving the window.
     after_row = WrapRow(top)
     after_row.grid(row=3, column=1, columnspan=3, sticky="ew", padx=(6, 0), pady=(10, 0))
+    app.download_after_row = after_row
     app.auto_transcribe_var = tk.BooleanVar(
         value=bool(app.app_config.get("auto_transcribe_after_download", False))
     )

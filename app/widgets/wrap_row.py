@@ -61,6 +61,10 @@ class WrapRow(ttk.Frame):
     def add(self, cell: tk.Widget) -> None:
         self._cells.append(cell)
         self._lines = [list(range(len(self._cells)))]
+        # A cell that grows later (a status label that gets text) must wrap the row too,
+        # not only a row that resizes. Re-gridding moves cells, which fires this as well;
+        # the same sizes and the same line breaks then change nothing, so it cannot loop.
+        cell.bind("<Configure>", lambda _e: self._refit(), add="+")
         self._apply()
 
     def reflow(self, available: int | None = None) -> None:

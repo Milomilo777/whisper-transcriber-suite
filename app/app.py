@@ -1214,6 +1214,7 @@ class App(tk.Tk):
     transcribe_more_options: "Disclosure"
     download_more_options: "Disclosure"
     download_quality_row: "WrapRow"
+    download_after_row: "WrapRow"
     _transcribe_accuracy_label_to_level: "dict[str, str]"
     _accuracy_ram_gb: float  # this computer's memory; 0 = unknown
     _accuracy_choice: "str | None"  # the level picked or shown last; None = Custom
@@ -4100,7 +4101,7 @@ class App(tk.Tk):
 
         Called after every format lookup (see app.services.format_service)
         and whenever the subtitle-language combo changes. Independent of
-        the "Download subtitles" checkbox above it -- this is a separate
+        the "Subtitles" checkbox above it -- this is a separate
         action, not a modifier of the main Download button. The shortcut
         is yt-dlp-specific (SMTV episodes download from the site's own
         server), so it never applies while an SMTV episode is loaded.

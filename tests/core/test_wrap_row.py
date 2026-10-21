@@ -33,6 +33,14 @@ def test_no_width_yet_keeps_one_line() -> None:
     assert flow_rows([], 18, 500) == [[]]
 
 
+def test_popdown_extra_px_is_the_shortfall_or_zero() -> None:
+    from app.widgets.tabs import popdown_extra_px
+
+    assert popdown_extra_px(400, 167) == 233
+    assert popdown_extra_px(167, 167) == 0
+    assert popdown_extra_px(100, 167) == 0
+
+
 @pytest.mark.parametrize(
     "start, end, expected",
     [

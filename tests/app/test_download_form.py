@@ -148,6 +148,50 @@ def test_the_quality_row_falls_back_to_more_lines_when_narrow(root: tk.Tk) -> No
     assert row.line_count == 1 and {int(c.grid_info()["row"]) for c in cells} == {0}
 
 
+def test_a_cell_that_grows_later_wraps_the_after_download_row(root: tk.Tk) -> None:
+    """The subtitle status label gets text after a lookup; the row must wrap then too,
+    not only when the row itself resizes (review of f75f607f)."""
+    app = _build(root, width=960)
+    row: WrapRow = app.download_after_row
+    cell = app.subtitle_lang_combo.master
+    assert row.line_count == 1
+    app.subtitle_status_var.set(
+        "fetching subtitles (Portuguese (Brazil))... retrying with automatic captions")
+    root.update_idletasks()
+    assert row.line_count > 1
+    assert cell.winfo_x() + cell.winfo_reqwidth() <= row.winfo_width()
+    app.subtitle_status_var.set("")
+    root.update_idletasks()
+    assert row.line_count == 1
+
+
+def test_the_format_lists_drop_down_wider_than_their_boxes(root: tk.Tk) -> None:
+    """A format entry is longer than the Quality row's boxes: the drop-down list opens
+    wider (a derived style's postoffset, set right before each post), while the plain
+    TCombobox style, and so every other combobox, keeps Tk's default."""
+    app = _build(root, width=960)
+    combo = app.audio_format_combo
+    combo["values"] = ["251 | webm | medium | 130k | a:opus | 3.45MiB | extra long description"]
+    combo.current(0)
+    style = ttk.Style(root)
+    assert str(combo.cget("style")).endswith(".TCombobox") and combo.cget("style") != "TCombobox"
+    assert not style.lookup("TCombobox", "postoffset")
+    # Key events and posting need a shown window.
+    root.deiconify()
+    root.geometry("+0+0")
+    root.update()
+    combo.tk.call("ttk::combobox::Post", str(combo))
+    root.update()
+    try:
+        popdown = str(combo.tk.call("ttk::combobox::PopdownWindow", str(combo)))
+        popdown_width = int(root.tk.call("winfo", "width", popdown))
+    finally:
+        combo.tk.call("ttk::combobox::Unpost", str(combo))
+    offset = [int(v) for v in root.tk.splitlist(style.lookup(str(combo.cget("style")), "postoffset"))]
+    assert offset[2] > 0, offset
+    assert popdown_width >= combo.winfo_width() + offset[2] - 2, (popdown_width, combo.winfo_width(), offset)
+
+
 def test_the_rows_follow_the_page_width(root: tk.Tk) -> None:
     """A narrow page wraps the quality row through Tk's own resize events; a wide page
     unwraps it again (the row must not request the one-line width, or the form would be
