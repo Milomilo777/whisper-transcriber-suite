@@ -144,6 +144,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   question also answers Enter (Transcribe has the focus). Model downloads still need their own
   Cancel button, so a stray Escape cannot stop one.
 
+- **A fresh install can download at once**: with the Quick start skipped, the Download tab's Folder
+  box was empty and the first Download only said "Select a download folder first". It now holds
+  your Downloads folder, the same default the Quick start offers.
+
 - **Hebrew on the web page**: the language picker of the web / LAN page listed Hebrew as "he"; it now
   says Hebrew.
 

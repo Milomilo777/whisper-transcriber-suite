@@ -1476,7 +1476,12 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     ).grid(row=1, column=3, sticky="w", padx=(6, 0), pady=(8, 0))
 
     ttk.Label(top, text=pgettext("download form", "Folder")).grid(row=2, column=0, sticky="w", pady=(8, 0))
-    app.download_folder_var = tk.StringVar(value=app.app_config.get("download_folder", ""))
+    # No saved folder (a fresh install whose Quick start was skipped): the user's Downloads
+    # folder, as the Quick start offers, instead of an empty box and a "Missing folder"
+    # warning on the first Download (click-through test, 2026-10-21). Saved on the first use.
+    from app.dialogs.quick_start import default_output_folder
+
+    app.download_folder_var = tk.StringVar(value=default_output_folder(app.app_config))
     ttk.Entry(top, textvariable=app.download_folder_var, width=70).grid(
         row=2, column=1, sticky="ew", padx=(6, 0), pady=(8, 0)
     )
