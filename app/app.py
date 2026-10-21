@@ -5572,9 +5572,12 @@ class App(tk.Tk):
             self.log("Cancelling task; saving a resume checkpoint...")
         # The status line kept "<name>: 7% done — <last words>" and the overall bar its value
         # after a Cancel (screenshot reviews, 2026-10-21): say it was cancelled.
-        self.status_var.set(_("{name}: cancelled at {percent}%",
-                              name=os.path.basename(t.file_path), percent=int(getattr(t, "progress", 0) or 0)))
-        self.update_overall_progress()
+        status = _inst_attr(self, "status_var")  # stand-in objects (tests) may lack these
+        if status is not None:
+            status.set(_("{name}: cancelled at {percent}%",
+                         name=os.path.basename(t.file_path), percent=int(getattr(t, "progress", 0) or 0)))
+        if _inst_attr(self, "pb") is not None:
+            self.update_overall_progress()
         self.refresh()
 
     def _release_waiting_download(self, t: TranscriptionTask) -> None:

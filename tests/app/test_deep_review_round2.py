@@ -75,7 +75,7 @@ def test_cancel_says_so_on_the_status_line(monkeypatch):
     fake = types.SimpleNamespace(
         status_var=status, log=lambda _m: None, refresh=lambda: None,
         transcription_service=types.SimpleNamespace(send_control=lambda _t, _c: True),
-        update_overall_progress=lambda: overall.append(True),
+        update_overall_progress=lambda: overall.append(True), pb={},
     )
     fake._release_waiting_download = App._release_waiting_download.__get__(fake)
     App.cancel(fake, task)  # type: ignore[arg-type]
