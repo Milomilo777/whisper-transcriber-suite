@@ -63,16 +63,28 @@ def ask_caption_choice(master: "tk.Misc", *, kind: str, language: str) -> tuple[
     ttk.Checkbutton(body, text=_("Don't ask again"), variable=dont_ask).pack(anchor="w")
     actions = ttk.Frame(body)
     actions.pack(fill="x", pady=(12, 0))
-    ttk.Button(
+    transcribe = ttk.Button(
         actions, text=_("Transcribe"), style="Accent.TButton",
         command=lambda: pick(CHOICE_TRANSCRIBE),
-    ).pack(side="right")
+    )
+    transcribe.pack(side="right")
     ttk.Button(
         actions, text=_("Use the subtitles"), command=lambda: pick(CHOICE_CAPTIONS),
     ).pack(side="right", padx=(0, 8))
     dialog.protocol("WM_DELETE_WINDOW", lambda: pick(CHOICE_CANCEL))
+    dialog.bind("<Escape>", lambda _e: pick(CHOICE_CANCEL))  # as the close button
+    def on_return(event: "tk.Event[tk.Misc]") -> None:
+        # Enter presses the focused button (Tab moves focus); else Transcribe. Before,
+        # neither key did anything (click-through test, 2026-10-21).
+        if isinstance(event.widget, ttk.Button):
+            event.widget.invoke()
+        else:
+            pick(CHOICE_TRANSCRIBE)
+
+    dialog.bind("<Return>", on_return)
     place_over(dialog, master)
     dialog.update_idletasks()
+    transcribe.focus_set()
     try:
         dialog.grab_set()
     except tk.TclError:

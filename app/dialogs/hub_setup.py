@@ -84,6 +84,7 @@ class HubSetupDialog(tk.Toplevel):
         self.transient(master)
         self.resizable(False, False)
         self.protocol("WM_DELETE_WINDOW", self._on_cancel)
+        self.bind("<Escape>", lambda _e: self._on_cancel())  # as the close button
 
         self._config = config
         self._save = save if save is not None else save_config

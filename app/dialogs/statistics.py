@@ -40,6 +40,7 @@ def show_statistics(app: "App") -> None:
     top.title(_("Statistics"))
     top.transient(app)
     top.resizable(False, False)
+    top.bind("<Escape>", lambda _e: top.destroy())  # as the close button
     body = ttk.Frame(top, padding=16)
     body.pack(fill="both", expand=True)
 

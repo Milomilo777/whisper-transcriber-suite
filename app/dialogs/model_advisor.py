@@ -80,6 +80,7 @@ class ModelAdvisorDialog(tk.Toplevel):
         self.title(_("Best model for this computer"))
         self.transient(master)  # type: ignore[arg-type]
         self.resizable(False, False)
+        self.bind("<Escape>", lambda _e: self.destroy())  # as the close button
         self._result: dict[str, Any] = {}
 
         body = ttk.Frame(self, padding=14)

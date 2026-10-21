@@ -188,6 +188,7 @@ class QuickStartDialog(tk.Toplevel):
         self.transient(master)  # type: ignore[arg-type]
         self.resizable(False, False)
         self.protocol("WM_DELETE_WINDOW", self.skip)
+        self.bind("<Escape>", lambda _e: self.skip())  # as the close button
         self._config = config
         self._on_done = on_done
         self._closed = False

@@ -138,6 +138,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   opened a black yt-dlp console window over the app. The lookup now runs hidden, like the app's
   other helper programs.
 
+- **Escape closes every window the first tabs open**: the subtitles-or-transcribe question, Best
+  model for this computer, Statistics, the model folder and Quick start windows, the hardware
+  wizard and the network log ignored it; each now does what its close button does. The subtitles
+  question also answers Enter (Transcribe has the focus). Model downloads still need their own
+  Cancel button, so a stray Escape cannot stop one.
+
 - **Hebrew on the web page**: the language picker of the web / LAN page listed Hebrew as "he"; it now
   says Hebrew.
 

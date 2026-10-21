@@ -74,6 +74,7 @@ class HardwareWizard(tk.Toplevel):
         self.grab_set()
         self.resizable(False, False)
         self.protocol("WM_DELETE_WINDOW", self._on_close)
+        self.bind("<Escape>", lambda _e: self._on_close())  # as the close button
 
         self._tiers: list[_hw.Tier] = []
         self._cuda_status: _hw.CudaStatus | None = None

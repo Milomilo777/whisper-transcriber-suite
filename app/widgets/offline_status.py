@@ -193,6 +193,7 @@ class NetworkLogWindow(tk.Toplevel):
     ) -> None:
         super().__init__(master)
         self.title(_("Network log (Work offline)"))
+        self.bind("<Escape>", lambda _e: self.destroy())  # as the close button
         self._get_check = get_check
         self._post = post_to_main
         self._probes: list[offline.ProbeResult] = []
