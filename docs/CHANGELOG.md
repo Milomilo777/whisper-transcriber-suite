@@ -123,6 +123,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   apart. The Resume button, the right-click menu and the menu for several rows no longer offer
   Resume for a cancelled job; a paused job still resumes as before.
 
+- **Queue buttons above the list**, as on the Download tab: Pause, Resume, Cancel, Re-run, Remove,
+  View transcript and Open output folder sat under the table, out of sight in a small window. The
+  line that says why a selected job failed follows them.
+
 - **Plainer words on the Download tab and the subtitles question**: "URL" is now **Video link**;
   the note under it says "This video already has German subtitles made by the uploader. Use them
   instead of transcribing?" (was "Captions (creator-provided) are already available in "de" --

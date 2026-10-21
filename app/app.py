@@ -1090,6 +1090,7 @@ class App(tk.Tk):
     row_map: dict[str, Any]
     # R2 per-task action bar (assigned in tabs.build_queue_tab).
     queue_action_buttons: dict[str, "ttk.Button"]
+    queue_action_bar: "ttk.Frame"  # above the Queue list, as on the Download tab
     queue_result_buttons: dict[str, "ttk.Button"]  # "view", "folder": a finished job's result
     queue_select_hint: "ttk.Label"  # "Select a job in the list..." while nothing is selected
     # Download tab
@@ -5771,7 +5772,11 @@ class App(tk.Tk):
             var.set(line)
         shown = bool(label.winfo_manager())
         if line and not shown:
-            label.pack(fill="x", padx=10, pady=(0, 6))
+            bar = _inst_attr(self, "queue_action_bar")  # absent on test doubles
+            if bar is not None:
+                label.pack(fill="x", padx=10, pady=(0, 6), after=bar)
+            else:
+                label.pack(fill="x", padx=10, pady=(0, 6))
         elif not line and shown:
             label.pack_forget()
 

@@ -1491,7 +1491,7 @@ def build_queue_tab(app: "App", parent: ttk.Frame) -> None:
     help_icon(
         top_row,
         _("Every transcription job you start is tracked here. Use the "
-          "buttons below the list (or right-click a row) to pause, resume, "
+          "buttons above the list (or right-click a row) to pause, resume, "
           "cancel, re-run, or remove it; double-click a finished row to "
           "open its transcript. Speed: 4.8x means 4.8 seconds of audio "
           "were transcribed per second of work; below 1x is slower than the "
@@ -1570,8 +1570,7 @@ def build_queue_tab(app: "App", parent: ttk.Frame) -> None:
         # macOS Tk generates Button-2 for a right-click (Button-3 is
         # the rarely-used third button there).
         app.tree.bind("<Button-2>", app.menu_row)
-    # Double-click on a finished row -> open the file's containing
-    # folder. Discoverable shortcut for the right-click menu entry.
+    # Double-click on a finished row -> its transcript (App.queue_row_double_click).
     app.tree.bind("<Double-Button-1>", app.queue_row_double_click)
     app.row_map = {}
 
@@ -1581,8 +1580,11 @@ def build_queue_tab(app: "App", parent: ttk.Frame) -> None:
     # state is recomputed from the selected task's status (the same logic
     # menu_row uses, via button_states_for_status) on every selection change
     # AND inside App.refresh (which rebuilds the tree each tick).
+    # Above the list, as on the Download tab: below it the bar fell out of sight in a small
+    # window, and the two tabs placed the same bar differently (deep review, 2026-10-21).
     action_bar = ttk.Frame(parent)
-    action_bar.pack(fill="x", padx=10, pady=(0, 6))
+    action_bar.pack(fill="x", padx=10, pady=(0, 6), before=tree_frame)
+    app.queue_action_bar = action_bar
     app.queue_action_buttons = {
         "pause": ttk.Button(
             action_bar, text=pgettext("button", "Pause"),
