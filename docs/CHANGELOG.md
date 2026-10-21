@@ -255,8 +255,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   box, clicking the shortcut in the moment before the new link was looked up queued it under the
   previous link's title, language and subtitle track. The shortcut now goes away the moment the
   link changes and comes back once the new link's subtitles are known.
-- **Cancel and Work offline stop a Supreme Master TV download before its YouTube fallback
-  starts**: when the site's own server failed, a Cancel or the Work offline switch during the
+- **Cancel and Work offline stop a download before its YouTube fallback starts**: when a
+  site's own server failed, a Cancel or the Work offline switch during the
   moment before the YouTube copy was tried did not stop it, and the fallback still downloaded. The
   stop is checked again right before that download starts.
 - **Remove and Re-run on the Download tab leave running downloads alone**: with a finished and a
