@@ -1252,7 +1252,7 @@
     "Transcription engine failed to start": "文字起こしエンジンを起動できませんでした",
     "Transcription failed: {message}": "文字起こしに失敗しました: {message}",
     "Transcription keeps failing: {error}": "文字起こしが繰り返し失敗しています: {error}",
-    "Transcription runs on the CPU here, where the {model} model takes about twice as long as the audio. {faster} is about {ratio}x faster with nearly the same accuracy: pick it in Advanced settings, or use Check this computer on the Transcribe tab.": "ここでの文字起こしは CPU で実行され、{model} モデルは音声の約2倍の時間がかかります。{faster} はほぼ同じ精度で約 {ratio} 倍高速です。詳細設定で選択するか、文字起こしタブのこのコンピュータを確認を使用してください。",
+    "Transcription runs on the CPU here, where the {model} model takes about twice as long as the audio. {faster} is about {ratio}x faster with nearly the same accuracy: pick it in Advanced settings, or use Check this computer on the Transcribe tab.": "ここでの文字起こしは CPU で実行され、{model} モデルは音声の約2倍の時間がかかります。{faster} はほぼ同じ精度で約 {ratio} 倍高速です。「詳細設定」で選択するか、「文字起こし」タブの「このコンピュータを確認」を使用してください。",
     "Transcriptions": "文字起こし",
     "Transcripts": "文字起こし",
     "Transcripts are saved next to the file they come from. The model downloads the first time you transcribe and is kept in {folder} (Advanced settings > Model folder can move it).": "文字起こしは元のファイルの横に保存されます。モデルは初回の文字起こし時にダウンロードされ、{folder} に保存されます（「詳細設定」>「モデル フォルダー」で移動できます）。",

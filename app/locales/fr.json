@@ -183,7 +183,7 @@
     "Check for updates": "Rechercher des mises à jour",
     "Check for updates...": "Rechercher des mises à jour...",
     "Check for updates...  ● {version} available": "Rechercher des mises à jour...  ● {version} disponible",
-    "Check that the recording has sound. If the speech is quiet or in another language, choose that language and transcribe it again.": "Vérifiez que l'enregistrement contient du son. Si la voix est faible ou dans une autre langue, choisissez cette langue et transcrivez à nouveau.",
+    "Check that the recording has sound. If the speech is quiet or in another language, choose that language and transcribe it again.": "Vérifiez que l'enregistrement contient du son. Si la voix est faible ou dans une autre langue, choisissez cette langue et transcrivez-le à nouveau.",
     "Check this computer": "Vérifier cet ordinateur",
     "Checking for updates needs the internet, and Work offline is on, so the app makes no network connection.\n\nTurn Work offline off now?": "La recherche de mises à jour nécessite Internet, mais « Travailler hors ligne » est activé : l'application n'établit donc aucune connexion réseau.\n\nDésactiver « Travailler hors ligne » maintenant ?",
     "Checking this computer…": "Vérification de cet ordinateur…",
@@ -494,7 +494,7 @@
     "History": "Historique",
     "Hmong": "Hmong",
     "Hotwords (comma-separated)": "Mots clés (séparés par des virgules)",
-    "How accurate the transcription is, against time and download size. Fast: the Small model (about 0.5 GB), quick on any computer. Balanced: Large v3 Turbo (about 1.6 GB), nearly as accurate as Best in a fraction of the time. Best: the most accurate model measured for the picked language (up to about 3 GB), the slowest. The picks follow the language and this computer's memory; a model picked in Advanced settings shows as Custom.": "Précision de la transcription par rapport au temps et à la taille du téléchargement. Rapide : le modèle Small (environ 0.5 GB), rapide sur n'importe quel ordinateur. Équilibré : Large v3 Turbo (environ 1.6 GB), presque aussi précis que Meilleur en une fraction du temps. Meilleur : le modèle le plus précis mesuré pour la langue choisie (jusqu'à environ 3 GB), le plus lent. Les choix dépendent de la langue et de la mémoire de cet ordinateur ; un modèle choisi dans Paramètres avancés s'affiche comme Personnalisé.",
+    "How accurate the transcription is, against time and download size. Fast: the Small model (about 0.5 GB), quick on any computer. Balanced: Large v3 Turbo (about 1.6 GB), nearly as accurate as Best in a fraction of the time. Best: the most accurate model measured for the picked language (up to about 3 GB), the slowest. The picks follow the language and this computer's memory; a model picked in Advanced settings shows as Custom.": "Précision de la transcription par rapport au temps et à la taille du téléchargement. Rapide : le modèle Small (environ 0,5 Go), rapide sur n'importe quel ordinateur. Équilibré : Large v3 Turbo (environ 1,6 Go), presque aussi précis que Meilleur en une fraction du temps. Meilleur : le modèle le plus précis mesuré pour la langue choisie (jusqu'à environ 3 Go), le plus lent. Les choix dépendent de la langue et de la mémoire de cet ordinateur ; un modèle choisi dans Paramètres avancés s'affiche comme Personnalisé.",
     "How do I get this file?": "Comment obtenir ce fichier ?",
     "How the audio is prepared before the model hears it: skip silent stretches (VAD), reduce background noise, or isolate vocals from music (Demucs) — plus flagging of lines that look hallucinated. 'Apply noisy-audio preset' at the bottom sets these for a typical non-studio recording.": "Comment l'audio est préparé avant que le modèle ne l'entende : ignorer les passages silencieux (VAD), réduire le bruit de fond ou isoler les voix de la musique (Demucs) — plus le signalement des lignes qui semblent hallucinées. « Appliquer le préréglage audio bruité » en bas règle ces options pour un enregistrement typique hors studio.",
     "How to get a Google Cloud service-account JSON file": "Comment obtenir un fichier JSON de compte de service Google Cloud",
@@ -541,7 +541,7 @@
     "It is the Transcribe tab's model: it understands other languages, and your graphics card runs it fast enough for live text.": "C'est le modèle de l'onglet Transcrire : il comprend d'autres langues, et votre carte graphique l'exécute assez vite pour du texte en direct.",
     "It is the Transcribe tab's model: it understands {language}, and your graphics card runs it fast enough for live text.": "C'est le modèle de l'onglet Transcrire : il comprend la langue {language}, et votre carte graphique l'exécute assez vite pour du texte en direct.",
     "It needs a service-account JSON file — set it under Advanced › Backend, where a \"How do I get this file?\" button walks you through it step by step.": "Il nécessite un fichier JSON de compte de service — définissez-le dans Avancé › Backend, où un bouton « Comment obtenir ce fichier ? » vous guide étape par étape.",
-    "It runs on the local transformers engine, which installs once the first time (about 1 GB more), gives no word-level timestamps and ignores the Whisper options (hot words, prompt).": "Il fonctionne avec le moteur local transformers, qui s'installe une seule fois la première fois (environ 1 Go de plus), ne fournit pas d'horodatage par mot et ignore les options de Whisper (mots-clés, invite).",
+    "It runs on the local transformers engine, which installs once the first time (about 1 GB more), gives no word-level timestamps and ignores the Whisper options (hot words, prompt).": "Il fonctionne avec le moteur local transformers, qui s'installe lors de la première utilisation (environ 1 Go de plus), ne fournit pas d'horodatage par mot et ignore les options de Whisper (mots-clés, invite).",
     "It understands other languages and still keeps up with live speech on this computer.": "Il comprend d'autres langues et suit quand même la parole en direct sur cet ordinateur.",
     "It understands {language} and still keeps up with live speech on this computer.": "Il comprend la langue {language} et suit quand même la parole en direct sur cet ordinateur.",
     "It writes {language} only, whatever language is picked: pick Switch back for other languages.": "Il écrit uniquement en {language}, quelle que soit la langue sélectionnée : choisissez Revenir pour les autres langues.",
@@ -1663,8 +1663,8 @@
     "{name} is not an audio or video file. Choose an audio or video file, or paste a video link.": "{name} n'est pas un fichier audio ou vidéo. Choisissez un fichier audio ou vidéo, ou collez un lien vidéo.",
     "{name} was changed or removed by something else after it was opened here.\n\nOverwrite it with the version in this window?": "{name} a été modifié ou supprimé par autre chose après son ouverture ici.\n\nL'écraser avec la version de cette fenêtre ?",
     "{name} writes {language} only, whatever language is picked.": "{name} écrit uniquement en {language}, quelle que soit la langue choisie.",
-    "{name}: cancelled at {percent}%": "{name}: annulé à {percent}%",
-    "{name}: {percent}% done": "{name}: {percent}% terminé",
+    "{name}: cancelled at {percent}%": "{name} : annulé à {percent}%",
+    "{name}: {percent}% done": "{name} : {percent}% terminé",
     "{n} job": [
       "{n} tâche",
       "{n} tâches"
@@ -1696,7 +1696,7 @@
     "{percent}% done": "{percent}% terminé",
     "{process} (pid {pid}) {protocol} incoming {remote}": "{process} (pid {pid}) {protocol} entrant {remote}",
     "{process} (pid {pid}) {protocol} outgoing {remote}": "{process} (pid {pid}) {protocol} sortant {remote}",
-    "{progress} — “{words}”": "{progress} — “{words}”",
+    "{progress} — “{words}”": "{progress} — « {words} »",
     "{refused} refused, {n} automatic request not sent since {time}": [
       "{refused} refusée(s), {n} requête automatique non envoyée depuis {time}",
       "{refused} refusée(s), {n} requêtes automatiques non envoyées depuis {time}"
