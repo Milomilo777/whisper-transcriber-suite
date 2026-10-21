@@ -60,6 +60,7 @@ app/
 │   ├── live_service.py, voice_clone_service.py, subbed_video.py
 ├── domain/                 task models for the queues (VideoDownloadTask, ...), languages, status_line (status bar text)
 ├── dialogs/, widgets/      windows and tab pages (widgets/tabs.py builds the main tabs)
+├── i18n.py, rtl_layout.py  interface translation; right-to-left mirroring of a built widget tree (docs/TRANSLATING.md)
 └── theme/                  design tokens, colours, per-OS window chrome
 core/
 ├── config.py               load_config / save_config, DEFAULT_CONFIG, platform folders

@@ -13,6 +13,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   five. A line that does not fit the window (150 % scaling, a long language) flows onto a second
   line (`app/widgets/wrap_row.py`) instead of running off the right edge.
 
+- **Right-to-left layout helper** (`app/rtl_layout.py`, not yet used by the app): mirrors a
+  built widget tree for Persian, Arabic and Hebrew interfaces (pack sides, grid columns,
+  anchors, padding, scrollbars) with an opt-out for widgets that must stay left to right.
+  `docs/TRANSLATING.md` describes it; later steps wire it into the windows.
 - **Simpler Transcribe tab**: an **Accuracy** level (Fast / Balanced / Best) next to the language
   picker replaces the Engine and Model dropdowns on the tab. Each level is a model sized to the
   picked language and this computer's memory (`core/accuracy.py`); the line under it names the

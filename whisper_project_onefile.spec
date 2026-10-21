@@ -193,6 +193,7 @@ a = Analysis(
         'app.observability',
         'app.crash_report',
         'app.i18n',
+        'app.rtl_layout',
         'app.theme.script_fonts',
         'app.theme.theme_colours',
         'app.theme.mac_appearance',

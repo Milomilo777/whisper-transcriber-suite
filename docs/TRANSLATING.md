@@ -173,6 +173,20 @@ left-to-right places.
 
 Check how an `rtl` catalog looks on Windows before setting `"reviewed"`.
 
+### Mirroring the layout (`app/rtl_layout.py`, not yet wired in)
+
+Tk has no right-to-left layout mode, so `rtl_layout.mirror_tree(widget)` reflects a finished
+widget tree once, after it is built: pack sides left/right, anchors and `padx` are swapped; grid
+columns move to `ncols - column - columnspan` with their stickiness, `padx` and column weights;
+labels and buttons get the opposite `anchor` and `justify`, so a scrollbar packed on the right
+ends up on the left. It does nothing in a left-to-right interface (`rtl_layout.active()` follows
+`i18n.rtl_marks()`; `WTS_RTL_LAYOUT=1` or `0` overrides it for a manual try). Each flip is an
+involution: a second pass restores the original, so a tree is mirrored exactly once. The insides
+of Entry, Combobox, Spinbox, Text, Listbox, Treeview and Canvas widgets are left as they are (a
+path or URL still reads left to right), and so is everything under a widget marked with
+`rtl_layout.keep_ltr(widget)`; such widgets still take the mirrored slot among their siblings.
+Place-managed slaves and menus are not mirrored. Tests: `tests/app/test_rtl_layout.py`.
+
 ## The translated READMEs
 
 `docs/i18n/README.<code>.md` is the project page in each interface language (the file code is
