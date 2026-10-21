@@ -271,3 +271,89 @@ def test_events_arrive_out_of_order():
     svc._poll_once()
 
     assert task.progress == 0, "an event for another task must not update this one"
+
+
+# A failed job keeps its reason: the Queue shows it on the selected row (error_reason,
+# in the UI language) and the history row stores it (recovery_note). Before, both were
+# blank and the row said only "error" (click-through test, 2026-10-21).
+
+def test_a_worker_error_keeps_its_reason(tmp_path):
+    app = MockApp()
+    svc = TranscriptionService(app)  # type: ignore[arg-type]
+    task = MockTask(start_time=time.time(), history_id=1,
+                    file_path=str(tmp_path / "talk.mp3"))
+    app.workers.append(_worker(task, _LiveProc()))
+    app.worker_events.put({
+        "event": "error", "message": "CUDA out of memory",
+        "_worker_id": 1, "_token": "test-token",
+    })
+
+    svc._poll_once()
+
+    assert task.status == "error"
+    assert "CUDA out of memory" in task.error_reason
+    assert app.history.finish_transcription.call_args.kwargs["error"] == "CUDA out of memory"
+
+
+def test_a_file_that_is_not_media_is_named_as_such(tmp_path):
+    app = MockApp()
+    svc = TranscriptionService(app)  # type: ignore[arg-type]
+    task = MockTask(start_time=time.time(), history_id=1,
+                    file_path=str(tmp_path / "README.md"))
+    app.workers.append(_worker(task, _LiveProc()))
+    app.worker_events.put({
+        "event": "error", "message": "[Errno 1094995529] Invalid data found when processing input",
+        "_worker_id": 1, "_token": "test-token",
+    })
+
+    svc._poll_once()
+
+    assert task.error_reason.startswith("README.md could not be read as audio or video")
+
+
+def test_a_crashed_worker_says_so(tmp_path):
+    app = MockApp()
+    svc = TranscriptionService(app)  # type: ignore[arg-type]
+    task = MockTask(start_time=time.time(), history_id=1, output_formats=["srt"],
+                    file_path=str(tmp_path / "talk.mp3"))
+    app.workers.append(_worker(task, _DeadProc()))
+    app.worker_events.put({
+        "event": "worker_exit", "return_code": -9, "_pid": 1234,
+        "_worker_id": 1, "_token": "test-token",
+    })
+
+    svc._poll_once()
+
+    assert task.status == "error"
+    assert "-9" in task.error_reason
+    assert "-9" in app.history.finish_transcription.call_args.kwargs["error"]
+
+
+def test_a_hung_worker_gives_a_reason(tmp_path):
+    app = MockApp()
+    svc = TranscriptionService(app)  # type: ignore[arg-type]
+    task = MockTask(start_time=time.time() - 3000, history_id=2,
+                    file_path=str(tmp_path / "test2.mp3"))
+    worker = _worker(task, _LiveProc())
+    worker["last_event_at"] = time.monotonic() - 3000
+    app.workers.append(worker)
+    svc.restart_worker = MagicMock()
+
+    svc._poll_once()
+
+    assert "stopped responding" in task.error_reason
+
+
+def test_dispatch_clears_the_previous_reason(tmp_path):
+    app = MockApp()
+    svc = TranscriptionService(app)  # type: ignore[arg-type]
+    app.history.insert_transcription.return_value = 7
+    task = MockTask(status="waiting", file_path=str(tmp_path / "retry.mp3"),
+                    error_reason="old reason")
+    app.queue.append(task)
+    app.workers.append(_worker(None, _LiveProc(), temporary=False))
+    svc._dispatch_command_async = MagicMock()
+
+    svc.dispatch_waiting()
+
+    assert task.error_reason == ""

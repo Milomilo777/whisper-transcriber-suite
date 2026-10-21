@@ -102,6 +102,9 @@ class TranscriptionTask:
         # Why this attempt ended the way it did (a salvaged crash, a hung
         # worker), stored in its history row; cleared at every dispatch.
         self.recovery_note: str = ""
+        # Why a failed attempt failed, in the UI language, for the Queue's
+        # line under the selected row; cleared at every dispatch too.
+        self.error_reason: str = ""
         # Speed meter (core.speed_meter). ``live_*`` are the smoothed speed
         # (x real time) and time left while the decode runs, None until
         # there is enough data; carried on the worker's "progress" events.

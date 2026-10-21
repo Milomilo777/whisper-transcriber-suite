@@ -10,7 +10,7 @@ import logging
 import sys
 import tkinter as tk
 from tkinter import ttk
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 from app.domain.cookies import cookie_browser_choices, cookie_browser_label
 from app.domain.languages import SUBTITLE_LANGUAGES, subtitle_language_label
@@ -351,6 +351,18 @@ def status_label(status: str) -> str:
     return STATUS_ICON.get(status, "") + _status_text(status)
 
 
+def queue_failure_line(selected: list[Any]) -> str:
+    """The red line under the Queue's buttons: why the one selected failed job failed.
+
+    Empty unless exactly one row is selected and it failed. A Treeview cell has no room
+    for a reason, so the row says only "error" (click-through test, 2026-10-21). No Tk.
+    """
+    if len(selected) != 1 or getattr(selected[0], "status", "") != "error":
+        return ""
+    reason = str(getattr(selected[0], "error_reason", "") or "")
+    return reason or _("This job failed and no reason was recorded; try Re-run.")
+
+
 _PROGRESS_SEGMENTS = 10
 
 
@@ -491,7 +503,7 @@ def file_ready_state(text: str) -> tuple[str, str]:
     import os
 
     from app.app import _clean_pasted_path
-    from core.watcher import is_media_file
+    from core.watcher import is_transcribable
 
     path = _clean_pasted_path(text or "")
     if not path:
@@ -500,7 +512,7 @@ def file_ready_state(text: str) -> tuple[str, str]:
         return "link", _("Link: it downloads first, then transcribes.")
     if not os.path.isfile(path):
         return "missing", _("File not found: check the path, or click Browse.")
-    if not is_media_file(path):
+    if not is_transcribable(path):
         return "not_media", _("{name} is not an audio or video file.", name=os.path.basename(path))
     try:
         size = _fmt_bytes(os.path.getsize(path))
@@ -1218,6 +1230,13 @@ def build_queue_tab(app: "App", parent: ttk.Frame) -> None:
     for key in ("pause", "resume", "cancel", "rerun", "remove"):
         app.queue_action_buttons[key].pack(side="left", padx=(0, 6))
         app.queue_action_buttons[key].state(["disabled"])
+    # Why the selected failed job failed (queue_failure_line); packed by
+    # App._update_queue_action_bar only while it has text.
+    app.queue_failure_var = tk.StringVar(master=parent, value="")
+    app.queue_failure_label = ttk.Label(
+        parent, textvariable=app.queue_failure_var,
+        foreground=tokens.themed(tokens.DANGER_TEXT), wraplength=px(760), justify="left",
+    )
     # A single-click on a running/paused row's status or progress cell
     # toggles pause/resume — a discoverable shortcut on top of the menu.
     app.tree.bind("<Button-1>", app.queue_status_cell_click, add="+")

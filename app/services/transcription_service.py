@@ -58,6 +58,38 @@ NO_SPEECH_NOTE = "No speech recognised (check the audio track, or the file may b
 # responding (no progress or heartbeat for too long) and was restarted.
 HUNG_WORKER_NOTE = "Stopped because the transcription stopped responding; try the file again"
 
+# Longest worker message kept as a failure reason (a traceback tail can be long).
+_REASON_MAX_CHARS = 300
+
+
+def _short_message(message: object) -> str:
+    """``message`` on one line, cut to ``_REASON_MAX_CHARS``."""
+    text = " ".join(str(message or "").split())
+    if len(text) > _REASON_MAX_CHARS:
+        text = text[: _REASON_MAX_CHARS - 1] + "…"
+    return text
+
+
+def failure_reason(file_path: str, message: object) -> str:
+    """Why a job failed, in plain words, for the line under its Queue row.
+
+    A file without a media extension is named as unreadable (the worker's own
+    message is decoder jargon); anything else keeps the worker's message.
+    """
+    from core.watcher import is_media_file
+
+    name = os.path.basename(file_path or "")
+    if name and not is_media_file(file_path):
+        return _("{name} could not be read as audio or video.", name=name)
+    text = _short_message(message)
+    return _("Transcription failed: {message}", message=text) if text else ""
+
+
+def _mark_stopped_early(task: Any) -> None:
+    """Give a job ended by a worker teardown a reason when it has none yet."""
+    if not getattr(task, "error_reason", ""):
+        task.error_reason = _("The transcription stopped before it finished; try the file again.")
+
 
 def _reported_language(task: Any) -> str:
     """Return the detected language, clearing it if no speech was found."""
@@ -1071,6 +1103,7 @@ class TranscriptionService:
                     "finished", "error", "cancelled",
                 ):
                     live.status = "error"
+                    _mark_stopped_early(live)
                 self.finish_task(worker, keep_status=True)
             except Exception:  # noqa: BLE001 - teardown must not raise
                 logger.exception(
@@ -1102,6 +1135,7 @@ class TranscriptionService:
                     "finished", "error", "cancelled",
                 ):
                     live.status = "error"
+                    _mark_stopped_early(live)
                 self.finish_task(worker, keep_status=True)
             except Exception:  # noqa: BLE001 - teardown must not raise
                 logger.exception(
@@ -1241,6 +1275,11 @@ class TranscriptionService:
                     "finished", "error", "cancelled",
                 ):
                     otask.status = "error"
+                    if not getattr(otask, "error_reason", ""):
+                        otask.error_reason = _(
+                            "The transcription engine or model could not start; "
+                            "try the file again."
+                        )
                 self.finish_task(other, keep_status=True)
             except Exception:  # noqa: BLE001 - teardown must not wedge poll
                 logger.exception(
@@ -1490,8 +1529,15 @@ class TranscriptionService:
                                 task_correlation_id(worker["task"]),
                             )
                         else:
-                            worker["task"].status = "error"
-                            app.log(event.get("message", "Worker error"))
+                            failed = worker["task"]
+                            message = event.get("message", "Worker error")
+                            failed.status = "error"
+                            # Kept for the Queue row and the history row; both
+                            # said only "error" before.
+                            failed.error_reason = failure_reason(failed.file_path, message)
+                            if not getattr(failed, "recovery_note", ""):
+                                failed.recovery_note = _short_message(message)
+                            app.log(message)
                             self.finish_task(worker, keep_status=True)
                     else:
                         app.log(event.get("message", "Worker error"))
@@ -1555,8 +1601,14 @@ class TranscriptionService:
                                 app.log(f"Transcription worker exited with code {event.get('return_code')}, but output files are complete.")
                                 self.finish_task(worker, keep_status=False)
                             else:
+                                code = event.get("return_code")
                                 worker["task"].status = "error"
-                                app.log(f"Transcription worker exited with code {event.get('return_code')}")
+                                worker["task"].error_reason = _(
+                                    "The transcription stopped unexpectedly (exit code {code}); "
+                                    "try the file again.", code=code,
+                                )
+                                worker["task"].recovery_note = f"Transcription worker exited with code {code}"
+                                app.log(f"Transcription worker exited with code {code}")
                                 self.finish_task(worker, keep_status=True)
                         else:
                             # paused/cancelled/other terminal: unchanged behaviour (paused -> error)
@@ -1632,6 +1684,9 @@ class TranscriptionService:
             # Without a note the history row of this error was blank, so
             # the record never said why the job failed.
             w["task"].recovery_note = HUNG_WORKER_NOTE
+            w["task"].error_reason = _(
+                "Stopped because the transcription stopped responding; try the file again"
+            )
             self.finish_task(w, keep_status=True)
         # finish_task() retires (and un-registers) a temporary
         # worker when no waiting task is left. restart_worker()
@@ -1733,6 +1788,7 @@ class TranscriptionService:
             # recovery_note on error rows too, so a stale one would label
             # this attempt with the previous attempt's failure.
             t.recovery_note = ""
+            t.error_reason = ""
             t.start_time = _time.time()
             # Clear any prior end_time (re-run path) so the freshly-
             # restarted task counter doesn't immediately freeze.

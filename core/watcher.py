@@ -10,6 +10,7 @@ clear "unavailable" label in that case).
 """
 from __future__ import annotations
 
+import functools
 import logging
 import os
 import re
@@ -76,6 +77,33 @@ def is_media_file(path: str) -> bool:
             return True
         return first in (b"", _TS_SYNC_BYTE)
     return True
+
+
+def is_transcribable(path: str) -> bool:
+    """True when ``path`` is a file the Transcribe button may queue.
+
+    A media extension (``is_media_file``) is enough. The list cannot name every
+    format ffmpeg reads (``.amr`` phone recordings, ``.caf``, ``.mxf``...), so any
+    other existing file is accepted when ffprobe finds an audio stream in it. A
+    README picked by mistake is refused here instead of becoming a job that fails.
+    """
+    if is_media_file(path):
+        return True
+    try:
+        st = os.stat(path)
+    except OSError:
+        return False
+    if not os.path.isfile(path):
+        return False
+    return _probe_has_audio(path, st.st_size, st.st_mtime_ns)
+
+
+@functools.lru_cache(maxsize=64)
+def _probe_has_audio(path: str, size: int, mtime_ns: int) -> bool:
+    """One ffprobe per file version (size and mtime are part of the cache key)."""
+    from . import burn_subs
+
+    return bool(burn_subs.probe_media(path, timeout=5.0).audio_codec)
 
 
 def watch_skip_reason(path: str) -> str:

@@ -85,6 +85,74 @@ def test_add_still_reports_a_missing_file(tmp_path) -> None:
     assert fake.queue == [] and fake.logs[-1].startswith("File not found")
 
 
+@pytest.fixture
+def no_probe(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    """ffprobe stand-in: only ``.amr`` files hold audio. Collects the error dialogs shown."""
+    from core import burn_subs
+
+    monkeypatch.setattr(
+        burn_subs, "probe_media",
+        lambda path, timeout=60.0: burn_subs.MediaInfo(
+            1.0, False, "amr_nb" if path.endswith(".amr") else ""),
+    )
+    w._probe_has_audio.cache_clear()
+    shown: list[str] = []
+    monkeypatch.setattr(app_mod, "show_error", lambda _m, title, *a, **k: shown.append(title))
+    return shown
+
+
+def test_add_refuses_a_file_that_is_not_media(tmp_path, no_probe: list[str]) -> None:
+    readme = tmp_path / "README.md"
+    readme.write_text("# notes", encoding="utf-8")
+    fake = _fake_app()
+    fake.fv.set(str(readme))
+    App.add(fake)  # type: ignore[arg-type]
+    assert fake.queue == []
+    assert no_probe == ["Cannot transcribe this file"]
+    assert "README.md is not an audio or video file" in fake.logs[-1]
+
+
+def test_add_takes_audio_with_an_unlisted_extension(tmp_path, no_probe: list[str]) -> None:
+    call = tmp_path / "call.amr"
+    call.write_bytes(b"#!AMR\n")
+    fake = _fake_app()
+    fake.fv.set(str(call))
+    App.add(fake)  # type: ignore[arg-type]
+    assert [t.file_path for t in fake.queue] == [str(call)] and no_probe == []
+
+
+def test_bulk_enqueue_skips_files_that_are_not_media(
+    tmp_path, media: str, no_probe: list[str],
+) -> None:
+    notes = tmp_path / "notes.txt"
+    notes.write_text("x", encoding="utf-8")
+    fake = _fake_app()
+    assert App._bulk_enqueue(fake, [media, str(notes)]) == 1  # type: ignore[arg-type]
+    assert [t.file_path for t in fake.queue] == [media]
+    assert any("notes.txt" in line for line in fake.logs) and no_probe == []
+
+
+def test_bulk_enqueue_says_so_when_nothing_is_media(tmp_path, no_probe: list[str]) -> None:
+    notes = tmp_path / "notes.txt"
+    notes.write_text("x", encoding="utf-8")
+    fake = _fake_app()
+    assert App._bulk_enqueue(fake, [str(notes)]) == 0  # type: ignore[arg-type]
+    assert no_probe == ["Cannot transcribe these files"]
+
+
+def test_the_queue_line_names_why_the_selected_job_failed() -> None:
+    from app.widgets.tabs import queue_failure_line
+
+    failed = types.SimpleNamespace(status="error", error_reason="README.md could not be read.")
+    done = types.SimpleNamespace(status="finished", error_reason="")
+    assert queue_failure_line([failed]) == "README.md could not be read."
+    assert queue_failure_line([done]) == ""
+    assert queue_failure_line([failed, done]) == "", "several rows: no single reason"
+    assert queue_failure_line([]) == ""
+    assert "no reason was recorded" in queue_failure_line(
+        [types.SimpleNamespace(status="error", error_reason="")])
+
+
 def test_clean_pasted_path_leaves_inner_quotes_alone() -> None:
     assert app_mod._clean_pasted_path('a "b" c') == 'a "b" c'
     assert app_mod._clean_pasted_path('"') == '"'

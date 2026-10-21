@@ -121,6 +121,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **A file that is not audio or video**: picking one (a README, a subtitle file) showed a green
   "Ready" line and a blue Transcribe button, then failed in the queue. The line now says in red that
   it is not an audio or video file, and Browse lists audio and video files first.
+  Transcribe (and a multi-file drop) now also refuses such a file instead of queueing it; a file
+  with an unlisted extension is accepted when ffprobe finds audio in it (`.amr` recordings, say).
+
+- **A failed job now says why**: a Queue row said only "error". Selecting it now shows the reason
+  in red under the buttons (the worker's message, "could not be read as audio or video", or that
+  the transcription stopped), and the history row stores it too.
 
 - **The window stays on your tab**: when a job finished, the app jumped to the Transcribe tab from
   whatever tab you were on (Download, Live, ...). It now does that only from the Queue tab.

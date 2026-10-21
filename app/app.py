@@ -1210,6 +1210,8 @@ class App(tk.Tk):
     # Queue-tab empty-state placeholder
     queue_empty_var: tk.StringVar
     queue_empty_label: "ttk.Label"
+    queue_failure_var: tk.StringVar
+    queue_failure_label: "ttk.Label"
     # Whether to chime the system bell when a job finishes (View menu)
     chime_on_complete_var: tk.BooleanVar
     # Recent-files submenu rebuilt every time it opens
@@ -4260,6 +4262,19 @@ class App(tk.Tk):
         if not os.path.isfile(text):
             self.log(f"File not found — pick an existing file: {text}")
             return
+        # A README picked by mistake used to be queued anyway and fail as a bare "error"
+        # row (click-through test, 2026-10-21): turn it away here, with the reason.
+        from core.watcher import is_transcribable
+
+        if not is_transcribable(text):
+            name = os.path.basename(text)
+            self.log(f"Not queued: {name} is not an audio or video file.")
+            show_error(
+                self, _("Cannot transcribe this file"),
+                _("{name} is not an audio or video file. Choose an audio or video file, "
+                  "or paste a video link.", name=name),
+            )
+            return
         if not self._confirm_english_only_model():
             return
         if not self._ensure_transcribe_ready():
@@ -4603,8 +4618,23 @@ class App(tk.Tk):
         options, and refresh() runs ONCE at the end. Returns the count
         enqueued (0 if the gate was declined or no path existed).
         """
+        from core.watcher import is_transcribable
+
         files = [p for p in paths if p and os.path.isfile(p)]
+        # Files that are not audio or video would only become failed jobs.
+        skipped = [p for p in files if not is_transcribable(p)]
+        if skipped:
+            files = [p for p in files if p not in skipped]
+            names = ", ".join(os.path.basename(p) for p in skipped[:5])
+            more = f" (+{len(skipped) - 5} more)" if len(skipped) > 5 else ""
+            self.log(f"Not queued, not audio or video: {names}{more}")
         if not files:
+            if skipped:
+                show_error(
+                    self, _("Cannot transcribe these files"),
+                    _("None of the chosen files is audio or video."),
+                    detail="\n".join(os.path.basename(p) for p in skipped),
+                )
             return 0
         if not self._confirm_english_only_model():
             return 0
@@ -5571,6 +5601,24 @@ class App(tk.Tk):
                     merged[k] = True
         for key, btn in buttons.items():
             _set_enabled(btn, bool(merged.get(key)))
+        self._sync_queue_failure_line()
+
+    def _sync_queue_failure_line(self) -> None:
+        """Show why the selected failed job failed under the action bar, or hide the line."""
+        var = getattr(self, "queue_failure_var", None)
+        label = getattr(self, "queue_failure_label", None)
+        if var is None or label is None:
+            return
+        from app.widgets.tabs import queue_failure_line
+
+        line = queue_failure_line(list(self._selected_tasks()))
+        if var.get() != line:
+            var.set(line)
+        shown = bool(label.winfo_manager())
+        if line and not shown:
+            label.pack(fill="x", padx=10, pady=(0, 6))
+        elif not line and shown:
+            label.pack_forget()
 
     def queue_status_cell_click(self, event: tk.Event) -> None:
         """Single-click on a running/paused row's Status or Progress cell
