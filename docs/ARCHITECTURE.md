@@ -158,8 +158,8 @@ Cancel must always be safe to call multiple times and from the Tk main thread.
   "model_path": "...",       // folder holding the model files
   "device": "auto",          // "auto" | "cpu" | "cuda"
   "compute_type": "int8",    // faster-whisper compute_type
-  "parallel_workers": 2,     // cap on concurrent transcription workers
-  "output_formats": ["srt", "json"]  // written per task, sent with each transcribe command
+  "parallel_workers": 0,     // cap on concurrent transcription workers; 0 = automatic
+  "output_formats": ["srt", "json", "txt"]  // written per task, sent with each transcribe command
 }
 ```
 
