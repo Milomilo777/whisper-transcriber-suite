@@ -1133,6 +1133,7 @@ class App(tk.Tk):
     diarization_check: "ttk.Checkbutton"
     diarization_var: tk.BooleanVar
     diarization_speakers_label: "ttk.Label"
+    transcribe_time_range_label: "ttk.Label"  # the Speakers count packs back in front of it
     diarization_speakers_var: tk.StringVar
     diarization_speakers_combo: "ttk.Combobox"
     diarization_help_icon: "ttk.Label"
@@ -1205,6 +1206,7 @@ class App(tk.Tk):
     transcribe_empty_state: "ttk.Frame"
     transcribe_empty_headline_var: tk.StringVar
     transcribe_browse_row: "ttk.Frame"
+    transcribe_sample_row: "ttk.Frame | None"  # the sample button under Browse; None without a sample
     transcribe_has_sample: bool
     # True once drag-and-drop is wired (tkinterdnd2 present and registered)
     _dnd_ready: bool
@@ -2919,7 +2921,8 @@ class App(tk.Tk):
             pass
 
     def _sync_diarization_speakers_option(self) -> None:
-        """Grey out the speakers combobox if speaker detection is off."""
+        """Show the Speakers count only while speaker detection is on (greyed out it
+        still looked like a setting that applies: screenshot review, 2026-10-21)."""
         combo = _inst_attr(self, "diarization_speakers_combo")
         if combo is None:
             return
@@ -2933,6 +2936,18 @@ class App(tk.Tk):
                 combo.state(["disabled"])
             else:
                 combo.state(["!disabled"])
+            label = _inst_attr(self, "diarization_speakers_label")
+            if label is None:
+                return
+            if not diar_enabled:
+                label.pack_forget()
+                combo.pack_forget()
+            elif not combo.winfo_manager():
+                # back in front of "Time range", where build_transcribe_tab put it
+                anchor = _inst_attr(self, "transcribe_time_range_label")
+                where = {"before": anchor} if anchor is not None else {}
+                label.pack(side="left", **where)
+                combo.pack(side="left", padx=(6, 2), **where)
         except tk.TclError:
             logger.debug("Could not sync the speakers option", exc_info=True)
 

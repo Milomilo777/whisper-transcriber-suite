@@ -84,7 +84,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   completed" is now **Remove ended jobs** (**Remove ended downloads** on the Download tab), with a
   hover text saying no file is deleted. Found in a screenshot review of the first tabs.
 
-- **The Transcribe button shows when a file is ready**: it is plain until the Selected file box holds a
+- **Transcribe tab, plainer**: the ready line gives the recording's length ("Ready: class.flac
+  (1:46:12, 52.3 MB)"); the box is labelled **File or video link**, since a link works there too;
+  **Browse files** comes before the sample clip; "(whole recording)" shows while the time range is
+  0:00:00 to 0:00:00; the Speakers count shows only while **Identify speakers** is ticked.
+
+- **The Transcribe button shows when a file is ready**: it is plain until the File or video link box holds a
   file that exists or a link, then turns blue, with "Ready: name (size)" (or "Link: it downloads first,
   then transcribes", or "File not found") beside it. Clicking it with nothing chosen opens Browse
   instead of writing a log line. Found in a click-through test of the app with real mouse clicks.

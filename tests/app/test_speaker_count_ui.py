@@ -169,3 +169,21 @@ def test_speaker_count_layout_fits(app):
         checked += 1
 
     assert checked == 3
+
+
+def test_speaker_count_is_hidden_while_detection_is_off(app):
+    """Greyed out, the count still looked like a setting that applies (review 2026-10-21):
+    it is hidden while detection is off and comes back in front of "Time range"."""
+    row = app.diarization_speakers_combo.master
+    assert app.diarization_speakers_combo.winfo_manager()
+
+    app.diarization_check.invoke()  # off
+    app.update_idletasks()
+    assert not app.diarization_speakers_label.winfo_manager()
+    assert not app.diarization_speakers_combo.winfo_manager()
+
+    app.diarization_check.invoke()  # on again
+    app.update_idletasks()
+    order = row.pack_slaves()
+    assert order.index(app.diarization_speakers_label) < order.index(app.diarization_speakers_combo) \
+        < order.index(app.transcribe_time_range_label)

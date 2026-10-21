@@ -176,3 +176,22 @@ def test_headline_follows_drag_and_drop_becoming_ready(tab_host):
 
 def test_sync_is_a_no_op_before_the_tab_is_built():
     tabs.sync_transcribe_empty_state(SimpleNamespace(queue=[]))  # type: ignore[arg-type]
+
+
+def test_the_sample_sits_under_browse_and_hides_with_the_empty_state(tab_host):
+    """Picking your own file is the main action; the sample button sat above Browse
+    (screenshot review, 2026-10-21)."""
+    drop_zone = tab_host.transcribe_browse_row.master
+    sample_row = ttk.Frame(drop_zone)
+    ttk.Button(sample_row, text="Try it now (sample clip)").pack()
+    sample_row.pack(after=tab_host.transcribe_browse_row)
+    tab_host.transcribe_sample_row = sample_row
+
+    tab_host.queue.append(object())
+    tabs.sync_transcribe_empty_state(tab_host)
+    assert sample_row.winfo_manager() == ""
+    tab_host.queue.clear()
+    tabs.sync_transcribe_empty_state(tab_host)
+    order = drop_zone.pack_slaves()
+    assert order.index(tab_host.transcribe_empty_state) < order.index(tab_host.transcribe_browse_row) \
+        < order.index(sample_row)

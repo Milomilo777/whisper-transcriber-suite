@@ -6,15 +6,11 @@
   ],
   [
    ".!frame.!labelframe.!frame.!label2",
-   "To use a link, paste it into the Selected file box below and click Transcribe."
+   "To use a link, paste it into the File or video link box below and click Transcribe."
   ],
   [
    ".!frame.!labelframe.!frame.!label3",
    "Works with MP3, WAV, M4A, FLAC, OGG, MP4, MKV, MOV, WebM and most other audio and video formats."
-  ],
-  [
-   ".!frame.!labelframe.!frame.!button",
-   "Try it now (sample clip)"
   ],
   [
    ".!frame.!labelframe.!frame2.!button",
@@ -25,8 +21,12 @@
    " ⓘ "
   ],
   [
+   ".!frame.!labelframe.!frame3.!button",
+   "Try it now (sample clip)"
+  ],
+  [
    ".!frame.!frame.!label",
-   "Selected file:"
+   "File or video link:"
   ],
   [
    ".!frame.!frame2.!frame.!label",
@@ -654,6 +654,10 @@
   ],
   [
    ".!frame.!frame3.!frame2.!label4",
+   "(whole recording)"
+  ],
+  [
+   ".!frame.!frame3.!frame2.!label5",
    " ⓘ "
   ],
   [
@@ -1200,7 +1204,7 @@
   ],
   [
    ".!frame2.!labelframe.!frame.!label2",
-   "To use a link, paste it into the Selected file box below and click Transcribe."
+   "To use a link, paste it into the File or video link box below and click Transcribe."
   ],
   [
    ".!frame2.!labelframe.!frame.!label3",
@@ -1216,7 +1220,7 @@
   ],
   [
    ".!frame2.!frame.!label",
-   "Selected file:"
+   "File or video link:"
   ],
   [
    ".!frame2.!frame2.!frame.!label",
@@ -1844,6 +1848,10 @@
   ],
   [
    ".!frame2.!frame3.!frame2.!label4",
+   "(whole recording)"
+  ],
+  [
+   ".!frame2.!frame3.!frame2.!label5",
    " ⓘ "
   ],
   [
@@ -2386,7 +2394,7 @@
   ],
   [
    ".!frame3.!labelframe.!frame.!label2",
-   "To use a link, paste it into the Selected file box below and click Transcribe."
+   "To use a link, paste it into the File or video link box below and click Transcribe."
   ],
   [
    ".!frame3.!labelframe.!frame.!label3",
@@ -2402,7 +2410,7 @@
   ],
   [
    ".!frame3.!frame.!label",
-   "Selected file:"
+   "File or video link:"
   ],
   [
    ".!frame3.!frame2.!frame.!label",
@@ -3030,6 +3038,10 @@
   ],
   [
    ".!frame3.!frame3.!frame2.!label4",
+   "(whole recording)"
+  ],
+  [
+   ".!frame3.!frame3.!frame2.!label5",
    " ⓘ "
   ],
   [

@@ -92,3 +92,64 @@ def test_ffprobe_answers(monkeypatch, tmp_path, returncode, stdout, expected):
         lambda *a, **k: subprocess.CompletedProcess(a, returncode, stdout=stdout),
     )
     assert watcher._ffprobe_has_audio(_touch(tmp_path, "x.amr")) is expected
+
+
+# --- media_duration: the recording length on the ready line ------------------
+
+
+@pytest.fixture
+def ffprobe_out(monkeypatch):
+    """Fake ffprobe: ``out["stdout"]`` is what it prints; ``out["raise"]`` makes it fail."""
+    out: dict = {"stdout": b"6372.48\n", "raise": None, "calls": 0}
+
+    def fake_run(args, **_kw):
+        out["calls"] += 1
+        if out["raise"] is not None:
+            raise out["raise"]
+        return subprocess.CompletedProcess(args, 0, out["stdout"], b"")
+
+    monkeypatch.setattr(watcher.subprocess, "run", fake_run)
+    watcher._duration_cache.clear()
+    yield out
+    watcher._duration_cache.clear()
+
+
+def test_the_length_is_read_once_per_file(tmp_path, ffprobe_out):
+    path = _touch(tmp_path, "class.flac")
+    assert watcher.cached_media_duration(path) is watcher.UNKNOWN_DURATION
+    assert watcher.media_duration(path) == pytest.approx(6372.48)
+    assert watcher.cached_media_duration(path) == pytest.approx(6372.48)
+    watcher.media_duration(path)
+    assert ffprobe_out["calls"] == 1
+
+
+def test_no_length_in_the_container_is_none(tmp_path, ffprobe_out):
+    ffprobe_out["stdout"] = b"N/A\n"
+    path = _touch(tmp_path, "broken.mp4")
+    assert watcher.media_duration(path) is None
+    assert watcher.cached_media_duration(path) is None
+
+
+def test_a_failed_ffprobe_is_remembered_so_the_ready_line_does_not_loop(tmp_path, ffprobe_out):
+    ffprobe_out["raise"] = FileNotFoundError("no ffprobe")
+    path = _touch(tmp_path, "talk.mp3")
+    assert watcher.media_duration(path) is None
+    assert watcher.cached_media_duration(path) is None
+    watcher.media_duration(path)
+    assert ffprobe_out["calls"] == 1
+
+
+def test_a_missing_file_has_no_length(tmp_path, ffprobe_out):
+    path = str(tmp_path / "gone.mp3")
+    assert watcher.cached_media_duration(path) is None
+    assert watcher.media_duration(path) is None
+    assert ffprobe_out["calls"] == 0
+
+
+def test_the_ready_line_shows_the_length(tmp_path):
+    from app.widgets.tabs import clock_length, file_ready_state
+
+    assert [clock_length(s) for s in (0, 7.4, 185, 6372.48)] == ["0:00", "0:07", "3:05", "1:46:12"]
+    path = _touch(tmp_path, "class.flac", b"x" * 2048)
+    assert file_ready_state(path, duration=6372.48) == ("file", "Ready: class.flac (1:46:12, 2.0 KB)")
+    assert file_ready_state(path) == ("file", "Ready: class.flac (2.0 KB)")

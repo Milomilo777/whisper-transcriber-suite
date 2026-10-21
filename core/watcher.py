@@ -111,7 +111,7 @@ def is_transcribable(path: str) -> bool:
 
 
 # ffprobe's definite answers per file version (path, size, mtime_ns); the file
-# ready line asks on every edit of the Selected file box.
+# ready line asks on every edit of the File or video link box.
 _probe_cache: dict[tuple[str, int, int], bool] = {}
 _PROBE_CACHE_MAX = 64
 
@@ -132,6 +132,69 @@ def _ffprobe_has_audio(path: str) -> bool | None:
         logger.info("ffprobe could not check %s (%s); accepting it", path, e)
         return None
     return r.returncode == 0 and b"audio" in (r.stdout or b"")
+
+
+UNKNOWN_DURATION = object()  # cached_media_duration: not probed yet
+# ffprobe's length answers per file version (path, size, mtime_ns); None = no length.
+_duration_cache: dict[tuple[str, int, int], float | None] = {}
+
+
+def _file_key(path: str) -> tuple[str, int, int] | None:
+    try:
+        st = os.stat(path)
+    except OSError:
+        return None
+    return (path, st.st_size, st.st_mtime_ns)
+
+
+def cached_media_duration(path: str) -> object:
+    """The length ``media_duration`` found for this version of ``path`` (seconds, or None
+    when it has none), or ``UNKNOWN_DURATION`` when nobody asked yet. Never runs ffprobe,
+    so the UI thread may call it on every edit of the File or video link box."""
+    key = _file_key(path)
+    if key is None:
+        return None
+    return _duration_cache.get(key, UNKNOWN_DURATION)
+
+
+def media_duration(path: str) -> float | None:
+    """Length of an audio or video file in seconds from ffprobe, None when ffprobe has no
+    answer (missing, timed out, no length in the container). Cached per file version, a
+    failure too: the length then stays unshown for that file this session, which is cheaper
+    than a probe loop. Blocks up to 5 s: call it off the UI thread."""
+    key = _file_key(path)
+    if key is None:
+        return None
+    if key in _duration_cache:
+        return _duration_cache[key]
+    from ._proc import new_session_kwargs
+    from .paths import bundled_binary
+
+    seconds: float | None = None
+    try:
+        r = subprocess.run(
+            [bundled_binary("ffprobe"), "-v", "error", "-show_entries", "format=duration",
+             "-of", "default=noprint_wrappers=1:nokey=1", "-i", path],
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL,
+            timeout=5.0, **new_session_kwargs(),
+        )
+    except (OSError, subprocess.SubprocessError) as e:
+        # Cached too: the ready line probes again whenever nothing is cached, so an
+        # uncached failure (no ffprobe at all) would probe in an endless loop.
+        logger.info("ffprobe could not read the length of %s (%s)", path, e)
+        r = None
+    if r is not None and r.returncode == 0:
+        try:
+            value = float((r.stdout or b"").strip() or b"nan")
+        except ValueError:
+            value = float("nan")
+        if value == value and 0 < value < float("inf"):  # "N/A" -> nan
+            seconds = value
+    if len(_duration_cache) >= _PROBE_CACHE_MAX:
+        # the oldest entry only: clearing all could drop a length a redraw is about to read
+        _duration_cache.pop(next(iter(_duration_cache)))
+    _duration_cache[key] = seconds
+    return seconds
 
 
 def watch_skip_reason(path: str) -> str:

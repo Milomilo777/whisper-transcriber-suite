@@ -564,20 +564,39 @@ def download_button_states_for_status(
     return states
 
 
-EMPTY_STATE_LINK_HINT = N_("To use a link, paste it into the Selected file box below and click Transcribe.")
+EMPTY_STATE_LINK_HINT = N_("To use a link, paste it into the File or video link box below and click Transcribe.")
 EMPTY_STATE_FORMATS = N_(
     "Works with MP3, WAV, M4A, FLAC, OGG, MP4, MKV, MOV, WebM and most other "
     "audio and video formats."
 )
 
 
-def file_ready_state(text: str) -> tuple[str, str]:
-    """What the Selected file box holds, for the line next to the Transcribe button.
+def time_range_hint(start: str, end: str) -> str:
+    """The note beside the Transcribe tab's time range: "(whole recording)" while both
+    sides are unset, else nothing. Unset = what App.add reads as no clip (zero, empty,
+    or not a time). No Tk."""
+    from app.services.download_service import _parse_timecode
+
+    return _("(whole recording)") if not _parse_timecode(start) and not _parse_timecode(end) else ""
+
+
+def clock_length(seconds: float) -> str:
+    """A recording length as a clock: ``0:07``, ``3:05``, ``1:46:12``. No Tk."""
+    s = max(0, int(round(seconds)))
+    h, rest = divmod(s, 3600)
+    m, sec = divmod(rest, 60)
+    return f"{h}:{m:02d}:{sec:02d}" if h else f"{m}:{sec:02d}"
+
+
+def file_ready_state(text: str, duration: float | None = None) -> tuple[str, str]:
+    """What the File or video link box holds, for the line next to the Transcribe button.
 
     ``("empty" | "link" | "file" | "missing" | "not_media", line)``: an audio or video file
     that exists or a link makes the button the blue primary action; nothing, a path that is
     not a file, or a file that is not audio or video (a README picked by mistake) keeps it
-    plain, so the user can see whether the app has something to transcribe. No Tk.
+    plain, so the user can see whether the app has something to transcribe. ``duration``
+    (seconds, from ffprobe) adds the recording's length to a file's line, so the user knows
+    which recording it is and roughly how long the job takes. No Tk.
     """
     import os
 
@@ -597,7 +616,11 @@ def file_ready_state(text: str) -> tuple[str, str]:
         size = _fmt_bytes(os.path.getsize(path))
     except OSError:
         size = "?"
-    return "file", _("Ready: {name} ({size})", name=os.path.basename(path), size=size)
+    name = os.path.basename(path)
+    if duration:
+        return "file", _("Ready: {name} ({length}, {size})", name=name, length=clock_length(duration),
+                         size=size)
+    return "file", _("Ready: {name} ({size})", name=name, size=size)
 
 
 def empty_state_headline(dnd_ready: bool, has_sample: bool) -> str:
@@ -629,11 +652,17 @@ def sync_transcribe_empty_state(app: "App") -> None:
     # 38% of a core, measured). Write on change only.
     if app.transcribe_empty_headline_var.get() != headline:
         app.transcribe_empty_headline_var.set(headline)
+    sample_row = getattr(app, "transcribe_sample_row", None)
     if app.queue:
         if frame.winfo_manager():
             frame.pack_forget()
-    elif not frame.winfo_manager():
-        frame.pack(fill="x", before=app.transcribe_browse_row)
+        if sample_row is not None and sample_row.winfo_manager():
+            sample_row.pack_forget()
+    else:
+        if not frame.winfo_manager():
+            frame.pack(fill="x", before=app.transcribe_browse_row)
+        if sample_row is not None and not sample_row.winfo_manager():
+            sample_row.pack(pady=(10, 0), after=app.transcribe_browse_row)
 
 
 def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
@@ -742,10 +771,6 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
         anchor="center",
         justify="center",
     ).pack(fill="x", pady=(2, 12))
-    if app.transcribe_has_sample:
-        ttk.Button(
-            empty_state, text=_("Try it now (sample clip)"), command=app.try_sample_clip,
-        ).pack(pady=(0, 12))
     empty_state.pack(fill="x")
     browse_row = ttk.Frame(drop_zone)
     app.transcribe_browse_row = browse_row
@@ -758,6 +783,14 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
           "this machine and never leaves it unless you pick a cloud Engine "
           "below."),
     ).pack(side="left", padx=(6, 0))
+    # The sample comes second: picking your own file is the main action (it sat above
+    # Browse: screenshot review, 2026-10-21). Shown and hidden with the empty state.
+    sample_row: ttk.Frame | None = None
+    if app.transcribe_has_sample:
+        sample_row = ttk.Frame(drop_zone)
+        ttk.Button(sample_row, text=_("Try it now (sample clip)"), command=app.try_sample_clip).pack()
+        sample_row.pack(pady=(10, 0))
+    app.transcribe_sample_row = sample_row
 
     # ── Row 1: file path display (always visible — shows what's selected) ─
     file_row = ttk.Frame(parent)
@@ -765,7 +798,8 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
         row=1, column=0, columnspan=3, sticky="ew",
         padx=15, pady=(2, 8),
     )
-    ttk.Label(file_row, text=_("Selected file:")).pack(side="left")
+    # "Selected file" hid that a link works here too (screenshot review, 2026-10-21).
+    ttk.Label(file_row, text=_("File or video link:")).pack(side="left")
     ttk.Entry(file_row, textvariable=app.fv).pack(
         side="left", fill="x", expand=True, padx=(8, 0)
     )
@@ -1032,7 +1066,8 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     # Optional time-slice — transcribe only a portion of a long file
     # (e.g. 5 minutes out of a 10-hour recording). 0:00:00 on a side means
     # "unset"; leaving both at 0:00:00 transcribes the whole file.
-    ttk.Label(opts_line2, text=_("Time range:")).pack(side="left")
+    app.transcribe_time_range_label = ttk.Label(opts_line2, text=_("Time range:"))
+    app.transcribe_time_range_label.pack(side="left")
     app.transcribe_start_time_var = tk.StringVar(value="0:00:00")
     ttk.Entry(opts_line2, textvariable=app.transcribe_start_time_var, width=9).pack(
         side="left", padx=(6, 2)
@@ -1042,6 +1077,21 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     ttk.Entry(opts_line2, textvariable=app.transcribe_end_time_var, width=9).pack(
         side="left", padx=(2, 0)
     )
+    # "0:00:00 to 0:00:00" read as an empty range (screenshot review, 2026-10-21): say
+    # what it means.
+    range_hint_var = tk.StringVar(master=opts_line2, value="")
+    ttk.Label(opts_line2, textvariable=range_hint_var, foreground=tokens.themed(tokens.TEXT_MUTED)).pack(
+        side="left", padx=(6, 0)
+    )
+
+    def _sync_range_hint(*_args: object) -> None:
+        line = time_range_hint(app.transcribe_start_time_var.get(), app.transcribe_end_time_var.get())
+        if range_hint_var.get() != line:
+            range_hint_var.set(line)
+
+    app.transcribe_start_time_var.trace_add("write", _sync_range_hint)
+    app.transcribe_end_time_var.trace_add("write", _sync_range_hint)
+    _sync_range_hint()
 
     # Mixed-language audio (experimental): a recording that switches between two
     # languages. The Language picker above is the first, this one the second.
@@ -1125,15 +1175,47 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
 
     # Ready line + button colour (click-through test, 2026-10-21): the button was blue before
     # any file was chosen, so nothing showed that a file was accepted. It is plain until the
-    # Selected file box holds an existing file or a link, then blue, with the file's name and
+    # File or video link box holds an existing file or a link, then blue, with the file's name and
     # size beside it (or why it cannot start). It stays clickable: with an empty box a click
     # opens Browse.
     app.transcribe_ready_var = tk.StringVar(master=parent, value="")
     ready_label = ttk.Label(cta_row, textvariable=app.transcribe_ready_var)
     ready_label.pack(side="left", padx=(12, 0))
 
+    probing: set[str] = set()
+
+    def _probe_length(path: str) -> None:
+        """Find the file's length off the UI thread (ffprobe may take seconds), then redraw."""
+        if path in probing:
+            return
+        probing.add(path)
+
+        def _done() -> None:
+            probing.discard(path)
+            _sync_ready()
+
+        def _work() -> None:
+            from core.watcher import media_duration
+
+            try:
+                media_duration(path)
+            finally:
+                app.post_to_main(_done)
+
+        threading.Thread(target=_work, name="ready-line-length", daemon=True).start()
+
     def _sync_ready(*_args: object) -> None:
         kind, line = file_ready_state(app.fv.get())
+        if kind == "file":
+            from app.app import _clean_pasted_path
+            from core.watcher import UNKNOWN_DURATION, cached_media_duration
+
+            path = _clean_pasted_path(app.fv.get())
+            known = cached_media_duration(path)
+            if known is UNKNOWN_DURATION:
+                _probe_length(path)
+            elif isinstance(known, float):
+                line = file_ready_state(app.fv.get(), duration=known)[1]
         if app.transcribe_ready_var.get() != line:
             app.transcribe_ready_var.set(line)
         transcribe_btn.configure(style="Accent.TButton" if kind in ("file", "link") else "TButton")
