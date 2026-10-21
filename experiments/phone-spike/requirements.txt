@@ -6,4 +6,4 @@ librosa==0.10.2.post1
 pytest==8.3.4
 numpy==1.26.4
 scipy==1.13.1
-requests==2.32.3
+requests==2.33.0
