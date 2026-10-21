@@ -3567,6 +3567,10 @@
    " ⓘ "
   ],
   [
+   ".!frame4.!frame.!label2",
+   "Your transcription jobs"
+  ],
+  [
    ".!frame4.!frame.!button",
    "Remove ended jobs"
   ],
@@ -3593,6 +3597,10 @@
   [
    ".!frame4.!frame4.!button5",
    "Remove"
+  ],
+  [
+   ".!frame4.!frame4.!label",
+   "Select a job in the list to use these buttons"
   ],
   [
    ".!frame4.!frame4.!button6",

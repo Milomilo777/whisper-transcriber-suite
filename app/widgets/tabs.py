@@ -1361,6 +1361,9 @@ def build_queue_tab(app: "App", parent: ttk.Frame) -> None:
           "were transcribed per second of work; below 1x is slower than the "
           "recording plays. The time left is a rough estimate."),
     ).pack(side="left")
+    # The (i) stood alone in the corner (screenshot review, 2026-10-21): say what the list is.
+    ttk.Label(top_row, text=_("Your transcription jobs"), foreground=tokens.themed(tokens.TEXT_MUTED)).pack(
+        side="left", padx=(6, 0))
     # "Clear completed" also took failed and cancelled jobs off the list, and did not say
     # whether files go too (screenshot review, 2026-10-21).
     clear_btn = ttk.Button(top_row, text=_("Remove ended jobs"), command=app.clear_completed)
@@ -1460,6 +1463,13 @@ def build_queue_tab(app: "App", parent: ttk.Frame) -> None:
     for key in ("pause", "resume", "cancel", "rerun", "remove"):
         app.queue_action_buttons[key].pack(side="left", padx=(0, 6))
         app.queue_action_buttons[key].state(["disabled"])
+    # Greyed buttons with no reason (code review, 2026-10-21): a hint while no row is selected,
+    # shown and hidden by App._update_queue_action_bar.
+    app.queue_select_hint = ttk.Label(
+        action_bar, text=_("Select a job in the list to use these buttons"),
+        foreground=tokens.themed(tokens.TEXT_MUTED),
+    )
+    app.queue_select_hint.pack(side="left", padx=(6, 0))
     # The finished job's result (queue_result_task), on the right of the same bar.
     app.queue_result_buttons = {
         "view": ttk.Button(action_bar, text=_("View transcript"), command=app._action_bar_view_transcript),

@@ -105,7 +105,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   on releases that Download row instead of leaving it "transcribing". A second Transcribe click on a file that
   is already waiting or running shows its Queue row instead of queueing it again (another part of
   the same file still goes in); after Cancel the status line says "cancelled at 7%" instead of
-  keeping the last progress line; the result card's Open buttons sit next to their files.
+  keeping the last progress line; the result card's Open buttons sit next to their files. A job that
+  starts is selected even when a finished row was left selected (Pause and Cancel stayed grey), the
+  list is titled "Your transcription jobs", and a hint says to select a job while the buttons are grey.
 
 - **Transcribe tab, plainer**: the ready line gives the recording's length ("Ready: class.flac
   (1:46:12, 52.3 MB)"); the box is labelled **File or video link**, since a link works there too;

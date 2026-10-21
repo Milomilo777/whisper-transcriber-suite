@@ -116,3 +116,31 @@ def test_view_needs_a_transcript_json(monkeypatch, tmp_path) -> None:
     fake._update_queue_action_bar()
     assert fake.queue_result_buttons["view"].enabled is False
     assert fake.queue_result_buttons["folder"].enabled is True
+
+
+def test_a_hint_explains_the_grey_buttons_until_a_row_is_selected(monkeypatch) -> None:
+    """Disabled buttons with no reason (code review, 2026-10-21)."""
+    import app.app as app_mod
+
+    monkeypatch.setattr(app_mod, "_set_enabled", lambda btn, on: setattr(btn, "enabled", on))
+
+    class _Hint:
+        def __init__(self) -> None:
+            self.shown = True
+
+        def winfo_manager(self) -> str:
+            return "pack" if self.shown else ""
+
+        def pack_forget(self) -> None:
+            self.shown = False
+
+        def pack(self, **_kw) -> None:
+            self.shown = True
+
+    fake = _fake_app([_task("finished")])
+    fake.queue_select_hint = _Hint()
+    fake._update_queue_action_bar()
+    assert fake.queue_select_hint.shown is False
+    fake._selected_tasks = lambda: []
+    fake._update_queue_action_bar()
+    assert fake.queue_select_hint.shown is True

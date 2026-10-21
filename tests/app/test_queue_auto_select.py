@@ -42,10 +42,19 @@ def test_a_job_that_starts_is_selected() -> None:
 
 
 def test_a_selection_the_user_made_is_kept() -> None:
-    fake = _fake("finished", "running")
+    fake = _fake("waiting", "running")
     fake.tree.selected = ("I0",)
     fake._auto_select_running_row()
     assert fake.tree.selected == ("I0",)
+
+
+def test_an_ended_row_left_selected_gives_way_to_the_running_job() -> None:
+    """A finished row left selected kept Pause and Cancel grey for the next job
+    (screenshot review, 2026-10-21)."""
+    fake = _fake("finished", "running")
+    fake.tree.selected = ("I0",)
+    fake._auto_select_running_row()
+    assert fake.tree.selected == ("I1",)
 
 
 def test_the_same_job_is_selected_only_once() -> None:

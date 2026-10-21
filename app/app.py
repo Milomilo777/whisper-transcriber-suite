@@ -1066,6 +1066,7 @@ class App(tk.Tk):
     # R2 per-task action bar (assigned in tabs.build_queue_tab).
     queue_action_buttons: dict[str, "ttk.Button"]
     queue_result_buttons: dict[str, "ttk.Button"]  # "view", "folder": a finished job's result
+    queue_select_hint: "ttk.Label"  # "Select a job in the list..." while nothing is selected
     # Download tab
     download_url_var: tk.StringVar
     # Download tab "Log-in cookies" picker (mirrors Advanced › Downloads).
@@ -5670,6 +5671,14 @@ class App(tk.Tk):
             _set_enabled(btn, bool(merged.get(key)))
         from app.widgets.tabs import queue_result_task
 
+        hint = _inst_attr(self, "queue_select_hint")
+        if hint is not None:
+            # After the five buttons, only while nothing is selected.
+            if self._selected_tasks():
+                if hint.winfo_manager():
+                    hint.pack_forget()
+            elif not hint.winfo_manager():
+                hint.pack(side="left", padx=(6, 0), after=buttons["remove"])
         task = queue_result_task(list(self._selected_tasks()))
         result_buttons = getattr(self, "queue_result_buttons", {})
         if "view" in result_buttons:
@@ -6201,10 +6210,14 @@ class App(tk.Tk):
 
         The action bar follows the selection only, and nothing selected a running job, so
         both buttons stayed grey while it ran (click-through test, 2026-10-21). Only when
-        nothing is selected and exactly one job runs, and once per job: a row the user picked,
-        or a selection the user cleared, is left alone.
+        nothing is selected, or only ended rows (a finished row left selected kept Pause and
+        Cancel grey for the next job: screenshot review, 2026-10-21), and exactly one job
+        runs, once per job: a waiting/running/paused row the user picked, or a selection the
+        user cleared, is left alone.
         """
-        if self.tree.selection():
+        selected = [self.row_map.get(i) for i in self.tree.selection()]
+        if any(t is not None and getattr(t, "status", "") not in ("finished", "cancelled", "error")
+               for t in selected):
             return
         running = [t for t in self.queue if t.status == "running"]
         if len(running) != 1 or running[0] is getattr(self, "_auto_selected_task", None):
