@@ -932,7 +932,7 @@ def test_tk_pseudo_locale_leaves_nothing_untranslated(
     left = sorted({
         f"{name}: {text}" for name, rows in states.items() for text in rows
         if text.strip() and not is_pseudo_marked(text) and text not in foreign
-        and not text.startswith(("✓ talk one.mp4", "• talk one."))
+        and not text.startswith(("✓ talk one.mp4", "⚠ talk one.mp4", "• talk one."))
         # The format picker lists format ids with their extension ("srt (.srt)").
         and not (name == "convert_picker" and re.fullmatch(r"\w+ \(\.\w+\)", text))
     })

@@ -12,7 +12,7 @@ from tkinter import ttk
 
 import pytest
 
-from app.app import App
+from app.app import _show_file_in_box
 
 LONG = ("C:/Users/Owner/media/Interview with the head of the regional teachers association "
         "about the new school year and the changes (part 1 of 3).mp4")
@@ -34,7 +34,7 @@ def box():
 
 
 def test_a_long_path_shows_its_end(box):
-    App._show_file(box, LONG)  # type: ignore[arg-type]
+    _show_file_in_box(box, LONG)
     box.root.update()
     first, last = box.file_entry.xview()
     assert box.fv.get() == LONG
@@ -46,5 +46,5 @@ def test_a_double_without_the_box_still_gets_the_path():
     fake = types.SimpleNamespace(fv=types.SimpleNamespace(value="", set=None))
     seen: list[str] = []
     fake.fv.set = seen.append
-    App._show_file(fake, LONG)  # type: ignore[arg-type]
+    _show_file_in_box(fake, LONG)
     assert seen == [LONG]

@@ -220,6 +220,18 @@ def _set_enabled(button: "ttk.Button", enabled: bool) -> None:
         button.state(["!disabled"] if enabled else ["disabled"])
 
 
+def _show_file_in_box(app: Any, path: str) -> None:
+    """Put ``path`` in the File or video link box with its END in sight: an Entry shows the
+    start of a long path, so the file name and extension were cut off (round-2 screenshot
+    critics, 2026-10-21). Only for paths the app writes; typing is left alone. A function, not
+    a method, so the test doubles that run the drop and Browse code need nothing new."""
+    app.fv.set(path)
+    entry = _inst_attr(app, "file_entry")  # absent on test doubles
+    if entry is not None:
+        entry.icursor("end")
+        entry.xview_moveto(1.0)
+
+
 def _select_the_running_task(tree: Any, row_map: dict[str, Any], tasks: list[Any],
                              last: Any) -> Any | None:
     """Select the one running task in ``tree`` and return it, or return None and change nothing.
@@ -2031,18 +2043,8 @@ class App(tk.Tk):
                 parent=self,
             )
             return
-        self._show_file(path)
+        _show_file_in_box(self, path)
         self.nb.select(self.t1)
-
-    def _show_file(self, path: str) -> None:
-        """Put ``path`` in the File or video link box with its END in sight: an Entry shows the
-        start of a long path, so the file name and extension were cut off (round-2 screenshot
-        critics, 2026-10-21). Only for paths the app writes; typing is left alone."""
-        self.fv.set(path)
-        entry = _inst_attr(self, "file_entry")  # absent on bare test doubles
-        if entry is not None:
-            entry.icursor("end")
-            entry.xview_moveto(1.0)
 
     def _clear_recent(self) -> None:
         """Clear the File > Recent files list.
@@ -3786,7 +3788,7 @@ class App(tk.Tk):
         if not chosen:
             return
         if len(chosen) == 1:
-            self._show_file(chosen[0])
+            _show_file_in_box(self, chosen[0])
             return
         count = self._bulk_enqueue(list(chosen))
         if count:
@@ -6518,8 +6520,11 @@ class App(tk.Tk):
         # Pillow aren't installed (tray controller is None) or the
         # user disabled tray support.
         if self.tray is not None:
-            body = ngettext("Wrote {n} output file for {name}", "Wrote {n} output files for {name}",
-                            len(existing), name=os.path.basename(task.file_path))
+            if no_speech:  # not "Wrote 2 output files" over empty files
+                body = _("No speech was found in {name}", name=os.path.basename(task.file_path))
+            else:
+                body = ngettext("Wrote {n} output file for {name}", "Wrote {n} output files for {name}",
+                                len(existing), name=os.path.basename(task.file_path))
             try:
                 self.tray.notify(_("Whisper Transcriber Suite — transcription done"), body)
             except Exception:  # noqa: BLE001
@@ -7775,7 +7780,7 @@ class App(tk.Tk):
                 )
         if paths:
             if len(paths) == 1:
-                self._show_file(paths[0])
+                _show_file_in_box(self, paths[0])
                 self.nb.select(self.t1)
                 self.log(f"Picked: {os.path.basename(paths[0])} (drag-and-drop)")
             else:
