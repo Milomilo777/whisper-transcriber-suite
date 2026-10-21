@@ -172,6 +172,27 @@ def test_finish_task_records_no_words_for_a_run_that_did_not_finish(
     assert rows[-1]["word_count"] == 0
 
 
+@pytest.mark.parametrize("status, written", [("cancelled", []), ("error", None)])
+def test_finish_task_records_no_output_paths_for_a_run_that_did_not_finish(
+    tmp_path, monkeypatch, status, written,
+):
+    """History listed ``clip.srt`` + ``clip.json`` (names derived from the settings) for a
+    cancelled or failed run that wrote nothing."""
+    rows: list[dict] = []
+    svc = TranscriptionService(_finish_app(rows))
+    monkeypatch.setattr("app.services.transcription_service.desktop_alert.job_ended", lambda *a: None)
+    task = SimpleNamespace(
+        file_path=str(tmp_path / "clip.mp4"), status=status, cancelled=(status == "cancelled"),
+        end_time=None, start_time=time.time() - 5, history_id=1, output_paths=written,
+        no_speech=False, word_count=0, audio_duration=0.0, source_download=None, recovery_note="",
+    )
+
+    svc.finish_task({"task": task, "temporary": False}, keep_status=True)
+
+    assert rows[-1]["status"] == status
+    assert rows[-1]["output_paths"] == []
+
+
 def test_derive_stats_never_raises_on_a_task_with_no_paths_at_all():
     task = SimpleNamespace(output_paths=None, file_path="")
     assert _service()._derive_transcript_stats(task) == (0, 0.0)

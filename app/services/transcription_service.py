@@ -2045,6 +2045,10 @@ class TranscriptionService:
                 # that, never the names the config would give.
                 if written or (written is not None and getattr(task, "no_speech", False)):
                     paths = list(written)
+                elif not newly_finished:
+                    # A cancelled or failed run wrote nothing: record no files,
+                    # never names derived from the settings.
+                    paths = []
                 else:
                     # os.path.splitext (not rsplit('.',1)) so a source like
                     # 'C:\my.media\clip' (dot in a folder, extensionless

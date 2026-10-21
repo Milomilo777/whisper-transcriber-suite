@@ -236,6 +236,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **History lists no files for a stopped run**: a cancelled or failed transcription was saved in
+  History with the file names it would have written (`clip.srt`, `clip.json`) although no such
+  files exist. It is now saved with no files.
+
 - **No borrowed word counts**: a run that found no speech, was cancelled or failed could take the
   word count of an earlier transcription of the same file (its `.json` next to the source) into
   History and the usage statistics. Such a run now records 0 words.
