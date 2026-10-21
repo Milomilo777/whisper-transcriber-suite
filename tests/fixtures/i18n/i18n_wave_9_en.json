@@ -106,7 +106,7 @@
   ],
   [
    "device_badge",
-   "CPU - int8 (slower)"
+   "CPU (slower)"
   ]
  ],
  "badge_cpu_typed": [
@@ -116,7 +116,7 @@
   ],
   [
    "device_badge",
-   "CPU - int8_float32 (slower)"
+   "CPU (slower)"
   ]
  ],
  "badge_downgraded": [
@@ -126,7 +126,7 @@
   ],
   [
    "device_badge",
-   "GPU unavailable, using CPU - int8 (slower)"
+   "GPU unavailable, using CPU (slower)"
   ]
  ],
  "badge_gpu": [

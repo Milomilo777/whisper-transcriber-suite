@@ -348,13 +348,14 @@ class TranscriptionService:
             kind = "gpu"
             text = (_("GPU - CUDA {compute_type}", compute_type=compute_type.strip())
                     if compute_type.strip() else _("GPU - CUDA"))
+        # The CPU texts leave the compute type ("int8_float32") to the hover text: on screen
+        # it was jargon to most users (screenshot review, 2026-10-21).
         elif downgraded:
             kind = "cpu_downgraded"
-            text = _("GPU unavailable, using CPU - {compute_type} (slower)",
-                     compute_type=compute_type or "int8")
+            text = _("GPU unavailable, using CPU (slower)")
         else:
             kind = "cpu"
-            text = _("CPU - {compute_type} (slower)", compute_type=compute_type or "int8")
+            text = _("CPU (slower)")
 
         apply = getattr(app, "apply_device_badge", None)
         if callable(apply):

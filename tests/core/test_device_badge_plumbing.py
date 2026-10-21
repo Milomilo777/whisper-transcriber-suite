@@ -173,3 +173,13 @@ def test_gpu_check_runs_once_per_session_off_the_tk_thread(monkeypatch):
     assert len(calls) == 1
     assert calls[0] != threading.current_thread().name
     assert app.warn_calls == []
+
+
+def test_the_cpu_badge_leaves_the_compute_type_to_the_hover_text():
+    """"CPU - int8_float32 (slower)" was jargon on screen (screenshot review, 2026-10-21)."""
+    for downgraded, expected in ((False, "CPU (slower)"), (True, "GPU unavailable, using CPU (slower)")):
+        app = _FakeApp([_worker(device="cpu", compute_type="int8_float32", downgraded=downgraded,
+                                requested_device="cuda" if downgraded else "cpu")])
+        _svc(app).update_model_state()
+        text, _kind = app.badge_calls[-1]
+        assert text == expected

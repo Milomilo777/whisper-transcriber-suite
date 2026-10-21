@@ -89,6 +89,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   **Browse files** comes before the sample clip; "(whole recording)" shows while the time range is
   0:00:00 to 0:00:00; the Speakers count shows only while **Identify speakers** is ticked.
 
+- **Plain processor note**: "CPU (slower)" instead of "CPU - int8_float32 (slower)" beside the
+  Transcribe button and under the Queue; the hover text keeps the technical detail.
+
 - **The Transcribe button shows when a file is ready**: it is plain until the File or video link box holds a
   file that exists or a link, then turns blue, with "Ready: name (size)" (or "Link: it downloads first,
   then transcribes", or "File not found") beside it. Clicking it with nothing chosen opens Browse
