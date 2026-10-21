@@ -12,13 +12,17 @@ from app.app import App
 from app.widgets.tabs import queue_result_task
 
 
-def _task(status: str, tmp_path=None, out_dir=None) -> types.SimpleNamespace:
+def _task(status: str, tmp_path=None, out_dir=None, json: bool = False) -> types.SimpleNamespace:
     outputs = []
     if out_dir is not None:
         out_dir.mkdir(exist_ok=True)
         out = out_dir / "talk.srt"
         out.write_text("1\n", encoding="utf-8")
         outputs.append(str(out))
+        if json:
+            transcript = out_dir / "talk.json"
+            transcript.write_text("{}", encoding="utf-8")
+            outputs.append(str(transcript))
     src = str(tmp_path / "talk.mp3") if tmp_path is not None else "talk.mp3"
     return types.SimpleNamespace(
         status=status, file_path=src, output_paths=outputs, language="", detected_language="en",
@@ -28,6 +32,13 @@ def _task(status: str, tmp_path=None, out_dir=None) -> types.SimpleNamespace:
 class _Button:
     def __init__(self) -> None:
         self.enabled: bool | None = None
+        self.text = "Open output folder"
+
+    def cget(self, _key: str) -> str:
+        return self.text
+
+    def configure(self, text: str) -> None:
+        self.text = text
 
 
 def _fake_app(selected: list) -> types.SimpleNamespace:
@@ -55,11 +66,11 @@ def test_only_one_finished_row_has_a_result() -> None:
     assert queue_result_task([done, _task("finished")]) is None
 
 
-def test_the_buttons_follow_the_selection(monkeypatch) -> None:
+def test_the_buttons_follow_the_selection(monkeypatch, tmp_path) -> None:
     import app.app as app_mod
 
     monkeypatch.setattr(app_mod, "_set_enabled", lambda btn, on: setattr(btn, "enabled", on))
-    fake = _fake_app([_task("finished")])
+    fake = _fake_app([_task("finished", tmp_path, out_dir=tmp_path / "out", json=True)])
     fake._update_queue_action_bar()
     assert [b.enabled for b in fake.queue_result_buttons.values()] == [True, True]
     fake._selected_tasks = lambda: [_task("cancelled")]
@@ -94,3 +105,14 @@ def test_nothing_happens_without_a_finished_row() -> None:
     fake._action_bar_view_transcript()
     fake._action_bar_open_folder()
     assert fake.calls == []
+
+
+def test_view_needs_a_transcript_json(monkeypatch, tmp_path) -> None:
+    """Without one the viewer asks the user to pick a .json by hand (review, 2026-10-21)."""
+    import app.app as app_mod
+
+    monkeypatch.setattr(app_mod, "_set_enabled", lambda btn, on: setattr(btn, "enabled", on))
+    fake = _fake_app([_task("finished", tmp_path, out_dir=tmp_path / "out")])  # .srt only
+    fake._update_queue_action_bar()
+    assert fake.queue_result_buttons["view"].enabled is False
+    assert fake.queue_result_buttons["folder"].enabled is True

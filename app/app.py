@@ -5619,9 +5619,20 @@ class App(tk.Tk):
             _set_enabled(btn, bool(merged.get(key)))
         from app.widgets.tabs import queue_result_task
 
-        has_result = queue_result_task(list(self._selected_tasks())) is not None
-        for btn in getattr(self, "queue_result_buttons", {}).values():
-            _set_enabled(btn, has_result)
+        task = queue_result_task(list(self._selected_tasks()))
+        result_buttons = getattr(self, "queue_result_buttons", {})
+        if "view" in result_buttons:
+            # The viewer opens a transcript .json only; a run without that format would get a
+            # "choose a .json yourself?" question instead (review, 2026-10-21).
+            _set_enabled(result_buttons["view"],
+                         task is not None and task_transcript_json(task, must_exist=True) is not None)
+        if "folder" in result_buttons:
+            _set_enabled(result_buttons["folder"], task is not None)
+            # The context menu's name for the same action ("Reveal in Finder" on macOS).
+            text = folder_action_label(_("Open output folder"), _("Open Output Folder in Finder"),
+                                       task_output_file(task) if task is not None else None)
+            if str(result_buttons["folder"].cget("text")) != text:
+                result_buttons["folder"].configure(text=text)
         self._sync_queue_failure_line()
 
     def _action_bar_view_transcript(self) -> None:

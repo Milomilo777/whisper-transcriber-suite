@@ -83,6 +83,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   double-click opens the folder that holds its transcript rather than the source's folder. "Clear
   completed" is now **Remove ended jobs** (**Remove ended downloads** on the Download tab), with a
   hover text saying no file is deleted. Found in a screenshot review of the first tabs.
+  **View transcript** is offered only when the job wrote its transcript .json (the viewer's format),
+  and on macOS the folder button uses the menu's Finder wording.
 
 - **Transcribe tab, plainer**: the ready line gives the recording's length ("Ready: class.flac
   (1:46:12, 52.3 MB)"); the box is labelled **File or video link**, since a link works there too;

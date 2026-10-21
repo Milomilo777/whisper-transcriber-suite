@@ -112,3 +112,11 @@ def test_both_progress_columns_are_fitted():
         src = inspect.getsource(build)
         assert f"fit_progress_column({tree})" in src
         assert '"progress", width=' not in src
+
+
+def test_progress_column_fits_shade_glyphs_wider_than_the_block():
+    # A fallback font need not draw the shade glyphs as wide as the full block (review 2026-10-21).
+    def measure(text: str) -> int:
+        return sum(30 if ch in "░▓" else 12 if ch == "█" else 8 for ch in text)
+
+    assert progress_column_width(measure) > measure(progress_cell(0))

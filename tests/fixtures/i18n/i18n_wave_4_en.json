@@ -3623,6 +3623,10 @@
    "Takes every finished, failed or cancelled job off this list. No file is deleted."
   ],
   [
+   "tooltip",
+   "Opens the selected finished job in the transcript viewer. It needs the Whisper JSON output format, which is on by default."
+  ],
+  [
    "heading:file",
    "File"
   ],

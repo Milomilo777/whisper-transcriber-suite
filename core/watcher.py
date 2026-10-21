@@ -137,6 +137,8 @@ def _ffprobe_has_audio(path: str) -> bool | None:
 UNKNOWN_DURATION = object()  # cached_media_duration: not probed yet
 # ffprobe's length answers per file version (path, size, mtime_ns); None = no length.
 _duration_cache: dict[tuple[str, int, int], float | None] = {}
+# Probes run on worker threads; two finishing together must not evict and insert at once.
+_duration_lock = threading.Lock()
 
 
 def _file_key(path: str) -> tuple[str, int, int] | None:
@@ -154,7 +156,8 @@ def cached_media_duration(path: str) -> object:
     key = _file_key(path)
     if key is None:
         return None
-    return _duration_cache.get(key, UNKNOWN_DURATION)
+    with _duration_lock:
+        return _duration_cache.get(key, UNKNOWN_DURATION)
 
 
 def media_duration(path: str) -> float | None:
@@ -165,8 +168,9 @@ def media_duration(path: str) -> float | None:
     key = _file_key(path)
     if key is None:
         return None
-    if key in _duration_cache:
-        return _duration_cache[key]
+    with _duration_lock:
+        if key in _duration_cache:
+            return _duration_cache[key]
     from ._proc import new_session_kwargs
     from .paths import bundled_binary
 
@@ -190,10 +194,11 @@ def media_duration(path: str) -> float | None:
             value = float("nan")
         if value == value and 0 < value < float("inf"):  # "N/A" -> nan
             seconds = value
-    if len(_duration_cache) >= _PROBE_CACHE_MAX:
-        # the oldest entry only: clearing all could drop a length a redraw is about to read
-        _duration_cache.pop(next(iter(_duration_cache)))
-    _duration_cache[key] = seconds
+    with _duration_lock:
+        if len(_duration_cache) >= _PROBE_CACHE_MAX:
+            # the oldest entry only: clearing all could drop a length a redraw is about to read
+            _duration_cache.pop(next(iter(_duration_cache)))
+        _duration_cache[key] = seconds
     return seconds
 
 

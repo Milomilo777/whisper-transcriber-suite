@@ -451,13 +451,16 @@ def marquee_cell(frame: int, percent: float | int = 0) -> str:
 
 
 def progress_column_width(measure: Callable[[str], int]) -> int:
-    """Width of a Treeview progress column that shows ``progress_cell(100)`` whole.
+    """Width of a Treeview progress column that shows every progress cell whole.
 
     ``measure`` = the row font's ``measure``. A fixed px(150) cut "100%" to "10(" on
     Windows 10, where the block glyphs come from a wider fallback font (screenshot
     review, 2026-10-21). No Tk.
     """
-    return max(px(150), measure(progress_cell(100)) + px(20))
+    # Every shape a cell takes: the shade glyphs of an empty or animated bar need not be as
+    # wide as the full block in a fallback font.
+    widest = max(measure(progress_cell(0)), measure(progress_cell(100)), measure(marquee_cell(0, 100)))
+    return max(px(150), widest + px(20))
 
 
 def fit_progress_column(tree: ttk.Treeview, column: str = "progress") -> None:
@@ -1413,6 +1416,9 @@ def build_queue_tab(app: "App", parent: ttk.Frame) -> None:
     for key in ("folder", "view"):  # side="right": the first one packed sits rightmost
         app.queue_result_buttons[key].pack(side="right", padx=(6, 0))
         app.queue_result_buttons[key].state(["disabled"])
+    bind_tooltip(app.queue_result_buttons["view"],
+                 _("Opens the selected finished job in the transcript viewer. It needs the Whisper JSON "
+                   "output format, which is on by default."))
     # Why the selected failed job failed (queue_failure_line); packed by
     # App._update_queue_action_bar only while it has text.
     app.queue_failure_var = tk.StringVar(master=parent, value="")
