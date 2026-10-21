@@ -45,6 +45,17 @@ ROW_WARN = "#ffe6b3"
 # ------------------------------------------------------------------- tooltips
 TOOLTIP_BG = "#ffffe0"
 TOOLTIP_FG = "#000000"
+# The dark theme's pair: the pale yellow box glared on the dark panels (click-through
+# test, 2026-10-21). Backgrounds, so not in DARK_VARIANTS (text colours only).
+TOOLTIP_BG_DARK = "#2b2b2b"
+TOOLTIP_FG_DARK = "#f0f0f0"
+
+
+def tooltip_colours(theme: str | None = None) -> tuple[str, str]:
+    """(background, foreground) of a hover text in the current (or the given) theme."""
+    if (theme or current_theme()) == "light":
+        return TOOLTIP_BG, TOOLTIP_FG
+    return TOOLTIP_BG_DARK, TOOLTIP_FG_DARK
 
 # --------------------------------------------------------------- SMTV tab hero
 HERO_TEXT = "#f8fafc"

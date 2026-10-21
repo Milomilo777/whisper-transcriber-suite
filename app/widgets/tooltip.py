@@ -18,8 +18,6 @@ from app.theme import tokens
 
 TextOrGetter = Union[str, Callable[[], str]]
 
-_BG = tokens.TOOLTIP_BG
-_FG = tokens.TOOLTIP_FG
 _WRAP = 340
 # Standard tooltip grace period (Windows uses ~400-500 ms): sweeping the
 # mouse across the UI shouldn't flash a popup at every widget it crosses.
@@ -86,9 +84,10 @@ def bind_tooltip(
                 tip.wm_attributes("-topmost", True)
             except tk.TclError:
                 pass
+            bg, fg = tokens.tooltip_colours()
             tk.Label(
                 tip, text=msg, justify="left",
-                background=_BG, foreground=_FG,
+                background=bg, foreground=fg,
                 relief="solid", borderwidth=1, wraplength=px(wraplength),
                 padx=6, pady=4,
             ).pack()

@@ -144,6 +144,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Hover texts in the dark theme**: the pale yellow box glared on the dark panels; the dark theme
+  now draws them dark grey with light text.
+
 - **No black window when a link is looked up**: on Windows, every format lookup on the Download tab
   opened a black yt-dlp console window over the app. The lookup now runs hidden, like the app's
   other helper programs.
