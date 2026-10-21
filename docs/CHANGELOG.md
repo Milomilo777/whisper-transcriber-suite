@@ -98,6 +98,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   starts the download (a held Enter counts once); Transcribe with a path that does not exist opens
   the file picker; the Engine and Model lists are wide enough for their longest entry; a link
   changed within the moment before its lookup no longer downloads with the previous link's formats.
+  A long file name is cut in the middle on the ready line ("Interview with the … 1 of 3).mp4"),
+  so it no longer pushes **Advanced settings…** out of the window.
 
 - **Plain processor note**: "CPU (slower)" instead of "CPU - int8_float32 (slower)" beside the
   Transcribe button and under the Queue; the hover text keeps the technical detail.

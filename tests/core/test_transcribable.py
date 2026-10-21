@@ -153,3 +153,17 @@ def test_the_ready_line_shows_the_length(tmp_path):
     path = _touch(tmp_path, "class.flac", b"x" * 2048)
     assert file_ready_state(path, duration=6372.48) == ("file", "Ready: class.flac (1:46:12, 2.0 KB)")
     assert file_ready_state(path) == ("file", "Ready: class.flac (2.0 KB)")
+
+
+def test_a_long_name_is_cut_in_the_middle_on_the_ready_line(tmp_path):
+    """A long name pushed "Advanced settings..." out of the window (2026-10-21)."""
+    from app.widgets.tabs import READY_NAME_MAX, elide_middle, file_ready_state
+
+    long_name = ("Interview with the head of the regional teachers association about the new "
+                 "school year (full recording, part 1 of 3).mp4")
+    short = elide_middle(long_name)
+    assert len(short) == READY_NAME_MAX and "…" in short and short.endswith("1 of 3).mp4")
+    assert elide_middle("talk.mp3") == "talk.mp3"
+    path = _touch(tmp_path, long_name, b"x" * 2048)
+    kind, line = file_ready_state(path, duration=19)
+    assert kind == "file" and line == f"Ready: {short} (0:19, 2.0 KB)"

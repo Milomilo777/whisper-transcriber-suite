@@ -624,6 +624,20 @@ def time_range_hint(start: str, end: str) -> tuple[str, bool]:
     return "", False
 
 
+READY_NAME_MAX = 48
+
+
+def elide_middle(name: str, limit: int = READY_NAME_MAX) -> str:
+    """``name`` cut in the middle to ``limit`` characters ("Interview with the … 1 of 3).mp4"),
+    keeping its end (the extension). A long file name on the ready line pushed "Advanced
+    settings..." and the processor note out of the window (click-through test, 2026-10-21).
+    No Tk."""
+    if len(name) <= limit:
+        return name
+    tail = max(8, limit // 3)
+    return name[: limit - tail - 1] + "…" + name[-tail:]
+
+
 def clock_length(seconds: float) -> str:
     """A recording length as a clock: ``0:07``, ``3:05``, ``1:46:12``. No Tk."""
     s = max(0, int(round(seconds)))
@@ -655,12 +669,12 @@ def file_ready_state(text: str, duration: float | None = None) -> tuple[str, str
     if not os.path.isfile(path):
         return "missing", _("File not found: check the path, or click Browse.")
     if not is_transcribable(path):
-        return "not_media", _("{name} is not an audio or video file.", name=os.path.basename(path))
+        return "not_media", _("{name} is not an audio or video file.", name=elide_middle(os.path.basename(path)))
     try:
         size = _fmt_bytes(os.path.getsize(path))
     except OSError:
         size = "?"
-    name = os.path.basename(path)
+    name = elide_middle(os.path.basename(path))
     if duration:
         return "file", _("Ready: {name} ({length}, {size})", name=name, length=clock_length(duration),
                          size=size)
