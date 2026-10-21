@@ -88,6 +88,7 @@ class WrapRow(ttk.Frame):
         # Mirrored: the first cell of every line takes the rightmost column, so a short
         # last line still starts at the right edge, and the gap sits on a cell's right.
         rtl = rtl_layout.active()
+        self.grid_anchor("ne" if rtl else "nw")  # the block hugs the reading edge
         ncols = max(len(line) for line in self._lines)
         for line_no, line in enumerate(self._lines):
             for position, index in enumerate(line):

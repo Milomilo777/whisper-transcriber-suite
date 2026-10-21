@@ -203,6 +203,12 @@ through `rtl_layout.pack_kw(widget, ...)` / `rtl_layout.grid_kw(master, ...)` at
 (they flip only into a master the pass has visited, so the same code may also run at build
 time), or a fresh subtree is passed to `mirror_tree` once. `WrapRow` lays its cells out right to left itself
 (`manages_own_layout`), and a tooltip is right-justified and hangs from the widget's right edge.
+Rows hidden with `grid_remove` before the pass (the VAD sliders) are gridded for the pass and
+hidden again, so a later bare `grid()` restores the mirrored slot; a grid block without a
+weighted column gets its `grid anchor` mirrored (`nw` to `ne`; `center` stays); the transcript
+viewer's panes are reversed (`mirror_panes`); labels created after the pass take their
+`anchor` / `justify` from `rtl_layout.text_kw(master, ...)`. A `ttk.Label` whose unset anchor
+reads `""` (older Tk builds) counts as `w` and is set back to `""` by a second pass.
 What Tk cannot mirror: the menu bar, native message boxes and file pickers, the `#0` column of a
 tree, and place-managed widgets. Tests: `tests/app/test_rtl_layout.py` (the helper) and
 `tests/app/test_rtl_wiring.py` (the app, with the English layout checked unchanged).

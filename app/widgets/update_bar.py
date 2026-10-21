@@ -21,6 +21,7 @@ from tkinter import ttk
 from typing import Callable
 
 from app.dpi import place_over, px
+from app import rtl_layout
 from app.i18n import N_, _, translate
 
 _WRAP_MIN = 220
@@ -124,7 +125,8 @@ class DownloaderUpdateBar(_QuietBar):
             self.update_button.pack_forget()
         else:
             if not self.update_button.winfo_manager():
-                self.update_button.pack(side="left", padx=(6, 0), before=self.dismiss_button)
+                self.update_button.pack(**rtl_layout.pack_kw(
+                    self.update_button, side="left", padx=(6, 0), before=self.dismiss_button))
             self.update_button.state(["!disabled"] if update == "enabled" else ["disabled"])
         self.dismiss_button.configure(text=dismiss)
         self.dismiss_button.state(["!disabled"] if dismiss_enabled else ["disabled"])

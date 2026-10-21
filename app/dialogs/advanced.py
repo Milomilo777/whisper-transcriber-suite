@@ -43,7 +43,7 @@ from app.domain.cookies import (
     cookie_browser_label,
     cookie_browser_value,
 )
-from app import i18n
+from app import i18n, rtl_layout
 from app.dpi import fit_size, place_over, px, scaled, work_area
 from app.i18n import N_, _, ngettext, pgettext, translate
 from app.theme import bidi_display, script_fonts, tokens
@@ -623,7 +623,10 @@ class AdvancedDialog(tk.Toplevel):
         # section. The links are (re)built by _refresh_nav(), because the
         # set of visible sections follows the Engine picker (only the
         # picked engine's own setup section is shown).
-        nav = ttk.Frame(content_container, width=px(132))
+        # Mirrored, the links sit flush against the window's right edge and Tk draws shaped
+        # Persian text a few pixels wider than it measures: keep a margin there.
+        nav = ttk.Frame(content_container, width=px(132),
+                        padding=(0, 0, px(6), 0) if rtl_layout.active() else 0)
         nav.pack(side="left", fill="y", padx=(0, 6))
         nav.pack_propagate(False)
         ttk.Label(
@@ -809,14 +812,14 @@ class AdvancedDialog(tk.Toplevel):
                     nav, text=translate(caption), foreground=tokens.themed(tokens.TEXT_MUTED),
                     font=("TkDefaultFont", 8),
                 )
-                caption_label.pack(anchor="w", pady=(0, 2))
+                caption_label.pack(**rtl_layout.pack_kw(caption_label, anchor="w", pady=(0, 2)))
                 self._nav_links += [separator, caption_label]
             muted = bool(getattr(frame, "muted", False))
             link = ttk.Label(
                 nav, text=translate(label), foreground=tokens.TEXT_DISABLED if muted else tokens.themed(tokens.LINK),
-                cursor="hand2", wraplength=px(122), justify="left",
+                cursor="hand2", wraplength=px(122), **rtl_layout.text_kw(nav, justify="left"),
             )
-            link.pack(anchor="w", pady=2, fill="x")
+            link.pack(**rtl_layout.pack_kw(link, anchor="w", pady=2, fill="x"))
             link.bind("<Button-1>", lambda _e, f=frame: _jump(f))
             self._nav_links.append(link)
 

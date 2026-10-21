@@ -1213,8 +1213,8 @@ def _show_confirm(app: Any) -> None:
     shown.pack(**rtl_layout.pack_kw(shown, side="left", before=app.vc_confirm_cancel_btn))
     shown.configure(state="normal" if finished or _can_start(plan) else "disabled")
     if plan.resume_done or finished:
-        app.vc_confirm_restart_btn.pack(side="left", padx=(8, 0),
-                                        before=app.vc_confirm_cancel_btn)
+        app.vc_confirm_restart_btn.pack(**rtl_layout.pack_kw(
+            app.vc_confirm_restart_btn, side="left", padx=(8, 0), before=app.vc_confirm_cancel_btn))
         app.vc_confirm_restart_btn.configure(
             state="normal" if _can_start(plan) else "disabled")
     app.vc_confirm_cancel_btn.configure(state="normal")

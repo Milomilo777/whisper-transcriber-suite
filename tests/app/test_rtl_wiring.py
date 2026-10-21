@@ -245,10 +245,138 @@ def test_check_and_radio_indicators_sit_right_of_their_text(monkeypatch) -> None
         root.destroy()
 
 
+@pytest.mark.parametrize("text", ["FLAC", "Express Scribe", "فعال کردن VAD (رد کردن بخش‌های بی‌صدا)"])
+def test_mirrored_check_button_asks_for_the_full_text_plus_the_gap(monkeypatch, text: str) -> None:
+    """The twin style must not shrink the text: its requested width is the base width plus
+    the gap, and the label element (``identify`` at every pixel) spans the measured text."""
+    from tkinter import font as tkfont
+
+    _force_rtl(monkeypatch)
+    try:
+        root = tk.Tk()
+    except tk.TclError:
+        pytest.skip("No display available for Tkinter tests")
+    try:
+        import sv_ttk  # the app's theme: there the twin's borderwidth is the gap (the vista
+        # "border" element ignores it, so a plain theme would not catch a lost gap)
+
+        sv_ttk.set_theme("light")
+        root.geometry("600x100+30+30")
+        base = ttk.Checkbutton(root, text=text)
+        twin = ttk.Checkbutton(root, text=text)
+        base.pack(anchor="w")
+        twin.pack(anchor="w")
+        root.update()
+        base_width = base.winfo_reqwidth()
+        twin.configure(style=rtl_layout.rtl_style(twin, "TCheckbutton"))
+        root.update()
+        assert twin.winfo_reqwidth() >= base_width + rtl_layout.INDICATOR_GAP
+        assert twin.winfo_width() == twin.winfo_reqwidth()
+        y = twin.winfo_height() // 2
+        label_px = sum(1 for x in range(twin.winfo_width()) if twin.identify(x, y) == "label")
+        assert label_px >= tkfont.nametofont("TkDefaultFont").measure(text)
+    finally:
+        root.destroy()
+
+
 def test_app_check_buttons_use_the_mirrored_style(rtl_app) -> None:
     frame = rtl_app.transcribe_lang2_frame.master
     checks = [w for w in frame.winfo_children() if isinstance(w, ttk.Checkbutton)]
     assert checks and all(str(c.cget("style")).startswith("Rtl.") for c in checks)
+
+
+def _advanced(rtl_app):
+    from app.dialogs.advanced import AdvancedDialog
+
+    dialog = AdvancedDialog(rtl_app)
+    rtl_layout.mirror_window(dialog)  # what the map hook does when the dialog shows
+    dialog.update_idletasks()
+    return dialog
+
+
+def test_grid_removed_rows_come_back_in_their_mirrored_slot(rtl_app) -> None:
+    """The VAD "Fine-tune" sliders start collapsed (grid_remove before the pass); shown
+    later with a bare grid() they must land in the mirrored columns, as their visible
+    siblings did, and the Jump-to links rebuilt after the pass are right-aligned too."""
+    dialog = _advanced(rtl_app)
+    try:
+        master = dialog._vad_control_rows[0][0].master
+        ncols = master.grid_size()[0]
+        managers = [w.winfo_manager() for row in dialog._vad_control_rows for w in row]
+        assert not any(managers), (managers, getattr(dialog, rtl_layout.MIRRORED_ATTR, None))
+        dialog._toggle_vad_sliders()
+        dialog.update_idletasks()
+        for row_label, scale, echo_label in dialog._vad_control_rows:
+            # built as label col 0 (sticky w), scale col 1, echo col 2 -> mirrored
+            assert int(row_label.grid_info()["column"]) == ncols - 1
+            assert row_label.grid_info()["sticky"] == "e"
+            assert int(scale.grid_info()["column"]) == ncols - 2
+            assert int(echo_label.grid_info()["column"]) == ncols - 3
+            assert _x(row_label) > _x(scale) > _x(echo_label)
+        dialog._refresh_nav()
+        links = [w for w in dialog._nav_links if isinstance(w, ttk.Label)]
+        assert links and all(w.pack_info()["anchor"] == "e" for w in links)
+        jump = [w for w in links if str(w.cget("cursor")) == "hand2"]  # the links, not the captions
+        assert jump and all(str(w.cget("justify")) == "right" for w in jump)
+    finally:
+        dialog.destroy()
+
+
+def test_a_master_with_only_unmanaged_children_stays_packable(rtl_app) -> None:
+    """The engine setup frames are pack_forget'd before the pass: the pass must not grid
+    them for a look (grid would then own their master, and the later pack() would fail)."""
+    holder = ttk.Frame(rtl_app.t1)
+    later = ttk.Frame(holder)
+    ttk.Label(later, text="x").pack(side="left")
+    rtl_layout.mirror_tree(holder)
+    assert not later.winfo_manager()
+    later.pack(fill="x")  # no TclError: the master is still free for pack
+    assert later.winfo_manager() == "pack"
+
+
+def test_weightless_grids_and_wrap_rows_hug_the_right_edge(rtl_app) -> None:
+    rtl_app.nb.select(rtl_app.t3)
+    rtl_app.update()
+    cell, _ncols = _first_wrap_cell(rtl_app)
+    wrap = cell.master
+    assert str(wrap.tk.call("grid", "anchor", wrap._w)) == "ne"
+    assert wrap.winfo_width() - (cell.winfo_x() + cell.winfo_width()) <= 2
+    row = ttk.Frame(rtl_app.t1)
+    for column in range(3):
+        ttk.Label(row, text=f"c{column}").grid(row=0, column=column, padx=4)
+    assert str(row.tk.call("grid", "anchor", row._w)) == "nw"
+    rtl_layout.mirror_tree(row)
+    assert str(row.tk.call("grid", "anchor", row._w)) == "ne"
+    centred = ttk.Frame(rtl_app.t1)
+    centred.grid_anchor("center")
+    ttk.Label(centred, text="c").grid(row=0, column=0)
+    rtl_layout.mirror_tree(centred)
+    assert str(centred.tk.call("grid", "anchor", centred._w)) == "center"
+
+
+def test_tab_strip_stays_right_aligned_after_a_theme_switch(rtl_app) -> None:
+    assert ttk.Style(rtl_app).lookup("TNotebook", "tabposition") == "ne"
+    rtl_app._restyle("dark")
+    try:
+        assert ttk.Style(rtl_app).lookup("TNotebook", "tabposition") == "ne"
+        assert ttk.Style(rtl_app).layout("Rtl.TCheckbutton")
+    finally:
+        rtl_app._restyle("light")
+    assert ttk.Style(rtl_app).lookup("TNotebook", "tabposition") == "ne"
+
+
+def test_notice_bar_button_repacks_mirrored(rtl_app) -> None:
+    from app.widgets.update_bar import DownloaderUpdateBar
+
+    bar = DownloaderUpdateBar(rtl_app, on_update=lambda: None, on_dismiss=lambda: None)
+    rtl_layout.mirror_tree(bar)
+    assert bar.update_button.pack_info()["side"] == "right"
+    bar._set_buttons(update="hidden", dismiss="Close")
+    bar._set_buttons(update="enabled", dismiss="Close")
+    assert bar.update_button.pack_info()["side"] == "right"
+    assert bar._button_row.pack_slaves().index(bar.update_button) < \
+        bar._button_row.pack_slaves().index(bar.dismiss_button)
+    bar.destroy()
 
 
 def test_tooltip_is_right_justified_and_hangs_from_the_right_edge(monkeypatch) -> None:

@@ -15,7 +15,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 - **Right-to-left layout** on Windows: with a Persian, Arabic, Hebrew or Urdu interface the
   main tabs, the tab strip (first tab at the right), the lists, scrollbars, dialogs, rows that
-  appear later, tick boxes (indicator at the right) and tooltips are mirrored (`app/rtl_layout.py`, wired through `App._build_tabs`
+  appear later or were hidden at first, tick boxes (indicator at the right), the viewer's panes
+  and tooltips are mirrored (`app/rtl_layout.py`, wired through `App._build_tabs`
   and a once-per-window hook). Paths, links, times, numbers and the log keep reading left to
   right; the menu bar and the system's own message boxes cannot be mirrored by Tk.
   `docs/TRANSLATING.md` describes it.

@@ -67,6 +67,11 @@ _RTL_STYLES: dict[str, str] = {}
 #: Pixels between a mirrored indicator and its text (sv_ttk's indicator image carries a
 #: 6 px gap on its own right, which ends up outside once the element sits at the right).
 INDICATOR_GAP = 4
+#: Set on a ttk.Label whose unset anchor / justify read "" before the pass flipped them.
+BLANK_ATTR = "_rtl_blank"
+_BLANK_DEFAULTS = {"anchor": "w", "justify": "left"}
+#: "notebook": a tab strip was mirrored, so a theme switch sets ``tabposition`` again.
+_STATE = {"notebook": False}
 #: Widgets whose ``anchor`` / ``justify`` place text (never the editable ones above).
 _TEXT_WIDGETS = (tk.Label, ttk.Label, tk.Button, ttk.Button, tk.Checkbutton, ttk.Checkbutton,
                  tk.Radiobutton, ttk.Radiobutton, tk.Message, tk.Menubutton, ttk.Menubutton)
@@ -213,14 +218,30 @@ def rtl_style(widget: tk.Misc, base: str) -> str:
 
 
 def refresh_styles(root: tk.Misc) -> int:
-    """Define every mirrored style again in the current theme: call after a theme switch
-    (``sv_ttk.set_theme`` rebuilds the base layouts in another theme). Returns the count."""
+    """Define every mirrored style again in the current theme, and the tab strip's right
+    alignment: call after a theme switch (``sv_ttk.set_theme`` rebuilds the base layouts in
+    another theme, where ``tabposition`` is unset again). Returns the style count."""
     if not active():
         return 0
     for derived, base in list(_RTL_STYLES.items()):
         rtl_style(root, base)
         assert _RTL_STYLES[derived] == base
+    if _STATE["notebook"]:
+        ttk.Style(root).configure("TNotebook", tabposition="ne")
     return len(_RTL_STYLES)
+
+
+def text_kw(master: tk.Misc, **options: Any) -> dict[str, Any]:
+    """Widget options (``anchor``, ``justify``) for a label or button created under
+    ``master`` after the pass: mirrored once ``master`` has been mirrored, else as given."""
+    if not mirrored(master):
+        return options
+    flipped = dict(options)
+    if "anchor" in flipped:
+        flipped["anchor"] = flip_anchor(str(flipped["anchor"]))
+    if "justify" in flipped:
+        flipped["justify"] = flip_justify(str(flipped["justify"]))
+    return flipped
 
 
 def _mirror_indicator_style(widget: tk.Misc) -> int:
@@ -238,14 +259,31 @@ def _mirror_options(widget: tk.Misc) -> int:
         return 0
     keys = widget.keys()
     changed = _mirror_indicator_style(widget) if isinstance(widget, _INDICATOR_WIDGETS) else 0
+    blank: set[str] = getattr(widget, BLANK_ATTR, set())
     for option, flip in (("anchor", flip_anchor), ("justify", flip_justify)):
         if option not in keys:
             continue
         old = str(widget.cget(option))
+        was_blank = old == "" and isinstance(widget, ttk.Label)
+        if was_blank:
+            # An unset ttk.Label option reads "" on some Tk builds (CI: Python 3.12's Tk
+            # 8.6) and "w" / "left" on others; both mean the same default.
+            old = _BLANK_DEFAULTS[option]
         new = flip(old)
-        if new != old:
-            widget.configure({option: new})
+        if option in blank and new == _BLANK_DEFAULTS[option]:
+            # The second pass: put the unset option back where the build accepts "".
+            blank.discard(option)
+            try:
+                widget.configure({option: ""})
+            except tk.TclError:
+                widget.configure({option: new})
             changed += 1
+        elif new != old:
+            widget.configure({option: new})
+            if was_blank:
+                blank.add(option)
+            changed += 1
+    setattr(widget, BLANK_ATTR, blank)
     return changed
 
 
@@ -260,7 +298,28 @@ def _mirror_pack_slaves(master: tk.Misc) -> int:
     return changed
 
 
+def _hidden_grid_children(master: tk.Misc) -> list[tk.Widget]:
+    """Children taken off the grid with ``grid_remove`` (the VAD sliders of the Advanced
+    dialog start collapsed): Tk remembers their options but reports nothing for them, so
+    they are gridded again for the pass and removed after it. Only for a master that grids
+    something already: gridding a never-managed child makes grid the master's manager for
+    good (a removed slave stays registered), and a later pack() into it would fail."""
+    hidden: list[tk.Widget] = []
+    if not master.grid_slaves():
+        return hidden
+    for child in master.winfo_children():
+        if child.winfo_manager() or isinstance(child, (tk.Toplevel, tk.Menu)):
+            continue
+        try:
+            child.grid()
+        except tk.TclError:
+            continue  # the master packs its slaves, or the child cannot be gridded
+        hidden.append(child)
+    return hidden
+
+
 def _mirror_grid_slaves(master: tk.Misc) -> int:
+    hidden = _hidden_grid_children(master)
     slaves = master.grid_slaves()
     if not slaves:
         return 0
@@ -275,6 +334,12 @@ def _mirror_grid_slaves(master: tk.Misc) -> int:
         a, b = _column_options(master, left), _column_options(master, right)
         master.grid_columnconfigure(left, **b)
         master.grid_columnconfigure(right, **a)
+    # The block of a grid without a weighted column hugs Tk's default "nw" corner: mirror
+    # the anchor too ("center" and "n", chosen on purpose, stay).
+    anchor: Any = flip_anchor(str(master.tk.call("grid", "anchor", str(master))))
+    master.grid_anchor(anchor)
+    for child in hidden:
+        child.grid_remove()
     return len(slaves)
 
 
@@ -360,14 +425,25 @@ def mirror_notebook(notebook: ttk.Notebook) -> int:
     if not active():
         return 0
     ttk.Style(notebook).configure("TNotebook", tabposition="ne")
+    _STATE["notebook"] = True
     tabs = list(notebook.tabs())
     for tab in tabs:
         notebook.insert(0, tab)
     return len(tabs)
 
 
+def mirror_panes(paned: ttk.PanedWindow) -> int:
+    """Reverse the panes of a horizontal ``ttk.PanedWindow`` (first pane at the right)."""
+    if not active() or str(paned.cget("orient")) != "horizontal":
+        return 0
+    panes = list(paned.panes())
+    for pane in panes:
+        paned.insert(0, pane)
+    return len(panes)
+
+
 __all__ = ["ENV_OVERRIDE", "KEEP_ATTR", "MIRRORED_ATTR", "OWN_LAYOUT_ATTR", "STYLE_PREFIX",
            "active", "flip_anchor", "flip_justify", "flip_padx", "flip_side", "flip_sticky",
            "grid_kw", "install_window_hook", "keep_ltr", "manages_own_layout",
-           "mirror_notebook", "mirror_tree", "mirror_window", "mirrored", "pack_kw",
-           "refresh_styles", "rtl_style"]
+           "mirror_notebook", "mirror_panes", "mirror_tree", "mirror_window", "mirrored",
+           "pack_kw", "refresh_styles", "rtl_style", "text_kw"]

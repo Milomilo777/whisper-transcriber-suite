@@ -967,6 +967,7 @@ class TranscriptViewer(tk.Toplevel):
 
         right = ttk.Frame(body, padding=(8, 0, 0, 0))
         body.add(right, weight=2)
+        rtl_layout.mirror_panes(body)  # right-to-left: the transcript pane at the right
 
         self._right_notebook = ttk.Notebook(right)
         self._right_notebook.pack(fill="both", expand=True)

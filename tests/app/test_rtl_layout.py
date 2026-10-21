@@ -155,8 +155,63 @@ def test_keep_ltr_subtree_is_untouched_but_takes_the_mirrored_slot(frame: ttk.Fr
     assert _x(kept) < _x(other)
     rtl_layout.mirror_tree(frame)
     assert _x(kept) > _x(other)  # the slot among its siblings is mirrored
-    assert inner_label.pack_info()["side"] == "left" and str(inner_label.cget("anchor")) == "w"
+    assert inner_label.pack_info()["side"] == "left"
+    assert str(inner_label.cget("anchor")) in ("", "w")  # unset: "" on CI's Tk, "w" on 8.6.15
     assert _x(inner_label) < _x(inner_entry)
+
+
+class _OldTkLabel(ttk.Label):
+    """A ttk.Label as the Tk build on CI reports it: an unset anchor / justify reads "" and
+    may be set back to "" (Tk 8.6.15 here reads "w" / "left" and rejects "")."""
+
+    _DEFAULTS = {"anchor": "w", "justify": "left"}
+
+    def __init__(self, master: tk.Misc, **kw: Any) -> None:
+        super().__init__(master, **kw)
+        self._explicit: dict[str, str] = {}
+
+    def cget(self, key: str) -> Any:
+        if key in self._DEFAULTS and key not in self._explicit:
+            return ""
+        return super().cget(key)
+
+    def configure(self, cnf: Any = None, **kw: Any) -> Any:  # type: ignore[override]
+        options = dict(cnf or {}, **kw)
+        for key, default in self._DEFAULTS.items():
+            if key in options and options[key] == "":
+                self._explicit.pop(key, None)
+                options[key] = default
+            elif key in options:
+                self._explicit[key] = options[key]
+        return super().configure(options)
+
+
+def test_blank_anchor_and_justify_count_as_the_left_default(frame: ttk.Frame, rtl: None) -> None:
+    label = _OldTkLabel(frame, text="Name")
+    entry = ttk.Entry(frame, width=12)
+    label.pack(side="left")
+    entry.pack(side="left")
+    assert str(label.cget("anchor")) == "" and str(label.cget("justify")) == ""
+    rtl_layout.mirror_tree(frame)
+    assert str(label.cget("anchor")) == "e" and str(label.cget("justify")) == "right"
+    assert _x(label) > _x(entry)
+    rtl_layout.mirror_tree(frame)  # the second pass puts the unset options back
+    assert str(label.cget("anchor")) == "" and str(label.cget("justify")) == ""
+    assert not getattr(label, rtl_layout.BLANK_ATTR)
+
+
+@pytest.mark.parametrize("theme", ["default", "clam"])
+def test_plain_themes_mirror_the_label_too(root: tk.Tk, frame: ttk.Frame, rtl: None, theme: str) -> None:
+    style = ttk.Style(root)
+    previous = style.theme_use()
+    style.theme_use(theme)
+    try:
+        label = ttk.Label(frame, text="Name")
+        label.pack(side="left")
+        rtl_layout.mirror_tree(frame)
+        assert str(label.cget("anchor")) == "e" and str(label.cget("justify")) == "right"
+    finally:
+        style.theme_use(previous)
 
 
 def test_left_to_right_interface_is_a_no_op(frame: ttk.Frame) -> None:
