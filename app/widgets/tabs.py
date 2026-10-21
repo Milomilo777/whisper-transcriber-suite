@@ -577,6 +577,35 @@ EMPTY_STATE_FORMATS = N_(
 )
 
 
+def once_per(seconds: float, action: Callable[[], object],
+             clock: Callable[[], float] | None = None) -> Callable[..., None]:
+    """An event handler that runs ``action`` at most once per ``seconds``: a held Enter
+    (keyboard auto-repeat) or a double tap must not queue the same file twice (review,
+    2026-10-21). No Tk."""
+    import time
+
+    now = clock or time.monotonic
+    last = [float("-inf")]
+
+    def handler(*_args: object) -> None:
+        t = now()
+        if t - last[0] < seconds:
+            return
+        last[0] = t
+        action()
+
+    return handler
+
+
+def combo_width(values: list[str], floor: int = 44, cap: int = 72) -> int:
+    """Width in characters for a read-only Combobox: its longest entry, kept within
+    floor..cap. A Combobox's list is as wide as the box, so a fixed 44 cut entries such
+    as "Google Cloud Speech-to-Text ... ⚠ unavailable" (click-through test, 2026-10-21);
+    the cap keeps the row inside the 960-px minimum window. No Tk."""
+    longest = max((len(str(v)) for v in values), default=0)
+    return max(floor, min(cap, longest + 2))
+
+
 def time_range_hint(start: str, end: str) -> tuple[str, bool]:
     """The note beside the Transcribe tab's time range and whether it is an error.
 
@@ -815,9 +844,13 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     )
     # "Selected file" hid that a link works here too (screenshot review, 2026-10-21).
     ttk.Label(file_row, text=_("File or video link:")).pack(side="left")
-    ttk.Entry(file_row, textvariable=app.fv).pack(
-        side="left", fill="x", expand=True, padx=(8, 0)
-    )
+    file_entry = ttk.Entry(file_row, textvariable=app.fv)
+    file_entry.pack(side="left", fill="x", expand=True, padx=(8, 0))
+    # Enter after pasting a path or link starts it, as the Transcribe button does (it did
+    # nothing: code review, 2026-10-21).
+    start_file = once_per(1.5, app.add)
+    for key in ("<Return>", "<KP_Enter>"):
+        file_entry.bind(key, start_file)
 
     # ── Row 2: engine + model pickers — let the user choose the
     #     transcription engine AND (for Faster-Whisper) which model size
@@ -864,7 +897,7 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
         textvariable=app.transcribe_engine_var,
         values=[opt.display_label for opt in _engine_options],
         state="readonly",
-        width=44,
+        width=combo_width([opt.display_label for opt in _engine_options]),
     )
     engine_combo.pack(side="left", padx=(6, 8))
     app.transcribe_engine_combo = engine_combo
@@ -916,7 +949,7 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
         textvariable=app.transcribe_model_var,
         values=[lbl for _slug, lbl in _model_labeled],
         state="readonly",
-        width=44,
+        width=combo_width([lbl for _slug, lbl in _model_labeled]),
     )
     model_combo.pack(side="left", padx=(6, 8))
     app.transcribe_model_combo = model_combo
@@ -975,7 +1008,9 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     # looks the code up by name); only the shown labels are translated.
     auto_label = pgettext("language choice", "Auto")
     lang_labels = {"Auto": auto_label}
-    lang_labels.update((name, subtitle_language_label(name)) for name, _code in _LANGS)
+    # Not the list's own "Automatic" row: it meant the same as "Auto", and the two stood one
+    # above the other (click-through test, 2026-10-21).
+    lang_labels.update((name, subtitle_language_label(name)) for name, code in _LANGS if code)
     lang_combo = ttk.Combobox(
         opts_line1,
         textvariable=translated_choice_var(opts_line1, app.transcribe_lang_var, lang_labels),
@@ -1444,7 +1479,11 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     app.download_url_var.trace_add("write", lambda *_args: app.format_service.schedule_lookup())
     url_cell = ttk.Frame(top)
     url_cell.grid(row=0, column=1, columnspan=2, sticky="ew", padx=(6, 0))
-    ttk.Entry(url_cell, textvariable=app.download_url_var, width=80).pack(fill="x")
+    url_entry = ttk.Entry(url_cell, textvariable=app.download_url_var, width=80)
+    url_entry.pack(fill="x")
+    start_download = once_per(1.5, app.add_download)  # as the Download button
+    for key in ("<Return>", "<KP_Enter>"):
+        url_entry.bind(key, start_download)
     # Which subtitles the looked-up video already has; packed only when there
     # are some (App.update_caption_bar), so it takes no room otherwise.
     app.caption_bar_var = tk.StringVar(value="")

@@ -79,10 +79,13 @@ def test_add_accepts_a_file_uri(media: str) -> None:
 
 
 def test_add_still_reports_a_missing_file(tmp_path) -> None:
-    fake = _fake_app()
+    browsed: list[bool] = []
+    fake = _fake_app(browse=lambda: browsed.append(True))
     fake.fv.set(f'"{tmp_path / "gone.mp4"}"')
     App.add(fake)  # type: ignore[arg-type]
     assert fake.queue == [] and fake.logs[-1].startswith("File not found")
+    # The click opens the file picker instead of doing nothing visible (review, 2026-10-21).
+    assert browsed == [True]
 
 
 @pytest.fixture

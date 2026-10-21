@@ -93,7 +93,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   **Browse files** comes before the sample clip; "(whole recording)" shows while the time range is
   0:00:00 to 0:00:00, and a red "Not a time: use H:MM:SS" when a box holds text that is not a time
   (such text counts as unset, so the whole recording would be transcribed); the Speakers count shows
-  only while **Identify speakers** is ticked.
+  only while **Identify speakers** is ticked. The Language list offers "Auto" once (an "Automatic"
+  row meant the same); Enter in the file box starts the job and Enter in the Download link box
+  starts the download (a held Enter counts once); Transcribe with a path that does not exist opens
+  the file picker; the Engine and Model lists are wide enough for their longest entry; a link
+  changed within the moment before its lookup no longer downloads with the previous link's formats.
 
 - **Plain processor note**: "CPU (slower)" instead of "CPU - int8_float32 (slower)" beside the
   Transcribe button and under the Queue; the hover text keeps the technical detail.

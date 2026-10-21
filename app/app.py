@@ -3290,7 +3290,11 @@ class App(tk.Tk):
             from core.backends import availability as _eng
 
             options = self._engine_picker_options()
-            combo.configure(values=[o.display_label for o in options])
+            from app.widgets.tabs import combo_width
+
+            labels = [o.display_label for o in options]
+            # The refreshed labels can carry the longer "⚠ unavailable" mark: size the box again.
+            combo.configure(values=labels, width=combo_width(labels))
             combo.configure(
                 state="readonly" if any(o.ready for o in options) else "disabled"
             )
@@ -4277,6 +4281,9 @@ class App(tk.Tk):
         # error. Catch it here where we can give a clear message.
         if not os.path.isfile(text):
             self.log(f"File not found — pick an existing file: {text}")
+            # The red line beside the button already says "File not found"; the click opens the
+            # file picker, as with an empty box, instead of doing nothing visible (review, 2026-10-21).
+            self.browse()
             return
         # A README picked by mistake used to be queued anyway and fail as a bare "error"
         # row (click-through test, 2026-10-21): turn it away here, with the reason.

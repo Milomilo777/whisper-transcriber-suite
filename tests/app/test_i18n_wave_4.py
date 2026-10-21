@@ -651,7 +651,9 @@ def test_choices_store_the_same_values_in_every_language(
     assert english["live device combo disabled for system audio"] == "disabled"
     assert english["live language after Auto"] == ("Auto", None)
     from app.domain.languages import SUBTITLE_LANGUAGES
-    assert english["language after a name"] == SUBTITLE_LANGUAGES[2][0]
+    # The Transcribe list is "Auto" then the named languages (its "Automatic" row duplicated
+    # "Auto" and was dropped, 2026-10-21), so entry 3 is the third named language.
+    assert english["language after a name"] == [n for n, c in SUBTITLE_LANGUAGES if c][2]
     assert english["live language after a name"][0] in {n for n, _c in SUBTITLE_LANGUAGES}
     assert english["subtitle language after a name"] == SUBTITLE_LANGUAGES[5][0]
     assert english["subtitle language after Automatic"] == "Automatic"

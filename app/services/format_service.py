@@ -74,6 +74,12 @@ class FormatService:
     def schedule_lookup(self) -> None:
         if self.app.format_lookup_after:
             self.app.after_cancel(self.app.format_lookup_after)
+        # The link changed: the previous link's formats and error no longer apply. Without this,
+        # Download (or Enter) within the 800 ms wait queued the new link with the old link's
+        # formats (review, 2026-10-21); now it says the formats are still loading.
+        self.app.audio_format_map = {}
+        self.app.video_format_map = {}
+        self.app.format_lookup_error = ""
         self.app.format_lookup_after = self.app.after(800, self.lookup_formats)
 
     def lookup_formats(self) -> None:

@@ -223,3 +223,18 @@ def test_lookup_opens_no_console_window(monkeypatch):
     assert seen
     for key, value in new_session_kwargs().items():
         assert seen[0].get(key) == value
+
+
+def test_a_new_link_drops_the_previous_links_formats_at_once():
+    """Download or Enter within the 800 ms wait used the previous link's formats
+    (review, 2026-10-21): scheduling a lookup clears them and their error."""
+    app = _LookupApp("")
+    app.audio_format_map = {"best": "old"}
+    app.video_format_map = {"best": "old"}
+    app.format_lookup_error = "old link failed"
+    app.format_lookup_after = None
+    app.after = lambda _ms, _fn: "after#1"
+    app.after_cancel = lambda _id: None
+    FormatService(app).schedule_lookup()  # type: ignore[arg-type]
+    assert app.audio_format_map == {} and app.video_format_map == {}
+    assert app.format_lookup_error == "" and app.format_lookup_after == "after#1"
