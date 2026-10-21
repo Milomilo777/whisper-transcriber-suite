@@ -545,7 +545,7 @@ Not a config key — a **File → Convert transcript…** menu action backed by 
 | `word_timestamps` | bool | `false` | Per-word timings in the JSON output. |
 | `initial_prompt` | string | `""` | Text given to the model before the audio (names, spelling). |
 | `hotwords` | string | `""` | Words the model should prefer. |
-| `output_formats` | array of strings | `["srt", "json"]` | Subset of `srt / vtt / tsv / json / txt / lrc / md / ass / docx / elan / express_scribe / inqscribe / otr / pdf`. |
+| `output_formats` | array of strings | `["srt", "json", "txt"]` | Subset of `srt / vtt / tsv / json / txt / lrc / md / ass / docx / elan / express_scribe / inqscribe / otr / pdf`. A `config.json` saved by an earlier version without this key keeps `["srt", "json"]`; the value is written on the next save. |
 | `transcribe_backend` | string | `"faster_whisper"` | The transcription engine (Advanced settings). Cloud engines run only when chosen here, with the user's own credentials. |
 | `language_model_previous` | object | absent | Written by the Transcribe tab's "Use it" for a model trained for one language (ADR 0015): the engine, Whisper model, model entry, model folder and transformers model id it replaced. "Switch back" restores them and removes the key. |
 | `transcribe_language` | string | `"Auto"` | Spoken-language picker on the Transcribe tab (display name). Kept for older files; the picker itself is not saved. |

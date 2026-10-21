@@ -99,6 +99,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   ("⚠ no speech found") and the result card ("...so no transcript was saved") say why. The web /
   LAN server still returns its empty transcript, as the OpenAI-compatible API expects.
 
+- **Plain text (`.txt`) among the default outputs** of a new install, next to `.srt` and `.json`, so
+  there is always a file any text editor opens. Existing settings keep the formats they had.
+
 - **Plainer words on the Download tab and the subtitles question**: "URL" is now **Video link**;
   the note under it says "This video already has German subtitles made by the uploader. Use them
   instead of transcribing?" (was "Captions (creator-provided) are already available in "de" --

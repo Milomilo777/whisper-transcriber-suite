@@ -69,6 +69,9 @@ def _default_transcribe_backend() -> str:
     return "faster_whisper"
 
 
+# The output formats of every install made before plain text (.txt) joined the default.
+LEGACY_OUTPUT_FORMATS: tuple[str, ...] = ("srt", "json")
+
 DEFAULT_CONFIG = {
     "model": {
         "name": "faster-whisper-large-v3",
@@ -159,7 +162,8 @@ DEFAULT_CONFIG = {
     # Transcribe tab "English translation" option: use Whisper's own translate
     # task (core.translate_task). Applied per task when queued; off by default.
     "translate_to_english": False,
-    "output_formats": ["srt", "json"],
+    # A config.json from before .txt joined keeps LEGACY_OUTPUT_FORMATS (load_config).
+    "output_formats": ["srt", "json", "txt"],
     "batch_size": 16,
     "initial_prompt": "",
     "hotwords": "",
@@ -1833,6 +1837,13 @@ def load_config(*, fetch_online: bool = True) -> dict[str, Any]:
         local or os.path.exists(config_path() + ".corrupt")
     ):
         merged["quick_start_done"] = True
+    # Plain text joined the default formats for new installs only: a config.json
+    # from before keeps the formats it ran with. Either way the next save writes the
+    # value, so a new install's first save does not read as an earlier one later.
+    if "output_formats" not in local:
+        if local or os.path.exists(config_path() + ".corrupt"):
+            merged["output_formats"] = list(LEGACY_OUTPUT_FORMATS)
+        baseline.pop("output_formats", None)
     # The yt-dlp update choice used to be a bool; true meant "update before a
     # download, once a day", which is the "auto" mode now. Read only from the
     # local file (the online layer can set neither key).
