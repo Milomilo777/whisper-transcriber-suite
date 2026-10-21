@@ -106,7 +106,7 @@
   ],
   [
    "device_badge",
-   "CPU (slower)"
+   "CPU"
   ]
  ],
  "badge_cpu_typed": [
@@ -116,7 +116,7 @@
   ],
   [
    "device_badge",
-   "CPU (slower)"
+   "CPU"
   ]
  ],
  "badge_downgraded": [

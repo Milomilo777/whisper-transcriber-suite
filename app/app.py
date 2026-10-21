@@ -4039,14 +4039,14 @@ class App(tk.Tk):
     def apply_device_badge(self, text: str, kind: str, worker: dict[str, Any]) -> None:
         """Set the badge text + colour from the worker's effective device.
 
-        ``kind`` is one of ``gpu`` (green), ``cpu`` (amber), ``cpu_downgraded``
+        ``kind`` is one of ``gpu`` (green), ``cpu`` (grey), ``cpu_downgraded``
         (amber). Colours come through ``tokens.themed`` so each keeps 4.5:1 on
         the current theme's panel. The tooltip is refreshed with the full detail.
         """
         self.device_badge_var.set(text)
         colour = {
             "gpu": tokens.themed(tokens.CHIP_GPU),             # green — running on the GPU
-            "cpu": tokens.themed(tokens.CHIP_CPU),             # amber — CPU (slower)
+            "cpu": tokens.themed(tokens.TEXT_MUTED),           # grey — nothing to fix on a CPU-only PC
             "cpu_downgraded": tokens.themed(tokens.CHIP_CPU),  # amber — GPU asked, fell back to CPU
         }.get(kind, "")
         req = str(worker.get("requested_device") or "")

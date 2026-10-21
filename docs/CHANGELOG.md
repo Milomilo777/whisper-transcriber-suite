@@ -115,6 +115,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   transcript** does (it opened the folder). A job without a transcript `.json` or without speech
   still opens its folder.
 
+- **A plain grey "CPU" badge**: on a computer without a usable GPU the badge said "CPU (slower)"
+  in amber, which read as a warning with nothing to fix. Amber stays for a GPU that could not be
+  used; the hover text still says a CPU is slower.
+
 - **Plainer words on the Download tab and the subtitles question**: "URL" is now **Video link**;
   the note under it says "This video already has German subtitles made by the uploader. Use them
   instead of transcribing?" (was "Captions (creator-provided) are already available in "de" --

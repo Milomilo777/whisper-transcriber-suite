@@ -365,8 +365,11 @@ class TranscriptionService:
             kind = "cpu_downgraded"
             text = _("GPU unavailable, using CPU (slower)")
         else:
+            # Plain "CPU" in grey (App.apply_device_badge): "(slower)" in amber read as a
+            # warning on every CPU-only computer, where nothing can be fixed (deep review,
+            # 2026-10-21). The hover text and the one-time warning still say it is slower.
             kind = "cpu"
-            text = _("CPU (slower)")
+            text = _("CPU")
 
         apply = getattr(app, "apply_device_badge", None)
         if callable(apply):

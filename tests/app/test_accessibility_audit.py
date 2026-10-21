@@ -112,3 +112,19 @@ def test_device_badge_colour_meets_wcag_aa(monkeypatch, theme: str, panel: str, 
     App.apply_device_badge(fake, "CPU", kind, {"device": "cpu"})  # type: ignore[arg-type]
     colour = label.options["foreground"]
     assert ratio(colour, panel) >= 4.5, (theme, kind, colour, panel)
+
+
+@pytest.mark.parametrize(("kind", "token"), [
+    ("cpu", tokens.TEXT_MUTED), ("cpu_downgraded", tokens.CHIP_CPU), ("gpu", tokens.CHIP_GPU),
+])
+def test_a_plain_cpu_badge_is_grey_not_a_warning(monkeypatch, kind: str, token: str) -> None:
+    """Amber read as a warning on every CPU-only computer, where there is nothing to fix (deep
+    review, 2026-10-21): plain CPU is grey; amber stays for a GPU that could not be used."""
+    from app.app import App
+
+    monkeypatch.setattr(tokens, "_theme", "light")
+    label = _FakeLabel()
+    fake = SimpleNamespace(device_badge_var=SimpleNamespace(set=lambda _text: None),
+                           device_badge_labels=[label], device_badge_tip="")
+    App.apply_device_badge(fake, "CPU", kind, {"device": "cpu"})  # type: ignore[arg-type]
+    assert label.options["foreground"] == tokens.themed(token)
