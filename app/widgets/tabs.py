@@ -1626,9 +1626,8 @@ def build_queue_tab(app: "App", parent: ttk.Frame) -> None:
         parent, textvariable=app.queue_failure_var,
         foreground=tokens.themed(tokens.DANGER_TEXT), wraplength=px(760), justify="left",
     )
-    # A single-click on a running/paused row's status or progress cell
-    # toggles pause/resume — a discoverable shortcut on top of the menu.
-    app.tree.bind("<Button-1>", app.queue_status_cell_click, add="+")
+    # No click-to-pause on the Status cell: a user picking a row to read it paused the job
+    # without noticing (deep review, 2026-10-21). Pause and Resume are on the buttons and menu.
     app.tree.bind("<<TreeviewSelect>>", lambda _e: app._update_queue_action_bar())
 
 

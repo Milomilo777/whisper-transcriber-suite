@@ -82,6 +82,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   with a **Show in Queue** button, instead of the stale "Ready: talk.mp3". A new file in the box
   keeps its own Ready line.
 
+- **A click on a Queue row only selects it**: a single click on a running job's Status or Progress
+  cell no longer pauses it (a user picking the row to read it paused the work without noticing).
+  Pause and Resume are on the buttons and the right-click menu.
+
 - **Plainer words on the Download tab and the subtitles question**: "URL" is now **Video link**;
   the note under it says "This video already has German subtitles made by the uploader. Use them
   instead of transcribing?" (was "Captions (creator-provided) are already available in "de" --

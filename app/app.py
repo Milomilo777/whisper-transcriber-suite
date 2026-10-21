@@ -5788,36 +5788,6 @@ class App(tk.Tk):
         elif not line and shown:
             label.pack_forget()
 
-    def queue_status_cell_click(self, event: tk.Event) -> None:
-        """Single-click on a running/paused row's Status or Progress cell
-        toggles pause/resume — a discoverable shortcut on top of the menu.
-
-        Other cells / statuses fall through so normal row selection still
-        works (this is bound additively with ``add="+"``).
-        """
-        if self.tree.identify_region(event.x, event.y) != "cell":
-            return
-        col = self.tree.identify_column(event.x)
-        # columns are ("file","status","progress","speed","language","time")
-        # -> status is #2, progress is #3.
-        if col not in ("#2", "#3"):
-            return
-        item = self.tree.identify_row(event.y)
-        if not item:
-            return
-        task = self.row_map.get(item)
-        if not task:
-            return
-        # pause()/resume() call refresh(), which delete()s and re-inserts every
-        # row. Doing that from INSIDE the <Button-1> handler mutates the tree
-        # while the click is still being dispatched (the iid under the pointer
-        # is gone mid-event). Defer to after_idle so the click finishes
-        # dispatching first, then the tree rebuilds cleanly.
-        if task.status == "running":
-            self.after_idle(lambda: self.pause(task))
-        elif task.status == "paused":
-            self.after_idle(lambda: self.resume(task))
-
     def clear_completed(self) -> None:
         self.queue[:] = [t for t in self.queue if t.status not in ("finished", "cancelled", "error")]
         self.refresh()
