@@ -101,7 +101,7 @@
    "This video already has subtitles",
    "Use the subtitles (ready in seconds) or transcribe the video (takes minutes)?",
    "This video has «French» subtitles made by the uploader. Using them gives you a subtitle file only; the video itself is not downloaded.",
-   "Don't ask again (change it in Advanced settings)",
+   "Don't ask again (to undo: Advanced settings on the Transcribe tab)",
    "Transcribe",
    "Use the subtitles",
    "Cancel"
@@ -110,7 +110,7 @@
    "This video already has subtitles",
    "Use the subtitles (ready in seconds) or transcribe the video (takes minutes)?",
    "This video has automatic «French» subtitles, which can be less accurate than a transcription. Using them gives you a subtitle file only; the video itself is not downloaded.",
-   "Don't ask again (change it in Advanced settings)",
+   "Don't ask again (to undo: Advanced settings on the Transcribe tab)",
    "Transcribe",
    "Use the subtitles",
    "Cancel"

@@ -299,7 +299,7 @@
   "Display": "Display",
   "Distil Large v3.5 (fastest English-only, ~1.5 GB)": "Distil Large v3.5 (fastest English-only, ~1.5 GB)",
   "Don't ask again": "Don't ask again",
-  "Don't ask again (change it in Advanced settings)": "Don't ask again (change it in Advanced settings)",
+  "Don't ask again (to undo: Advanced settings on the Transcribe tab)": "Don't ask again (to undo: Advanced settings on the Transcribe tab)",
   "Don't check for updates": "Don't check for updates",
   "Done in {elapsed}s.": "Done in {elapsed}s.",
   "Done: {audio}s of speech in {elapsed}s.": "Done: {audio}s of speech in {elapsed}s.",

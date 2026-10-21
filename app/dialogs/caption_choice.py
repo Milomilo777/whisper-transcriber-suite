@@ -61,7 +61,7 @@ def ask_caption_choice(master: "tk.Misc", *, kind: str, language: str) -> tuple[
         anchor="w", pady=(6, 10)
     )
     ttk.Checkbutton(
-        body, text=_("Don't ask again (change it in Advanced settings)"), variable=dont_ask,
+        body, text=_("Don't ask again (to undo: Advanced settings on the Transcribe tab)"), variable=dont_ask,
     ).pack(anchor="w")
     actions = ttk.Frame(body)
     actions.pack(fill="x", pady=(12, 0))
