@@ -92,7 +92,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   **View transcript** is offered only when the job wrote its transcript .json (the viewer's format),
   and on macOS the folder button uses the menu's Finder wording. A job that has not started yet can
   be removed (button, row menu, "Remove waiting" for several rows); one that a download was waiting
-  on releases that Download row instead of leaving it "transcribing".
+  on releases that Download row instead of leaving it "transcribing". A second Transcribe click on a file that
+  is already waiting or running shows its Queue row instead of queueing it again (another part of
+  the same file still goes in); after Cancel the status line says "cancelled at 7%" instead of
+  keeping the last progress line; the result card's Open buttons sit next to their files.
 
 - **Transcribe tab, plainer**: the ready line gives the recording's length ("Ready: class.flac
   (1:46:12, 52.3 MB)"); the box is labelled **File or video link**, since a link works there too;

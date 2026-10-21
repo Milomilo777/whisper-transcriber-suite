@@ -1636,6 +1636,7 @@
   "{name} is not an audio or video file. Choose an audio or video file, or paste a video link.": "{name} is not an audio or video file. Choose an audio or video file, or paste a video link.",
   "{name} was changed or removed by something else after it was opened here.\n\nOverwrite it with the version in this window?": "{name} was changed or removed by something else after it was opened here.\n\nOverwrite it with the version in this window?",
   "{name} writes {language} only, whatever language is picked.": "{name} writes {language} only, whatever language is picked.",
+  "{name}: cancelled at {percent}%": "{name}: cancelled at {percent}%",
   "{name}: {percent}% done": "{name}: {percent}% done",
   "{n} job": [
    "{n} job",

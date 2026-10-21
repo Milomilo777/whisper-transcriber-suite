@@ -46,6 +46,7 @@ def _fake_app(**extra: Any) -> types.SimpleNamespace:
     )
     for key, value in extra.items():
         setattr(fake, key, value)
+    fake._same_job_active = App._same_job_active.__get__(fake)
     return fake
 
 

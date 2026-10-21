@@ -4309,11 +4309,32 @@ class App(tk.Tk):
         # never the raw field: quotes or a leading space would reach the worker.
         task = TranscriptionTask(text)
         self._apply_task_options(task)
+        if self._same_job_active(task):
+            # A second click (the button showed no change) queued the same job twice
+            # (screenshot reviews, 2026-10-21): show the one that is there. Another part of
+            # the same file (a different time range) is a new job and still goes in.
+            self.nb.select(self.t2)
+            self.log(f"Already in the queue: {os.path.basename(text)}")
+            return
         self.queue.append(task)
         self.pb["value"] = 0
         self.nb.select(self.t2)
         self.log(f"Queued: {os.path.basename(text)}")
         self.refresh()
+
+    def _same_job_active(self, task: TranscriptionTask) -> bool:
+        """True when a waiting, running or paused job already does ``task``: the same
+        file and the same time range (None/None = the whole file)."""
+        key = (os.path.normcase(os.path.abspath(task.file_path)),
+               getattr(task, "clip_start", None), getattr(task, "clip_end", None))
+        for existing in self.queue:
+            if getattr(existing, "status", "") not in ("waiting", "running", "paused"):
+                continue
+            other = (os.path.normcase(os.path.abspath(existing.file_path)),
+                     getattr(existing, "clip_start", None), getattr(existing, "clip_end", None))
+            if other == key:
+                return True
+        return False
 
     def try_sample_clip(self) -> None:
         """"Try it now": transcribe the bundled sample clip with the chosen model.
@@ -5551,6 +5572,11 @@ class App(tk.Tk):
             desktop_alert.job_ended(self, t)
         else:
             self.log("Cancelling task; saving a resume checkpoint...")
+        # The status line kept "<name>: 7% done — <last words>" and the overall bar its value
+        # after a Cancel (screenshot reviews, 2026-10-21): say it was cancelled.
+        self.status_var.set(_("{name}: cancelled at {percent}%",
+                              name=os.path.basename(t.file_path), percent=int(getattr(t, "progress", 0) or 0)))
+        self.update_overall_progress()
         self.refresh()
 
     def _release_waiting_download(self, t: TranscriptionTask) -> None:
@@ -6351,17 +6377,22 @@ class App(tk.Tk):
             files_frame.pack(fill="x")
 
             def _fill_rows(rows_parent: "ttk.Frame") -> None:
+                from app.widgets.tabs import elide_middle
+
                 for path in existing:
                     row = ttk.Frame(rows_parent)
                     row.pack(fill="x", pady=1)
                     size = _fmt_bytes(os.path.getsize(path))
+                    # Open sits right after its file (it was at the far right edge, ~1700 px
+                    # away), and a long name is cut in the middle so the button and the
+                    # extension stay in sight (screenshot reviews, 2026-10-21).
                     ttk.Label(
-                        row, text=ltr_base(f"• {os.path.basename(path)}  ({size})")
+                        row, text=ltr_base(f"• {elide_middle(os.path.basename(path), 64)}  ({size})")
                     ).pack(side="left")
                     ttk.Button(
                         row, text=pgettext("file", "Open"),
                         command=lambda p=path: self._open_file(p),
-                    ).pack(side="right")
+                    ).pack(side="left", padx=(10, 0))
 
             # A long list scrolls inside the card: it must never grow until the drop
             # zone and the log have no room left.
