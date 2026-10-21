@@ -192,6 +192,36 @@ def test_are_outputs_complete_stale_files(tmp_path):
     os.utime(out_path, (start_time - 1.0, start_time - 1.0))
     assert svc._are_outputs_complete(task) is True
 
+def test_are_outputs_complete_finds_the_rerun_set_and_real_extensions(tmp_path):
+    """A re-run writes ``clip (1).srt`` (the first run's ``clip.srt`` is kept) and the format
+    key ``elan`` is written as ``.eaf``: salvage after a worker crash looked only at
+    ``clip.srt`` / ``clip.elan`` and recorded the finished run as failed."""
+    import time
+    app = SimpleNamespace(app_config={"output_formats": ["srt"]})
+    svc = TranscriptionService(app)
+    (tmp_path / "clip.mp4").touch()
+    start_time = time.time() - 30.0
+    old = tmp_path / "clip.srt"
+    old.write_text("old run")
+    os.utime(old, (start_time - 600.0, start_time - 600.0))
+
+    task = SimpleNamespace(file_path=str(tmp_path / "clip.mp4"), start_time=start_time)
+    assert svc._are_outputs_complete(task) is False  # only the old run's file: nothing salvaged
+
+    rerun = tmp_path / "clip (1).srt"
+    rerun.write_text("this run")
+    task = SimpleNamespace(file_path=str(tmp_path / "clip.mp4"), start_time=start_time)
+    assert svc._are_outputs_complete(task) is True
+    assert task.output_paths == [str(rerun)]
+
+    (tmp_path / "clip.eaf").write_text("<ANNOTATION_DOCUMENT/>")
+    task = SimpleNamespace(
+        file_path=str(tmp_path / "clip.mp4"), start_time=start_time, output_formats=["elan"],
+    )
+    assert svc._are_outputs_complete(task) is True
+    assert task.output_paths == [str(tmp_path / "clip.eaf")]
+
+
 def test_worker_exit_recovery_logic(tmp_path, monkeypatch):
     import queue
     import time

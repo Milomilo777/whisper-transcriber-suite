@@ -236,6 +236,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Finished files are found after a crash**: when the transcription process stopped right after
+  writing its files, the app checked only the plain names (`clip.srt`), so a re-run whose files are
+  `clip (1).srt`, or an ELAN / InqScribe file, was recorded as failed although its files were on
+  disk. The check now looks at the names actually written.
+
 - **Resumed job keeps its language**: a transcription resumed after a crash in its final steps
   (speaker labels, word timing) showed no language in the Queue and saved none in History. The
   resume now announces the language it had already detected.

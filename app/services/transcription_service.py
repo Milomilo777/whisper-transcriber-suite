@@ -95,6 +95,31 @@ def _mark_stopped_early(task: Any) -> None:
         task.error_reason = _("The transcription stopped before it finished; try the file again.")
 
 
+def _newest_output_set(paths: list[str]) -> list[str]:
+    """The last ``name (N).ext`` set the writer would have produced for *paths*.
+
+    ``core.transcriber._write_outputs`` keeps earlier runs' files and writes a re-run
+    as ``name (1).srt`` + ``name (1).json`` (one shared index), so the files a crashed
+    re-run left are the highest-numbered set, not the plain names. Returns *paths*
+    unchanged when none of the plain names exists (the caller then reports them
+    missing, or finds a macOS NFD spelling).
+    """
+    index = 0
+    while index < 10000 and any(os.path.exists(_indexed_path(p, index)) for p in paths):
+        index += 1
+    if index == 0:
+        return paths
+    return [_indexed_path(p, index - 1) for p in paths]
+
+
+def _indexed_path(path: str, index: int) -> str:
+    """``video.srt`` -> ``video (N).srt`` for ``index`` >= 1 (``core.transcriber`` naming)."""
+    if index <= 0:
+        return path
+    root, ext = os.path.splitext(path)
+    return f"{root} ({index}){ext}"
+
+
 def _reported_language(task: Any) -> str:
     """Return the detected language, clearing it if no speech was found."""
     lang = getattr(task, "detected_language", "") or ""
@@ -1012,7 +1037,13 @@ class TranscriptionService:
             formats = getattr(task, "output_formats", None)
             if formats is None:
                 formats = self.app.app_config.get("output_formats") or ["srt", "json"]
-            paths = [unicodedata.normalize('NFC', f"{base}.{ext}") for ext in formats]
+            # The on-disk extension, not the format key ("elan" writes ".eaf").
+            from core.writers import extension_for
+            paths = [
+                unicodedata.normalize('NFC', f"{base}.{extension_for(str(fmt))}")
+                for fmt in formats
+            ]
+            paths = _newest_output_set(paths)
 
         no_speech = bool(getattr(task, "no_speech", False))
         if not paths:
