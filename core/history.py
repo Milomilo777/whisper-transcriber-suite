@@ -256,6 +256,15 @@ class HistoryDB:
                         "ALTER TABLE transcriptions "
                         "ADD COLUMN device TEXT DEFAULT ''"
                     )
+            # ``run_options``: JSON of the options a crash-resume needs back
+            # (core.task.task_run_options: time range, mixed languages); "" =
+            # a plain run.
+            if "run_options" not in cols:
+                with self._conn:
+                    self._conn.execute(
+                        "ALTER TABLE transcriptions "
+                        "ADD COLUMN run_options TEXT DEFAULT ''"
+                    )
         except sqlite3.Error as e:
             logger.exception("history.db column migration failed: %s", e)
 
@@ -517,13 +526,16 @@ class HistoryDB:
     def insert_transcription(self, file_path: str, model: str = "",
                              started_at: int | None = None,
                              language: str = "",
-                             task: str = "transcribe") -> int:
+                             task: str = "transcribe",
+                             run_options: dict[str, Any] | None = None) -> int:
         started_at = started_at if started_at is not None else int(time.time())
         with self._txn() as conn:
             cur = conn.execute(
-                "INSERT INTO transcriptions (file_path, model, status, started_at, language, task)"
-                " VALUES (?, ?, 'running', ?, ?, ?)",
-                (file_path, model, started_at, language, task or "transcribe"),
+                "INSERT INTO transcriptions"
+                " (file_path, model, status, started_at, language, task, run_options)"
+                " VALUES (?, ?, 'running', ?, ?, ?, ?)",
+                (file_path, model, started_at, language, task or "transcribe",
+                 json.dumps(run_options) if run_options else ""),
             )
             return int(cur.lastrowid or 0)
 
@@ -572,7 +584,7 @@ class HistoryDB:
             cur = self._conn.execute(
                 "SELECT * FROM transcriptions ORDER BY id DESC LIMIT ?", (limit,)
             )
-            return [_row_to_dict(r, ("output_paths",)) for r in cur.fetchall()]
+            return [_row_to_dict(r, ("output_paths", "run_options")) for r in cur.fetchall()]
 
     # ----- maintenance -------------------------------------------------
 

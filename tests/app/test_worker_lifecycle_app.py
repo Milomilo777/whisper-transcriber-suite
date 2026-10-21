@@ -235,6 +235,29 @@ def test_answered_resume_prompt_is_not_offered_again(tmp_path: Path, monkeypatch
         db.close()
 
 
+def test_resumed_job_keeps_its_time_range_and_languages(tmp_path: Path, monkeypatch):
+    from app import app as app_module
+    from app.app import App
+    from core.history import HistoryDB
+
+    media = tmp_path / "talk.mp4"
+    media.write_bytes(b"x")
+    db = HistoryDB(tmp_path / "history.db")
+    try:
+        db.insert_transcription(str(media), language="fa", run_options={
+            "clip_start": 60.0, "clip_end": 120.0, "languages": ["fa", "en"]})
+        db.mark_interrupted()
+        monkeypatch.setattr(app_module.messagebox, "askyesno", lambda *a, **k: True)
+        ns = SimpleNamespace(history=db, queue=[], refresh=lambda: None, log=lambda m: None,
+                             _when_worker_ready=lambda on_ready, **k: on_ready())
+        App._maybe_offer_crash_resume(ns)  # type: ignore[arg-type]
+        (task,) = ns.queue
+        assert (task.clip_start, task.clip_end, task.languages) == (60.0, 120.0, ("fa", "en"))
+        assert task.language == "fa"
+    finally:
+        db.close()
+
+
 def test_rows_stay_offered_when_the_model_never_loads(tmp_path: Path, monkeypatch):
     from app import app as app_module
     from app.app import App

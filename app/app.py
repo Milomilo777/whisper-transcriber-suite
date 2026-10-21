@@ -73,6 +73,7 @@ from app.theme.bidi_display import ltr_base
 from core._proc import kill_process_tree
 from core.config import _PROJECT_KEY_RANGES, load_config, save_config
 from core.history import EXIT_REASON, HistoryDB
+from core.task import apply_run_options
 from core.hub import voice_clone_tab_enabled
 from core.logging_setup import get_ui_logger, open_log_folder, setup_logging
 from core.paths import bin_dir as _resource_bin_dir
@@ -7439,6 +7440,9 @@ class App(tk.Tk):
                 # Keep the Whisper task of the interrupted run (history row).
                 if r.get("task") == "translate":
                     task.whisper_task = "translate"
+                # ... and its time range and mixed languages, which no
+                # setting restores (the checkpoint was made for them too).
+                apply_run_options(task, r.get("run_options"))
                 try:
                     if has_resumable_checkpoint(r["file_path"]):
                         task.resume = True

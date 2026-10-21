@@ -124,3 +124,39 @@ class TranscriptionTask:
         # False for engines that return all segments at once (no live speed;
         # the queue row says the speed comes at the end).
         self.speed_live: bool = True
+
+
+def task_run_options(task: TranscriptionTask) -> dict[str, Any]:
+    """The options of ``task`` that its history row keeps for a crash-resume.
+
+    Only what the user chose for this one file and what no setting restores:
+    the time range and the mixed languages. Empty for a plain run.
+    """
+    out: dict[str, Any] = {}
+    for key in ("clip_start", "clip_end"):
+        value = getattr(task, key, None)
+        if value is not None:
+            out[key] = float(value)
+    languages = getattr(task, "languages", None)
+    if languages:
+        out["languages"] = [str(code) for code in languages]
+    return out
+
+
+def apply_run_options(task: TranscriptionTask, options: Any) -> None:
+    """Put the options of :func:`task_run_options` back on ``task``.
+
+    ``options`` comes from a history row and may be missing, damaged or from a
+    newer version: anything that is not a valid value is left out.
+    """
+    if not isinstance(options, dict):
+        return
+    for key in ("clip_start", "clip_end"):
+        value = options.get(key)
+        if isinstance(value, (int, float)) and not isinstance(value, bool) \
+                and value == value and 0 <= value < float("inf"):
+            setattr(task, key, float(value))
+    languages = options.get("languages")
+    if (isinstance(languages, list) and len(languages) == 2
+            and all(isinstance(code, str) and code for code in languages)):
+        task.languages = (languages[0], languages[1])

@@ -21,6 +21,7 @@ from app.domain.task_outputs import is_sidecar_json, task_transcript_json
 from core import task_settings
 from core._proc import kill_process_tree, new_session_kwargs
 from core.speed_meter import apply_final_speed, apply_live_speed, reset_speed
+from core.task import task_run_options
 from core.translate_task import TRANSLATED_SUFFIX
 
 from app.i18n import _, ngettext
@@ -1818,6 +1819,8 @@ class TranscriptionService:
                         ),
                         language=getattr(t, "language", "") or "",
                         task=getattr(t, "whisper_task", "transcribe"),
+                        # Time range + mixed languages, for a crash-resume.
+                        run_options=task_run_options(t),
                     )
                     # A retry gets a FRESH history_id but task_correlation_id
                     # caches task_id on first use — without this reset the
