@@ -410,6 +410,30 @@ def test_resume_of_a_complete_transcript_only_redoes_the_post_steps(t, monkeypat
     assert any("already complete" in m for m in logs)
 
 
+def test_resume_of_a_complete_transcript_reports_its_language(t, monkeypatch, tmp_path):
+    # The completed checkpoint carries the detected language, but the post-steps-only resume
+    # returned before the language was announced: the Queue row stayed blank and history
+    # recorded "" for a job rebuilt after a crash (its task object knew nothing yet).
+    from core import _checkpoint
+
+    audio = tmp_path / "talk.wav"
+    audio.write_bytes(b"\0" * 16)
+    task = _write_prior_checkpoint(t, audio, [{"start": 0.0, "end": 2.0, "text": "one"}], 2.0)
+    data = _checkpoint.load_checkpoint(str(audio))
+    assert data is not None
+    data["transcription_completed"] = True
+    _checkpoint.checkpoint_path(str(audio)).write_text(json.dumps(data), encoding="utf-8")
+    _wire(t, monkeypatch, tmp_path, Engine())
+    announced: list[tuple[str, float]] = []
+
+    assert t.resume_transcription(
+        task, lambda p: None, lambda m: None, language_cb=lambda l, p: announced.append((l, p))
+    ) is True
+
+    assert announced == [("zh", 0.9)]
+    assert (task.detected_language, task.language_probability) == ("zh", 0.9)
+
+
 @pytest.mark.parametrize("completed", [True, False])
 def test_a_complete_transcript_from_another_backend_is_resumed_not_rerun(t, monkeypatch, tmp_path, completed):
     # whisper.cpp / cloud engines write the same "transcription_completed" checkpoint before the post

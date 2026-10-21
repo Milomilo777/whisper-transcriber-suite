@@ -3345,12 +3345,27 @@ def resume_transcription(
         task.whisper_task = cp_task
         _checked_whisper_task(task, backend_for_check or "faster_whisper")
 
+        cp_language = str(data.get("language") or "")
+        cp_lang_prob = float(data.get("language_probability") or 0.0)
+        # Re-announce the detected language so the UI label stays accurate
+        # after the resume. Before either branch: a task rebuilt from history
+        # after a crash knows no language yet, and the completed branch below
+        # returns early, so its row stayed blank and history recorded "".
+        if cp_language and language_cb:
+            try:
+                language_cb(cp_language, cp_lang_prob)
+            except Exception:
+                logger.exception("language_cb raised on resume")
+        if cp_language and hasattr(task, "detected_language"):
+            task.detected_language = cp_language
+            task.language_probability = cp_lang_prob
+
         if data.get("transcription_completed"):
             # The whole file was transcribed and saved before the post steps;
             # an earlier run died in them (e.g. a native diarisation crash).
             # Redo only the post steps and write the outputs.
             done_segments = list(data.get("segments") or [])
-            done_language = str(data.get("language") or "")
+            done_language = cp_language
             log(
                 f"Resume: transcription already complete ({len(done_segments)} "
                 "segment(s)); running the post steps and writing the outputs.",
@@ -3370,8 +3385,6 @@ def resume_transcription(
 
         last_end_time = float(data.get("last_end_time") or 0.0)
         prior_segments = list(data.get("segments") or [])
-        cp_language = str(data.get("language") or "")
-        cp_lang_prob = float(data.get("language_probability") or 0.0)
         # A mixed-language run continues as one, also when the task was rebuilt
         # from history after a crash (the history row has no field for it).
         cp_pair = data.get("languages")
@@ -3388,17 +3401,6 @@ def resume_transcription(
             "use Re-run to apply new settings",
             log_cb,
         )
-
-        # Re-announce the detected language so the UI label stays
-        # accurate after the resume.
-        if cp_language and language_cb:
-            try:
-                language_cb(cp_language, cp_lang_prob)
-            except Exception:
-                logger.exception("language_cb raised on resume")
-        if cp_language and hasattr(task, "detected_language"):
-            task.detected_language = cp_language
-            task.language_probability = cp_lang_prob
 
         # Make sure the model is loaded — same wait as transcribe().
         global MODEL

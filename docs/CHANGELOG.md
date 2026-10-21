@@ -236,6 +236,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Resumed job keeps its language**: a transcription resumed after a crash in its final steps
+  (speaker labels, word timing) showed no language in the Queue and saved none in History. The
+  resume now announces the language it had already detected.
+
 - **A file with no speech no longer looks like a success**: the Queue said "✓ finished" with a
   guessed language ("English (not sure)" for a horse sound) and the result card showed a tick and
   **View transcript** over empty files. The row now says "⚠ no speech found" with no language, and
