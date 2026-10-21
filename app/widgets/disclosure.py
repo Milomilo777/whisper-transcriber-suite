@@ -71,15 +71,19 @@ class Disclosure(ttk.Frame):
     def is_open(self) -> bool:
         return self._open
 
-    def set_open(self, open_: bool) -> None:
+    def set_open(self, open_: bool, *, remember: bool = True) -> None:
         """Show or hide the body, record the state in the config and run ``on_toggle``
-        (only when the state changed)."""
+        (only when the state changed). ``remember=False`` shows or hides it for this
+        session only: the config is left alone and ``on_toggle`` does not run (the
+        Download tab opens itself when a time range is set, which is not a preference)."""
         open_ = bool(open_)
         if open_ == self._open:
             return
         self._open = open_
-        self._current_config()[self._key] = open_
         self._render()
+        if not remember:
+            return
+        self._current_config()[self._key] = open_
         if self._on_toggle is not None:
             self._on_toggle()
 

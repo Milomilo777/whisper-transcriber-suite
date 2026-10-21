@@ -53,6 +53,7 @@ from app.dpi import scaled as dpi_scaled
 from app.widgets.console import apply_console_theme, build_console, insert_log_line
 from app.widgets.disclosure import Disclosure
 from app.widgets.error_dialog import show_error
+from app.widgets.wrap_row import WrapRow
 from app.widgets.notice import notify
 from app.widgets import subtitle_edit as subtitle_edit_ui
 from app.widgets.platform import open_file as _open_file_helper
@@ -1211,6 +1212,8 @@ class App(tk.Tk):
     transcribe_accuracy_note_var: tk.StringVar
     transcribe_accuracy_check_link: "ttk.Label"
     transcribe_more_options: "Disclosure"
+    download_more_options: "Disclosure"
+    download_quality_row: "WrapRow"
     _transcribe_accuracy_label_to_level: "dict[str, str]"
     _accuracy_ram_gb: float  # this computer's memory; 0 = unknown
     _accuracy_choice: "str | None"  # the level picked or shown last; None = Custom
@@ -2096,6 +2099,14 @@ class App(tk.Tk):
         except Exception as e:  # noqa: BLE001
             logger.exception("Failed to persist cleared recent-files list")
             self.log(f"Could not save cleared recent list: {e}")
+
+    def _save_download_prefs(self) -> None:
+        """Write the Download tab's remembered state (the "More options" disclosure) to disk."""
+        try:
+            save_config(self.app_config)
+        except Exception as e:
+            logger.exception("Failed to save the Download tab preferences")
+            self.log(f"Could not save preference: {e}")
 
     def _save_chime_pref(self) -> None:
         self.app_config["chime_on_complete"] = bool(self.chime_on_complete_var.get())

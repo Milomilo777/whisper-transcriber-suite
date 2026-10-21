@@ -550,6 +550,7 @@ Not a config key — a **File → Convert transcript…** menu action backed by 
 | `language_model_previous` | object | absent | Written by the Transcribe tab's "Use it" for a model trained for one language (ADR 0015): the engine, Whisper model, model entry, model folder and transformers model id it replaced. "Switch back" restores them and removes the key. |
 | `transcribe_language` | string | `"Auto"` | Spoken-language picker on the Transcribe tab (display name). Kept for older files; the picker itself is not saved. |
 | `transcribe_more_options_open` | bool | `false` | Whether the Transcribe tab's **More options** disclosure (speakers, per-word times, English translation, time range, mixed languages) was left open. |
+| `download_more_options_open` | bool | `false` | Whether the Download tab's **More options** disclosure (log-in cookies, time range) was left open. A time range that is set opens it for the session without changing this. |
 | `hallucination_detect_enabled` | bool | `true` | Flags repeated or invented lines in the output. |
 | `auto_chapters_enabled` | bool | `true` | Adds chapters to the output after a transcription. |
 | `chapter_min_seconds` | float | `60.0` | Shortest chapter, in seconds. |

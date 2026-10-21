@@ -382,6 +382,9 @@ DEFAULT_CONFIG = {
     # The Transcribe tab's "More options" disclosure (speakers, per-word times, English
     # translation, time range, mixed languages): open or closed, as last left.
     "transcribe_more_options_open": False,
+    # The Download tab's "More options" disclosure (browser cookies, time range): open or
+    # closed, as last left. A set time range shows it for the session without writing this.
+    "download_more_options_open": False,
     # Clone Your Voice / Text to Voice tab — independent of every setting
     # above. The tab saves its engine / mode / Kokoro voice here. Consent
     # is a per-voice tick on the tab, never stored: a ``consent_accepted``

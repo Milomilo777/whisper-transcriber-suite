@@ -228,6 +228,7 @@ a = Analysis(
         'app.widgets.book_panel',
         'app.widgets.chip_cloud',
         'app.widgets.disclosure',
+        'app.widgets.wrap_row',
         'app.dialogs.problem_report',
         'core.problem_report',
         'app.widgets.audio_visualizer',

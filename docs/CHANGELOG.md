@@ -6,6 +6,13 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- **Compact Download form**: the link, the folder with the mode, the three quality choices
+  (Audio, Video, Output) on one line and the after-download toggles with the subtitles, then a
+  **More options** disclosure for the log-in cookies and the time range (remembered in
+  `download_more_options_open`; a time range that is set opens it by itself). Twelve rows became
+  five. A line that does not fit the window (150 % scaling, a long language) flows onto a second
+  line (`app/widgets/wrap_row.py`) instead of running off the right edge.
+
 - **Simpler Transcribe tab**: an **Accuracy** level (Fast / Balanced / Best) next to the language
   picker replaces the Engine and Model dropdowns on the tab. Each level is a model sized to the
   picked language and this computer's memory (`core/accuracy.py`); the line under it names the

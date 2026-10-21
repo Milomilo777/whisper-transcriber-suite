@@ -320,7 +320,6 @@
     "Download and transcribe": "دانلود و رونویسی",
     "Download failed.": "دانلود ناموفق بود.",
     "Download now": "الان دانلود شود",
-    "Download subtitles (the uploader's, or automatic ones)": "دانلود زیرنویس (زیرنویس‌های آپلودکننده، یا خودکار)",
     "Downloaded: {name}": "دانلود شد: {name}",
     "Downloading OmniVoice (about 2 GB, one time; needs internet, a few minutes to over an hour depending on the connection). After that it runs offline...": "در حال دانلود OmniVoice (حدود 2 GB، فقط یک بار؛ به اینترنت نیاز دارد و بسته به اتصال از چند دقیقه تا بیش از یک ساعت طول می‌کشد). بعد از آن آفلاین کار می‌کند...",
     "Downloading and installing {feature} (~{size}).\nThis happens once and can take a few minutes…": "در حال دانلود و نصب {feature} (~{size}).\nاین کار یک بار انجام می‌شود و ممکن است چند دقیقه طول بکشد…",

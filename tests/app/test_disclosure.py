@@ -68,6 +68,17 @@ def test_set_open_to_the_same_state_does_nothing(root: tk.Tk) -> None:
     assert config == {} and calls == []
 
 
+def test_set_open_without_remember_shows_the_body_but_keeps_the_config(root: tk.Tk) -> None:
+    config: dict = {}
+    calls: list[str] = []
+    disc = _make(root, config, on_toggle=lambda: calls.append("saved"))
+    disc.set_open(True, remember=False)
+    assert disc.is_open and disc.body.winfo_manager() == "pack"
+    assert config == {} and calls == []
+    disc.toggle()  # a person's click is still remembered
+    assert config["more_open"] is False and calls == ["saved"]
+
+
 def test_a_click_and_the_keyboard_toggle_it(root: tk.Tk) -> None:
     config: dict = {}
     disc = _make(root, config)

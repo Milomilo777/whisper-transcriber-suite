@@ -3786,550 +3786,578 @@
   ],
   [
    ".!frame5.!frame.!label3",
-   "Log-in cookies"
-  ],
-  [
-   ".!frame5.!frame.!frame2.!combobox:values",
-   "(off)"
-  ],
-  [
-   ".!frame5.!frame.!frame2.!combobox:values",
-   "chrome"
-  ],
-  [
-   ".!frame5.!frame.!frame2.!combobox:values",
-   "edge"
-  ],
-  [
-   ".!frame5.!frame.!frame2.!combobox:values",
-   "firefox"
-  ],
-  [
-   ".!frame5.!frame.!frame2.!combobox:values",
-   "brave"
-  ],
-  [
-   ".!frame5.!frame.!frame2.!combobox:values",
-   "chromium"
-  ],
-  [
-   ".!frame5.!frame.!frame2.!combobox:values",
-   "opera"
-  ],
-  [
-   ".!frame5.!frame.!frame2.!combobox:values",
-   "vivaldi"
-  ],
-  [
-   ".!frame5.!frame.!frame2.!label",
-   "use my browser's log-in — for Instagram, Facebook, TikTok stories, age-gated videos"
-  ],
-  [
-   ".!frame5.!frame.!label4",
-   " ⓘ "
-  ],
-  [
-   ".!frame5.!frame.!label5",
    "Folder"
   ],
   [
-   ".!frame5.!frame.!button",
+   ".!frame5.!frame.!frame2.!button",
    "Browse"
   ],
   [
-   ".!frame5.!frame.!label6",
+   ".!frame5.!frame.!frame2.!label",
    " ⓘ "
   ],
   [
-   ".!frame5.!frame.!label7",
+   ".!frame5.!frame.!frame2.!label2",
    "Mode"
   ],
   [
-   ".!frame5.!frame.!combobox:values",
+   ".!frame5.!frame.!frame2.!combobox:values",
    "Audio and video"
   ],
   [
-   ".!frame5.!frame.!combobox:values",
+   ".!frame5.!frame.!frame2.!combobox:values",
    "Audio"
   ],
   [
-   ".!frame5.!frame.!label8",
+   ".!frame5.!frame.!frame2.!label3",
    " ⓘ "
   ],
   [
-   ".!frame5.!frame.!label9",
+   ".!frame5.!frame.!label4",
+   "Quality"
+  ],
+  [
+   ".!frame5.!frame.!wraprow.!frame.!label",
    "Audio"
   ],
   [
-   ".!frame5.!frame.!label10",
+   ".!frame5.!frame.!wraprow.!frame.!label2",
    " ⓘ "
   ],
   [
-   ".!frame5.!frame.!label11",
+   ".!frame5.!frame.!wraprow.!frame2.!label",
    "Video"
   ],
   [
-   ".!frame5.!frame.!label12",
+   ".!frame5.!frame.!wraprow.!frame2.!label2",
    " ⓘ "
   ],
   [
-   ".!frame5.!frame.!label13",
+   ".!frame5.!frame.!wraprow.!frame3.!label",
    "Output"
   ],
   [
-   ".!frame5.!frame.!label14",
+   ".!frame5.!frame.!wraprow.!frame3.!label2",
    " ⓘ "
   ],
   [
-   ".!frame5.!frame.!labelframe.!frame.!label",
-   "Time range (optional)"
+   ".!frame5.!frame.!wraprow2.!frame.!checkbutton",
+   "Transcribe after download"
   ],
   [
-   ".!frame5.!frame.!labelframe.!frame.!label2",
+   ".!frame5.!frame.!wraprow2.!frame.!label",
    " ⓘ "
   ],
   [
-   ".!frame5.!frame.!labelframe.!label",
-   "Start"
+   ".!frame5.!frame.!wraprow2.!frame2.!checkbutton",
+   "Make subtitled video"
   ],
   [
-   ".!frame5.!frame.!labelframe.!label2",
-   "End"
+   ".!frame5.!frame.!wraprow2.!frame2.!label",
+   " ⓘ "
   ],
   [
-   ".!frame5.!frame.!labelframe.!label3",
-   "Times as H:MM:SS, e.g. 0:00:51 to 0:01:25; 0:00:00 = the whole video. The sliders work once the link above is read."
-  ],
-  [
-   ".!frame5.!frame.!label15",
+   ".!frame5.!frame.!wraprow2.!frame3.!checkbutton",
    "Subtitles"
   ],
   [
-   ".!frame5.!frame.!frame3.!checkbutton",
-   "Download subtitles (the uploader's, or automatic ones)"
-  ],
-  [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Automatic"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "English"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Afrikaans"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Albanian"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Amharic"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Arabic"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Armenian"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Azerbaijani"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Basque"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Belarusian"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Bengali"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Bosnian"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Bulgarian"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Catalan"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Cebuano"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Chinese (Simplified)"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Chinese (Traditional)"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Corsican"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Croatian"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Czech"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Danish"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Dutch"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Esperanto"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Estonian"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Finnish"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "French"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Frisian"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Galician"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Georgian"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "German"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Greek"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Gujarati"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Haitian Creole"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Hausa"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Hawaiian"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Hebrew"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Hindi"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Hmong"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Hungarian"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Icelandic"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Igbo"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Indonesian"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Irish"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Italian"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Japanese"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Javanese"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Kannada"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Kazakh"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Khmer"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Korean"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Kurdish"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Kyrgyz"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Lao"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Latin"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Latvian"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Lithuanian"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Luxembourgish"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Macedonian"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Malagasy"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Malay"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Malayalam"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Maltese"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Maori"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Marathi"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Mongolian"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Myanmar (Burmese)"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Nepali"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Norwegian"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Nyanja (Chichewa)"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Pashto"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Persian"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Polish"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Portuguese (Portugal, Brazil)"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Punjabi"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Romanian"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Russian"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Samoan"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Scots Gaelic"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Serbian"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Sesotho"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Shona"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Sindhi"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Sinhala (Sinhalese)"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Slovak"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Slovenian"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Somali"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Spanish"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Sundanese"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Swahili"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Swedish"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Tagalog (Filipino)"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Tajik"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Tamil"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Telugu"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Thai"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Turkish"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Ukrainian"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Urdu"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Uzbek"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Vietnamese"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Welsh"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Xhosa"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Yiddish"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Yoruba"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:values",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:values",
    "Zulu"
   ],
   [
-   ".!frame5.!frame.!label16",
+   ".!frame5.!frame.!wraprow2.!frame3.!label",
+   " ⓘ "
+  ],
+  [
+   ".!frame5.!frame.!disclosure.!label",
+   "▸ More options"
+  ],
+  [
+   ".!frame5.!frame.!disclosure.!frame.!frame.!label",
+   "Log-in cookies"
+  ],
+  [
+   ".!frame5.!frame.!disclosure.!frame.!frame.!combobox:values",
+   "(off)"
+  ],
+  [
+   ".!frame5.!frame.!disclosure.!frame.!frame.!combobox:values",
+   "chrome"
+  ],
+  [
+   ".!frame5.!frame.!disclosure.!frame.!frame.!combobox:values",
+   "edge"
+  ],
+  [
+   ".!frame5.!frame.!disclosure.!frame.!frame.!combobox:values",
+   "firefox"
+  ],
+  [
+   ".!frame5.!frame.!disclosure.!frame.!frame.!combobox:values",
+   "brave"
+  ],
+  [
+   ".!frame5.!frame.!disclosure.!frame.!frame.!combobox:values",
+   "chromium"
+  ],
+  [
+   ".!frame5.!frame.!disclosure.!frame.!frame.!combobox:values",
+   "opera"
+  ],
+  [
+   ".!frame5.!frame.!disclosure.!frame.!frame.!combobox:values",
+   "vivaldi"
+  ],
+  [
+   ".!frame5.!frame.!disclosure.!frame.!frame.!label2",
+   "use my browser's log-in — for Instagram, Facebook, TikTok stories, age-gated videos"
+  ],
+  [
+   ".!frame5.!frame.!disclosure.!frame.!frame.!label3",
+   " ⓘ "
+  ],
+  [
+   ".!frame5.!frame.!disclosure.!frame.!labelframe.!frame.!label",
+   "Time range (optional)"
+  ],
+  [
+   ".!frame5.!frame.!disclosure.!frame.!labelframe.!frame.!label2",
+   " ⓘ "
+  ],
+  [
+   ".!frame5.!frame.!disclosure.!frame.!labelframe.!label",
+   "Start"
+  ],
+  [
+   ".!frame5.!frame.!disclosure.!frame.!labelframe.!label2",
+   "End"
+  ],
+  [
+   ".!frame5.!frame.!disclosure.!frame.!labelframe.!label3",
+   "Times as H:MM:SS, e.g. 0:00:51 to 0:01:25; 0:00:00 = the whole video. The sliders work once the link above is read."
+  ],
+  [
+   ".!frame5.!frame.!frame3.!checkbutton",
+   "Download all parts of this series (SMTV)"
+  ],
+  [
+   ".!frame5.!frame.!frame3.!label",
    " ⓘ "
   ],
   [
@@ -4337,31 +4365,7 @@
    "Use the subtitles"
   ],
   [
-   ".!frame5.!frame.!frame5.!checkbutton",
-   "Transcribe after download"
-  ],
-  [
-   ".!frame5.!frame.!frame5.!label",
-   " ⓘ "
-  ],
-  [
-   ".!frame5.!frame.!frame5.!checkbutton2",
-   "Make subtitled video"
-  ],
-  [
-   ".!frame5.!frame.!frame5.!label2",
-   " ⓘ "
-  ],
-  [
-   ".!frame5.!frame.!frame6.!checkbutton",
-   "Download all parts of this series (SMTV)"
-  ],
-  [
-   ".!frame5.!frame.!frame6.!label",
-   " ⓘ "
-  ],
-  [
-   ".!frame5.!frame.!button2",
+   ".!frame5.!frame.!button",
    "⬇    Download"
   ],
   [
@@ -4394,27 +4398,23 @@
   ],
   [
    ".!frame5.!frame.!frame2.!combobox:current",
-   "(off)"
-  ],
-  [
-   ".!frame5.!frame.!combobox:current",
    "Audio and video"
   ],
   [
-   ".!frame5.!frame.!combobox4:current",
+   ".!frame5.!frame.!wraprow.!frame3.!combobox:current",
    "mp4"
   ],
   [
-   ".!frame5.!frame.!frame3.!combobox:current",
+   ".!frame5.!frame.!wraprow2.!frame3.!combobox:current",
    "Automatic"
+  ],
+  [
+   ".!frame5.!frame.!disclosure.!frame.!frame.!combobox:current",
+   "(off)"
   ],
   [
    "help",
    "Paste a link from YouTube or any other yt-dlp-supported site. Available formats and subtitles are looked up automatically as soon as you paste it."
-  ],
-  [
-   "help",
-   "Pick the browser you are signed in with, so videos that need an account (Instagram, Facebook, TikTok stories, age-restricted YouTube) can be downloaded. The sign-in is used on this computer only; nothing is uploaded. If Chrome or Edge reports a cookie error, close that browser completely and try again."
   ],
   [
    "help",
@@ -4437,12 +4437,12 @@
    "Container format for the saved file (e.g. mp4). Changing it may re-encode the file instead of just repackaging it, which takes longer."
   ],
   [
-   "section",
-   "Time range (optional)"
+   "help",
+   "Automatically queues the downloaded file for transcription as soon as the download finishes, using the settings in the Transcribe tab."
   ],
   [
    "help",
-   "Download (and optionally transcribe) only this portion of the video instead of the whole thing. Leave both at 0:00:00 for the full length."
+   "Downloads the video, transcribes it with the Transcribe tab's settings, then burns the subtitles into a new file named <title>-subbed.mp4 next to the download. The download and the transcript files are kept. Needs 'Audio and video'."
   ],
   [
    "help",
@@ -4450,11 +4450,15 @@
   ],
   [
    "help",
-   "Automatically queues the downloaded file for transcription as soon as the download finishes, using the settings in the Transcribe tab."
+   "Pick the browser you are signed in with, so videos that need an account (Instagram, Facebook, TikTok stories, age-restricted YouTube) can be downloaded. The sign-in is used on this computer only; nothing is uploaded. If Chrome or Edge reports a cookie error, close that browser completely and try again."
+  ],
+  [
+   "section",
+   "Time range (optional)"
   ],
   [
    "help",
-   "Downloads the video, transcribes it with the Transcribe tab's settings, then burns the subtitles into a new file named <title>-subbed.mp4 next to the download. The download and the transcript files are kept. Needs 'Audio and video'."
+   "Download (and optionally transcribe) only this portion of the video instead of the whole thing. Leave both at 0:00:00 for the full length."
   ],
   [
    "help",
