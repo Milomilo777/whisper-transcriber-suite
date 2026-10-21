@@ -1466,8 +1466,16 @@ def build_queue_tab(app: "App", parent: ttk.Frame) -> None:
     )
     app.queue_empty_label.pack(fill="x", pady=(2, 0))
 
-    app.pb = ttk.Progressbar(parent, length=px(400))
-    app.pb.pack(fill="x", padx=10, pady=10)
+    # The overall bar, labelled, only while two or more jobs run (App.update_overall_progress):
+    # always shown, it repeated the single job's row bar as an unlabelled sliver (round-2
+    # screenshot critics, 2026-10-21). The slot keeps its place between the list and the status.
+    overall_slot = ttk.Frame(parent)
+    overall_slot.pack(fill="x", padx=10)
+    app.overall_row = ttk.Frame(overall_slot)
+    app.overall_var = tk.StringVar(value="")
+    ttk.Label(app.overall_row, textvariable=app.overall_var).pack(side="left", padx=(0, 8))
+    app.pb = ttk.Progressbar(app.overall_row, length=px(400))
+    app.pb.pack(side="left", fill="x", expand=True)
 
     status_line = ttk.Frame(parent)
     status_line.pack()

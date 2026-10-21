@@ -115,6 +115,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   ("12% done — “I told you”"), so they no longer read as app text; the result card's Open buttons sit next to their files. A job that
   starts is selected even when a finished row was left selected (Pause and Cancel stayed grey), the
   list is titled "Your transcription jobs", and a hint says to select a job while the buttons are grey.
+  The thin overall bar under the list shows only while two or more jobs run, labelled
+  ("2 jobs running: 41% done in all"); with one job it only repeated that job's bar.
 
 - **Transcribe tab, plainer**: the ready line gives the recording's length ("Ready: class.flac
   (1:46:12, 52.3 MB)"); the box is labelled **File or video link**, since a link works there too;

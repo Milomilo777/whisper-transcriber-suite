@@ -1077,6 +1077,8 @@ class App(tk.Tk):
     # Transcribe tab
     fv: tk.StringVar
     file_entry: "ttk.Entry"
+    overall_row: "ttk.Frame"
+    overall_var: tk.StringVar
     vad_enabled_var: tk.BooleanVar
     word_timestamps_var: tk.BooleanVar
     translate_var: tk.BooleanVar
@@ -7896,10 +7898,19 @@ class App(tk.Tk):
     # Driver loops ------------------------------------------------------------
     def update_overall_progress(self) -> None:
         running = [t for t in self.queue if t.status == "running"]
-        if not running:
-            self.pb["value"] = 0
+        value = sum(t.progress for t in running) / len(running) if running else 0
+        self.pb["value"] = value
+        row = _inst_attr(self, "overall_row")  # absent on bare test doubles
+        if row is None:
             return
-        self.pb["value"] = sum(t.progress for t in running) / len(running)
+        if len(running) < 2:
+            # One job: its row bar and the window title already show it.
+            row.pack_forget()
+            return
+        self.overall_var.set(_("{count} jobs running: {percent}% done in all",
+                               count=len(running), percent=int(value)))
+        if not row.winfo_ismapped():
+            row.pack(fill="x", pady=(6, 4))
 
     def loop(self) -> None:
         # Once shutdown starts, don't begin new subprocess work (a nested

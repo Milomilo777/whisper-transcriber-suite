@@ -1594,6 +1594,7 @@
    "{count} characters",
    "{count} characters"
   ],
+  "{count} jobs running: {percent}% done in all": "{count} jobs running: {percent}% done in all",
   "{description}\n\nApprox. download size: ~{size} GB": "{description}\n\nApprox. download size: ~{size} GB",
   "{done} of audio done, measuring speed...": "{done} of audio done, measuring speed...",
   "{done} of {n} pieces are kept: press Generate with the same text and voice to continue.": [
