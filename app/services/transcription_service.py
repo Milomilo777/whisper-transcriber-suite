@@ -1940,9 +1940,25 @@ class TranscriptionService:
         try:
             self._locked_stdin_write(worker, msg)
         finally:
-            with cv:
-                worker["send_next"] = ticket + 1
-                cv.notify_all()
+            self._pass_send_turn(worker, ticket)
+
+    @staticmethod
+    def _pass_send_turn(worker: dict[str, Any], ticket: int) -> None:
+        """Mark ``ticket`` done, written or not, so later writers are not kept
+        waiting. A ticket whose writer thread never started (Thread.start()
+        raised) is marked done out of turn: the order then skips it."""
+        cv = worker.get("send_cv")
+        if cv is None:
+            return
+        with cv:
+            done = worker.setdefault("send_done", set())
+            done.add(ticket)
+            nxt = int(worker.get("send_next", 0))
+            while nxt in done:
+                done.discard(nxt)
+                nxt += 1
+            worker["send_next"] = nxt
+            cv.notify_all()
 
     def _dispatch_command_async(
         self,
@@ -1988,11 +2004,15 @@ class TranscriptionService:
                         "Could not enqueue dispatch failure event"
                     )
 
-        threading.Thread(
-            target=_worker_dispatch,
-            name=f"dispatch-w{worker_id}",
-            daemon=True,
-        ).start()
+        try:
+            threading.Thread(
+                target=_worker_dispatch,
+                name=f"dispatch-w{worker_id}",
+                daemon=True,
+            ).start()
+        except BaseException:
+            self._pass_send_turn(worker, ticket)
+            raise
 
     def _send_command_async(
         self, worker: dict[str, Any], command: dict[str, Any]
@@ -2020,11 +2040,15 @@ class TranscriptionService:
                     command.get("action"), worker_id, e,
                 )
 
-        threading.Thread(
-            target=_send,
-            name=f"control-w{worker_id}",
-            daemon=True,
-        ).start()
+        try:
+            threading.Thread(
+                target=_send,
+                name=f"control-w{worker_id}",
+                daemon=True,
+            ).start()
+        except BaseException:
+            self._pass_send_turn(worker, ticket)
+            raise
 
     def send_control(self, task: Any, action: str) -> bool:
         """Send cancel/pause/resume to the worker running ``task``.

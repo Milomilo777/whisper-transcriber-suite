@@ -105,5 +105,23 @@ def test_a_worker_dict_without_the_order_fields_still_writes():
     assert [line["action"] for line in _lines(buf, 1)] == ["cancel"]
 
 
+def test_a_writer_thread_that_never_starts_does_not_block_the_next_command(monkeypatch):
+    service, worker, buf, t = _service_with_fake_stdin()
+    real_start = threading.Thread.start
+    calls = {"n": 0}
+
+    def _start(self):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise RuntimeError("can't start new thread")
+        real_start(self)
+
+    monkeypatch.setattr(threading.Thread, "start", _start)
+    with pytest.raises(RuntimeError):
+        service._send_command_async(worker, {"action": "pause", "task_id": "h7"})
+    service._send_command_async(worker, {"action": "cancel", "task_id": "h7"})
+    assert [line["action"] for line in _lines(buf, 1)] == ["cancel"]
+
+
 if __name__ == "__main__":  # pragma: no cover
     raise SystemExit(pytest.main([__file__, "-q"]))
