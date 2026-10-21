@@ -6064,6 +6064,7 @@ class App(tk.Tk):
                 focus_iids = _iids_for_tasks(self.row_map, [prev_focused])
                 if focus_iids:
                     self.tree.focus(focus_iids[0])
+        self._auto_select_running_row()
         # Empty-state hint visibility — show when the queue is empty,
         # hide once there is at least one task. Kept here (rather than
         # in tabs.py) because refresh is the choke point for queue
@@ -6091,6 +6092,26 @@ class App(tk.Tk):
         # reflecting the old status, and a still-selected row must keep them
         # enabled.
         self._update_queue_action_bar()
+
+    def _auto_select_running_row(self) -> None:
+        """Select a job when it starts, so Pause and Cancel work without finding the row first.
+
+        The action bar follows the selection only, and nothing selected a running job, so
+        both buttons stayed grey while it ran (click-through test, 2026-10-21). Only when
+        nothing is selected and exactly one job runs, and once per job: a row the user picked,
+        or a selection the user cleared, is left alone.
+        """
+        if self.tree.selection():
+            return
+        running = [t for t in self.queue if t.status == "running"]
+        if len(running) != 1 or running[0] is getattr(self, "_auto_selected_task", None):
+            return
+        iids = _iids_for_tasks(self.row_map, running)
+        if not iids:
+            return
+        self._auto_selected_task = running[0]
+        self.tree.selection_set(iids)
+        self.tree.see(iids[0])
 
     def refresh_download_queue(self) -> None:
         from app.widgets.tabs import status_label

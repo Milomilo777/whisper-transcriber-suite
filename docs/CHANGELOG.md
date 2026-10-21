@@ -128,6 +128,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   in red under the buttons (the worker's message, "could not be read as audio or video", or that
   the transcription stopped), and the history row stores it too.
 
+- **Pause and Cancel work while a job runs**: they follow the selected Queue row, and nothing selected
+  the running job, so both stayed grey. A job that starts is now selected (once, and only when no
+  row is selected and it is the only one running).
+
 - **The window stays on your tab**: when a job finished, the app jumped to the Transcribe tab from
   whatever tab you were on (Download, Live, ...). It now does that only from the Queue tab.
 

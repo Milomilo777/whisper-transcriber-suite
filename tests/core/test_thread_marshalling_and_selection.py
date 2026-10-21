@@ -85,6 +85,9 @@ class _FakeTree:
     def selection_set(self, iids):
         self._sel = tuple(iids)
 
+    def see(self, _iid):
+        pass
+
     def focus(self, iid=None):
         if iid is not None:
             self._focus = iid
@@ -105,6 +108,7 @@ def _fake_refresh_app(queue):
         _ensure_animation=lambda: None,
     )
     app._selected_tasks = lambda: App._selected_tasks(app)  # type: ignore[arg-type]
+    app._auto_select_running_row = lambda: App._auto_select_running_row(app)  # type: ignore[arg-type]
 
     def _update_bar() -> None:
         state["action_bar_calls"] += 1

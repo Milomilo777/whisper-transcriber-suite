@@ -193,6 +193,7 @@ def _queue_app(queue):
         _row_progress_text=lambda *_a: "", fmt_time=lambda _t: "",
         _refresh_window_title=lambda: None, _ensure_animation=lambda: None,
         _selected_tasks=lambda: [], _update_queue_action_bar=lambda: None,
+        _auto_select_running_row=lambda: None,
     )
 
 
