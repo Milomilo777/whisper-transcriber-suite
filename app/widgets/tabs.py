@@ -19,6 +19,7 @@ from app.domain.languages import SUBTITLE_LANGUAGES, caption_language_name, subt
 from app.dpi import px
 from app.i18n import N_, _, pgettext, translate
 from app.theme import tokens
+from app.widgets.disclosure import Disclosure
 from app.widgets.tooltip import bind_tooltip, help_icon, section_labelframe
 
 if TYPE_CHECKING:
@@ -831,15 +832,19 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
 
       1. A *hero drop-zone* takes the visual centre of the tab — it's
          both the empty state and the primary affordance.
-      2. *Three* visible controls beneath: language picker, two
-         feature toggles (identify speakers + per-word timestamps).
+      2. *Two* visible controls beneath: the language picker and the
+         Accuracy level (Fast / Balanced / Best, ``core/accuracy.py``).
       3. *One* prominent primary CTA — sv_ttk's ``Accent.TButton``
          style + ``ipady`` so it's ~2× the visual weight of Browse.
-      4. *Everything else hidden* behind an "Advanced settings…"
-         button: VAD knobs, device / compute backend, hotwords,
-         output formats, watched folder, telemetry, etc. None of
-         these strings (``VAD``, ``compute``, ``device``, ``hotwords``)
-         appear on the main canvas — the research's #1 anti-pattern.
+      4. *Everything else hidden*: the feature toggles (identify
+         speakers, per-word timestamps, English translation, time
+         range, mixed languages) behind a closed "More options"
+         disclosure, and the expert settings (VAD knobs, device /
+         compute backend, hotwords, output formats, watched folder,
+         telemetry, engine and model pickers) behind the "Advanced
+         settings…" button. None of these strings (``VAD``,
+         ``compute``, ``device``, ``hotwords``) appear on the main
+         canvas — the research's #1 anti-pattern.
 
     Note for maintainers: every ``*_var`` that lived in the old layout
     is still created here so the config save path + the hermetic test
@@ -966,25 +971,22 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     for key in ("<Return>", "<KP_Enter>"):
         file_entry.bind(key, start_file)
 
-    # ── Row 2: engine + model pickers — let the user choose the
-    #     transcription engine AND (for Faster-Whisper) which model size
-    #     right here, without digging through the crowded Advanced dialog.
-    #     Two stacked lines in one gridded frame (same split-line trick as
-    #     quick_opts below) so neither line's help icons overflow the app's
-    #     default 960px width. Short status lines show whether the chosen
-    #     engine is ready / model already downloaded, and an engine that
-    #     can't run until the user sets it up (missing key, missing package)
-    #     is marked "⚠ unavailable" in the dropdown itself — ttk.Combobox
-    #     can't grey one entry, so the marker + the status line + the hover
-    #     help below carry the reason instead. ────────────────────────────
+    # ── Engine + model pickers: built as before, never shown. The Accuracy
+    #     row below (Fast / Balanced / Best) is the plain way to pick a model
+    #     and Advanced settings has both pickers; a dropdown of engine names
+    #     and one of model sizes read as expert knobs on the first tab
+    #     (screenshot review, 2026-10-21). Their vars, combos and status
+    #     lines keep existing: App's refresh/sync methods, the Advanced
+    #     dialog and the tests read them (a later cleanup removes them).
+    #     An engine that can't run until the user sets it up (missing key,
+    #     missing package) is marked "⚠ unavailable" in the dropdown itself —
+    #     ttk.Combobox can't grey one entry, so the marker + the status line
+    #     + the hover help carry the reason instead. ─────────────────────
     from core.backends import availability as _eng
     from core.model_manager import DEFAULT_MODEL_SLUG, catalog_models
 
     engine_frame = ttk.Frame(parent)
-    engine_frame.grid(
-        row=2, column=0, columnspan=3, sticky="ew",
-        padx=15, pady=(0, 8),
-    )
+    app.transcribe_expert_frame = engine_frame  # not gridded on purpose
     engine_row = ttk.Frame(engine_frame)
     engine_row.pack(fill="x")
     model_row = ttk.Frame(engine_frame)
@@ -1101,12 +1103,14 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     # picked (those engines use their own model).
     app._sync_model_picker_for_engine()
 
-    # ── Row 3: quick options, split across two lines so a full row of
-    #     help icons doesn't overflow the app's default 960px width
-    #     (pack(side="left") never wraps — it silently clips instead).
-    #     Line 1: language + the two feature toggles. Line 2: the
-    #     optional time-slice, which reads better on its own line
-    #     anyway (it's conceptually separate from the toggles above).
+    # ── Row 3: quick options. Line 1: Language + Accuracy, with the model's
+    #     size note under it. Everything else sits behind a closed "More
+    #     options" disclosure (speakers, per-word times, English translation,
+    #     time range, mixed languages): a first-time user sees three choices
+    #     and the Transcribe button (screenshot review, 2026-10-21). Inside
+    #     it the options stay split across lines so a full row of help icons
+    #     doesn't overflow the app's default 960px width (pack(side="left")
+    #     never wraps — it silently clips instead).
     quick_opts = ttk.Frame(parent)
     quick_opts.grid(
         row=3, column=0, columnspan=3, sticky="ew",
@@ -1114,8 +1118,6 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     )
     opts_line1 = ttk.Frame(quick_opts)
     opts_line1.pack(fill="x")
-    opts_line2 = ttk.Frame(quick_opts)
-    opts_line2.pack(fill="x", pady=(6, 0))
 
     ttk.Label(opts_line1, text=_("Language:")).pack(side="left")
     # transcribe_lang_var keeps the English "Auto" or language name (App compares it and
@@ -1139,12 +1141,70 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
           "seconds of audio; picking it explicitly is faster and can be more "
           "accurate for short or noisy clips."),
     ).pack(side="left", padx=(0, 20))
-    lang_combo.bind("<<ComboboxSelected>>", lambda _e: app._save_transcribe_prefs())
+    lang_combo.bind("<<ComboboxSelected>>", lambda _e: app._on_transcribe_language_changed())
+
+    # Accuracy — Fast / Balanced / Best (core/accuracy.py), each a model sized to this
+    # computer's memory and the picked language. Picking one changes the model the way
+    # the hidden Model picker does (App._on_accuracy_selected); a model that matches no
+    # level (picked in Advanced settings, or trained for one language) shows as Custom
+    # and is left alone. Another engine shows its name in the note line instead.
+    from core import hardware as _hw
+
+    app._accuracy_ram_gb = _hw.system_ram_gb()
+    app._accuracy_choice = None
+    accuracy_frame = ttk.Frame(opts_line1)
+    accuracy_frame.pack(side="left")
+    app.transcribe_accuracy_pick = ttk.Frame(accuracy_frame)
+    ttk.Label(app.transcribe_accuracy_pick, text=_("Accuracy:")).pack(side="left")
+    app._transcribe_accuracy_label_to_level = {
+        _("Fast"): "fast", _("Balanced"): "balanced", _("Best"): "best",
+    }
+    app.transcribe_accuracy_var = tk.StringVar(master=opts_line1, value="")
+    app.transcribe_accuracy_combo = ttk.Combobox(
+        app.transcribe_accuracy_pick,
+        textvariable=app.transcribe_accuracy_var,
+        values=list(app._transcribe_accuracy_label_to_level),
+        state="readonly",
+        width=combo_width(list(app._transcribe_accuracy_label_to_level), floor=10, cap=24),
+    )
+    app.transcribe_accuracy_combo.pack(side="left", padx=(6, 4))
+    app.transcribe_accuracy_combo.bind("<<ComboboxSelected>>", lambda _e: app._on_accuracy_selected())
+    help_icon(
+        app.transcribe_accuracy_pick,
+        _("How accurate the transcription is, against time and download size. Fast: the "
+          "Small model (about 0.5 GB), quick on any computer. Balanced: Large v3 Turbo "
+          "(about 1.6 GB), nearly as accurate as Best in a fraction of the time. Best: the "
+          "most accurate model measured for the picked language (up to about 3 GB), the "
+          "slowest. The picks follow the language and this computer's memory; a model "
+          "picked in Advanced settings shows as Custom."),
+    ).pack(side="left")
+    # The model behind the level and its download, on a line of its own (the first line
+    # is full); for another engine this line names the engine instead.
+    note_row = ttk.Frame(quick_opts)
+    note_row.pack(fill="x", pady=(4, 0))
+    app.transcribe_accuracy_note_var = tk.StringVar(master=note_row, value="")
+    ttk.Label(
+        note_row, textvariable=app.transcribe_accuracy_note_var,
+        foreground=tokens.themed(tokens.TEXT_MUTED),
+    ).pack(side="left")
+    # The model advisor ("Best for this PC…" before) as a small link: same action.
+    app.transcribe_accuracy_check_link = ttk.Label(
+        note_row, text=_("Check this computer"), foreground=tokens.themed(tokens.LINK),
+        cursor="hand2", takefocus=True,
+    )
+    for key in ("<Button-1>", "<Return>", "<KP_Enter>", "<space>"):
+        app.transcribe_accuracy_check_link.bind(key, lambda _e: app.open_model_advisor())
+    bind_tooltip(
+        app.transcribe_accuracy_check_link,
+        _("Checks this computer's NVIDIA GPU (and its memory) or CPU and RAM "
+          "and suggests the fastest and the most accurate model that fit."),
+    )
+    app._refresh_accuracy_row()
 
     # A model trained for the picked language (core/language_models.py, ADR 0015): one line
-    # with a "Use it" / "Switch back" button, packed right under line 1 only when there is
-    # something to offer (App._refresh_language_model_hint).
-    app.language_model_anchor = opts_line1
+    # with a "Use it" / "Switch back" button, packed right under the note line only when
+    # there is something to offer (App._refresh_language_model_hint).
+    app.language_model_anchor = note_row
     app.language_model_row = ttk.Frame(quick_opts)
     app.language_model_hint_var = tk.StringVar(value="")
     ttk.Label(
@@ -1156,6 +1216,21 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     )
     app.language_model_button.pack(side="left")
     app._refresh_language_model_hint()  # a language model may already be active from an earlier session
+
+    # "More options": closed on a new install, remembered across restarts
+    # (transcribe_more_options_open). Line 1 of the body: the two feature
+    # toggles. Line 2: the speaker count, the time range and the English
+    # translation. Line 3: mixed-language audio.
+    more = Disclosure(
+        quick_opts, _("More options"), config=app.app_config,
+        key="transcribe_more_options_open", on_toggle=app._save_transcribe_prefs,
+    )
+    more.pack(fill="x", pady=(8, 0))
+    app.transcribe_more_options = more
+    opts_toggles = ttk.Frame(more.body)
+    opts_toggles.pack(fill="x")
+    opts_line2 = ttk.Frame(more.body)
+    opts_line2.pack(fill="x", pady=(6, 0))
 
     # Feature toggles — friendly phrasing instead of "diarization" /
     # "Word timestamps". The research's vocabulary mapping: Aiko ships
@@ -1173,7 +1248,7 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
         app._sync_diarization_speakers_option()
 
     app.diarization_check = ttk.Checkbutton(
-        opts_line1,
+        opts_toggles,
         text=diar_label,
         variable=app.diarization_var,
         command=_on_diar_check_changed,
@@ -1184,7 +1259,7 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     app.diarization_check.pack(side="left", padx=(0, 4))
 
     app.diarization_help_icon = help_icon(
-        opts_line1,
+        opts_toggles,
         _("Splits the transcript by who is speaking (SPEAKER_00, SPEAKER_01, "
           "...). Adds processing time and needs the optional sherpa-onnx "
           "component to be installed."),
@@ -1215,13 +1290,13 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     app._sync_diarization_speakers_option()
 
     ttk.Checkbutton(
-        opts_line1,
+        opts_toggles,
         text=_("Per-word timestamps"),
         variable=app.word_timestamps_var,
         command=app._save_transcribe_prefs,
     ).pack(side="left")
     help_icon(
-        opts_line1,
+        opts_toggles,
         _("Stores a start/end time for every individual word instead of only "
           "per sentence. Useful for karaoke-style captions or precise "
           "editing; makes the output file larger."),
@@ -1260,7 +1335,7 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
 
     # Mixed-language audio (experimental): a recording that switches between two
     # languages. The Language picker above is the first, this one the second.
-    opts_line3 = ttk.Frame(quick_opts)
+    opts_line3 = ttk.Frame(more.body)
     opts_line3.pack(fill="x", pady=(6, 0))
     mixed_check = ttk.Checkbutton(
         opts_line3, text=_("Mixed-language audio (experimental)"),

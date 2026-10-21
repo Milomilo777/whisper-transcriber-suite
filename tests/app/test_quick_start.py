@@ -114,7 +114,8 @@ def test_skip_changes_nothing_but_the_done_flag(isolated_config):
     assert config.pop("quick_start_done") is True
     before.pop("quick_start_done")
     assert config == before
-    assert config["whisper_model"] == DEFAULT_MODEL_SLUG and config["hub_folder"] == ""
+    # a new install's model is Large v3 Turbo (core.config.FRESH_INSTALL_MODEL_SLUG), not DEFAULT_MODEL_SLUG
+    assert config["whisper_model"] == cfg.FRESH_INSTALL_MODEL_SLUG and config["hub_folder"] == ""
 
 
 @pytest.mark.parametrize(

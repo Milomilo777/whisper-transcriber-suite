@@ -1268,7 +1268,6 @@
     "Transcription engine failed to start": "موتور رونویسی اجرا نشد",
     "Transcription failed: {message}": "رونویسی ناموفق بود: {message}",
     "Transcription keeps failing: {error}": "رونویسی مدام ناموفق می‌شود: {error}",
-    "Transcription runs on the CPU here, where the {model} model takes about twice as long as the audio. {faster} is about {ratio}x faster with nearly the same accuracy: pick it in the Model list, or use Best for this PC.": "رونویسی در اینجا روی CPU اجرا می‌شود، جایی که مدل {model} تقریباً دو برابر زمان صدا طول می‌کشد. {faster} حدود {ratio}x سریع‌تر با دقت تقریباً یکسان است: آن را در فهرست مدل انتخاب کنید، یا از بهترین برای این کامپیوتر استفاده کنید.",
     "Transcriptions": "رونویسی‌ها",
     "Transcripts": "متن‌های رونویسی",
     "Transcripts are saved next to the file they come from. The model downloads the first time you transcribe and is kept in {folder} (Advanced settings > Model folder can move it).": "متن‌های رونویسی کنار فایل اصلی ذخیره می‌شوند. مدل اولین باری که رونویسی کنید دانلود می‌شود و در {folder} نگه داشته می‌شود (با تنظیمات پیشرفته > پوشه مدل می‌توانید آن را جابه‌جا کنید).",

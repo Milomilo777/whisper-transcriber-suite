@@ -152,6 +152,9 @@ def test_speaker_count_initial_value_outside_list(tmp_path, caplog, invalid_val)
 
 def test_speaker_count_layout_fits(app):
     app.geometry(f"{app.minsize()[0]}x{app.minsize()[1]}")
+    # The speaker options sit behind "More options", closed on a new install.
+    assert not app.diarization_speakers_combo.winfo_ismapped()
+    app.transcribe_more_options.set_open(True)
     app.update_idletasks()
     app.update()
 

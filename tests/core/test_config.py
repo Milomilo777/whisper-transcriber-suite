@@ -42,7 +42,9 @@ def test_load_returns_defaults_when_missing(isolated_dirs, monkeypatch):
     monkeypatch.setattr(cfg, "_legacy_config_path", lambda: str(isolated_dirs / "no_legacy.json"))
     config = cfg.load_config()
     assert config["theme"] == cfg.DEFAULT_CONFIG["theme"]
-    assert config["model"]["name"] == cfg.DEFAULT_CONFIG["model"]["name"]
+    # the one default a new install does not take as it is: its model (FRESH_INSTALL_MODEL)
+    assert config["model"] == cfg.FRESH_INSTALL_MODEL
+    assert config["whisper_model"] == cfg.FRESH_INSTALL_MODEL_SLUG
     assert config["parallel_workers"] == cfg.DEFAULT_CONFIG["parallel_workers"]
 
 
@@ -134,7 +136,7 @@ def test_hub_choice_survives_save_load_cycle(isolated_dirs, monkeypatch):
     cfg.save_config(config)
     reloaded = cfg.load_config()
 
-    expected = str(_hub.model_folder_for(user_hub, cfg.DEFAULT_CONFIG["model"]["name"]))
+    expected = str(_hub.model_folder_for(user_hub, config["model"]["name"]))
     assert reloaded["hub_folder"] == user_hub
     assert reloaded["model_path"] == expected
 

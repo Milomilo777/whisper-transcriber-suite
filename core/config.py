@@ -77,6 +77,18 @@ _COUNTER_ONLY_KEYS = frozenset({
     "cloud_stt_minutes_used", "gcloud_stt_minutes_used", "gcloud_stt_minutes_month",
 })
 
+# The model a new install starts on (the Transcribe tab's "Balanced" accuracy): Large v3
+# Turbo, several times faster than Large v3 with nearly the same accuracy, half the download.
+# DEFAULT_CONFIG keeps Large v3, which a saved config.json without the key has always meant
+# (load_config). The entry mirrors core.model_manager.MODEL_REGISTRY, which cannot be imported
+# here (it imports this module through core.logging_setup);
+# tests/core/test_fresh_install_model.py keeps them equal.
+FRESH_INSTALL_MODEL_SLUG = "large-v3-turbo"
+FRESH_INSTALL_MODEL: dict[str, str] = {
+    "name": "faster-whisper-large-v3-turbo",
+    "hf_repo": "mobiuslabsgmbh/faster-whisper-large-v3-turbo",
+}
+
 DEFAULT_CONFIG = {
     "model": {
         "name": "faster-whisper-large-v3",
@@ -367,6 +379,9 @@ DEFAULT_CONFIG = {
     #     from an older version never see the window.
     "quick_start_enabled": True,
     "quick_start_done": False,
+    # The Transcribe tab's "More options" disclosure (speakers, per-word times, English
+    # translation, time range, mixed languages): open or closed, as last left.
+    "transcribe_more_options_open": False,
     # Clone Your Voice / Text to Voice tab — independent of every setting
     # above. The tab saves its engine / mode / Kokoro voice here. Consent
     # is a per-voice tick on the tab, never stored: a ``consent_accepted``
@@ -1855,6 +1870,18 @@ def load_config(*, fetch_online: bool = True) -> dict[str, Any]:
         used_before or os.path.exists(config_path() + ".corrupt")
     ):
         merged["quick_start_done"] = True
+    # A new install starts on Large v3 Turbo, the Transcribe tab's "Balanced" accuracy. A
+    # config.json from before keeps the model it ran with: DEFAULT_CONFIG stays Large v3,
+    # which is what a saved file without the key has always meant, and no saved value is
+    # rewritten. The next save writes the pick, so it reads the same way later.
+    if (
+        "whisper_model" not in local and "model" not in local
+        and not (local or os.path.exists(config_path() + ".corrupt"))
+    ):
+        merged["whisper_model"] = FRESH_INSTALL_MODEL_SLUG
+        merged["model"] = dict(FRESH_INSTALL_MODEL)
+        baseline.pop("whisper_model", None)
+        baseline.pop("model", None)
     # Plain text joined the default formats for new installs only: a config.json
     # from before keeps the formats it ran with. Either way the next save writes the
     # value, so a new install's first save does not read as an earlier one later.

@@ -175,12 +175,15 @@ class _StubApp:
 
 def _patch_main_tabs(mp: pytest.MonkeyPatch, *, diarization: str, sample: bool) -> None:
     import core
-    from core import sample_clip
+    from core import hardware, sample_clip
     from core.backends import availability
 
     mp.setattr(availability, "engine_options", lambda *_a, **_k: list(_ENGINES))
     mp.setattr(availability, "engine_status_summary", lambda *_a, **_k: _ENGINE_SUMMARY)
     mp.setattr(sample_clip, "bundled_clip_path", lambda: "sample.mp3" if sample else "")
+    # The Accuracy levels follow the memory; unknown memory (no cap) keeps the capture the
+    # same on every machine.
+    mp.setattr(hardware, "system_ram_gb", lambda: 0.0)
     fake = types.ModuleType("core.diarization")
     if diarization == "broken":
         def _broken() -> bool:
@@ -570,7 +573,8 @@ def _stored_values(mp: pytest.MonkeyPatch, root: tk.Tk) -> dict[str, Any]:
     frame = ttk.Frame(root)
     tabs.build_transcribe_tab(app, frame)
     combos = [w for w in _descendants(frame) if w.winfo_class() == "TCombobox"]
-    lang_combo, speakers_combo = combos[2], combos[3]
+    # (the Accuracy combo now sits between the language and the speaker count)
+    lang_combo, speakers_combo = combos[2], app.diarization_speakers_combo
     lang_combo.current(3)
     out["language after a name"] = app.transcribe_lang_var.get()
     lang_combo.current(0)

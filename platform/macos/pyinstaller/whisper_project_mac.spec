@@ -415,6 +415,7 @@ a = Analysis(
         'app.widgets.smtv_tab',
         'app.widgets.book_panel',
         'app.widgets.chip_cloud',
+        'app.widgets.disclosure',
         'app.dialogs.problem_report',
         'core.problem_report',
         'app.widgets.tooltip',
@@ -463,6 +464,7 @@ a = Analysis(
         'core.tts_job',
         'core.vad_window',
         'core.language_defaults',
+        'core.accuracy',
         'core.language_model_fetch',
         'core.language_models',
         # Opt-in backends (see the Windows specs' comment).

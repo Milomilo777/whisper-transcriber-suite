@@ -6,6 +6,17 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- **Simpler Transcribe tab**: an **Accuracy** level (Fast / Balanced / Best) next to the language
+  picker replaces the Engine and Model dropdowns on the tab. Each level is a model sized to the
+  picked language and this computer's memory (`core/accuracy.py`); the line under it names the
+  model and its download, and **Check this computer** opens the model advisor. A model picked in
+  Advanced settings (or one trained for one language) shows as *Custom* and is left alone. The
+  speaker, per-word, English-translation, time-range and mixed-language options moved behind a
+  **More options** disclosure that remembers whether it was open (`transcribe_more_options_open`).
+  New installs start on Large v3 Turbo (the Balanced level): several times faster than Large v3
+  with nearly the same accuracy, half the download; an existing `config.json` keeps the model it
+  ran with, and one without the key still means Large v3.
+
 - **`WTS_PROFILE_DIR`** for test runs: every per-user folder (settings, history, logs, model cache)
   goes under that folder, and nothing is migrated in, so a GUI test leaves the machine's own
   profile alone. See `docs/TESTING.md`.

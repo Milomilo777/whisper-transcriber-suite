@@ -18,7 +18,13 @@ import sv_ttk
 
 from app.dialogs.advanced import AdvancedDialog
 from app.dialogs.model_download import ModelDownloadDialog
-from app.dialogs.quick_start import QuickStartChoice, QuickStartDialog, apply_choice, should_show
+from app.dialogs.quick_start import (
+    QuickStartChoice,
+    QuickStartDialog,
+    apply_choice,
+    short_model_name,
+    should_show,
+)
 from app.dialogs import share_page
 from app import desktop_alert, mac_native, shortcuts
 from app.i18n import N_, _, ngettext, pgettext, plain, translate
@@ -45,6 +51,7 @@ from app.dialogs.statistics import show_statistics as _show_stats
 from app.dpi import place_over, px, remember_scale, scaled_size, work_area
 from app.dpi import scaled as dpi_scaled
 from app.widgets.console import apply_console_theme, build_console, insert_log_line
+from app.widgets.disclosure import Disclosure
 from app.widgets.error_dialog import show_error
 from app.widgets.notice import notify
 from app.widgets import subtitle_edit as subtitle_edit_ui
@@ -1194,6 +1201,19 @@ class App(tk.Tk):
     _transcribe_model_label_to_slug: "dict[str, str]"
     model_status_var: tk.StringVar
     model_status_label: "ttk.Label"
+    # Accuracy row (Fast / Balanced / Best, core/accuracy.py) and the "More options"
+    # disclosure on the Transcribe tab, built in tabs.py. The engine + model pickers
+    # above live in transcribe_expert_frame, which is never shown.
+    transcribe_expert_frame: "ttk.Frame"
+    transcribe_accuracy_var: tk.StringVar
+    transcribe_accuracy_combo: "ttk.Combobox"
+    transcribe_accuracy_pick: "ttk.Frame"
+    transcribe_accuracy_note_var: tk.StringVar
+    transcribe_accuracy_check_link: "ttk.Label"
+    transcribe_more_options: "Disclosure"
+    _transcribe_accuracy_label_to_level: "dict[str, str]"
+    _accuracy_ram_gb: float  # this computer's memory; 0 = unknown
+    _accuracy_choice: "str | None"  # the level picked or shown last; None = Custom
     # The "a model trained for <language>" line (ADR 0015), built in tabs.py.
     language_model_anchor: "ttk.Frame"
     language_model_row: "ttk.Frame"
@@ -3050,6 +3070,12 @@ class App(tk.Tk):
             logger.exception("Failed to save transcribe preferences")
             self.log(f"Could not save preferences: {e}")
 
+    def _on_transcribe_language_changed(self) -> None:
+        """The Language picker: save as any option does, then resolve the Accuracy level
+        again for the new language (its Balanced or Best may be another model)."""
+        self._save_transcribe_prefs()
+        self._refresh_accuracy_row(language_changed=True)
+
     def open_advanced_dialog(self) -> None:
         dlg = AdvancedDialog(self)
         # Block (nested event loop) until the modal dialog closes, then re-sync
@@ -3478,6 +3504,7 @@ class App(tk.Tk):
         self._refresh_model_status()
         self._sync_translate_option()
         self._refresh_language_model_hint()
+        self._refresh_accuracy_row()
 
     def _sync_model_picker_for_engine(self) -> None:
         """Grey out the Whisper-model picker when the picked engine can't use it.
@@ -3502,9 +3529,103 @@ class App(tk.Tk):
         self._refresh_model_status()
         self._sync_translate_option()
         self._refresh_language_model_hint()
+        self._refresh_accuracy_row()
+
+    def _refresh_accuracy_row(self, *, language_changed: bool = False) -> None:
+        """Redraw the Transcribe tab's Accuracy row (core/accuracy.py).
+
+        The combo shows the level whose model is the saved one, or "Custom (current
+        setting)" when none has it; the note line names the model and its download, or
+        the engine while another engine is picked (its model is not Whisper's). After a
+        language change the level picked last is resolved again for the new language,
+        which may switch the model (the note says what downloads); a Custom model is
+        never touched.
+        """
+        combo = _inst_attr(self, "transcribe_accuracy_combo")
+        var = _inst_attr(self, "transcribe_accuracy_var")
+        note_var = _inst_attr(self, "transcribe_accuracy_note_var")
+        if combo is None or var is None or note_var is None:
+            return
+        from core import accuracy as _acc
+        from core.backends import availability as _eng
+        from core.model_manager import DEFAULT_MODEL_SLUG, approx_download_size_text, model_downloaded
+
+        language = self._selected_transcribe_language()
+        ram_gb = float(self.__dict__.get("_accuracy_ram_gb") or 0.0)
+        slug = str(self.app_config.get("whisper_model") or DEFAULT_MODEL_SLUG).strip()
+        uses_model = self._engine_uses_whisper_model()
+        choice = self.__dict__.get("_accuracy_choice")
+        if uses_model and language_changed and choice is not None:
+            wanted = _acc.model_for_level(language, choice, ram_gb)
+            if wanted != slug and self._switch_transcribe_model(wanted):
+                return  # _on_model_selected redrew the row for the new model
+        pick = _inst_attr(self, "transcribe_accuracy_pick")
+        link = _inst_attr(self, "transcribe_accuracy_check_link")
+        try:
+            if not uses_model:
+                self._accuracy_choice = None
+                value = _eng.normalise_engine(self.app_config.get("transcribe_backend"))
+                note_var.set(_("Engine: {name} (change in Advanced settings)",
+                               name=_eng.VALUE_TO_LABEL.get(value, value)))
+                if pick is not None:
+                    pick.pack_forget()
+                if link is not None:
+                    link.pack_forget()
+                return
+            picks = _acc.models_by_level(language, ram_gb)
+            level = choice if choice in picks and picks[choice] == slug else _acc.level_for_model(
+                slug, language, ram_gb)
+            self._accuracy_choice = level
+            labels = dict(self.__dict__.get("_transcribe_accuracy_label_to_level") or {})
+            level_to_label = {lvl: lbl for lbl, lvl in labels.items()}
+            values = list(labels)
+            if level is None:
+                values.append(_("Custom (current setting)"))
+            if list(combo.cget("values") or ()) != values:
+                combo.configure(values=values)
+            shown = level_to_label.get(level or "", values[-1])
+            if var.get() != shown:
+                var.set(shown)
+            model = short_model_name(self.app_config, slug)
+            size = approx_download_size_text(self.app_config, slug)
+            if model_downloaded(self.app_config, slug):
+                note = _("{model} model: already downloaded", model=model)
+            elif size:
+                note = _("{model} model: {size} download on first use", model=model, size=size)
+            else:
+                note = _("{model} model: downloads on first use", model=model)
+            note_var.set(note)
+            if pick is not None and not pick.winfo_manager():
+                pick.pack(side="left")
+            if link is not None and not link.winfo_manager():
+                link.pack(side="left", padx=(12, 0))
+        except Exception:  # noqa: BLE001
+            logger.debug("Could not redraw the Accuracy row", exc_info=True)
+
+    def _on_accuracy_selected(self) -> None:
+        """Pick the level's model for the current language exactly as the Model picker
+        does (config rewrite + worker restart, see _on_model_selected); a declined
+        "stop the running job?" leaves the model and the row as they were."""
+        var = _inst_attr(self, "transcribe_accuracy_var")
+        labels = self.__dict__.get("_transcribe_accuracy_label_to_level") or {}
+        if var is None:
+            return
+        level = labels.get(var.get())
+        if level is not None:
+            from core import accuracy as _acc
+            from core.model_manager import DEFAULT_MODEL_SLUG
+
+            ram_gb = float(self.__dict__.get("_accuracy_ram_gb") or 0.0)
+            wanted = _acc.model_for_level(self._selected_transcribe_language(), level, ram_gb)
+            # Remembered before the switch, so the redraw keeps this level when two
+            # levels share a model (a small computer where every level is Small).
+            self._accuracy_choice = level
+            if wanted != str(self.app_config.get("whisper_model") or DEFAULT_MODEL_SLUG).strip():
+                self._switch_transcribe_model(wanted)
+        self._refresh_accuracy_row()
 
     def open_model_advisor(self) -> None:
-        """Transcribe tab "Best for this PC…": suggest models for this hardware."""
+        """Transcribe tab "Check this computer": suggest models for this hardware."""
         try:
             from app.dialogs.model_advisor import open_model_advisor
 
@@ -3608,7 +3729,8 @@ class App(tk.Tk):
             self.log(_(
                 "Transcription runs on the CPU here, where the {model} model takes about "
                 "twice as long as the audio. {faster} is about {ratio}x faster with nearly "
-                "the same accuracy: pick it in the Model list, or use Best for this PC.",
+                "the same accuracy: pick it in Advanced settings, or use Check this computer "
+                "on the Transcribe tab.",
                 model=slug, faster=name, ratio=f"{ratio:.1f}",
             ))
         return _("Faster on this CPU: {model} (about {ratio}x)", model=name, ratio=f"{ratio:.1f}")
@@ -4621,14 +4743,12 @@ class App(tk.Tk):
             kept.add((slug, language or ""))
             return True
         if choice == dlg.CHOICE_CHOOSE:
-            combo = _inst_attr(self, "transcribe_model_combo")
-            if combo is not None:
-                try:
-                    self.nb.select(self.t1)
-                    combo.focus_set()
-                    self.after(50, lambda: combo.event_generate("<Down>"))
-                except Exception:  # noqa: BLE001
-                    logger.debug("Could not open the model picker", exc_info=True)
+            # The full model list is the Advanced dialog's picker (the tab's own Model
+            # combo is built but never shown since the Accuracy row replaced it).
+            try:
+                self.after(50, self.open_advanced_dialog)
+            except Exception:  # noqa: BLE001
+                logger.debug("Could not open the model picker", exc_info=True)
         self.log("Not queued: the Whisper model understands English only.")
         return False
 
@@ -4665,7 +4785,7 @@ class App(tk.Tk):
         label_to_slug = getattr(self, "_transcribe_model_label_to_slug", None) or {}
         label = next((lbl for lbl, s in label_to_slug.items() if s == slug), None)
         if mvar is None or label is None:
-            self.log(f"Could not switch to the '{slug}' model; pick it in the Model list.")
+            self.log(f"Could not switch to the '{slug}' model; pick it in Advanced settings.")
             return False
         mvar.set(label)
         self._on_model_selected()
