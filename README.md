@@ -15,6 +15,9 @@
 
 macOS and Linux: see [Download](#download).
 
+No install? **[Try it in your browser](https://whisper-transcriber-suite.com/try/)**: transcribe a short file
+(up to 10 minutes) right in the page and get TXT, SRT or VTT. The audio never leaves your device.
+
 Step-by-step guides: [YouTube video to text](https://whisper-transcriber-suite.com/youtube-to-text/) · [video to SRT subtitles](https://whisper-transcriber-suite.com/video-to-srt/) · [transcripts with speaker labels](https://whisper-transcriber-suite.com/speaker-labels/)
 
 <!-- language-links:start -->

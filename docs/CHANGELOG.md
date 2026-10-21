@@ -4,6 +4,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Changed
+
+- **The README points to the in-browser demo**: a line under the download link sends people without an install
+  to the website's [/try/](https://whisper-transcriber-suite.com/try/) page.
+
 ## [2.2.0] — 2026-10-22
 
 ### Added
@@ -15,7 +20,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   five. A line that does not fit the window (150 % scaling, a long language) flows onto a second
   line (`app/widgets/wrap_row.py`) instead of running off the right edge.
 
-- **Right-to-left layout** on Windows: with a Persian, Arabic, Hebrew or Urdu interface the
+- **Right-to-left layout** on Windows: with a Persian, Arabic or Hebrew interface the
   main tabs, the tab strip (first tab at the right), the lists, scrollbars, dialogs, rows that
   appear later or were hidden at first, tick boxes (indicator at the right), the viewer's panes
   and tooltips are mirrored (`app/rtl_layout.py`, wired through `App._build_tabs`
