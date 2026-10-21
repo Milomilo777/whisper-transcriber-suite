@@ -4850,6 +4850,8 @@ class App(tk.Tk):
             m.add_command(label=_("Resume"), command=lambda: self.resume(task))
         if states["cancel"]:
             m.add_command(label=_("Cancel"), command=lambda: self.cancel(task))
+        if task.status == "waiting" and states["remove"]:
+            m.add_command(label=_("Remove"), command=lambda: self.remove_task(task))
         if task.status in ("finished", "cancelled", "error"):
             if task.status == "finished":
                 m.add_command(
@@ -5082,6 +5084,11 @@ class App(tk.Tk):
                               command=lambda ts=resumable: self._bulk_resume(ts))
             m.add_command(label=_("Remove selected ({count})", count=len(terminal)),
                           command=lambda ts=terminal: self._bulk_apply(ts, self.remove_task))
+        waiting = [t for t in tasks if t.status == "waiting"]
+        if waiting:
+            # Not-yet-started rows leave the list too, as the Remove button does.
+            m.add_command(label=_("Remove waiting ({count})", count=len(waiting)),
+                          command=lambda ts=waiting: self._bulk_apply(ts, self.remove_task))
         m.tk_popup(e.x_root, e.y_root)
 
     def _bulk_download_menu(self, tasks: list[Any], e: tk.Event) -> None:
@@ -5550,6 +5557,11 @@ class App(tk.Tk):
         self.refresh_download_queue()
 
     def remove_task(self, t: TranscriptionTask) -> None:
+        if t.status == "waiting":
+            # Never started, so no worker reports it: release the Download row that waits on
+            # it, as cancel() does, or that row stays "transcribing" for good (review, 2026-10-21).
+            self._release_waiting_download(t)
+            desktop_alert.job_ended(self, t)
         if t in self.queue:
             self.queue.remove(t)
         self.refresh()
@@ -5563,17 +5575,19 @@ class App(tk.Tk):
         return [t for t in (self.row_map.get(i) for i in tree.selection()) if t]
 
     def _action_bar_apply(
-        self, fn: "Callable[[TranscriptionTask], Any]", *, active_only: bool
+        self, fn: "Callable[[TranscriptionTask], Any]", *, active_only: bool,
+        also_waiting: bool = False,
     ) -> None:
         """Run a per-task handler over the current Queue selection.
 
         ``active_only`` restricts Pause/Cancel to waiting/running/paused
-        rows; Re-run/Remove (active_only=False) apply to terminal rows.
+        rows; Re-run/Remove (active_only=False) apply to terminal rows, and
+        Remove (``also_waiting``) to not-yet-started rows too.
         Shared by the action-bar buttons; mirrors the bulk context menu.
         """
         active = {"waiting", "running", "paused"}
         terminal = {"finished", "cancelled", "error"}
-        wanted = active if active_only else terminal
+        wanted = active if active_only else terminal | ({"waiting"} if also_waiting else set())
         for t in list(self._selected_tasks()):
             if getattr(t, "status", "") in wanted:
                 try:

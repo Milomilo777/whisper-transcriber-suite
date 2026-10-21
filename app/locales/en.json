@@ -895,6 +895,7 @@
   "Remove selected": "Remove selected",
   "Remove selected ({count})": "Remove selected ({count})",
   "Remove these filler words from every segment?\n\n{words}": "Remove these filler words from every segment?\n\n{words}",
+  "Remove waiting ({count})": "Remove waiting ({count})",
   "Rename '{speaker}' (everywhere)...": "Rename '{speaker}' (everywhere)...",
   "Rename every '{speaker}' to:": "Rename every '{speaker}' to:",
   "Rename speaker": "Rename speaker",

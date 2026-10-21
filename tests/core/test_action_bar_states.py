@@ -32,8 +32,9 @@ def test_states_keys_are_complete_and_default_false():
         assert set(states) == set(QUEUE_ACTION_KEYS)
 
 
-def test_states_waiting_only_cancel():
-    assert _on(button_states_for_status("waiting")) == {"cancel"}
+def test_states_waiting_cancel_and_remove():
+    # A job that has not started can leave the list (review, 2026-10-21).
+    assert _on(button_states_for_status("waiting")) == {"cancel", "remove"}
 
 
 def test_states_running_pause_and_cancel():

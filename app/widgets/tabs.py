@@ -505,7 +505,7 @@ def button_states_for_status(
     unit-testable without a Tk root.
 
     Mirrors ``App.menu_row``:
-      * waiting  -> Cancel
+      * waiting  -> Cancel, Remove
       * running  -> Pause, Cancel
       * paused   -> Resume, Cancel
       * terminal (finished / cancelled / error) -> Re-run, Remove
@@ -516,7 +516,10 @@ def button_states_for_status(
     """
     states = {k: False for k in QUEUE_ACTION_KEYS}
     if status == "waiting":
+        # Remove too: a job that has not started yet just leaves the list (it was greyed out
+        # with no reason: code review, 2026-10-21). Dispatch runs on the Tk thread as well.
         states["cancel"] = True
+        states["remove"] = True
     elif status == "running":
         states["pause"] = True
         states["cancel"] = True
@@ -1402,7 +1405,7 @@ def build_queue_tab(app: "App", parent: ttk.Frame) -> None:
         ),
         "remove": ttk.Button(
             action_bar, text=_("Remove"),
-            command=lambda: app._action_bar_apply(app.remove_task, active_only=False),
+            command=lambda: app._action_bar_apply(app.remove_task, active_only=False, also_waiting=True),
         ),
     }
     for key in ("pause", "resume", "cancel", "rerun", "remove"):

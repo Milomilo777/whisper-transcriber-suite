@@ -84,7 +84,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   completed" is now **Remove ended jobs** (**Remove ended downloads** on the Download tab), with a
   hover text saying no file is deleted. Found in a screenshot review of the first tabs.
   **View transcript** is offered only when the job wrote its transcript .json (the viewer's format),
-  and on macOS the folder button uses the menu's Finder wording.
+  and on macOS the folder button uses the menu's Finder wording. A job that has not started yet can
+  be removed (button, row menu, "Remove waiting" for several rows); one that a download was waiting
+  on releases that Download row instead of leaving it "transcribing".
 
 - **Transcribe tab, plainer**: the ready line gives the recording's length ("Ready: class.flac
   (1:46:12, 52.3 MB)"); the box is labelled **File or video link**, since a link works there too;
