@@ -101,6 +101,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   A long file name is cut in the middle on the ready line ("Interview with the … 1 of 3).mp4"),
   so it no longer pushes **Advanced settings…** out of the window.
 
+- **Speed cell while it measures**: the Queue said only "measuring speed..." for about a minute on a
+  CPU run (the speed needs two 30-second chunks of speech); it now says how much audio is done
+  ("measuring speed... (36 s of audio done)"). The speed cell and the result card's speed line are
+  now translatable.
+
 - **Plain processor note**: "CPU (slower)" instead of "CPU - int8_float32 (slower)" beside the
   Transcribe button and under the Queue; the hover text keeps the technical detail.
 

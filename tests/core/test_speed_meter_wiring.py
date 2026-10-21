@@ -382,3 +382,11 @@ def test_clip_end_past_the_file_is_capped(t, monkeypatch, tmp_path):
     task = _run_clip(t, monkeypatch, tmp_path, 100.0, 0.0001, 3600.0, 100.0, 10.0)
     assert task.speed_audio_s == pytest.approx(100.0, abs=0.01)
     assert task.speed_x == pytest.approx(10.0, rel=1e-3)
+
+
+def test_the_audio_done_is_published_for_the_queue(t, monkeypatch, tmp_path):
+    """The Queue says how much audio is done while the speed is measured (2026-10-21)."""
+    clock = t._test_clock
+    ends = [10.0 * (i + 1) for i in range(12)]
+    task, _seen = _run(t, monkeypatch, tmp_path, _stream(clock, ends, step=10 / 12))
+    assert task.live_audio_s == pytest.approx(120.0)

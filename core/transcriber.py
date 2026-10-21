@@ -678,6 +678,8 @@ def _publish_speed(task: Any, meter: "_speed_meter.SpeedMeter") -> None:
     """Live speed + time left for the next "progress" event."""
     task.live_speed_x = meter.speed_x
     task.live_eta_s = meter.eta_s
+    # How much audio is done: the Queue shows it while the speed is still being measured.
+    task.live_audio_s = meter.audio_s
 
 
 def _finish_speed(

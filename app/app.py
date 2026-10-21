@@ -78,7 +78,7 @@ from core.logging_setup import get_ui_logger, open_log_folder, setup_logging
 from core.paths import bin_dir as _resource_bin_dir
 from core.paths import bundled_binary as _bundled_binary
 from core.paths import same_file as _same_file
-from core.speed_meter import speed_cell, task_summary_line
+from app.domain.speed_text import speed_cell_text, task_summary_text
 from core.watcher import FolderWatcher
 
 logger = logging.getLogger(__name__)
@@ -6108,7 +6108,7 @@ class App(tk.Tk):
                 ltr_base(name),
                 status_label(t.status),
                 self._row_progress_text(t.status, t.progress),
-                speed_cell(t),
+                speed_cell_text(t),
                 lang_str,
                 self.fmt_time(t),
             )
@@ -6323,7 +6323,7 @@ class App(tk.Tk):
             text=ltr_base(f"✓ {os.path.basename(task.file_path)}"),
             font=("TkDefaultFont", 10, "bold"),
         ).pack(anchor="w")
-        speed_line = task_summary_line(task)
+        speed_line = task_summary_text(task)
         if speed_line:
             ttk.Label(
                 self.last_result_body,

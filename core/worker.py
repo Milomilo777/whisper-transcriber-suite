@@ -822,6 +822,9 @@ def _main() -> int:
                 extra["speed_x"] = round(float(speed), 3)
             if eta is not None:
                 extra["eta_s"] = round(float(eta), 1)
+            audio = getattr(task, "live_audio_s", None)
+            if audio is not None:
+                extra["audio_s"] = round(float(audio), 1)
             if getattr(task, "speed_live", True) is False:
                 extra["speed_live"] = False
         emit("progress", percent=percent, **extra)

@@ -356,10 +356,11 @@ def reset_speed(task: object) -> None:
 
 
 def apply_live_speed(task: object, event: dict[str, object]) -> None:
-    """Copy a "progress" event's ``speed_x`` / ``eta_s`` onto the task."""
+    """Copy a "progress" event's ``speed_x`` / ``eta_s`` / ``audio_s`` onto the task."""
     setattr(task, "speed_live", event.get("speed_live") is not False)
     setattr(task, "live_speed_x", _opt_float(event.get("speed_x")))
     setattr(task, "live_eta_s", _opt_float(event.get("eta_s")))
+    setattr(task, "live_audio_s", _opt_float(event.get("audio_s")))
 
 
 def apply_final_speed(task: object, event: dict[str, object]) -> None:
