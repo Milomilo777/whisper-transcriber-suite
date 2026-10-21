@@ -348,7 +348,6 @@
       "Händelser (äldsta först, {n} visas; loggen sparar de senaste {size} nekade eller ej skickade och de senaste {size} tillåtna; antalen ovan är inte begränsade):"
     ],
     "Every finished job recorded in SQLite history.db": "Varje slutfört jobb registreras i SQLite-historiken history.db",
-    "Every transcription job you start is tracked here. Use the buttons below the list (or right-click a row) to pause, resume, cancel, re-run, or remove it; double-click a finished row to open its output folder. Speed: 4.8x means 4.8 seconds of audio were transcribed per second of work; below 1x is slower than the recording plays. The time left is a rough estimate.": "Varje transkriberingsjobb du startar följs här. Använd knapparna under listan (eller högerklicka på en rad) för att pausa, återuppta, avbryta, köra om eller ta bort det; dubbelklicka på en slutförd rad för att öppna dess utdatamapp. Hastighet: 4.8x betyder att 4,8 sekunder ljud transkriberades per sekunds arbete; under 1x är långsammare än inspelningen spelas upp. Återstående tid är en grov uppskattning.",
     "Exit": "Avsluta",
     "Exit with queued tasks": "Avsluta med uppgifter i kön",
     "Export failed": "Exporten misslyckades",

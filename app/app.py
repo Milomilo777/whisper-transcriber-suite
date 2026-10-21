@@ -7866,8 +7866,10 @@ class App(tk.Tk):
             pass
 
     def queue_row_double_click(self, event: tk.Event) -> None:
-        """Double-click on a finished Queue row opens its output folder (where the
-        transcript is, which an output-folder setting can put away from the source).
+        """Double-click on a finished Queue row opens its transcript in the viewer, as
+        "View transcript" does; the folder made the user find and open the file (deep review,
+        2026-10-21). Without a transcript .json (other formats only, or no speech) it opens
+        the output folder, which an output-folder setting can put away from the source.
 
         For waiting/running/error/cancelled rows the action is a
         no-op (no useful destination yet).
@@ -7877,6 +7879,11 @@ class App(tk.Tk):
             return
         task = self.row_map.get(item)
         if not task or task.status != "finished":
+            return
+        if not getattr(task, "no_speech", False) and task_transcript_json(task, must_exist=True):
+            self.open_transcript_viewer_for(
+                task.file_path, self._task_json_output(task), task.language or task.detected_language,
+            )
             return
         self._open_task_output_folder(task)
 

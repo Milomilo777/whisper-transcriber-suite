@@ -348,7 +348,6 @@
       "Συμβάντα (τα παλαιότερα πρώτα, εμφανίζονται {n}· το αρχείο καταγραφής κρατά τα τελευταία {size} που απορρίφθηκαν ή δεν στάλθηκαν και τα τελευταία {size} που επιτράπηκαν· οι παραπάνω μετρήσεις δεν έχουν όριο):"
     ],
     "Every finished job recorded in SQLite history.db": "Κάθε ολοκληρωμένη εργασία καταγράφεται στο ιστορικό SQLite history.db",
-    "Every transcription job you start is tracked here. Use the buttons below the list (or right-click a row) to pause, resume, cancel, re-run, or remove it; double-click a finished row to open its output folder. Speed: 4.8x means 4.8 seconds of audio were transcribed per second of work; below 1x is slower than the recording plays. The time left is a rough estimate.": "Κάθε εργασία μεταγραφής που ξεκινάτε παρακολουθείται εδώ. Χρησιμοποιήστε τα κουμπιά κάτω από τη λίστα (ή δεξί κλικ σε μια γραμμή) για παύση, συνέχιση, ακύρωση, επανεκτέλεση ή κατάργηση· κάντε διπλό κλικ σε μια ολοκληρωμένη γραμμή για να ανοίξετε τον φάκελο εξόδου της. Ταχύτητα: 4.8x σημαίνει ότι μεταγράφηκαν 4,8 δευτερόλεπτα ήχου ανά δευτερόλεπτο εργασίας· κάτω από 1x είναι πιο αργό από την αναπαραγωγή της ηχογράφησης. Ο υπολειπόμενος χρόνος είναι πρόχειρη εκτίμηση.",
     "Exit": "Έξοδος",
     "Exit with queued tasks": "Έξοδος με εργασίες στην ουρά",
     "Export failed": "Η εξαγωγή απέτυχε",

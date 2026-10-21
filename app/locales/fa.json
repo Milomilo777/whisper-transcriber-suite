@@ -348,7 +348,6 @@
       "رویدادها (قدیمی‌ترین اول، {n} مورد نمایش داده شده؛ گزارش، آخرین {size} مورد مسدود یا ارسال‌نشده و آخرین {size} مورد مجاز را نگه می‌دارد؛ شمارش‌های بالا محدود نیستند):"
     ],
     "Every finished job recorded in SQLite history.db": "هر کار تمام‌شده در تاریخچه SQLite (history.db) ثبت می‌شود",
-    "Every transcription job you start is tracked here. Use the buttons below the list (or right-click a row) to pause, resume, cancel, re-run, or remove it; double-click a finished row to open its output folder. Speed: 4.8x means 4.8 seconds of audio were transcribed per second of work; below 1x is slower than the recording plays. The time left is a rough estimate.": "هر کار رونویسی که شروع می‌کنید اینجا پیگیری می‌شود. با دکمه‌های زیر فهرست (یا کلیک راست روی یک ردیف) می‌توانید آن را مکث، ادامه، لغو، دوباره اجرا یا حذف کنید؛ روی ردیف تمام‌شده دوبار کلیک کنید تا پوشه خروجی‌اش باز شود. سرعت: 4.8x یعنی در هر ثانیه کار، 4.8 ثانیه صدا رونویسی شده است؛ کمتر از 1x یعنی کندتر از پخش خود ضبط. زمان باقی‌مانده فقط یک تخمین تقریبی است.",
     "Exit": "خروج",
     "Exit with queued tasks": "خروج با وجود کارهای در صف",
     "Export failed": "خروجی گرفتن ناموفق بود",

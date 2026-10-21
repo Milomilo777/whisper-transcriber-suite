@@ -345,7 +345,6 @@
       "Sự kiện (cũ nhất trước, hiển thị {n}; nhật ký giữ {size} mục bị từ chối hoặc chưa gửi gần nhất và {size} mục được cho phép gần nhất; các số đếm ở trên không bị giới hạn):"
     ],
     "Every finished job recorded in SQLite history.db": "Mọi tác vụ đã xong được ghi trong lịch sử SQLite history.db",
-    "Every transcription job you start is tracked here. Use the buttons below the list (or right-click a row) to pause, resume, cancel, re-run, or remove it; double-click a finished row to open its output folder. Speed: 4.8x means 4.8 seconds of audio were transcribed per second of work; below 1x is slower than the recording plays. The time left is a rough estimate.": "Mọi tác vụ chép lời bạn bắt đầu đều được theo dõi ở đây. Dùng các nút dưới danh sách (hoặc bấm chuột phải vào một hàng) để tạm dừng, tiếp tục, hủy, chạy lại hoặc xóa; bấm đúp vào hàng đã xong để mở thư mục đầu ra. Tốc độ: 4.8x nghĩa là mỗi giây xử lý chép lời được 4,8 giây âm thanh; dưới 1x là chậm hơn thời lượng phát bản ghi. Thời gian còn lại chỉ là ước tính.",
     "Exit": "Thoát",
     "Exit with queued tasks": "Thoát khi còn tác vụ trong hàng đợi",
     "Export failed": "Xuất thất bại",

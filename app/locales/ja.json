@@ -345,7 +345,6 @@
       "イベント（古い順、{n} 件を表示。ログには拒否または未送信の最新 {size} 件と許可の最新 {size} 件が残ります。上の件数には上限はありません）:"
     ],
     "Every finished job recorded in SQLite history.db": "完了したすべてのジョブを SQLite の history.db に記録",
-    "Every transcription job you start is tracked here. Use the buttons below the list (or right-click a row) to pause, resume, cancel, re-run, or remove it; double-click a finished row to open its output folder. Speed: 4.8x means 4.8 seconds of audio were transcribed per second of work; below 1x is slower than the recording plays. The time left is a rough estimate.": "開始したすべての文字起こしジョブがここで追跡されます。一覧の下のボタン（または行の右クリック）で、一時停止、再開、キャンセル、再実行、削除ができます。完了した行をダブルクリックすると出力フォルダーが開きます。速度: 4.8x は作業 1 秒あたり 4.8 秒分の音声を文字起こししたことを表し、1x 未満は録音の再生より遅いことを意味します。残り時間はおおよその見積もりです。",
     "Exit": "終了",
     "Exit with queued tasks": "キューにタスクがある状態で終了",
     "Export failed": "エクスポートに失敗しました",

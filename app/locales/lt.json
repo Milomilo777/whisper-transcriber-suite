@@ -351,7 +351,6 @@
       "Įvykiai (seniausi pirmiau, rodoma {n}; žurnale laikoma paskutinių {size} atmestų ar neišsiųstų ir paskutinių {size} leistų; viršuje esantys skaičiai neriboti):"
     ],
     "Every finished job recorded in SQLite history.db": "Kiekviena baigta užduotis įrašoma į SQLite history.db",
-    "Every transcription job you start is tracked here. Use the buttons below the list (or right-click a row) to pause, resume, cancel, re-run, or remove it; double-click a finished row to open its output folder. Speed: 4.8x means 4.8 seconds of audio were transcribed per second of work; below 1x is slower than the recording plays. The time left is a rough estimate.": "Čia sekama kiekviena jūsų paleista transkribavimo užduotis. Mygtukais po sąrašu (arba dešiniuoju pelės mygtuku spustelėję eilutę) ją pristabdykite, tęskite, atšaukite, paleiskite iš naujo ar pašalinkite; dukart spustelėkite baigtą eilutę, kad atidarytumėte jos išvesties aplanką. Greitis: 4.8x reiškia, kad per sekundę darbo transkribuota 4,8 sekundės garso; mažiau nei 1x yra lėčiau nei įrašo grojimas. Likęs laikas – apytikslis įvertis.",
     "Exit": "Išeiti",
     "Exit with queued tasks": "Išeiti su užduotimis eilėje",
     "Export failed": "Eksportuoti nepavyko",

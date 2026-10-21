@@ -348,7 +348,6 @@
       "Tapahtumat (vanhin ensin, {n} näytetty; loki säilyttää viimeiset {size} estettyä tai lähettämätöntä ja viimeiset {size} sallittua; yllä olevia laskureita ei ole rajattu):"
     ],
     "Every finished job recorded in SQLite history.db": "Jokainen valmis työ kirjataan SQLite-tiedostoon history.db",
-    "Every transcription job you start is tracked here. Use the buttons below the list (or right-click a row) to pause, resume, cancel, re-run, or remove it; double-click a finished row to open its output folder. Speed: 4.8x means 4.8 seconds of audio were transcribed per second of work; below 1x is slower than the recording plays. The time left is a rough estimate.": "Jokaista aloittamaasi litterointityötä seurataan täällä. Keskeytä, jatka, peruuta, suorita uudelleen tai poista työ luettelon alla olevilla painikkeilla (tai napsauttamalla riviä hiiren kakkospainikkeella); kaksoisnapsauta valmista riviä avataksesi sen tulostekansion. Nopeus: 4.8x tarkoittaa, että 4,8 sekuntia ääntä litteroitiin työsekuntia kohden; alle 1x on hitaampaa kuin tallenteen toisto. Jäljellä oleva aika on karkea arvio.",
     "Exit": "Lopeta",
     "Exit with queued tasks": "Lopeta, vaikka jonossa on tehtäviä",
     "Export failed": "Vienti epäonnistui",

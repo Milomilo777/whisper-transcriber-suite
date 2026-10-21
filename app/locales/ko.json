@@ -345,7 +345,6 @@
       "이벤트(오래된 순, {n}개 표시; 로그는 거부되었거나 전송되지 않은 최근 {size}개와 허용된 최근 {size}개를 보관합니다. 위의 횟수에는 상한이 없습니다):"
     ],
     "Every finished job recorded in SQLite history.db": "완료된 모든 작업이 SQLite history.db 기록에 저장됨",
-    "Every transcription job you start is tracked here. Use the buttons below the list (or right-click a row) to pause, resume, cancel, re-run, or remove it; double-click a finished row to open its output folder. Speed: 4.8x means 4.8 seconds of audio were transcribed per second of work; below 1x is slower than the recording plays. The time left is a rough estimate.": "시작한 모든 전사 작업이 여기에서 추적됩니다. 목록 아래의 버튼(또는 행을 마우스 오른쪽 버튼으로 클릭)으로 일시 정지, 재개, 취소, 다시 실행, 제거할 수 있습니다. 완료된 행을 두 번 클릭하면 출력 폴더가 열립니다. 속도: 4.8x는 작업 1초당 오디오 4.8초를 전사했다는 뜻이며, 1x 미만은 녹음 재생보다 느린 것입니다. 남은 시간은 대략적인 예상치입니다.",
     "Exit": "종료",
     "Exit with queued tasks": "대기 중인 작업이 있는 채로 종료",
     "Export failed": "내보내기 실패",

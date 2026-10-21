@@ -345,7 +345,6 @@
       "事件（由舊到新，顯示 {n} 筆；記錄檔保留最近 {size} 筆被拒絕或未傳送的紀錄和最近 {size} 筆被允許的紀錄；上方的計數沒有上限）："
     ],
     "Every finished job recorded in SQLite history.db": "每個已完成的任務都記錄在 SQLite history.db 中",
-    "Every transcription job you start is tracked here. Use the buttons below the list (or right-click a row) to pause, resume, cancel, re-run, or remove it; double-click a finished row to open its output folder. Speed: 4.8x means 4.8 seconds of audio were transcribed per second of work; below 1x is slower than the recording plays. The time left is a rough estimate.": "你啟動的每個轉錄任務都在這裡追蹤。使用清單下方的按鈕（或在某一列上按右鍵）來暫停、繼續、取消、重新執行或移除任務；按兩下已完成的列可開啟其輸出資料夾。速度：4.8x 表示每處理 1 秒轉錄了 4.8 秒音訊；低於 1x 則比錄音播放還慢。剩餘時間為粗略估算。",
     "Exit": "結束",
     "Exit with queued tasks": "在有排隊任務時結束",
     "Export failed": "匯出失敗",

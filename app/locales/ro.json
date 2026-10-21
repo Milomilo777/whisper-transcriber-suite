@@ -351,7 +351,6 @@
       "Evenimente (cele mai vechi primele, {n} afișate; jurnalul păstrează ultimele {size} refuzate sau netrimise și ultimele {size} permise; numărătorile de mai sus nu sunt limitate):"
     ],
     "Every finished job recorded in SQLite history.db": "Fiecare lucrare finalizată este înregistrată în istoricul SQLite history.db",
-    "Every transcription job you start is tracked here. Use the buttons below the list (or right-click a row) to pause, resume, cancel, re-run, or remove it; double-click a finished row to open its output folder. Speed: 4.8x means 4.8 seconds of audio were transcribed per second of work; below 1x is slower than the recording plays. The time left is a rough estimate.": "Fiecare lucrare de transcriere pe care o porniți este urmărită aici. Folosiți butoanele de sub listă (sau clic dreapta pe un rând) pentru a o întrerupe, relua, anula, rula din nou sau elimina; faceți dublu clic pe un rând finalizat pentru a-i deschide dosarul de ieșire. Viteză: 4.8x înseamnă că s-au transcris 4,8 secunde de audio pe secundă de lucru; sub 1x este mai lent decât durata înregistrării. Timpul rămas este o estimare aproximativă.",
     "Exit": "Ieșire",
     "Exit with queued tasks": "Ieșiți cu sarcini în coadă",
     "Export failed": "Exportul a eșuat",

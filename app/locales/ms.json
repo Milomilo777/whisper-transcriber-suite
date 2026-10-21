@@ -345,7 +345,6 @@
       "Peristiwa (terlama dahulu, {n} ditunjukkan; log menyimpan {size} terakhir yang ditolak atau tidak dihantar dan {size} terakhir yang dibenarkan; kiraan di atas tidak dihadkan):"
     ],
     "Every finished job recorded in SQLite history.db": "Setiap tugasan yang selesai direkodkan dalam SQLite history.db",
-    "Every transcription job you start is tracked here. Use the buttons below the list (or right-click a row) to pause, resume, cancel, re-run, or remove it; double-click a finished row to open its output folder. Speed: 4.8x means 4.8 seconds of audio were transcribed per second of work; below 1x is slower than the recording plays. The time left is a rough estimate.": "Setiap tugasan transkripsi yang anda mulakan dijejaki di sini. Gunakan butang di bawah senarai (atau klik kanan pada baris) untuk menjeda, menyambung semula, membatalkan, menjalankan semula atau mengalih keluarnya; klik dua kali pada baris yang selesai untuk membuka folder outputnya. Kelajuan: 4.8x bermaksud 4.8 saat audio ditranskripsi bagi setiap saat kerja; di bawah 1x lebih perlahan daripada rakaman dimainkan. Baki masa ialah anggaran kasar.",
     "Exit": "Keluar",
     "Exit with queued tasks": "Keluar dengan tugasan dalam baris gilir",
     "Export failed": "Eksport gagal",

@@ -351,7 +351,6 @@
       "Udalosti (od najstaršej, zobrazených {n}; denník uchováva posledných {size} odmietnutých či neodoslaných a posledných {size} povolených; počty vyššie nie sú obmedzené):"
     ],
     "Every finished job recorded in SQLite history.db": "Každá dokončená úloha zaznamenaná v histórii SQLite history.db",
-    "Every transcription job you start is tracked here. Use the buttons below the list (or right-click a row) to pause, resume, cancel, re-run, or remove it; double-click a finished row to open its output folder. Speed: 4.8x means 4.8 seconds of audio were transcribed per second of work; below 1x is slower than the recording plays. The time left is a rough estimate.": "Tu sa sleduje každá úloha prepisu, ktorú spustíte. Tlačidlami pod zoznamom (alebo kliknutím pravým tlačidlom na riadok) ju môžete pozastaviť, obnoviť, zrušiť, spustiť znova alebo odstrániť; dvojitým kliknutím na dokončený riadok otvoríte jeho výstupný priečinok. Rýchlosť: 4,8x znamená, že za sekundu práce sa prepísalo 4,8 sekundy zvuku; pod 1x je to pomalšie ako prehrávanie nahrávky. Zostávajúci čas je hrubý odhad.",
     "Exit": "Koniec",
     "Exit with queued tasks": "Ukončiť s úlohami vo fronte",
     "Export failed": "Export zlyhal",

@@ -348,7 +348,6 @@
       "Събития (най-старите първи, показани {n}; дневникът пази последните {size} отказани или неизпратени и последните {size} разрешени; броячите по-горе не са ограничени):"
     ],
     "Every finished job recorded in SQLite history.db": "Всяка завършена задача се записва в SQLite history.db",
-    "Every transcription job you start is tracked here. Use the buttons below the list (or right-click a row) to pause, resume, cancel, re-run, or remove it; double-click a finished row to open its output folder. Speed: 4.8x means 4.8 seconds of audio were transcribed per second of work; below 1x is slower than the recording plays. The time left is a rough estimate.": "Тук се проследява всяка задача за транскрипция, която стартирате. Използвайте бутоните под списъка (или щракнете с десния бутон върху ред), за да я поставите на пауза, продължите, откажете, изпълните отново или премахнете; щракнете два пъти върху завършен ред, за да отворите изходната му папка. Скорост: 4.8x означава, че 4.8 секунди аудио са транскрибирани за секунда работа; под 1x е по-бавно от възпроизвеждането на записа. Оставащото време е груба оценка.",
     "Exit": "Изход",
     "Exit with queued tasks": "Изход със задачи в опашката",
     "Export failed": "Експортирането не успя",

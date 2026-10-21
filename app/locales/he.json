@@ -351,7 +351,6 @@
       "אירועים (הישנים ראשונים, מוצגים {n}; היומן שומר את {size} האחרונים שנחסמו או לא נשלחו ואת {size} האחרונים שהותרו; הספירות למעלה אינן מוגבלות):"
     ],
     "Every finished job recorded in SQLite history.db": "כל משימה שהסתיימה נרשמת בהיסטוריית SQLite history.db",
-    "Every transcription job you start is tracked here. Use the buttons below the list (or right-click a row) to pause, resume, cancel, re-run, or remove it; double-click a finished row to open its output folder. Speed: 4.8x means 4.8 seconds of audio were transcribed per second of work; below 1x is slower than the recording plays. The time left is a rough estimate.": "כל משימת תמלול שאתה מתחיל מוצגת כאן. השתמש בלחצנים שמתחת לרשימה (או לחץ לחיצה ימנית על שורה) כדי להשהות, להמשיך, לבטל, להריץ מחדש או להסיר אותה; לחץ פעמיים על שורה שהסתיימה כדי לפתוח את תיקיית הפלט שלה. מהירות: 4.8x פירושו ש-4.8 שניות שמע תומללו בכל שנייה של עבודה; מתחת ל-1x איטי יותר מאורך ההקלטה. הזמן שנותר הוא הערכה גסה.",
     "Exit": "יציאה",
     "Exit with queued tasks": "יציאה כשיש משימות בתור",
     "Export failed": "הייצוא נכשל",

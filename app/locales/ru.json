@@ -351,7 +351,6 @@
       "События (сначала старые, показано {n}; журнал хранит последние {size} заблокированных или неотправленных и последние {size} разрешённых; счётчики выше не ограничены):"
     ],
     "Every finished job recorded in SQLite history.db": "Каждая завершённая задача записывается в SQLite history.db",
-    "Every transcription job you start is tracked here. Use the buttons below the list (or right-click a row) to pause, resume, cancel, re-run, or remove it; double-click a finished row to open its output folder. Speed: 4.8x means 4.8 seconds of audio were transcribed per second of work; below 1x is slower than the recording plays. The time left is a rough estimate.": "Здесь отслеживается каждая запущенная вами задача транскрипции. Кнопками под списком (или щелчком правой кнопкой по строке) её можно приостановить, продолжить, отменить, запустить снова или удалить; двойной щелчок по завершённой строке открывает её папку результатов. Скорость: 4,8x означает, что за секунду работы транскрибировано 4,8 секунды аудио; ниже 1x — медленнее, чем длится запись. Оставшееся время — приблизительная оценка.",
     "Exit": "Выход",
     "Exit with queued tasks": "Выйти, когда в очереди есть задачи",
     "Export failed": "Ошибка экспорта",

@@ -348,7 +348,6 @@
       "Mga event (pinakaluma muna, {n} ang ipinapakita; itinatabi ng log ang huling {size} na tinanggihan o hindi naipadala at ang huling {size} na pinayagan; walang limitasyon ang mga bilang sa itaas):"
     ],
     "Every finished job recorded in SQLite history.db": "Nakatala sa SQLite history.db ang bawat natapos na gawain",
-    "Every transcription job you start is tracked here. Use the buttons below the list (or right-click a row) to pause, resume, cancel, re-run, or remove it; double-click a finished row to open its output folder. Speed: 4.8x means 4.8 seconds of audio were transcribed per second of work; below 1x is slower than the recording plays. The time left is a rough estimate.": "Sinusubaybayan dito ang bawat transcription na gawaing sinimulan mo. Gamitin ang mga button sa ilalim ng listahan (o i-right click ang isang hilera) para i-pause, ituloy, kanselahin, patakbuhin muli, o alisin ito; i-double click ang natapos na hilera para buksan ang output folder nito. Bilis: ang 4.8x ay nangangahulugang 4.8 segundo ng audio ang na-transcribe kada segundo ng trabaho; ang mas mababa sa 1x ay mas mabagal kaysa sa pag-play ng recording. Magaspang na tantiya ang natitirang oras.",
     "Exit": "Lumabas",
     "Exit with queued tasks": "Lumabas nang may mga gawain sa pila",
     "Export failed": "Nabigo ang pag-export",

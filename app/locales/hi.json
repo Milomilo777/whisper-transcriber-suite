@@ -348,7 +348,6 @@
       "इवेंट (सबसे पुराने पहले, {n} दिखाए गए; लॉग आखिरी {size} रोके गए या न भेजे गए और आखिरी {size} अनुमत इवेंट रखता है; ऊपर की गिनती की कोई सीमा नहीं):"
     ],
     "Every finished job recorded in SQLite history.db": "हर पूरा हुआ कार्य SQLite history.db में दर्ज होता है",
-    "Every transcription job you start is tracked here. Use the buttons below the list (or right-click a row) to pause, resume, cancel, re-run, or remove it; double-click a finished row to open its output folder. Speed: 4.8x means 4.8 seconds of audio were transcribed per second of work; below 1x is slower than the recording plays. The time left is a rough estimate.": "आपके शुरू किए गए हर ट्रांसक्रिप्शन कार्य पर यहां नज़र रखी जाती है। उसे रोकने, जारी रखने, रद्द करने, दोबारा चलाने या हटाने के लिए सूची के नीचे के बटन इस्तेमाल करें (या किसी पंक्ति पर राइट-क्लिक करें); पूरी हुई पंक्ति का आउटपुट फ़ोल्डर खोलने के लिए उस पर डबल-क्लिक करें। गति: 4.8x का मतलब है काम के हर सेकंड में 4.8 सेकंड का ऑडियो ट्रांसक्राइब हुआ; 1x से कम का मतलब रिकॉर्डिंग चलने से भी धीमा। बचा हुआ समय एक मोटा अनुमान है।",
     "Exit": "बाहर निकलें",
     "Exit with queued tasks": "कतार में कार्य होते हुए बाहर निकलें",
     "Export failed": "एक्सपोर्ट विफल",

@@ -345,7 +345,6 @@
       "เหตุการณ์ (เก่าสุดก่อน แสดง {n} รายการ ล็อกเก็บ {size} รายการล่าสุดที่ถูกปฏิเสธหรือไม่ได้ส่ง และ {size} รายการล่าสุดที่อนุญาต จำนวนด้านบนไม่จำกัด):"
     ],
     "Every finished job recorded in SQLite history.db": "งานที่เสร็จทุกงานถูกบันทึกในประวัติ SQLite history.db",
-    "Every transcription job you start is tracked here. Use the buttons below the list (or right-click a row) to pause, resume, cancel, re-run, or remove it; double-click a finished row to open its output folder. Speed: 4.8x means 4.8 seconds of audio were transcribed per second of work; below 1x is slower than the recording plays. The time left is a rough estimate.": "งานถอดเสียงทุกงานที่คุณเริ่มจะถูกติดตามที่นี่ ใช้ปุ่มใต้รายการ (หรือคลิกขวาที่แถว) เพื่อหยุดชั่วคราว ทำต่อ ยกเลิก เรียกใช้ซ้ำ หรือนำออก ดับเบิลคลิกแถวที่เสร็จแล้วเพื่อเปิดโฟลเดอร์ผลลัพธ์ ความเร็ว: 4.8x หมายถึงถอดเสียงได้ 4.8 วินาทีต่อการทำงานหนึ่งวินาที ต่ำกว่า 1x คือช้ากว่าความยาวของไฟล์ เวลาที่เหลือเป็นค่าประมาณคร่าว ๆ",
     "Exit": "ออก",
     "Exit with queued tasks": "ออกทั้งที่มีงานอยู่ในคิว",
     "Export failed": "ส่งออกล้มเหลว",

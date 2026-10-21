@@ -348,7 +348,6 @@
       "Gebeurtenissen (oudste eerst, {n} getoond; het logboek bewaart de laatste {size} geweigerde of niet verzonden en de laatste {size} toegestane; de tellingen hierboven zijn niet begrensd):"
     ],
     "Every finished job recorded in SQLite history.db": "Elke voltooide taak vastgelegd in SQLite history.db",
-    "Every transcription job you start is tracked here. Use the buttons below the list (or right-click a row) to pause, resume, cancel, re-run, or remove it; double-click a finished row to open its output folder. Speed: 4.8x means 4.8 seconds of audio were transcribed per second of work; below 1x is slower than the recording plays. The time left is a rough estimate.": "Elke transcriptietaak die je start, wordt hier bijgehouden. Gebruik de knoppen onder de lijst (of klik met rechts op een rij) om hem te pauzeren, te hervatten, te annuleren, opnieuw uit te voeren of te verwijderen; dubbelklik op een voltooide rij om de uitvoermap te openen. Snelheid: 4.8x betekent dat er per seconde werk 4,8 seconden audio is getranscribeerd; onder 1x is trager dan de opname afspeelt. De resterende tijd is een ruwe schatting.",
     "Exit": "Afsluiten",
     "Exit with queued tasks": "Afsluiten met taken in de wachtrij",
     "Export failed": "Exporteren mislukt",

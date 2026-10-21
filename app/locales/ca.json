@@ -348,7 +348,6 @@
       "Esdeveniments (els més antics primer, se'n mostren {n}; el registre conserva els darrers {size} rebutjats o no enviats i els darrers {size} permesos; els recomptes de dalt no tenen límit):"
     ],
     "Every finished job recorded in SQLite history.db": "Cada tasca acabada es registra a l'historial SQLite history.db",
-    "Every transcription job you start is tracked here. Use the buttons below the list (or right-click a row) to pause, resume, cancel, re-run, or remove it; double-click a finished row to open its output folder. Speed: 4.8x means 4.8 seconds of audio were transcribed per second of work; below 1x is slower than the recording plays. The time left is a rough estimate.": "Aquí se segueix cada tasca de transcripció que inicieu. Feu servir els botons de sota la llista (o feu clic amb el botó dret en una fila) per posar-la en pausa, reprendre-la, cancel·lar-la, tornar-la a executar o suprimir-la; feu doble clic en una fila acabada per obrir-ne la carpeta de sortida. Velocitat: 4.8x vol dir que s'han transcrit 4,8 segons d'àudio per cada segon de treball; per sota d'1x és més lent que la reproducció de l'enregistrament. El temps restant és una estimació aproximada.",
     "Exit": "Surt",
     "Exit with queued tasks": "Surt amb tasques a la cua",
     "Export failed": "Ha fallat l'exportació",

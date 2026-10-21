@@ -100,6 +100,26 @@ def test_double_click_opens_the_output_folder_too(tmp_path) -> None:
     assert fake.calls == [("folder", str(tmp_path / "outputs"), str(tmp_path / "outputs" / "talk.srt"))]
 
 
+def _double_click(task) -> types.SimpleNamespace:
+    fake = _fake_app([])
+    fake.tree = types.SimpleNamespace(identify_row=lambda _y: "I0")
+    fake.row_map = {"I0": task}
+    App.queue_row_double_click(fake, types.SimpleNamespace(y=5))  # type: ignore[arg-type]
+    return fake
+
+
+def test_double_click_opens_the_transcript_when_there_is_one(tmp_path) -> None:
+    """The folder made the user find and open the file themselves (deep review, 2026-10-21)."""
+    task = _task("finished", tmp_path, out_dir=tmp_path / "outputs", json=True)
+    assert _double_click(task).calls == [("view", task.file_path, "talk.json", "en")]
+
+
+def test_double_click_without_speech_opens_the_folder(tmp_path) -> None:
+    task = _task("finished", tmp_path, out_dir=tmp_path / "outputs", json=True)
+    task.no_speech = True
+    assert _double_click(task).calls[0][0] == "folder"
+
+
 def test_nothing_happens_without_a_finished_row() -> None:
     fake = _fake_app([_task("error")])
     fake._action_bar_view_transcript()

@@ -351,7 +351,6 @@
       "Notikumi (vecākie vispirms, parādīti {n}; žurnāls glabā pēdējos {size} atteiktos vai nenosūtītos un pēdējos {size} atļautos; augstāk norādītie skaitļi nav ierobežoti):"
     ],
     "Every finished job recorded in SQLite history.db": "Katrs pabeigtais uzdevums tiek reģistrēts SQLite history.db",
-    "Every transcription job you start is tracked here. Use the buttons below the list (or right-click a row) to pause, resume, cancel, re-run, or remove it; double-click a finished row to open its output folder. Speed: 4.8x means 4.8 seconds of audio were transcribed per second of work; below 1x is slower than the recording plays. The time left is a rough estimate.": "Šeit tiek izsekots katrs jūsu sāktais transkripcijas uzdevums. Izmantojiet pogas zem saraksta (vai ar peles labo pogu noklikšķiniet uz rindas), lai to pauzētu, turpinātu, atceltu, palaistu vēlreiz vai noņemtu; veiciet dubultklikšķi uz pabeigtas rindas, lai atvērtu tās izvades mapi. Ātrums: 4.8x nozīmē, ka vienā darba sekundē transkribētas 4,8 sekundes audio; zem 1x ir lēnāk, nekā ieraksts tiek atskaņots. Atlikušais laiks ir aptuvens aprēķins.",
     "Exit": "Iziet",
     "Exit with queued tasks": "Iziet ar uzdevumiem rindā",
     "Export failed": "Eksportēšana neizdevās",

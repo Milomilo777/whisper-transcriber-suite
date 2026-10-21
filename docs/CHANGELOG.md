@@ -111,6 +111,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   one job on a CPU, two once a GPU is in use. A number set by hand other than the old default 2
   is kept.
 
+- **Double-click a finished Queue job to read it**: it opens the transcript viewer, as **View
+  transcript** does (it opened the folder). A job without a transcript `.json` or without speech
+  still opens its folder.
+
 - **Plainer words on the Download tab and the subtitles question**: "URL" is now **Video link**;
   the note under it says "This video already has German subtitles made by the uploader. Use them
   instead of transcribing?" (was "Captions (creator-provided) are already available in "de" --

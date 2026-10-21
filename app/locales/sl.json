@@ -354,7 +354,6 @@
       "Dogodki (najstarejši najprej, prikazanih {n}; dnevnik hrani zadnjih {size} zavrnjenih ali neposlanih in zadnjih {size} dovoljenih; zgornji števci niso omejeni):"
     ],
     "Every finished job recorded in SQLite history.db": "Vsako dokončano opravilo, zabeleženo v zgodovini SQLite history.db",
-    "Every transcription job you start is tracked here. Use the buttons below the list (or right-click a row) to pause, resume, cancel, re-run, or remove it; double-click a finished row to open its output folder. Speed: 4.8x means 4.8 seconds of audio were transcribed per second of work; below 1x is slower than the recording plays. The time left is a rough estimate.": "Tu se spremlja vsako opravilo prepisa, ki ga zaženete. Z gumbi pod seznamom (ali z desnim klikom na vrstico) ga začasno ustavite, nadaljujete, prekličete, znova zaženete ali odstranite; dvokliknite dokončano vrstico, da odprete njeno izhodno mapo. Hitrost: 4.8x pomeni, da je bilo na sekundo dela prepisanih 4,8 sekunde zvoka; pod 1x je počasneje od predvajanja posnetka. Preostali čas je groba ocena.",
     "Exit": "Izhod",
     "Exit with queued tasks": "Izhod z opravili v vrsti",
     "Export failed": "Izvoz ni uspel",

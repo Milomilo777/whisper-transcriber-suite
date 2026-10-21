@@ -348,7 +348,6 @@
       "Eventos (do mais antigo, {n} exibidos; o log guarda os últimos {size} recusados ou não enviados e os últimos {size} permitidos; as contagens acima não têm limite):"
     ],
     "Every finished job recorded in SQLite history.db": "Toda tarefa concluída registrada no histórico SQLite history.db",
-    "Every transcription job you start is tracked here. Use the buttons below the list (or right-click a row) to pause, resume, cancel, re-run, or remove it; double-click a finished row to open its output folder. Speed: 4.8x means 4.8 seconds of audio were transcribed per second of work; below 1x is slower than the recording plays. The time left is a rough estimate.": "Toda tarefa de transcrição que você inicia é acompanhada aqui. Use os botões abaixo da lista (ou clique com o botão direito em uma linha) para pausar, retomar, cancelar, executar de novo ou remover; clique duas vezes em uma linha concluída para abrir a pasta de saída. Velocidade: 4.8x significa que 4,8 segundos de áudio foram transcritos por segundo de trabalho; abaixo de 1x é mais lento que a reprodução da gravação. O tempo restante é uma estimativa aproximada.",
     "Exit": "Sair",
     "Exit with queued tasks": "Sair com tarefas na fila",
     "Export failed": "Falha na exportação",

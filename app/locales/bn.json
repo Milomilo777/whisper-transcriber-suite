@@ -348,7 +348,6 @@
       "ঘটনাসমূহ (পুরোনোটি আগে, {n}টি দেখানো হচ্ছে; লগ শেষ {size}টি প্রত্যাখ্যাত বা না-পাঠানো এবং শেষ {size}টি অনুমোদিত রাখে; উপরের গণনার কোনো সীমা নেই):"
     ],
     "Every finished job recorded in SQLite history.db": "প্রতিটি শেষ হওয়া কাজ SQLite history.db-তে লিপিবদ্ধ",
-    "Every transcription job you start is tracked here. Use the buttons below the list (or right-click a row) to pause, resume, cancel, re-run, or remove it; double-click a finished row to open its output folder. Speed: 4.8x means 4.8 seconds of audio were transcribed per second of work; below 1x is slower than the recording plays. The time left is a rough estimate.": "আপনার শুরু করা প্রতিটি ট্রান্সক্রিপশন কাজ এখানে দেখা যায়। বিরতি, আবার শুরু, বাতিল, আবার চালানো বা সরাতে তালিকার নিচের বোতামগুলো ব্যবহার করুন (বা একটি সারিতে রাইট-ক্লিক করুন); শেষ হওয়া সারিতে ডাবল-ক্লিক করলে তার আউটপুট ফোল্ডার খোলে। গতি: 4.8x মানে কাজের প্রতি সেকেন্ডে 4.8 সেকেন্ডের অডিও ট্রান্সক্রাইব হয়েছে; 1x-এর নিচে মানে রেকর্ডিং বাজার চেয়ে ধীর। বাকি সময় একটি মোটামুটি অনুমান।",
     "Exit": "প্রস্থান করুন",
     "Exit with queued tasks": "সারিতে কাজ রেখে প্রস্থান করবেন",
     "Export failed": "রপ্তানি ব্যর্থ হয়েছে",

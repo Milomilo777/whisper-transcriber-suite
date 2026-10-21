@@ -1495,7 +1495,7 @@ def build_queue_tab(app: "App", parent: ttk.Frame) -> None:
         _("Every transcription job you start is tracked here. Use the "
           "buttons below the list (or right-click a row) to pause, resume, "
           "cancel, re-run, or remove it; double-click a finished row to "
-          "open its output folder. Speed: 4.8x means 4.8 seconds of audio "
+          "open its transcript. Speed: 4.8x means 4.8 seconds of audio "
           "were transcribed per second of work; below 1x is slower than the "
           "recording plays. The time left is a rough estimate."),
     ).pack(side="left")
