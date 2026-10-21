@@ -44,7 +44,7 @@ from tkinter import filedialog, messagebox, simpledialog, ttk
 from typing import Any, Callable, Collection, Optional
 
 from app.dialogs import share_page, viewer_exports
-from app import mac_native, shortcuts
+from app import mac_native, rtl_layout, shortcuts
 from app.i18n import N_, _, lazy, ngettext, pgettext, plain, translate
 from app.dpi import place_over, px, scaled_size
 from app.theme import script_fonts, tokens
@@ -976,6 +976,8 @@ class TranscriptViewer(tk.Toplevel):
         self._right_notebook.add(media_tab, text=_("Media"))
         self._right_notebook.add(chapters_tab, text=_("Chapters"))
         self._right_notebook.add(ai_tab, text=_("AI Tools"))
+        # Right-to-left interface: first tab at the right (the tabs are never picked by index).
+        rtl_layout.mirror_notebook(self._right_notebook)
         self._build_media_panel(media_tab)
         self._build_chapters_panel(chapters_tab)
         self._build_ai_panel(ai_tab)

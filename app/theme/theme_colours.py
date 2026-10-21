@@ -17,6 +17,7 @@ import tkinter as tk
 from collections.abc import Iterator
 from tkinter import ttk
 
+from app import rtl_layout
 from app.theme import tokens
 
 logger = logging.getLogger(__name__)
@@ -120,8 +121,10 @@ def fix_accent_button(root: tk.Misc) -> None:
 
 
 def apply(root: tk.Misc, theme: str) -> int:
-    """Call after every ``sv_ttk.set_theme``: record the theme, then recolour existing widgets."""
+    """Call after every ``sv_ttk.set_theme``: record the theme, then recolour existing widgets
+    and define the right-to-left twin styles again (ttk layouts live per theme)."""
     tokens.set_theme(theme)
     changed = recolour(root, theme)
+    rtl_layout.refresh_styles(root)
     logger.debug("Theme %s: %d widget colours swapped", theme, changed)
     return changed

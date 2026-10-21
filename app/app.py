@@ -26,7 +26,7 @@ from app.dialogs.quick_start import (
     should_show,
 )
 from app.dialogs import share_page
-from app import desktop_alert, mac_native, shortcuts
+from app import desktop_alert, mac_native, rtl_layout, shortcuts
 from app.i18n import N_, _, ngettext, pgettext, plain, translate
 from app.dialogs.transcript_viewer import confirm_unsaved_before_exit as confirm_unsaved_viewers_before_exit
 from app.dialogs.transcript_viewer import dirty_viewers as _dirty_viewers_now
@@ -1476,6 +1476,9 @@ class App(tk.Tk):
         self._hub_setup_open = False
         mac_native.install(self)
         self._refresh_update_signs()
+        # Right-to-left interface: every dialog is mirrored once when it first shows; the
+        # tabs are mirrored one by one at the end of _build_tabs (the root is never).
+        rtl_layout.install_window_hook(self)
         self._build_tabs()
         self.txt = build_console(self, theme=_resolve_theme(self.theme_var.get()))
         self._refresh_offline_status()
@@ -2221,6 +2224,7 @@ class App(tk.Tk):
         if bar is None:
             from app.widgets.offline_status import OfflineStatusBar
             bar = OfflineStatusBar(self, post_to_main=self.post_to_main)
+            rtl_layout.mirror_tree(bar)
             self._offline_bar = bar
         bar.show(before=nb)
 
@@ -2931,6 +2935,14 @@ class App(tk.Tk):
         build_server_tab(self, fit_or_scroll(self.t5))
         if self._voice_clone_tab_visible:
             build_voice_clone_tab(self, fit_or_scroll(self.t7))
+        # Right-to-left interface (app.rtl_layout): mirror each finished tab once, right-align
+        # the tab strip and reverse its order. The video-site tab keeps its English layout.
+        # Widgets packed later use rtl_layout.pack_kw at their call site. (Plain function
+        # calls: a test runs _build_tabs on a bare Tk host.)
+        rtl_layout.keep_ltr(self.t8)
+        for tab in (self.t1, self.t2, self.t3, self.t5, self.t6, self.t7, self.t8):
+            rtl_layout.mirror_tree(tab)
+        rtl_layout.mirror_notebook(self.nb)
 
     def _save_auto_transcribe_pref(self) -> None:
         self.app_config["auto_transcribe_after_download"] = bool(self.auto_transcribe_var.get())
@@ -3015,8 +3027,8 @@ class App(tk.Tk):
                 # back in front of "Time range", where build_transcribe_tab put it
                 anchor = _inst_attr(self, "transcribe_time_range_label")
                 where = {"before": anchor} if anchor is not None else {}
-                label.pack(side="left", **where)
-                combo.pack(side="left", padx=(6, 2), **where)
+                label.pack(**rtl_layout.pack_kw(label, side="left", **where))
+                combo.pack(**rtl_layout.pack_kw(combo, side="left", padx=(6, 2), **where))
         except tk.TclError:
             logger.debug("Could not sync the speakers option", exc_info=True)
 
@@ -3614,9 +3626,9 @@ class App(tk.Tk):
                 note = _("{model} model: downloads on first use", model=model)
             note_var.set(note)
             if pick is not None and not pick.winfo_manager():
-                pick.pack(side="left")
+                pick.pack(**rtl_layout.pack_kw(pick, side="left"))
             if link is not None and not link.winfo_manager():
-                link.pack(side="left", padx=(12, 0))
+                link.pack(**rtl_layout.pack_kw(link, side="left", padx=(12, 0)))
         except Exception:  # noqa: BLE001
             logger.debug("Could not redraw the Accuracy row", exc_info=True)
 
@@ -4004,9 +4016,9 @@ class App(tk.Tk):
                 # Before the status text, so a long error can't push it out.
                 label = getattr(self, "format_status_label", None)
                 if label is not None:
-                    button.pack(side="left", padx=(0, 10), before=label)
+                    button.pack(**rtl_layout.pack_kw(button, side="left", padx=(0, 10), before=label))
                 else:
-                    button.pack(side="left", padx=(0, 10))
+                    button.pack(**rtl_layout.pack_kw(button, side="left", padx=(0, 10)))
             elif not needed and packed:
                 button.pack_forget()
         except tk.TclError:
@@ -4092,7 +4104,7 @@ class App(tk.Tk):
             )
         var.set(text)
         if text:
-            label.pack(anchor="w", pady=(2, 0))
+            label.pack(**rtl_layout.pack_kw(label, anchor="w", pady=(2, 0)))
         else:
             label.pack_forget()
 
@@ -4158,7 +4170,7 @@ class App(tk.Tk):
             text = _("This video has automatic subtitles. Use them instead of "
                      "transcribing? (They can be less accurate.)")
         status_var.set(text)
-        button.pack(side="left", padx=(10, 0))
+        button.pack(**rtl_layout.pack_kw(button, side="left", padx=(10, 0)))
 
     def model_status(self, msg: str) -> None:
         # Display only. Worker readiness is tracked authoritatively via the
@@ -5881,7 +5893,7 @@ class App(tk.Tk):
                 if hint.winfo_manager():
                     hint.pack_forget()
             elif not hint.winfo_manager():
-                hint.pack(side="left", padx=(6, 0), after=buttons["remove"])
+                hint.pack(**rtl_layout.pack_kw(hint, side="left", padx=(6, 0), after=buttons["remove"]))
         task = queue_result_task(list(self._selected_tasks()))
         result_buttons = getattr(self, "queue_result_buttons", {})
         if "view" in result_buttons:
@@ -6176,7 +6188,7 @@ class App(tk.Tk):
             steps += " " + _("The code and the copied link include your access password: show "
                              "them only to people who may use this page.")
         self.server_qr_note_var.set(steps)
-        frame.pack(anchor="w", pady=(0, 12), after=self.server_url_label)
+        frame.pack(**rtl_layout.pack_kw(frame, anchor="w", pady=(0, 12), after=self.server_url_label))
 
     def _hide_phone_link(self) -> None:
         self._phone_link = ""
@@ -6653,6 +6665,7 @@ class App(tk.Tk):
                 ),
             ).pack(side="left", padx=(8, 0))
 
+        rtl_layout.mirror_tree(self.last_result_body)  # built fresh above, so exactly once
         self.last_result_body.pack(fill="both", expand=True)
         # Chime + log so the user notices even if they're on another
         # tab. The bell is one short cross-platform beep; suppressed
@@ -7006,6 +7019,7 @@ class App(tk.Tk):
                 on_later=self._update_later,
                 on_skip=self._update_skip,
             )
+            rtl_layout.mirror_tree(bar)
             self._update_bar = bar
         bar.show(
             _updates.bar_text(info.latest_tag, _APP_VERSION, info.headline),
@@ -7101,6 +7115,7 @@ class App(tk.Tk):
                 on_not_now=self._hide_star_bar,
                 on_never=self._star_never,
             )
+            rtl_layout.mirror_tree(bar)
             self._star_bar = bar
         bar.show(translate(_STAR_BAR_TEXT), before=self.nb)
 
@@ -7151,6 +7166,7 @@ class App(tk.Tk):
             bar = DownloaderUpdateBar(
                 self, on_update=self._yt_dlp_update_now, on_dismiss=self._yt_dlp_bar_dismiss,
             )
+            rtl_layout.mirror_tree(bar)
             self._yt_dlp_bar = bar
         return bar
 

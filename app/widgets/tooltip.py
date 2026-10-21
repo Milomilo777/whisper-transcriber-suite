@@ -13,6 +13,7 @@ import tkinter as tk
 from tkinter import font as tkfont
 from tkinter import ttk
 from typing import Any, Callable, Union
+from app import rtl_layout
 from app.dpi import px
 from app.theme import tokens
 
@@ -51,6 +52,9 @@ def bind_tooltip(
 
     def _position(tip: tk.Toplevel) -> tuple[int, int]:
         x = widget.winfo_rootx() + 12
+        if rtl_layout.active():
+            # Mirrored: hangs from the widget's right edge, growing leftwards.
+            x = max(widget.winfo_rootx() + widget.winfo_width() - 12 - tip.winfo_reqwidth(), 0)
         y = widget.winfo_rooty() + widget.winfo_height() + 4
         # Keep the popup on-screen near the right/bottom edges — but only
         # when the widget itself is on the primary monitor:
@@ -91,6 +95,7 @@ def bind_tooltip(
                 relief="solid", borderwidth=1, wraplength=px(wraplength),
                 padx=6, pady=4,
             ).pack()
+            rtl_layout.mirror_window(tip)  # right-justified text; the map hook then skips it
             tip.update_idletasks()
             x, y = _position(tip)
             # Always a literal "+": Tk reads "+-500" as a left edge at -500

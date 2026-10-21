@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any, Callable
 
 from app.domain.cookies import cookie_browser_choices, cookie_browser_label
 from app.domain.languages import SUBTITLE_LANGUAGES, caption_language_name, subtitle_language_label
+from app import rtl_layout
 from app.dpi import px
 from app.i18n import N_, _, pgettext, translate
 from app.theme import tokens
@@ -1400,7 +1401,8 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
 
     def _on_mixed_changed() -> None:
         if app.mixed_lang_var.get():
-            app.transcribe_lang2_frame.pack(side="left", padx=(12, 0), after=mixed_check)
+            app.transcribe_lang2_frame.pack(
+                **rtl_layout.pack_kw(app.transcribe_lang2_frame, side="left", padx=(12, 0), after=mixed_check))
         else:
             app.transcribe_lang2_frame.pack_forget()
 
@@ -1513,7 +1515,8 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
             _set_style(transcribe_btn, style="TButton")
             _set_style(ready_label, foreground=tokens.themed(tokens.TEXT_MUTED))
             if not shown:
-                app.transcribe_show_in_queue_btn.pack(side="left", padx=(8, 0), after=ready_label)
+                app.transcribe_show_in_queue_btn.pack(
+                    **rtl_layout.pack_kw(app.transcribe_show_in_queue_btn, side="left", padx=(8, 0), after=ready_label))
             return
         if shown:
             app.transcribe_show_in_queue_btn.pack_forget()
@@ -2116,8 +2119,8 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
 
     def _toggle(*, visible: bool) -> None:
         if visible:
-            smtv_frame.grid(row=5, column=1, columnspan=2, sticky="w",
-                            padx=(6, 0), pady=(4, 0))
+            smtv_frame.grid(**rtl_layout.grid_kw(
+                top, row=5, column=1, columnspan=2, sticky="w", padx=(6, 0), pady=(4, 0)))
         else:
             smtv_frame.grid_remove()
 

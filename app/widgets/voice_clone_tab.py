@@ -37,6 +37,7 @@ from pathlib import Path
 from tkinter import filedialog, ttk
 from typing import Any
 
+from app import rtl_layout
 from app.dpi import px
 from app.i18n import N_, _, ngettext, pgettext, translate
 from app.theme import script_fonts
@@ -1209,7 +1210,7 @@ def _show_confirm(app: Any) -> None:
         text=_("Use the finished file") if finished
         else _("Continue the unfinished job") if plan.resume_done else _("Start"))
     shown = app.vc_confirm_measure_btn if measure else app.vc_confirm_start_btn
-    shown.pack(side="left", before=app.vc_confirm_cancel_btn)
+    shown.pack(**rtl_layout.pack_kw(shown, side="left", before=app.vc_confirm_cancel_btn))
     shown.configure(state="normal" if finished or _can_start(plan) else "disabled")
     if plan.resume_done or finished:
         app.vc_confirm_restart_btn.pack(side="left", padx=(8, 0),

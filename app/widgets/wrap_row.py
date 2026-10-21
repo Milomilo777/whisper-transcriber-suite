@@ -18,6 +18,8 @@ from __future__ import annotations
 import tkinter as tk
 from tkinter import ttk
 
+from app import rtl_layout
+
 
 def flow_rows(widths: list[int], gap: int, available: int) -> list[list[int]]:
     """Indexes of ``widths`` grouped into lines, greedily, so that each line's cells plus
@@ -41,9 +43,11 @@ def flow_rows(widths: list[int], gap: int, available: int) -> list[list[int]]:
 
 class WrapRow(ttk.Frame):
     """``row = WrapRow(parent, gap=18)``; build each cell as a child of ``row`` and
-    ``row.add(cell)`` it. Cells are laid out left to right and flow onto further lines
-    when the row's width cannot hold them (``line_gap`` pixels between lines). Grid the
-    row with ``sticky="ew"`` in a column that may shrink (one with a weight)."""
+    ``row.add(cell)`` it. Cells are laid out left to right (right to left in a mirrored
+    interface: the row places its own cells, so ``rtl_layout.mirror_tree`` keeps their slots
+    and mirrors only their contents) and flow onto further lines when the row's width cannot
+    hold them (``line_gap`` pixels between lines). Grid the row with ``sticky="ew"`` in a
+    column that may shrink (one with a weight)."""
 
     def __init__(self, parent: tk.Misc, *, gap: int = 18, line_gap: int = 4) -> None:
         super().__init__(parent)
@@ -52,6 +56,7 @@ class WrapRow(ttk.Frame):
         self._cells: list[tk.Widget] = []
         self._lines: list[list[int]] = [[]]
         self.grid_propagate(False)
+        rtl_layout.manages_own_layout(self)
         self.bind("<Configure>", lambda e: self.reflow(int(e.width)), add="+")
 
     @property
@@ -80,11 +85,17 @@ class WrapRow(ttk.Frame):
             self._apply()
 
     def _apply(self) -> None:
+        # Mirrored: the first cell of every line takes the rightmost column, so a short
+        # last line still starts at the right edge, and the gap sits on a cell's right.
+        rtl = rtl_layout.active()
+        ncols = max(len(line) for line in self._lines)
         for line_no, line in enumerate(self._lines):
-            for column, index in enumerate(line):
+            for position, index in enumerate(line):
+                gap = 0 if position == 0 else self._gap
                 self._cells[index].grid(
-                    row=line_no, column=column, sticky="w",
-                    padx=(0 if column == 0 else self._gap, 0),
+                    row=line_no, column=ncols - 1 - position if rtl else position,
+                    sticky="e" if rtl else "w",
+                    padx=(0, gap) if rtl else (gap, 0),
                     pady=(0 if line_no == 0 else self._line_gap, 0),
                 )
         self._fit()

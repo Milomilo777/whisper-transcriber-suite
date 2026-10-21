@@ -173,19 +173,39 @@ left-to-right places.
 
 Check how an `rtl` catalog looks on Windows before setting `"reviewed"`.
 
-### Mirroring the layout (`app/rtl_layout.py`, not yet wired in)
+### Mirroring the layout (`app/rtl_layout.py`)
 
 Tk has no right-to-left layout mode, so `rtl_layout.mirror_tree(widget)` reflects a finished
 widget tree once, after it is built: pack sides left/right, anchors and `padx` are swapped; grid
 columns move to `ncols - column - columnspan` with their stickiness, `padx` and column weights;
 labels and buttons get the opposite `anchor` and `justify`, so a scrollbar packed on the right
-ends up on the left. It does nothing in a left-to-right interface (`rtl_layout.active()` follows
-`i18n.rtl_marks()`; `WTS_RTL_LAYOUT=1` or `0` overrides it for a manual try). Each flip is an
-involution: a second pass restores the original, so a tree is mirrored exactly once. The insides
-of Entry, Combobox, Spinbox, Text, Listbox, Treeview and Canvas widgets are left as they are (a
-path or URL still reads left to right), and so is everything under a widget marked with
-`rtl_layout.keep_ltr(widget)`; such widgets still take the mirrored slot among their siblings.
-Place-managed slaves and menus are not mirrored. Tests: `tests/app/test_rtl_layout.py`.
+ends up on the left; a `ttk.Treeview` gets its `displaycolumns` reversed (the column ids stay)
+and its cell and heading anchors mirrored; a `ttk.Checkbutton` / `ttk.Radiobutton` is
+switched to an `Rtl.` twin style whose layout puts the indicator at the right of the text
+(`rtl_style`; `theme_colours.apply` defines the twins again after a theme switch, since ttk
+layouts live per theme). It does nothing in a left-to-right interface
+(`rtl_layout.active()` follows `i18n.rtl_marks()`, so only on Windows today; `WTS_RTL_LAYOUT=1`
+or `0` overrides it for a manual try). Each flip is an involution: a second pass restores the
+original, so a tree is mirrored exactly once. The insides of Entry, Combobox, Spinbox, Text and
+Listbox widgets are left as they are (a path, a URL, a time or a log line still reads left to
+right), and so is everything under a widget marked with `rtl_layout.keep_ltr(widget)`; such
+widgets still take the mirrored slot among their siblings.
+
+Where it is wired in: `App._build_tabs` mirrors each main tab after it is built, right-aligns
+the tab strip (`TNotebook` `tabposition` `ne`) and reverses the tab order, so the first tab is
+the rightmost one (the code selects tabs by widget, never by index; the video-site tab keeps its
+English layout through `keep_ltr`; the transcript viewer's inner notebook is reversed the same
+way). Every dialog is mirrored once when it first shows
+(`rtl_layout.install_window_hook`, a `<Map>` binding on the main window), so a new `Toplevel`
+needs no call of its own as long as it is built in full before it shows. A row packed or gridded
+later (a toggle that shows a line, the Last result card, the notice bars above the tabs) goes
+through `rtl_layout.pack_kw(widget, ...)` / `rtl_layout.grid_kw(master, ...)` at its call site
+(they flip only into a master the pass has visited, so the same code may also run at build
+time), or a fresh subtree is passed to `mirror_tree` once. `WrapRow` lays its cells out right to left itself
+(`manages_own_layout`), and a tooltip is right-justified and hangs from the widget's right edge.
+What Tk cannot mirror: the menu bar, native message boxes and file pickers, the `#0` column of a
+tree, and place-managed widgets. Tests: `tests/app/test_rtl_layout.py` (the helper) and
+`tests/app/test_rtl_wiring.py` (the app, with the English layout checked unchanged).
 
 ## The translated READMEs
 
