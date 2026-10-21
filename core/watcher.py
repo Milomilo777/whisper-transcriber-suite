@@ -10,10 +10,10 @@ clear "unavailable" label in that case).
 """
 from __future__ import annotations
 
-import functools
 import logging
 import os
 import re
+import subprocess
 import threading
 import unicodedata
 from typing import Any, Callable
@@ -86,6 +86,8 @@ def is_transcribable(path: str) -> bool:
     format ffmpeg reads (``.amr`` phone recordings, ``.caf``, ``.mxf``...), so any
     other existing file is accepted when ffprobe finds an audio stream in it. A
     README picked by mistake is refused here instead of becoming a job that fails.
+    When ffprobe cannot answer (missing, locked file, timeout) the file is accepted:
+    the worker then reports the real failure, with its reason.
     """
     if is_media_file(path):
         return True
@@ -95,15 +97,41 @@ def is_transcribable(path: str) -> bool:
         return False
     if not os.path.isfile(path):
         return False
-    return _probe_has_audio(path, st.st_size, st.st_mtime_ns)
+    key = (path, st.st_size, st.st_mtime_ns)
+    known = _probe_cache.get(key)
+    if known is not None:
+        return known
+    answer = _ffprobe_has_audio(path)
+    if answer is None:
+        return True
+    if len(_probe_cache) >= _PROBE_CACHE_MAX:
+        _probe_cache.clear()
+    _probe_cache[key] = answer
+    return answer
 
 
-@functools.lru_cache(maxsize=64)
-def _probe_has_audio(path: str, size: int, mtime_ns: int) -> bool:
-    """One ffprobe per file version (size and mtime are part of the cache key)."""
-    from . import burn_subs
+# ffprobe's definite answers per file version (path, size, mtime_ns); the file
+# ready line asks on every edit of the Selected file box.
+_probe_cache: dict[tuple[str, int, int], bool] = {}
+_PROBE_CACHE_MAX = 64
 
-    return bool(burn_subs.probe_media(path, timeout=5.0).audio_codec)
+
+def _ffprobe_has_audio(path: str) -> bool | None:
+    """Whether ffprobe finds an audio stream; None when ffprobe could not run or timed out."""
+    from ._proc import new_session_kwargs
+    from .paths import bundled_binary
+
+    try:
+        r = subprocess.run(
+            [bundled_binary("ffprobe"), "-v", "error", "-select_streams", "a",
+             "-show_entries", "stream=codec_type", "-of", "csv=p=0", path],
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL,
+            timeout=5.0, **new_session_kwargs(),
+        )
+    except (OSError, subprocess.SubprocessError) as e:
+        logger.info("ffprobe could not check %s (%s); accepting it", path, e)
+        return None
+    return r.returncode == 0 and b"audio" in (r.stdout or b"")
 
 
 def watch_skip_reason(path: str) -> str:

@@ -88,14 +88,8 @@ def test_add_still_reports_a_missing_file(tmp_path) -> None:
 @pytest.fixture
 def no_probe(monkeypatch: pytest.MonkeyPatch) -> list[str]:
     """ffprobe stand-in: only ``.amr`` files hold audio. Collects the error dialogs shown."""
-    from core import burn_subs
-
-    monkeypatch.setattr(
-        burn_subs, "probe_media",
-        lambda path, timeout=60.0: burn_subs.MediaInfo(
-            1.0, False, "amr_nb" if path.endswith(".amr") else ""),
-    )
-    w._probe_has_audio.cache_clear()
+    monkeypatch.setattr(w, "_ffprobe_has_audio", lambda path: path.endswith(".amr"))
+    w._probe_cache.clear()
     shown: list[str] = []
     monkeypatch.setattr(app_mod, "show_error", lambda _m, title, *a, **k: shown.append(title))
     return shown
@@ -119,6 +113,30 @@ def test_add_takes_audio_with_an_unlisted_extension(tmp_path, no_probe: list[str
     fake.fv.set(str(call))
     App.add(fake)  # type: ignore[arg-type]
     assert [t.file_path for t in fake.queue] == [str(call)] and no_probe == []
+
+
+def test_the_ready_line_agrees_with_transcribe(tmp_path, no_probe: list[str]) -> None:
+    from app.widgets.tabs import file_ready_state
+
+    call = tmp_path / "call.amr"
+    call.write_bytes(b"#!AMR\n")
+    notes = tmp_path / "notes.txt"
+    notes.write_text("x", encoding="utf-8")
+    assert file_ready_state(str(call))[0] == "file"
+    assert file_ready_state(str(notes))[0] == "not_media"
+
+
+def test_finder_open_takes_audio_with_an_unlisted_extension(tmp_path, no_probe: list[str]) -> None:
+    call = tmp_path / "call.amr"
+    call.write_bytes(b"#!AMR\n")
+    notes = tmp_path / "notes.txt"
+    notes.write_text("x", encoding="utf-8")
+    fake = _fake_app(_bulk_enqueue=lambda paths: len(paths))
+    App.open_paths(fake, [str(call)], require_media=True)  # type: ignore[arg-type]
+    assert fake.fv.get() == str(call)
+    fake = _fake_app(_bulk_enqueue=lambda paths: len(paths))
+    App.open_paths(fake, [str(notes)], require_media=True)  # type: ignore[arg-type]
+    assert fake.fv.get() == ""
 
 
 def test_bulk_enqueue_skips_files_that_are_not_media(

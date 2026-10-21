@@ -7511,16 +7511,16 @@ class App(tk.Tk):
     ) -> None:
         """Handle dropped items, or files passed on the command line.
 
-        ``require_media``: files that are not audio or video (``core.watcher.is_media_file``)
+        ``require_media``: files that are not audio or video (``core.watcher.is_transcribable``)
         are reported like any unusable item instead of being picked. Off for drops and the
-        command line, which accept any existing file as before; macOS turns it on for files
-        Finder hands over ("Open With" lists the app for any file type).
+        command line (Transcribe and the multi-file queue check them later); macOS turns it on
+        for files Finder hands over ("Open With" lists the app for any file type).
 
         One file is picked in the Transcribe tab, several files (or a
         folder's media files) are queued, a URL goes to the Download tab,
         and anything unusable is reported in the log.
         """
-        from core.watcher import is_media_file
+        from core.watcher import is_transcribable
 
         paths: list[str] = []
         urls: list[str] = []
@@ -7545,7 +7545,7 @@ class App(tk.Tk):
                 else:
                     unsupported.append(s)
             elif os.path.isfile(s):
-                if require_media and not is_media_file(s):
+                if require_media and not is_transcribable(s):
                     unsupported.append(s)
                 else:
                     paths.append(s)

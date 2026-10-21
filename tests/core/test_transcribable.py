@@ -2,28 +2,31 @@
 
 A known media extension is accepted without running ffprobe; any other file is accepted
 only when ffprobe finds an audio stream in it (formats the extension list does not name),
-so a README picked by mistake is turned away instead of queued as a job that fails.
+so a README picked by mistake is turned away instead of queued as a job that fails. When
+ffprobe cannot answer, the file is accepted and that non-answer is not remembered.
 """
 from __future__ import annotations
 
+import subprocess
+
 import pytest
 
-from core import burn_subs, watcher
+from core import watcher
 
 
 @pytest.fixture
 def probes(monkeypatch):
     seen: list[str] = []
+    answers: dict[str, bool | None] = {".amr": True, ".md": False, ".txt": False, ".bin": None}
 
-    def fake_probe(path, timeout=60.0):
+    def fake_probe(path):
         seen.append(path)
-        codec = "amr_nb" if path.endswith(".amr") else ""
-        return burn_subs.MediaInfo(3.0 if codec else 0.0, None if not codec else False, codec)
+        return answers[path[path.rfind("."):]]
 
-    monkeypatch.setattr(burn_subs, "probe_media", fake_probe)
-    watcher._probe_has_audio.cache_clear()
+    monkeypatch.setattr(watcher, "_ffprobe_has_audio", fake_probe)
+    watcher._probe_cache.clear()
     yield seen
-    watcher._probe_has_audio.cache_clear()
+    watcher._probe_cache.clear()
 
 
 def _touch(tmp_path, name, data=b"x"):
@@ -54,9 +57,38 @@ def test_a_missing_file_is_refused_without_a_probe(tmp_path, probes):
 
 def test_the_answer_is_cached_until_the_file_changes(tmp_path, probes):
     path = _touch(tmp_path, "README.md", b"a")
-    watcher.is_transcribable(path)
-    watcher.is_transcribable(path)
+    assert not watcher.is_transcribable(path)
+    assert not watcher.is_transcribable(path), "the cached answer is the probe's answer"
     assert len(probes) == 1
     _touch(tmp_path, "README.md", b"longer now")
     watcher.is_transcribable(path)
     assert len(probes) == 2
+
+
+def test_no_answer_accepts_the_file_and_asks_again_next_time(tmp_path, probes):
+    path = _touch(tmp_path, "locked.bin")
+    assert watcher.is_transcribable(path)
+    assert watcher.is_transcribable(path)
+    assert len(probes) == 2, "a failed probe must not be cached"
+
+
+@pytest.mark.parametrize("error", [
+    FileNotFoundError("ffprobe"), subprocess.TimeoutExpired("ffprobe", 5.0),
+])
+def test_ffprobe_that_cannot_run_gives_no_answer(monkeypatch, tmp_path, error):
+    def boom(*a, **k):
+        raise error
+
+    monkeypatch.setattr(watcher.subprocess, "run", boom)
+    assert watcher._ffprobe_has_audio(_touch(tmp_path, "x.amr")) is None
+
+
+@pytest.mark.parametrize("returncode, stdout, expected", [
+    (0, b"audio\n", True), (0, b"", False), (1, b"audio\n", False),
+])
+def test_ffprobe_answers(monkeypatch, tmp_path, returncode, stdout, expected):
+    monkeypatch.setattr(
+        watcher.subprocess, "run",
+        lambda *a, **k: subprocess.CompletedProcess(a, returncode, stdout=stdout),
+    )
+    assert watcher._ffprobe_has_audio(_touch(tmp_path, "x.amr")) is expected

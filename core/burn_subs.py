@@ -211,7 +211,7 @@ def probe_media(path: str, timeout: float = 60.0) -> MediaInfo:
             raise ValueError(f"ffprobe exit {r.returncode}")
         data = json.loads((r.stdout or b"").decode("utf-8", "replace"))
     except (OSError, ValueError, subprocess.SubprocessError) as e:
-        logger.warning("Could not probe %s (%s)", path, e)
+        logger.warning("Subtitle burn: could not probe %s (%s)", path, e)
         return MediaInfo(0.0, None, "")
     streams = data.get("streams") or []
     try:

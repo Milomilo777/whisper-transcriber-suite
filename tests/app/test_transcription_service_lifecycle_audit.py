@@ -357,3 +357,18 @@ def test_dispatch_clears_the_previous_reason(tmp_path):
     svc.dispatch_waiting()
 
     assert task.error_reason == ""
+
+
+def test_a_restarted_worker_gives_its_job_a_reason(tmp_path):
+    app = MockApp()
+    svc = TranscriptionService(app)  # type: ignore[arg-type]
+    task = MockTask(start_time=time.time(), history_id=1,
+                    file_path=str(tmp_path / "talk.mp3"))
+    worker = _worker(task, _LiveProc(), temporary=False)
+    app.workers.append(worker)
+    svc.stop_worker = MagicMock()
+
+    svc.restart_worker(worker)
+
+    assert task.status == "error"
+    assert "stopped before it finished" in task.error_reason
