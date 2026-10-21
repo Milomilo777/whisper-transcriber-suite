@@ -1420,8 +1420,17 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
             colour = tokens.themed(tokens.TEXT_MUTED)
         _set_style(ready_label, foreground=colour)
 
+    def _tick() -> None:
+        """App.refresh's 500 ms call: redraw only while a job line shows or one should. The
+        Ready line itself stats the box file, which on a sleeping network share would stall
+        the window every tick; the box's trace redraws it when the text changes."""
+        if (running_job_line(app.fv.get(), getattr(app, "queue", []))[0] is None
+                and not app.transcribe_show_in_queue_btn.winfo_manager()):
+            return
+        _sync_ready()
+
     app.fv.trace_add("write", _sync_ready)
-    app.sync_transcribe_ready = _sync_ready
+    app.sync_transcribe_ready = _tick
     _sync_ready()
 
     ttk.Button(

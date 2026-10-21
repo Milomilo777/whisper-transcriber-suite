@@ -127,3 +127,24 @@ def test_the_tab_swaps_the_ready_line_and_show_in_queue_opens_the_row(app, tmp_p
     app.refresh()
     assert app.transcribe_ready_var.get().startswith("Ready: talk.mp3")
     assert not app.transcribe_show_in_queue_btn.winfo_manager()
+
+
+def test_the_idle_tick_does_not_touch_the_box_file(app, tmp_path, monkeypatch) -> None:
+    """App.refresh runs every 500 ms: with no job running it must not stat the box file again
+    (a path on a sleeping network share would stall the window each time). The box's own
+    trace still redraws the line when the text changes."""
+    from app.widgets import tabs
+
+    calls: list[str] = []
+    real = tabs.file_ready_state
+    monkeypatch.setattr(tabs, "file_ready_state", lambda text, *a, **k: calls.append(text) or real(text, *a, **k))
+    media = tmp_path / "talk.mp3"
+    media.write_bytes(b"x" * 1024)
+    app.fv.set(str(media))
+    assert calls
+    calls.clear()
+    for _i in range(3):
+        app.refresh()
+    assert calls == []
+    app.fv.set("")
+    assert calls == [""]
