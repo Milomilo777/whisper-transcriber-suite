@@ -240,6 +240,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   again for the whole file in one language, so its saved progress no longer matched. History now
   records both options and the resume puts them back.
 
+- **Pause and Resume always reach the transcription in the order clicked**: a quick Pause then
+  Resume could arrive at the transcription process reversed, leaving it waiting at the next
+  segment while the window said running. Commands to one transcription are now written in the
+  order they were sent.
 - **A download resumed right after it ended keeps running**: pausing and resuming a download in
   the moment its previous attempt had just finished or failed could mark the resumed run as
   finished or failed while it was still downloading, start its transcription early and let the

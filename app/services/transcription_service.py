@@ -701,6 +701,11 @@ class TranscriptionService:
                 # written from three different daemon threads — the lock
                 # keeps their JSON lines from interleaving on the pipe.
                 "stdin_lock": threading.Lock(),
+                # Keeps those writes in the order they were requested:
+                # _take_send_ticket / _ordered_stdin_write.
+                "send_cv": threading.Condition(),
+                "send_seq": 0,
+                "send_next": 0,
             }
             app.next_worker_id += 1
             app.workers.append(worker)
@@ -1902,6 +1907,43 @@ class TranscriptionService:
             stdin.write(msg)
             stdin.flush()
 
+    @staticmethod
+    def _take_send_ticket(worker: dict[str, Any]) -> int:
+        """Reserve the next place in the worker's write order (Tk thread).
+
+        The stdin lock only keeps lines whole; it does not say which of two
+        writer threads gets it first. A pause and a quick resume are two
+        threads, and a scheduler delay before the first one takes the lock
+        let the resume reach the worker first: the worker then applied
+        pause last and waited at its next segment boundary while the window
+        said running. The ticket is taken in the caller's order and
+        ``_ordered_stdin_write`` honours it.
+        """
+        cv = worker.get("send_cv")
+        if cv is None:
+            cv = worker["send_cv"] = threading.Condition()
+        with cv:
+            ticket = int(worker.get("send_seq", 0))
+            worker["send_seq"] = ticket + 1
+        return ticket
+
+    def _ordered_stdin_write(self, worker: dict[str, Any], ticket: int, msg: str) -> None:
+        """``_locked_stdin_write`` once every earlier ticket has written (or
+        failed): a failed write still passes the turn on."""
+        cv = worker.get("send_cv")
+        if cv is None:
+            self._locked_stdin_write(worker, msg)
+            return
+        with cv:
+            while int(worker.get("send_next", 0)) != ticket:
+                cv.wait()
+        try:
+            self._locked_stdin_write(worker, msg)
+        finally:
+            with cv:
+                worker["send_next"] = ticket + 1
+                cv.notify_all()
+
     def _dispatch_command_async(
         self,
         worker: dict[str, Any],
@@ -1920,10 +1962,11 @@ class TranscriptionService:
         app = self.app
         msg = json.dumps(command) + "\n"
         worker_id = worker.get("id", "?")
+        ticket = self._take_send_ticket(worker)
 
         def _worker_dispatch() -> None:
             try:
-                self._locked_stdin_write(worker, msg)
+                self._ordered_stdin_write(worker, ticket, msg)
             except Exception as e:
                 logger.exception(
                     "Failed to dispatch task to worker %s: %s",
@@ -1964,10 +2007,13 @@ class TranscriptionService:
         """
         msg = json.dumps(command) + "\n"
         worker_id = worker.get("id", "?")
+        # Taken here, on the caller's thread, so two controls sent in a row
+        # reach the worker in that order whatever the writer threads do.
+        ticket = self._take_send_ticket(worker)
 
         def _send() -> None:
             try:
-                self._locked_stdin_write(worker, msg)
+                self._ordered_stdin_write(worker, ticket, msg)
             except Exception as e:  # noqa: BLE001
                 logger.warning(
                     "control %r to worker %s failed: %s",
