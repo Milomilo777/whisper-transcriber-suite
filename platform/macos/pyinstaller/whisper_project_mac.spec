@@ -381,6 +381,7 @@ a = Analysis(
         'app.dialogs.quick_start',
         'app.domain.cookies',
         'app.domain.languages',
+        'app.domain.speed_text',
         'app.domain.status_line',
         'app.domain.task_outputs',
         'app.domain.tasks',
