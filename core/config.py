@@ -1874,9 +1874,11 @@ def load_config(*, fetch_online: bool = True) -> dict[str, Any]:
     # config.json from before keeps the model it ran with: DEFAULT_CONFIG stays Large v3,
     # which is what a saved file without the key has always meant, and no saved value is
     # rewritten. The next save writes the pick, so it reads the same way later.
+    # A locked file (read_closed) or one holding only counters follows the same
+    # new-or-existing rule as the quick start and the formats above.
     if (
         "whisper_model" not in local and "model" not in local
-        and not (local or os.path.exists(config_path() + ".corrupt"))
+        and not (used_before or read_closed or os.path.exists(config_path() + ".corrupt"))
     ):
         merged["whisper_model"] = FRESH_INSTALL_MODEL_SLUG
         merged["model"] = dict(FRESH_INSTALL_MODEL)

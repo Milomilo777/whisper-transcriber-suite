@@ -1214,6 +1214,9 @@ class App(tk.Tk):
     _transcribe_accuracy_label_to_level: "dict[str, str]"
     _accuracy_ram_gb: float  # this computer's memory; 0 = unknown
     _accuracy_choice: "str | None"  # the level picked or shown last; None = Custom
+    # The level a person picked in this session (None = none, or a Custom model since):
+    # only this one follows a language change.
+    _accuracy_picked_level: "str | None"
     # The "a model trained for <language>" line (ADR 0015), built in tabs.py.
     language_model_anchor: "ttk.Frame"
     language_model_row: "ttk.Frame"
@@ -3537,9 +3540,9 @@ class App(tk.Tk):
         The combo shows the level whose model is the saved one, or "Custom (current
         setting)" when none has it; the note line names the model and its download, or
         the engine while another engine is picked (its model is not Whisper's). After a
-        language change the level picked last is resolved again for the new language,
-        which may switch the model (the note says what downloads); a Custom model is
-        never touched.
+        language change the level a person picked in this session is resolved again for
+        the new language, which may switch the model (the note says what downloads); a
+        level that was only shown, a Custom model and a running job are never touched.
         """
         combo = _inst_attr(self, "transcribe_accuracy_combo")
         var = _inst_attr(self, "transcribe_accuracy_var")
@@ -3555,8 +3558,9 @@ class App(tk.Tk):
         slug = str(self.app_config.get("whisper_model") or DEFAULT_MODEL_SLUG).strip()
         uses_model = self._engine_uses_whisper_model()
         choice = self.__dict__.get("_accuracy_choice")
-        if uses_model and language_changed and choice is not None:
-            wanted = _acc.model_for_level(language, choice, ram_gb)
+        picked = self.__dict__.get("_accuracy_picked_level")
+        if uses_model and language_changed and picked is not None and not self._transcribing_now():
+            wanted = _acc.model_for_level(language, picked, ram_gb)
             if wanted != slug and self._switch_transcribe_model(wanted):
                 return  # _on_model_selected redrew the row for the new model
         pick = _inst_attr(self, "transcribe_accuracy_pick")
@@ -3576,6 +3580,8 @@ class App(tk.Tk):
             level = choice if choice in picks and picks[choice] == slug else _acc.level_for_model(
                 slug, language, ram_gb)
             self._accuracy_choice = level
+            if level is None and not language_changed:
+                self._accuracy_picked_level = None  # a model picked in Advanced settings
             labels = dict(self.__dict__.get("_transcribe_accuracy_label_to_level") or {})
             level_to_label = {lvl: lbl for lbl, lvl in labels.items()}
             values = list(labels)
@@ -3620,9 +3626,18 @@ class App(tk.Tk):
             # Remembered before the switch, so the redraw keeps this level when two
             # levels share a model (a small computer where every level is Small).
             self._accuracy_choice = level
+            self._accuracy_picked_level = level
             if wanted != str(self.app_config.get("whisper_model") or DEFAULT_MODEL_SLUG).strip():
                 self._switch_transcribe_model(wanted)
         self._refresh_accuracy_row()
+
+    def _transcribing_now(self) -> bool:
+        """True while any worker has a task: a language change then never asks to stop it."""
+        svc = getattr(self, "transcription_service", None)
+        try:
+            return svc is not None and any(w.get("task") is not None for w in svc.active_workers())
+        except Exception:  # noqa: BLE001
+            return False
 
     def open_model_advisor(self) -> None:
         """Transcribe tab "Check this computer": suggest models for this hardware."""

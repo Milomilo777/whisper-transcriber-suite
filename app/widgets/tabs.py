@@ -1222,7 +1222,7 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     # toggles. Line 2: the speaker count, the time range and the English
     # translation. Line 3: mixed-language audio.
     more = Disclosure(
-        quick_opts, _("More options"), config=app.app_config,
+        quick_opts, _("More options"), config=lambda: app.app_config,
         key="transcribe_more_options_open", on_toggle=app._save_transcribe_prefs,
     )
     more.pack(fill="x", pady=(8, 0))

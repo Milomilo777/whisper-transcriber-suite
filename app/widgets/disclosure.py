@@ -25,14 +25,16 @@ OPEN_MARK = "▾ "
 class Disclosure(ttk.Frame):
     """``Disclosure(parent, title, config=cfg, key="x_open")``; build the content with
     ``.body`` as its parent. ``config[key]`` (missing = closed) is read once at build and
-    written on every toggle, then ``on_toggle`` runs."""
+    written on every toggle, then ``on_toggle`` runs. ``config`` may be a function that
+    returns the dict, for an owner that replaces its config dict (App.app_config after a
+    reload): the toggle then writes into the current one."""
 
     def __init__(
         self,
         parent: tk.Misc,
         title: str,
         *,
-        config: dict[str, Any],
+        config: "dict[str, Any] | Callable[[], dict[str, Any]]",
         key: str,
         on_toggle: Callable[[], None] | None = None,
     ) -> None:
@@ -41,7 +43,7 @@ class Disclosure(ttk.Frame):
         self._config = config
         self._key = key
         self._on_toggle = on_toggle
-        self._open = bool(config.get(key, False))
+        self._open = bool(self._current_config().get(key, False))
         self.header = ttk.Label(
             self, foreground=tokens.themed(tokens.LINK), cursor="hand2", takefocus=True,
         )
@@ -62,6 +64,9 @@ class Disclosure(ttk.Frame):
         self.header.bind("<FocusOut>", lambda _e: self._show_focus(False))
         self._render()
 
+    def _current_config(self) -> dict[str, Any]:
+        return self._config() if callable(self._config) else self._config
+
     @property
     def is_open(self) -> bool:
         return self._open
@@ -73,7 +78,7 @@ class Disclosure(ttk.Frame):
         if open_ == self._open:
             return
         self._open = open_
-        self._config[self._key] = open_
+        self._current_config()[self._key] = open_
         self._render()
         if self._on_toggle is not None:
             self._on_toggle()

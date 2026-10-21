@@ -73,3 +73,27 @@ def test_an_existing_config_with_another_model_keeps_it(isolated_config: Path) -
 def test_an_unreadable_config_counts_as_an_existing_install(isolated_config: Path) -> None:
     Path(str(isolated_config) + ".corrupt").write_text("{nope", encoding="utf-8")
     assert _load()["whisper_model"] == "large-v3"
+
+
+def test_a_locked_config_is_never_given_the_new_install_model(isolated_config: Path,
+                                                               monkeypatch: pytest.MonkeyPatch) -> None:
+    """config.json exists but cannot be read at launch (no last good copy): its model is
+    unknown, and a later save of another key must not write Turbo over it."""
+    isolated_config.write_text(json.dumps({"whisper_model": "small", "theme": "dark"}),
+                               encoding="utf-8")
+    real = cfg._read_config_file
+    monkeypatch.setattr(cfg, "_read_config_file", lambda path, **kw: ("unreadable", None))
+    monkeypatch.setattr(cfg, "_LAST_GOOD", None)
+    config = _load()
+    monkeypatch.setattr(cfg, "_read_config_file", real)
+    assert config["whisper_model"] != cfg.FRESH_INSTALL_MODEL_SLUG
+    config["batch_size"] = 12
+    cfg.save_config(config)
+    disk = json.loads(isolated_config.read_text(encoding="utf-8"))
+    assert disk["whisper_model"] == "small" and disk["batch_size"] == 12
+
+
+def test_a_counter_only_config_is_still_a_new_install(isolated_config: Path) -> None:
+    """A headless first run (the server with a cloud engine) writes only its minute counter."""
+    isolated_config.write_text(json.dumps({"cloud_stt_minutes_used": 2.0}), encoding="utf-8")
+    assert _load()["whisper_model"] == cfg.FRESH_INSTALL_MODEL_SLUG

@@ -240,15 +240,65 @@ def test_a_language_change_resolves_the_level_again(App, monkeypatch):
     assert a.transcribe_accuracy_var.get() == "Fast"
 
 
-def test_a_language_change_resolves_best_to_that_languages_model(App, monkeypatch):
+def test_a_language_change_resolves_a_picked_best_to_that_languages_model(App, monkeypatch):
     a = _bare_app(App, monkeypatch, whisper_model="large-v3")
     App._refresh_accuracy_row(a)
-    assert a.transcribe_accuracy_var.get() == "Best"
+    a.transcribe_accuracy_var.set("Best")
+    App._on_accuracy_selected(a)  # picked in this session, not only shown
     a.transcribe_lang_var.set("Arabic")  # Best measured there is Turbo
     App._refresh_accuracy_row(a, language_changed=True)
     assert a.app_config["whisper_model"] == "large-v3-turbo"
     assert a.transcribe_accuracy_var.get() == "Best"
     assert a.transcription_service.stops == 1
+
+
+def test_a_level_that_was_only_shown_does_not_follow_the_language(App, monkeypatch):
+    # An existing user on Large v3 never touched Accuracy: picking Arabic must not
+    # download another model behind their back.
+    a = _bare_app(App, monkeypatch, whisper_model="large-v3")
+    App._refresh_accuracy_row(a)
+    assert a.transcribe_accuracy_var.get() == "Best"
+    a.transcribe_lang_var.set("Arabic")
+    App._refresh_accuracy_row(a, language_changed=True)
+    assert a.app_config["whisper_model"] == "large-v3"
+    assert a.transcription_service.stops == 0
+
+
+def test_a_language_change_never_stops_a_running_job(App, monkeypatch):
+    a = _bare_app(App, monkeypatch, whisper_model="large-v3")
+    App._refresh_accuracy_row(a)
+    a.transcribe_accuracy_var.set("Best")
+    App._on_accuracy_selected(a)
+    monkeypatch.setattr(a.transcription_service, "active_workers", lambda: [{"task": object()}])
+    monkeypatch.setattr(App, "_confirm_backend_switch",
+                        lambda self, **_kw: pytest.fail("must not ask to stop the job"))
+    a.transcribe_lang_var.set("Arabic")
+    App._refresh_accuracy_row(a, language_changed=True)
+    assert a.app_config["whisper_model"] == "large-v3"
+    assert a.transcription_service.stops == 0
+    # Once the job is gone, the next language change applies the picked level.
+    monkeypatch.setattr(a.transcription_service, "active_workers", lambda: [])
+    monkeypatch.undo()
+    a = _bare_app(App, monkeypatch, whisper_model="large-v3")
+    App._refresh_accuracy_row(a)
+    a.transcribe_accuracy_var.set("Best")
+    App._on_accuracy_selected(a)
+    a.transcribe_lang_var.set("Arabic")
+    App._refresh_accuracy_row(a, language_changed=True)
+    assert a.app_config["whisper_model"] == "large-v3-turbo"
+
+
+def test_a_model_picked_in_advanced_settings_ends_the_picked_level(App, monkeypatch):
+    a = _bare_app(App, monkeypatch, whisper_model="large-v3")
+    App._refresh_accuracy_row(a)
+    a.transcribe_accuracy_var.set("Best")
+    App._on_accuracy_selected(a)
+    a.app_config["whisper_model"] = "medium"  # what Advanced settings would save
+    App._refresh_accuracy_row(a)
+    assert a.transcribe_accuracy_var.get() == CUSTOM
+    a.transcribe_lang_var.set("Arabic")
+    App._refresh_accuracy_row(a, language_changed=True)
+    assert a.app_config["whisper_model"] == "medium"
 
 
 def test_a_language_change_never_touches_a_custom_model(App, monkeypatch):

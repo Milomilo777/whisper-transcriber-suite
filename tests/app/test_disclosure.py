@@ -89,3 +89,15 @@ def test_a_click_and_the_keyboard_toggle_it(root: tk.Tk) -> None:
     root.update()
     assert disc.is_open
     assert config["more_open"] is True
+
+
+def test_a_config_function_writes_into_the_owners_current_dict(root: tk.Tk) -> None:
+    # App replaces app_config with a fresh load_config() dict (after the model-folder
+    # picker): a toggle must land in the dict the next save writes, not the old one.
+    owner = {"cfg": {"more_open": False}}
+    disc = Disclosure(root, "More options", config=lambda: owner["cfg"], key="more_open")
+    old = owner["cfg"]
+    owner["cfg"] = {}
+    disc.toggle()
+    assert owner["cfg"] == {"more_open": True}
+    assert old == {"more_open": False}
