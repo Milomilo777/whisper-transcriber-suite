@@ -388,7 +388,7 @@
   ],
   [
    "showwarning",
-   "This URL's video formats could not be loaded, so it cannot be downloaded yet:\n\nHTTP 404"
+   "HTTP 404"
   ]
  ],
  "form_lookup_failed_audio": [
@@ -398,7 +398,7 @@
   ],
   [
    "showwarning",
-   "This URL's audio formats could not be loaded, so it cannot be downloaded yet:\n\nHTTP 404"
+   "HTTP 404"
   ]
  ],
  "form_no_audio_format": [

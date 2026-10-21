@@ -533,6 +533,7 @@ _NOT_OURS = {
     "140 | m4a | 128k | a:mp4a",  # a yt-dlp format id, extension and codecs
     "137 | mp4 | 1920x1080 | 30fps | v:avc1",  # the same for a video stream
     "xx",  # a caption code the language table does not know, shown as the code
+    "HTTP 404",  # the lookup's failure reason as the site gave it (the warning shows it as is)
 }
 
 
