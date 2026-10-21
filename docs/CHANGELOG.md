@@ -240,6 +240,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   again for the whole file in one language, so its saved progress no longer matched. History now
   records both options and the resume puts them back.
 
+- **Cancel and Work offline stop a Supreme Master TV download before its YouTube fallback
+  starts**: when the site's own server failed, a Cancel or the Work offline switch during the
+  moment before the YouTube copy was tried did not stop it, and the fallback still downloaded. The
+  stop is checked again right before that download starts.
 - **Remove and Re-run on the Download tab leave running downloads alone**: with a finished and a
   running download selected together, Remove hid the running one (its download kept going with no
   Pause or Cancel on screen) and Re-run queued a second copy of it. Each button now acts only on

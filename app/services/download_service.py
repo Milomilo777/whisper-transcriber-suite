@@ -1815,7 +1815,8 @@ class DownloadService:
         """Download the episode's YouTube copy into the same folder, in the same mode.
 
         Returns False (and does nothing) when there is no usable copy, the task was cancelled
-        or paused, or Work offline is on; True once it has posted the task's terminal event.
+        or paused, or Work offline is on; True once it has posted the task's terminal event
+        or a stop that landed during its waits owns the reporting.
         """
         import types
 
@@ -1840,6 +1841,23 @@ class DownloadService:
         self.maybe_update_yt_dlp(task)
         yt_dlp_update.begin_download(run_key)
         try:
+            # Both waits above can take up to a minute and there is no process yet for a
+            # Cancel to kill, so the stop checks are asked again before the fallback starts
+            # (the media and caption-only paths do the same after these waits). A newer run
+            # or a pause owns the row; a cancel is reported like every other cancel path.
+            if getattr(task, "_run_generation", run_generation) != run_generation:
+                return True
+            if task.cancelled:
+                self._post_terminal("done", task, "cancelled", run_generation)
+                return True
+            if getattr(task, "paused", False):
+                return True
+            if offline.is_offline():
+                self._post_terminal(
+                    "error", task, f"{official_error}; {offline.refused('the YouTube copy')}",
+                    run_generation,
+                )
+                return True
             return_code, error_line, last_line, saved_path, _final = self._run_media_process(
                 task, self.build_download_command(fallback))  # type: ignore[arg-type]
         finally:
