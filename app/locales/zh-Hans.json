@@ -655,7 +655,6 @@
     "No media file was found alongside the transcript JSON.": "转录 JSON 旁未找到媒体文件。",
     "No media file was found for this transcript, so the page has no player.": "未找到此转录文本对应的媒体文件，因此页面没有播放器。",
     "No reference voice": "没有参考声音",
-    "No speech was recognised in this file, so the output files are empty.": "此文件中未识别到语音，因此输出文件为空。",
     "No subtitle file": "没有字幕文件",
     "No text": "没有文本",
     "No tier detected — falling back to CPU.": "未检测到可用层级——改用 CPU。",

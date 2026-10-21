@@ -673,7 +673,6 @@
     "No media file was found alongside the transcript JSON.": "לא נמצא קובץ מדיה ליד קובץ ה-JSON של התמליל.",
     "No media file was found for this transcript, so the page has no player.": "לא נמצא קובץ מדיה לתמליל הזה, ולכן אין בדף נגן.",
     "No reference voice": "אין קול לדוגמה",
-    "No speech was recognised in this file, so the output files are empty.": "לא זוהה דיבור בקובץ הזה, ולכן קובצי הפלט ריקים.",
     "No subtitle file": "אין קובץ כתוביות",
     "No text": "אין טקסט",
     "No tier detected — falling back to CPU.": "לא זוהתה רמה — חוזר ל-CPU.",

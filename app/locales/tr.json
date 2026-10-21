@@ -664,7 +664,6 @@
     "No media file was found alongside the transcript JSON.": "Transkript JSON dosyasının yanında medya dosyası bulunamadı.",
     "No media file was found for this transcript, so the page has no player.": "Bu transkript için medya dosyası bulunamadı, bu yüzden sayfada oynatıcı yok.",
     "No reference voice": "Referans ses yok",
-    "No speech was recognised in this file, so the output files are empty.": "Bu dosyada konuşma tanınmadı, bu yüzden çıktı dosyaları boş.",
     "No subtitle file": "Altyazı dosyası yok",
     "No text": "Metin yok",
     "No tier detected — falling back to CPU.": "Katman algılanmadı — CPU'ya geri dönülüyor.",

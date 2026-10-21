@@ -664,7 +664,6 @@
     "No media file was found alongside the transcript JSON.": "هیچ فایل رسانه‌ای کنار فایل JSON متن رونویسی پیدا نشد.",
     "No media file was found for this transcript, so the page has no player.": "هیچ فایل رسانه‌ای برای این متن رونویسی پیدا نشد، بنابراین صفحه پخش‌کننده ندارد.",
     "No reference voice": "صدای مرجعی نیست",
-    "No speech was recognised in this file, so the output files are empty.": "در این فایل هیچ گفتاری تشخیص داده نشد، بنابراین فایل‌های خروجی خالی هستند.",
     "No subtitle file": "فایل زیرنویسی نیست",
     "No text": "متنی نیست",
     "No tier detected — falling back to CPU.": "هیچ سطحی شناسایی نشد؛ از CPU استفاده می‌شود.",

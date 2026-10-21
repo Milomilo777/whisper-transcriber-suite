@@ -673,7 +673,6 @@
     "No media file was found alongside the transcript JSON.": "Blakus transkripta JSON netika atrasts neviens multivides fails.",
     "No media file was found for this transcript, so the page has no player.": "Šim transkriptam netika atrasts multivides fails, tāpēc lapā nav atskaņotāja.",
     "No reference voice": "Nav atsauces balss",
-    "No speech was recognised in this file, so the output files are empty.": "Šajā failā netika atpazīta runa, tāpēc izvades faili ir tukši.",
     "No subtitle file": "Nav subtitru faila",
     "No text": "Nav teksta",
     "No tier detected — falling back to CPU.": "Līmenis nav noteikts — tiek izmantots CPU.",

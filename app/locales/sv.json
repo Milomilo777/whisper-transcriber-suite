@@ -664,7 +664,6 @@
     "No media file was found alongside the transcript JSON.": "Ingen mediefil hittades bredvid transkriptionens JSON.",
     "No media file was found for this transcript, so the page has no player.": "Ingen mediefil hittades för den här transkriptionen, så sidan har ingen spelare.",
     "No reference voice": "Ingen referensröst",
-    "No speech was recognised in this file, so the output files are empty.": "Inget tal kändes igen i den här filen, så utdatafilerna är tomma.",
     "No subtitle file": "Ingen undertextfil",
     "No text": "Ingen text",
     "No tier detected — falling back to CPU.": "Ingen nivå hittades – återgår till CPU.",

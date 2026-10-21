@@ -655,7 +655,6 @@
     "No media file was found alongside the transcript JSON.": "逐字稿 JSON 旁找不到媒體檔案。",
     "No media file was found for this transcript, so the page has no player.": "找不到此逐字稿對應的媒體檔案，因此頁面沒有播放器。",
     "No reference voice": "沒有參考聲音",
-    "No speech was recognised in this file, so the output files are empty.": "此檔案中未辨識到語音，因此輸出檔案為空白。",
     "No subtitle file": "沒有字幕檔案",
     "No text": "沒有文字",
     "No tier detected — falling back to CPU.": "未偵測到可用層級——改用 CPU。",

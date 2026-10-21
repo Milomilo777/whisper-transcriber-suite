@@ -708,7 +708,7 @@
   "No media file was found for this transcript, so the page has no player.": "No media file was found for this transcript, so the page has no player.",
   "No reference voice": "No reference voice",
   "No speech was found in {name}": "No speech was found in {name}",
-  "No speech was recognised in this file, so the output files are empty.": "No speech was recognised in this file, so the output files are empty.",
+  "No speech was recognised in this file, so no transcript was saved.": "No speech was recognised in this file, so no transcript was saved.",
   "No subtitle file": "No subtitle file",
   "No text": "No text",
   "No tier detected — falling back to CPU.": "No tier detected — falling back to CPU.",

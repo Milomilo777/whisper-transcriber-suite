@@ -664,7 +664,6 @@
     "No media file was found alongside the transcript JSON.": "No s'ha trobat cap fitxer multimèdia al costat del JSON de la transcripció.",
     "No media file was found for this transcript, so the page has no player.": "No s'ha trobat cap fitxer multimèdia per a aquesta transcripció, de manera que la pàgina no té reproductor.",
     "No reference voice": "Cap veu de referència",
-    "No speech was recognised in this file, so the output files are empty.": "No s'ha reconegut cap veu en aquest fitxer, de manera que els fitxers de sortida són buits.",
     "No subtitle file": "Cap fitxer de subtítols",
     "No text": "Cap text",
     "No tier detected — falling back to CPU.": "No s'ha detectat cap nivell; s'utilitza la CPU.",

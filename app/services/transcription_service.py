@@ -975,6 +975,8 @@ class TranscriptionService:
         # Mirror the fallback logic in finish_task to derive expected paths
         # if the worker crashed before sending the 'done' event (and output_paths).
         written = getattr(task, "output_paths", None)
+        if written is not None and not written and getattr(task, "no_speech", False):
+            return True  # no speech: the worker wrote no files on purpose
         derived = not written
         if written:
             paths = list(written)
@@ -1022,12 +1024,12 @@ class TranscriptionService:
 
     def _settle_one_done(self, history: Any, task: Any, event: dict[str, Any]) -> bool:
         outputs = event.get("outputs")
-        if not isinstance(outputs, list) or not outputs:
+        no_speech = bool(event.get("no_speech"))
+        if not isinstance(outputs, list) or (not outputs and not no_speech):
             return False  # cancelled by the exit (or no files): the checkpoint is the record
         paths = [str(p) for p in outputs]
-        # A run with no speech writes its files empty and says so; every file must exist
-        # either way, and otherwise be non-empty.
-        no_speech = bool(event.get("no_speech"))
+        # A run with no speech writes no files (the web/LAN server writes them empty) and says
+        # so; every listed file must exist either way, and otherwise be non-empty.
         try:
             complete = all(os.path.getsize(p) > 0 or no_speech for p in paths)
         except OSError:
@@ -1981,7 +1983,9 @@ class TranscriptionService:
                 # docx/pdf + de-duped names); fall back to deriving from
                 # config for older workers / interrupted runs.
                 written = getattr(task, "output_paths", None)
-                if written:
+                # A run without speech writes no files and reports an empty list: record
+                # that, never the names the config would give.
+                if written or (written is not None and getattr(task, "no_speech", False)):
                     paths = list(written)
                 else:
                     # os.path.splitext (not rsplit('.',1)) so a source like

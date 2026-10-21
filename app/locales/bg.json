@@ -664,7 +664,6 @@
     "No media file was found alongside the transcript JSON.": "Не е намерен медиен файл до JSON файла на транскрипцията.",
     "No media file was found for this transcript, so the page has no player.": "Не е намерен медиен файл за тази транскрипция, затова страницата няма плейър.",
     "No reference voice": "Няма примерен глас",
-    "No speech was recognised in this file, so the output files are empty.": "В този файл не е разпозната реч, затова изходните файлове са празни.",
     "No subtitle file": "Няма файл със субтитри",
     "No text": "Няма текст",
     "No tier detected — falling back to CPU.": "Не е открито ниво – връщане към CPU.",

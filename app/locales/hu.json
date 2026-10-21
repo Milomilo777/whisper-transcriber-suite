@@ -664,7 +664,6 @@
     "No media file was found alongside the transcript JSON.": "Az átirat JSON-fájlja mellett nem található médiafájl.",
     "No media file was found for this transcript, so the page has no player.": "Ehhez az átirathoz nem található médiafájl, ezért az oldalon nincs lejátszó.",
     "No reference voice": "Nincs referenciahang",
-    "No speech was recognised in this file, so the output files are empty.": "Ebben a fájlban nem ismert fel beszédet, ezért a kimeneti fájlok üresek.",
     "No subtitle file": "Nincs feliratfájl",
     "No text": "Nincs szöveg",
     "No tier detected — falling back to CPU.": "Nem észlelt szintet – visszaáll a CPU-ra.",

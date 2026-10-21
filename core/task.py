@@ -96,9 +96,12 @@ class TranscriptionTask:
         # only) — that case used to record word_count=0.
         self.word_count: int = 0
         self.audio_duration: float = 0.0
-        # True when a finished run recognised no speech at all (the outputs
-        # are written but empty); the result card and history say so.
+        # True when a finished run recognised no speech at all; no output
+        # files are written then, and the result card and history say so.
         self.no_speech: bool = False
+        # Write the (empty) output files even without speech: the web/LAN
+        # server's own task sets it (core.transcriber._skips_outputs).
+        self.keep_empty_outputs: bool = False
         # Why this attempt ended the way it did (a salvaged crash, a hung
         # worker), stored in its history row; cleared at every dispatch.
         self.recovery_note: str = ""

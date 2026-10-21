@@ -5733,7 +5733,7 @@ class App(tk.Tk):
         if "view" in result_buttons:
             # The viewer opens a transcript .json only; a run without that format would get a
             # "choose a .json yourself?" question instead (review, 2026-10-21).
-            # No speech: the files are empty and the result card shows no viewer either.
+            # No speech: no transcript was written and the result card shows no viewer either.
             _set_enabled(result_buttons["view"],
                          task is not None and not getattr(task, "no_speech", False)
                          and task_transcript_json(task, must_exist=True) is not None)
@@ -6381,7 +6381,10 @@ class App(tk.Tk):
         # hard-coded candidate list below would miss (a docx-only run
         # used to show "no output files found" despite a clean write).
         written = getattr(task, "output_paths", None)
-        if written:
+        no_speech = bool(getattr(task, "no_speech", False))
+        # No speech: the worker wrote nothing and says so with an empty list; the guess below
+        # would list files an earlier run left next to the recording.
+        if written or (written is not None and no_speech):
             existing = [p for p in written if os.path.isfile(p)]
         else:
             candidates = [
@@ -6390,7 +6393,6 @@ class App(tk.Tk):
             ]
             existing = [p for p in candidates if os.path.isfile(p)]
 
-        no_speech = bool(getattr(task, "no_speech", False))
         ttk.Label(
             self.last_result_body,
             # A tick read as success over empty files (round-2 screenshot critics, 2026-10-21).
@@ -6407,7 +6409,7 @@ class App(tk.Tk):
         if no_speech:
             ttk.Label(
                 self.last_result_body,
-                text=_("No speech was recognised in this file, so the output files are empty."),
+                text=_("No speech was recognised in this file, so no transcript was saved."),
                 foreground=tokens.themed(tokens.WARNING_TEXT),
             ).pack(anchor="w", pady=(2, 0))
             ttk.Label(
@@ -6448,7 +6450,7 @@ class App(tk.Tk):
             # A long list scrolls inside the card: it must never grow until the drop
             # zone and the log have no room left.
             capped_rows(files_frame, len(existing), _fill_rows)
-        else:
+        elif not no_speech:  # no speech: no files is the expected result, said above
             ttk.Label(
                 self.last_result_body,
                 text=_("(no output files were found on disk — re-run the task?)"),

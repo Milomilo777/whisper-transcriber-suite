@@ -673,7 +673,6 @@
     "No media file was found alongside the transcript JSON.": "Vedle JSON přepisu nebyl nalezen žádný mediální soubor.",
     "No media file was found for this transcript, so the page has no player.": "Pro tento přepis nebyl nalezen žádný mediální soubor, proto stránka nemá přehrávač.",
     "No reference voice": "Žádný referenční hlas",
-    "No speech was recognised in this file, so the output files are empty.": "V tomto souboru nebyla rozpoznána žádná řeč, proto jsou výstupní soubory prázdné.",
     "No subtitle file": "Žádný soubor titulků",
     "No text": "Žádný text",
     "No tier detected — falling back to CPU.": "Nebyla zjištěna žádná úroveň – použije se CPU.",

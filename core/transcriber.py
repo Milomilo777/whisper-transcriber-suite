@@ -800,16 +800,25 @@ def _note_no_speech(
 ) -> None:
     """Flag a finished run whose transcript holds no text at all.
 
-    The outputs are still written (empty); the flag travels in the worker's
-    "done" event so the result card and the history say so.
+    No output files are written then (_skips_outputs); the flag travels in the
+    worker's "done" event so the result card and the history say so.
     """
     empty = not any(
         str(d.get("text") or "").strip()
         for d in segments_data if isinstance(d, dict)
     )
     task.no_speech = empty
-    if empty:
+    if empty and _skips_outputs(task):
+        log("No speech recognised in this file; no output files were written.", log_cb)
+    elif empty:
         log("No speech recognised in this file; the output files are empty.", log_cb)
+
+
+def _skips_outputs(task: Any) -> bool:
+    """True for a run without speech: its empty .srt and .json looked like a broken run (deep
+    review, 2026-10-21), so none are written. A web/LAN job (``keep_empty_outputs``) still gets
+    them: the API answers with the empty transcript, as OpenAI's does for silence."""
+    return bool(getattr(task, "no_speech", False)) and not getattr(task, "keep_empty_outputs", False)
 
 
 def _record_transcript_stats(
@@ -2749,7 +2758,7 @@ def transcribe(
             return
 
         _note_no_speech(task, segments_data, log_cb)
-        written = _write_outputs(
+        written = [] if _skips_outputs(task) else _write_outputs(
             base,
             segments_data,
             task.file_path,
@@ -2999,7 +3008,7 @@ def _transcribe_via_alt_backend(
         return
 
     _note_no_speech(task, segments_data, log_cb)
-    written = _write_outputs(
+    written = [] if _skips_outputs(task) else _write_outputs(
         base,
         segments_data,
         task.file_path,
@@ -3229,7 +3238,7 @@ def _write_resumed_outputs(
     """Final step of a resume: write the outputs, then drop the checkpoint."""
     base = _task_output_base(task)
     _note_no_speech(task, segments, log_cb)
-    written = _write_outputs(
+    written = [] if _skips_outputs(task) else _write_outputs(
         base,
         segments,
         task.file_path,

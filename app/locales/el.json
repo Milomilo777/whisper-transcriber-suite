@@ -664,7 +664,6 @@
     "No media file was found alongside the transcript JSON.": "Δεν βρέθηκε αρχείο πολυμέσων δίπλα στο JSON της μεταγραφής.",
     "No media file was found for this transcript, so the page has no player.": "Δεν βρέθηκε αρχείο πολυμέσων για αυτή τη μεταγραφή, οπότε η σελίδα δεν έχει πρόγραμμα αναπαραγωγής.",
     "No reference voice": "Καμία φωνή αναφοράς",
-    "No speech was recognised in this file, so the output files are empty.": "Δεν αναγνωρίστηκε ομιλία σε αυτό το αρχείο, οπότε τα αρχεία εξόδου είναι κενά.",
     "No subtitle file": "Κανένα αρχείο υποτίτλων",
     "No text": "Κανένα κείμενο",
     "No tier detected — falling back to CPU.": "Δεν εντοπίστηκε βαθμίδα — επιστροφή στη CPU.",

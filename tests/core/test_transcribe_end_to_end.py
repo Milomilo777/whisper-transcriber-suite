@@ -65,6 +65,7 @@ def test_transcribe_writes_srt_and_json(loaded_transcriber, temp_audio):
     from core.task import TranscriptionTask
 
     task = TranscriptionTask(str(temp_audio))
+    task.keep_empty_outputs = True  # the silent clip has no speech: the files are written anyway
     # Explicit, so the developer's own saved output_formats don't decide it.
     task.output_formats = ["srt", "json"]
     captured_lang: dict = {}
@@ -89,6 +90,7 @@ def test_transcribe_respects_output_formats(loaded_transcriber, temp_audio, monk
                         {**loaded_transcriber.config, "output_formats": ["vtt", "txt"]})
 
     task = TranscriptionTask(str(temp_audio))
+    task.keep_empty_outputs = True  # the silent clip has no speech: the files are written anyway
     loaded_transcriber.transcribe(task)
     base = os.path.splitext(str(temp_audio))[0]
     assert os.path.exists(base + ".vtt"), "VTT was not written"
@@ -112,8 +114,23 @@ def test_transcribe_with_word_timestamps_enriches_json(loaded_transcriber, monke
                          "word_timestamps": True, "output_formats": ["json"]})
 
     task = TranscriptionTask(str(audio))
+    task.keep_empty_outputs = True  # a tone may give no speech: the JSON is written anyway
     loaded_transcriber.transcribe(task)
     base = os.path.splitext(str(audio))[0]
     with open(base + ".json", encoding="utf-8") as f:
         parsed = json.load(f)
     assert isinstance(parsed, list)
+
+
+def test_a_silent_file_gets_no_output_files(loaded_transcriber, temp_audio):
+    """A run without speech writes nothing; the result card and the history say why."""
+    from core.task import TranscriptionTask
+
+    task = TranscriptionTask(str(temp_audio))
+    task.output_formats = ["srt", "json"]
+    loaded_transcriber.transcribe(task)
+
+    base = os.path.splitext(str(temp_audio))[0]
+    assert task.no_speech is True
+    assert task.output_paths == []
+    assert not os.path.exists(base + ".srt") and not os.path.exists(base + ".json")

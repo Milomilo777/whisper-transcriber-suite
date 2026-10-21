@@ -700,7 +700,6 @@
     "No media file was found alongside the transcript JSON.": "لم يُعثر على ملف وسائط بجوار ملف JSON للنص المُفرَّغ.",
     "No media file was found for this transcript, so the page has no player.": "لم يُعثر على ملف وسائط لهذا النص المُفرَّغ، لذا لا تحتوي الصفحة على مشغِّل.",
     "No reference voice": "لا يوجد صوت مرجعي",
-    "No speech was recognised in this file, so the output files are empty.": "لم يُتعرَّف على أي كلام في هذا الملف، لذا ملفات الإخراج فارغة.",
     "No subtitle file": "لا يوجد ملف ترجمة مصاحبة",
     "No text": "لا يوجد نص",
     "No tier detected — falling back to CPU.": "لم يُكتشف أي مستوى — يُرجع إلى CPU.",

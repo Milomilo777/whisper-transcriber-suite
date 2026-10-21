@@ -97,6 +97,20 @@ def test_a_no_speech_run_with_empty_output_files_is_finished_with_its_note(
     assert row["output_paths"] == [empty]
 
 
+def test_a_no_speech_run_without_output_files_is_finished_with_its_note(tmp_path: Path) -> None:
+    """The desktop worker writes no files for a run without speech: an empty list with the
+    flag is a finished job, not a cancelled one."""
+    svc, app, db, rid, task = _setup(tmp_path)
+    app.worker_events.put(_done(task, [], no_speech=True, word_count=0))
+    app.worker_events.put(_exit())
+
+    assert svc.settle_done_on_exit(wait_s=2.0) == 1
+
+    row = _row(db, rid)
+    assert row["status"] == "finished" and row["error"] == NO_SPEECH_NOTE
+    assert row["output_paths"] == []
+
+
 def test_no_speech_does_not_excuse_a_missing_output_file(tmp_path: Path) -> None:
     svc, app, db, rid, task = _setup(tmp_path)
     app.worker_events.put(_done(task, [str(tmp_path / "gone.srt")], no_speech=True))

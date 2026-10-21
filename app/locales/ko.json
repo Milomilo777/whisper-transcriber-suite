@@ -655,7 +655,6 @@
     "No media file was found alongside the transcript JSON.": "전사본 JSON과 함께 있는 미디어 파일을 찾을 수 없습니다.",
     "No media file was found for this transcript, so the page has no player.": "이 전사본의 미디어 파일을 찾을 수 없어 페이지에 플레이어가 없습니다.",
     "No reference voice": "참조 음성 없음",
-    "No speech was recognised in this file, so the output files are empty.": "이 파일에서 인식된 음성이 없어 출력 파일이 비어 있습니다.",
     "No subtitle file": "자막 파일 없음",
     "No text": "텍스트 없음",
     "No tier detected — falling back to CPU.": "감지된 단계 없음 — CPU로 대체합니다.",

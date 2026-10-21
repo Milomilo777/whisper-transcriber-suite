@@ -655,7 +655,6 @@
     "No media file was found alongside the transcript JSON.": "文字起こしの JSON と同じ場所にメディア ファイルが見つかりませんでした。",
     "No media file was found for this transcript, so the page has no player.": "この文字起こしのメディア ファイルが見つからないため、ページにプレーヤーはありません。",
     "No reference voice": "参照用の声がありません",
-    "No speech was recognised in this file, so the output files are empty.": "このファイルでは音声が認識されなかったため、出力ファイルは空です。",
     "No subtitle file": "字幕ファイルがありません",
     "No text": "テキストがありません",
     "No tier detected — falling back to CPU.": "ティアが検出されませんでした — CPU を使用します。",

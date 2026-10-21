@@ -673,7 +673,6 @@
     "No media file was found alongside the transcript JSON.": "Рядом с JSON-файлом расшифровки не найден медиафайл.",
     "No media file was found for this transcript, so the page has no player.": "Для этой расшифровки не найден медиафайл, поэтому на странице нет проигрывателя.",
     "No reference voice": "Нет образца голоса",
-    "No speech was recognised in this file, so the output files are empty.": "В этом файле речь не распознана, поэтому выходные файлы пусты.",
     "No subtitle file": "Нет файла субтитров",
     "No text": "Нет текста",
     "No tier detected — falling back to CPU.": "Уровень не определён — используется CPU.",

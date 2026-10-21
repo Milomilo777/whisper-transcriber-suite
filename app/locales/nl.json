@@ -664,7 +664,6 @@
     "No media file was found alongside the transcript JSON.": "Er is geen mediabestand gevonden naast de transcript-JSON.",
     "No media file was found for this transcript, so the page has no player.": "Er is geen mediabestand gevonden voor dit transcript, dus de pagina heeft geen speler.",
     "No reference voice": "Geen referentiestem",
-    "No speech was recognised in this file, so the output files are empty.": "Er is geen spraak herkend in dit bestand, dus de uitvoerbestanden zijn leeg.",
     "No subtitle file": "Geen ondertitelbestand",
     "No text": "Geen tekst",
     "No tier detected — falling back to CPU.": "Geen niveau gevonden — terugvallen op CPU.",

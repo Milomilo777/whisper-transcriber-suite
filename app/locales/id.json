@@ -655,7 +655,6 @@
     "No media file was found alongside the transcript JSON.": "Tidak ada berkas media di samping JSON transkrip.",
     "No media file was found for this transcript, so the page has no player.": "Tidak ada berkas media untuk transkrip ini, jadi halaman tidak memiliki pemutar.",
     "No reference voice": "Tidak ada suara referensi",
-    "No speech was recognised in this file, so the output files are empty.": "Tidak ada ucapan yang dikenali dalam berkas ini, jadi berkas keluaran kosong.",
     "No subtitle file": "Tidak ada berkas subtitel",
     "No text": "Tidak ada teks",
     "No tier detected — falling back to CPU.": "Tidak ada tingkat yang terdeteksi — beralih ke CPU.",

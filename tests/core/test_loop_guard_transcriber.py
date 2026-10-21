@@ -439,8 +439,10 @@ def test_decoder_error_mid_file_keeps_the_decoded_segments(t, monkeypatch, tmp_p
 
 
 @pytest.mark.parametrize("script", [[], [Seg(0, 3, ""), Seg(3, 5, "  ")]])
-def test_no_speech_is_said_and_outputs_are_still_written(t, monkeypatch, tmp_path, script):
-    """S01-5: an empty transcript used to finish like any other success."""
+def test_no_speech_is_said_and_no_outputs_are_written(t, monkeypatch, tmp_path, script):
+    """S01-5: an empty transcript used to finish like any other success. Its empty .srt and
+    .json then looked like a broken run (deep review, 2026-10-21): none are written now; the
+    history row and the result card say why."""
     from core.task import TranscriptionTask
 
     audio = tmp_path / "silence.wav"
@@ -451,9 +453,36 @@ def test_no_speech_is_said_and_outputs_are_still_written(t, monkeypatch, tmp_pat
 
     t.transcribe(task, lambda p: None, logs.append)
 
-    assert "segs" in written  # the (empty) outputs are still written
+    assert "segs" not in written
+    assert task.output_paths == []
     assert task.no_speech is True
-    assert any("No speech recognised" in m for m in logs)
+    assert any("No speech recognised" in m and "no output files" in m for m in logs)
+
+
+def test_a_server_job_without_speech_still_gets_its_empty_outputs(t, monkeypatch, tmp_path):
+    """The web/LAN API answers with the (empty) transcript, as OpenAI's does for silence:
+    a missing JSON would turn that answer into a server error."""
+    from core.server import jobs as jobs_mod
+
+    audio = tmp_path / "upload.wav"
+    audio.write_bytes(b"\0" * 16)
+
+    class _Job:
+        media_path = str(audio)
+        language = ""
+        formats = ["json"]
+        cancelled = False
+        paused = False
+        clip_start = None
+        clip_end = None
+
+    _slices, written = _wire(t, monkeypatch, tmp_path, Engine([]))
+    task = jobs_mod._ServerTask(_Job())  # type: ignore[arg-type]
+
+    t.transcribe(task, lambda p: None, lambda m: None)  # type: ignore[arg-type]
+
+    assert written["segs"] == []
+    assert task.no_speech is True
 
 
 def test_a_server_job_task_survives_periodic_checkpoints(t, monkeypatch, tmp_path):

@@ -409,6 +409,31 @@ def test_finish_task_notes_a_run_without_speech_in_history(monkeypatch, no_speec
     assert shown == [task]
 
 
+def test_finish_task_records_no_files_for_a_run_without_speech(monkeypatch):
+    """No speech: the worker wrote no files and reports an empty list. The history row must
+    not list the names the config would give (files that do not exist)."""
+    app = SimpleNamespace(
+        app_config={"output_formats": ["srt", "json"]}, update_overall_progress=lambda: None,
+        show_last_result=lambda _t: None,
+    )
+    svc = TranscriptionService(app)  # type: ignore[arg-type]
+    monkeypatch.setattr(svc, "_post_usage_stats", lambda *a, **k: None)
+    recorded: list = []
+    app.history = SimpleNamespace(
+        finish_transcription=lambda *a, **k: (recorded.append(k), True)[1]
+    )
+    task = SimpleNamespace(
+        status="running", cancelled=False, end_time=None, start_time=time.time(),
+        output_paths=[], file_path="clip.mp4", history_id=7,
+        source_download=None, detected_language="", no_speech=True,
+    )
+
+    svc.finish_task({"task": task, "temporary": False}, keep_status=False)
+
+    assert recorded[0]["output_paths"] == []
+    assert recorded[0]["error"] == NO_SPEECH_NOTE
+
+
 def test_finish_task_language_history_recording(monkeypatch):
     """Rework 2: ensure language is cleared in history if and only if no_speech is True,
     ignoring probability entirely."""

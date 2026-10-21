@@ -664,7 +664,6 @@
     "No media file was found alongside the transcript JSON.": "ट्रांसक्रिप्ट JSON के साथ कोई मीडिया फ़ाइल नहीं मिली।",
     "No media file was found for this transcript, so the page has no player.": "इस ट्रांसक्रिप्ट के लिए कोई मीडिया फ़ाइल नहीं मिली, इसलिए पेज में कोई प्लेयर नहीं है।",
     "No reference voice": "कोई संदर्भ आवाज़ नहीं",
-    "No speech was recognised in this file, so the output files are empty.": "इस फ़ाइल में कोई बोली पहचानी नहीं गई, इसलिए आउटपुट फ़ाइलें खाली हैं।",
     "No subtitle file": "कोई सबटाइटल फ़ाइल नहीं",
     "No text": "कोई टेक्स्ट नहीं",
     "No tier detected — falling back to CPU.": "कोई टियर नहीं मिला — CPU का इस्तेमाल किया जा रहा है।",

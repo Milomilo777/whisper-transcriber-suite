@@ -664,7 +664,6 @@
     "No media file was found alongside the transcript JSON.": "Walang nakitang media file katabi ng transcript JSON.",
     "No media file was found for this transcript, so the page has no player.": "Walang nakitang media file para sa transcript na ito, kaya walang player ang page.",
     "No reference voice": "Walang reference na boses",
-    "No speech was recognised in this file, so the output files are empty.": "Walang nakilalang pananalita sa file na ito, kaya walang laman ang mga output file.",
     "No subtitle file": "Walang subtitle file",
     "No text": "Walang text",
     "No tier detected — falling back to CPU.": "Walang na-detect na tier — babalik sa CPU.",

@@ -673,7 +673,6 @@
     "No media file was found alongside the transcript JSON.": "Поруч із JSON-файлом транскрипту не знайдено медіафайл.",
     "No media file was found for this transcript, so the page has no player.": "Для цього транскрипту не знайдено медіафайл, тому на сторінці немає програвача.",
     "No reference voice": "Немає зразка голосу",
-    "No speech was recognised in this file, so the output files are empty.": "У цьому файлі мовлення не розпізнано, тому вихідні файли порожні.",
     "No subtitle file": "Немає файлу субтитрів",
     "No text": "Немає тексту",
     "No tier detected — falling back to CPU.": "Рівень не визначено — використовується CPU.",

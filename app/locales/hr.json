@@ -673,7 +673,6 @@
     "No media file was found alongside the transcript JSON.": "Uz JSON transkripcije nije pronađena medijska datoteka.",
     "No media file was found for this transcript, so the page has no player.": "Za ovu transkripciju nije pronađena medijska datoteka pa stranica nema reproduktor.",
     "No reference voice": "Nema referentnog glasa",
-    "No speech was recognised in this file, so the output files are empty.": "U ovoj datoteci nije prepoznat govor pa su izlazne datoteke prazne.",
     "No subtitle file": "Nema datoteke podnaslova",
     "No text": "Nema teksta",
     "No tier detected — falling back to CPU.": "Nije otkrivena razina – vraća se na CPU.",

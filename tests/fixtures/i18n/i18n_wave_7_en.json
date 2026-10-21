@@ -236,7 +236,7 @@
   ],
   "last_result_one_file": [
    "⚠ talk one.mp4",
-   "No speech was recognised in this file, so the output files are empty.",
+   "No speech was recognised in this file, so no transcript was saved.",
    "Check that the recording has sound. If the speech is quiet or in another language, choose that language and transcribe it again.",
    "Saved 1 output file in <tmp>",
    "• talk one.srt  (3 B)",
@@ -245,7 +245,7 @@
   ],
   "last_result_silent_two_files": [
    "⚠ talk one.mp4",
-   "No speech was recognised in this file, so the output files are empty.",
+   "No speech was recognised in this file, so no transcript was saved.",
    "Check that the recording has sound. If the speech is quiet or in another language, choose that language and transcribe it again.",
    "Saved 2 output files in <tmp>",
    "• talk one.srt  (3 B)",

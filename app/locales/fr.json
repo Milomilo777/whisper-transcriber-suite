@@ -664,7 +664,6 @@
     "No media file was found alongside the transcript JSON.": "Aucun fichier multimédia n'a été trouvé à côté du JSON de la transcription.",
     "No media file was found for this transcript, so the page has no player.": "Aucun fichier multimédia n'a été trouvé pour cette transcription ; la page n'a donc pas de lecteur.",
     "No reference voice": "Aucune voix de référence",
-    "No speech was recognised in this file, so the output files are empty.": "Aucune parole n'a été reconnue dans ce fichier ; les fichiers de sortie sont donc vides.",
     "No subtitle file": "Aucun fichier de sous-titres",
     "No text": "Aucun texte",
     "No tier detected — falling back to CPU.": "Aucun niveau détecté — repli sur le CPU.",

@@ -673,7 +673,6 @@
     "No media file was found alongside the transcript JSON.": "Šalia transkripcijos JSON medijos failo nerasta.",
     "No media file was found for this transcript, so the page has no player.": "Šiai transkripcijai medijos failas nerastas, todėl puslapyje nėra leistuvo.",
     "No reference voice": "Nėra pavyzdinio balso",
-    "No speech was recognised in this file, so the output files are empty.": "Šiame faile kalba neatpažinta, todėl išvesties failai tušti.",
     "No subtitle file": "Nėra subtitrų failo",
     "No text": "Nėra teksto",
     "No tier detected — falling back to CPU.": "Lygis neaptiktas – naudojamas CPU.",

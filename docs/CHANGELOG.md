@@ -94,6 +94,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   transcription job." (it queued them all at once without a word). One file still just goes into
   the box; a drop is not asked.
 
+- **No empty files for a recording without speech**: such a run used to write an empty `.srt` and
+  a 3-byte `.json`, which looked like a broken run. It now writes none; the history row, the Queue
+  ("⚠ no speech found") and the result card ("...so no transcript was saved") say why. The web /
+  LAN server still returns its empty transcript, as the OpenAI-compatible API expects.
+
 - **Plainer words on the Download tab and the subtitles question**: "URL" is now **Video link**;
   the note under it says "This video already has German subtitles made by the uploader. Use them
   instead of transcribing?" (was "Captions (creator-provided) are already available in "de" --

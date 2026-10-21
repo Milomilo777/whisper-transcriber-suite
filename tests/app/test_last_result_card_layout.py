@@ -120,3 +120,26 @@ def test_transcribe_tab_scrolls_when_the_window_is_short() -> None:
     assert "build_transcribe_tab(self, fit_or_scroll(self.t1))" in inspect.getsource(
         appmod.App._build_tabs
     )
+
+
+def test_a_run_without_speech_lists_no_files_not_even_older_ones(root, tmp_path) -> None:
+    """No speech: the worker wrote no files (deep review, 2026-10-21). The card says so, and
+    must not list a clip.srt an earlier run left next to the recording, nor call the missing
+    files an error."""
+    (tmp_path / "clip.srt").write_text("1\n00:00:00,000 --> 00:00:01,000\nold\n", encoding="utf-8")
+    task = TranscriptionTask(str(tmp_path / "clip.mp3"))
+    task.output_paths = []
+    task.no_speech = True
+    fake = SimpleNamespace(
+        last_result_frame=ttk.Frame(root), last_result_empty_label=MagicMock(),
+        last_result_body=ttk.Frame(root), tray=None, log=MagicMock(), nb=MagicMock(),
+        t1=object(), app_config={}, chime_on_complete_var=None,
+        _open_file=MagicMock(), _open_folder=MagicMock(),
+        open_transcript_viewer_for=MagicMock(), _save_shareable_page_for=MagicMock(),
+    )
+    appmod.App.show_last_result(fake, task)  # type: ignore[arg-type]
+    texts = [str(w.cget("text")) for w in _all(fake.last_result_body) if w.winfo_class() == "TLabel"]
+    assert "No speech was recognised in this file, so no transcript was saved." in texts
+    assert not any("clip.srt" in t for t in texts)
+    assert not any("no output files were found" in t for t in texts)
+    assert not [b for b in _buttons(fake.last_result_body) if str(b.cget("text")) == "Open"]

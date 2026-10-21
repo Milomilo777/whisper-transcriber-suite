@@ -673,7 +673,6 @@
     "No media file was found alongside the transcript JSON.": "Nu s-a găsit niciun fișier media lângă JSON-ul transcrierii.",
     "No media file was found for this transcript, so the page has no player.": "Nu s-a găsit niciun fișier media pentru această transcriere, așa că pagina nu are player.",
     "No reference voice": "Nicio voce de referință",
-    "No speech was recognised in this file, so the output files are empty.": "Nu s-a recunoscut nicio vorbire în acest fișier, așa că fișierele de ieșire sunt goale.",
     "No subtitle file": "Niciun fișier de subtitrare",
     "No text": "Niciun text",
     "No tier detected — falling back to CPU.": "Niciun nivel detectat — se revine la CPU.",

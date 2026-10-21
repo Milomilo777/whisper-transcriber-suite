@@ -655,7 +655,6 @@
     "No media file was found alongside the transcript JSON.": "ไม่พบไฟล์สื่อคู่กับ JSON ของข้อความถอดเสียง",
     "No media file was found for this transcript, so the page has no player.": "ไม่พบไฟล์สื่อสำหรับข้อความถอดเสียงนี้ หน้านี้จึงไม่มีเครื่องเล่น",
     "No reference voice": "ไม่มีเสียงอ้างอิง",
-    "No speech was recognised in this file, so the output files are empty.": "ไม่รู้จำเสียงพูดในไฟล์นี้ ไฟล์ผลลัพธ์จึงว่างเปล่า",
     "No subtitle file": "ไม่มีไฟล์คำบรรยาย",
     "No text": "ไม่มีข้อความ",
     "No tier detected — falling back to CPU.": "ตรวจไม่พบระดับ — ใช้ CPU แทน",

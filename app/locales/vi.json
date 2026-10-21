@@ -655,7 +655,6 @@
     "No media file was found alongside the transcript JSON.": "Không tìm thấy tệp media nào cạnh tệp JSON của bản chép lời.",
     "No media file was found for this transcript, so the page has no player.": "Không tìm thấy tệp media cho bản chép lời này, nên trang không có trình phát.",
     "No reference voice": "Không có giọng tham chiếu",
-    "No speech was recognised in this file, so the output files are empty.": "Không nhận dạng được lời nói nào trong tệp này, nên các tệp đầu ra đều trống.",
     "No subtitle file": "Không có tệp phụ đề",
     "No text": "Không có văn bản",
     "No tier detected — falling back to CPU.": "Không phát hiện được cấp nào — chuyển sang dùng CPU.",
