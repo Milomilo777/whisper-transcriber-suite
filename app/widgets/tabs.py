@@ -917,6 +917,7 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     ttk.Label(file_row, text=_("File or video link:")).pack(side="left")
     file_entry = ttk.Entry(file_row, textvariable=app.fv)
     file_entry.pack(side="left", fill="x", expand=True, padx=(8, 0))
+    app.file_entry = file_entry  # App._show_file scrolls it to the end of a long path
     # Enter after pasting a path or link starts it, as the Transcribe button does (it did
     # nothing: code review, 2026-10-21).
     start_file = once_per(1.5, app.add)

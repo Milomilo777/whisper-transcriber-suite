@@ -1076,6 +1076,7 @@ class App(tk.Tk):
     # --- forward declarations of attributes assigned after init -----------
     # Transcribe tab
     fv: tk.StringVar
+    file_entry: "ttk.Entry"
     vad_enabled_var: tk.BooleanVar
     word_timestamps_var: tk.BooleanVar
     translate_var: tk.BooleanVar
@@ -2028,8 +2029,18 @@ class App(tk.Tk):
                 parent=self,
             )
             return
-        self.fv.set(path)
+        self._show_file(path)
         self.nb.select(self.t1)
+
+    def _show_file(self, path: str) -> None:
+        """Put ``path`` in the File or video link box with its END in sight: an Entry shows the
+        start of a long path, so the file name and extension were cut off (round-2 screenshot
+        critics, 2026-10-21). Only for paths the app writes; typing is left alone."""
+        self.fv.set(path)
+        entry = _inst_attr(self, "file_entry")  # absent on bare test doubles
+        if entry is not None:
+            entry.icursor("end")
+            entry.xview_moveto(1.0)
 
     def _clear_recent(self) -> None:
         """Clear the File > Recent files list.
@@ -3773,7 +3784,7 @@ class App(tk.Tk):
         if not chosen:
             return
         if len(chosen) == 1:
-            self.fv.set(chosen[0])
+            self._show_file(chosen[0])
             return
         count = self._bulk_enqueue(list(chosen))
         if count:
@@ -7762,7 +7773,7 @@ class App(tk.Tk):
                 )
         if paths:
             if len(paths) == 1:
-                self.fv.set(paths[0])
+                self._show_file(paths[0])
                 self.nb.select(self.t1)
                 self.log(f"Picked: {os.path.basename(paths[0])} (drag-and-drop)")
             else:

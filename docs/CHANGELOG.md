@@ -128,7 +128,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   A long file name is cut in the middle on the ready line ("Interview with the … 1 of 3).mp4"),
   so it no longer pushes **Advanced settings…** out of the window. The Queue's File column cuts
   a long name the same way to the column's width, keeping its end and extension, instead of
-  stopping at the column edge.
+  stopping at the column edge. A long path picked with Browse, dropped, or opened from Recent
+  files shows its end (name and extension) in the File or video link box.
 
 - **Speed cell while it measures**: the Queue said only "measuring speed..." for about a minute on a
   CPU run (the speed needs two 30-second chunks of speech); it now says how much audio is done
