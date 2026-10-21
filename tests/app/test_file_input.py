@@ -515,8 +515,10 @@ def test_transcribe_with_an_empty_box_opens_browse() -> None:
     assert opened == [True] and fake.queue == []
 
 
-def test_ready_state_refuses_a_file_that_is_not_audio_or_video(tmp_path) -> None:
+def test_ready_state_refuses_a_file_that_is_not_audio_or_video(tmp_path, no_probe: list[str]) -> None:
     # Click-through test 2026-10-21: README.md showed a green "Ready" line and a blue button.
+    # ffprobe's "no audio" answer is stubbed (no_probe): a test machine may have no ffprobe,
+    # and a file ffprobe cannot check is accepted on purpose.
     from app.widgets.tabs import file_ready_state
 
     readme = tmp_path / "README.md"
