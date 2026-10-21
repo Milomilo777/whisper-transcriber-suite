@@ -87,7 +87,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **Transcribe tab, plainer**: the ready line gives the recording's length ("Ready: class.flac
   (1:46:12, 52.3 MB)"); the box is labelled **File or video link**, since a link works there too;
   **Browse files** comes before the sample clip; "(whole recording)" shows while the time range is
-  0:00:00 to 0:00:00; the Speakers count shows only while **Identify speakers** is ticked.
+  0:00:00 to 0:00:00, and a red "Not a time: use H:MM:SS" when a box holds text that is not a time
+  (such text counts as unset, so the whole recording would be transcribed); the Speakers count shows
+  only while **Identify speakers** is ticked.
 
 - **Plain processor note**: "CPU (slower)" instead of "CPU - int8_float32 (slower)" beside the
   Transcribe button and under the Queue; the hover text keeps the technical detail.

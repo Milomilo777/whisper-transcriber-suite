@@ -710,6 +710,7 @@
   "None of the chosen files is audio or video.": "None of the chosen files is audio or video.",
   "None of the recommended models is in this model list. Pick a model in the Transcribe tab instead.": "None of the recommended models is in this model list. Pick a model in the Transcribe tab instead.",
   "Norwegian": "Norwegian",
+  "Not a time: use H:MM:SS": "Not a time: use H:MM:SS",
   "Not available on macOS: the app stays in the Dock instead.": "Not available on macOS: the app stays in the Dock instead.",
   "Not downloaded yet, and Work offline is on: turn it off to download this model.": "Not downloaded yet, and Work offline is on: turn it off to download this model.",
   "Not enough free disk space for this text.": "Not enough free disk space for this text.",

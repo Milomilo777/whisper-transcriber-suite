@@ -571,13 +571,22 @@ EMPTY_STATE_FORMATS = N_(
 )
 
 
-def time_range_hint(start: str, end: str) -> str:
-    """The note beside the Transcribe tab's time range: "(whole recording)" while both
-    sides are unset, else nothing. Unset = what App.add reads as no clip (zero, empty,
-    or not a time). No Tk."""
+def time_range_hint(start: str, end: str) -> tuple[str, bool]:
+    """The note beside the Transcribe tab's time range and whether it is an error.
+
+    "(whole recording)" while both sides are empty or zero; a red "not a valid time" line
+    when a side holds text that is not a time ("5 min", "5;00"): App.add reads such text
+    as unset, so the whole recording would be transcribed while the user meant a part
+    (code review, 2026-10-21); else nothing. No Tk.
+    """
     from app.services.download_service import _parse_timecode
 
-    return _("(whole recording)") if not _parse_timecode(start) and not _parse_timecode(end) else ""
+    sides = [text for text in (start, end) if text.strip()]
+    if any(_parse_timecode(text) is None for text in sides):
+        return _("Not a time: use H:MM:SS"), True
+    if not any(_parse_timecode(text) for text in sides):
+        return _("(whole recording)"), False
+    return "", False
 
 
 def clock_length(seconds: float) -> str:
@@ -1078,16 +1087,17 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
         side="left", padx=(2, 0)
     )
     # "0:00:00 to 0:00:00" read as an empty range (screenshot review, 2026-10-21): say
-    # what it means.
+    # what it means, and say so in red when a side is not a time at all.
     range_hint_var = tk.StringVar(master=opts_line2, value="")
-    ttk.Label(opts_line2, textvariable=range_hint_var, foreground=tokens.themed(tokens.TEXT_MUTED)).pack(
-        side="left", padx=(6, 0)
-    )
+    range_hint = ttk.Label(opts_line2, textvariable=range_hint_var, foreground=tokens.themed(tokens.TEXT_MUTED))
+    range_hint.pack(side="left", padx=(6, 0))
 
     def _sync_range_hint(*_args: object) -> None:
-        line = time_range_hint(app.transcribe_start_time_var.get(), app.transcribe_end_time_var.get())
+        line, wrong = time_range_hint(app.transcribe_start_time_var.get(), app.transcribe_end_time_var.get())
         if range_hint_var.get() != line:
             range_hint_var.set(line)
+        range_hint.configure(
+            foreground=tokens.themed(tokens.DANGER_TEXT) if wrong else tokens.themed(tokens.TEXT_MUTED))
 
     app.transcribe_start_time_var.trace_add("write", _sync_range_hint)
     app.transcribe_end_time_var.trace_add("write", _sync_range_hint)
