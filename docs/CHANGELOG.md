@@ -235,7 +235,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 - **Every message of 2.2 is translated** in the 40 machine-translated interface languages (about 150
   new messages each, so the new tabs, the phone page and the notices no longer show in English). The
-  newest 13 Persian messages were reviewed by a native speaker and Hindi by a contributor (#11); each
+  newest 13 Persian messages were reviewed by a native speaker and Hindi by a native-speaker contributor (#11); each
   catalog keeps its "machine" or "reviewed" status.
 
 - `tools/make_i18n_readmes.py` now only writes the block of language links in `README.md` and the

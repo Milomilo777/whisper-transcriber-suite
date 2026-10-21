@@ -37,15 +37,15 @@ is needed.
 <img src="docs/img/screenshot-transcribe.png" alt="The Transcribe tab: a drop target, engine and language pickers, speaker-label and word-timestamp options" width="80%">
 </div>
 
-## What's new in 2.1
+## What's new in 2.2
 
-- **The app in your language:** menus, buttons and messages in 42 languages (39 on macOS and Linux), machine-translated and marked as such. It follows your system language, or you pick one in Advanced settings.
-- **Speaker labels you can trust:** names reach the end of long recordings, and you can set how many people talk (2 to 10) instead of Auto.
-- **Your work is safer:** transcripts, exports and subtitles are fully written to disk before they replace the old file.
-- **Online features work on every Mac:** the update check and problem reports no longer fail with "certificate verify failed".
-- **Word counts for Chinese, Japanese, Thai, Lao, Khmer and Burmese** count characters or syllables.
+- **A simpler Transcribe tab:** pick **Accuracy** (Fast, Balanced or Best) and the app chooses a model that fits your language and your computer, with its download size shown. The rarer options wait under **More options**.
+- **Right to left:** with a Persian, Arabic, Hebrew or Urdu interface the tabs, lists, dialogs and tick boxes mirror (Windows).
+- **From your phone:** turn on *Share on local network*, scan the QR code and send a recording from a phone on the same Wi-Fi.
+- **A compact Download form** and a calmer Queue, with plainer words throughout.
+- **Every message translated** in all 42 interface languages, and many fixes that keep your settings, history and finished work safe.
 
-Version 2.0 added the queue's speed and time left, [subtitled video from a link](docs/SUBTITLED_VIDEO.md), transcripts as an offline web page, a checkable Work offline mode and translation to English. Full list: [CHANGELOG](docs/CHANGELOG.md).
+Version 2.1 added the interface in 42 languages, reliable speaker labels and safer saving; version 2.0 added the queue's speed and time left, [subtitled video from a link](docs/SUBTITLED_VIDEO.md), transcripts as an offline web page, a checkable Work offline mode and translation to English. Full list: [CHANGELOG](docs/CHANGELOG.md).
 
 ## Features
 
