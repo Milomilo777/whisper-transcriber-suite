@@ -343,7 +343,9 @@
         "that does not run it. To use it, pick " + name + " on the PC's Transcribe tab and click Use it.";
     } else {
       note.textContent = (state === "failed"
-        ? "The download of " + m.name + " stopped: " + (m.message || "unknown error") + ". "
+        // The engine's message usually ends in a period already: no "..".
+        ? "The download of " + m.name + " stopped: " +
+          (m.message || "unknown error").replace(/[.\s]+$/, "") + ". "
         : m.name + " is a model trained for " + name + " and gives much better " + name +
           " text, but it is not on this PC yet. ") +
         "Until it is, this file uses the general model.";
