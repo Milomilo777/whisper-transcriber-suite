@@ -5518,13 +5518,35 @@ class App(tk.Tk):
             t for t in (self.download_row_map.get(i) for i in tree.selection()) if t
         ]
 
+    def _download_button_states(self, task: VideoDownloadTask) -> dict[str, bool]:
+        """Which action-bar buttons ``task`` allows (the pure helper, fed the
+        facts it needs); shared by the bar's enabled state and its dispatcher."""
+        from app.services.download_service import _is_smtv_task
+        from app.widgets.tabs import download_button_states_for_status
+
+        saved = getattr(task, "saved_path", None)
+        return download_button_states_for_status(
+            getattr(task, "status", ""),
+            is_smtv=_is_smtv_task(task),
+            has_saved_file=bool(saved) and os.path.isfile(saved),
+        )
+
     def _download_action_apply(
-        self, fn: "Callable[[VideoDownloadTask], Any]"
+        self, fn: "Callable[[VideoDownloadTask], Any]", key: str,
     ) -> None:
-        """Run a per-download handler over the current selection, then
-        refresh the action-bar enabled state. Each handler already guards
-        its own valid statuses, so we don't pre-filter here."""
+        """Run a per-download handler over the selected rows that allow the
+        action ``key``, then refresh the action-bar enabled state.
+
+        A mixed selection enables a button when ANY selected row allows it,
+        so the dispatcher filters by the same rule (like the Queue tab's
+        bar): Remove and Re-run have no status guard of their own, and
+        applied to every row they hid a running download (its process and
+        download slot stayed active, its Pause/Cancel controls were gone)
+        and queued a copy of it.
+        """
         for t in list(self._selected_downloads()):
+            if not self._download_button_states(t).get(key):
+                continue
             try:
                 fn(t)
             except Exception:  # noqa: BLE001
@@ -5551,22 +5573,11 @@ class App(tk.Tk):
         buttons = getattr(self, "download_action_buttons", None)
         if not buttons:
             return
-        from app.services.download_service import _is_smtv_task
-        from app.widgets.tabs import (
-            DOWNLOAD_ACTION_KEYS,
-            download_button_states_for_status,
-        )
+        from app.widgets.tabs import DOWNLOAD_ACTION_KEYS
 
         merged = {k: False for k in DOWNLOAD_ACTION_KEYS}
         for t in self._selected_downloads():
-            saved = getattr(t, "saved_path", None)
-            has_file = bool(saved) and os.path.isfile(saved) if saved else False
-            states = download_button_states_for_status(
-                getattr(t, "status", ""),
-                is_smtv=_is_smtv_task(t),
-                has_saved_file=has_file,
-            )
-            for k, v in states.items():
+            for k, v in self._download_button_states(t).items():
                 if v:
                     merged[k] = True
         for key, btn in buttons.items():

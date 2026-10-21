@@ -240,6 +240,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   again for the whole file in one language, so its saved progress no longer matched. History now
   records both options and the resume puts them back.
 
+- **Remove and Re-run on the Download tab leave running downloads alone**: with a finished and a
+  running download selected together, Remove hid the running one (its download kept going with no
+  Pause or Cancel on screen) and Re-run queued a second copy of it. Each button now acts only on
+  the selected rows it is valid for.
 - **Pause and Resume always reach the transcription in the order clicked**: a quick Pause then
   Resume could arrive at the transcription process reversed, leaving it waiting at the next
   segment while the window said running. Commands to one transcription are now written in the

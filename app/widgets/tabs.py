@@ -2078,23 +2078,23 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     app.download_action_buttons = {
         "pause": ttk.Button(
             dl_action_bar, text=pgettext("button", "Pause"),
-            command=lambda: app._download_action_apply(app.pause_download),
+            command=lambda: app._download_action_apply(app.pause_download, "pause"),
         ),
         "resume": ttk.Button(
             dl_action_bar, text=pgettext("button", "Resume"),
-            command=lambda: app._download_action_apply(app.resume_download),
+            command=lambda: app._download_action_apply(app.resume_download, "resume"),
         ),
         "cancel": ttk.Button(
             dl_action_bar, text=_("Cancel"),
-            command=lambda: app._download_action_apply(app.cancel_download),
+            command=lambda: app._download_action_apply(app.cancel_download, "cancel"),
         ),
         "rerun": ttk.Button(
             dl_action_bar, text=_("Re-run"),
-            command=lambda: app._download_action_apply(app._rerun_download),
+            command=lambda: app._download_action_apply(app._rerun_download, "rerun"),
         ),
         "remove": ttk.Button(
             dl_action_bar, text=_("Remove"),
-            command=lambda: app._download_action_apply(app.remove_download),
+            command=lambda: app._download_action_apply(app.remove_download, "remove"),
         ),
         "open": ttk.Button(
             dl_action_bar, text=pgettext("button", "Open"),
