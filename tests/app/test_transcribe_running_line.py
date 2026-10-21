@@ -148,3 +148,8 @@ def test_the_idle_tick_does_not_touch_the_box_file(app, tmp_path, monkeypatch) -
     assert calls == []
     app.fv.set("")
     assert calls == [""]
+
+
+def test_a_stand_in_without_a_queue_list_shows_nothing() -> None:
+    """Window tests stub App attributes with functions; the line must not iterate one."""
+    assert running_job_line("", lambda: None) == (None, "")  # type: ignore[arg-type]

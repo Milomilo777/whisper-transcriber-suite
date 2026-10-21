@@ -753,6 +753,8 @@ def running_job_line(box_text: str, queue: "list[Any]") -> "tuple[Any, str]":
     from app.app import _clean_pasted_path
     from app.domain.speed_text import time_left_text
 
+    if not isinstance(queue, (list, tuple)):
+        return None, ""  # a stand-in without a queue (window tests that stub the App)
     jobs = [t for t in queue
             if getattr(t, "status", "") in ("running", "paused") and getattr(t, "source_download", None) is None]
     if not jobs:
