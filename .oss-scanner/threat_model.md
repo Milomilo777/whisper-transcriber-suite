@@ -17,6 +17,15 @@ Untrusted input enters here, most important first:
   (OpenAI-compatible) and `/mcp` (Model Context Protocol). Everything a client sends is untrusted: the multipart parser,
   upload file names, the JSON body, the `url`, `fmt`, `language`, `formats` and per-job option fields, headers (`Host`,
   `Origin`, `Sec-Fetch-*`, `Authorization`), and the completion webhook URL.
+- **The phone page and its link** (added in 2.2): the Web / LAN access tab shows a QR code that opens the browser page on
+  a phone on the same Wi-Fi (`core/phone_link.py`). With an access password the link carries it as `?token=`; the page
+  (`core/server/static/index.html`) moves it into the password box and `sessionStorage`, drops it from the address bar
+  and sends it as a percent-encoded `X-Auth-Token` header (non-Latin passwords), which `token_ok` in `httpd.py` also
+  accepts decoded. `POST /api/language-models/<language>/download` lets a page client make the host download a
+  language-specific model from the Hugging Face Hub (`core/language_model_fetch.py`); its status and error text are
+  returned to clients by `/api/options` (paths must be redacted, `redact_paths` in `jobs.py`). Token leaks through the
+  link (history, Referer, logs, screenshots of the QR), a model download a client can trigger or repeat, and any path
+  or error text that reaches a client belong here.
 - **URLs given to yt-dlp**, from the server (`core/server/__init__.py` `_download_url`, command built with an
   end-of-options `--` before the URL) and from the GUI's Download tab (`app/services/download_service.py`). The pages,
   playlists, subtitles and media they return are attacker-controlled. yt-dlp and ffmpeg parse them.
@@ -37,7 +46,8 @@ Untrusted input enters here, most important first:
 
 ## Components that matter most / least
 
-- Most: `core/server/` (a network listener that writes uploads to disk and starts downloads), `core/server/jobs.py`
+- Most: `core/server/` (a network listener that writes uploads to disk, starts downloads and model downloads, and serves
+  the phone page), `core/phone_link.py`, `core/language_model_fetch.py`, `core/server/jobs.py`
   (`is_safe_url`, `_safe_filename`, `post_webhook`, `output_path`), the yt-dlp and ffmpeg command construction
   (`app/services/download_service.py`, `core/server/__init__.py`, `core/_proc.py`), the file parsers and writers
   (`core/writers/`, `core/convert.py`, `core/integrations/otranscribe.py`), `core/config.py` (online layer and
@@ -54,7 +64,8 @@ Untrusted input enters here, most important first:
 - `tests/` is the hermetic suite (`python -m pytest tests/ --ignore=tests/smoke -q`); `tests/smoke/` needs a real model and a
   network and skips itself. The server tests start a real `JobHTTPServer` on a loopback port and are the best examples of
   driving it: `tests/core/test_server_security.py`, `test_server_path_safety.py`, `test_server_upload_edge_cases.py`,
-  `test_server_exposure_audit.py`, `test_server_mcp.py`, `test_server_openai.py`.
+  `test_server_exposure_audit.py`, `test_server_mcp.py`, `test_server_openai.py`; for the phone page and token encoding
+  `test_server_language_model.py`, `test_fixpack_D.py` and `test_server_jobs.py`.
 - Start the server by hand with `python gui.py serve --token secret` (add `--lan` for `0.0.0.0`). Transcribing needs a model,
   which the first job downloads; the image has none, so job creation, uploads, auth and URL checks can be tested without one.
 - The GUI needs a display; under `xvfb-run` Tk code runs headless. `python gui.py transcribe FILE` is the one-shot CLI.
