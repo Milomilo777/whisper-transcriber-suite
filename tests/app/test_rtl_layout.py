@@ -228,7 +228,7 @@ PACK_ROW = st.lists(st.tuples(SIDES, ANCHORS, PADS), min_size=1, max_size=4)
 GRID_ROW = st.tuples(st.lists(st.tuples(st.integers(1, 3), STICKIES, PADS), min_size=1, max_size=4),
                      st.lists(st.integers(0, 3), min_size=0, max_size=6))
 TREE = st.lists(st.one_of(PACK_ROW, GRID_ROW), min_size=1, max_size=4)
-KINDS = [ttk.Label, ttk.Entry, ttk.Button, tk.Label, tk.Checkbutton]
+KINDS = [ttk.Label, ttk.Entry, ttk.Button, tk.Label, tk.Checkbutton, ttk.LabelFrame, tk.LabelFrame]
 
 
 def _build(master: tk.Misc, tree: list[Any]) -> None:
@@ -259,7 +259,7 @@ def _snapshot(w: tk.Misc) -> list[Any]:
     info.pop("in", None)
     keys = w.keys()
     rows: list[Any] = [(type(w).__name__, manager, sorted(info.items()),
-                        [str(w.cget(o)) for o in ("anchor", "justify") if o in keys])]
+                        [str(w.cget(o)) for o in ("anchor", "justify", "labelanchor") if o in keys])]
     if w.grid_slaves():
         rows.append([sorted(w.grid_columnconfigure(c).items()) for c in range(w.grid_size()[0])])
     rows.extend(_snapshot(child) for child in w.winfo_children())
@@ -281,3 +281,36 @@ def test_property_mirroring_twice_restores_every_pack_grid_and_text_option(root:
         assert _snapshot(holder) == before
     finally:
         holder.destroy()
+
+
+# --- LabelFrame heading ---------------------------------------------------------------------
+
+@pytest.mark.parametrize("kind", [ttk.LabelFrame, tk.LabelFrame])
+@pytest.mark.parametrize("start, mirrored", [("nw", "ne"), ("w", "e"), ("sw", "se"), ("n", "n")])
+def test_labelframe_heading_side_flips_and_comes_back(frame: ttk.Frame, rtl: None, kind: Any,
+                                                      start: str, mirrored: str) -> None:
+    box = kind(frame, text="Last result", labelanchor=start)
+    box.pack(fill="x")
+    rtl_layout.mirror_tree(frame)
+    assert str(box.cget("labelanchor")) == mirrored
+    rtl_layout.mirror_tree(frame)
+    assert str(box.cget("labelanchor")) == start
+
+
+@pytest.mark.parametrize("kind", [ttk.LabelFrame, tk.LabelFrame])
+def test_default_labelframe_heading_moves_right_and_is_restored(frame: ttk.Frame, rtl: None,
+                                                                kind: Any) -> None:
+    box = kind(frame, text="Last result")
+    box.pack(fill="x")
+    before = str(box.cget("labelanchor"))
+    rtl_layout.mirror_tree(frame)
+    assert str(box.cget("labelanchor")) == "ne"
+    rtl_layout.mirror_tree(frame)
+    assert str(box.cget("labelanchor")) == before
+
+
+def test_labelframe_is_untouched_in_a_left_to_right_interface(frame: ttk.Frame) -> None:
+    box = ttk.LabelFrame(frame, text="Last result", labelanchor="nw")
+    box.pack()
+    assert rtl_layout.mirror_tree(frame) == 0
+    assert str(box.cget("labelanchor")) == "nw"

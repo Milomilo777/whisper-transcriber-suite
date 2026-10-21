@@ -13,6 +13,7 @@ that reflects the geometry horizontally, only when :func:`active`:
 * a ``ttk.Checkbutton`` / ``ttk.Radiobutton``: its style is swapped for an ``Rtl.`` twin whose
   layout puts the indicator at the right of the text (:func:`rtl_style`; a theme switch
   calls :func:`refresh_styles`, since layouts live per theme);
+* a ``LabelFrame``: ``labelanchor`` mirrored (the heading moves to the right);
 * a ``ttk.Treeview``: its ``displaycolumns`` reversed (column ids unchanged) and every column
   and heading anchor mirrored; the ``#0`` tree column cannot move.
 
@@ -254,7 +255,36 @@ def _mirror_indicator_style(widget: tk.Misc) -> int:
     return 1
 
 
+_LABEL_FRAMES = (tk.LabelFrame, ttk.LabelFrame)
+LABELANCHOR_BLANK_ATTR = "_rtl_labelanchor_blank"
+
+
+def _mirror_labelanchor(widget: tk.Misc) -> int:
+    """Flip a LabelFrame's heading side (nw <-> ne, w <-> e, sw <-> se). An unset value ("" on
+    some Tk builds) means nw; the second pass puts the unset value back."""
+    old = str(widget.cget("labelanchor"))
+    blank = bool(getattr(widget, LABELANCHOR_BLANK_ATTR, False))
+    if old == "":
+        old = "nw"
+        blank = True
+    new = flip_anchor(old)
+    if new == old:
+        return 0
+    if blank and new == "nw":
+        setattr(widget, LABELANCHOR_BLANK_ATTR, False)
+        try:
+            widget.configure({"labelanchor": ""})
+        except tk.TclError:
+            widget.configure({"labelanchor": new})
+        return 1
+    setattr(widget, LABELANCHOR_BLANK_ATTR, blank)
+    widget.configure({"labelanchor": new})
+    return 1
+
+
 def _mirror_options(widget: tk.Misc) -> int:
+    if isinstance(widget, _LABEL_FRAMES):
+        return _mirror_labelanchor(widget)
     if not isinstance(widget, _TEXT_WIDGETS):
         return 0
     keys = widget.keys()

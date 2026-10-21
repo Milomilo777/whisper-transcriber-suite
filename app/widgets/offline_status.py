@@ -272,9 +272,12 @@ class OfflineStatusBar(ttk.Frame):
         row = ttk.Frame(self)
         row.pack(fill="x")
         self.text_var = tk.StringVar(master=self, value="")
+        # The button is packed first: Tk gives space in pack order, so a long text then shrinks
+        # (is cut) instead of pushing the button out of the window.
         self.label = ttk.Label(row, textvariable=self.text_var, anchor="w")
+        button = ttk.Button(row, text=_("Network log"), command=self.open_log)
+        button.pack(side="right")
         self.label.pack(side="left", fill="x", expand=True)
-        ttk.Button(row, text=_("Network log"), command=self.open_log).pack(side="right")
         self.bind("<Destroy>", self._on_destroy, add="+")
 
     def _on_destroy(self, event: tk.Event) -> None:
