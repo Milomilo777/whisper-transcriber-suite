@@ -4960,15 +4960,7 @@ class App(tk.Tk):
                     command=lambda: self._open_folder(task_output_folder(task), select=out_file),
                 )
                 m.add_separator()
-            # Resume-from-cancellation: a "Resume" entry sits above "Re-run"
-            # only when a resumable checkpoint exists (states["resume"] for a
-            # cancelled task). Error / finished never invite a resume from a
-            # potentially stale partial.
-            if states["resume"] and task.status == "cancelled":
-                m.add_command(
-                    label=_("Resume"),
-                    command=lambda: self.resume_task(task),
-                )
+            # No "Resume" for a cancelled job (button_states_for_status): Re-run only.
             if states["rerun"]:
                 m.add_command(label=_("Re-run"), command=lambda: self._rerun_task(task))
             if states["remove"]:
@@ -5162,10 +5154,7 @@ class App(tk.Tk):
         if terminal:
             m.add_command(label=_("Re-run selected ({count})", count=len(terminal)),
                           command=lambda ts=terminal: self._bulk_rerun(ts))
-            resumable = self._resumable_tasks(terminal)
-            if resumable:
-                m.add_command(label=_("Resume selected ({count})", count=len(resumable)),
-                              command=lambda ts=resumable: self._bulk_resume(ts))
+            # No "Resume selected" for cancelled jobs: Re-run only (button_states_for_status).
             m.add_command(label=_("Remove selected ({count})", count=len(terminal)),
                           command=lambda ts=terminal: self._bulk_apply(ts, self.remove_task))
         waiting = [t for t in tasks if t.status == "waiting"]
@@ -5689,14 +5678,11 @@ class App(tk.Tk):
         self._update_queue_action_bar()
 
     def _action_bar_resume(self) -> None:
-        """Resume button — paused tasks resume in place; a cancelled task
-        with a checkpoint re-enqueues from its partial (resume_task)."""
+        """Resume button — paused tasks resume in place. A cancelled job is re-run, not
+        resumed (button_states_for_status)."""
         for t in list(self._selected_tasks()):
-            status = getattr(t, "status", "")
-            if status == "paused":
+            if getattr(t, "status", "") == "paused":
                 self.resume(t)
-            elif status == "cancelled" and self._task_has_checkpoint(t):
-                self.resume_task(t)
         self._update_queue_action_bar()
 
     def _update_queue_action_bar(self) -> None:

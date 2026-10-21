@@ -178,3 +178,40 @@ def test_a_job_with_no_speech_has_no_transcript_to_view(monkeypatch, tmp_path) -
     fake._update_queue_action_bar()
     assert fake.queue_result_buttons["view"].enabled is False
     assert fake.queue_result_buttons["folder"].enabled is True
+
+
+class _Menu:
+    labels: list[str] = []
+
+    def __init__(self, *_a, **_k) -> None:
+        _Menu.labels = []
+
+    def add_command(self, label: str, **_k) -> None:
+        _Menu.labels.append(label)
+
+    def add_separator(self) -> None:
+        pass
+
+    def tk_popup(self, *_a) -> None:
+        pass
+
+
+def test_a_cancelled_job_offers_re_run_but_not_resume(monkeypatch) -> None:
+    """Resume beside Re-run on a cancelled job asked users to tell two restarts apart (deep
+    review, 2026-10-21); the bulk menu and the Resume button follow."""
+    import app.app as app_mod
+
+    monkeypatch.setattr(app_mod.tk, "Menu", _Menu)
+    monkeypatch.setattr(app_mod, "_set_enabled", lambda btn, on: setattr(btn, "enabled", on))
+    cancelled = _task("cancelled")
+    fake = _fake_app([cancelled])
+    fake._task_has_checkpoint = lambda _t: True
+    fake._resumable_tasks = lambda ts: list(ts)
+    App._bulk_task_menu(fake, [cancelled, _task("cancelled")], types.SimpleNamespace(x_root=0, y_root=0))  # type: ignore[arg-type]
+    assert any(label.startswith("Re-run selected") for label in _Menu.labels)
+    assert not any(label.startswith("Resume") for label in _Menu.labels)
+    resumed: list = []
+    fake.resume_task = resumed.append
+    fake.resume = resumed.append
+    App._action_bar_resume(fake)  # type: ignore[arg-type]
+    assert resumed == []

@@ -298,12 +298,10 @@
   "queue_menu_bulk": [
    "Cancel selected (2)",
    "Re-run selected (3)",
-   "Resume selected (1)",
    "Remove selected (3)",
    "Remove waiting (1)"
   ],
   "queue_menu_cancelled": [
-   "Resume",
    "Re-run",
    "Remove"
   ],

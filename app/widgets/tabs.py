@@ -518,10 +518,10 @@ def button_states_for_status(
       * running  -> Pause, Cancel
       * paused   -> Resume, Cancel
       * terminal (finished / cancelled / error) -> Re-run, Remove
-        (cancelled also offers Resume when a resumable checkpoint exists)
 
-    ``has_checkpoint`` only matters for the ``cancelled`` state — it maps
-    to the "Resume" entry ``menu_row`` adds above "Re-run".
+    A cancelled job no longer offers Resume, even with a checkpoint: Resume beside Re-run
+    asked users to tell two restarts apart (deep review, 2026-10-21). ``has_checkpoint``
+    is kept for the callers and changes nothing now.
     """
     states = {k: False for k in QUEUE_ACTION_KEYS}
     if status == "waiting":
@@ -538,8 +538,6 @@ def button_states_for_status(
     elif status in ("finished", "cancelled", "error"):
         states["rerun"] = True
         states["remove"] = True
-        if status == "cancelled" and has_checkpoint:
-            states["resume"] = True
     return states
 
 

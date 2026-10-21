@@ -119,6 +119,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   in amber, which read as a warning with nothing to fix. Amber stays for a GPU that could not be
   used; the hover text still says a CPU is slower.
 
+- **A cancelled job offers Re-run only**: Resume next to Re-run asked users to tell two restarts
+  apart. The Resume button, the right-click menu and the menu for several rows no longer offer
+  Resume for a cancelled job; a paused job still resumes as before.
+
 - **Plainer words on the Download tab and the subtitles question**: "URL" is now **Video link**;
   the note under it says "This video already has German subtitles made by the uploader. Use them
   instead of transcribing?" (was "Captions (creator-provided) are already available in "de" --

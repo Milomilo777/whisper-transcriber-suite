@@ -67,12 +67,10 @@ def test_states_cancelled_without_checkpoint():
     assert _on(button_states_for_status("cancelled")) == {"rerun", "remove"}
 
 
-def test_states_cancelled_with_checkpoint_adds_resume():
-    # menu_row surfaces "Resume" above "Re-run" ONLY when a cancelled task
-    # has a resumable checkpoint.
-    assert _on(button_states_for_status("cancelled", has_checkpoint=True)) == {
-        "rerun", "remove", "resume"
-    }
+def test_states_cancelled_never_offers_resume():
+    # Resume next to Re-run on a cancelled job asked users to tell two restarts apart (deep
+    # review, 2026-10-21): only Re-run is offered, with or without a checkpoint.
+    assert _on(button_states_for_status("cancelled", has_checkpoint=True)) == {"rerun", "remove"}
 
 
 def test_states_unknown_status_disables_everything():

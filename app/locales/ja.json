@@ -853,7 +853,6 @@
     "Result:": "結果:",
     "Resume": "再開",
     "Resume interrupted transcriptions?": "中断された文字起こしを再開しますか？",
-    "Resume selected ({count})": "選択項目を再開（{count}）",
     "Retrying with the new folder...": "新しいフォルダーで再試行しています...",
     "Reveal in Finder": "Finder で表示",
     "Right-click any item for Pause, Resume, Cancel, Re-run, and Remove — per task": "任意の項目を右クリックすると、タスクごとに一時停止、再開、キャンセル、再実行、削除ができます",
