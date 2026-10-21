@@ -643,7 +643,8 @@ def elide_middle(name: str, limit: int = READY_NAME_MAX) -> str:
     No Tk."""
     if len(name) <= limit:
         return name
-    tail = max(8, limit // 3)
+    # Half the room for the end: it holds what tells parts apart ("part 1 of 3") and the extension.
+    tail = max(8, limit // 2)
     return name[: limit - tail - 1] + "…" + name[-tail:]
 
 
@@ -1446,6 +1447,7 @@ def build_queue_tab(app: "App", parent: ttk.Frame) -> None:
     for c in cols:
         app.tree.heading(c, text=headings[c])
     app.tree.column("language", width=px(140))
+    app.tree.column("file", width=px(320))  # a bigger share when the table stretches
     app.tree.column("progress", anchor="w")
     fit_progress_column(app.tree)
     app.tree.column("speed", width=px(190), anchor="w")
@@ -1564,7 +1566,10 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
     top = ttk.Frame(parent, padding=10)
     top.pack(fill="x")
 
-    ttk.Label(top, text=pgettext("download form", "Video link")).grid(row=0, column=0, sticky="w")
+    # Top-aligned with its box: the lines under the box (Found, subtitles) made the cell taller and
+    # a centred label sat below the box (round-3 screenshot critique, 2026-10-21).
+    ttk.Label(top, text=pgettext("download form", "Video link")).grid(
+        row=0, column=0, sticky="nw", pady=(px(4), 0))
     app.download_url_var = tk.StringVar()
     app.download_url_var.trace_add("write", lambda *_args: app.format_service.schedule_lookup())
     url_cell = ttk.Frame(top)
@@ -1586,7 +1591,7 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
         _("Paste a link from YouTube or any other yt-dlp-supported site. "
           "Available formats and subtitles are looked up automatically as "
           "soon as you paste it."),
-    ).grid(row=0, column=3, sticky="w", padx=(6, 0))
+    ).grid(row=0, column=3, sticky="nw", padx=(6, 0), pady=(px(4), 0))
 
     # Browser cookies right under the URL: login-walled sites (Instagram,
     # Facebook, TikTok stories, age-gated YouTube) need them, and the option

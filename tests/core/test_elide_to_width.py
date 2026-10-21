@@ -54,3 +54,12 @@ def test_the_result_fits_and_keeps_the_end():
             assert name.startswith(head) and name.endswith(tail)
 
     check()
+
+
+def test_the_end_of_a_name_gets_half_of_the_room():
+    # "part 1 of 3" told the parts of a recording apart; a third of the room cut it to "of 3).mp4"
+    # in the Queue (round-3 screenshot critique, Gemini Argon, 2026-10-21).
+    shown = elide_middle(LONG, 30)
+    head, _, tail = shown.partition("…")
+    assert len(tail) == 15 and tail == LONG[-15:] and len(head) == 14
+    assert elide_to_width(LONG, _fits(30)).endswith("t 1 of 3).mp4")
