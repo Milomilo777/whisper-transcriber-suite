@@ -188,7 +188,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **A file with no speech no longer looks like a success**: the Queue said "✓ finished" with a
   guessed language ("English (not sure)" for a horse sound) and the result card showed a tick and
   **View transcript** over empty files. The row now says "⚠ no speech found" with no language, and
-  the card shows a warning mark, what to check next, and no viewer, share or Subtitle Edit buttons;
+  the card shows a warning mark, what to check next, and no viewer, share or Subtitle Edit buttons
+  (the Queue's **View transcript** stays grey for such a job too);
   the tray notice says "No speech was found in ..." instead of "Wrote 2 output files".
 
 - **Hover texts in the dark theme**: the pale yellow box glared on the dark panels; the dark theme

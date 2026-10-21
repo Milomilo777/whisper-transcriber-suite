@@ -144,3 +144,17 @@ def test_a_hint_explains_the_grey_buttons_until_a_row_is_selected(monkeypatch) -
     fake._selected_tasks = lambda: []
     fake._update_queue_action_bar()
     assert fake.queue_select_hint.shown is True
+
+
+def test_a_job_with_no_speech_has_no_transcript_to_view(monkeypatch, tmp_path) -> None:
+    """Its files are empty: the card hides View transcript, and the Queue kept it enabled
+    (round-3 screenshot critique, Gemini Argon, 2026-10-21)."""
+    import app.app as app_mod
+
+    monkeypatch.setattr(app_mod, "_set_enabled", lambda btn, on: setattr(btn, "enabled", on))
+    task = _task("finished", tmp_path, tmp_path / "out", json=True)
+    task.no_speech = True
+    fake = _fake_app([task])
+    fake._update_queue_action_bar()
+    assert fake.queue_result_buttons["view"].enabled is False
+    assert fake.queue_result_buttons["folder"].enabled is True

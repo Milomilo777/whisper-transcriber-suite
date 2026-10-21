@@ -5723,8 +5723,10 @@ class App(tk.Tk):
         if "view" in result_buttons:
             # The viewer opens a transcript .json only; a run without that format would get a
             # "choose a .json yourself?" question instead (review, 2026-10-21).
+            # No speech: the files are empty and the result card shows no viewer either.
             _set_enabled(result_buttons["view"],
-                         task is not None and task_transcript_json(task, must_exist=True) is not None)
+                         task is not None and not getattr(task, "no_speech", False)
+                         and task_transcript_json(task, must_exist=True) is not None)
         if "folder" in result_buttons:
             _set_enabled(result_buttons["folder"], task is not None)
             # The context menu's name for the same action ("Reveal in Finder" on macOS).
