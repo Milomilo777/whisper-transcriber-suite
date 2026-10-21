@@ -1396,14 +1396,9 @@ class DownloadService:
             if getattr(task, "paused", False):
                 return
             try:
-                self._run_smtv_task(task, run_generation=my_gen)
-            except Exception as e:  # noqa: BLE001
-                # Same staleness contract as the media path's except: a
-                # newer run owns all reporting for this task object, so a
-                # stale run must not post a terminal "error" that would
-                # flip the fresh run's row and release its slot.
-                if not _superseded():
-                    app.download_events.put(("error", task, str(e)))
+                # Reports its own terminal event, with the media path's staleness contract:
+                # a newer run owns all reporting for this task object.
+                self._run_smtv_with_fallback(task, my_gen, run_key)
             finally:
                 _finalize_owned_process(task, my_gen)
             return
@@ -1719,31 +1714,118 @@ class DownloadService:
             _quiet_unlink(part_path)
             raise RuntimeError(f"could not finalise download to {target_path}: {e}") from e
 
-        transcript_text = (episode.transcript_text or "").strip()
-        if transcript_text:
-            transcript_basename = smtv_mod.transcript_filename(episode)
-            mode = chosen.get("mode", "")
-            if mode.startswith("video"):
-                stem, _ = os.path.splitext(basename)
-                transcript_basename = stem + ".txt"
-            elif mode == "audio":
-                stem, _ = os.path.splitext(basename)
-                transcript_basename = stem + ".txt"
-            transcript_path = os.path.join(task.folder, transcript_basename)
-            try:
-                with open(transcript_path, "w", encoding="utf-8", newline="\n") as f:
-                    f.write(transcript_text + "\n")
-                app.download_events.put(
-                    ("log", task, f"--- SMTV transcript saved: {transcript_basename} ---")
-                )
-            except OSError as e:
-                app.download_events.put(
-                    ("log", task, f"transcript write failed for {transcript_basename}: {e}")
-                )
+        mode = chosen.get("mode", "")
+        self._write_smtv_transcript(
+            task, episode, basename if mode.startswith("video") or mode == "audio" else None)
 
         app.download_events.put(
             ("done_full", task, {"status": "finished", "saved_path": target_path})
         )
+
+    def _write_smtv_transcript(
+        self, task: "VideoDownloadTask", episode: smtv_mod.SmtvEpisode, media_basename: str | None,
+    ) -> None:
+        """Save the page's article text as ``<media stem>.txt`` beside the download (or under
+        the episode's own name when there is no media name). A write failure is logged only:
+        the download itself succeeded."""
+        transcript_text = (episode.transcript_text or "").strip()
+        if not transcript_text:
+            return
+        if media_basename:
+            transcript_basename = os.path.splitext(media_basename)[0] + ".txt"
+        else:
+            transcript_basename = smtv_mod.transcript_filename(episode)
+        transcript_path = os.path.join(task.folder, transcript_basename)
+        try:
+            with open(transcript_path, "w", encoding="utf-8", newline="\n") as f:
+                f.write(transcript_text + "\n")
+            self.app.download_events.put(
+                ("log", task, f"--- SMTV transcript saved: {transcript_basename} ---")
+            )
+        except OSError as e:
+            self.app.download_events.put(
+                ("log", task, f"transcript write failed for {transcript_basename}: {e}")
+            )
+
+    def _run_smtv_with_fallback(
+        self, task: "VideoDownloadTask", run_generation: int, run_key: object,
+    ) -> None:
+        """The site's own server first; when that download fails, the same video from YouTube.
+
+        The site's server keeps the article text, the audio-only file some episodes have and
+        the original quality, so it stays first; a failure there (server down, a dropped or
+        truncated transfer) no longer ends the job while the page names a YouTube copy.
+        Exactly one terminal event is posted, unless a newer run owns the task.
+        """
+        try:
+            self._run_smtv_task(task, run_generation=run_generation)
+            return
+        except Exception as e:  # noqa: BLE001 - reported below, or handed to the fallback
+            official_error = e
+        if getattr(task, "_run_generation", run_generation) != run_generation:
+            return  # a newer run owns all reporting for this task
+        try:
+            if self._smtv_youtube_fallback(task, official_error, run_generation, run_key):
+                return
+        except Exception as e:  # noqa: BLE001 - the fallback failing must still report once
+            if getattr(task, "_run_generation", run_generation) == run_generation:
+                self.app.download_events.put(
+                    ("error", task, f"{official_error}; the YouTube copy failed too: {e}"))
+            return
+        self.app.download_events.put(("error", task, str(official_error)))
+
+    def _smtv_youtube_fallback(
+        self, task: "VideoDownloadTask", official_error: Exception, run_generation: int,
+        run_key: object,
+    ) -> bool:
+        """Download the episode's YouTube copy into the same folder, in the same mode.
+
+        Returns False (and does nothing) when there is no usable copy, the task was cancelled
+        or paused, or Work offline is on; True once it has posted the task's terminal event.
+        """
+        import types
+
+        app = self.app
+        info = task.format_info or {}
+        episode = info.get("episode")
+        yt_url = smtv_mod.youtube_watch_url(episode if isinstance(episode, smtv_mod.SmtvEpisode) else None)
+        if (yt_url is None or task.cancelled or getattr(task, "paused", False)
+                or offline.is_offline()):
+            return False
+        audio = info.get("mode") == "Audio"
+        app.download_events.put(("log", task, (
+            f"--- The download from the site's own server failed ({official_error}); "
+            f"trying the same video on YouTube: {yt_url} ---")))
+        # yt-dlp's best audio (as mp3) or best video+audio (as mp4); no time range, as the
+        # site path has none.
+        fallback = types.SimpleNamespace(
+            folder=task.folder, url=yt_url, section_start=None, section_end=None,
+            format_info={"mode": "Audio" if audio else "Audio and video",
+                         "output": "mp3" if audio else "mp4"},
+        )
+        self.maybe_update_yt_dlp(task)
+        yt_dlp_update.begin_download(run_key)
+        try:
+            return_code, error_line, last_line, saved_path, _final = self._run_media_process(
+                task, self.build_download_command(fallback))  # type: ignore[arg-type]
+        finally:
+            yt_dlp_update.end_download(run_key)
+        if getattr(task, "_run_generation", run_generation) != run_generation:
+            return True  # a newer run owns the task now: stay silent
+        if task.cancelled:
+            app.download_events.put(("done", task, "cancelled"))
+        elif getattr(task, "paused", False):
+            app.download_events.put(("done", task, "paused"))
+        elif return_code or not saved_path:
+            reason = error_line or last_line or f"yt-dlp exit code {return_code}"
+            app.download_events.put(
+                ("error", task, f"{official_error}; the YouTube copy failed too: {reason}"))
+        else:
+            if isinstance(episode, smtv_mod.SmtvEpisode):
+                self._write_smtv_transcript(task, episode, os.path.basename(saved_path))
+            app.download_events.put(
+                ("done_full", task, {"status": "finished", "saved_path": saved_path}))
+        return True
 
     def _stream_smtv_file(
         self, task: "VideoDownloadTask", url: str, dest_path: str,

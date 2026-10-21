@@ -416,6 +416,20 @@ def _extract_poster(html_text: str, page_url: str) -> str | None:
     return urllib.parse.urljoin(page_url, m.group(1))
 
 
+_YOUTUBE_ID_RE = re.compile(r"^[A-Za-z0-9_-]{11}$")
+
+
+def youtube_watch_url(episode: "SmtvEpisode | None") -> str | None:
+    """The YouTube copy of ``episode`` as a watch URL, or None.
+
+    The download falls back to it when the site's own server fails. Only a well-formed
+    11-character video id is used: the value comes from the page, and a junk value must
+    never reach yt-dlp's command line.
+    """
+    yid = getattr(episode, "youtube_id", None) or ""
+    return f"https://www.youtube.com/watch?v={yid}" if _YOUTUBE_ID_RE.match(yid) else None
+
+
 def _extract_youtube_id(html_text: str) -> str | None:
     m = _YID_RE.search(html_text)
     if not m:
