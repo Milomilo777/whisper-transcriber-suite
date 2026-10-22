@@ -6,6 +6,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Changed
 
+- **The README describes the whole product again**: a full FAQ (36 questions), the browser version, every
+  engine, model and output format, measured accuracy and CPU speed, each tab, speaker labels, downloads, Live,
+  the phone and API mode, privacy, requirements, install, update, file locations and known limits.
+  `site/llms-full.txt` is rebuilt from it.
 - **The README points to the in-browser demo**: a line under the download link sends people without an install
   to the website's [/try/](https://whisper-transcriber-suite.com/try/) page.
 - **The website describes 2.2 and shows the browser demo**: a "Try it in your browser" card under the home
