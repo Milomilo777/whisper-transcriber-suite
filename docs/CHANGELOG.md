@@ -10,7 +10,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   to the website's [/try/](https://whisper-transcriber-suite.com/try/) page.
 - **The website describes 2.2 and shows the browser demo**: a "Try it in your browser" card under the home
   hero, a "Try" menu item, links from the three guides, a clearer /try/ title and description, "What's new in
-  2.2" on the home page, and guide text that matches the 2.2 Transcribe and Download tabs.
+  2.2" on the home page, and guide text that matches the 2.2 Transcribe and Download tabs. The Transcribe,
+  Download and Web / LAN screenshots now show the 2.2 window (taken on macOS 13).
 
 ## [2.2.0] — 2026-10-22
 
