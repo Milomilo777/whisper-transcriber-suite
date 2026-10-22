@@ -43,7 +43,7 @@ is needed.
 ## What's new in 2.2
 
 - **A simpler Transcribe tab:** pick **Accuracy** (Fast, Balanced or Best) and the app chooses a model that fits your language and your computer, with its download size shown. The rarer options wait under **More options**.
-- **Right to left:** with a Persian, Arabic, Hebrew or Urdu interface the tabs, lists, dialogs and tick boxes mirror (Windows).
+- **Right to left:** with a Persian, Arabic or Hebrew interface the tabs, lists, dialogs and tick boxes mirror (Windows).
 - **From your phone:** turn on *Share on local network*, scan the QR code and send a recording from a phone on the same Wi-Fi.
 - **A compact Download form** and a calmer Queue, with plainer words throughout.
 - **Every message translated** in all 42 interface languages, and many fixes that keep your settings, history and finished work safe.
