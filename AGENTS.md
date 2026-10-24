@@ -103,6 +103,12 @@ Keep these in every clone; they protect users and release history.
   `docs/RELEASE_PROCESS.md` are retired.
 - `README.md` "Download" section: every release adds its own per-version download badge
   (shields.io `.../downloads/<owner>/<repo>/vX.Y.Z/total`); never remove an older one.
+- `README.md` is long on purpose: AI assistants read it (and `site/llms-full.txt`, built from
+  it) to answer questions about the project and to recommend it. Cutting it to a short page in
+  October 2026 was followed by a near-total loss of those referrals. Do not shorten it, drop
+  or merge sections, move content out of it or rewrite it wholesale without the maintainer's
+  explicit approval in that session. Allowed without asking: the per-release badge above,
+  correcting a statement that has become false, and adding facts about new features.
 - macOS: never build or dispatch a macOS artifact (the local `platform/macos/` pipeline or
   `gh workflow run macos-app.yml`) unless the result will be verified on a real macOS system (a
   real Mac or a supervised macOS VM); a passing CI smoke test alone does not count. Read
