@@ -62,8 +62,8 @@ Typical uses:
 - **Research:** transcripts in ELAN, InqScribe, oTranscribe or TSV for annotation and qualitative analysis,
   with per-word timings and confidence in JSON.
 - **Journalism and sensitive material:** recordings that must not be uploaded to a cloud service. With the
-  default settings the audio never leaves the computer, and **File → Work offline** blocks the network
-  completely.
+  default settings the audio never leaves the computer, and **File → Work offline** blocks new network
+  connections.
 - **Accessibility:** live captions of a microphone, or of whatever the computer is playing on Windows.
 - **Many files:** a queue, a watched folder that transcribes new files by itself, and a local API for scripts.
 
@@ -89,10 +89,10 @@ Version 2.1 added the interface in 42 languages, reliable speaker labels and saf
 
 1. **Download** the Windows installer (or the Mac `.dmg`) from the
    [latest release](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest) and install it.
-   Windows SmartScreen and macOS Gatekeeper warn the first time because the builds are not code-signed;
+   Windows SmartScreen and macOS Gatekeeper warn the first time because the Windows builds are unsigned and the Mac app is not notarized;
    [docs/INSTALL.md](docs/INSTALL.md) shows what to click.
 2. **Quick start window:** on the first launch, pick your main language, Fast or Best quality and a download
-   folder. Each choice shows the model, its download size and how long a minute of audio takes on your
+   folder. Each choice shows the model, its download size and a rough time per minute of audio on your
    computer. **Skip** keeps the defaults.
 3. **Drop a file** (or paste a video link) on the Transcribe tab and press **Transcribe**. The first time, the
    speech model downloads once (about 0.5 to 3 GB, depending on the model).
@@ -116,7 +116,7 @@ No file at hand? **Try it now (sample clip)** transcribes an 18-second public-do
   Hebrew are offered on Windows for now.
 - **14 output formats:** SRT, VTT, ASS, TSV, TXT, JSON, LRC, Markdown, DOCX and
   PDF, plus the oTranscribe, ELAN, InqScribe and Express Scribe formats. DOCX
-  and PDF draw every script, and Persian, Arabic and Urdu read right to left
+  and PDF draw most scripts with the system's fonts, and Persian, Arabic and Urdu read right to left
   with joined letters.
 - **Shareable web page:** save a finished transcript as one `.html` file that
   works offline in any browser; click a word to hear it, search, jump to
@@ -140,7 +140,7 @@ No file at hand? **Try it now (sample clip)** transcribes an 18-second public-do
 
 More, in one list:
 
-- **Accuracy levels** (Fast, Balanced, Best) pick a model measured for your language and sized to your memory.
+- **Accuracy levels** (Fast, Balanced, Best) pick a model measured for your language (eight were measured; others get defaults) and sized to your memory.
 - **Models trained for one language** are suggested for Persian, Chinese, Japanese, German, Thai, Swedish
   and Hebrew, with a **Use it** button and a **Switch back** later.
 - **Translate speech to English** in the same pass (Whisper's own translate task).
@@ -148,7 +148,7 @@ More, in one list:
   like.
 - **Use a video's existing subtitles** instead of transcribing, when the site already has them in your
   language.
-- **Speed and time left** for every job in the queue, and a plain speed line for every finished one.
+- **Speed and time left** for faster-whisper jobs in the queue, and a plain speed line for every finished one.
 - **Transcript viewer** with click-to-play, word highlight, word-confidence colours, find and replace,
   filler-word removal, speaker renaming and timestamp editing.
 - **Convert transcripts** between formats (File → Convert transcript…), including SRT, VTT, ASS/SSA, TSV,
@@ -157,7 +157,7 @@ More, in one list:
 - **Quality aids:** voice-activity detection, a repetition-loop guard, hallucination flagging, automatic
   chapters, a prompt and hotwords for names and spelling, an optional adaptive denoise and optional word-timing
   refinement.
-- **Work offline:** one switch stops every network use, and a status line shows whether a connection is open.
+- **Work offline:** one switch stops all new network use, and a status line shows whether a connection is open.
 - **Light, Dark or System theme**, sharp text at 125% and 150% display scaling, Windows taskbar progress, and
   native menus, Dark mode and notifications on the Mac.
 
@@ -179,7 +179,7 @@ the page decodes and transcribes the file on your device.
 | **Length** | Up to 10 minutes per file (5 minutes on a phone). One file at a time. |
 | **Files** | Most audio files (MP3, WAV, M4A, OGG) and MP4 or WebM videos with sound; what a browser can open varies. |
 | **Languages** | You pick one of 16 (English, Arabic, Chinese, French, German, Hindi, Indonesian, Italian, Japanese, Korean, Persian, Portuguese, Russian, Spanish, Turkish, Vietnamese); the page starts from your browser's language. |
-| **Speed** | About as long as the audio, or longer on a phone. The page keeps the screen awake while it works. |
+| **Speed** | About as long as the audio, or longer on a phone. The page asks the browser to keep the screen awake while it works. |
 | **Browsers** | Current Chrome, Edge, Firefox and Safari. |
 | **Network** | Only the model downloads, once, from Hugging Face (then the browser caches it), plus the Transformers.js library and the ONNX Runtime files from jsDelivr. The page's own script sends nothing. |
 
@@ -241,7 +241,7 @@ drive (**Advanced → Model folder → Change…**).
 | Distil Large v2, v3, v3.5 | about 1.5 GB | English only. |
 
 Models whose name ends in `.en`, and the Distil models, understand English only. If one is picked and the
-audio is not English, the app stops and points to a multilingual model instead of writing made-up English.
+audio is not English, the app warns and offers a multilingual model instead of writing made-up English.
 
 ### Models trained for one language
 
@@ -270,7 +270,7 @@ the computer and the app runs its default Whisper engine.
 - **Initial prompt and hotwords** (Advanced → Prompt & hotwords) bias the spelling of names and terms.
 - **Automatic chapters** (on by default) write a `<name>.chapters.json` file used by the viewer and the web page.
 - **Adaptive denoise** (optional, off by default; Advanced → Silence & noise) measures each recording first and
-  only cleans it when the measurement says that helps. It re-measures its own output and goes back to the
+  in Auto strength only cleans it when the measurement says that helps. It re-measures its own output and goes back to the
   original if it removed speech. It uses the bundled ffmpeg only ([docs/DENOISE.md](docs/DENOISE.md)).
 - **Word-timing refinement** (optional, stable-ts, about 700 MB on first use) tightens word timestamps to
   about ±50 ms at 10–30% more time.
@@ -310,7 +310,7 @@ audio, median over the eight languages):
 | Time per second of audio | 0.10 | 0.18 | 0.46 | 1.27 | 1.41 | 2.24 |
 | One hour of audio takes about | 6 min | 11 min | 28 min | 1 h 16 min | 1 h 25 min | 2 h 15 min |
 
-Your own computer will differ. The queue shows the real speed of every job as it runs, for example
+Your own computer will differ. The queue shows the real speed of every faster-whisper job as it runs, for example
 `about 4.8x, 6 min left`, and the result card says how long it took (for example *42 min of audio transcribed
 in 3 min 40 s (11.5x) with small on CPU*). An **NVIDIA GPU** makes transcription about 10 to 20 times faster
 than the CPU ([docs/INSTALL.md](docs/INSTALL.md); how the speed is measured: [docs/SPEED_METER.md](docs/SPEED_METER.md)).
@@ -350,7 +350,7 @@ Slovenščina, Lietuvių, 简体中文, 繁體中文, 日本語, 한국어, Ti�
 ## Output formats
 
 Pick any of the 14 formats in **Advanced settings → Output formats** (new installs write SRT, JSON and TXT).
-Every file is written next to the input file, with the same name and a new extension, and fully saved to disk
+By default every file is written next to the input file, with the same name and a new extension (translations add `.en-translated`), and fully saved to disk
 before it replaces an older one.
 
 | Format | Extension | What it contains |
@@ -360,7 +360,7 @@ before it replaces an older one.
 | Advanced SubStation Alpha | `.ass` | Styled subtitles with word-level karaoke tags; the speaker in the Name field. |
 | TSV | `.tsv` | `start`, `end` and `text` columns in milliseconds, the layout of OpenAI's Whisper. |
 | Plain text | `.txt` | One segment per line, no timestamps; speaker labels kept. |
-| JSON | `.json` | Every segment with start, end, text, speaker and per-word timings with their probabilities. The transcript viewer opens this file. |
+| JSON | `.json` | Every segment with start, end and text, plus speaker labels and per-word timings with probabilities when those are on. The transcript viewer opens this file. |
 | LRC | `.lrc` | Lyrics-style `[mm:ss.xx]` lines. |
 | Markdown | `.md` | A heading, then `**HH:MM:SS** Speaker: text` lines. |
 | Word | `.docx` | A title, a details line, and a paragraph per segment with its time and a bold speaker name. Arabic-script and Hebrew paragraphs are marked right to left. |
@@ -396,13 +396,13 @@ elsewhere can be converted too.
 
 ### Transcription Queue
 
-- Every job with its status, progress, language, **speed and time left** and elapsed time.
+- Every job with its status, progress, language, **speed and time left** (faster-whisper) and elapsed time.
 - **Pause**, **Resume**, **Cancel**, **Re-run** and **Remove**, plus **Remove waiting** and
   **Re-run selected** for many rows at once. **Remove ended jobs** never deletes files.
 - Double-click a finished job to open its transcript. Right-click it to export to oTranscribe, burn the
   subtitles into the video, open the output folder or re-run it.
 - A failed job shows its reason when selected. A job with no speech says *no speech found*.
-- One transcription runs at a time on a CPU, two once a GPU is in use. Interrupted jobs resume from their last
+- One transcription runs at a time on a CPU, two once a GPU is in use. Interrupted faster-whisper jobs resume from their last
   checkpoint.
 - Windows shows progress on the taskbar button; the Mac sends a notification when a job ends while the app is
   in the background.
@@ -436,7 +436,7 @@ a QR code for phones. Details: [From your phone, the local network and the API](
 ### Menus
 
 - **File:** Browse…, Recent files (the last 10), Convert transcript…, Statistics…, Work offline, Exit.
-- **View:** Light, Dark or System theme (System follows the operating system live), and a chime when a job
+- **View:** Light, Dark or System theme (System follows the operating system live on Windows and macOS), and a chime when a job
   ends.
 - **Help:** Open transcript viewer…, Search transcripts…, Import oTranscribe (.otr) → SRT…, Open oTranscribe
   website…, Open log folder, Check for updates…, Usage statistics, Report a problem…, About.
@@ -544,7 +544,7 @@ Guide: [video to SRT subtitles](https://whisper-transcriber-suite.com/video-to-s
 The **Live** tab transcribes a **microphone** (Windows, macOS and Linux) or the **system audio**, meaning
 whatever the computer is playing (Windows) ([docs/LIVE.md](docs/LIVE.md)).
 
-- The sound is cut into chunks at natural pauses (at most 12 seconds by default), so words are not split in
+- The sound is cut into chunks at natural pauses (at most 12 seconds by default), so words are rarely split in
   half. Silent chunks are never sent to the model.
 - Text follows speech by the pause (about half a second), the chunk length (2 to 12 seconds) and the model's
   time. If the model is slower than real time, the oldest chunks are dropped and the status line says so.
@@ -566,8 +566,8 @@ optional task in the installer (unticked means no tab).
 - **OmniVoice** (k2-fsa, Apache-2.0): clones a voice from 1 to 3 short recordings, designs a voice from a
   description, or uses its own. It downloads once on first use (about 2 GB) and is slow on a CPU.
 - Cloning asks you to confirm that you have the speaker's permission (or that it is your own voice), every
-  session. A local consent log stores only hashes and never leaves the computer.
-- Long texts (up to 100,000 characters) are spoken piece by piece and can resume; an estimate of time, size
+  session. A local consent log stores hashes, the time and the output path, and never leaves the computer.
+- Long texts (up to 100,000 characters; 5,000 for OmniVoice voice design and own voice) are spoken piece by piece and can resume; an estimate of time, size
   and free space comes first.
 - Every WAV file carries an *AI-generated synthetic speech* tag.
 
@@ -684,7 +684,7 @@ computer's or user's name; a local model folder is sent as `local-model`, never 
 from the operating system's region setting, read on the computer.
 
 <div align="center">
-<img src="docs/img/promo-loom.svg" alt="Per-word timed subtitles, English subtitles offline with faster-whisper, whisper.cpp and Parakeet, 14 transcript formats, no account, BSD-3-Clause." width="80%">
+<img src="docs/img/promo-loom.svg" alt="Per-word timed subtitles, English subtitles offline with faster-whisper; local engines faster-whisper, whisper.cpp and Parakeet, 14 transcript formats, no account, BSD-3-Clause." width="80%">
 </div>
 
 ## Work offline
@@ -895,7 +895,7 @@ downloads once (about 0.5 to 3 GB, depending on the model) on first use.
 ### Does it work offline?
 
 Yes. Once the model is downloaded, transcription needs no internet connection. **File → Work offline** keeps the
-app off the network completely and shows whether any connection is open.
+app off the network and shows whether any connection is open.
 
 ### Does it upload my audio or video anywhere?
 
@@ -925,7 +925,7 @@ suggested model trained for that language.
 
 ### What computer do I need?
 
-Windows 10 or 11 (64-bit), macOS 10.15 or newer, or Linux with Python 3.11. Plan for 8 GB of RAM and about
+Windows 10 or 11 (64-bit), macOS 10.15 (Intel) or 14 (Apple silicon) or newer, or Linux with Python 3.11. Plan for 8 GB of RAM and about
 5 GB of free disk. On a computer with less than 5 GB of RAM the app picks the Small model. See
 [System requirements](#system-requirements).
 
@@ -939,12 +939,12 @@ missing.
 
 On one 4-core desktop CPU without a GPU, one hour of audio took about 28 minutes with Small, 1 h 25 min with
 Large v3 Turbo and 2 h 15 min with Large v3. Your computer will differ, and the queue shows the real speed and
-time left of every job.
+time left of every faster-whisper job.
 
 ### How accurate is it?
 
 It depends on the language, the recording and the model. On clean read speech in eight languages, Large v3 and
-Large v3 Turbo made between 0 and 28 errors per 100 words (Spanish and Russian almost none, Persian and Hindi the
+Large v3 Turbo made between 0 and 31 errors per 100 words (or characters) (Spanish and Russian almost none, Persian and Hindi the
 most). Noisy, overlapping or accented speech is harder. See [Accuracy and speed](#accuracy-and-speed).
 
 ### Which languages does it transcribe?
@@ -990,7 +990,7 @@ real time.
 
 ### Can it handle long recordings?
 
-Yes, recordings of several hours. Interrupted jobs resume from their last checkpoint instead of starting over.
+Yes, recordings of several hours. Interrupted faster-whisper jobs resume from their last checkpoint instead of starting over.
 The 10-minute limit is only for the browser version.
 
 ### Is there a version that runs in the browser?
@@ -1047,7 +1047,7 @@ For the Portable ZIP, delete its folder.
 
 ### Can it reduce background noise?
 
-Yes, optionally: **Advanced → Silence & noise → adaptive denoise** measures the noise first, cleans only when
+Yes, optionally: **Advanced → Silence & noise → adaptive denoise** measures the noise first, cleans, in Auto strength, only when
 that helps, and goes back to the original if cleaning removed speech.
 
 ### Can it summarise a transcript or answer questions about it?
