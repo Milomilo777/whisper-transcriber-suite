@@ -291,6 +291,17 @@ class FormatService:
                     "quality": f.quality,
                     "url": f.download_url,
                 }
+        if not audio_map:
+            # No mp3 on the page yet (the site adds it weeks after the video): the
+            # audio-only download takes the sound out of a video file instead.
+            source = smtv_mod.audio_choice(episode)
+            if source is not None:
+                audio_map["Audio (taken from the video)"] = {
+                    "kind": "smtv",
+                    "mode": smtv_mod.AUDIO_FROM_VIDEO,
+                    "quality": source.quality,
+                    "url": source.download_url,
+                }
 
         app.audio_format_map = audio_map
         app.video_format_map = video_map

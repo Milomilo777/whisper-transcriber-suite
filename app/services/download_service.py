@@ -14,6 +14,7 @@ import logging
 import math
 import os
 import re
+import shutil
 import subprocess
 import time
 import urllib.error
@@ -81,7 +82,7 @@ def _reap_process(proc: "subprocess.Popen | None") -> None:
         proc.wait(timeout=2)
     except Exception:  # noqa: BLE001
         pass
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from queue import Empty
 from typing import TYPE_CHECKING, Any
 
@@ -163,6 +164,44 @@ def _smtv_basename_from_url(url: str) -> str | None:
     if not files:
         return None
     return os.path.basename(files[0])
+
+
+# Audio taken out of an SMTV video (smtv.AUDIO_FROM_VIDEO), per Download-tab output:
+# (extension, ffmpeg codec + muxer args). The source sound is AAC, so m4a/aac copy it.
+_SMTV_AUDIO_OUTPUTS: dict[str, tuple[str, list[str]]] = {
+    "mp3": (".mp3", ["-c:a", "libmp3lame", "-q:a", "2", "-f", "mp3"]),
+    "m4a": (".m4a", ["-c:a", "copy", "-f", "ipod"]),
+    "aac": (".aac", ["-c:a", "copy", "-f", "adts"]),
+    "opus": (".opus", ["-c:a", "libopus", "-b:a", "96k", "-f", "opus"]),
+    "flac": (".flac", ["-c:a", "flac", "-f", "flac"]),
+    "wav": (".wav", ["-c:a", "pcm_s16le", "-f", "wav"]),
+}
+# The quality tag the CDN appends to a video name ("...-p1-2m.mp4", "-700k", "-1080p").
+_SMTV_QUALITY_SUFFIX_RE = re.compile(r"-(?:\d+(?:\.\d+)?[km]|\d{3,4}p|max)$", re.IGNORECASE)
+
+
+def _smtv_audio_output(output: object) -> tuple[str, list[str]]:
+    """Extension and ffmpeg args for the chosen audio output; mp3 for anything unknown."""
+    ext, args = _SMTV_AUDIO_OUTPUTS.get(str(output or "").lower(), _SMTV_AUDIO_OUTPUTS["mp3"])
+    return ext, list(args)
+
+
+def _smtv_ffmpeg() -> str:
+    """The ffmpeg that takes the sound out of an SMTV video (bundled, else PATH)."""
+    from core.paths import bundled_binary
+
+    return bundled_binary("ffmpeg")
+
+
+def _smtv_ffmpeg_available() -> bool:
+    exe = _smtv_ffmpeg()
+    return os.path.isfile(exe) or shutil.which(exe) is not None
+
+
+def _smtv_audio_stem(video_basename: str) -> str:
+    """The audio file's name stem: the video's, without its quality tag."""
+    stem = os.path.splitext(video_basename)[0]
+    return _SMTV_QUALITY_SUFFIX_RE.sub("", stem) or stem
 
 
 def _quiet_unlink(path: str) -> None:
@@ -956,10 +995,10 @@ class DownloadService:
             self.enqueue_caption_only_from_form()
             return
 
-        # Resolve the SMTV episode up front: an SMTV news/short clip ships
-        # WITHOUT an mp3 (only video qualities), so audio_format_map is empty
-        # for it. The audio-format gate below must not reject such a clip in
-        # video mode — so we need is_smtv before the
+        # Resolve the SMTV episode up front: an SMTV page without any media
+        # file leaves audio_format_map empty (a page without an mp3 gets the
+        # "taken from the video" entry instead). The audio-format gate below
+        # must not reject a video-mode download — so we need is_smtv before the
         # validation runs, not after it (as it used to be ordered).
         # Match the stashed episode against THIS url's page_url, not just
         # "is it some SMTV episode". The format lookup is debounced 800ms,
@@ -986,8 +1025,8 @@ class DownloadService:
         #   * a non-SMTV "Audio and video" download still merges a separate
         #     audio stream, so it needs one too.
         # An SMTV video download carries its audio inside the muxed video
-        # file (there is no separate audio stream), and a news/short clip has
-        # no mp3 variant at all, so an empty audio map must NOT block it.
+        # file (there is no separate audio stream), so an empty audio map
+        # must NOT block it.
         audio_required = mode == "Audio" or not is_smtv
         if audio_required and (not audio_label or audio_label not in app.audio_format_map):
             self._warn_format_missing("audio")
@@ -1582,12 +1621,16 @@ class DownloadService:
 
             try:
                 if chosen_mode_audio:
-                    sib_url = smtv_mod.best_url_for_mode(sib_episode, "audio")
+                    # The part's own mp3, else the sound of one of its videos.
+                    source = smtv_mod.audio_choice(sib_episode)
+                    if source is None:
+                        raise smtv_mod.SmtvError(f"no audio or video file for {sib.url}")
                     sib_format = {
                         "mode": "Audio",
                         "audio": {
-                            "kind": "smtv", "mode": "audio",
-                            "quality": "audio", "url": sib_url,
+                            "kind": "smtv",
+                            "mode": "audio" if source.quality == "audio" else smtv_mod.AUDIO_FROM_VIDEO,
+                            "quality": source.quality, "url": source.download_url,
                         },
                         "video": None,
                         "output": output,
@@ -1675,8 +1718,25 @@ class DownloadService:
             basename = smtv_mod.filename_for(
                 episode, chosen.get("mode", "video-best")
             )
-        target_path = os.path.join(task.folder, basename)
-        part_path = target_path + ".part"
+        mode = chosen.get("mode", "")
+        extract_audio = mode == smtv_mod.AUDIO_FROM_VIDEO
+        audio_args: list[str] = []
+        audio_part = ""
+        if extract_audio:
+            # The video streams to "<video name>.r<run>.part"; ffmpeg then writes its sound to
+            # "<audio name>.r<run>.part" and the video part is deleted. The run number makes both
+            # parts this run's own (a retry never shares them), so every exit cleans them up.
+            if not _smtv_ffmpeg_available():
+                # Checked before the video download, not after it.
+                raise RuntimeError("ffmpeg is needed to take the audio out of the video")
+            audio_ext, audio_args = _smtv_audio_output(info.get("output"))
+            target_path = os.path.join(task.folder, _smtv_audio_stem(basename) + audio_ext)
+            run_tag = "" if run_generation is None else f".r{run_generation}"
+            part_path = os.path.join(task.folder, basename + run_tag + ".part")
+            audio_part = target_path + run_tag + ".part"
+        else:
+            target_path = os.path.join(task.folder, basename)
+            part_path = target_path + ".part"
 
         def _superseded() -> bool:
             # A retry (or any re-dispatch that bumped _run_generation) can
@@ -1723,13 +1783,17 @@ class DownloadService:
             # path is shared, so deleting it would destroy the fresh
             # run's in-progress download; that run owns cleanup/reporting.
             if _superseded():
+                if extract_audio:
+                    _quiet_unlink(part_path)  # this run's own part, never the fresh run's
                 return
             _quiet_unlink(part_path)
             raise
 
         if _superseded():
             # The fresh run owns the task, the shared .part file, and all
-            # terminal reporting; touch nothing.
+            # terminal reporting; touch nothing (but this run's own video part).
+            if extract_audio:
+                _quiet_unlink(part_path)
             return
 
         if task.cancelled:
@@ -1737,8 +1801,36 @@ class DownloadService:
             self._post_terminal("done", task, "cancelled", run_generation)
             return
 
+        finished_part = part_path
+        if extract_audio:
+            finished_part = audio_part
+            app.download_events.put(
+                ("log", task, f"--- Taking the audio out of the video: {os.path.basename(target_path)} ---")
+            )
+            try:
+                self._extract_smtv_audio(task, part_path, finished_part, audio_args, _superseded)
+            except burn_subs.BurnCancelled:
+                _quiet_unlink(finished_part)
+                _quiet_unlink(part_path)
+                if not _superseded():
+                    self._post_terminal("done", task, "cancelled", run_generation)
+                return
+            except Exception:  # noqa: BLE001 - cleaned up, then reported by the caller
+                _quiet_unlink(finished_part)
+                _quiet_unlink(part_path)
+                if _superseded():
+                    return
+                raise
+            _quiet_unlink(part_path)
+            # A cancel or a retry that landed after ffmpeg's last stop check: publish nothing.
+            if _superseded() or task.cancelled:
+                _quiet_unlink(finished_part)
+                if not _superseded():
+                    self._post_terminal("done", task, "cancelled", run_generation)
+                return
+
         try:
-            os.replace(part_path, target_path)
+            os.replace(finished_part, target_path)
         except OSError as e:
             # A fully-downloaded, multi-hundred-MB .part left on disk with
             # no cleanup path is a worse outcome than the streaming-failure
@@ -1746,16 +1838,61 @@ class DownloadService:
             # permission change mid-download, a transient Windows sharing
             # violation on the rename). Same cleanup as every other failure
             # path in this method.
-            _quiet_unlink(part_path)
+            _quiet_unlink(finished_part)
             raise RuntimeError(f"could not finalise download to {target_path}: {e}") from e
 
-        mode = chosen.get("mode", "")
         self._write_smtv_transcript(
-            task, episode, basename if mode.startswith("video") or mode == "audio" else None)
+            task, episode,
+            os.path.basename(target_path)
+            if mode.startswith("video") or mode in ("audio", smtv_mod.AUDIO_FROM_VIDEO) else None,
+        )
 
         self._post_terminal(
             "done_full", task, {"status": "finished", "saved_path": target_path}, run_generation,
         )
+
+    def _extract_smtv_audio(
+        self, task: "VideoDownloadTask", source: str, dest: str, codec_args: list[str],
+        superseded: "Callable[[], bool]",
+    ) -> None:
+        """ffmpeg: the first audio stream of the downloaded video *source* into *dest*.
+
+        Raises ``burn_subs.BurnCancelled`` on a cancel or a superseding run, RuntimeError
+        when ffmpeg fails.
+        """
+        def run(args: list[str]) -> None:
+            # _run_ffmpeg starts the process before its first stop check: never start one for a
+            # run that is already cancelled or superseded.
+            if task.cancelled or superseded():
+                raise burn_subs.BurnCancelled("Audio extraction cancelled")
+            burn_subs._run_ffmpeg(  # pyright: ignore[reportPrivateUsage]
+                [
+                    _smtv_ffmpeg(), "-hide_banner", "-nostdin", "-y", "-loglevel", "error",
+                    "-i", source, "-map", "0:a:0", "-vn", "-sn", "-dn", *args, dest,
+                ],
+                timeout=3600.0,
+                cancel_check=lambda: bool(task.cancelled) or superseded(),
+                **new_session_kwargs(),
+            )
+
+        try:
+            try:
+                run(codec_args)
+            except subprocess.CalledProcessError:
+                if "copy" not in codec_args:
+                    raise
+                # m4a/aac copy the sound as is, which only works for AAC; any other source
+                # codec is encoded to AAC instead.
+                run(["-c:a", "aac", "-b:a", "128k", *codec_args[codec_args.index("-f"):]])
+        except subprocess.CalledProcessError as e:
+            lines = (e.stderr or b"").decode("utf-8", "replace").strip().splitlines()
+            detail = " / ".join(dict.fromkeys([lines[0], lines[-1]])) if lines else ""
+            raise RuntimeError(
+                "could not take the audio out of the video"
+                + (f": {detail}" if detail else f" (ffmpeg exit {e.returncode})")
+            ) from e
+        except OSError as e:
+            raise RuntimeError(f"could not start ffmpeg to take the audio out: {e}") from e
 
     def _write_smtv_transcript(
         self, task: "VideoDownloadTask", episode: smtv_mod.SmtvEpisode, media_basename: str | None,

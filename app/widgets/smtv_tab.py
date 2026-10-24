@@ -736,10 +736,10 @@ class _TabState:
         """Prefill the Download tab with ``url`` and switch to it.
 
         Transcribe also turns on "Transcribe after download" and, once the
-        Download tab's own format lookup shows the episode HAS an audio
-        track, switches to the smaller audio-only download. News clips and
-        shorts ship video only, so for those the mode stays on video --
-        forcing "Audio" there would make the Download button refuse.
+        Download tab's own format lookup has filled the audio list, switches
+        to the audio-only download. Pages without an mp3 yet (the site adds it
+        weeks after the video) list "Audio (taken from the video)": the 720p
+        video is fetched and only its sound is kept.
         """
         app = self.app
         try:

@@ -191,6 +191,25 @@ def fetch_episode(url: str, *, timeout: float = 30.0) -> SmtvEpisode:
     )
 
 
+# The site adds an episode's mp3 weeks after its video: none of the six newest pages listed
+# one on 2026-10-25 (a May 2026 page did). Until then an audio-only download takes the sound
+# out of a video file.
+# 720p carries ~125 kb/s AAC at a third of the 720pHQ/1080p size (~317 kb/s). The 396p
+# file's ~30 kb/s audio still beats fetching the original-quality ("max", up to 4K) file.
+AUDIO_FROM_VIDEO = "audio-from-video"
+AUDIO_SOURCE_QUALITIES = ("720p", "720pHQ", "1080p", "396p", "max")
+
+
+def audio_choice(episode: SmtvEpisode) -> SmtvFile | None:
+    """The file an audio-only download fetches: the page's mp3 when it has one, else the
+    video to take the sound from (``AUDIO_SOURCE_QUALITIES`` order). None = no media."""
+    by_quality = {f.quality: f for f in episode.files}
+    for quality in ("audio", *AUDIO_SOURCE_QUALITIES):
+        if quality in by_quality:
+            return by_quality[quality]
+    return None
+
+
 def best_url_for_mode(episode: SmtvEpisode, mode: str) -> str:
     """Return the CDN URL for the chosen mode.
 
@@ -198,6 +217,7 @@ def best_url_for_mode(episode: SmtvEpisode, mode: str) -> str:
       ``video-best`` — highest available video (1080p > 720p > 396p)
       ``video-1080``, ``video-720``, ``video-396`` — exact quality
       ``audio`` — the mp3 file
+      ``audio-from-video`` — the video an audio-only download takes the sound from
 
     Raises SmtvError if the mode is unavailable.
     """
@@ -208,6 +228,12 @@ def best_url_for_mode(episode: SmtvEpisode, mode: str) -> str:
             if f.quality == "audio":
                 return f.download_url
         raise SmtvError(f"no audio track for episode {episode.vid}")
+
+    if mode == AUDIO_FROM_VIDEO:
+        source = audio_choice(episode)
+        if source is None or source.quality == "audio":
+            raise SmtvError(f"no video to take the audio from for episode {episode.vid}")
+        return source.download_url
 
     if mode == "video-best":
         # ``max`` is SMTV's recent label for the original-quality

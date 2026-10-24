@@ -17,6 +17,14 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   2.2" on the home page, and guide text that matches the 2.2 Transcribe and Download tabs. The Transcribe,
   Download and Web / LAN screenshots now show the 2.2 window (taken on macOS 13).
 
+### Fixed
+
+- **Audio-only download of an episode page that has no audio file yet**: new episodes get their MP3 weeks
+  after the video, and until then the audio list stayed empty and Download kept saying "Wait for formats to
+  load, then select an audio format." The app now downloads the page's 720p video, keeps only its sound in the
+  chosen audio format (MP3, M4A, AAC, Opus, FLAC or WAV) and deletes the video; parts of a series work the same
+  way. Pages that have the MP3 still download it directly.
+
 ## [2.2.0] — 2026-10-22
 
 ### Added
