@@ -13,7 +13,9 @@ def test_transcribe_inf_nan_duration(monkeypatch):
     monkeypatch.setattr(t, "get_duration", lambda path: float('inf'))
 
     captured_durations = []
-    def fake_plan_chunks(duration, chunk_seconds, chunk_when_unknown):
+    # *args/**kwargs: the real call site has grown keyword-only planning
+    # knobs (max_unknown_chunks); the interception itself is unchanged.
+    def fake_plan_chunks(duration, chunk_seconds, *args, **kwargs):
         captured_durations.append(duration)
         return []
 

@@ -78,6 +78,29 @@ DECODE_TIMEOUT_S = 1800.0
 #: 1024 samples = 64 ms at 16 kHz; a real window is hundreds of thousands+.
 _EMPTY_PCM_SAMPLES = 1024
 
+#: How much audio the unknown-duration window plan must cover (seconds).
+#: cloud_stt.plan_chunks' default cap is a WINDOW COUNT (120) sized for its
+#: own 480 s chunks; at this backend's default 30 s windows 120 windows
+#: cover only ONE hour, silently truncating any longer file whose duration
+#: ffprobe could not read (progress still reached 100%). Size the plan by
+#: time instead: 16 h, matching cloud_stt's coverage. Local transcription,
+#: so a generous plan costs nothing until a past-EOF window ends it.
+UNKNOWN_PLAN_COVERAGE_SECONDS = 16 * 3600
+
+
+def unknown_duration_plan(chunk_seconds: float) -> list[tuple[float, float]]:
+    """Fixed windows for a file whose duration could not be determined.
+
+    Pure. Scales the window count with *chunk_seconds* so the total planned
+    span stays at :data:`UNKNOWN_PLAN_COVERAGE_SECONDS` whatever window
+    length the user configured (``nvidia_asr_chunk_seconds``).
+    """
+    chunk = float(chunk_seconds) if chunk_seconds and chunk_seconds > 0 else DEFAULT_CHUNK_SECONDS
+    count = max(1, math.ceil(UNKNOWN_PLAN_COVERAGE_SECONDS / chunk))
+    return plan_chunks(
+        0.0, chunk, chunk_when_unknown=True, max_unknown_chunks=count
+    )
+
 #: Models the plain ASR pipeline cannot drive correctly, and how to run them instead.
 #: "rnnt": a transformers RNNT model (``AutoModelForRNNT``) whose processor takes the
 #: language; through ``pipeline()`` it falls back to automatic language detection and
@@ -701,11 +724,13 @@ class NvidiaAsrBackend(Backend):
             if not math.isfinite(effective_duration):
                 effective_duration = 0.0
 
-        chunks = plan_chunks(
-            effective_duration, self._chunk_seconds, chunk_when_unknown=True
+        duration_unknown = effective_duration <= 0
+        chunks = (
+            unknown_duration_plan(self._chunk_seconds)
+            if duration_unknown
+            else plan_chunks(effective_duration, self._chunk_seconds)
         )
         total = len(chunks)
-        duration_unknown = effective_duration <= 0
         if log_cb:
             log_cb(
                 f"NVIDIA Parakeet: transcribing {total} window(s) locally "
