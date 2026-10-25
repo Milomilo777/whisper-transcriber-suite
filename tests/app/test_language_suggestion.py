@@ -125,3 +125,22 @@ def test_tk_maybe_suggest_shows_only_for_a_clear_hint(app: Any, monkeypatch: pyt
     app._closing = True
     sug.maybe_suggest(app)  # a closing app asks nothing
     assert shown == ["de"]
+
+
+@pytest.mark.parametrize("flag", ["_quick_start_open", "_hub_setup_open"])
+def test_suggestion_waits_while_a_modal_setup_window_is_open(flag: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    import types
+
+    shown: list[str] = []
+    rearmed: list[int] = []
+    monkeypatch.setattr(sug, "show_suggestion", lambda _app, code: shown.append(code))
+    monkeypatch.setattr(ui_language_hint, "suggestion_for_this_machine", lambda _cfg: "de")
+    fake = types.SimpleNamespace(app_config={}, _closing=False, _quick_start_open=False,
+                                 _hub_setup_open=False,
+                                 after=lambda ms, fn: rearmed.append(ms))
+    setattr(fake, flag, True)
+    sug.maybe_suggest(fake)
+    assert shown == [] and rearmed == [sug.RETRY_MS]
+    setattr(fake, flag, False)
+    sug.maybe_suggest(fake)
+    assert shown == ["de"] and rearmed == [sug.RETRY_MS]

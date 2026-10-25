@@ -16,11 +16,18 @@ from app.theme import bidi_display
 
 logger = logging.getLogger(__name__)
 
+# How long to wait before asking again while the Quick Start or hub setup window is open.
+RETRY_MS = 1000
+
 
 def maybe_suggest(app: Any) -> None:
     """Windows, first run: offer the language the regional format and the keyboard point to
     (see ``app.ui_language_hint``). Never switches by itself; nothing happens without a clear hint."""
     if getattr(app, "_closing", False):
+        return
+    if getattr(app, "_quick_start_open", False) or getattr(app, "_hub_setup_open", False):
+        # Those windows hold the input grab, so this one's buttons would do nothing; ask again later.
+        app.after(RETRY_MS, lambda: maybe_suggest(app))
         return
     code = ui_language_hint.suggestion_for_this_machine(app.app_config)
     if code:
