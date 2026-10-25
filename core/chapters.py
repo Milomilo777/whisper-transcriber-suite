@@ -35,7 +35,7 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-from core.llm import RemoteLLMRateLimitError
+from core.llm import RemoteLLMRateLimitError, rate_limit_batch
 from core.text_metrics import count_words
 
 logger = logging.getLogger(__name__)
@@ -187,6 +187,18 @@ def heuristic_title(segments: list[dict[str, Any]], boundary: ChapterBoundary,
 
 
 def title_chapters_with_llm(
+    segments: list[dict[str, Any]],
+    boundaries: list[ChapterBoundary],
+    *,
+    runner: "Any | None" = None,
+) -> list[str]:
+    """Label each chapter (see ``_title_chapters_with_llm``); the whole pass may wait out one
+    Retry-After and stops calling the provider at the first limit that will not clear."""
+    with rate_limit_batch(runner):
+        return _title_chapters_with_llm(segments, boundaries, runner=runner)
+
+
+def _title_chapters_with_llm(
     segments: list[dict[str, Any]],
     boundaries: list[ChapterBoundary],
     *,
