@@ -808,6 +808,22 @@ def _(msgid: str, **kwargs: Any) -> str:
     return _finish(msgid, translated, kwargs, state, msgid)
 
 
+def text_in(code: str, msgid: str, **kwargs: Any) -> str:
+    """``msgid`` in language ``code`` (English when it has no catalog or no entry), for a prompt
+    that must speak a language the app is not running in. No right-to-left marks are added."""
+    translated: str | None = None
+    if code != SOURCE_LANGUAGE and code in LANGUAGES_BY_CODE:
+        doc = _read_document(code)
+        found = doc["messages"].get(msgid) if doc else None
+        translated = found if isinstance(found, str) and found else None
+    if translated:
+        try:
+            return translated.format(**kwargs) if kwargs else translated
+        except _FORMAT_ERRORS:
+            pass
+    return msgid.format(**kwargs) if kwargs else msgid
+
+
 def translate(msgid: str, **kwargs: Any) -> str:
     """:func:`_` for a text that is not a literal here: a constant marked with :func:`N_`."""
     return _(msgid, **kwargs)
@@ -860,7 +876,7 @@ __all__ = [
     "N_", "PDF", "PLURAL_RULES", "PSEUDO_LOCALE", "RLE", "RTL_LAYOUT_READY", "RTL_PLATFORMS",
     "SOURCE_LANGUAGE", "SUPPORTED_LANGUAGES", "SupportedLanguage", "_", "available_languages",
     "catalog_status", "catalog_statuses", "current_direction", "current_language",
-    "detect_os_language", "embed_rtl", "init_language", "lazy", "locales_dir", "ngettext",
+    "detect_os_language", "embed_rtl", "init_language", "lazy", "locales_dir", "text_in", "ngettext",
     "parse_apple_languages", "pgettext", "plain", "plural_index", "pseudo_translate",
     "resolve_language", "rtl_layout_ready", "rtl_marks", "set_language", "setting_language",
     "translate",

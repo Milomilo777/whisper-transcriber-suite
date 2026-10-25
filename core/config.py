@@ -152,6 +152,8 @@ DEFAULT_CONFIG = {
     # translation exists, else English; or a language code such as "de". Read once at start-up.
     # The environment variable WTS_UI_LANGUAGE overrides it. A LOCAL_ONLY_KEYS entry.
     "ui_language": "auto",
+    # True once the first-run question "use <language>?" was answered or closed (app/ui_language_hint.py).
+    "ui_language_hint_done": False,
     # Windows: let Windows draw the title bar and border of every window in the app theme
     # (app/theme/win_chrome.py). false turns every such call off; the environment variable
     # WTS_NO_NATIVE_CHROME=1 does the same without editing the file. On macOS the same switch
@@ -551,6 +553,7 @@ ONLINE_ALLOWED_KEYS: frozenset[str] = frozenset({
 # language is the user's own choice too.
 LOCAL_ONLY_KEYS: frozenset[str] = frozenset({
     "ui_language",
+    "ui_language_hint_done",
     "telemetry_opt_in",
     "work_offline",
     "tts_no_text_limit",
