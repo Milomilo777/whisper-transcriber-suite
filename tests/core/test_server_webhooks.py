@@ -16,6 +16,7 @@ import urllib.error
 import pytest
 
 from core.server import jobs as jobs_mod
+from core.server import netguard
 from core.server.jobs import (
     STATUS_CANCELLED,
     STATUS_ERROR,
@@ -153,6 +154,9 @@ def test_post_webhook_refuses_metadata_ip():
 def test_post_webhook_delivers_when_guard_allows(monkeypatch):
     with _Recorder() as rec:
         monkeypatch.setattr(jobs_mod, "is_safe_url", lambda url: True)
+        # The receiver is a loopback listener: lift the connect-time check too.
+        monkeypatch.setattr(
+            netguard, "address_blocked", lambda ip, allow_private=True: False)
         post_webhook(rec.url, {"event": "job.finished", "job_id": "abc"})
         deadline = time.time() + 3
         while time.time() < deadline and not rec.received:
@@ -185,6 +189,9 @@ def test_post_webhook_does_not_follow_redirects(monkeypatch):
         thread.start()
         try:
             monkeypatch.setattr(jobs_mod, "is_safe_url", lambda url: True)
+            # The receiver is a loopback listener: lift the connect-time check too.
+            monkeypatch.setattr(
+                netguard, "address_blocked", lambda ip, allow_private=True: False)
             with pytest.raises(urllib.error.HTTPError):
                 post_webhook(
                     f"http://127.0.0.1:{server.server_address[1]}/hook", {})

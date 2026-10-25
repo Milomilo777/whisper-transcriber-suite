@@ -51,6 +51,11 @@ from typing import Any, Callable, Protocol
 
 from core import __version__, offline
 from core.config import PROJECT_FILE_NAME, user_cache_dir, user_data_dir
+from core.server.netguard import (
+    GuardedHTTPHandler,
+    GuardedHTTPSHandler,
+    address_blocked,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -1639,22 +1644,11 @@ def is_safe_url(url: str) -> bool:
     if not host:
         return False
 
-    def _addr_blocked(
-        ip: "ipaddress.IPv4Address | ipaddress.IPv6Address",
-    ) -> bool:
-        # Block loopback (127.0.0.0/8, ::1), link-local (169.254/16 incl. the
-        # cloud-metadata IP, fe80::/10), unspecified (0.0.0.0, ::), multicast,
-        # and reserved. Private RFC-1918 ranges are intentionally allowed.
-        # An IPv4-mapped IPv6 address (::ffff:a.b.c.d) is judged as its IPv4
-        # address: Python before 3.11.10 / 3.12.4 calls every such address
-        # "reserved" (it falls in ::/8), newer versions look at the IPv4 part.
-        mapped = getattr(ip, "ipv4_mapped", None)
-        if mapped is not None:
-            ip = mapped
-        return bool(
-            ip.is_loopback or ip.is_link_local or ip.is_unspecified
-            or ip.is_multicast or ip.is_reserved
-        )
+    # Loopback (127.0.0.0/8, ::1), link-local (169.254/16 incl. the
+    # cloud-metadata IP, fe80::/10), unspecified, multicast and reserved
+    # addresses are refused; private RFC-1918 ranges are intentionally
+    # allowed (see netguard.address_blocked).
+    _addr_blocked = address_blocked
 
     # A literal-IP host: decide directly, no DNS. Besides strict
     # dotted-decimal, also catch legacy inet_aton numeric forms (a fetch
@@ -1858,9 +1852,15 @@ def post_webhook(
     cloud-metadata / reserved-address refusal the inbound URL-job path
     applies — so a webhook cannot be pointed at the host's own loopback
     services or the cloud instance-metadata endpoint. Redirects are not
-    followed (see :class:`_NoRedirectHandler`). An unsafe URL is logged and
-    skipped; transport errors propagate to the caller, which in production
-    is the fire-and-forget sender that logs and drops them.
+    followed (see :class:`_NoRedirectHandler`). The address the host name
+    resolves to is checked again at connect time, on the addresses actually
+    connected to (see :mod:`core.server.netguard`), so a name that answered
+    harmlessly to the first check and points at a loopback / link-local
+    address a moment later (DNS rebinding) is still refused. Private LAN
+    addresses stay allowed: a receiver on the local network is a normal use.
+    An unsafe URL is logged and skipped; transport errors propagate to the
+    caller, which in production is the fire-and-forget sender that logs and
+    drops them.
     """
     if not is_safe_url(url):
         logger.warning("server: refusing webhook POST to unsafe URL %s",
@@ -1874,7 +1874,8 @@ def post_webhook(
             "User-Agent": f"WhisperTranscriberSuite/{__version__}",
         },
     )
-    opener = urllib.request.build_opener(_NoRedirectHandler)
+    opener = urllib.request.build_opener(
+        _NoRedirectHandler, GuardedHTTPHandler, GuardedHTTPSHandler)
     with opener.open(request, timeout=timeout) as response:
         # Bounded read so a hostile endpoint can't stream forever.
         response.read(_WEBHOOK_MAX_RESPONSE_BYTES)

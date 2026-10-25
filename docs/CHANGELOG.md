@@ -6,6 +6,13 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Security
 
+- **Server link jobs no longer use the generic extractor**: the server runs yt-dlp with
+  `--use-extractors default,-generic`, so it cannot be aimed at an internal address through a plain media
+  link or its redirects. Such a link is refused with a clear message (upload the file instead). The desktop
+  Download tab is unchanged.
+- **The completion webhook checks the address at connect time**: the host name is resolved once and only
+  the checked addresses are connected to, so DNS rebinding to loopback or link-local no longer works. LAN
+  receivers stay allowed.
 - **The server slows down wrong access passwords**: after 5 wrong passwords from one client address, that
   address gets HTTP 429 with a growing `Retry-After` (15 seconds, doubling, at most 15 minutes). The lockout
   always ends by itself; the right password works again afterwards.

@@ -116,6 +116,19 @@ def _is_downloaded_media(dest_dir: str, name: str) -> bool:
         return False
 
 
+# yt-dlp option value: every extractor except the generic one.
+GENERIC_EXTRACTOR_OFF = "default,-generic"
+# yt-dlp's message when no extractor accepts the address (with the generic one
+# switched off that is every direct media link and every unknown site).
+_UNSUPPORTED_URL_RE = re.compile(
+    r"Unsupported URL|No suitable extractor", re.IGNORECASE)
+DIRECT_LINK_REFUSED = (
+    "this link is not from a site the server can download from. The server "
+    "does not fetch plain media links or unknown pages (so it cannot be "
+    "aimed at other computers on its network); upload the file instead, "
+    "or use a link from a supported video site")
+
+
 def _download_url(url: str, dest_dir: str,
                   limits: DownloadLimits | None = None) -> str:
     """Download an http(s) ``url`` into ``dest_dir`` via bundled yt-dlp.
@@ -147,6 +160,13 @@ def _download_url(url: str, dest_dir: str,
             "--ffmpeg-location", bin_dir(),
             "--no-playlist",
             "--newline",
+            # The generic extractor fetches ANY address, including a plain
+            # media link that points at an internal host or follows a redirect
+            # to one, and this app cannot see the requests yt-dlp makes. The
+            # named site extractors only talk to their own sites. A server
+            # job therefore never uses it (a direct media link is refused
+            # below); the desktop Download tab keeps it.
+            "--use-extractors", GENERIC_EXTRACTOR_OFF,
             # The frozen yt-dlp.exe ignores PYTHONUTF8 and prints cp1252,
             # dropping non-Latin title characters from its output.
             "--encoding", "utf-8",
@@ -190,6 +210,8 @@ def _download_url(url: str, dest_dir: str,
                         f"the download took longer than {minutes} minutes and "
                         "was stopped")
             if process.returncode:
+                if _UNSUPPORTED_URL_RE.search(stderr or ""):
+                    raise RuntimeError(DIRECT_LINK_REFUSED)
                 raise subprocess.CalledProcessError(
                     process.returncode, command, stdout, stderr)
         finally:

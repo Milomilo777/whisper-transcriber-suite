@@ -436,6 +436,8 @@ a = Analysis(
         'core.live_model',
         'core.optional_deps',
         'core.server.tls',
+        'core.server.auth_throttle',
+        'core.server.netguard',
         'core.star_invite',
         'core.tts_kokoro',
         'core.voice_clone',

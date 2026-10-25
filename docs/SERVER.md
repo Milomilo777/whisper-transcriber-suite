@@ -336,7 +336,7 @@ async with streamable_http_client("http://127.0.0.1:8765/mcp",
     async with ClientSession(streams[0], streams[1]) as session:
         await session.initialize()
         job = await session.call_tool(
-            "transcribe_url", {"url": "https://example.com/talk.mp4"})
+            "transcribe_url", {"url": "https://www.youtube.com/watch?v=VIDEO_ID"})
 ```
 
 ## JSON job API
@@ -392,7 +392,7 @@ Or from a link (anything yt-dlp supports; only `http` / `https`):
 ```
 curl -H "X-Auth-Token: mysecret" -H "Content-Type: application/json" \
   http://127.0.0.1:8765/api/jobs \
-  -d '{"url": "https://example.com/video", "formats": ["srt"], "language": "en"}'
+  -d '{"url": "https://www.youtube.com/watch?v=VIDEO_ID", "formats": ["srt"], "language": "en"}'
 ```
 
 The `Content-Type: application/json` header is required: a JSON body sent
@@ -550,7 +550,10 @@ Behaviour to know:
 - It fires for jobs that **finish or fail**, from any route (browser, JSON API
   or the `/v1` route); a cancelled job sends nothing.
 - Delivery is fire-and-forget on its own thread: 10-second timeout, no retry,
-  redirects are not followed, a failure is only logged. Logs and the start-up
+  redirects are not followed, a failure is only logged. The address the name
+  resolves to is checked again at connect time, on the addresses actually
+  connected to, so a name that is public at first and points at loopback a
+  moment later (DNS rebinding) is refused too. Logs and the start-up
   message show only the receiver's `scheme://host:port/...`, never the path or
   query of the URL.
 - Only `http` / `https` URLs are used, and a URL that points at this
@@ -603,11 +606,22 @@ Behaviour to know:
 - **URL safety.** Only `http`/`https` URLs are accepted (no `file://`), and
   a host that is, or resolves to, a loopback, link-local, unspecified,
   multicast or otherwise reserved address is refused. A name that fails to
-  resolve is let through (yt-dlp then reports the real error), and yt-dlp
-  follows its own redirects, so this check is a first line of defence only.
+  resolve is let through (yt-dlp then reports the real error).
   yt-dlp performs the actual download with an end-of-options `--` guard so
   a URL can never be parsed as a yt-dlp flag. Private LAN addresses are
   allowed on purpose (fetching from a media server on the same network).
+  **Server link jobs only use yt-dlp's site-specific extractors.** The
+  generic extractor, which fetches any address, is switched off
+  (`--use-extractors default,-generic`), so a plain media link
+  (`https://host/file.mp3`) or an unknown web page is refused with "this link
+  is not from a site the server can download from"; upload the file instead.
+  The desktop Download tab is not affected. What is guarded: a client cannot
+  make the server fetch an arbitrary address through the generic extractor,
+  nor through a redirect on such a link. **Residual risk:** this app cannot
+  see the requests yt-dlp makes. A supported site that redirects to, or an
+  extractor that resolves, an internal address is still followed, and a host
+  name is checked for its address when the job is accepted, not when yt-dlp
+  connects (DNS rebinding). Keep link jobs on a trusted network.
 - **Bounded queue.** Total and queued job counts are capped; once full the
   server replies HTTP 503 with a `Retry-After: 30` header. A full queue is answered before an upload body is
   stored, so refused uploads do not fill the temp folder.

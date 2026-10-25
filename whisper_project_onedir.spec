@@ -341,6 +341,8 @@ a = Analysis(
         'core.server.httpd',
         'core.server.jobs',
         'core.server.tls',
+        'core.server.auth_throttle',
+        'core.server.netguard',
         'core.writers',
         'core.writers.base',
         'core.writers.ass',
