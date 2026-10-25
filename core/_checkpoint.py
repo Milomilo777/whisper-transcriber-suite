@@ -211,8 +211,13 @@ UNVERIFIABLE_PREFIX = "checkpoint identity cannot be verified"
 def note_source_identity(source_path: str) -> None:
     """Remember the size and mtime of the media a run starts on.
 
-    Call once at run start, before the first checkpoint write. A failed
-    stat leaves any earlier note for this path untouched.
+    Call once at run start, before the first checkpoint write. The note is
+    authoritative for the whole run: :func:`write_checkpoint` never replaces
+    it, so media swapped in mid-run cannot relabel segments that came from
+    the original. A failed stat DROPS any earlier note: it may belong to a
+    previous run on different media, and trusting it would stamp this run's
+    segments with the wrong identity. Without a note, the first checkpoint
+    write stats the file and records what it sees.
     """
     abs_path = os.path.abspath(source_path)
     try:
@@ -237,12 +242,104 @@ def _previous_identity(abs_path: str) -> tuple[int, float] | None:
     return size, float(mtime)
 
 
-def quarantine_checkpoint(source_path: str) -> Path | None:
-    """Move the checkpoint aside, keeping it; return the new path.
+class CheckpointNotKeptError(RuntimeError):
+    """The saved checkpoint could be neither moved nor copied aside.
 
-    The new name does not end in ``.json``, so the resume path no longer
-    sees it and the age sweep never reaps it. A fresh run can then start
-    without touching the saved segments. Never raises.
+    It is still in place and a fresh run would overwrite or delete it, so the
+    caller must not start one.
+    """
+
+
+def _recovery_text(data: Any, source_path: str, reason: str, when: str) -> str:
+    """Plain-text copy of a quarantined checkpoint a person can open and read."""
+    lines = [
+        "Kept-aside transcript (safe to delete once you no longer need it).",
+        f"Source file: {source_path}",
+        f"Kept aside at: {when}",
+        f"Reason: {reason or 'not recorded'}",
+        "",
+    ]
+    segs = data.get("segments") if isinstance(data, dict) else None
+    if not isinstance(segs, list) or not segs:
+        lines.append("(no readable segments in the saved checkpoint)")
+    else:
+        for seg in segs:
+            if not isinstance(seg, dict):
+                continue
+            start = seg.get("start")
+            if isinstance(start, bool) or not isinstance(start, (int, float)):
+                stamp = "??:??:??"
+            else:
+                total = max(0, int(start))
+                stamp = f"{total // 3600:02d}:{total % 3600 // 60:02d}:{total % 60:02d}"
+            lines.append(f"[{stamp}] {str(seg.get('text', '')).strip()}")
+    return "\n".join(lines) + "\n"
+
+
+def recovery_text_path(kept: Path) -> Path:
+    """Where the readable copy of the kept-aside checkpoint ``kept`` lives.
+
+    ``<sha1>.json.unverified-<time>`` pairs with ``<sha1>.unverified-<time>.txt``
+    (no ``.json`` in the name, so nothing that looks for kept checkpoints by
+    their ``.json.unverified-`` name takes the text file for one).
+    """
+    return kept.with_name(kept.name.replace(".json.unverified-", ".unverified-", 1) + ".txt")
+
+
+def _write_recovery_sidecar(kept: Path, source_path: str, reason: str) -> None:
+    """Write the readable text copy of a quarantined checkpoint. Never raises."""
+    import time as _time
+
+    sidecar = recovery_text_path(kept)
+    try:
+        try:
+            with open(kept, encoding="utf-8") as f:
+                data = json.load(f)
+        except (OSError, ValueError):
+            data = None
+        when = _time.strftime("%Y-%m-%d %H:%M:%S")
+        text = _recovery_text(data, source_path, reason, when)
+        # ensure_ascii-style lone surrogates in a Windows path cannot be
+        # encoded: replace them rather than lose the whole sidecar.
+        with open(sidecar, "w", encoding="utf-8", newline="\n", errors="replace") as f:
+            f.write(text)
+            _flush_to_disk(f)
+    except Exception as e:  # noqa: BLE001 - the sidecar is a courtesy, never a failure
+        logger.warning("Could not write the readable copy %s: %s", sidecar, e)
+
+
+def _copy_aside(path: Path, target: Path) -> bool:
+    """Copy ``path`` to ``target``, sync it and verify the size. Never raises."""
+    import shutil
+
+    try:
+        shutil.copy2(path, target)
+        with open(target, "rb+") as f:
+            _flush_to_disk(f)
+        ok = target.stat().st_size == path.stat().st_size
+    except OSError as e:
+        logger.warning("Could not copy checkpoint %s aside: %s", path, e)
+        ok = False
+    if not ok:
+        try:
+            target.unlink()
+        except OSError:
+            pass
+    return ok
+
+
+def quarantine_checkpoint(source_path: str, reason: str = "") -> Path | None:
+    """Keep the checkpoint aside; return the kept path (None = none existed).
+
+    The kept name does not end in ``.json``, so the resume path no longer
+    sees it and the age sweep never reaps it. Next to it a ``.txt`` file
+    holds the saved text, readable without the app. A fresh run can then
+    start without touching the saved segments.
+
+    The file is renamed; if the rename fails it is copied, synced and
+    size-checked instead. If the text cannot be kept either way (the
+    checkpoint is the only copy, a fresh run would overwrite it) this raises
+    :class:`CheckpointNotKeptError` and the caller must not start that run.
     """
     import time as _time
 
@@ -257,9 +354,20 @@ def quarantine_checkpoint(source_path: str) -> Path | None:
     try:
         os.replace(path, target)
     except OSError as e:
-        logger.warning("Could not quarantine checkpoint %s: %s", path, e)
-        return None
+        logger.warning("Could not move checkpoint %s aside (%s); copying it", path, e)
+        if not _copy_aside(path, target):
+            raise CheckpointNotKeptError(
+                f"the saved checkpoint {path} could not be kept aside "
+                f"({e}); it was left as it is"
+            ) from e
+        # The copy is durable: drop the original so it is not found again.
+        # If that fails too, it stays and the fresh run simply replaces it.
+        try:
+            path.unlink()
+        except OSError:
+            pass
     logger.warning("Checkpoint %s kept aside as %s", path, target)
+    _write_recovery_sidecar(target, os.path.abspath(source_path), reason)
     return target
 
 
@@ -287,19 +395,22 @@ def write_checkpoint(
     import time as _time
 
     abs_path = os.path.abspath(source_path)
-    identity: tuple[int, float] | None
-    try:
-        st = os.stat(abs_path)
-        identity = (int(st.st_size), float(st.st_mtime))
-        _RUN_IDENTITY[abs_path] = identity
-    except OSError:
-        # A transient stat blip (USB/SMB hiccup) must not replace the
-        # identity of the media the segments came from: keep the identity
-        # noted at run start, else the one on the checkpoint already on
-        # disk. Only when neither exists are the fields stored as null, and
-        # then validate_checkpoint refuses the checkpoint (kept, never
-        # auto-resumed) because the media cannot be verified.
-        identity = _RUN_IDENTITY.get(abs_path) or _previous_identity(abs_path)
+    # The identity noted at run start is authoritative: a later stat would
+    # describe whatever sits at the path NOW, and media replaced mid-run
+    # would then be recorded for segments that came from the original.
+    identity: tuple[int, float] | None = _RUN_IDENTITY.get(abs_path)
+    if identity is None:
+        try:
+            st = os.stat(abs_path)
+            identity = (int(st.st_size), float(st.st_mtime))
+            _RUN_IDENTITY[abs_path] = identity
+        except OSError:
+            # A transient stat blip (USB/SMB hiccup) must not blank the
+            # identity: use the one on the checkpoint already on disk. Only
+            # when that is missing too are the fields stored as null, and
+            # then validate_checkpoint refuses the checkpoint (kept, never
+            # auto-resumed) because the media cannot be verified.
+            identity = _previous_identity(abs_path)
     size: int | None = identity[0] if identity else None
     mtime: float | None = identity[1] if identity else None
 

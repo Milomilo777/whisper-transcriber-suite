@@ -114,6 +114,15 @@ tests/                      hermetic suite; tests/smoke/ needs real resources
 4. The worker emits `done` with the files it wrote. `TranscriptionService.poll` routes the event to `finish_task`, which writes the history row **before** it reports success to the UI, updates the linked download row, and retires the worker if it was a temporary one and no task is waiting (`retire_worker`). The worker started by `ensure_worker_ready` stays alive for the next job.
 5. A worker that stops sending events (heartbeats included) for `LIVENESS_TIMEOUT_S` is declared wedged and restarted (`restart_worker`); a worker process that died without its `worker_exit` is detected by `_expire_dead_workers`.
 
+**Resume checkpoints and kept-aside files.** While a file is transcribed, the saved text so far is written to
+`partials/<hash>.json` in the app's data folder (on Windows `%LOCALAPPDATA%\WhisperTranscriberSuite\partials`),
+and the media's size and date are recorded when the run starts. If the media at that path has changed, or a
+checkpoint cannot be trusted, it is never deleted: it is kept aside as `<hash>.json.unverified-<time>`, together
+with a plain-text copy of the saved transcript, `<hash>.unverified-<time>.txt`, that any text editor can open
+(source path, time, reason, then one line per segment with its start time). The app never picks up or removes
+these files by itself; once you no longer need them you can delete them by hand. If the checkpoint can be
+neither moved nor copied aside, the task stops with an error and the checkpoint stays untouched.
+
 ### Download
 
 1. `App.add_download()` calls `DownloadService.enqueue_from_form()`, which validates the form and appends one or more `VideoDownloadTask` items to `App.download_queue`.

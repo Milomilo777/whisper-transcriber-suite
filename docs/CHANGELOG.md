@@ -89,6 +89,14 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Media swapped during a run can no longer relabel saved text**: the size and date of the media noted when
+  a run starts now stay in every checkpoint of that run; a later checkpoint write no longer re-reads them, so
+  a resume refuses text that came from the original file instead of splicing it onto the new one.
+- **A checkpoint that cannot be moved aside is never overwritten**: if the rename fails, the app copies it
+  (synced and size-checked) before a fresh run starts; if even that fails, the task stops with an error and
+  the saved text stays untouched.
+- **Kept-aside checkpoints can be read without the app**: a plain-text copy of the saved transcript is
+  written next to each one (`<hash>.unverified-<time>.txt`); the startup sweep never deletes either file.
 - **Two burn jobs racing for one output name no longer lose a placeholder's reservation**: every
   reservation attempt now owns its own token and a failed attempt removes only that token, so the watched
   folder never takes a job's empty placeholder for user input.

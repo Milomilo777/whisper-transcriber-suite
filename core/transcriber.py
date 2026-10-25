@@ -3310,6 +3310,23 @@ def _recover_resume_cursor(data: dict[str, Any]) -> float | None:
     return max(ends)
 
 
+def _keep_checkpoint_aside(
+    task: TranscriptionTask, reason: str, log_cb: Callable[[str], None] | None
+) -> Path | None:
+    """Quarantine the task's checkpoint before a fresh run may start.
+
+    The saved text can be the only copy of hours of work, and a fresh run
+    overwrites that file and deletes it on success. If it cannot be kept
+    (neither renamed nor copied) the task FAILS instead: nothing is written,
+    the checkpoint stays exactly as it is, and the error says why.
+    """
+    try:
+        return _checkpoint.quarantine_checkpoint(task.file_path, reason)
+    except _checkpoint.CheckpointNotKeptError as e:
+        log(f"ERROR: Resume: {e}. The task is stopped so the saved text is not overwritten.", log_cb)
+        raise
+
+
 def resume_transcription(
     task: TranscriptionTask,
     progress_cb: Callable[[int], None] | None = None,
@@ -3392,7 +3409,7 @@ def resume_transcription(
         if reason.startswith(_checkpoint.UNVERIFIABLE_PREFIX):
             # Cannot tell which media the saved text came from: never resume
             # onto whatever sits at the path now, but never destroy it either.
-            kept = _checkpoint.quarantine_checkpoint(task.file_path)
+            kept = _keep_checkpoint_aside(task, reason, log_cb)
             log(
                 f"Resume: {reason}; the checkpoint is kept aside ({kept}) "
                 "and a fresh run starts.",
@@ -3453,7 +3470,9 @@ def resume_transcription(
 
         recovered = _recover_resume_cursor(data)
         if recovered is None:
-            kept = _checkpoint.quarantine_checkpoint(task.file_path)
+            kept = _keep_checkpoint_aside(
+                task, "last_end_time is malformed and cannot be recovered", log_cb
+            )
             log(
                 "Resume: checkpoint last_end_time is malformed and cannot be "
                 "recovered from the saved segments; the checkpoint is kept "
