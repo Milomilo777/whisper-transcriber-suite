@@ -26,7 +26,7 @@
   "sections": [
    [
     "Model",
-    "Kokoro speaks in one of 53 ready-made voices and is fast on any computer. OmniVoice can clone a voice from a short recording, or design a new one from a description (gender, age, pitch, accent); it is much slower without a supported graphics card. Each model downloads once, the first time it is used."
+    "Kokoro speaks in one of 54 ready-made voices and is fast on any computer. OmniVoice can clone a voice from a short recording, or design a new one from a description (gender, age, pitch, accent); it is much slower without a supported graphics card. Each model downloads once, the first time it is used."
    ],
    [
     "Voice",
@@ -52,7 +52,7 @@
    ],
    [
     ".!frame.!labelframe.!combobox:values",
-    "Kokoro — 53 ready-made voices, 9 languages (fast; ~350 MB download)"
+    "Kokoro — 54 ready-made voices, 9 languages (fast; ~350 MB download)"
    ],
    [
     ".!frame.!labelframe.!combobox:values",

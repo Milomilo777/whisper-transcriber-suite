@@ -2422,7 +2422,7 @@ def build_server_tab(app: "App", parent: ttk.Frame) -> None:
         opts,
         text=(
             _("Off: only this computer can use it (no firewall prompt).\n"
-              "On: Windows may ask to allow it through the firewall — click "
+              "On: your system may ask to allow it through the firewall — click "
               "Allow. Anyone on your network will be able to use it.")
         ),
         wraplength=px(560), justify="left", foreground=tokens.themed(tokens.TEXT_MUTED),

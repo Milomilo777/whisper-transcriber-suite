@@ -83,7 +83,7 @@
    "Share transcription from a browser",
    "• One click on the \"Web / LAN access\" tab opens a simple web page served by this app — no app to install on the other devices",
    "• Loopback by default: only this computer can reach it (no firewall prompt)",
-   "• Optional \"Share on local network\" so phones and other PCs can use it (Windows may ask to allow the firewall — click Allow)",
+   "• Optional \"Share on local network\" so phones and other PCs can use it (your system may ask to allow the firewall — click Allow)",
    "• Optional access password if you want to limit who can use it",
    "• Use it only on a network you trust — it is not encrypted",
    "Transcript viewer",
@@ -718,7 +718,7 @@
    ],
    [
     "about.bullet",
-    "Optional \"Share on local network\" so phones and other PCs can use it (Windows may ask to allow the firewall — click Allow)"
+    "Optional \"Share on local network\" so phones and other PCs can use it (your system may ask to allow the firewall — click Allow)"
    ],
    [
     "about.bullet",
