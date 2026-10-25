@@ -194,6 +194,12 @@ def jobs_running(app: Any) -> bool:
         for task in getattr(app, queue_name, None) or []:
             if getattr(task, "status", "") not in _IDLE_STATUSES:
                 return True
+    counter = getattr(app, "active_server_jobs", None)
+    if callable(counter):
+        try:
+            return int(counter()) > 0
+        except (TypeError, ValueError):
+            logger.info("Could not read the active server jobs", exc_info=True)
     return False
 
 

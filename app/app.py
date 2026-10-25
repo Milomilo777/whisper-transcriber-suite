@@ -2667,7 +2667,7 @@ class App(tk.Tk):
         active_downloads = [
             t for t in self.download_queue if t.status not in ("finished", "cancelled", "error")
         ]
-        if active or active_downloads:
+        if active or active_downloads or App.active_server_jobs(self):
             self._exit_prompt_open = True
             # Quit on macOS, Exit elsewhere (shortcuts.quit_label), as whole sentences.
             if shortcuts.is_mac():
@@ -6287,6 +6287,17 @@ class App(tk.Tk):
                 webbrowser.open(urls[0])
             except Exception:  # noqa: BLE001
                 logger.exception("Could not open browser")
+
+    def active_server_jobs(self) -> int:
+        """Waiting or running jobs that came in through the built-in server (0 without one)."""
+        handle = self.__dict__.get("_server_handle")
+        if handle is None:
+            return 0
+        try:
+            return int(handle.active_jobs())
+        except Exception:  # noqa: BLE001 - a failed probe must not block the exit
+            logger.exception("Could not count the active server jobs")
+            return 0
 
     def _shutdown_server_on_exit(self) -> None:
         """Best-effort synchronous stop of the server during app exit."""

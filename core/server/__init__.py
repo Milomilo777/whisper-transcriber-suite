@@ -449,6 +449,19 @@ class ServerHandle:
             return self._server is not None and self._thread is not None \
                 and self._thread.is_alive()
 
+    def active_jobs(self) -> int:
+        """Jobs submitted through the server that are waiting or running (0 when stopped)."""
+        with self._lock:
+            manager = self._manager
+        if manager is None:
+            return 0
+        try:
+            counts = manager.queue_counts()
+            return int(counts.get("queued", 0)) + int(counts.get("running", 0))
+        except Exception:  # noqa: BLE001 - a status probe must never block the exit prompt
+            logger.exception("Could not count the active server jobs")
+            return 0
+
     def start(
         self,
         host: str = HOST_LOOPBACK,
