@@ -1443,16 +1443,23 @@ class TranscriptionService:
     def _retire_failed_worker_if_others_healthy(self, failed: dict[str, Any]) -> bool:
         """Keep healthy workers when ONE worker failed to start.
 
-        A worker is healthy when it is ready or holds a task. With such a
+        A worker is healthy when it is ready and its process is alive. With such a
         peer only the failed worker is retired (its own task, if any, ends
         as an error): a second worker that cannot load its model copy (out
         of memory) must not hard-stop and fail a running job. Returns True
         when it did so; False means no worker is healthy and the caller
         runs the full teardown.
         """
+        def _alive(w: dict[str, Any]) -> bool:
+            proc = w.get("process")
+            return proc is None or proc.poll() is None
+
+        # Healthy = ready (a running job implies ready) with a live process. A
+        # worker that holds a task but never became ready is only waiting
+        # for its own model load, so it does not count.
         healthy = [
             w for w in self.app.workers
-            if w is not failed and (w.get("task") is not None or w.get("ready"))
+            if w is not failed and w.get("ready") and _alive(w)
         ]
         if not healthy:
             return False
@@ -1472,7 +1479,23 @@ class TranscriptionService:
             "Worker %s failed to start; keeping %d healthy worker(s) running",
             failed.get("id", "?"), len(healthy),
         )
-        self.retire_worker(failed)
+        try:
+            self.retire_worker(failed)
+        except Exception:  # noqa: BLE001 - the startup_error handler must never raise
+            # retire_worker finishes the failed worker's own task first; what
+            # can still fail afterwards is the UI refresh. Make sure the
+            # worker is gone and its process is stopped regardless.
+            logger.exception("Retiring failed worker %s raised", failed.get("id", "?"))
+            process = failed.get("process")
+            failed["process"] = None
+            failed["ready"] = False
+            if failed in self.app.workers:
+                self.app.workers.remove(failed)
+            if process is not None and process.poll() is None:
+                try:
+                    self._stop_in_background(failed, process)
+                except Exception:  # noqa: BLE001
+                    logger.exception("Could not stop failed worker %s", failed.get("id", "?"))
         return True
 
     def _fail_tasks_and_clear_workers_on_startup_error(self) -> None:

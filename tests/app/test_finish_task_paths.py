@@ -281,3 +281,23 @@ def test_error_event_without_outputs_is_unchanged(tmp_path):
     app.worker_events.put(_error_event(t, None))
     svc.poll()
     assert t.status == "error" and calls.shown == []
+
+
+def test_startup_error_handler_survives_a_failing_retire(tmp_path, monkeypatch):
+    """If retiring the failed worker raises (UI refresh), the handler must not
+    raise: the failed worker is dropped and the healthy job keeps running."""
+    calls = _Calls()
+    app, hist = _app(tmp_path, calls)
+    svc = TranscriptionService(app)
+
+    def boom(worker):
+        raise AttributeError("status_var")
+
+    monkeypatch.setattr(svc, "retire_worker", boom)
+    t = _task(str(tmp_path / "long.mp4"), hist)
+    w1 = _worker(1, "tok1", t)
+    w2 = _worker(2, "tok2", ready=False)
+    app.workers.extend([w1, w2])
+    app.worker_events.put(_startup_error(2, "tok2"))
+    svc.poll()
+    assert app.workers == [w1] and t.status == "running"

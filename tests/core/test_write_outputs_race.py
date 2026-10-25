@@ -76,3 +76,40 @@ def test_failed_writer_removes_only_its_own_placeholder(tmp_path, monkeypatch):
     assert not (tmp_path / "talk (1).json").exists()
     assert not (tmp_path / "talk.json").exists()
     assert (tmp_path / "talk (1).srt").read_text(encoding="utf-8") == "new\n"
+
+
+def test_claim_error_on_existing_file_never_overwrites_it(tmp_path, monkeypatch):
+    """A transient PermissionError (scanner) when claiming an EXISTING name
+    must move to the next index, not authorise overwriting that file."""
+    base = str(tmp_path / "talk")
+    existing = tmp_path / "talk.srt"
+    existing.write_bytes(b"earlier transcript\n")
+    real_open = os.open
+
+    def flaky_open(path, flags, *a, **k):
+        if os.path.basename(str(path)) == "talk.srt":
+            raise PermissionError(13, "Access is denied")
+        return real_open(path, flags, *a, **k)
+
+    monkeypatch.setattr(os, "open", flaky_open)
+    monkeypatch.setattr(tr, "get_writer", lambda name: lambda seg, ap: "new\n")
+    written = tr._write_outputs(base, [], str(tmp_path / "talk.mp4"), ["srt"])
+    assert existing.read_bytes() == b"earlier transcript\n"
+    assert [os.path.basename(p) for p in written] == ["talk (1).srt"]
+
+
+def test_all_writers_failing_leaves_no_claim_files(tmp_path, monkeypatch):
+    """Every unpublished claim, the chapters sidecar included, is removed."""
+    base = str(tmp_path / "talk")
+
+    def bad(seg, ap):
+        raise ValueError("boom")
+
+    monkeypatch.setattr(tr, "get_writer", lambda name: bad)
+    chapters = [{"start": 0.0, "title": "One"}]
+    import pytest
+    with pytest.raises(RuntimeError):
+        tr._write_outputs(
+            base, [], str(tmp_path / "talk.mp4"), ["srt", "json"], chapters=chapters
+        )
+    assert sorted(p.name for p in tmp_path.iterdir()) == []
