@@ -753,7 +753,6 @@
       "به‌طور پیش‌فرض خاموش: هر کار «تبدیل متن به صدا» تا {count} نویسه (حدود 90 دقیقه گفتار) را می‌پذیرد. وقتی روشن باشد، متن‌های طولانی‌تر هم پذیرفته می‌شوند. کار طولانی همچنان تکه به تکه خوانده می‌شود، پس می‌توان آن را لغو کرد و ادامه داد، و زمان، حجم فایل و فضای خالی دیسک همچنان پیش از شروع بررسی می‌شوند. یک متن خیلی طولانی ممکن است ساعت‌ها طول بکشد."
     ],
     "Off by default; opt in from the Advanced dialog": "به‌طور پیش‌فرض خاموش؛ از پنجره «پیشرفته» فعالش کنید",
-    "Off: only this computer can use it (no firewall prompt).\nOn: Windows may ask to allow it through the firewall — click Allow. Anyone on your network will be able to use it.": "خاموش: فقط همین کامپیوتر می‌تواند از آن استفاده کند (بدون پیام فایروال).\nروشن: ممکن است ویندوز بپرسد که اجازه عبور از فایروال داده شود یا نه؛ روی Allow کلیک کنید. هر کسی در شبکه شما می‌تواند از آن استفاده کند.",
     "Off: the session's audio recording is deleted when you stop (it takes 100-350 MB per hour). On: it is kept, and the log says where the file is.": "خاموش: ضبط صدای این نشست هنگام توقف حذف می‌شود (هر ساعت 100 تا 350 MB جا می‌گیرد). روشن: نگه داشته می‌شود و گزارش می‌گوید فایل کجاست.",
     "Official guide: {url}": "راهنمای رسمی: {url}",
     "Offline mode is on": "حالت آفلاین روشن است",
@@ -800,7 +799,6 @@
     "Open via": "راه‌های باز کردن",
     "Opens the selected finished job in the transcript viewer. It needs the Whisper JSON output format, which is on by default.": "کار پایان‌یافته انتخاب‌شده را در نمایشگر متن باز می‌کند. به فرمت خروجی JSON از Whisper نیاز دارد، که به‌طور پیش‌فرض روشن است.",
     "Opens the subtitle file in Subtitle Edit, a free editor with a waveform view for fine-tuning timing. If it is not installed, this button offers the download page. A portable copy can be chosen in Advanced > App behaviour.": "فایل زیرنویس را در Subtitle Edit باز می‌کند؛ ویرایشگری رایگان با نمای شکل موج برای تنظیم دقیق زمان‌بندی. اگر نصب نباشد، این دکمه صفحه دانلود را پیشنهاد می‌دهد. نسخه قابل‌حمل را می‌توان در پیشرفته > رفتار برنامه انتخاب کرد.",
-    "Optional \"Share on local network\" so phones and other PCs can use it (Windows may ask to allow the firewall — click Allow)": "گزینه اختیاری «اشتراک در شبکه محلی» تا گوشی‌ها و کامپیوترهای دیگر هم بتوانند از آن استفاده کنند (ممکن است ویندوز اجازه فایروال بخواهد؛ روی Allow کلیک کنید)",
     "Optional AI extras on top of the transcript: the transcript viewer's AI Tools (summaries, action items, Q&A, translation) and sentence-like auto-chapter titles — run by a small model on this machine (Local) or by your own API (Remote).": "امکانات اختیاری هوش مصنوعی روی متن رونویسی: «ابزارهای هوش مصنوعی» نمایشگر متن رونویسی (خلاصه، کارهای لازم، پرسش و پاسخ، ترجمه) و عنوان‌های جمله‌مانند برای فصل‌های خودکار؛ با یک مدل کوچک روی همین دستگاه (محلی) یا API خودتان (راه دور) اجرا می‌شوند.",
     "Optional Demucs vocal-separation pre-processing": "پیش‌پردازش اختیاری جداسازی صدای گوینده با Demucs",
     "Optional access password if you want to limit who can use it": "رمز دسترسی اختیاری، اگر بخواهید محدود کنید چه کسانی از آن استفاده کنند",

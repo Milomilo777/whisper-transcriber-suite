@@ -753,7 +753,6 @@
       "Varsayılan olarak kapalı: bir Metinden sese görevi en fazla {count} karakter alır (yaklaşık 90 dakikalık konuşma). Açıkken daha uzun metinler kabul edilir. Uzun bir görev yine parça parça seslendirilir, böylece iptal edilip sürdürülebilir; başlamadan önce süre, dosya boyutu ve boş disk alanı yine denetlenir. Çok uzun bir metin saatlerce sürebilir."
     ],
     "Off by default; opt in from the Advanced dialog": "Varsayılan olarak kapalı; Gelişmiş penceresinden açın",
-    "Off: only this computer can use it (no firewall prompt).\nOn: Windows may ask to allow it through the firewall — click Allow. Anyone on your network will be able to use it.": "Kapalı: yalnızca bu bilgisayar kullanabilir (güvenlik duvarı sorusu yok).\nAçık: Windows güvenlik duvarından izin vermenizi isteyebilir — İzin ver'e tıklayın. Ağınızdaki herkes kullanabilir.",
     "Off: the session's audio recording is deleted when you stop (it takes 100-350 MB per hour). On: it is kept, and the log says where the file is.": "Kapalı: durdurduğunuzda oturumun ses kaydı silinir (saatte 100-350 MB yer kaplar). Açık: saklanır ve günlük dosyanın nerede olduğunu belirtir.",
     "Official guide: {url}": "Resmi kılavuz: {url}",
     "Offline mode is on": "Çevrimdışı mod açık",
@@ -800,7 +799,6 @@
     "Open via": "Şununla aç",
     "Opens the selected finished job in the transcript viewer. It needs the Whisper JSON output format, which is on by default.": "Seçilen tamamlanmış işi döküm görüntüleyicide açar. Varsayılan olarak açık olan Whisper JSON çıktı biçimini gerektirir.",
     "Opens the subtitle file in Subtitle Edit, a free editor with a waveform view for fine-tuning timing. If it is not installed, this button offers the download page. A portable copy can be chosen in Advanced > App behaviour.": "Altyazı dosyasını, zamanlamayı ince ayarlamak için dalga biçimi görünümü sunan ücretsiz bir düzenleyici olan Subtitle Edit'te açar. Yüklü değilse bu düğme indirme sayfasını önerir. Taşınabilir bir kopya Gelişmiş > Uygulama davranışı altında seçilebilir.",
-    "Optional \"Share on local network\" so phones and other PCs can use it (Windows may ask to allow the firewall — click Allow)": "Telefonların ve diğer bilgisayarların kullanabilmesi için isteğe bağlı \"Yerel ağda paylaş\" (Windows güvenlik duvarı izni isteyebilir — İzin ver'e tıklayın)",
     "Optional AI extras on top of the transcript: the transcript viewer's AI Tools (summaries, action items, Q&A, translation) and sentence-like auto-chapter titles — run by a small model on this machine (Local) or by your own API (Remote).": "Transkriptin üzerine isteğe bağlı AI ekleri: transkript görüntüleyicinin AI Araçları (özetler, eylem maddeleri, soru-cevap, çeviri) ve cümle biçimli otomatik bölüm başlıkları — bu makinedeki küçük bir model (Yerel) veya kendi API'niz (Uzak) tarafından çalıştırılır.",
     "Optional Demucs vocal-separation pre-processing": "İsteğe bağlı Demucs vokal ayırma ön işlemesi",
     "Optional access password if you want to limit who can use it": "Kimlerin kullanabileceğini sınırlamak isterseniz isteğe bağlı erişim parolası",

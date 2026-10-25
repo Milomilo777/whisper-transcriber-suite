@@ -742,7 +742,6 @@
       "預設關閉：一個文字轉語音任務最多接受 {count} 個字元（約 90 分鐘語音）。開啟後可接受更長的文字。長任務仍會逐段朗讀，因此可以取消和繼續，開始前仍會檢查時間、檔案大小和可用磁碟空間。非常長的文字可能需要很多小時。"
     ],
     "Off by default; opt in from the Advanced dialog": "預設關閉；可在「進階」對話方塊中開啟",
-    "Off: only this computer can use it (no firewall prompt).\nOn: Windows may ask to allow it through the firewall — click Allow. Anyone on your network will be able to use it.": "關閉：只有這台電腦可以使用（不會跳出防火牆提示）。\n開啟：Windows 可能會詢問是否允許其通過防火牆——請按一下「允許」。你網路中的任何人都能使用它。",
     "Off: the session's audio recording is deleted when you stop (it takes 100-350 MB per hour). On: it is kept, and the log says where the file is.": "關閉：停止時會刪除本次工作階段的錄音（每小時佔用 100-350 MB）。開啟：保留錄音，記錄檔中會註明檔案位置。",
     "Official guide: {url}": "官方指南：{url}",
     "Offline mode is on": "離線模式已開啟",
@@ -788,7 +787,6 @@
     "Open via": "開啟方式",
     "Opens the selected finished job in the transcript viewer. It needs the Whisper JSON output format, which is on by default.": "在逐字稿檢視器中開啟所選的已完成工作。這需要 Whisper JSON 輸出格式（預設已開啟）。",
     "Opens the subtitle file in Subtitle Edit, a free editor with a waveform view for fine-tuning timing. If it is not installed, this button offers the download page. A portable copy can be chosen in Advanced > App behaviour.": "在 Subtitle Edit 中開啟字幕檔案，這是一款免費編輯器，具備波形檢視，可微調時間。如果尚未安裝，此按鈕會提供下載頁面。可在「進階 > 應用程式行為」中選擇可攜版。",
-    "Optional \"Share on local network\" so phones and other PCs can use it (Windows may ask to allow the firewall — click Allow)": "選用「在區域網路上分享」，讓手機和其他電腦也能使用（Windows 可能會詢問是否允許通過防火牆——請按一下「允許」）",
     "Optional AI extras on top of the transcript: the transcript viewer's AI Tools (summaries, action items, Q&A, translation) and sentence-like auto-chapter titles — run by a small model on this machine (Local) or by your own API (Remote).": "以逐字稿為基礎的選用 AI 附加功能：逐字稿檢視器的「AI 工具」（摘要、待辦事項、問答、翻譯）以及類似句子的自動章節標題——由本機上的小型模型（本機）或你自己的 API（遠端）執行。",
     "Optional Demucs vocal-separation pre-processing": "選用的 Demucs 人聲分離前處理",
     "Optional access password if you want to limit who can use it": "如果想限制使用者，可設定存取密碼（選用）",

@@ -753,7 +753,6 @@
       "डिफ़ॉल्ट रूप से बंद: टेक्स्ट से आवाज़ का एक कार्य {count} वर्णों तक लेता है (लगभग 90 मिनट की बोली)। चालू होने पर, लंबे टेक्स्ट स्वीकार किए जाते हैं। लंबा कार्य फिर भी टुकड़ा-टुकड़ा बोला जाता है, ताकि उसे रद्द करके जारी रखा जा सके, और शुरू होने से पहले समय, फ़ाइल का आकार और डिस्क की खाली जगह अब भी जांची जाती है। बहुत लंबे टेक्स्ट में कई घंटे लग सकते हैं।"
     ],
     "Off by default; opt in from the Advanced dialog": "डिफ़ॉल्ट रूप से बंद; उन्नत डायलॉग से चालू करें",
-    "Off: only this computer can use it (no firewall prompt).\nOn: Windows may ask to allow it through the firewall — click Allow. Anyone on your network will be able to use it.": "बंद: केवल यही कंप्यूटर इसे इस्तेमाल कर सकता है (कोई फ़ायरवॉल संकेत नहीं)।\nचालू: Windows इसे फ़ायरवॉल से अनुमति देने के लिए पूछ सकता है — अनुमति दें पर क्लिक करें। आपके नेटवर्क पर कोई भी इसे इस्तेमाल कर पाएगा।",
     "Off: the session's audio recording is deleted when you stop (it takes 100-350 MB per hour). On: it is kept, and the log says where the file is.": "बंद: रोकने पर सत्र की ऑडियो रिकॉर्डिंग हटा दी जाती है (यह हर घंटे 100-350 MB लेती है)। चालू: इसे रखा जाता है, और लॉग बताता है कि फ़ाइल कहां है।",
     "Official guide: {url}": "आधिकारिक गाइड: {url}",
     "Offline mode is on": "ऑफ़लाइन मोड चालू है",
@@ -800,7 +799,6 @@
     "Open via": "इससे खोलें",
     "Opens the selected finished job in the transcript viewer. It needs the Whisper JSON output format, which is on by default.": "चयनित पूर्ण कार्य को ट्रांसक्रिप्ट व्यूअर में खोलता है। इसके लिए Whisper JSON आउटपुट फ़ॉर्मैट की आवश्यकता होती है, जो डिफ़ॉल्ट रूप से चालू रहता है।",
     "Opens the subtitle file in Subtitle Edit, a free editor with a waveform view for fine-tuning timing. If it is not installed, this button offers the download page. A portable copy can be chosen in Advanced > App behaviour.": "सबटाइटल फ़ाइल को Subtitle Edit में खोलता है, जो टाइमिंग को बारीकी से ठीक करने के लिए वेवफ़ॉर्म व्यू वाला मुफ़्त एडिटर है। अगर यह इंस्टॉल नहीं है, तो यह बटन डाउनलोड पेज खोलने का विकल्प देता है। पोर्टेबल कॉपी उन्नत > ऐप का व्यवहार में चुनी जा सकती है।",
-    "Optional \"Share on local network\" so phones and other PCs can use it (Windows may ask to allow the firewall — click Allow)": "वैकल्पिक \"लोकल नेटवर्क पर शेयर करें\" ताकि फ़ोन और दूसरे PC इसे इस्तेमाल कर सकें (Windows फ़ायरवॉल की अनुमति के लिए पूछ सकता है — अनुमति दें पर क्लिक करें)",
     "Optional AI extras on top of the transcript: the transcript viewer's AI Tools (summaries, action items, Q&A, translation) and sentence-like auto-chapter titles — run by a small model on this machine (Local) or by your own API (Remote).": "ट्रांसक्रिप्ट के ऊपर वैकल्पिक AI सुविधाएं: ट्रांसक्रिप्ट व्यूअर के AI टूल (सारांश, कार्य-बिंदु, सवाल-जवाब, अनुवाद) और वाक्य जैसे अपने-आप बनने वाले चैप्टर शीर्षक — इस मशीन पर एक छोटे मॉडल (लोकल) या आपके अपने API (रिमोट) से चलते हैं।",
     "Optional Demucs vocal-separation pre-processing": "वैकल्पिक Demucs आवाज़-अलगाव प्री-प्रोसेसिंग",
     "Optional access password if you want to limit who can use it": "अगर आप सीमित करना चाहते हैं कि इसे कौन इस्तेमाल करे तो वैकल्पिक एक्सेस पासवर्ड",

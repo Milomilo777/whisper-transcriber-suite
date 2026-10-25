@@ -764,7 +764,6 @@
       "כבוי כברירת מחדל: משימת 'טקסט לקול' אחת מקבלת עד {count} תווים (כ-90 דקות דיבור). כשמופעל, מתקבלים טקסטים ארוכים יותר. משימה ארוכה עדיין נאמרת חלק אחר חלק, כך שאפשר לבטל ולהמשיך אותה, והזמן, גודל הקובץ והמקום הפנוי בדיסק עדיין נבדקים לפני שהיא מתחילה. טקסט ארוך מאוד עשוי להימשך שעות רבות."
     ],
     "Off by default; opt in from the Advanced dialog": "כבוי כברירת מחדל; אפשר להפעיל בחלון 'מתקדם'",
-    "Off: only this computer can use it (no firewall prompt).\nOn: Windows may ask to allow it through the firewall — click Allow. Anyone on your network will be able to use it.": "כבוי: רק המחשב הזה יכול להשתמש בו (ללא הודעת חומת אש).\nמופעל: Windows עשוי לבקש לאפשר אותו דרך חומת האש — לחץ על 'אפשר'. כל מי שברשת שלך יוכל להשתמש בו.",
     "Off: the session's audio recording is deleted when you stop (it takes 100-350 MB per hour). On: it is kept, and the log says where the file is.": "כבוי: הקלטת השמע של ההפעלה נמחקת כשעוצרים (היא תופסת 100-350 MB לשעה). מופעל: היא נשמרת, והיומן מציין היכן הקובץ.",
     "Official guide: {url}": "מדריך רשמי: {url}",
     "Offline mode is on": "מצב לא מקוון פעיל",
@@ -812,7 +811,6 @@
     "Open via": "פתח באמצעות",
     "Opens the selected finished job in the transcript viewer. It needs the Whisper JSON output format, which is on by default.": "פותח במציג התמליל את המשימה שנבחרה שהסתיימה. דרוש לכך פורמט הפלט Whisper JSON, שמופעל כברירת מחדל.",
     "Opens the subtitle file in Subtitle Edit, a free editor with a waveform view for fine-tuning timing. If it is not installed, this button offers the download page. A portable copy can be chosen in Advanced > App behaviour.": "פותח את קובץ הכתוביות ב-Subtitle Edit, עורך חינמי עם תצוגת צורת גל לכוונון עדין של התזמון. אם הוא אינו מותקן, הלחצן מציע את דף ההורדה. אפשר לבחור עותק נייד ב'מתקדם' > 'התנהגות היישום'.",
-    "Optional \"Share on local network\" so phones and other PCs can use it (Windows may ask to allow the firewall — click Allow)": "אפשרות \"שיתוף ברשת המקומית\" כדי שטלפונים ומחשבים אחרים יוכלו להשתמש בו (Windows עשוי לבקש לאפשר את חומת האש — לחץ על 'אפשר')",
     "Optional AI extras on top of the transcript: the transcript viewer's AI Tools (summaries, action items, Q&A, translation) and sentence-like auto-chapter titles — run by a small model on this machine (Local) or by your own API (Remote).": "תוספות בינה מלאכותית אופציונליות מעל התמליל: 'כלי בינה מלאכותית' במציג התמלילים (סיכומים, משימות לביצוע, שאלות ותשובות, תרגום) וכותרות פרקים אוטומטיות דמויות משפט — מופעלות על ידי מודל קטן במחשב זה (מקומי) או ה-API שלך (מרוחק).",
     "Optional Demucs vocal-separation pre-processing": "עיבוד מקדים אופציונלי של הפרדת קולות עם Demucs",
     "Optional access password if you want to limit who can use it": "סיסמת גישה אופציונלית אם תרצה להגביל מי יכול להשתמש בו",

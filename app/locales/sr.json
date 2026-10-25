@@ -764,7 +764,6 @@
       "Подразумевано искључено: један задатак Текст у глас прима до {count} знакова (око 90 минута говора). Када је укључено, прихватају се дужи текстови. Дуги задатак се и даље изговара део по део, па може да се откаже и настави, а време, величина датотеке и слободан простор на диску и даље се проверавају пре почетка. Веома дуг текст може трајати много сати."
     ],
     "Off by default; opt in from the Advanced dialog": "Подразумевано искључено; укључује се у дијалогу Напредно",
-    "Off: only this computer can use it (no firewall prompt).\nOn: Windows may ask to allow it through the firewall — click Allow. Anyone on your network will be able to use it.": "Искључено: само овај рачунар може да га користи (без упита заштитног зида).\nУкључено: Windows може да затражи дозволу у заштитном зиду – кликните Дозволи. Свако на вашој мрежи моћи ће да га користи.",
     "Off: the session's audio recording is deleted when you stop (it takes 100-350 MB per hour). On: it is kept, and the log says where the file is.": "Искључено: звучни снимак сесије брише се када зауставите (заузима 100-350 MB по сату). Укључено: задржава се, а дневник наводи где је датотека.",
     "Official guide: {url}": "Званични водич: {url}",
     "Offline mode is on": "Режим ван мреже је укључен",
@@ -812,7 +811,6 @@
     "Open via": "Отвори помоћу",
     "Opens the selected finished job in the transcript viewer. It needs the Whisper JSON output format, which is on by default.": "Отвара изабрани завршени посао у прегледачу транскрипта. Потребан је излазни формат Whisper JSON, који је подразумевано укључен.",
     "Opens the subtitle file in Subtitle Edit, a free editor with a waveform view for fine-tuning timing. If it is not installed, this button offers the download page. A portable copy can be chosen in Advanced > App behaviour.": "Отвара датотеку титлова у Subtitle Edit, бесплатном уређивачу са приказом таласног облика за фино подешавање времена. Ако није инсталиран, ово дугме нуди страницу за преузимање. Преносива копија може се изабрати у Напредно > Понашање апликације.",
-    "Optional \"Share on local network\" so phones and other PCs can use it (Windows may ask to allow the firewall — click Allow)": "Опционо „Дели на локалној мрежи“ да би телефони и други рачунари могли да га користе (Windows може да затражи дозволу заштитног зида – кликните Дозволи)",
     "Optional AI extras on top of the transcript: the transcript viewer's AI Tools (summaries, action items, Q&A, translation) and sentence-like auto-chapter titles — run by a small model on this machine (Local) or by your own API (Remote).": "Опционални AI додаци уз транскрипт: AI алати у прегледачу транскрипта (сажеци, задаци за извршење, питања и одговори, превод) и наслови аутоматских поглавља у облику реченица – покреће их мали модел на овом рачунару (Локално) или ваш API (Удаљено).",
     "Optional Demucs vocal-separation pre-processing": "Опциона претходна обрада Demucs раздвајањем вокала",
     "Optional access password if you want to limit who can use it": "Опциона лозинка за приступ ако желите да ограничите ко може да га користи",

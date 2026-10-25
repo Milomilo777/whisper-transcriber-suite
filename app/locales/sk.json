@@ -764,7 +764,6 @@
       "Predvolene vypnuté: jedna úloha Text na hlas prijme až {count} znakov (asi 90 minút reči). Keď je zapnuté, prijímajú sa aj dlhšie texty. Dlhá úloha sa stále nahovára po častiach, takže ju možno zrušiť a pokračovať a čas, veľkosť súboru a voľné miesto na disku sa pred spustením stále kontrolujú. Veľmi dlhý text môže trvať mnoho hodín."
     ],
     "Off by default; opt in from the Advanced dialog": "Predvolene vypnuté; zapnúť možno v dialógu Rozšírené",
-    "Off: only this computer can use it (no firewall prompt).\nOn: Windows may ask to allow it through the firewall — click Allow. Anyone on your network will be able to use it.": "Vypnuté: môže ho používať len tento počítač (bez výzvy brány firewall).\nZapnuté: Windows sa môže opýtať, či povoliť prechod bránou firewall – kliknite na Povoliť. Ktokoľvek vo vašej sieti ho bude môcť používať.",
     "Off: the session's audio recording is deleted when you stop (it takes 100-350 MB per hour). On: it is kept, and the log says where the file is.": "Vypnuté: zvuková nahrávka relácie sa po zastavení zmaže (zaberá 100 – 350 MB za hodinu). Zapnuté: ponechá sa a denník uvedie, kde súbor je.",
     "Official guide: {url}": "Oficiálny návod: {url}",
     "Offline mode is on": "Režim offline je zapnutý",
@@ -812,7 +811,6 @@
     "Open via": "Otvoriť cez",
     "Opens the selected finished job in the transcript viewer. It needs the Whisper JSON output format, which is on by default.": "Otvorí vybranú dokončenú úlohu v prehliadači prepisov. Vyžaduje výstupný formát Whisper JSON, ktorý je predvolene zapnutý.",
     "Opens the subtitle file in Subtitle Edit, a free editor with a waveform view for fine-tuning timing. If it is not installed, this button offers the download page. A portable copy can be chosen in Advanced > App behaviour.": "Otvorí súbor titulkov v Subtitle Edit, bezplatnom editore so zobrazením priebehu vlny na jemné doladenie časovania. Ak nie je nainštalovaný, toto tlačidlo ponúkne stránku na stiahnutie. Prenosnú kópiu možno zvoliť v Rozšírené > Správanie aplikácie.",
-    "Optional \"Share on local network\" so phones and other PCs can use it (Windows may ask to allow the firewall — click Allow)": "Voliteľné „Zdieľať v miestnej sieti“, aby ho mohli používať telefóny a ďalšie počítače (Windows sa môže opýtať na povolenie brány firewall – kliknite na Povoliť)",
     "Optional AI extras on top of the transcript: the transcript viewer's AI Tools (summaries, action items, Q&A, translation) and sentence-like auto-chapter titles — run by a small model on this machine (Local) or by your own API (Remote).": "Voliteľné doplnky AI nad prepisom: Nástroje AI v prehliadači prepisov (zhrnutia, akčné body, otázky a odpovede, preklad) a vetné názvy automatických kapitol – spúšťa ich malý model na tomto počítači (Miestny) alebo vaše vlastné API (Vzdialený).",
     "Optional Demucs vocal-separation pre-processing": "Voliteľné predspracovanie Demucs na oddelenie vokálov",
     "Optional access password if you want to limit who can use it": "Voliteľné prístupové heslo, ak chcete obmedziť, kto ho môže používať",

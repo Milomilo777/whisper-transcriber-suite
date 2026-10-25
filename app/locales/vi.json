@@ -742,7 +742,6 @@
       "Tắt theo mặc định: một tác vụ Văn bản thành giọng nói nhận tối đa {count} ký tự (khoảng 90 phút lời nói). Khi bật, văn bản dài hơn được chấp nhận. Tác vụ dài vẫn được đọc từng phần, nên có thể hủy và tiếp tục, và thời gian, kích thước tệp cùng dung lượng đĩa trống vẫn được kiểm tra trước khi bắt đầu. Văn bản rất dài có thể mất nhiều giờ."
     ],
     "Off by default; opt in from the Advanced dialog": "Tắt theo mặc định; bật trong hộp thoại Nâng cao",
-    "Off: only this computer can use it (no firewall prompt).\nOn: Windows may ask to allow it through the firewall — click Allow. Anyone on your network will be able to use it.": "Tắt: chỉ máy tính này dùng được (không hỏi tường lửa).\nBật: Windows có thể hỏi cho phép qua tường lửa — bấm Cho phép. Mọi người trong mạng của bạn đều dùng được.",
     "Off: the session's audio recording is deleted when you stop (it takes 100-350 MB per hour). On: it is kept, and the log says where the file is.": "Tắt: bản ghi âm của phiên bị xóa khi bạn dừng (chiếm 100-350 MB mỗi giờ). Bật: bản ghi được giữ lại, và nhật ký cho biết vị trí tệp.",
     "Official guide: {url}": "Hướng dẫn chính thức: {url}",
     "Offline mode is on": "Chế độ ngoại tuyến đang bật",
@@ -788,7 +787,6 @@
     "Open via": "Mở qua",
     "Opens the selected finished job in the transcript viewer. It needs the Whisper JSON output format, which is on by default.": "Mở tác vụ đã hoàn tất được chọn trong trình xem bản chép lời. Tính năng này cần định dạng đầu ra Whisper JSON, vốn được bật theo mặc định.",
     "Opens the subtitle file in Subtitle Edit, a free editor with a waveform view for fine-tuning timing. If it is not installed, this button offers the download page. A portable copy can be chosen in Advanced > App behaviour.": "Mở tệp phụ đề trong Subtitle Edit, trình chỉnh sửa miễn phí có chế độ xem dạng sóng để tinh chỉnh thời gian. Nếu chưa cài, nút này sẽ đề xuất trang tải xuống. Có thể chọn bản portable trong Nâng cao > Hành vi ứng dụng.",
-    "Optional \"Share on local network\" so phones and other PCs can use it (Windows may ask to allow the firewall — click Allow)": "Tùy chọn \"Chia sẻ trên mạng cục bộ\" để điện thoại và các PC khác dùng được (Windows có thể hỏi cho phép qua tường lửa — bấm Cho phép)",
     "Optional AI extras on top of the transcript: the transcript viewer's AI Tools (summaries, action items, Q&A, translation) and sentence-like auto-chapter titles — run by a small model on this machine (Local) or by your own API (Remote).": "Tiện ích AI tùy chọn bổ sung cho bản chép lời: Công cụ AI của trình xem bản chép lời (tóm tắt, việc cần làm, hỏi đáp, dịch) và tiêu đề chương tự động dạng câu — do một mô hình nhỏ trên máy này (Cục bộ) hoặc API của riêng bạn (Từ xa) thực hiện.",
     "Optional Demucs vocal-separation pre-processing": "Tiền xử lý tách giọng Demucs tùy chọn",
     "Optional access password if you want to limit who can use it": "Mật khẩu truy cập tùy chọn nếu bạn muốn giới hạn người dùng",

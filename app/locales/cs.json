@@ -764,7 +764,6 @@
       "Ve výchozím stavu vypnuto: jedna úloha Text na hlas přijme až {count} znaků (asi 90 minut řeči). Když je zapnuto, přijímají se i delší texty. Dlouhá úloha se stále namlouvá po částech, takže ji lze zrušit a pokračovat a čas, velikost souboru a volné místo na disku se před spuštěním stále kontrolují. Velmi dlouhý text může trvat mnoho hodin."
     ],
     "Off by default; opt in from the Advanced dialog": "Ve výchozím stavu vypnuto; zapnout lze v dialogu Pokročilé",
-    "Off: only this computer can use it (no firewall prompt).\nOn: Windows may ask to allow it through the firewall — click Allow. Anyone on your network will be able to use it.": "Vypnuto: může ho používat jen tento počítač (bez výzvy brány firewall).\nZapnuto: Windows se může zeptat, zda povolit průchod bránou firewall – klikněte na Povolit. Kdokoli ve vaší síti ho bude moci používat.",
     "Off: the session's audio recording is deleted when you stop (it takes 100-350 MB per hour). On: it is kept, and the log says where the file is.": "Vypnuto: zvuková nahrávka relace se po zastavení smaže (zabírá 100–350 MB za hodinu). Zapnuto: ponechá se a protokol uvede, kde soubor je.",
     "Official guide: {url}": "Oficiální návod: {url}",
     "Offline mode is on": "Režim offline je zapnutý",
@@ -812,7 +811,6 @@
     "Open via": "Otevřít přes",
     "Opens the selected finished job in the transcript viewer. It needs the Whisper JSON output format, which is on by default.": "Otevře vybranou dokončenou úlohu v prohlížeči přepisu. Vyžaduje výstupní formát Whisper JSON, který je ve výchozím nastavení zapnutý.",
     "Opens the subtitle file in Subtitle Edit, a free editor with a waveform view for fine-tuning timing. If it is not installed, this button offers the download page. A portable copy can be chosen in Advanced > App behaviour.": "Otevře soubor titulků v Subtitle Edit, bezplatném editoru se zobrazením průběhu vlny pro jemné doladění časování. Pokud není nainstalovaný, toto tlačítko nabídne stránku ke stažení. Přenosnou kopii lze zvolit v Pokročilé > Chování aplikace.",
-    "Optional \"Share on local network\" so phones and other PCs can use it (Windows may ask to allow the firewall — click Allow)": "Volitelné „Sdílet v místní síti“, aby ho mohly používat telefony a další počítače (Windows se může zeptat na povolení brány firewall – klikněte na Povolit)",
     "Optional AI extras on top of the transcript: the transcript viewer's AI Tools (summaries, action items, Q&A, translation) and sentence-like auto-chapter titles — run by a small model on this machine (Local) or by your own API (Remote).": "Volitelné doplňky AI nad přepisem: Nástroje AI v prohlížeči přepisů (shrnutí, akční body, otázky a odpovědi, překlad) a větné názvy automatických kapitol – spouští je malý model na tomto počítači (Místní) nebo vaše vlastní API (Vzdálený).",
     "Optional Demucs vocal-separation pre-processing": "Volitelné předzpracování Demucs pro oddělení vokálů",
     "Optional access password if you want to limit who can use it": "Volitelné přístupové heslo, pokud chcete omezit, kdo ho může používat",

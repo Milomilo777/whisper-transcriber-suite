@@ -23,6 +23,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   added in that pass. It now reports the total number of segments indexed.
 - **Voice tab named the wrong number of Kokoro voices**: the text said 53 while the list has 54. The count
   is now read from the voice list, so it cannot drift again.
+- **"Windows" firewall wording shown on macOS**: the Web / LAN access tab and the About text now say "your
+  system" may ask to allow the connection, which is right on every platform.
 - **Audio-only download of an episode page that has no audio file yet**: new episodes get their MP3 weeks
   after the video, and until then the audio list stayed empty and Download kept saying "Wait for formats to
   load, then select an audio format." The app now downloads the page's 720p video, keeps only its sound in the

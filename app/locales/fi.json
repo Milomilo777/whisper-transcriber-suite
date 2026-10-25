@@ -753,7 +753,6 @@
       "Oletuksena pois päältä: yksi Teksti puheeksi -työ ottaa enintään {count} merkkiä (noin 90 minuuttia puhetta). Kun asetus on päällä, pidemmät tekstit hyväksytään. Pitkä työ puhutaan silti osa kerrallaan, joten sen voi peruuttaa ja jatkaa, ja aika, tiedostokoko ja vapaa levytila tarkistetaan silti ennen aloitusta. Hyvin pitkä teksti voi kestää useita tunteja."
     ],
     "Off by default; opt in from the Advanced dialog": "Oletuksena pois päältä; ota käyttöön Lisäasetukset-ikkunassa",
-    "Off: only this computer can use it (no firewall prompt).\nOn: Windows may ask to allow it through the firewall — click Allow. Anyone on your network will be able to use it.": "Pois: vain tämä tietokone voi käyttää sitä (ei palomuurikehotetta).\nPäällä: Windows voi pyytää sallimaan sen palomuurin läpi – napsauta Salli. Kaikki verkossasi voivat käyttää sitä.",
     "Off: the session's audio recording is deleted when you stop (it takes 100-350 MB per hour). On: it is kept, and the log says where the file is.": "Pois: istunnon äänitallenne poistetaan, kun lopetat (se vie 100–350 Mt tunnissa). Päällä: se säilytetään, ja lokista näkee, missä tiedosto on.",
     "Official guide: {url}": "Virallinen opas: {url}",
     "Offline mode is on": "Offline-tila on päällä",
@@ -800,7 +799,6 @@
     "Open via": "Avaa sovelluksella",
     "Opens the selected finished job in the transcript viewer. It needs the Whisper JSON output format, which is on by default.": "Avaa valitun valmistuneen työn litterointikatselimessa. Se vaatii Whisperin JSON-tulostemuodon, joka on oletuksena käytössä.",
     "Opens the subtitle file in Subtitle Edit, a free editor with a waveform view for fine-tuning timing. If it is not installed, this button offers the download page. A portable copy can be chosen in Advanced > App behaviour.": "Avaa tekstitystiedoston Subtitle Editissä, ilmaisessa editorissa, jossa on aaltomuotonäkymä ajoituksen hienosäätöön. Jos sitä ei ole asennettu, tämä painike tarjoaa lataussivun. Siirrettävän version voi valita kohdassa Lisäasetukset > Sovelluksen toiminta.",
-    "Optional \"Share on local network\" so phones and other PCs can use it (Windows may ask to allow the firewall — click Allow)": "Valinnainen ”Jaa lähiverkossa”, jotta puhelimet ja muut tietokoneet voivat käyttää sitä (Windows voi pyytää sallimaan palomuurin – napsauta Salli)",
     "Optional AI extras on top of the transcript: the transcript viewer's AI Tools (summaries, action items, Q&A, translation) and sentence-like auto-chapter titles — run by a small model on this machine (Local) or by your own API (Remote).": "Valinnaisia tekoälylisiä litteroinnin päälle: litteroinnin katseluohjelman Tekoälytyökalut (yhteenvedot, toimenpiteet, kysymykset ja vastaukset, käännös) ja lauseenomaiset automaattiset lukujen otsikot – suorittaa pieni malli tällä koneella (Paikallinen) tai oma API:si (Etä).",
     "Optional Demucs vocal-separation pre-processing": "Valinnainen Demucs-laulunerotus esikäsittelynä",
     "Optional access password if you want to limit who can use it": "Valinnainen käyttösalasana, jos haluat rajata, kuka voi käyttää sitä",

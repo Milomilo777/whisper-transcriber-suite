@@ -140,3 +140,13 @@ def test_report_a_problem_link_points_at_this_repository_and_carries_no_paths():
     body = urllib.parse.parse_qs(urllib.parse.urlparse(url).query)["body"][0]
     assert f"App version: {__version__}" in body
     assert ":\\" not in body and "/Users/" not in body and "/home/" not in body
+
+
+def test_network_sharing_text_is_not_windows_only():
+    """macOS and Linux show the same text, so it must not name Windows alone."""
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[2]
+    for rel in ("app/app.py", "app/widgets/tabs.py"):
+        source = (root / rel).read_text(encoding="utf-8")
+        assert "Windows may ask" not in source, rel

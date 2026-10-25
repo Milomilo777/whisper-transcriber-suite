@@ -742,7 +742,6 @@
       "既定ではオフです: 1 つの「テキスト読み上げ」ジョブで扱えるのは最大 {count} 文字（約 90 分の音声）です。オンにすると、より長いテキストを受け付けます。長いジョブも少しずつ読み上げるため、キャンセルして続きから再開でき、開始前に所要時間、ファイル サイズ、空きディスク容量も確認されます。非常に長いテキストは何時間もかかることがあります。"
     ],
     "Off by default; opt in from the Advanced dialog": "既定ではオフ。詳細ダイアログでオンにできます",
-    "Off: only this computer can use it (no firewall prompt).\nOn: Windows may ask to allow it through the firewall — click Allow. Anyone on your network will be able to use it.": "オフ: このコンピューターだけが使えます（ファイアウォールの確認なし）。\nオン: Windows がファイアウォールの通過を許可するか確認する場合があります。「許可」をクリックしてください。ネットワーク上の誰でも使えるようになります。",
     "Off: the session's audio recording is deleted when you stop (it takes 100-350 MB per hour). On: it is kept, and the log says where the file is.": "オフ: 停止するとセッションの録音は削除されます（1 時間あたり 100～350 MB）。オン: 録音は保持され、ファイルの場所がログに記録されます。",
     "Official guide: {url}": "公式ガイド: {url}",
     "Offline mode is on": "オフライン モードがオンです",
@@ -788,7 +787,6 @@
     "Open via": "開く方法",
     "Opens the selected finished job in the transcript viewer. It needs the Whisper JSON output format, which is on by default.": "選択した完了済みジョブを文字起こしビューアで開きます。Whisper の JSON 出力形式が必要ですが、これはデフォルトで有効になっています。",
     "Opens the subtitle file in Subtitle Edit, a free editor with a waveform view for fine-tuning timing. If it is not installed, this button offers the download page. A portable copy can be chosen in Advanced > App behaviour.": "字幕ファイルを Subtitle Edit で開きます。波形表示でタイミングを微調整できる無料のエディターです。インストールされていない場合は、このボタンでダウンロード ページを案内します。ポータブル版は「詳細」>「アプリの動作」で選べます。",
-    "Optional \"Share on local network\" so phones and other PCs can use it (Windows may ask to allow the firewall — click Allow)": "スマートフォンや他の PC から使えるようにする「ローカル ネットワークで共有」（任意。Windows がファイアウォールの許可を求めることがあります — 「許可」をクリック）",
     "Optional AI extras on top of the transcript: the transcript viewer's AI Tools (summaries, action items, Q&A, translation) and sentence-like auto-chapter titles — run by a small model on this machine (Local) or by your own API (Remote).": "文字起こしに追加できる任意の AI 機能: 文字起こしビューアーの AI ツール（要約、アクションアイテム、Q&A、翻訳）と、文のような自動チャプター タイトル。このマシン上の小さなモデル（ローカル）または自分の API（リモート）で実行します。",
     "Optional Demucs vocal-separation pre-processing": "任意の Demucs ボーカル分離の前処理",
     "Optional access password if you want to limit who can use it": "使用できる人を制限したい場合の任意のアクセス パスワード",

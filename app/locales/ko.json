@@ -742,7 +742,6 @@
       "기본값은 꺼짐: 텍스트 음성 변환 작업 하나는 최대 {count}자(약 90분 분량의 음성)까지 받습니다. 켜면 더 긴 텍스트도 받습니다. 긴 작업도 여전히 조각별로 생성되므로 취소하고 이어서 할 수 있으며, 시작 전에 시간, 파일 크기, 여유 디스크 공간을 확인합니다. 아주 긴 텍스트는 여러 시간이 걸릴 수 있습니다."
     ],
     "Off by default; opt in from the Advanced dialog": "기본값은 꺼짐. 고급 대화 상자에서 켤 수 있음",
-    "Off: only this computer can use it (no firewall prompt).\nOn: Windows may ask to allow it through the firewall — click Allow. Anyone on your network will be able to use it.": "끔: 이 컴퓨터만 사용할 수 있습니다(방화벽 확인 창 없음).\n켬: Windows가 방화벽 허용 여부를 물을 수 있습니다 — 허용을 클릭하세요. 네트워크의 누구나 사용할 수 있게 됩니다.",
     "Off: the session's audio recording is deleted when you stop (it takes 100-350 MB per hour). On: it is kept, and the log says where the file is.": "끔: 중지하면 세션의 녹음 파일이 삭제됩니다(시간당 100-350 MB). 켬: 보관되며 로그에 파일 위치가 표시됩니다.",
     "Official guide: {url}": "공식 가이드: {url}",
     "Offline mode is on": "오프라인 모드가 켜져 있음",
@@ -788,7 +787,6 @@
     "Open via": "다음으로 열기",
     "Opens the selected finished job in the transcript viewer. It needs the Whisper JSON output format, which is on by default.": "선택한 완료 작업을 전사 뷰어에서 엽니다. 기본적으로 켜져 있는 Whisper JSON 출력 형식이 필요합니다.",
     "Opens the subtitle file in Subtitle Edit, a free editor with a waveform view for fine-tuning timing. If it is not installed, this button offers the download page. A portable copy can be chosen in Advanced > App behaviour.": "자막 파일을 파형 보기로 타이밍을 세밀하게 조정할 수 있는 무료 편집기 Subtitle Edit에서 엽니다. 설치되어 있지 않으면 이 버튼이 다운로드 페이지를 안내합니다. 포터블 사본은 고급 > 앱 동작에서 선택할 수 있습니다.",
-    "Optional \"Share on local network\" so phones and other PCs can use it (Windows may ask to allow the firewall — click Allow)": "휴대폰과 다른 PC에서 쓸 수 있도록 선택 가능한 \"로컬 네트워크에 공유\"(Windows가 방화벽 허용 여부를 물을 수 있음 — 허용 클릭)",
     "Optional AI extras on top of the transcript: the transcript viewer's AI Tools (summaries, action items, Q&A, translation) and sentence-like auto-chapter titles — run by a small model on this machine (Local) or by your own API (Remote).": "전사본 위에 얹는 선택적 AI 기능: 전사본 뷰어의 AI 도구(요약, 할 일 항목, 질의응답, 번역)와 문장형 자동 챕터 제목 — 이 컴퓨터의 작은 모델(로컬) 또는 본인의 API(원격)로 실행됩니다.",
     "Optional Demucs vocal-separation pre-processing": "선택적 Demucs 음성 분리 전처리",
     "Optional access password if you want to limit who can use it": "사용자를 제한하려면 선택적 접속 비밀번호",

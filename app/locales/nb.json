@@ -753,7 +753,6 @@
       "Av som standard: én Tekst til tale-jobb tar opptil {count} tegn (omtrent 90 minutter tale). Når den er på, godtas lengre tekster. En lang jobb leses fortsatt opp del for del, så den kan avbrytes og fortsettes, og tid, filstørrelse og ledig diskplass sjekkes fortsatt før den starter. En svært lang tekst kan ta mange timer."
     ],
     "Off by default; opt in from the Advanced dialog": "Av som standard; slå på i dialogen Avansert",
-    "Off: only this computer can use it (no firewall prompt).\nOn: Windows may ask to allow it through the firewall — click Allow. Anyone on your network will be able to use it.": "Av: bare denne datamaskinen kan bruke den (ingen brannmurforespørsel).\nPå: Windows kan be deg tillate den gjennom brannmuren – klikk Tillat. Alle på nettverket ditt vil kunne bruke den.",
     "Off: the session's audio recording is deleted when you stop (it takes 100-350 MB per hour). On: it is kept, and the log says where the file is.": "Av: lydopptaket av økten slettes når du stopper (det tar 100–350 MB per time). På: det beholdes, og loggen sier hvor filen er.",
     "Official guide: {url}": "Offisiell veiledning: {url}",
     "Offline mode is on": "Frakoblet modus er på",
@@ -800,7 +799,6 @@
     "Open via": "Åpne via",
     "Opens the selected finished job in the transcript viewer. It needs the Whisper JSON output format, which is on by default.": "Åpner den valgte fullførte jobben i transkripsjonsviseren. Den krever Whisper JSON-utdataformatet, som er påslått som standard.",
     "Opens the subtitle file in Subtitle Edit, a free editor with a waveform view for fine-tuning timing. If it is not installed, this button offers the download page. A portable copy can be chosen in Advanced > App behaviour.": "Åpner undertekstfilen i Subtitle Edit, et gratis redigeringsprogram med bølgeformvisning for finjustering av timing. Hvis det ikke er installert, tilbyr denne knappen nedlastingssiden. En bærbar kopi kan velges i Avansert > Appens virkemåte.",
-    "Optional \"Share on local network\" so phones and other PCs can use it (Windows may ask to allow the firewall — click Allow)": "Valgfri «Del på lokalt nettverk» slik at telefoner og andre PC-er kan bruke den (Windows kan be om å tillate brannmuren – klikk Tillat)",
     "Optional AI extras on top of the transcript: the transcript viewer's AI Tools (summaries, action items, Q&A, translation) and sentence-like auto-chapter titles — run by a small model on this machine (Local) or by your own API (Remote).": "Valgfrie KI-tillegg oppå transkripsjonen: KI-verktøyene i transkripsjonsvisningen (sammendrag, oppgavepunkter, spørsmål og svar, oversettelse) og setningslignende automatiske kapitteltitler – kjørt av en liten modell på denne maskinen (Lokal) eller av ditt eget API (Ekstern).",
     "Optional Demucs vocal-separation pre-processing": "Valgfri forbehandling med Demucs-vokalseparering",
     "Optional access password if you want to limit who can use it": "Valgfritt tilgangspassord hvis du vil begrense hvem som kan bruke den",
