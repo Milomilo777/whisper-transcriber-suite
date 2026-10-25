@@ -21,11 +21,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   checked addresses are connected to, and proxies from the environment are not used. LAN receivers stay
   allowed.
 - **The server slows down wrong access passwords**: after 5 wrong passwords from one host, that host gets
-  HTTP 429 with a growing `Retry-After` (15 seconds, doubling, at most 15 minutes). The check and the count
-  are one atomic step and one host never locks out another. Each IPv6 /64 shares a budget of 50 comparisons
-  per 10 minutes (hosts that logged in recently are exempt), so rotating addresses gains nothing. The
-  lockout always ends by itself. When the host table is full of locked hosts, new addresses share a bounded
-  overflow budget instead of getting a fresh start with every guess.
+  HTTP 429 with a growing `Retry-After` (15 seconds, doubling, at most 15 minutes) that always ends by itself.
+  One host never locks out another, and each IPv6 /64 (or, when the host table is full, a bounded overflow
+  pool) shares one budget, so rotating addresses gains nothing.
 - **Logged-in clients survive a shared-address lockout**: after a correct password the server sets a signed,
   15-minute session cookie. A valid cookie is accepted without touching the per-address failure count, so
   an attacker behind the same NAT or reverse proxy cannot keep a logged-in user locked out.
@@ -36,11 +34,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   translator prefixes of any RFC 6052 length; the IPv4 address inside gets the full address policy before an
   allowlist is consulted. Shared (100.64/10) addresses inside other IPv6 addresses are refused too.
 - **Slow header senders are limited**, in the server and in the download proxy: the header has an absolute
-  deadline, and connections without a complete header have a small budget (further ones are still served
-  but get only 1 to 2 seconds), so drippers cannot lock out other clients. When every connection slot is
-  taken, a new connection evicts the oldest one that still has no complete header instead of being refused
-  (an address at its own pending limit replaces its oldest). Evicted handlers keep their slot until they have
-  ended, so the number of living handlers stays bounded.
+  deadline and connections without a complete header get only a small time budget, so drippers cannot lock
+  out other clients. When every slot is taken, a new connection evicts the oldest one that still has no
+  complete header, and the number of living handlers stays bounded.
 
 ### Added
 
@@ -65,11 +61,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **Optional webhook secret header**: set a secret (`--webhook-secret`, `server_webhook_secret`, or the
   **Webhook secret** field in the Web / LAN access tab) and every completion webhook carries it in the
   `X-Whisper-Webhook-Secret` header (rename it with `--webhook-header` / `server_webhook_header_name`), so
-  receivers such as n8n (Webhook node, Header Auth) can reject other callers. The secret is never logged or
-  printed. A secret that cannot be a header value (for example only a line break) is refused, never
-  turned into "no secret". The app, the start-up output and the log warn that the secret travels in plain
-  text when the webhook URL is `http://`. Every webhook body also has a new `delivery_id`, unique per
-  delivery.
+  receivers such as n8n (Webhook node, Header Auth) can reject other callers. The secret is never logged, an
+  invalid one is refused rather than dropped, and the app warns when it would travel over plain `http://`.
+  Every webhook body also has a new `delivery_id`, unique per delivery.
+- **Recipes for n8n and Obsidian**: docs/integrations/webhook-n8n-obsidian.md shows how to receive the
+  completion webhook in n8n and two ways to get finished transcripts into an Obsidian vault as notes.
 
 ### Changed
 
@@ -89,46 +85,29 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
-- **Media swapped during a run can no longer relabel saved text**: the size and date of the media noted when
-  a run starts stay in every checkpoint of that run, on every route (also web/LAN language-model jobs in a
-  long-lived worker), so a resume refuses text that came from the original file.
-- **A checkpoint that cannot be renamed aside is never overwritten or deleted**: the app keeps a verified
-  copy (exclusive, synced, read back; reused on retries) and stops the task with an error instead of starting
-  a fresh run over a file that another process may hold. Kept-aside names are unique.
-- **Saved text is kept unless the media is verified unchanged**: only a changed engine, model or setting (or
-  an unusable segment list) discards a checkpoint; a missing or changed source, an unknown format or an
-  unusable size or date keeps it aside, also when the current engine cannot resume. NaN, infinite or boolean
-  identity values no longer pass as a match.
-- **A new job on replaced media keeps the old saved text**: a fresh transcription of a path whose earlier
-  checkpoint belongs to other (or unverifiable) media now keeps that checkpoint aside first, instead of
-  overwriting or deleting it; a checkpoint of the same unchanged media is left as before.
-- **Kept-aside checkpoints can be read without the app**: a plain-text copy of the saved transcript is
-  written next to each one (`<hash>.unverified-<tag>.txt`), also when a segment time is invalid; the startup
-  sweep never deletes either file.
+- **The saved text of an interrupted run is kept unless its media is verified unchanged**: only re-running
+  the same, unchanged file with another engine, model or setting discards a checkpoint. A replaced, deleted
+  or unverifiable source keeps it aside instead (on resume, on a new job for the same path, and with an
+  engine that cannot resume), and the media's size and date are fixed when a run starts, so a file swapped
+  mid-run cannot relabel saved text.
+- **Kept-aside checkpoints can be read without the app**: a plain-text copy of the saved transcript
+  (`<hash>.unverified-<tag>.txt`) is written next to each one, and the startup sweep never deletes either
+  file. A checkpoint that cannot be moved aside is copied and verified first, and the task stops with an
+  error instead of overwriting it.
+- **Resume checkpoints survive bad data and failing disks**: a malformed end time is recovered from the saved
+  segments, a failed read of the source's size and date no longer blanks or poisons the checkpoint, a full
+  disk makes the periodic write fail instead of publishing an empty file, and a source path with an unpaired
+  surrogate no longer disables checkpoints.
 - **A relaunch no longer waits 20 seconds for a zombie on macOS**: a finished process that is not a child of
   the app is now detected with `ps` where `/proc` does not exist.
-- **Two burn jobs racing for one output name no longer lose a placeholder's reservation**: every
-  reservation attempt now owns its own token and a failed attempt removes only that token, so the watched
-  folder never takes a job's empty placeholder for user input.
-- **A malformed resume cursor no longer deletes saved transcript text**: when a checkpoint's end-time field
-  is not a usable number, the cursor is recovered from the latest saved segment end and the resume
-  continues. If no cursor can be recovered, the checkpoint is moved aside (kept) and a fresh run starts.
-- **A resume never continues onto different media**: a failed read of the source's size and date no longer
-  blanks them in the saved checkpoint; the values noted at the start of the run (or stored by the
-  previous write) are kept. A checkpoint whose media cannot be verified is moved aside, not resumed and
-  not deleted, and a fresh run starts.
 - **A failed or cancelled run no longer erases the language of its history row**, and a task whose history
   insert keeps failing (full disk, corrupt database) now ends as an error after about 30 seconds instead of
   waiting forever.
-- **A single failed read of the source file no longer ruins a resume checkpoint**: the checkpoint is stored
-  without size/time verification instead of with values no resume accepts, a full disk makes the periodic write
-  fail instead of publishing an empty file, and a source path with an unpaired surrogate no longer disables
-  checkpoints for the run.
 - **Subtitle burn**: a Cancel that lands just after ffmpeg finished keeps the finished video, two jobs that
   reserve the same output name at once no longer release each other's placeholder, and a failing progress
   callback no longer leaves ffmpeg running.
-- **The offline bar polls connections off the Tk thread**, so it no longer stalls the window every 10 seconds
-  while it is showing.
+- **The window no longer stalls every 10 seconds while the offline bar is showing**: the bar now checks the
+  connection in the background.
 - **Scrolling panels keep the mouse wheel while the pointer is over their content**, and closing the model-info
   or Google Cloud help popup (or the hub folder picker) in Advanced makes Advanced modal again.
 - **Server**: a failed write of an uploaded file no longer leaves a "queued" job that never runs.
@@ -136,7 +115,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **Smaller fixes**: the online config and the Google Cloud key file accept a UTF-8 BOM; a compact SRT keeps a cue
   whose last line is a non-ASCII number; a convert write error is no longer masked by a failed cleanup; a failed
   language-model download thread start no longer blocks later downloads; the speed meter resets the live audio
-  position on a re-run; `tools/measure_startup.py` stops only the process it started.
+  position on a re-run.
 - **Transcript viewer: embedded video never attached (black Multimedia tab, `00:00 / 00:00`, Play greyed,
   segment double-click did nothing)**: the viewer handed its window to VLC before Tk had mapped it, and then gave
   up on embedded playback for good. It now waits for the video area to appear (the map event plus a bounded
