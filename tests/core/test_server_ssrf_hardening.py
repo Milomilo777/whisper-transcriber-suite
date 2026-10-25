@@ -228,22 +228,42 @@ def test_webhook_connects_only_to_the_checked_address(monkeypatch, listener):
     assert b"Host: lan.example" in listener.requests[0]
 
 
-def test_webhook_resolves_once_so_a_second_answer_cannot_win(
-        monkeypatch, listener):
-    calls = []
-    answers = iter([["127.0.0.1"], ["8.8.8.8"]])
+def test_webhook_resolves_once_and_connects_to_the_checked_address(
+        monkeypatch):
+    """First answer public, any later answer loopback: exactly one lookup, and
+    the connection goes to the FIRST numeric address."""
+    import types
+
+    lookups: list[str] = []
+    connects: list[tuple] = []
+    answers = iter([["93.184.216.34"], ["127.0.0.1"], ["127.0.0.1"]])
 
     def flip(host, port, *a, **kw):
-        calls.append(host)
+        lookups.append(host)
         return _answers(*next(answers))(host, port)
 
-    monkeypatch.setattr(jobs_mod, "is_safe_url", lambda _u: True)
-    monkeypatch.setattr(socket, "getaddrinfo", flip)
-    with pytest.raises(urllib.error.URLError) as info:
-        post_webhook(f"http://flip.example:{listener.port}/hook", {})
-    assert isinstance(info.value.reason, netguard.BlockedAddressError)
-    assert len(calls) == 1
-    assert listener.connections == 0
+    class _Sock:
+        def __init__(self, *a, **kw):
+            pass
+
+        def settimeout(self, _t):
+            pass
+
+        def connect(self, sockaddr):
+            connects.append(sockaddr)
+            raise ConnectionRefusedError("test stops here")
+
+        def close(self):
+            pass
+
+    shim = types.SimpleNamespace(
+        getaddrinfo=flip, socket=_Sock, SOCK_STREAM=socket.SOCK_STREAM)
+    monkeypatch.setattr(netguard, "socket", shim)
+    monkeypatch.setattr(jobs_mod, "is_safe_url", lambda _u, **_k: True)
+    with pytest.raises(urllib.error.URLError):
+        post_webhook("http://flip.example:8080/hook", {})
+    assert lookups == ["flip.example"]
+    assert connects == [("93.184.216.34", 8080)]
 
 
 def test_address_blocked_matches_the_old_job_url_rules():
