@@ -330,6 +330,15 @@ def test_get_result_reads_text(tmp_path):
     assert result["content"][0]["text"] == "1\n"
 
 
+def test_get_result_reads_the_md_format(tmp_path):
+    mgr = _StubManager()
+    job_id = _finished(mgr, tmp_path, "md",
+                       "# Transcript\n\n**00:01** Hello\n".encode("utf-8"))
+    result = _tool_ok(_call(mgr, "get_result",
+                            {"job_id": job_id, "format": "md"}))
+    assert result["content"][0]["text"].startswith("# Transcript")
+
+
 def test_get_result_refuses_the_old_fmt_argument(tmp_path):
     mgr = _StubManager()
     job_id = _finished(mgr, tmp_path, "srt", b"1\n")
