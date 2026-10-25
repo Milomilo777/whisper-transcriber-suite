@@ -438,15 +438,16 @@ def test_config_value_is_passed_unstripped(monkeypatch, secret):
     ("\tabc", "\tabc"),
 ], ids=_bad_id)
 def test_gui_input_is_trimmed_of_spaces_only(typed, stored):
+    """webhook_secret_from_input trims surrounding spaces and nothing else;
+    the validity check of the trimmed value is done by the caller."""
     from core.config import webhook_secret_from_input
 
     assert webhook_secret_from_input(typed) == stored
     assert webhook_secret_from_input(None) == ""
 
 
-@pytest.mark.parametrize("typed", ["\r\n", "   ", "abc\r\n"], ids=_bad_id)
-def test_app_save_never_turns_an_invalid_secret_into_a_different_one(
-        monkeypatch, typed):
+def _save_prefs(monkeypatch, typed, previous=None):
+    """Run the app's real _save_server_prefs on a stub; return its config."""
     import sys
 
     if "faster_whisper" not in sys.modules:
@@ -454,18 +455,88 @@ def test_app_save_never_turns_an_invalid_secret_into_a_different_one(
         fw.WhisperModel = object  # type: ignore[attr-defined]
         sys.modules["faster_whisper"] = fw
     import app.app as app_mod
-    from core.server.jobs import webhook_secret_valid
 
+    logged: list[str] = []
     monkeypatch.setattr(app_mod, "save_config", lambda cfg: None)
     stub = types.SimpleNamespace(
-        app_config={}, server_port_var=_Var(8765),
+        app_config=dict(previous or {}), server_port_var=_Var(8765),
         server_share_lan_var=_Var(False), server_token_var=_Var(""),
         server_https_enabled_var=_Var(False), server_webhook_url_var=_Var(""),
-        server_webhook_secret_var=_Var(typed), log=lambda *_a, **_k: None)
+        server_webhook_secret_var=_Var(typed), log=logged.append)
     app_mod.App._save_server_prefs(stub)  # type: ignore[arg-type]
-    saved = stub.app_config["server_webhook_secret"]
-    assert saved == typed, "kept as typed, not stripped to empty"
-    assert saved != "" and not webhook_secret_valid(saved)
+    return stub.app_config, logged
+
+
+@pytest.mark.parametrize("typed, saved", [
+    ("abc", "abc"),
+    ("  abc  ", "abc"),
+    ("", ""),
+])
+def test_gui_field_saves_the_value_trimmed_of_surrounding_spaces(
+        monkeypatch, typed, saved):
+    """Design: the app's field trims the spaces around what was typed (a
+    pasted secret often carries one); the CLI and the config use the value
+    exactly."""
+    cfg, logged = _save_prefs(monkeypatch, typed)
+    assert cfg["server_webhook_secret"] == saved
+    assert logged == []
+
+
+@pytest.mark.parametrize("typed", [
+    "\r\n", "   ", "abc\r\n", "  abc\tdef  ", "caf\u00e9\u20ac"],
+    ids=_bad_id)
+def test_gui_field_refuses_to_save_a_trimmed_value_that_is_still_invalid(
+        monkeypatch, typed):
+    """Design: the TRIMMED value is validated. One that still has a control
+    character (or is only spaces) is not saved, the old secret stays, and a
+    short message that does not repeat it is logged."""
+    cfg, logged = _save_prefs(
+        monkeypatch, typed, previous={"server_webhook_secret": "old-one"})
+    assert cfg["server_webhook_secret"] == "old-one"
+    assert len(logged) == 1 and "not saved" in logged[0]
+    assert "abc" not in logged[0] and "caf" not in logged[0]
+
+
+# --- the header NAME is validated at start-up --------------------------------
+
+BAD_HEADER_NAMES = ["Host", "Content-Type", "content-length", "X-A\r\nB",
+                    "Bad Name", "X:Y", "caf\u00e9"]
+
+
+@pytest.mark.parametrize("name", BAD_HEADER_NAMES, ids=_bad_id)
+def test_run_server_refuses_to_start_with_an_invalid_header_name(
+        monkeypatch, capsys, name):
+    import core.server as server_mod
+
+    _FakeHandle.started = 0
+    monkeypatch.setattr(server_mod, "ServerHandle", _FakeHandle)
+    rc = server_mod.run_server(
+        webhook_url="https://example.com/h", webhook_secret=SECRET,
+        webhook_header=name)
+    err = capsys.readouterr().err
+    assert rc == 1 and _FakeHandle.started == 0
+    assert "header name" in err
+    assert SECRET not in err
+
+
+@pytest.mark.parametrize("name", BAD_HEADER_NAMES, ids=_bad_id)
+def test_in_app_server_start_refuses_an_invalid_header_name(name):
+    import core.server as server_mod
+
+    handle = server_mod.ServerHandle(
+        transcribe_fn=lambda *a, **k: None, load_model=False)
+    with pytest.raises(ValueError, match="header name"):
+        handle.start(port=0, webhook_url="https://example.com/h",
+                     webhook_secret=SECRET, webhook_header=name)
+    assert not handle.is_running()
+
+
+def test_a_header_name_is_not_checked_when_no_secret_is_set(
+        monkeypatch, capsys):
+    import core.server as server_mod
+
+    monkeypatch.setattr(server_mod, "ServerHandle", _FakeHandle)
+    assert server_mod.run_server(webhook_header="Host") == 0
 
 
 # --- plain http:// warning ---------------------------------------------------

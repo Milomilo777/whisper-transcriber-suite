@@ -37,6 +37,7 @@ from core.server.jobs import (
     DownloadLimits,
     JobManager,
     strip_url_secrets,
+    webhook_header_name_valid,
     webhook_secret_valid,
     webhook_url_is_plain_http,
 )
@@ -480,6 +481,12 @@ class ServerHandle:
             self._starting = True
             self._start_cancelled = False
         if webhook_secret:
+            if (webhook_header
+                    and not webhook_header_name_valid(webhook_header)):
+                # The app shows this text in its "could not start" box.
+                raise ValueError(
+                    "The webhook header name is not a valid HTTP header "
+                    "name (or is one the request sets itself).")
             if not webhook_secret_valid(webhook_secret):
                 logger.warning(
                     "server: the webhook secret cannot be used in an HTTP "
@@ -614,6 +621,12 @@ def run_server(
         print("The webhook secret cannot be used in an HTTP header (control "
               "characters, characters outside Latin-1, or a space at either "
               "end). Nothing was started.", file=sys.stderr, flush=True)
+        return 1
+    if (webhook_secret and webhook_header
+            and not webhook_header_name_valid(webhook_header)):
+        print("The webhook header name is not a valid HTTP header name (or is "
+              "one the request sets itself, such as Content-Type or Host). "
+              "Nothing was started.", file=sys.stderr, flush=True)
         return 1
     handle = ServerHandle(load_model=load_model)
     try:

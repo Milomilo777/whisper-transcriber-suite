@@ -614,16 +614,24 @@ Behaviour to know:
   NAME` or `server_webhook_header_name` renames the header. With no secret set
   no header is sent. The secret is stored in cleartext in `config.json` like
   the access password, and it is never written to the log or printed (the
-  start-up message says only that a secret is set). The value is used exactly
-  as given, never trimmed: only a completely empty value means "no secret". The
-  app's field drops spaces around what you type, and nothing else. A secret
-  that is not valid in an HTTP header (a line break or other control character,
-  a character outside Latin-1, or a space at either end, so also a value made
-  only of spaces) or a header name that is not a plain token, or is one the
-  request sets itself (`Content-Type`, `Host` ...), is never sent as "no
-  secret": `serve` refuses to start (exit code 1), and the app's server refuses
-  every delivery, each with a message that does not repeat it. Redirects are not
-  followed, so the secret cannot be passed on to another address.
+  start-up message says only that a secret is set).
+- **Which value is used.** `--webhook-secret` and `server_webhook_secret` in
+  `config.json` are used exactly as given, never trimmed: only a completely
+  empty value means "no secret". The **Webhook secret** field in the app trims
+  the spaces around what you type (a pasted secret often carries one) and
+  nothing else, then checks the trimmed value: if it still has a control
+  character (a line break, a tab), a character outside Latin-1, or is only
+  spaces, it is not saved, the previous secret stays and the app's log says so.
+- **What is refused.** A secret that is not valid in an HTTP header (a control
+  character, a character outside Latin-1, or a space at either end) is never
+  sent as "no secret": `serve` exits with code 1, and a hand-edited config value
+  makes the app's server refuse every delivery, each time with a message that
+  does not repeat it. A header name (`--webhook-header`,
+  `server_webhook_header_name`) that is not a plain token, or is one the request
+  sets itself (`Content-Type`, `Host` ...), stops `serve` with exit code 1 and
+  makes the app's **Start web access** show an error, as soon as a secret is
+  set. Redirects are not followed, so the secret cannot be passed on to another
+  address.
 - **Use an `https://` receiver.** The header travels exactly as the body does:
   with an `http://` webhook URL, anyone on the network path can read the
   secret. The start-up output and log warn when a secret is set and the URL

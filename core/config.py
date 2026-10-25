@@ -2321,6 +2321,23 @@ def save_config(config: dict[str, Any]) -> None:
             config._config_baseline = snapshot
 
 
+def webhook_secret_valid(secret: str) -> bool:
+    """True for a non-empty secret usable verbatim as a header value.
+
+    Printable Latin-1 only (no control characters, so a line break cannot
+    split the header) and no space at either end, which a receiver or a
+    proxy may trim. The empty string is not "valid": it means "no secret"
+    and callers test for it first (see :func:`webhook_secret_from_input`).
+    """
+    if not secret or secret != secret.strip():
+        return False
+    try:
+        secret.encode("latin-1")
+    except UnicodeEncodeError:
+        return False
+    return all(32 <= ord(c) != 127 for c in secret)
+
+
 def webhook_secret_from_input(raw: str | None) -> str:
     """The secret to store for text typed into the app's field.
 

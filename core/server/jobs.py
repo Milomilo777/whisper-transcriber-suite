@@ -50,7 +50,12 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Protocol
 
 from core import __version__, offline
-from core.config import PROJECT_FILE_NAME, user_cache_dir, user_data_dir
+from core.config import (
+    PROJECT_FILE_NAME,
+    user_cache_dir,
+    user_data_dir,
+    webhook_secret_valid,
+)
 from core.server.netguard import (
     GuardedHTTPHandler,
     GuardedHTTPSHandler,
@@ -1887,26 +1892,16 @@ def webhook_secret_header_ok(name: str, secret: str) -> bool:
     secret must be printable Latin-1 without control characters (a line
     break would split the header).
     """
-    if not _HEADER_NAME_RE.match(name) or name.lower() in _RESERVED_HEADERS:
+    if not webhook_header_name_valid(name):
         return False
     return webhook_secret_valid(secret)
 
 
-def webhook_secret_valid(secret: str) -> bool:
-    """True for a non-empty secret usable verbatim as a header value.
-
-    Printable Latin-1 only (no control characters, so a line break cannot
-    split the header) and no space at either end, which a receiver or a
-    proxy may trim. The empty string is not "valid": it means "no secret"
-    and callers test for it first (see :func:`webhook_secret_from_input`).
-    """
-    if not secret or secret != secret.strip():
-        return False
-    try:
-        secret.encode("latin-1")
-    except UnicodeEncodeError:
-        return False
-    return all(32 <= ord(c) != 127 for c in secret)
+def webhook_header_name_valid(name: str) -> bool:
+    """True when ``name`` is a plain header token the POST does not set itself
+    (not ``Content-Type``, ``Host`` ...)."""
+    return bool(_HEADER_NAME_RE.match(name)) and (
+        name.lower() not in _RESERVED_HEADERS)
 
 
 def webhook_url_is_plain_http(url: str | None) -> bool:

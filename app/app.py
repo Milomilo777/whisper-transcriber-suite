@@ -84,6 +84,7 @@ from core.config import (
     load_config,
     save_config,
     webhook_secret_from_input,
+    webhook_secret_valid,
 )
 from core.history import EXIT_REASON, HistoryDB
 from core.task import apply_run_options
@@ -5991,10 +5992,18 @@ class App(tk.Tk):
             self.server_https_enabled_var.get())
         self.app_config["server_webhook_url"] = (
             self.server_webhook_url_var.get().strip())
-        # Only surrounding spaces are trimmed; anything else invalid stays as
-        # typed so deliveries are refused rather than sent unauthenticated.
-        self.app_config["server_webhook_secret"] = webhook_secret_from_input(
+        # The field trims the spaces around what was typed (a pasted secret
+        # often carries one) and nothing else. The trimmed value must be a
+        # usable header value, else it is not saved and the old one stays.
+        typed_secret = webhook_secret_from_input(
             self.server_webhook_secret_var.get())
+        if not typed_secret or webhook_secret_valid(typed_secret):
+            self.app_config["server_webhook_secret"] = typed_secret
+        else:
+            self.log(
+                "The webhook secret was not saved: it has a character that "
+                "cannot be used in an HTTP header (a line break, a tab or a "
+                "character outside Latin-1).")
         try:
             save_config(self.app_config)
         except Exception as e:  # noqa: BLE001
