@@ -443,6 +443,9 @@ class LiveSession:
     #: transcription) or thrown away by Discard rest. The session audio is
     #: then the only copy of those words and is kept.
     _failed_chunks: int = 0
+    #: Files the caller saved the transcript to. A session artifact that is
+    #: (or resolves to) one of them is never deleted by the cleanup.
+    _protected: list = field(default_factory=list, repr=False)
     _discarded_chunks: int = 0
     #: time.monotonic() of start(), of the last block and of the last
     #: block holding any non-zero sample (0.0 = never).
@@ -710,7 +713,7 @@ class LiveSession:
             if self.recording_path and os.path.isfile(self.recording_path)                     and self.keep_recording:
                 return self.recording_path
             return ""
-        _remove_quietly(self.journal_path)
+        self._remove_own(self.journal_path)
         kept = ""
         incomplete = self.incomplete_reason
         if self.recording_path and os.path.isfile(self.recording_path):
@@ -722,7 +725,7 @@ class LiveSession:
                 kept = self.recording_path
                 logger.warning("Live session audio kept at %s (%s)", kept, incomplete)
             else:
-                _remove_quietly(self.recording_path)
+                self._remove_own(self.recording_path)
         if not kept:
             try:
                 os.rmdir(work)
@@ -866,6 +869,26 @@ class LiveSession:
             language=language,
         ))
 
+    def protect_path(self, path: str) -> None:
+        """Never delete ``path`` (or the same file under another name).
+
+        The user may save the transcript onto this session's own journal or
+        audio file, or onto an alias of it; that file is then the saved copy.
+        """
+        if path and path not in self._protected:
+            self._protected.append(path)
+
+    def is_idle(self) -> bool:
+        """True when neither capture nor transcription can produce more text."""
+        return not self._threads_alive()
+
+    def _remove_own(self, path: str) -> None:
+        for saved in self._protected:
+            if _same_file(saved, path):
+                logger.info("Keeping %s: the transcript was saved to it", path)
+                return
+        _remove_quietly(path)
+
     @property
     def unsaved_text(self) -> bool:
         """True while finished sentences exist that the caller has not saved."""
@@ -991,6 +1014,17 @@ def find_leftover_sessions(live_root: str | None = None,
         except OSError:
             continue
     return found
+
+
+def _same_file(a: str, b: str) -> bool:
+    """True when two paths are one file: same real path (case-folded on
+    Windows), the same inode, or a hard link / alias of each other."""
+    try:
+        if os.path.normcase(os.path.realpath(a)) == os.path.normcase(os.path.realpath(b)):
+            return True
+        return os.path.samefile(a, b)
+    except OSError:
+        return False
 
 
 def _remove_quietly(path: str) -> None:
