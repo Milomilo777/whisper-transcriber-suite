@@ -538,3 +538,26 @@ def test_the_page_has_the_download_button_and_names_hebrew():
     page = (Path(httpd._STATIC_DIR) / "index.html").read_text(encoding="utf-8")
     assert 'id="lang_dl"' in page and '"/api/language-models/"' in page and '"/download"' in page
     assert 'he: "Hebrew"' in page
+
+
+def test_a_failed_thread_start_clears_the_downloading_state(monkeypatch, whisper_cfg):
+    """Thread.start() raising ("can't start new thread" under thread
+    exhaustion) must not leave the "downloading" state committed — busy()
+    used to refuse every later request until the app restart."""
+    started: dict[str, bool] = {}
+
+    class _Dead:
+        def start(self):
+            started["x"] = True
+            raise RuntimeError("can't start new thread")
+
+    monkeypatch.setattr(fetch.threading, "Thread",
+                        lambda *a, **k: _Dead())
+    monkeypatch.setattr(fetch.lm, "installed_here", lambda row, cfg: False)
+    monkeypatch.setattr(fetch, "_refusal", lambda row, cfg: "")
+    outcome, _message = fetch.start("fa", whisper_cfg)
+    assert outcome == "refused"
+    assert started["x"] is True
+    assert fetch.busy() is False
+    # And a later start is no longer refused as busy.
+    assert fetch.start("fa", whisper_cfg)[0] in ("refused", "started")

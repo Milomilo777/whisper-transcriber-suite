@@ -63,7 +63,17 @@ def start(language: str, cfg: dict[str, Any]) -> tuple[str, str]:
     snapshot = dict(cfg)
     thread = threading.Thread(target=_run, args=(row, snapshot), name=f"lm-fetch-{row.language}",
                               daemon=True)
-    thread.start()
+    try:
+        thread.start()
+    except Exception as e:
+        # "can't start new thread" under thread exhaustion: without this,
+        # the "downloading" state committed above never clears and busy()
+        # refuses every later request until the app restarts.
+        with _LOCK:
+            if _STATE.get(row.language, {}).get("state") == "downloading":
+                del _STATE[row.language]
+        logger.warning("Could not start the %s model download thread: %s", row.name, e)
+        return "refused", f"Could not start the download of {row.name}: {e}"
     logger.info("language model download started: %s (%s)", row.name, row.model)
     return "started", f"Downloading {row.name} (about {row.size_gb:.1f} GB) to this computer."
 
