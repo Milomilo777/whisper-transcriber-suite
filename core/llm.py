@@ -810,13 +810,16 @@ class RemoteLLMRunner:
                         raise RemoteLLMRateLimitError(str(e)) from e  # no progress after the retries
                     raise
                 delay = e.retry_after or _RETRY_DELAYS_S[attempt]
-                if e.rate_limited:
-                    if e.retry_after and self._batch_waits is not None:
-                        if self._batch_waits <= 0:
-                            raise RemoteLLMRateLimitError(str(e)) from e
-                        self._batch_waits -= 1
-                    if waited + delay > _MAX_TOTAL_WAIT_S:
+                # One wait budget for every status: a server-given wait (Retry-After) counts
+                # once per batch pass, and no call sleeps more than _MAX_TOTAL_WAIT_S in all.
+                over_budget = waited + delay > _MAX_TOTAL_WAIT_S
+                if e.retry_after and self._batch_waits is not None:
+                    over_budget = over_budget or self._batch_waits <= 0
+                    self._batch_waits -= 1
+                if over_budget:
+                    if e.rate_limited:
                         raise RemoteLLMRateLimitError(str(e)) from e
+                    raise
                 waited += delay
                 logger.info("remote LLM: %s; retrying in %.0f s", e, delay)
                 time.sleep(delay)
