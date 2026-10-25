@@ -1037,6 +1037,12 @@ class AdvancedDialog(tk.Toplevel):
             engine=engine_label,
         )
 
+    def _use_groq_preset(self) -> None:
+        """Fill the remote Base URL and model with Groq's; both stay editable."""
+        from core import llm as _llm
+        self._llm_remote_base_url.set(_llm.GROQ_BASE_URL)
+        self._llm_remote_model.set(_llm.GROQ_MODEL)
+
     def _sync_llm_provider_rows(self) -> None:
         """Show only the AI Layer rows the picked LLM provider uses: the
         model download for Local, the endpoint/key/model fields for Remote.
@@ -1625,6 +1631,8 @@ class AdvancedDialog(tk.Toplevel):
         url_label.grid(row=3, column=0, sticky="w", padx=8, pady=4)
         url_entry = ttk.Entry(ai, textvariable=self._llm_remote_base_url, width=42)
         url_entry.grid(row=3, column=1, columnspan=2, sticky="ew", padx=8, pady=4)
+        groq_btn = ttk.Button(ai, text=_("Use Groq"), command=self._use_groq_preset)
+        groq_btn.grid(row=3, column=3, sticky="w", padx=(0, 8), pady=4)
         key_label = ttk.Label(ai, text=_("API key"))
         key_label.grid(row=4, column=0, sticky="w", padx=8, pady=4)
         key_entry = ttk.Entry(
@@ -1632,9 +1640,9 @@ class AdvancedDialog(tk.Toplevel):
         )
         key_entry.grid(row=4, column=1, columnspan=2, sticky="ew", padx=8, pady=4)
         key_hint = ttk.Label(
-            ai, text=_("For the real OpenAI API, get a key at {site}. "
+            ai, text=_("Get a key at {site} (OpenAI) or a free one at {groq}. "
                        "Leave blank for a local server that doesn't need one.",
-                       site="platform.openai.com"),
+                       site="platform.openai.com", groq="console.groq.com"),
             foreground=tokens.themed(tokens.TEXT_MUTED), wraplength=px(420), justify="left",
         )
         key_hint.grid(row=5, column=1, columnspan=2, sticky="w", padx=8, pady=(0, 4))
@@ -1645,14 +1653,13 @@ class AdvancedDialog(tk.Toplevel):
         model_help = help_icon(
             ai,
             _("The exact model id your endpoint expects, e.g. gpt-4o-mini "
-            "or gpt-4o for the real OpenAI API, or a locally-loaded "
-            "model's name for Ollama/LM Studio. This app does not pick "
-            "one for you — different accounts/servers have different "
-            "models available."),
+            "for OpenAI, llama-3.3-70b-versatile for Groq, or a "
+            "locally-loaded model's name for Ollama/LM Studio. "
+            "Different accounts/servers have different models available."),
         )
         model_help.grid(row=6, column=3, sticky="w", padx=(0, 8), pady=4)
         self._llm_remote_widgets: list[tk.Widget] = [
-            url_label, url_entry, key_label, key_entry, key_hint,
+            url_label, url_entry, groq_btn, key_label, key_entry, key_hint,
             model_label, model_entry, model_help,
         ]
 

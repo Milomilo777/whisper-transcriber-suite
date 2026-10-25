@@ -4,6 +4,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+
+- **One-click Groq preset for the AI provider**: "Use Groq" in Advanced > AI fills the Base URL and the model
+  `llama-3.3-70b-versatile`. Groq has a free key at console.groq.com, and the model stays editable.
+
 ### Changed
 
 - **Long transcripts no longer overflow a remote AI provider**: summaries, questions and translations are
