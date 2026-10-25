@@ -7,18 +7,24 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 ### Security
 
 - **Server link jobs download through a guarded local proxy**: every request yt-dlp makes (and every
-  redirect) is resolved and checked by the app at connect time; loopback, link-local, metadata and
-  private-network addresses are refused. Link jobs to a server on your own network are no longer accepted.
+  redirect) is resolved and checked by the app at connect time on ports 80 and 443; loopback, link-local,
+  metadata and private-network addresses (and IPv6 addresses that embed them) are refused, so DNS
+  rebinding and redirects to internal hosts fail. The proxy password stays out of the command line and
+  error texts. Behind a company `HTTP(S)_PROXY` the guard checks the destination, then asks that proxy to
+  connect to the checked address. Local networks can be allowed in `server_allowed_private_networks`.
 - **Server link jobs no longer use the generic extractor**: the server runs yt-dlp with
-  `--use-extractors default,-generic`, so it cannot be aimed at an internal address through a plain media
-  link or its redirects. Such a link is refused with a clear message (upload the file instead). The desktop
-  Download tab is unchanged.
-- **The completion webhook checks the address at connect time**: the host name is resolved once and only
-  the checked addresses are connected to, so DNS rebinding to loopback or link-local no longer works. LAN
-  receivers stay allowed.
-- **The server slows down wrong access passwords**: after 5 wrong passwords from one client address, that
-  address gets HTTP 429 with a growing `Retry-After` (15 seconds, doubling, at most 15 minutes). The lockout
-  always ends by itself; the right password works again afterwards.
+  `--use-extractors default,-generic`. A plain media link is refused with a clear message (upload the file
+  instead). The desktop Download tab is unchanged.
+- **The completion webhook checks the address at connect time**: the host name is resolved once, only the
+  checked addresses are connected to, and proxies from the environment are not used. LAN receivers stay
+  allowed.
+- **The server slows down wrong access passwords**: after 5 wrong passwords from one host, that host gets
+  HTTP 429 with a growing `Retry-After` (15 seconds, doubling, at most 15 minutes). The check and the count
+  are one atomic step, one host never locks out another, and an IPv6 /64 has a higher budget of its own.
+  The lockout always ends by itself.
+- **Slow header senders are limited**: connections that have not finished their request header count as
+  pending (at most 4 per client address and three quarters of the slots in all).
+
 ### Added
 
 - **One-click Groq preset for the AI provider**: "Use Groq" in Advanced > AI fills the Base URL and the model
