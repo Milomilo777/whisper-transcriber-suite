@@ -228,7 +228,8 @@ def test_previous_log_is_kept_as_dot_one(model, tmp_path):
     server.start()
     server.stop()
     server.start()
-    assert (tmp_path / "logs" / "llama-server.1.log").is_file()
+    logs = sorted(x.name for x in (tmp_path / "logs").iterdir())
+    assert (tmp_path / "logs" / "llama-server.1.log").is_file(), f"log rotation fell back to a side log: {logs}"
     assert (tmp_path / "logs" / "llama-server.log").is_file()
 
 
@@ -461,8 +462,8 @@ def test_a_killed_apps_server_is_gone_after_the_next_start(model, tmp_path, fake
     try:
         parent.kill()
         parent.wait(timeout=10)
-        lls.reap_stale_servers(tmp_path / "run")
-        assert gone(child)
+        reaped = lls.reap_stale_servers(tmp_path / "run")
+        assert gone(child), f"child {child} still alive after the reaper returned {reaped}"
         assert not list((tmp_path / "run").glob("llama-server-*.json"))
     finally:
         if psutil.pid_exists(child):
