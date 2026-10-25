@@ -9,14 +9,19 @@ out for a delay that doubles with every further attempt, up to a ceiling.
 Rules that keep the throttle from becoming a weapon:
 
 * One host's wrong passwords never lock another host out. A correct password
-  from a host that is not itself locked always works, whatever its
-  neighbours did.
-* An IPv6 attacker owns a whole /64, so a second, higher budget is kept per
-  /64. When a /64 has sent more wrong passwords than that budget, hosts in it
-  get no free attempts any more (their first wrong password locks them) until
-  the /64 has been quiet for ``forget_after`` seconds. The attacker's own
-  attempts cannot extend anyone else's lockout, and the pressure only ends
-  sooner when the attacker stops.
+  from a host that is not itself locked works, whatever its neighbours did,
+  with one exception below.
+* An IPv6 attacker owns a whole /64 and can rotate addresses, so every host
+  would otherwise get its own free comparisons. Each /64 therefore has a real
+  budget of password comparisons per fixed window (``subnet_budget`` per
+  ``subnet_window`` seconds). When it is used up, hosts of that /64 are
+  refused until the window ends, EXCEPT hosts that gave the right password
+  within the last ``trust_s`` seconds (they are not blocked by their subnet's
+  pressure). Refused requests are not counted and never extend the window, so
+  the attacker cannot keep the pressure up beyond one window per budget.
+* Evicting a table entry never helps an attacker: the oldest idle entry whose
+  lockout has ended goes first, and the /64 counters are separate from the
+  host table.
 * A lockout always ends by itself and an idle host is forgotten, so the right
   password is never refused forever.
 
@@ -24,8 +29,8 @@ Admission is atomic: :meth:`admit` checks the lockout AND books the attempt
 under one lock, before the password is compared, so N threads guessing at once
 get at most ``free_attempts + 1`` comparisons between them, not N.
 
-Memory is bounded (``max_hosts`` / ``max_subnets``, least recently seen
-dropped first). Thread-safe; the clock is injectable for tests.
+Memory is bounded (``max_hosts`` / ``max_subnets`` / ``max_trusted``).
+Thread-safe; the clock is injectable for tests.
 """
 from __future__ import annotations
 
@@ -36,12 +41,15 @@ from collections import OrderedDict
 from typing import Callable
 
 FREE_ATTEMPTS = 5
-SUBNET_FREE_ATTEMPTS = 50
+SUBNET_BUDGET = 50
+SUBNET_WINDOW_S = 600.0
+TRUST_S = 1800.0
 BASE_DELAY_S = 15.0
 MAX_DELAY_S = 900.0
 FORGET_AFTER_S = 1800.0
 MAX_HOSTS = 2048
 MAX_SUBNETS = 1024
+MAX_TRUSTED = 2048
 
 
 def _parse(address: str):
@@ -71,25 +79,34 @@ class AuthThrottle:
     """Per-host count of password attempts with a growing lockout."""
 
     def __init__(self, *, free_attempts: int = FREE_ATTEMPTS,
-                 subnet_free_attempts: int = SUBNET_FREE_ATTEMPTS,
+                 subnet_budget: int = SUBNET_BUDGET,
+                 subnet_window: float = SUBNET_WINDOW_S,
+                 trust_s: float = TRUST_S,
                  base_delay: float = BASE_DELAY_S,
                  max_delay: float = MAX_DELAY_S,
                  forget_after: float = FORGET_AFTER_S,
                  max_hosts: int = MAX_HOSTS,
                  max_subnets: int = MAX_SUBNETS,
+                 max_trusted: int = MAX_TRUSTED,
                  clock: Callable[[], float] = time.monotonic) -> None:
         self._free = max(0, free_attempts)
-        self._subnet_free = max(0, subnet_free_attempts)
+        self._budget = max(1, subnet_budget)
+        self._window = subnet_window
+        self._trust = trust_s
         self._base = base_delay
         self._max = max_delay
         self._forget = forget_after
         self._max_hosts = max(1, max_hosts)
         self._max_subnets = max(1, max_subnets)
+        self._max_trusted = max(1, max_trusted)
         self._clock = clock
         self._lock = threading.Lock()
-        # key -> [attempts booked, locked until, last seen]
+        # host key -> [attempts booked, locked until, last seen]
         self._hosts: OrderedDict[str, list[float]] = OrderedDict()
+        # /64 key -> [comparisons in this window, window start]
         self._subnets: OrderedDict[str, list[float]] = OrderedDict()
+        # host key -> time of its last right password
+        self._trusted: OrderedDict[str, float] = OrderedDict()
 
     def __len__(self) -> int:
         with self._lock:
@@ -97,21 +114,38 @@ class AuthThrottle:
 
     # --- internals (lock held) -------------------------------------------------
 
-    def _live(self, table: "OrderedDict[str, list[float]]", key: str,
-              now: float) -> list[float] | None:
-        entry = table.get(key)
+    def _live(self, key: str, now: float) -> list[float] | None:
+        entry = self._hosts.get(key)
         if entry is not None and now - entry[2] > self._forget:
-            del table[key]
+            del self._hosts[key]
             return None
         return entry
 
-    @staticmethod
-    def _touch(table: "OrderedDict[str, list[float]]", key: str,
-               entry: list[float], limit: int) -> None:
-        table[key] = entry
-        table.move_to_end(key)
-        while len(table) > limit:
-            table.popitem(last=False)
+    def _evict_hosts(self, now: float) -> None:
+        while len(self._hosts) > self._max_hosts:
+            victim = next((k for k, e in self._hosts.items() if e[1] <= now),
+                          None)
+            if victim is None:  # every entry is locked out: drop the oldest
+                victim = next(iter(self._hosts))
+            del self._hosts[victim]
+
+    def _evict_subnets(self, now: float) -> None:
+        while len(self._subnets) > self._max_subnets:
+            victim = next((k for k, e in self._subnets.items()
+                           if now - e[1] >= self._window
+                           or e[0] < self._budget), None)
+            if victim is None:  # all exhausted: drop the oldest
+                victim = next(iter(self._subnets))
+            del self._subnets[victim]
+
+    def _is_trusted(self, key: str, now: float) -> bool:
+        at = self._trusted.get(key)
+        if at is None:
+            return False
+        if now - at > self._trust:
+            del self._trusted[key]
+            return False
+        return True
 
     def _delay(self, over: int) -> float:
         return min(self._max, self._base * (2 ** min(max(over, 1) - 1, 30)))
@@ -126,7 +160,7 @@ class AuthThrottle:
         key = host_key(address)
         now = self._clock()
         with self._lock:
-            entry = self._live(self._hosts, key, now)
+            entry = self._live(key, now)
             if entry is None:
                 return 0
             remaining = entry[1] - now
@@ -142,42 +176,51 @@ class AuthThrottle:
         sub = subnet_key(address)
         now = self._clock()
         with self._lock:
-            entry = self._live(self._hosts, key, now)
+            entry = self._live(key, now)
             if entry is not None:
                 remaining = entry[1] - now
                 if remaining > 0:
                     return int(remaining) + 1
             else:
                 entry = [0.0, 0.0, now]
-            free = self._free
-            sub_entry = None
             if sub is not None:
-                sub_entry = self._live(self._subnets, sub, now)
+                sub_entry = self._subnets.get(sub)
+                if sub_entry is not None and now - sub_entry[1] >= self._window:
+                    sub_entry = None  # a new window starts
                 if sub_entry is None:
-                    sub_entry = [0.0, 0.0, now]
-                if sub_entry[0] > self._subnet_free:
-                    free = 0  # this /64 is under pressure: no free attempts
-                sub_entry[0] += 1
-                sub_entry[2] = now
-                self._touch(self._subnets, sub, sub_entry, self._max_subnets)
+                    sub_entry = [0.0, now]
+                trusted = self._is_trusted(key, now)
+                if sub_entry[0] >= self._budget and not trusted:
+                    # Budget used up: refuse without booking, so the refusal
+                    # neither counts nor extends the window.
+                    return int(sub_entry[1] + self._window - now) + 1
+                sub_entry[0] += 1  # a trusted host is counted, never refused
+                self._subnets[sub] = sub_entry
+                self._subnets.move_to_end(sub)
+                self._evict_subnets(now)
             entry[0] += 1
             entry[2] = now
-            over = int(entry[0]) - free
+            over = int(entry[0]) - self._free
             if over > 0:
                 entry[1] = now + self._delay(over)
-            self._touch(self._hosts, key, entry, self._max_hosts)
+            self._hosts[key] = entry
+            self._hosts.move_to_end(key)
+            self._evict_hosts(now)
             return 0
 
     def refund(self, address: str) -> None:
-        """The booked attempt was the right password: forget this host's count
-        and give its attempts back to its /64."""
+        """The booked attempt was the right password: forget this host's count,
+        give its comparison back to its /64 and trust the host for a while."""
         key = host_key(address)
         sub = subnet_key(address)
+        now = self._clock()
         with self._lock:
-            entry = self._hosts.pop(key, None)
-            if entry is not None and sub is not None:
+            self._hosts.pop(key, None)
+            if sub is not None:
                 sub_entry = self._subnets.get(sub)
-                if sub_entry is not None:
-                    sub_entry[0] = max(0.0, sub_entry[0] - entry[0])
-                    if sub_entry[0] == 0:
-                        del self._subnets[sub]
+                if sub_entry is not None and sub_entry[0] > 0:
+                    sub_entry[0] -= 1
+            self._trusted[key] = now
+            self._trusted.move_to_end(key)
+            while len(self._trusted) > self._max_trusted:
+                self._trusted.popitem(last=False)

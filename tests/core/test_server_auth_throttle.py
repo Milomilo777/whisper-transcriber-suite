@@ -26,7 +26,9 @@ class _Clock:
 
 def _throttle(clock: _Clock, **kw) -> AuthThrottle:
     kw.setdefault("free_attempts", 3)
-    kw.setdefault("subnet_free_attempts", 10)
+    kw.setdefault("subnet_budget", 10)
+    kw.setdefault("subnet_window", 600.0)
+    kw.setdefault("trust_s", 300.0)
     kw.setdefault("base_delay", 10.0)
     kw.setdefault("max_delay", 80.0)
     kw.setdefault("forget_after", 300.0)
@@ -136,35 +138,72 @@ def test_keys():
     assert host_key("not an address") == "not an address"
 
 
-def test_one_ipv6_neighbour_cannot_lock_out_the_others():
-    """The attacker guesses from many addresses of one /64; a neighbour in the
-    same /64 that did nothing wrong is never locked, and its right password is
-    still admitted."""
+def test_rotating_ipv6_hosts_share_one_subnet_budget():
+    """The probe: 10,000 guesses from as many addresses of one /64, clock
+    frozen. Only the /64's budget of comparisons gets through."""
     clock = _Clock()
     t = _throttle(clock)
-    for n in range(200):
-        t.admit(f"2001:db8:1:2::{n + 100:x}")
+    admitted = sum(
+        1 for n in range(10_000)
+        if t.admit(f"2001:db8:1:2:{n:x}::1") == 0)
+    assert admitted == 10  # the subnet budget, not 10,000 free attempts
+    # Another /64 is untouched.
+    assert t.admit("2001:db8:1:9::1") == 0
+
+
+def test_the_subnet_window_is_fixed_refusals_do_not_extend_it():
+    clock = _Clock()
+    t = _throttle(clock)
+    for n in range(10):
+        assert t.admit(f"2001:db8:1:2:{n:x}::1") == 0
+    first = t.admit("2001:db8:1:2:aaaa::1")
+    assert 0 < first <= 601
+    clock.now += 300
+    for n in range(500):  # the attacker keeps hammering
+        assert t.admit(f"2001:db8:1:2:{n + 100:x}::1") > 0
+    clock.now += 301  # 601 s after the start: the window is over
+    assert t.admit("2001:db8:1:2:bbbb::1") == 0
+
+
+def test_a_recently_authenticated_host_is_not_blocked_by_subnet_pressure():
+    clock = _Clock()
+    t = _throttle(clock)
     neighbour = "2001:db8:1:2::1"
-    assert t.peek(neighbour) == 0
-    assert t.admit(neighbour) == 0  # admitted: its password is compared
+    assert t.admit(neighbour) == 0
+    t.refund(neighbour)  # it logged in with the right password
+    for n in range(50):
+        t.admit(f"2001:db8:1:2:{n + 100:x}::1")  # the attacker, budget gone
+    assert t.admit("2001:db8:1:2:ffff::1") > 0  # a stranger is refused
+    assert t.admit(neighbour) == 0              # the known neighbour is not
     t.refund(neighbour)
-    assert t.peek(neighbour) == 0
+    clock.now += 301  # trust (300 s) has run out, the window (600 s) has not
+    assert t.admit(neighbour) > 0
+    clock.now += 300
+    assert t.admit(neighbour) == 0
 
 
-def test_subnet_pressure_removes_free_attempts_only_for_that_subnet():
+def test_evicting_the_host_table_does_not_free_a_locked_attacker():
     clock = _Clock()
-    t = _throttle(clock)
-    for n in range(12):  # over the /64 budget (10)
-        t.admit(f"2001:db8:1:2::{n + 100:x}")
-    fresh = "2001:db8:1:2::1"
-    assert t.admit(fresh) == 0
-    assert t.peek(fresh) > 0  # first wrong password already locks this host
-    other = "2001:db8:1:9::1"
-    assert t.admit(other) == 0
-    assert t.peek(other) == 0  # another /64 keeps its free attempts
-    clock.now += 400  # quiet for a while: the pressure is gone
-    assert t.admit(fresh) == 0
-    assert t.peek(fresh) == 0
+    t = _throttle(clock, max_hosts=20)
+    for _ in range(10):
+        t.admit("10.9.9.9")
+    locked = t.peek("10.9.9.9")
+    assert locked > 0
+    for n in range(500):  # a flood of other hosts fills the table
+        t.admit(f"10.1.{n // 250}.{n % 250}")
+    assert len(t) == 20
+    assert t.peek("10.9.9.9") > 0  # the lockout survived the evictions
+    assert t.admit("10.9.9.9") > 0
+
+
+def test_subnet_counters_survive_host_table_eviction():
+    clock = _Clock()
+    t = _throttle(clock, max_hosts=5)
+    for n in range(10):
+        t.admit(f"2001:db8:1:2:{n:x}::1")
+    for n in range(200):
+        t.admit(f"10.1.{n // 250}.{n % 250}")  # evicts every IPv6 host entry
+    assert t.admit("2001:db8:1:2:ffff::1") > 0  # the /64 budget is still spent
 
 
 def test_concurrent_guesses_are_admitted_at_most_limit_plus_one():

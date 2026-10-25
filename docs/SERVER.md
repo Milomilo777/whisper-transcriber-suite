@@ -496,13 +496,18 @@ one step before the password is compared, so many parallel guesses get at most
 6 comparisons between them. While a host is locked out, even the right
 password from that host is refused, but the lockout always ends by itself,
 and a host that stops trying is forgotten after 30 minutes. A correct password
-from a host that is not itself locked always works, whatever other hosts did:
-one host's wrong passwords never lock another out. Because an IPv6 attacker
-owns a whole /64, a second, higher budget (50 wrong passwords) is kept per
-/64; above it, hosts of that /64 get no free attempts (their first wrong
-password locks them) until it has been quiet for 30 minutes. A request with no
+from a host that is not itself locked works, whatever other hosts did, with the
+exception below: one host's wrong passwords never lock another out. Because an IPv6 attacker
+owns a whole /64 and can rotate addresses, each /64 also has a budget of 50
+password comparisons per fixed 10-minute window, shared by all its hosts (10,000
+guesses from as many addresses get 50 comparisons). When it is used up, hosts
+of that /64 are refused (429) until the window ends, except hosts that gave the
+right password in the last 30 minutes; refused requests are not counted and do
+not extend the window. So during an attack from your own /64 a host that has
+not logged in recently can be locked out for up to 10 minutes. A request with no
 password at all gets 401 and is not counted. At most 2048 hosts and 1024 /64
-networks are remembered (the least recently seen is dropped first), and the
+networks are remembered (the oldest idle entry whose lockout has ended is dropped first, so flooding
+the table does not free a locked host), and the
 counts live in memory only, so a restart clears them. Behind a reverse proxy
 every client has the proxy's address, so one person's typos can lock out the
 others for a short time. This slows guessing down; it is not a replacement
