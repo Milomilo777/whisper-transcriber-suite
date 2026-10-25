@@ -382,6 +382,8 @@ def capture_live(mp: pytest.MonkeyPatch, root: tk.Tk, tmp_path: Path) -> dict[st
     for left in (1, 3):
         session.pending = left
         live_tab._poll_once(app)
+    # This scenario means a deliberate "Discard rest" press, not a double-click.
+    app._live_stop_at -= live_tab._STOP_DEBOUNCE_S + 1.0
     live_tab._stop(app)
     session.pending = 0
     live_tab._stopped(app, "")
