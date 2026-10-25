@@ -482,9 +482,19 @@ def run_pieces(line: str, limit: int = RUN_BYTES) -> list[tuple[int, int]]:
     return pieces
 
 
-def _tk_index(line: str, offset: int) -> int:
-    """Tk 8.6 counts a character outside the BMP as two (UTF-16 surrogates)."""
+def _tk_index(line: str, offset: int, tk_major: int = 8) -> int:
+    """Tk 8.6 counts a character outside the BMP as two (UTF-16 surrogates); Tk 9 counts one."""
+    if tk_major >= 9:
+        return offset
     return offset + sum(1 for ch in line[:offset] if ord(ch) > 0xFFFF)
+
+
+def _tk_major(widget: tk.Misc) -> int:
+    """Major version of the Tk library behind ``widget`` (8 when it cannot be read)."""
+    try:
+        return int(str(widget.tk.call("info", "patchlevel")).split(".")[0])
+    except (tk.TclError, ValueError):
+        return 8
 
 
 def tag_script_lines(widget: tk.Text, start: str = "1.0", end: str = "end",
@@ -502,6 +512,7 @@ def tag_script_lines(widget: tk.Text, start: str = "1.0", end: str = "end",
     for tag in names:
         if tag.startswith(_TEXT_TAG):
             widget.tag_remove(tag, f"{first}.0", f"{last}.end")
+    major = _tk_major(widget)
     for n in range(first, last + 1):
         line = widget.get(f"{n}.0", f"{n}.end")
         key = font_key(line, language)
@@ -514,4 +525,4 @@ def tag_script_lines(widget: tk.Text, start: str = "1.0", end: str = "end",
             if tag not in names:
                 widget.tag_configure(tag, font=(family, tokens.FONT_BODY))
                 names.add(tag)
-            widget.tag_add(tag, f"{n}.{_tk_index(line, a)}", f"{n}.{_tk_index(line, b)}")
+            widget.tag_add(tag, f"{n}.{_tk_index(line, a, major)}", f"{n}.{_tk_index(line, b, major)}")

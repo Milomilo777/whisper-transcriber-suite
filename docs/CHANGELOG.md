@@ -29,6 +29,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 - **One-click Groq preset for the AI provider**: "Use Groq" in Advanced > AI fills the Base URL and the model
   `llama-3.3-70b-versatile`. Groq has a free key at console.groq.com, and the model stays editable.
+- **Help > Copy MCP setup**: copies the `claude mcp add` command that registers this app's MCP endpoint
+  with Claude Code, with the server's live port filled in and the password left as a `<access password>`
+  placeholder. docs/SERVER.md gained a "Use it from Claude Code" section with the same command and the
+  caveats (the server must be on; the MCP tools take http(s) links only; Claude Desktop cannot reach a
+  local server directly).
 
 ### Changed
 
@@ -48,6 +53,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Script fonts placed one character off after an emoji with Tk 9**: the transcript viewer counted every
+  character outside the Basic Multilingual Plane as two Tk positions, which is only true for Tk 8.6. It now asks
+  Tk for its version, so lines with emoji keep the right font runs when the app runs on Python with Tk 9.
 - **Remote AI calls were refused by Groq (HTTP 403, error 1010)**: every request to an AI provider, including
   the cloud speech-to-text calls, now sends a `WhisperTranscriberSuite/<version>` User-Agent instead of
   urllib's default.

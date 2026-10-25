@@ -147,7 +147,8 @@ def test_dismiss_key_closes_the_notice_and_otherwise_passes_through(root, fast):
     notify(root, "Saved")
     assert host._on_dismiss_key() == "break"
     assert not host.visible
-    assert any("period" in seq for seq in root.bind())
+    # The Ctrl+. binding is listed as <Control-Key-period> (Tk 8.6) or <Control-Key-.> (Tk 9).
+    assert {"<Control-Key-period>", "<Control-Key-.>"} & set(root.bind())
 
 
 def test_the_close_button_and_its_escape_key_dismiss(root, fast):

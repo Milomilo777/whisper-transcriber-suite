@@ -10,6 +10,7 @@ are no longer kept in the repository.
 |---|---|---|---|
 | oTranscribe (web app for manual transcription): bidirectional `.otr` converter, Export/Import UI, `Help -> Open oTranscribe` | shipped | [`core/integrations/otranscribe.py`](../../core/integrations/otranscribe.py) | `tests/integrations/test_otranscribe.py` |
 | machine-translate-docx (sibling translator tool, compatibility with the project-specific DOCX layout) | researched, not scoped | none | none |
+| n8n + Obsidian (receive the completion webhook in n8n, file transcripts in a vault): [webhook-n8n-obsidian.md](webhook-n8n-obsidian.md) | docs-only guide; uses shipped features | none | none |
 
 ## How to add a new integration
 

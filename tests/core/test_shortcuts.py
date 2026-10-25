@@ -157,18 +157,37 @@ def test_transcript_viewer_binds_and_button_texts(monkeypatch, tmp_path, mac):
     monkeypatch.setattr(tv, "_try_load_vlc", lambda: (None, "no vlc in test"))
     p = tmp_path / "demo.json"
     p.write_text(json.dumps(SAMPLE_SEGMENTS), encoding="utf-8")
+    # Record the sequences as the viewer asks for them: how Tk then reports a <Command-...> binding
+    # depends on the Tk build (Tk 8.6 lists <Mod1-Key-f>, Tk 9 on Windows folds Command into Control).
+    requested: list[tuple[object, str]] = []
+    real_bind = tk.Misc.bind
+
+    def recording_bind(self, sequence=None, func=None, add=None):
+        if isinstance(sequence, str):
+            requested.append((self, sequence))
+        return real_bind(self, sequence, func, add)
+
+    monkeypatch.setattr(tk.Misc, "bind", recording_bind)
     root = tk.Tk()
     root.withdraw()
     try:
         viewer = tv.TranscriptViewer(root, str(p))
         viewer.withdraw()
         try:
+            asked = {seq for widget, seq in requested if widget is viewer}
             bound = set(viewer.bind())
-            # Tk normalises <Command-f> to <Mod1-Key-f>.
-            mod, other = ("Mod1", "Control") if mac else ("Control", "Mod1")
+            mod, other = ("Command", "Control") if mac else ("Control", "Command")
             for k in ("f", "s"):
-                assert f"<{mod}-Key-{k}>" in bound
-                assert f"<{other}-Key-{k}>" not in bound
+                assert f"<{mod}-{k}>" in asked and f"<{mod}-{k.upper()}>" in asked
+                assert f"<{other}-{k}>" not in asked and f"<{other}-{k.upper()}>" not in asked
+                # ...and the binding really exists, under whatever name this Tk gives that sequence.
+                probe = tk.Toplevel(root)
+                try:
+                    real_bind(probe, f"<{mod}-{k}>", lambda _e: None)
+                    expected = set(probe.bind())
+                finally:
+                    probe.destroy()
+                assert expected and expected <= bound
             texts = [w.cget("text") for w in _walk(viewer) if isinstance(w, ttk.Button)]
             find = next(t for t in texts if t.startswith("Find & Replace"))
             save = next(t for t in texts if t.startswith("Save changes"))
