@@ -568,8 +568,6 @@
     "Keyboard shortcuts": "Comenzi rapide de la tastatură",
     "Khmer": "Khmeră",
     "Kokoro has no voice for this text": "Kokoro nu are nicio voce pentru acest text",
-    "Kokoro speaks in one of 53 ready-made voices and is fast on any computer. OmniVoice can clone a voice from a short recording, or design a new one from a description (gender, age, pitch, accent); it is much slower without a supported graphics card. Each model downloads once, the first time it is used.": "Kokoro vorbește cu una dintre cele 53 de voci predefinite și este rapid pe orice computer. OmniVoice poate clona o voce dintr-o înregistrare scurtă sau poate proiecta una nouă dintr-o descriere (gen, vârstă, ton, accent); este mult mai lent fără o placă grafică acceptată. Fiecare model se descarcă o singură dată, la prima utilizare.",
-    "Kokoro — 53 ready-made voices, 9 languages (fast; ~350 MB download)": "Kokoro — 53 de voci predefinite, 9 limbi (rapid; descărcare de ~350 MB)",
     "Kokoro-82M (Apache-2.0), runs locally -- downloaded.": "Kokoro-82M (Apache-2.0), rulează local -- descărcat.",
     "Kokoro-82M (Apache-2.0), runs locally -- not downloaded yet (~{size} MB, downloads on first use).": "Kokoro-82M (Apache-2.0), rulează local -- nedescărcat încă (~{size} MB, se descarcă la prima utilizare).",
     "Kokoro: pick a ready-made voice and press Preview to hear it. OmniVoice: clone a voice from 1-3 short recordings (3-10 seconds each), design one from its attributes, or let the model choose.": "Kokoro: alegeți o voce predefinită și apăsați Previzualizare pentru a o asculta. OmniVoice: clonați o voce din 1-3 înregistrări scurte (3-10 secunde fiecare), proiectați una din atributele ei sau lăsați modelul să aleagă.",

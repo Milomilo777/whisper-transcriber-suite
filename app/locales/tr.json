@@ -560,8 +560,6 @@
     "Keyboard shortcuts": "Klavye kısayolları",
     "Khmer": "Khmerce",
     "Kokoro has no voice for this text": "Kokoro'da bu metin için ses yok",
-    "Kokoro speaks in one of 53 ready-made voices and is fast on any computer. OmniVoice can clone a voice from a short recording, or design a new one from a description (gender, age, pitch, accent); it is much slower without a supported graphics card. Each model downloads once, the first time it is used.": "Kokoro 53 hazır sesten biriyle konuşur ve her bilgisayarda hızlıdır. OmniVoice kısa bir kayıttan ses klonlayabilir veya bir tanımdan (cinsiyet, yaş, perde, aksan) yeni bir ses tasarlayabilir; desteklenen bir ekran kartı olmadan çok daha yavaştır. Her model, ilk kullanıldığında bir kez indirilir.",
-    "Kokoro — 53 ready-made voices, 9 languages (fast; ~350 MB download)": "Kokoro — 53 hazır ses, 9 dil (hızlı; ~350 MB indirme)",
     "Kokoro-82M (Apache-2.0), runs locally -- downloaded.": "Kokoro-82M (Apache-2.0), yerel olarak çalışır -- indirildi.",
     "Kokoro-82M (Apache-2.0), runs locally -- not downloaded yet (~{size} MB, downloads on first use).": "Kokoro-82M (Apache-2.0), yerel olarak çalışır -- henüz indirilmedi (~{size} MB, ilk kullanımda indirilir).",
     "Kokoro: pick a ready-made voice and press Preview to hear it. OmniVoice: clone a voice from 1-3 short recordings (3-10 seconds each), design one from its attributes, or let the model choose.": "Kokoro: hazır bir ses seçin ve dinlemek için Önizle'ye basın. OmniVoice: 1-3 kısa kayıttan (her biri 3-10 saniye) ses klonlayın, özelliklerinden bir ses tasarlayın veya modelin seçmesine izin verin.",

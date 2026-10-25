@@ -181,7 +181,7 @@ def test_clone_generate_is_disabled_until_the_tick(root, fakes):
 @pytest.mark.parametrize("engine, mode", [
     (vct._ENGINE_OMNI, vct._MODE_DESIGN),
     (vct._ENGINE_OMNI, vct._MODE_AUTO),
-    (vct._ENGINE_KOKORO, vct._MODE_CLONE),
+    (vct._engine_label(True), vct._MODE_CLONE),
 ])
 def test_no_tick_needed_without_reference_audio(root, fakes, engine, mode):
     app = _build(root, fakes)
@@ -278,7 +278,7 @@ def test_rules_are_always_on_the_tab(root, fakes):
     assert "AI-generated" in text
     assert "own voice" in text and "permission" in text
     assert "impersonate" in text and "misleading audio of real people" in text
-    for engine in (vct._ENGINE_KOKORO, vct._ENGINE_OMNI):
+    for engine in (vct._engine_label(True), vct._ENGINE_OMNI):
         app.vc_engine_var.set(engine)
         vct._sync_engine(app)
         assert app.vc_rules_label.winfo_manager() == "grid"
@@ -335,7 +335,7 @@ def _stored(tmp_path: Any) -> dict:
 
 def test_short_text_starts_without_the_confirm_step(root, fakes):
     app = _build(root, fakes)
-    _engine(app, vct._ENGINE_KOKORO, "Hello there.")
+    _engine(app, vct._engine_label(True), "Hello there.")
     app.vc_generate_btn.invoke()
     assert fakes["kokoro"] == ["Hello there."]
     assert not _confirm_shown(app) and fakes["measure"] == 0
@@ -344,7 +344,7 @@ def test_short_text_starts_without_the_confirm_step(root, fakes):
 
 def test_cancel_on_the_confirm_step_runs_nothing(root, fakes, tmp_path):
     app = _build(root, fakes)
-    _engine(app, vct._ENGINE_KOKORO, LONG)
+    _engine(app, vct._engine_label(True), LONG)
     app.vc_generate_btn.invoke()
     assert _confirm_shown(app)
     assert _packed(app.vc_confirm_measure_btn) and not _packed(app.vc_confirm_start_btn)
@@ -362,7 +362,7 @@ def test_cancel_on_the_confirm_step_runs_nothing(root, fakes, tmp_path):
 
 def test_measured_speed_is_stored_shown_and_reused(root, fakes, tmp_path):
     app = _build(root, fakes)
-    _engine(app, vct._ENGINE_KOKORO, LONG)
+    _engine(app, vct._engine_label(True), LONG)
     app.vc_generate_btn.invoke()
     app.vc_confirm_measure_btn.invoke()
     assert fakes["measure"] == 1
@@ -393,7 +393,7 @@ def test_measured_speed_is_stored_shown_and_reused(root, fakes, tmp_path):
 def test_not_enough_disk_space_refuses_the_job(root, fakes, tmp_path):
     fakes["free"] = 1000
     app = _build(root, fakes)
-    _engine(app, vct._ENGINE_KOKORO, LONG)
+    _engine(app, vct._engine_label(True), LONG)
     app.vc_generate_btn.invoke()
     assert _confirm_shown(app)
     assert "Not enough free disk space" in app.vc_confirm_var.get()
@@ -471,7 +471,7 @@ def test_failed_measurement_falls_back_to_start(root, fakes, monkeypatch, no_dia
 
     monkeypatch.setattr(tts_kokoro, "measure_speed", broken)
     app = _build(root, fakes)
-    _engine(app, vct._ENGINE_KOKORO, LONG)
+    _engine(app, vct._engine_label(True), LONG)
     app.vc_generate_btn.invoke()
     app.vc_confirm_measure_btn.invoke()
     assert no_dialogs == []
@@ -535,7 +535,7 @@ def test_cancel_as_the_measurement_fails_closes_the_step(root, fakes):
     import threading
 
     app = _build(root, fakes)
-    _engine(app, vct._ENGINE_KOKORO, LONG)
+    _engine(app, vct._engine_label(True), LONG)
     app.vc_generate_btn.invoke()
     event = threading.Event()
     event.set()  # Cancel was pressed before the failure reached the Tk thread
@@ -555,7 +555,7 @@ def test_cancel_while_measuring_starts_nothing(root, fakes, monkeypatch, tmp_pat
         raise RuntimeError("Cancelled.")
 
     monkeypatch.setattr(tts_kokoro, "measure_speed", cancelled_midway)
-    _engine(app, vct._ENGINE_KOKORO, LONG)
+    _engine(app, vct._engine_label(True), LONG)
     app.vc_generate_btn.invoke()
     app.vc_confirm_measure_btn.invoke()
     assert not _confirm_shown(app)
@@ -621,7 +621,7 @@ def test_text_over_the_limit_is_refused_when_the_setting_is_off(root, fakes, mon
 
     monkeypatch.setattr(tts_plan, "MAX_TEXT_CHARS", 3000)
     app = _build(root, fakes)
-    _engine(app, vct._ENGINE_KOKORO, LONG)
+    _engine(app, vct._engine_label(True), LONG)
     vct._on_text_modified(app)
     assert app.vc_count_var.get() == f"{len(LONG):,} / 3,000 characters"
     app.vc_generate_btn.invoke()
@@ -636,7 +636,7 @@ def test_no_limit_setting_lifts_the_limit_but_keeps_the_checks(root, fakes, monk
 
     monkeypatch.setattr(tts_plan, "MAX_TEXT_CHARS", 3000)
     app = _build(root, fakes, config={tts_plan.NO_LIMIT_KEY: True})
-    _engine(app, vct._ENGINE_KOKORO, LONG)
+    _engine(app, vct._engine_label(True), LONG)
     vct._on_text_modified(app)
     assert app.vc_count_var.get() == f"{len(LONG):,} characters"
     app.vc_generate_btn.invoke()
@@ -654,7 +654,7 @@ def test_no_limit_setting_still_refuses_a_job_the_disk_cannot_hold(root, fakes, 
     monkeypatch.setattr(tts_plan, "MAX_TEXT_CHARS", 3000)
     fakes["free"] = 1000
     app = _build(root, fakes, config={tts_plan.NO_LIMIT_KEY: True})
-    _engine(app, vct._ENGINE_KOKORO, LONG)
+    _engine(app, vct._engine_label(True), LONG)
     app.vc_generate_btn.invoke()
     assert "Not enough free disk space" in app.vc_confirm_var.get()
     vct._confirm_start(app)
@@ -666,7 +666,7 @@ def test_piece_job_disk_check_counts_the_joined_copy(root, fakes, monkeypatch):
 
     monkeypatch.setitem(tts_job.PIECE_CHARS, "kokoro", 600)
     app = _build(root, fakes)
-    _engine(app, vct._ENGINE_KOKORO, LONG)
+    _engine(app, vct._engine_label(True), LONG)
     app.vc_generate_btn.invoke()
     plan = app.vc_plan
     assert plan.job is not None
@@ -679,7 +679,7 @@ def test_cancel_keeps_pieces_and_generate_offers_to_continue(root, fakes, monkey
     monkeypatch.setitem(tts_job.PIECE_CHARS, "kokoro", 600)
     _cancel_kokoro_after(monkeypatch, fakes, 2)
     app = _build(root, fakes)
-    _engine(app, vct._ENGINE_KOKORO, LONG)
+    _engine(app, vct._engine_label(True), LONG)
     _kokoro_job(app)
     pieces = [p.strip() for p in tts_job.split_text(LONG, 600)]
     total = len(pieces)
@@ -729,7 +729,7 @@ def test_start_over_speaks_everything_again(root, fakes, monkeypatch):
     monkeypatch.setitem(tts_job.PIECE_CHARS, "kokoro", 600)
     _cancel_kokoro_after(monkeypatch, fakes, 1)
     app = _build(root, fakes)
-    _engine(app, vct._ENGINE_KOKORO, LONG)
+    _engine(app, vct._engine_label(True), LONG)
     _kokoro_job(app)
     app.vc_confirm_start_btn.invoke()
     assert len(fakes["kokoro"]) == 1
@@ -747,7 +747,7 @@ def test_another_voice_is_not_offered_the_unfinished_job(root, fakes, monkeypatc
     monkeypatch.setitem(tts_job.PIECE_CHARS, "kokoro", 600)
     _cancel_kokoro_after(monkeypatch, fakes, 1)
     app = _build(root, fakes)
-    _engine(app, vct._ENGINE_KOKORO, LONG)
+    _engine(app, vct._engine_label(True), LONG)
     _kokoro_job(app)
     app.vc_confirm_start_btn.invoke()
     monkeypatch.setattr(tts_kokoro, "generate", _plain_kokoro(fakes))
@@ -815,7 +815,7 @@ def test_continue_offer_shows_even_for_a_job_too_quick_to_confirm(root, fakes, m
     monkeypatch.setattr(tts_plan, "needs_confirm", lambda _est: False)
     _cancel_kokoro_after(monkeypatch, fakes, 1)
     app = _build(root, fakes)
-    _engine(app, vct._ENGINE_KOKORO, LONG)
+    _engine(app, vct._engine_label(True), LONG)
     app.vc_generate_btn.invoke()  # starts at once: no confirm step
     assert len(fakes["kokoro"]) == 1 and app.vc_status_var.get().startswith("Cancelled.")
     monkeypatch.setattr(tts_kokoro, "generate", _plain_kokoro(fakes))
@@ -842,7 +842,7 @@ def test_voice_changed_on_the_confirm_step_does_not_change_the_job(root, fakes, 
     monkeypatch.setattr(tts_kokoro, "generate", gen)
     monkeypatch.setitem(tts_job.PIECE_CHARS, "kokoro", 600)
     app = _build(root, fakes)
-    _engine(app, vct._ENGINE_KOKORO, LONG)
+    _engine(app, vct._engine_label(True), LONG)
     _kokoro_job(app)
     app.vc_voice_var.set(tts_kokoro.voice_by_key("am_adam").label)  # changed while open
     app.vc_confirm_start_btn.invoke()
@@ -879,7 +879,7 @@ def test_start_over_keeps_the_pieces_when_the_disk_cannot_hold_the_whole_job(
     monkeypatch.setitem(tts_job.PIECE_CHARS, "kokoro", 600)
     _cancel_kokoro_after(monkeypatch, fakes, 3)
     app = _build(root, fakes)
-    _engine(app, vct._ENGINE_KOKORO, LONG)
+    _engine(app, vct._engine_label(True), LONG)
     _kokoro_job(app)
     app.vc_confirm_start_btn.invoke()
     monkeypatch.setattr(tts_kokoro, "generate", _plain_kokoro(fakes))
@@ -911,7 +911,7 @@ def test_continued_job_without_a_speed_figure_offers_continue_not_measure(root, 
     monkeypatch.setitem(tts_job.PIECE_CHARS, "kokoro", 600)
     _cancel_kokoro_after(monkeypatch, fakes, 2)
     app = _build(root, fakes)
-    _engine(app, vct._ENGINE_KOKORO, LONG)
+    _engine(app, vct._engine_label(True), LONG)
     app.vc_generate_btn.invoke()  # no speed figure stored: Measure is offered first
     assert _packed(app.vc_confirm_measure_btn)
     app.vc_confirm_measure_btn.invoke()

@@ -560,8 +560,6 @@
     "Keyboard shortcuts": "Dreceres de teclat",
     "Khmer": "Khmer",
     "Kokoro has no voice for this text": "Kokoro no té cap veu per a aquest text",
-    "Kokoro speaks in one of 53 ready-made voices and is fast on any computer. OmniVoice can clone a voice from a short recording, or design a new one from a description (gender, age, pitch, accent); it is much slower without a supported graphics card. Each model downloads once, the first time it is used.": "Kokoro parla amb una de 53 veus predefinides i és ràpid en qualsevol ordinador. OmniVoice pot clonar una veu a partir d'un enregistrament curt o dissenyar-ne una de nova a partir d'una descripció (gènere, edat, to, accent); és molt més lent sense una targeta gràfica compatible. Cada model es baixa una sola vegada, el primer cop que s'utilitza.",
-    "Kokoro — 53 ready-made voices, 9 languages (fast; ~350 MB download)": "Kokoro: 53 veus predefinides, 9 llengües (ràpid; baixada d'~350 MB)",
     "Kokoro-82M (Apache-2.0), runs locally -- downloaded.": "Kokoro-82M (Apache-2.0), s'executa localment -- baixat.",
     "Kokoro-82M (Apache-2.0), runs locally -- not downloaded yet (~{size} MB, downloads on first use).": "Kokoro-82M (Apache-2.0), s'executa localment -- encara no s'ha baixat (~{size} MB, es baixa el primer cop que s'utilitza).",
     "Kokoro: pick a ready-made voice and press Preview to hear it. OmniVoice: clone a voice from 1-3 short recordings (3-10 seconds each), design one from its attributes, or let the model choose.": "Kokoro: trieu una veu predefinida i premeu Previsualitza per escoltar-la. OmniVoice: cloneu una veu a partir d'1-3 enregistraments curts (de 3-10 segons cadascun), dissenyeu-ne una a partir dels seus atributs o deixeu que triï el model.",

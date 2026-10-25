@@ -552,8 +552,6 @@
     "Keyboard shortcuts": "Phím tắt",
     "Khmer": "Tiếng Khmer",
     "Kokoro has no voice for this text": "Kokoro không có giọng cho văn bản này",
-    "Kokoro speaks in one of 53 ready-made voices and is fast on any computer. OmniVoice can clone a voice from a short recording, or design a new one from a description (gender, age, pitch, accent); it is much slower without a supported graphics card. Each model downloads once, the first time it is used.": "Kokoro nói bằng một trong 53 giọng có sẵn và chạy nhanh trên mọi máy tính. OmniVoice có thể nhân bản giọng từ một bản ghi ngắn, hoặc thiết kế giọng mới từ mô tả (giới tính, tuổi, cao độ, giọng vùng miền); nó chậm hơn nhiều nếu không có card đồ họa được hỗ trợ. Mỗi mô hình chỉ tải xuống một lần, ở lần dùng đầu tiên.",
-    "Kokoro — 53 ready-made voices, 9 languages (fast; ~350 MB download)": "Kokoro — 53 giọng có sẵn, 9 ngôn ngữ (nhanh; tải ~350 MB)",
     "Kokoro-82M (Apache-2.0), runs locally -- downloaded.": "Kokoro-82M (Apache-2.0), chạy cục bộ -- đã tải xuống.",
     "Kokoro-82M (Apache-2.0), runs locally -- not downloaded yet (~{size} MB, downloads on first use).": "Kokoro-82M (Apache-2.0), chạy cục bộ -- chưa tải xuống (~{size} MB, tải ở lần dùng đầu tiên).",
     "Kokoro: pick a ready-made voice and press Preview to hear it. OmniVoice: clone a voice from 1-3 short recordings (3-10 seconds each), design one from its attributes, or let the model choose.": "Kokoro: chọn một giọng có sẵn và bấm Nghe thử để nghe. OmniVoice: nhân bản giọng từ 1-3 bản ghi ngắn (mỗi bản 3-10 giây), thiết kế giọng từ các thuộc tính, hoặc để mô hình tự chọn.",

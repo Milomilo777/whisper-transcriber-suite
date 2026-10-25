@@ -560,8 +560,6 @@
     "Keyboard shortcuts": "Sneltoetsen",
     "Khmer": "Khmer",
     "Kokoro has no voice for this text": "Kokoro heeft geen stem voor deze tekst",
-    "Kokoro speaks in one of 53 ready-made voices and is fast on any computer. OmniVoice can clone a voice from a short recording, or design a new one from a description (gender, age, pitch, accent); it is much slower without a supported graphics card. Each model downloads once, the first time it is used.": "Kokoro spreekt met een van 53 kant-en-klare stemmen en is snel op elke computer. OmniVoice kan een stem klonen uit een korte opname of een nieuwe ontwerpen op basis van een beschrijving (geslacht, leeftijd, toonhoogte, accent); zonder ondersteunde grafische kaart is het veel trager. Elk model wordt eenmalig gedownload, de eerste keer dat het wordt gebruikt.",
-    "Kokoro — 53 ready-made voices, 9 languages (fast; ~350 MB download)": "Kokoro — 53 kant-en-klare stemmen, 9 talen (snel; download van ~350 MB)",
     "Kokoro-82M (Apache-2.0), runs locally -- downloaded.": "Kokoro-82M (Apache-2.0), draait lokaal -- gedownload.",
     "Kokoro-82M (Apache-2.0), runs locally -- not downloaded yet (~{size} MB, downloads on first use).": "Kokoro-82M (Apache-2.0), draait lokaal -- nog niet gedownload (~{size} MB, wordt gedownload bij het eerste gebruik).",
     "Kokoro: pick a ready-made voice and press Preview to hear it. OmniVoice: clone a voice from 1-3 short recordings (3-10 seconds each), design one from its attributes, or let the model choose.": "Kokoro: kies een kant-en-klare stem en druk op Voorbeeld om hem te horen. OmniVoice: kloon een stem uit 1-3 korte opnamen (elk 3-10 seconden), ontwerp er een op basis van eigenschappen of laat het model kiezen.",

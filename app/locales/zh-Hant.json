@@ -552,8 +552,6 @@
     "Keyboard shortcuts": "鍵盤快速鍵",
     "Khmer": "高棉語",
     "Kokoro has no voice for this text": "Kokoro 沒有適合這段文字的聲音",
-    "Kokoro speaks in one of 53 ready-made voices and is fast on any computer. OmniVoice can clone a voice from a short recording, or design a new one from a description (gender, age, pitch, accent); it is much slower without a supported graphics card. Each model downloads once, the first time it is used.": "Kokoro 使用 53 種現成聲音之一朗讀，在任何電腦上都很快。OmniVoice 可以從一段簡短錄音複製聲音，或依描述（性別、年齡、音調、口音）設計新聲音；沒有受支援的顯示卡時會慢得多。每個模型在第一次使用時下載一次。",
-    "Kokoro — 53 ready-made voices, 9 languages (fast; ~350 MB download)": "Kokoro——53 種現成聲音，9 種語言（快速；需下載約 350 MB）",
     "Kokoro-82M (Apache-2.0), runs locally -- downloaded.": "Kokoro-82M（Apache-2.0），在本機執行——已下載。",
     "Kokoro-82M (Apache-2.0), runs locally -- not downloaded yet (~{size} MB, downloads on first use).": "Kokoro-82M（Apache-2.0），在本機執行——尚未下載（約 {size} MB，第一次使用時下載）。",
     "Kokoro: pick a ready-made voice and press Preview to hear it. OmniVoice: clone a voice from 1-3 short recordings (3-10 seconds each), design one from its attributes, or let the model choose.": "Kokoro：選擇一個現成聲音，按「預覽」試聽。OmniVoice：用 1-3 段簡短錄音（每段 3-10 秒）複製聲音、依屬性設計聲音，或讓模型選擇。",
