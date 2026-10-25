@@ -249,10 +249,13 @@ def free_output_path(path: str) -> str:
 
 
 # Placeholders this run of the app reserved and has not yet released or
-# replaced. The set is filled BEFORE the file exists, so the watched folder's
-# create event (and a download's file recovery) can always tell the app's own
-# placeholder from a file the user put there, whatever its name or size.
-_reserved: set[str] = set()
+# replaced: output-path key -> the owning reservation's token. The mapping is
+# filled BEFORE the file exists, so the watched folder's create event (and a
+# download's file recovery) can always tell the app's own placeholder from a
+# file the user put there, whatever its name or size. The token follows the
+# job that WON the exclusive create, so a losing job's cleanup can never
+# release the winner's reservation.
+_reserved: dict[str, str] = {}
 _reserved_lock = threading.Lock()
 
 
@@ -267,27 +270,41 @@ def reserve_output_path(path: str) -> str:
     so two jobs started at once never pick the same name. ``burn()`` then
     replaces this placeholder; ``release_reserved_path`` removes it when no
     video was made. The name is listed in ``is_reserved`` until then."""
+    import uuid
+
+    token = uuid.uuid4().hex
     stem, ext = os.path.splitext(path)
     candidate, n = path, 2
     while True:
         key = _output_key(candidate)
         with _reserved_lock:
-            held_by_another_job = key in _reserved
-            _reserved.add(key)
+            _reserved.setdefault(key, token)
         try:
             fd = os.open(candidate, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o666)
         except FileExistsError:
-            if not held_by_another_job:
-                with _reserved_lock:
-                    _reserved.discard(key)
+            # The file exists. Whichever job WON the exclusive create has
+            # replaced the mapping with its own token (below), so a
+            # mapping that is still OURS means the file is a
+            # pre-existing/user file — release the key so the watcher
+            # keeps seeing it, and try the next name. Discarding on the
+            # old held_by_another_job flag lost exactly this race: B's
+            # add+create landed between A's add and A's open, and A's
+            # cleanup deleted B's reservation.
+            with _reserved_lock:
+                if _reserved.get(key) == token:
+                    del _reserved[key]
             candidate = f"{stem} ({n}){ext}"
             n += 1
             continue
         except BaseException:
-            if not held_by_another_job:
-                with _reserved_lock:
-                    _reserved.discard(key)
+            with _reserved_lock:
+                if _reserved.get(key) == token:
+                    del _reserved[key]
             raise
+        # We won the create: the placeholder is ours, whoever else was
+        # also waiting for the name.
+        with _reserved_lock:
+            _reserved[key] = token
         os.close(fd)
         return candidate
 
@@ -296,7 +313,7 @@ def release_reserved_path(path: str) -> None:
     """Remove a placeholder from ``reserve_output_path`` if it is still empty,
     and stop listing it as reserved."""
     with _reserved_lock:
-        _reserved.discard(_output_key(path))
+        _reserved.pop(_output_key(path), None)
     try:
         if os.path.isfile(path) and os.path.getsize(path) == 0:
             os.unlink(path)
@@ -715,6 +732,36 @@ def _run_ffmpeg(
         cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         stdin=subprocess.DEVNULL, **popen_kwargs,
     )
+    try:
+        return _run_ffmpeg_locked(
+            proc, cmd, timeout=timeout, duration_s=duration_s,
+            progress_cb=progress_cb, cancel_check=cancel_check,
+            on_process=on_process,
+        )
+    except BaseException:
+        # A raising caller callback (or anything else after the Popen)
+        # must not leak a live ffmpeg with undrained pipes: kill it and
+        # let the error propagate. The poll loop's own cancel/timeout
+        # paths kill inside, so this is the belt for the paths that
+        # never reach them.
+        try:
+            kill_process_tree(proc, force=True)
+        except Exception:  # noqa: BLE001 - the original error matters more
+            logger.debug("Could not kill ffmpeg after a failed _run_ffmpeg",
+                         exc_info=True)
+        raise
+
+
+def _run_ffmpeg_locked(
+    proc: Any,
+    cmd: list[str],
+    *,
+    timeout: float,
+    duration_s: float,
+    progress_cb: Callable[[float], None] | None,
+    cancel_check: Callable[[], bool] | None,
+    on_process: Callable[[Any], None] | None,
+) -> None:
     if on_process is not None:
         on_process(proc)
     stderr_tail = bytearray()
@@ -771,13 +818,20 @@ def _run_ffmpeg(
         time.sleep(0.1)
     for t in readers:
         t.join(timeout=10)
-    # An outside kill (the queue's own Cancel) ends ffmpeg before this loop
-    # sees the flag, so ask once more.
-    if cancelled or (cancel_check is not None and cancel_check()):
-        raise BurnCancelled("Subtitle burn cancelled")
+    # The encode COMPLETED (returncode 0, no timeout): a cancel flag seen
+    # now flipped after ffmpeg finished — during the 0.1 s poll sleep or
+    # the reader joins. The documented contract keeps the finished file
+    # ("a Cancel that lands after the encode finished keeps the finished
+    # file"), so the post-loop re-check only cancels an encode that did
+    # not succeed.
     if timed_out:
         raise subprocess.TimeoutExpired(cmd, timeout)
     if proc.returncode != 0:
+        # An outside kill (the queue's own Cancel) ends ffmpeg before this
+        # loop sees the flag, so ask once more — a cancelled encode is
+        # reported as cancelled, a genuine failure as CalledProcessError.
+        if cancelled or (cancel_check is not None and cancel_check()):
+            raise BurnCancelled("Subtitle burn cancelled")
         raise subprocess.CalledProcessError(
             proc.returncode, cmd, b"", bytes(stderr_tail)
         )
@@ -1098,7 +1152,7 @@ def burn(
             _produced.discard(key)
             raise
         with _reserved_lock:
-            _reserved.discard(_output_key(out_path))
+            _reserved.pop(_output_key(out_path), None)
         return out_path
     finally:
         with _active_lock:
