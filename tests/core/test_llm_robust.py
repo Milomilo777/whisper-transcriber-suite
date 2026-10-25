@@ -293,9 +293,29 @@ def test_groq_budget_covers_prompt_plus_answer(monkeypatch):
     sent = _echo_body(monkeypatch)
     runner = llm.RemoteLLMRunner(llm.RemoteLLMConfig(
         base_url=llm.GROQ_BASE_URL, model="m"))
-    runner.summarise("word " * 20000)
-    est = len(sent[0]["messages"][0]["content"]) // 3 + sent[0]["max_tokens"]
-    assert est <= llm.GROQ_REQUEST_TOKEN_BUDGET
+    runner._chat(
+        [{"role": "system", "content": "rules " * 300},
+         {"role": "user", "content": "word " * 20000}],
+        max_tokens=2000,
+    )
+    count = llm._token_counter(None)  # the counter the code itself uses
+    body = sent[0]
+    used = sum(count(m["content"]) for m in body["messages"]) + body["max_tokens"]
+    assert body["max_tokens"] <= 2000
+    assert used <= llm.GROQ_REQUEST_TOKEN_BUDGET
+
+
+@pytest.mark.parametrize("tokens, expect", [
+    (0, "Set llm_remote_max_input_tokens to a positive number"),
+    (3000, "Lower llm_remote_max_input_tokens"),
+])
+def test_413_hint_depends_on_the_budget_state(monkeypatch, tokens, expect):
+    _script(monkeypatch, [lambda r: _http_error(r, 413)])
+    runner = llm.RemoteLLMRunner(llm.RemoteLLMConfig(
+        base_url="https://llm.example/v1", model="m", max_input_tokens=tokens))
+    with pytest.raises(llm.RemoteLLMError, match="HTTP 413") as e:
+        runner._chat([{"role": "user", "content": "hi"}])
+    assert expect in str(e.value)
 
 
 def test_explicit_budget_trims_any_host(monkeypatch):

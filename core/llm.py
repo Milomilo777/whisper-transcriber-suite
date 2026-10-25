@@ -782,9 +782,17 @@ class RemoteLLMRunner:
                         f"{body or e.reason}"
                     )
                 elif e.code == 413:
+                    if self.cfg.max_input_tokens > 0:
+                        hint = "Lower llm_remote_max_input_tokens."
+                    else:
+                        hint = (
+                            "Set llm_remote_max_input_tokens to a positive number "
+                            "below the provider's limit (it includes the "
+                            "answer's tokens)."
+                        )
                     message = (
                         "The request is too large for this AI provider "
-                        f"(HTTP 413). Lower llm_remote_max_input_tokens. {body}"
+                        f"(HTTP 413). {hint} {body}"
                     )
                 if e.code in _RETRYABLE_STATUS:
                     raise _RetryableLLMError(
