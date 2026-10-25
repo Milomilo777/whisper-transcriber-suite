@@ -1497,9 +1497,9 @@ class TranscriptViewer(tk.Toplevel):
 
         def work(runner: Any) -> str:
             items = runner.action_items(text)
-            return "\n".join(f"- {i}" for i in items) if items else (
+            return _with_trim_note(runner, "\n".join(f"- {i}" for i in items) if items else (
                 _("(no action items detected)")
-            )
+            ))
 
         self._run_ai_task("Action items", work, self.language)
 
@@ -1521,7 +1521,8 @@ class TranscriptViewer(tk.Toplevel):
         # The target is a free-text name ("Japanese"), not a code: the result's Han text picks
         # its font from kana alone, never from the transcript's language.
         self._run_ai_task(
-            "Translate", lambda runner: runner.translate(text, target_language=lang),
+            "Translate",
+            lambda runner: _with_trim_note(runner, runner.translate(text, target_language=lang)),
         )
 
     def _run_bilingual_translate(self) -> None:
