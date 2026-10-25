@@ -79,6 +79,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   Every webhook body also has a new `delivery_id`, unique per delivery.
 - **Recipes for n8n and Obsidian**: docs/integrations/webhook-n8n-obsidian.md shows how to receive the
   completion webhook in n8n and two ways to get finished transcripts into an Obsidian vault as notes.
+- **A manual Linux click-through on GitHub Actions** (for contributors): `linux-gui-click.yml` installs the app
+  with `platform/linux/install.sh`, clicks through it on a virtual display with real input events and uploads
+  a screenshot per step (docs/TESTING.md).
 
 ### Changed
 

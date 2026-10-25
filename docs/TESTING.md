@@ -90,6 +90,22 @@ folder (config, cache, logs and data go into subfolders there; nothing is migrat
 in from your profile). Point `hub_folder` in its `config/config.json` at an existing
 model folder to skip the model download.
 
+### Linux click-through on GitHub Actions
+
+`.github/workflows/linux-gui-click.yml` (manual, "Run workflow") installs the app the way a
+Linux user does (`platform/linux/install.sh`), starts it on a virtual display with a window
+manager and runs a JSON list of real mouse and keyboard steps through
+`tools/linux_gui/x11_hands.py` (xdotool input, ImageMagick screenshots). The screenshots, the
+step results and the app's logs come back as an artifact. The `actions` input takes the step
+list (see the script's docstring; `{{HOME}}`, `{{PROFILE}}`, `{{MEDIA}}` and `{{REPO}}` are
+filled in); empty runs `tools/linux_gui/first_look.json`. The run uses a fresh test profile on
+the `tiny` model and generated speech in `{{MEDIA}}` (`speech.wav`, `short.m4a`, `video.mp4`).
+There is no microphone on the runner.
+
+```
+gh workflow run linux-gui-click.yml -f actions="$(cat steps.json)" -f ui_language=fa
+```
+
 ## When a test fails
 
 Scroll up in the `run_tests.bat` output:

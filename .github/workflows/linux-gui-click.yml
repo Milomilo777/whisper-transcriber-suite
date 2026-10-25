@@ -1,0 +1,87 @@
+name: Linux GUI click-through (manual)
+
+# Installs the app the way a Linux user does (platform/linux/install.sh with the system
+# Python 3 and python3-tk), starts it on a virtual display with a window manager, and runs
+# a list of real mouse/keyboard steps with a screenshot after the ones that ask for it
+# (tools/linux_gui/x11_hands.py). The screenshots, the step results and the app's logs are
+# uploaded as an artifact for a person to look at. Manual only: it checks what automated
+# tests cannot see (layout, cut text, RTL, dialogs) on Linux, where no physical test
+# machine exists.
+on:
+  workflow_dispatch:
+    inputs:
+      actions:
+        description: "JSON list of steps (empty = tools/linux_gui/first_look.json)"
+        required: false
+        default: ""
+      ui_language:
+        description: "Interface language for this run (WTS_UI_LANGUAGE), empty = automatic"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  click:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      # The runner context is not available in job-level env, so the paths are set here.
+      - name: Paths for the step placeholders ({{PROFILE}}, {{MEDIA}}, {{REPO}}, {{HOME}})
+        run: |
+          {
+            echo "HANDS_PROFILE=$RUNNER_TEMP/wts-profile"
+            echo "HANDS_MEDIA=$RUNNER_TEMP/media"
+            echo "HANDS_REPO=$GITHUB_WORKSPACE"
+            echo "HANDS_HOME=$HOME"
+          } >> "$GITHUB_ENV"
+
+      - name: System packages (Tk, virtual display, input, screenshots, fonts, VLC, TTS)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y python3-tk python3-venv xvfb openbox xdotool imagemagick \
+            fonts-noto-core fonts-noto-cjk fonts-dejavu ffmpeg vlc espeak-ng
+
+      - name: Install the app like a user (platform/linux/install.sh)
+        run: PYTHON=python3 bash platform/linux/install.sh
+
+      - name: Test profile (tiny model) and speech media
+        run: |
+          mkdir -p "$HANDS_PROFILE/config" "$HANDS_MEDIA"
+          printf '%s\n' '{"whisper_model": "tiny", "model": {"name": "faster-whisper-tiny", "hf_repo": "Systran/faster-whisper-tiny"}}' \
+            > "$HANDS_PROFILE/config/config.json"
+          text="This is a test recording for the Linux click through. The quick brown fox jumps over the lazy dog."
+          for i in $(seq 1 40); do printf '%s Sentence number %s. ' "$text" "$i"; done > "$RUNNER_TEMP/speech.txt"
+          espeak-ng -v en -s 150 -f "$RUNNER_TEMP/speech.txt" -w "$HANDS_MEDIA/speech.wav"
+          ffmpeg -hide_banner -loglevel error -i "$HANDS_MEDIA/speech.wav" -t 60 -c:a aac "$HANDS_MEDIA/short.m4a"
+          ffmpeg -hide_banner -loglevel error -f lavfi -i testsrc=size=640x360:rate=25 -i "$HANDS_MEDIA/short.m4a" \
+            -shortest -c:v libx264 -pix_fmt yuv420p -c:a copy "$HANDS_MEDIA/video.mp4"
+          ls -la "$HANDS_MEDIA"
+
+      - name: Click through on a virtual display
+        env:
+          ACTIONS: ${{ inputs.actions }}
+          WTS_UI_LANGUAGE: ${{ inputs.ui_language }}
+        run: |
+          if [ -n "$ACTIONS" ]; then printf '%s' "$ACTIONS" > "$RUNNER_TEMP/actions.json";
+          else cp tools/linux_gui/first_look.json "$RUNNER_TEMP/actions.json"; fi
+          [ -n "$WTS_UI_LANGUAGE" ] || unset WTS_UI_LANGUAGE
+          xvfb-run -a -s "-screen 0 1600x1000x24" bash -c \
+            'openbox & sleep 2; python3 tools/linux_gui/x11_hands.py "$RUNNER_TEMP/actions.json" "$RUNNER_TEMP/out"'
+
+      - name: Collect the app logs
+        if: always()
+        run: |
+          mkdir -p "$RUNNER_TEMP/out/app-logs"
+          cp -r "$HANDS_PROFILE/logs/." "$RUNNER_TEMP/out/app-logs/" 2>/dev/null || true
+          grep -h -E "ERROR|Traceback" "$RUNNER_TEMP/out/app-logs/"*.log 2>/dev/null | head -50 || true
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: linux-gui-click-${{ github.run_id }}
+          path: ${{ runner.temp }}/out
+          retention-days: 14

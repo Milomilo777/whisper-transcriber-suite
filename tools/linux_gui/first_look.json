@@ -1,0 +1,9 @@
+[
+  {"op": "launch", "cmd": ["{{HOME}}/.local/bin/whisper-transcriber-suite"],
+   "env": {"WTS_PROFILE_DIR": "{{PROFILE}}"}},
+  {"op": "wait", "s": 25},
+  {"op": "shot", "name": "first-window"},
+  {"op": "windows"},
+  {"op": "wait", "s": 5},
+  {"op": "shot", "name": "after-30s"}
+]
