@@ -24,6 +24,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   per 10 minutes (hosts that logged in recently are exempt), so rotating addresses gains nothing. The
   lockout always ends by itself. When the host table is full of locked hosts, new addresses share a bounded
   overflow budget instead of getting a fresh start with every guess.
+- **Logged-in clients survive a shared-address lockout**: after a correct password the server sets a signed,
+  15-minute session cookie. A valid cookie is accepted without touching the per-address failure count, so
+  an attacker behind the same NAT or reverse proxy cannot keep a logged-in user locked out.
 - **Slow header senders are limited**, in the server and in the download proxy: the header has an absolute
   deadline, and connections without a complete header have a small budget (further ones are still served
   but get only 1 to 2 seconds), so drippers cannot lock out other clients.

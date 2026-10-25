@@ -92,7 +92,7 @@ from core.server.jobs import (
     QueueFull,
     redact_paths,
 )
-from core.server import mcp
+from core.server import auth_session, mcp
 from core.server.auth_throttle import AuthThrottle
 from core.writers import get_writer, supported_formats
 
@@ -1190,6 +1190,9 @@ class JobHTTPServer(ThreadingHTTPServer):
         self.token = token
         # Slows down repeated wrong access passwords per client address.
         self.auth_throttle = AuthThrottle()
+        # Signs the session cookies of clients that already logged in (they
+        # are then independent of the per-address failure counts).
+        self.session_key = os.urandom(32)
         self.max_upload_bytes = (
             min(max(1, max_upload_mb), _ABSOLUTE_MAX_UPLOAD_MB) * 1024 * 1024
         )
@@ -1496,6 +1499,8 @@ class JobRequestHandler(BaseHTTPRequestHandler):
 
     # Status code of the response being written (0 before the first one).
     _status_code = 0
+    # Session cookie value to send with the next final response, if any.
+    _session_cookie: str | None = None
 
     def send_response_only(self, code: int, message: str | None = None) -> None:
         # Covers the interim "100 Continue" too, which send_response() skips.
@@ -1509,6 +1514,14 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         if (self._status_code >= 200 and not self.close_connection
                 and self._srv.crowded()):
             self.send_header("Connection", "close")
+        if self._status_code >= 200 and self._session_cookie:
+            secure = "; Secure" if self._srv.ssl_context is not None else ""
+            self.send_header(
+                "Set-Cookie",
+                f"{auth_session.COOKIE_NAME}={self._session_cookie}; "
+                f"Path=/; Max-Age={int(auth_session.SESSION_TTL_S)}; "
+                f"HttpOnly; SameSite=Strict{secure}")
+            self._session_cookie = None
         super().end_headers()
 
     def _client_gone(self) -> bool:
@@ -1626,9 +1639,22 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         password is a guess.
         """
         self._auth_wait = 0
+        self._session_cookie = None
         srv = self._srv
         if not srv.token:
             return True
+        now = time.time()
+        cookie = auth_session.from_cookie_header(self.headers.get("Cookie"))
+        if cookie:
+            left = auth_session.remaining(srv.session_key, srv.token, cookie,
+                                          now=now)
+            if left > 0:
+                # An already authenticated client: no password is compared and
+                # the address's failure count is neither read nor changed.
+                if left < auth_session.SESSION_TTL_S / 2:
+                    self._session_cookie = auth_session.issue(
+                        srv.session_key, srv.token, now=now)
+                return True
         who = self.client_address[0] if self.client_address else ""
         header = self.headers.get("X-Auth-Token") or self._bearer_token()
         query = route.query.get("token")
@@ -1645,6 +1671,8 @@ class JobRequestHandler(BaseHTTPRequestHandler):
             return False
         if token_ok(srv.token, header, query):
             throttle.refund(who)
+            self._session_cookie = auth_session.issue(
+                srv.session_key, srv.token, now=now)
             return True
         locked = throttle.peek(who)
         if locked:

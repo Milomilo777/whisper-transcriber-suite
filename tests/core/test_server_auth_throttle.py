@@ -357,3 +357,50 @@ def test_a_trusted_host_still_passes_a_saturated_table():
         t.admit("203.0.113.9")
     assert t.admit("203.0.113.9") > 0
     assert t.admit("198.51.100.7") == 0
+
+
+def _raw_get(srv, path, headers):
+    conn = http.client.HTTPConnection("127.0.0.1", srv.port, timeout=5)
+    try:
+        conn.request("GET", path, headers=headers)
+        resp = conn.getresponse()
+        resp.read()
+        return resp.status, resp.getheader("Set-Cookie")
+    finally:
+        conn.close()
+
+
+def test_a_logged_in_client_survives_a_lockout_of_its_shared_address(tmp_path):
+    """Behind a NAT or reverse proxy an attacker's wrong passwords lock the
+    shared address; a client that already authenticated keeps working through
+    its signed session cookie, which does not touch the failure bucket."""
+    clock = _Clock()
+    with _RunningServer(tmp_path, token="s3cret") as srv:
+        srv.server.auth_throttle = _throttle(clock, free_attempts=2)
+        status, cookie = _raw_get(srv, "/api/health", {"X-Auth-Token": "s3cret"})
+        assert status == 200
+        assert cookie and cookie.startswith("wts_session=")
+        assert "HttpOnly" in cookie and "SameSite=Strict" in cookie
+        session = cookie.split(";", 1)[0]
+        for i in range(4):  # the attacker behind the same address
+            _raw_get(srv, "/api/health", {"X-Auth-Token": f"bad{i}"})
+        assert _raw_get(srv, "/api/health", {"X-Auth-Token": "s3cret"})[0] == 429
+        assert _raw_get(srv, "/api/health", {"Cookie": session})[0] == 200
+        # A forged or altered cookie earns nothing.
+        forged = session[:-4] + ("0000" if session[-4:] != "0000" else "1111")
+        assert _raw_get(srv, "/api/health", {"Cookie": forged})[0] in (401, 429)
+        assert _raw_get(srv, "/api/health", {"Cookie": "wts_session=1.abc"})[0] in (401, 429)
+
+
+def test_a_session_cookie_dies_with_the_token_and_with_time():
+    from core.server import auth_session
+    key = b"k" * 32
+    value = auth_session.issue(key, "tok", now=1000.0, ttl=60.0)
+    assert auth_session.valid(key, "tok", value, now=1030.0)
+    assert not auth_session.valid(key, "tok", value, now=1061.0)
+    assert not auth_session.valid(key, "other", value, now=1030.0)
+    assert not auth_session.valid(b"x" * 32, "tok", value, now=1030.0)
+    assert not auth_session.valid(key, "tok", value[:-1] + "0", now=1030.0)
+    assert not auth_session.valid(key, "tok", "", now=1030.0)
+    assert not auth_session.valid(key, "tok", "garbage", now=1030.0)
+    assert auth_session.remaining(key, "tok", value, now=1030.0) == 30.0

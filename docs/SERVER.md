@@ -518,6 +518,21 @@ others for a short time. This slows guessing down; it is not a replacement
 for a long password, and an attacker who can use very many IPv6 networks is
 limited only by the password itself.
 
+**Logged-in clients keep working during a lockout.** A client that sent the
+right password also receives a signed session cookie (`wts_session`, `HttpOnly`,
+`SameSite=Strict`, `Secure` over HTTPS, valid for 15 minutes and renewed while
+in use). A request with a valid cookie is accepted without comparing a password
+and without reading or changing the address's failure count, so an attacker
+behind the same NAT or reverse proxy cannot lock out a user who is already
+logged in by renewing the lockout. The cookie is signed with a random key made
+at server start and tied to the current access password: it stops working at
+its expiry, when the password changes and when the server restarts, and it is
+not tied to an address. Whoever holds it has the access the password gives.
+Scripts that send the password in a header do not need it, and are still
+subject to the lockout. **Trade-off:** a user who has NOT logged in recently is
+still locked out with the rest of the address, and a stolen cookie works for
+up to 15 minutes without the password.
+
 The page at `/` loads without a token; its API calls need one. Type it into
 the page's **Auth token** box, or open a link with it added, for example
 `http://192.168.1.42:8765/?token=mysecret` (characters other than letters and
