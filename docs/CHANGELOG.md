@@ -55,6 +55,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Transcript viewer: embedded video never attached (black Multimedia tab, `00:00 / 00:00`, Play greyed,
+  segment double-click did nothing)**: the viewer handed its window to VLC before Tk had mapped it, and then gave
+  up on embedded playback for good. It now waits for the video area to appear (the map event plus a bounded
+  retry of about 5 seconds) and only then attaches VLC; Play and the transport bar stay greyed until then. The
+  system-player fallback remains for a VLC that is really missing or a window that never appears.
 - **Script fonts placed one character off after an emoji with Tk 9**: the transcript viewer counted every
   character outside the Basic Multilingual Plane as two Tk positions, which is only true for Tk 8.6. It now asks
   Tk for its version, so lines with emoji keep the right font runs when the app runs on Python with Tk 9.

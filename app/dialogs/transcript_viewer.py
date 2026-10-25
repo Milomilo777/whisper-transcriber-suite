@@ -226,6 +226,11 @@ def _fmt_hms(seconds: float) -> str:
 # = finer scrubbing granularity.
 _SEEK_SLIDER_MAX = 1000
 
+# Waiting for the video canvas to be mapped before libvlc gets its window: 50 polls of
+# 100 ms (about 5 s) besides the canvas <Map> event; then the system-player fallback.
+_VLC_BIND_MAX_TRIES = 50
+_VLC_BIND_RETRY_MS = 100
+
 
 def _fmt_mmss(ms: float) -> str:
     """``MM:SS`` (or ``H:MM:SS`` past an hour) from a millisecond count.
@@ -801,6 +806,12 @@ class TranscriptViewer(tk.Toplevel):
         self.vlc_instance: Any = None
         self.vlc_player: Any = None
         self.vlc_seek_after: str | None = None
+        # True from the player's creation until its window is bound (or given up on):
+        # nothing may start playback in between, or libvlc opens a window of its own.
+        self._vlc_bind_pending = False
+        self._vlc_bind_tries = 0
+        self._vlc_binding = False
+        self._vlc_bind_id: str | None = None
         # True while the user is dragging the transport seek slider. The
         # position loop checks this and skips updating the slider so its
         # thumb doesn't snap back to the playhead mid-drag (see
@@ -1845,6 +1856,8 @@ class TranscriptViewer(tk.Toplevel):
     def _on_segment_double_click(self, _event: tk.Event) -> None:
         # Same as single-select but also start playback if paused.
         self._on_segment_select(_event)
+        if self._vlc_bind_pending:
+            return
         if self.vlc_player is not None and not self.vlc_player.is_playing():
             self.vlc_player.play()
             self.play_btn.configure(text=_("⏸ Pause"))
@@ -2291,7 +2304,18 @@ class TranscriptViewer(tk.Toplevel):
             # Calling libvlc set_hwnd() on an unrealized window triggers a
             # native Windows access-violation that bypasses Python try/except
             # and kills the whole process ("View transcript closes the app").
-            # Defer the bind until the window is actually mapped.
+            # Defer the bind until the window is actually mapped. The first try
+            # runs before the event loop has mapped the Toplevel (a user report
+            # and a real-desktop repro: the canvas was never mapped yet, so the
+            # embedded player was dropped for good). So the bind waits for the
+            # canvas <Map> event and polls a bounded number of times; until it
+            # is bound, Play and the transport bar stay greyed out so nothing
+            # can start libvlc in a window of its own.
+            self._vlc_bind_pending = True
+            self._vlc_bind_tries = 0
+            self.play_btn.state(["disabled"])
+            self._set_transport_enabled(False)
+            self.video_canvas.bind("<Map>", self._on_vlc_canvas_map, add="+")
             self._vlc_bind_id = self.after(0, self._bind_vlc_window)
         except Exception as e:  # noqa: BLE001
             logger.warning("VLC init failed: %s", e)
@@ -2310,8 +2334,25 @@ class TranscriptViewer(tk.Toplevel):
         system player" button rather than risk the access-violation, and we
         do NOT start the position loop (no embedded surface to track).
         """
+        if self._vlc_binding:
+            # update_idletasks() below can deliver the canvas <Map> event right here;
+            # that nested call must not bind a second time.
+            return
+        self._vlc_binding = True
+        try:
+            self._bind_vlc_window_once()
+        finally:
+            self._vlc_binding = False
+
+    def _bind_vlc_window_once(self) -> None:
+        if self._vlc_bind_id is not None:
+            # Called directly (a <Map> event): drop the timer that is still queued.
+            try:
+                self.after_cancel(self._vlc_bind_id)
+            except Exception:  # noqa: BLE001
+                pass
         self._vlc_bind_id = None
-        if self._closing or self.vlc_player is None:
+        if self._closing or self.vlc_player is None or not self._vlc_bind_pending:
             return
         try:
             # Force the geometry manager to realize + map the canvas so its
@@ -2324,11 +2365,19 @@ class TranscriptViewer(tk.Toplevel):
             self._disable_embedded_playback()
             return
         if not mapped or handle == 0:
-            # Not realized yet / no valid surface — fall back to the system
-            # player button instead of calling set_hwnd on a dead handle.
+            # Not realized yet: wait for the <Map> event or the next poll. Only
+            # after the bounded number of tries fall back to the system player
+            # button; set_hwnd is never called on an unmapped or zero handle.
+            self._vlc_bind_tries += 1
+            if self._vlc_bind_tries < _VLC_BIND_MAX_TRIES:
+                try:
+                    self._vlc_bind_id = self.after(_VLC_BIND_RETRY_MS, self._bind_vlc_window)
+                except tk.TclError:
+                    self._vlc_bind_id = None
+                return
             logger.info(
-                "VLC video surface not mapped (mapped=%s, id=%s); using "
-                "system player fallback.", mapped, handle,
+                "VLC video surface not mapped (mapped=%s, id=%s) after %d tries; "
+                "using system player fallback.", mapped, handle, self._vlc_bind_tries,
             )
             self._disable_embedded_playback()
             return
@@ -2346,7 +2395,18 @@ class TranscriptViewer(tk.Toplevel):
             self._disable_embedded_playback()
             return
         # Start the position-update loop ONLY after a successful bind.
+        self._vlc_bind_pending = False
+        try:
+            self.play_btn.state(["!disabled"])
+            self._set_transport_enabled(True)
+        except tk.TclError:
+            pass
         self.after(250, self._update_position)
+
+    def _on_vlc_canvas_map(self, _event: tk.Event) -> None:
+        """The video canvas got mapped: bind now instead of waiting for the next poll."""
+        if self._vlc_bind_pending and not self._closing:
+            self._bind_vlc_window()
 
     def _disable_embedded_playback(self) -> None:
         """Tear down embedded playback so only the system-player path stays.
@@ -2361,6 +2421,7 @@ class TranscriptViewer(tk.Toplevel):
         except Exception:  # noqa: BLE001
             pass
         self.vlc_player = None
+        self._vlc_bind_pending = False
         try:
             self.play_btn.state(["disabled"])
         except Exception:  # noqa: BLE001
@@ -2369,7 +2430,7 @@ class TranscriptViewer(tk.Toplevel):
         self._set_transport_enabled(False)
 
     def _toggle_play(self) -> None:
-        if self.vlc_player is None:
+        if self.vlc_player is None or self._vlc_bind_pending:
             return
         if self.vlc_player.is_playing():
             self.vlc_player.pause()
@@ -2379,7 +2440,7 @@ class TranscriptViewer(tk.Toplevel):
             self.play_btn.configure(text=_("⏸ Pause"))
 
     def _restart(self) -> None:
-        if self.vlc_player is None:
+        if self.vlc_player is None or self._vlc_bind_pending:
             return
         self.vlc_player.set_time(0)
         if not self.vlc_player.is_playing():
@@ -2705,6 +2766,12 @@ class TranscriptViewer(tk.Toplevel):
         # flight (notably _update_position → _update_karaoke) sees
         # it and short-circuits before touching widgets.
         self._closing = True
+        if self._vlc_bind_id is not None:
+            try:
+                self.after_cancel(self._vlc_bind_id)
+            except Exception:  # noqa: BLE001
+                pass
+            self._vlc_bind_id = None
         if self.vlc_seek_after is not None:
             try:
                 self.after_cancel(self.vlc_seek_after)
