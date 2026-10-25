@@ -68,6 +68,7 @@ CONTAINERS = {"mp4", "mkv", "webm", "mp3", "m4a", "opus", "wav", "flac", "ogg", 
 def _dynamic_allowed() -> set[str]:
     from app.app import _APP_VERSION
     from app.dialogs import advanced as adv
+    from app.dialogs import ui_language
     from app.domain.cookies import cookie_browser_choices
     from core import tts_kokoro, updates
     from core.backends.availability import ENGINE_CHOICES, UNAVAILABLE_MARK
@@ -81,6 +82,7 @@ def _dynamic_allowed() -> set[str]:
     texts.add(updates.bar_text(UPDATE_INFO.latest_tag, _APP_VERSION, UPDATE_INFO.headline))
     texts.add(CORE_USAGE)
     texts |= {lang.endonym for lang in i18n.SUPPORTED_LANGUAGES}
+    texts.add(ui_language.button_text())  # the language button: the running language's own name
     texts |= set(cookie_browser_choices("")[1:])
     texts |= {name.upper() for name in supported_formats() if name not in adv._FORMAT_LABELS}
     texts |= {adv._FORMAT_LABELS[n] for n in adv._UNTRANSLATED_FORMAT_LABELS}
@@ -479,7 +481,9 @@ def test_tk_persian_catalog_marks_every_translated_line(
     rows = _collect(app)
     # Language names (the picker lists each by its own name) and the English-only video-site
     # tab are data, not translations.
-    names = {lang.endonym for lang in i18n.SUPPORTED_LANGUAGES}
+    from app.dialogs import ui_language
+
+    names = {lang.endonym for lang in i18n.SUPPORTED_LANGUAGES} | {ui_language.button_text()}
     bad = sorted({f"{state} | {path} | {text!r}: {', '.join(p)}" for state, path, text in rows
                   if text not in names and not _video_site(app, path)
                   for p in [_unembedded(text)] if p})
