@@ -266,6 +266,7 @@ class OfflineStatusBar(ttk.Frame):
         self._poll = poll
         self._after_id: str | None = None
         self._closed = False
+        self._polling = False
         self.check: offline.ConnectionCheck | None = None
         self._log_window: NetworkLogWindow | None = None
         ttk.Separator(self, orient="horizontal").pack(fill="x", pady=(0, 4))
@@ -309,16 +310,49 @@ class OfflineStatusBar(ttk.Frame):
             self.pack_forget()
 
     def tick(self) -> None:
-        """Look at the open connections now and every :data:`POLL_MS` while shown."""
+        """Look at the open connections now and every :data:`POLL_MS` while shown.
+
+        The poll runs on a daemon thread and lands via :meth:`_land`:
+        ``offline.poll_connections`` walks psutil's per-process socket
+        tables for this process AND every worker child, and doing that on
+        the Tk thread stalled event processing every cycle while the bar
+        was showing (NetworkLogWindow.verify already runs off-thread for
+        the same reason). Single-flight: while a poll is in the air, a
+        tick just re-renders with the last result and retries on the next
+        cadence.
+        """
         if self._closed:
             return
         self._cancel_tick()
-        try:
-            self.check = self._poll()
-        except Exception as e:  # noqa: BLE001 - shown as "unknown", never as clean
-            self.check = offline.ConnectionCheck(time.time(), False, error=f"{type(e).__name__}: {e}")
-        finally:
+        if self._polling:
             self._after_id = self.after(POLL_MS, self.tick)
+            self.render()
+            return
+
+        def work() -> None:
+            try:
+                result = self._poll()
+            except Exception as e:  # noqa: BLE001 - shown as "unknown", never as clean
+                result = offline.ConnectionCheck(
+                    time.time(), False, error=f"{type(e).__name__}: {e}"
+                )
+            self._post(lambda: self._land(result))
+
+        self._polling = True
+        threading.Thread(target=work, name="offline-bar-poll", daemon=True).start()
+        # Before the first result lands the bar stays empty rather than
+        # flashing "not checked yet" — the poll takes a moment, not a
+        # cadence. Later ticks re-render to refresh the activity counter.
+        if self.check is not None:
+            self.render()
+
+    def _land(self, result: offline.ConnectionCheck) -> None:
+        """Take a finished poll back on the Tk thread and schedule the next."""
+        self._polling = False
+        if self._closed:
+            return
+        self.check = result
+        self._after_id = self.after(POLL_MS, self.tick)
         self.render()
 
     def render(self) -> None:
