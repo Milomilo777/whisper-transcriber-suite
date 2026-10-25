@@ -85,6 +85,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Small hardening**: the online-settings cache is written atomically, so a crash can no longer leave a half-written file; an unusable report address gives the usual "no report address" message; hidden control characters are dropped from exported text so the app can re-import its own SRT; and absurdly large times no longer break an export.
 - **Worker logs can no longer pile up within two weeks**: besides the age rule, logs of finished workers are capped at 60 files or 200 MB in total, oldest first. Tracebacks are also redacted without being cached unredacted on the shared log record.
 - **Update checks, online settings, statistics and problem reports refuse a redirect from https to http**: they used to follow one, which would send the report text or settings request in clear. The update check also reads at most 2 MB of the reply.
 - **Usage statistics name only models the app offers**: an opted-in statistics report now carries a model or engine name only when it is one the app itself lists; a custom model name or a relative folder path is sent as `local-model`.
