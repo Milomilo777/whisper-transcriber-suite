@@ -554,7 +554,9 @@ Behaviour to know:
   resolves to is checked again at connect time, on the addresses actually
   connected to, so a name that is public at first and points at loopback a
   moment later (DNS rebinding) is refused too (a receiver on the local network
-  is still allowed). Logs and the start-up
+  is still allowed). The webhook never uses a proxy from the environment
+  (`HTTP_PROXY` / `HTTPS_PROXY`), because the check could then only see the
+  proxy; a receiver reachable only through a proxy is not supported. Logs and the start-up
   message show only the receiver's `scheme://host:port/...`, never the path or
   query of the URL.
 - Only `http` / `https` URLs are used, and a URL that points at this

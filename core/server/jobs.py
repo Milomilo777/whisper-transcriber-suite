@@ -1883,8 +1883,12 @@ def post_webhook(
             "User-Agent": f"WhisperTranscriberSuite/{__version__}",
         },
     )
+    # An empty ProxyHandler replaces the default one that reads HTTP(S)_PROXY:
+    # through a proxy the check would only see the proxy's address, and the
+    # proxy would resolve the real target itself.
     opener = urllib.request.build_opener(
-        _NoRedirectHandler, GuardedHTTPHandler, GuardedHTTPSHandler)
+        urllib.request.ProxyHandler({}), _NoRedirectHandler,
+        GuardedHTTPHandler, GuardedHTTPSHandler)
     with opener.open(request, timeout=timeout) as response:
         # Bounded read so a hostile endpoint can't stream forever.
         response.read(_WEBHOOK_MAX_RESPONSE_BYTES)

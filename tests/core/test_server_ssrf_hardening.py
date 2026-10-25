@@ -276,3 +276,26 @@ def test_submit_url_refuses_a_lan_host(tmp_path):
                               record_history=False)
     with pytest.raises(ValueError, match="local-network"):
         mgr.submit_url("http://192.168.1.20/v", ["srt"])
+
+
+# --- the webhook ignores environment proxies -------------------------------------
+
+@pytest.mark.parametrize("scheme,var", [("http", "HTTP_PROXY"),
+                                        ("https", "HTTPS_PROXY")])
+def test_webhook_ignores_proxy_environment(monkeypatch, listener, scheme, var):
+    """With a proxy in the environment the guard would only see the proxy
+    (which then resolves the real target itself). The webhook must connect
+    itself, never through the proxy."""
+    for name in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy",
+                 "ALL_PROXY", "all_proxy"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv(var, f"http://127.0.0.1:{listener.port}")
+    monkeypatch.setattr(jobs_mod, "is_safe_url", lambda _u, **_k: True)
+    # Let the guard pass loopback so the proxy would be reachable; the hook
+    # host is a different, closed port: only a proxy path can reach `listener`.
+    monkeypatch.setattr(netguard, "address_blocked",
+                        lambda ip, allow_private=True: False)
+    monkeypatch.setattr(socket, "getaddrinfo", _answers("127.0.0.1"))
+    with pytest.raises(urllib.error.URLError):
+        post_webhook(f"{scheme}://hook.example:9/x", {}, timeout=3)
+    assert listener.connections == 0
