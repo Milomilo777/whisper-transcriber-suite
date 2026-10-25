@@ -1443,16 +1443,23 @@ class TranscriptionService:
     def _retire_failed_worker_if_others_healthy(self, failed: dict[str, Any]) -> bool:
         """Keep healthy workers when ONE worker failed to start.
 
-        A worker is healthy when it is ready or holds a task. With such a
+        A worker is healthy when it is ready and its process is alive. With such a
         peer only the failed worker is retired (its own task, if any, ends
         as an error): a second worker that cannot load its model copy (out
         of memory) must not hard-stop and fail a running job. Returns True
         when it did so; False means no worker is healthy and the caller
         runs the full teardown.
         """
+        def _alive(w: dict[str, Any]) -> bool:
+            proc = w.get("process")
+            return proc is None or proc.poll() is None
+
+        # Healthy = ready (a running job implies ready) with a live process. A
+        # worker that holds a task but never became ready is only waiting
+        # for its own model load, so it does not count.
         healthy = [
             w for w in self.app.workers
-            if w is not failed and (w.get("task") is not None or w.get("ready"))
+            if w is not failed and w.get("ready") and _alive(w)
         ]
         if not healthy:
             return False

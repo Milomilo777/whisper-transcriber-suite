@@ -255,7 +255,7 @@ def test_f2_first_dispatch_caches_from_fresh_history_id(monkeypatch):
 
 # ---------------------------------------------------------------- F4
 
-def test_f4_startup_error_finishes_orphaned_tasks(monkeypatch):
+def _f4_run(monkeypatch, healthy_ready: bool):
     import app.services.transcription_service as ts_mod
 
     failed_proc = _AliveProc(pid=501)
@@ -266,7 +266,7 @@ def test_f4_startup_error_finishes_orphaned_tasks(monkeypatch):
     }
     orphan = _task(task_id="h20", history_id=20, status="running")
     healthy_worker = {
-        "id": 2, "process": healthy_proc, "task": orphan, "ready": True,
+        "id": 2, "process": healthy_proc, "task": orphan, "ready": healthy_ready,
         "last_event_at": time.time(), "token": "", "temporary": False,
     }
     q: "queue.Queue[dict]" = queue.Queue()
@@ -319,10 +319,32 @@ def test_f4_startup_error_finishes_orphaned_tasks(monkeypatch):
         "_worker_id": 1, "_pid": 501,
     })
     svc.poll()
+    return orphan, healthy_worker, failed_worker, finished_rows, app
+
+
+def test_f4_startup_error_finishes_orphaned_tasks(monkeypatch):
+    # No healthy READY worker remains (the one holding h20 never became ready),
+    # so the teardown branch runs and every in-flight task ends as an error.
+    orphan, healthy_worker, _failed, finished_rows, app = _f4_run(
+        monkeypatch, healthy_ready=False
+    )
     assert orphan.status == "error"
     assert healthy_worker["task"] is None
     assert finished_rows and finished_rows[0]["status"] == "error"
     assert app.workers == []
+
+
+def test_f4_startup_error_keeps_a_healthy_running_job(monkeypatch):
+    # Contract change: another worker's startup error no longer tears down a
+    # READY worker's running job; only the failed worker is retired.
+    orphan, healthy_worker, failed_worker, finished_rows, app = _f4_run(
+        monkeypatch, healthy_ready=True
+    )
+    assert orphan.status == "running"
+    assert healthy_worker["task"] is orphan
+    assert finished_rows == []
+    assert app.workers == [healthy_worker]
+    assert failed_worker not in app.workers
 
 
 # ---------------------------------------------------------------- F5
