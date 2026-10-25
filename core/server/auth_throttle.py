@@ -22,6 +22,13 @@ Rules that keep the throttle from becoming a weapon:
 * Evicting a table entry never helps an attacker: the oldest idle entry whose
   lockout has ended goes first, and the /64 counters are separate from the
   host table.
+* When the host table is full of locked hosts, a new host cannot be stored
+  (storing it would evict a locked entry, and evicting its own fresh entry
+  would let it guess without limit). Such attempts share ONE bounded overflow
+  limiter instead (``overflow_budget`` comparisons per ``overflow_window``
+  seconds, counted for the whole server). While the table is saturated a
+  stranger's guesses are therefore capped as a group; hosts that gave the right
+  password recently are counted but never refused.
 * A lockout always ends by itself and an idle host is forgotten, so the right
   password is never refused forever.
 
@@ -50,6 +57,8 @@ FORGET_AFTER_S = 1800.0
 MAX_HOSTS = 2048
 MAX_SUBNETS = 1024
 MAX_TRUSTED = 2048
+OVERFLOW_BUDGET = 30
+OVERFLOW_WINDOW_S = 600.0
 
 
 def _parse(address: str):
@@ -88,6 +97,8 @@ class AuthThrottle:
                  max_hosts: int = MAX_HOSTS,
                  max_subnets: int = MAX_SUBNETS,
                  max_trusted: int = MAX_TRUSTED,
+                 overflow_budget: int = OVERFLOW_BUDGET,
+                 overflow_window: float = OVERFLOW_WINDOW_S,
                  clock: Callable[[], float] = time.monotonic) -> None:
         self._free = max(0, free_attempts)
         self._budget = max(1, subnet_budget)
@@ -99,12 +110,16 @@ class AuthThrottle:
         self._max_hosts = max(1, max_hosts)
         self._max_subnets = max(1, max_subnets)
         self._max_trusted = max(1, max_trusted)
+        self._overflow_budget = max(1, overflow_budget)
+        self._overflow_window = overflow_window
         self._clock = clock
         self._lock = threading.Lock()
         # host key -> [attempts booked, locked until, last seen]
         self._hosts: OrderedDict[str, list[float]] = OrderedDict()
         # /64 key -> [comparisons in this window, window start]
         self._subnets: OrderedDict[str, list[float]] = OrderedDict()
+        # [comparisons by unstored hosts in this window, window start]
+        self._overflow: list[float] = [0.0, float("-inf")]
         # host key -> time of its last right password
         self._trusted: OrderedDict[str, float] = OrderedDict()
 
@@ -137,6 +152,12 @@ class AuthThrottle:
             if victim is None:  # all exhausted: drop the oldest
                 victim = next(iter(self._subnets))
             del self._subnets[victim]
+
+    def _saturated(self, key: str, now: float) -> bool:
+        """True when ``key`` is new and the table holds only locked hosts."""
+        if key in self._hosts or len(self._hosts) < self._max_hosts:
+            return False
+        return not any(e[1] <= now for e in self._hosts.values())
 
     def _is_trusted(self, key: str, now: float) -> bool:
         at = self._trusted.get(key)
@@ -183,6 +204,16 @@ class AuthThrottle:
                     return int(remaining) + 1
             else:
                 entry = [0.0, 0.0, now]
+            if self._saturated(key, now):
+                # Not stored: share the bounded overflow limiter instead.
+                ovf = self._overflow
+                if now - ovf[1] >= self._overflow_window:
+                    ovf[0], ovf[1] = 0.0, now
+                if (ovf[0] >= self._overflow_budget
+                        and not self._is_trusted(key, now)):
+                    return int(ovf[1] + self._overflow_window - now) + 1
+                ovf[0] += 1
+                return 0
             if sub is not None:
                 sub_entry = self._subnets.get(sub)
                 if sub_entry is not None and now - sub_entry[1] >= self._window:

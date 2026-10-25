@@ -22,7 +22,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   HTTP 429 with a growing `Retry-After` (15 seconds, doubling, at most 15 minutes). The check and the count
   are one atomic step and one host never locks out another. Each IPv6 /64 shares a budget of 50 comparisons
   per 10 minutes (hosts that logged in recently are exempt), so rotating addresses gains nothing. The
-  lockout always ends by itself.
+  lockout always ends by itself. When the host table is full of locked hosts, new addresses share a bounded
+  overflow budget instead of getting a fresh start with every guess.
 - **Slow header senders are limited**, in the server and in the download proxy: the header has an absolute
   deadline, and connections without a complete header have a small budget (further ones are still served
   but get only 1 to 2 seconds), so drippers cannot lock out other clients.

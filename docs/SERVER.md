@@ -507,7 +507,11 @@ not extend the window. So during an attack from your own /64 a host that has
 not logged in recently can be locked out for up to 10 minutes. A request with no
 password at all gets 401 and is not counted. At most 2048 hosts and 1024 /64
 networks are remembered (the oldest idle entry whose lockout has ended is dropped first, so flooding
-the table does not free a locked host), and the
+the table does not free a locked host). If all 2048 stored hosts are locked at
+once, a new address is not stored; its attempts (and those of every other
+unstored address) share one overflow budget of 30 comparisons per 10 minutes for
+the whole server, so a full table cannot be used to guess without limit; during
+that state a legitimate newcomer without a recent login can be refused too. The
 counts live in memory only, so a restart clears them. Behind a reverse proxy
 every client has the proxy's address, so one person's typos can lock out the
 others for a short time. This slows guessing down; it is not a replacement

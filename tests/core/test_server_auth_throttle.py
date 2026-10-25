@@ -320,3 +320,40 @@ def test_many_concurrent_http_guesses_compare_at_most_limit_plus_one(tmp_path):
             httpd.token_ok = real
     assert len(compared) <= 6
     assert statuses.count(401) <= 6 and statuses.count(429) >= 24
+
+
+def _saturate(t: AuthThrottle, clock: _Clock, hosts: int) -> None:
+    """Fill the host table with locked-out hosts (free attempts used up)."""
+    for i in range(hosts):
+        who = f"10.1.{i // 250}.{i % 250 + 1}"
+        for _ in range(8):
+            t.admit(who)
+    assert len(t) == hosts
+
+
+def test_a_saturated_table_still_limits_a_fresh_host():
+    """Every stored host is locked: a new address must not get unlimited
+    guesses because its own accounting is evicted at once."""
+    clock = _Clock()
+    t = _throttle(clock, max_hosts=20, overflow_budget=10,
+                  overflow_window=600.0)
+    _saturate(t, clock, 20)
+    admitted = sum(1 for _ in range(1000) if t.admit("203.0.113.9") == 0)
+    assert admitted <= 10
+    # The table stayed bounded.
+    assert len(t) <= 20
+    # The window ends by itself.
+    clock.now += 601
+    assert t.admit("203.0.113.9") == 0
+
+
+def test_a_trusted_host_still_passes_a_saturated_table():
+    clock = _Clock()
+    t = _throttle(clock, max_hosts=20, overflow_budget=2)
+    assert t.admit("198.51.100.7") == 0
+    t.refund("198.51.100.7")
+    _saturate(t, clock, 20)
+    for _ in range(2):
+        t.admit("203.0.113.9")
+    assert t.admit("203.0.113.9") > 0
+    assert t.admit("198.51.100.7") == 0
