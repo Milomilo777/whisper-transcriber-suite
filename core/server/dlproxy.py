@@ -93,7 +93,8 @@ def upstream_proxy_for(scheme: str, host: str) -> "urllib.parse.SplitResult | No
     url = proxies.get(scheme) or proxies.get("all")
     if not url:
         return None
-    if urllib.request.proxy_bypass_environment(host, proxies):
+    if urllib.request.proxy_bypass_environment(  # pyright: ignore[reportAttributeAccessIssue]
+            host, proxies):
         return None
     split = urllib.parse.urlsplit(url if "://" in url else "http://" + url)
     if split.scheme != "http" or not split.hostname:
