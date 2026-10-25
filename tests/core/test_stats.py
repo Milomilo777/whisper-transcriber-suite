@@ -233,6 +233,8 @@ def test_offered_ids_still_pass():
 
 def test_an_engine_prefix_with_no_model_is_the_engine():
     assert stats.public_model_name("nvidia_asr:") == "nvidia_asr"
+    assert stats.public_model_name("secret_project:") == stats.LOCAL_MODEL_LABEL
+    assert stats.public_model_name("secret_project: ") == stats.LOCAL_MODEL_LABEL
     assert stats.public_model_name(None) == ""
 
 

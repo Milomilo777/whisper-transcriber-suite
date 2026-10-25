@@ -6,7 +6,15 @@ import os
 import time
 from pathlib import Path
 
+import pytest
+
 from core import logging_setup as ls
+
+
+@pytest.fixture(autouse=True)
+def _no_live_workers(monkeypatch):
+    """The fake worker pids in these tests must not match real processes."""
+    monkeypatch.setattr("core.process_exit.pid_alive", lambda pid: False)
 
 
 def _touch(path: Path, age_days: float) -> Path:
@@ -147,3 +155,16 @@ def test_formatter_does_not_cache_an_unredacted_traceback_on_the_record():
     out = ls.RedactingFormatter("%(message)s").format(record)
     assert "secret" not in out
     assert record.exc_text is None
+
+
+def test_prune_never_removes_a_live_workers_log(tmp_path, monkeypatch):
+    monkeypatch.setattr(ls, "WORKER_LOG_MAX_FILES", 12)
+    logs = _fresh_logs(tmp_path, 20)
+    live = logs[-1]  # the oldest, far beyond the cap
+    live_pid = int(live.name.split("-")[1].split(".")[0])
+    monkeypatch.setattr("core.process_exit.pid_alive", lambda pid: pid == live_pid)
+
+    _run_setup_logging(tmp_path, monkeypatch)
+
+    assert live.exists()
+    assert not logs[-2].exists()
