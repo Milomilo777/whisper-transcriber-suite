@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import logging
 import os
+import subprocess
 import sys
 import threading
 
@@ -92,6 +93,59 @@ def _say_flush_timed_out() -> None:
     note.join(0.2)
 
 
+# --- restart: start the app again once this process has ended --------------------------------
+
+_relaunch: list[list[str]] = []
+
+
+def relaunch_command() -> list[str] | None:
+    """The command that starts this app again (no arguments), or None where that is not supported.
+
+    Windows only: the frozen exe, or the interpreter with the ``gui.py`` this run started from
+    (what the installer's shortcuts start). Elsewhere the caller keeps "restart the app yourself".
+    """
+    if sys.platform != "win32" or not sys.executable:
+        return None
+    if getattr(sys, "frozen", False):
+        return [sys.executable]
+    script = os.path.abspath(sys.argv[0]) if sys.argv and sys.argv[0] else ""
+    if not script.lower().endswith(".py") or not os.path.isfile(script):
+        return None
+    return [sys.executable, script]
+
+
+def request_relaunch(command: list[str] | None = None) -> bool:
+    """Ask :func:`end_process` to start the app again after it has ended. False if unsupported."""
+    command = command or relaunch_command()
+    if not command:
+        return False
+    _relaunch[:] = [list(command)]
+    return True
+
+
+def cancel_relaunch() -> None:
+    _relaunch.clear()
+
+
+def relaunch_requested() -> bool:
+    return bool(_relaunch)
+
+
+def _spawn_relaunch() -> None:
+    """Start the requested command detached; a failure is logged, the exit goes on."""
+    if not _relaunch:
+        return
+    command = _relaunch[0]
+    flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+    try:
+        subprocess.Popen(  # noqa: S603 - our own interpreter and script
+            command, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            close_fds=True, creationflags=flags, cwd=os.path.dirname(command[-1]) or None,
+        )
+    except (OSError, ValueError):
+        logger.exception("Could not start the app again")
+
+
 def end_process(code: int = 0) -> None:
     """Flush Sentry, the logs and the standard streams, then end the process with *code*.
 
@@ -112,4 +166,5 @@ def end_process(code: int = 0) -> None:
     flusher.join(FLUSH_TIMEOUT_S)
     if flusher.is_alive():
         _say_flush_timed_out()
+    _spawn_relaunch()
     _hard_exit(code)
