@@ -120,7 +120,7 @@ and the media's size and date are recorded when the run starts and kept for the 
 checkpoint is **kept aside, never deleted**, unless its settings, model or engine differ from the current ones
 (the media is verified unchanged and can be transcribed again) or its segment list is unusable. Anything else
 keeps it: the media is missing, has a different size or date, cannot be verified, or the checkpoint is from an
-unknown format. This is decided before a task on an engine without resume starts over the file. A kept-aside
+unknown format. This is decided before a task on an engine without resume starts over the file. The same check runs before every fresh whole-file run (a new job for a path whose media was replaced), so a fresh run never overwrites or deletes the saved text of other media. A kept-aside
 checkpoint is renamed to `<hash>.json.unverified-<tag>`, together with a plain-text copy of the saved
 transcript, `<hash>.unverified-<tag>.txt`, that any text editor can open (source path, time, reason, then one
 line per segment with its start time). The app never picks

@@ -907,6 +907,41 @@ def _note_run_identity(task: "TranscriptionTask") -> None:
         pass
 
 
+def _protect_existing_checkpoint(
+    task: "TranscriptionTask", log_cb: Callable[[str], None] | None
+) -> None:
+    """Keep an earlier run's checkpoint aside before a fresh whole-file run.
+
+    A fresh run overwrites the checkpoint with its first write and deletes it
+    on success (also with zero segments). A new job added for a path whose
+    media was replaced meanwhile never passes ``resume_transcription``'s
+    check, so this runs at the start of every fresh route. Only the media
+    identity is judged: a checkpoint that is unreadable or not verified to
+    belong to the media now at the path is kept aside (with its text copy);
+    one for the same unchanged media stays and is regenerated as before, also
+    when only the backend, model or settings differ. Clipped runs never touch
+    the checkpoint and are skipped. A failure to keep it aside propagates and
+    stops the task.
+    """
+    if _clip_timestamps_arg(task) is not None:
+        return
+    if not _checkpoint.has_checkpoint(task.file_path):
+        return
+    data = _checkpoint.load_checkpoint(task.file_path)
+    if data is None:
+        reason = "the saved checkpoint file is unreadable"
+    else:
+        reason = _checkpoint.media_identity_problem(data)
+        if not reason:
+            return
+    kept = _keep_checkpoint_aside(task, reason, log_cb)
+    log(
+        f"Found an earlier checkpoint that is not for this media ({reason}); "
+        f"it is kept aside ({kept}) and the run starts fresh.",
+        log_cb,
+    )
+
+
 def _write_periodic_checkpoint(
     task: "TranscriptionTask",
     segments_data: list[dict[str, Any]],
@@ -1639,6 +1674,7 @@ def transcribe_with_language_model(
         return
     release_default_model()
     backend = _language_model_backend(model_id, log_cb)
+    _protect_existing_checkpoint(task, log_cb)
     _note_run_identity(task)
     with _runtime_overrides_scope(task):
         logger.info("transcribe_backend=nvidia_asr language_model=%s file=%s", model_id, task.file_path)
@@ -2416,8 +2452,10 @@ def transcribe(
         # and slicing that would run before the first cancel check.
         log("Task cancelled", log_cb)
         return
-    # Remember which media this run starts on, so a later stat blip cannot
+    # An earlier run's checkpoint of other media is kept aside first; then
+    # remember which media this run starts on, so a later stat blip cannot
     # blank the identity stored in its checkpoints.
+    _protect_existing_checkpoint(task, log_cb)
     _note_run_identity(task)
     # Wrap the per-file work in ``_runtime_overrides_scope`` so any
     # ``.whisperproject.json`` mutation of the module-level ``config``

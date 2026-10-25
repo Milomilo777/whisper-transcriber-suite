@@ -99,6 +99,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   an unusable segment list) discards a checkpoint; a missing or changed source, an unknown format or an
   unusable size or date keeps it aside, also when the current engine cannot resume. NaN, infinite or boolean
   identity values no longer pass as a match.
+- **A new job on replaced media keeps the old saved text**: a fresh transcription of a path whose earlier
+  checkpoint belongs to other (or unverifiable) media now keeps that checkpoint aside first, instead of
+  overwriting or deleting it; a checkpoint of the same unchanged media is left as before.
 - **Kept-aside checkpoints can be read without the app**: a plain-text copy of the saved transcript is
   written next to each one (`<hash>.unverified-<tag>.txt`), also when a segment time is invalid; the startup
   sweep never deletes either file.

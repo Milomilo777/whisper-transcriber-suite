@@ -754,20 +754,13 @@ def _identity_number(value: Any) -> float | None:
     return number if math.isfinite(number) else None
 
 
-def validate_checkpoint(
-    data: dict[str, Any],
-    *,
-    backend: str,
-    model_name: str,
-    cfg_fingerprint: str | tuple[str, ...],
-) -> str:
-    """Return "" if the checkpoint is usable, else a human reason.
+def media_identity_problem(data: dict[str, Any]) -> str:
+    """"" if the checkpoint is verified to belong to the media now at its path.
 
-    ``cfg_fingerprint`` is one fingerprint or the tuple of accepted ones
-    (:func:`accepted_fingerprints`).
-
-    Caller is responsible for deleting the stale partial when the
-    return value is non-empty.
+    Only the identity part of :func:`validate_checkpoint` (schema, source path,
+    the file exists and can be stat-ed, saved size and date are usable and
+    match). Backend, model and settings are NOT looked at: they say nothing
+    about the media, and the text can be regenerated when only they differ.
     """
     if not isinstance(data, dict):
         return "checkpoint payload is not a dict"
@@ -817,6 +810,27 @@ def validate_checkpoint(
     # coarser than Python's float repr suggests.
     if abs(saved_mtime - float(st.st_mtime)) > 0.001:
         return "source file mtime has changed since checkpoint"
+    return ""
+
+
+def validate_checkpoint(
+    data: dict[str, Any],
+    *,
+    backend: str,
+    model_name: str,
+    cfg_fingerprint: str | tuple[str, ...],
+) -> str:
+    """Return "" if the checkpoint is usable, else a human reason.
+
+    ``cfg_fingerprint`` is one fingerprint or the tuple of accepted ones
+    (:func:`accepted_fingerprints`).
+
+    Caller is responsible for deleting the stale partial when the
+    return value is non-empty.
+    """
+    problem = media_identity_problem(data)
+    if problem:
+        return problem
     if str(data.get("backend") or "") != backend:
         return (
             f"backend changed: checkpoint={data.get('backend')!r} "

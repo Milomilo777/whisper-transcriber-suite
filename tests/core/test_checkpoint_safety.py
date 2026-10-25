@@ -665,3 +665,171 @@ def test_unsupported_backend_leaves_a_checkpoint_of_verified_media_in_place(
     assert t.resume_transcription(TranscriptionTask(str(source))) is False
     assert cp.checkpoint_path(str(source)).exists()
     assert _kept(source) == []
+
+
+# --- N: fresh whole-file runs protect an earlier checkpoint -----------------
+
+
+@pytest.fixture
+def fresh_env(data_dir, monkeypatch):
+    if "core.transcriber" not in sys.modules:
+        fake_fw = types.ModuleType("faster_whisper")
+        fake_fw.WhisperModel = object  # type: ignore[attr-defined]
+        sys.modules.setdefault("faster_whisper", fake_fw)
+    import core.transcriber as t
+
+    monkeypatch.setattr(t, "_current_backend_and_model", lambda: ("faster_whisper", "m"))
+    return t
+
+
+class _Stop(Exception):
+    """Raised by a stub right after the protection ran, to end a run early."""
+
+
+def _interrupted_run_a(t, source, words="UNREGENERATABLE A WORDS"):
+    from core.task import TranscriptionTask
+
+    task_a = TranscriptionTask(str(source))
+    t._note_run_identity(task_a)
+    t._write_periodic_checkpoint(
+        task_a, [{"start": 3.0, "end": 9.0, "text": words}], 9.0, "en", 0.9, None
+    )
+    return cp.checkpoint_path(str(source)).read_bytes()
+
+
+def test_fresh_run_on_replaced_media_keeps_the_old_checkpoint_aside(fresh_env, source, monkeypatch):
+    from core.task import TranscriptionTask
+
+    t = fresh_env
+    original = _interrupted_run_a(t, source)
+    _replace_media(source)
+    monkeypatch.setattr(t, "_note_run_identity", lambda task: (_ for _ in ()).throw(_Stop()))
+    with pytest.raises(_Stop):  # the public entry point got as far as the run start
+        t.transcribe(TranscriptionTask(str(source)))
+    assert not cp.checkpoint_path(str(source)).exists()
+    kept = _kept(source)
+    assert len(kept) == 1 and kept[0].read_bytes() == original
+    assert "UNREGENERATABLE A WORDS" in cp.recovery_text_path(kept[0]).read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("b_segments", [[SEGS[1]], []])
+def test_a_text_survives_the_b_run_writes_and_cleanup(fresh_env, source, b_segments):
+    from core.task import TranscriptionTask
+
+    t = fresh_env
+    _interrupted_run_a(t, source)
+    _replace_media(source)
+    task_b = TranscriptionTask(str(source))
+    t._protect_existing_checkpoint(task_b, None)
+    t._note_run_identity(task_b)
+    if b_segments:  # run B writes its own checkpoint ...
+        t._write_periodic_checkpoint(task_b, [dict(s) for s in b_segments], 80.0, "en", 0.9, None)
+    cp.delete_checkpoint(str(source))  # ... and its success path deletes it
+    kept = _kept(source)
+    assert len(kept) == 1
+    assert "UNREGENERATABLE A WORDS" in cp.recovery_text_path(kept[0]).read_text(encoding="utf-8")
+
+
+def test_fresh_run_on_unchanged_media_leaves_the_checkpoint(fresh_env, source):
+    from core.task import TranscriptionTask
+
+    t = fresh_env
+    original = _interrupted_run_a(t, source)
+    t._protect_existing_checkpoint(TranscriptionTask(str(source)), None)
+    assert cp.checkpoint_path(str(source)).read_bytes() == original
+    assert _kept(source) == []
+
+
+def test_config_only_difference_with_unchanged_media_is_not_quarantined(fresh_env, source):
+    from core.task import TranscriptionTask
+
+    t = fresh_env
+    cp.note_source_identity(str(source))
+    _write(source, backend="other-engine", model_name="other-model", cfg_fingerprint="different")
+    original = cp.checkpoint_path(str(source)).read_bytes()
+    t._protect_existing_checkpoint(TranscriptionTask(str(source)), None)
+    assert cp.checkpoint_path(str(source)).read_bytes() == original
+    assert _kept(source) == []
+
+
+def test_corrupt_checkpoint_is_kept_aside_before_a_fresh_run(fresh_env, source):
+    from core.task import TranscriptionTask
+
+    t = fresh_env
+    path = cp.checkpoint_path(str(source))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b"{" + b'"segments": [{"text": "half a file')
+    t._protect_existing_checkpoint(TranscriptionTask(str(source)), None)
+    assert not path.exists()
+    kept = _kept(source)
+    assert len(kept) == 1 and kept[0].read_bytes().startswith(b'{"segments"')
+
+
+def test_no_checkpoint_means_nothing_to_do(fresh_env, source):
+    from core.task import TranscriptionTask
+
+    fresh_env._protect_existing_checkpoint(TranscriptionTask(str(source)), None)
+    assert _kept(source) == []
+
+
+def test_clipped_run_does_not_touch_the_checkpoint(fresh_env, source):
+    from core.task import TranscriptionTask
+
+    t = fresh_env
+    original = _interrupted_run_a(t, source)
+    _replace_media(source)
+    task = TranscriptionTask(str(source))
+    task.clip_start = 5.0
+    t._protect_existing_checkpoint(task, None)
+    assert cp.checkpoint_path(str(source)).read_bytes() == original
+
+
+def test_failed_keep_aside_stops_the_fresh_run(fresh_env, source, monkeypatch):
+    from core.task import TranscriptionTask
+
+    t = fresh_env
+    original = _interrupted_run_a(t, source)
+    _replace_media(source)
+    started = []
+    monkeypatch.setattr(
+        t, "_note_run_identity", lambda task: (started.append(1), (_ for _ in ()).throw(_Stop()))
+    )
+    with monkeypatch.context() as m:
+        m.setattr(cp.os, "rename", _no_rename)
+        with pytest.raises(cp.CheckpointInUseError):
+            t.transcribe(TranscriptionTask(str(source)))
+    assert not started
+    assert cp.checkpoint_path(str(source)).read_bytes() == original
+
+
+def test_language_model_route_protects_the_checkpoint_too(fresh_env, source, monkeypatch):
+    import core.language_models as lm
+    from core.task import TranscriptionTask
+
+    t = fresh_env
+    original = _interrupted_run_a(t, source)
+    _replace_media(source)
+    monkeypatch.setattr(lm, "by_model", lambda _id: types.SimpleNamespace(engine="other"))
+    monkeypatch.setattr(t, "release_default_model", lambda: None)
+    monkeypatch.setattr(t, "_language_model_backend", lambda *a, **k: object())
+    seen = []
+    monkeypatch.setattr(t, "_transcribe_via_alt_backend", lambda *a, **k: seen.append(
+        cp.checkpoint_path(str(source)).exists()))
+    t.transcribe_with_language_model("some-model", TranscriptionTask(str(source)))
+    assert seen == [False]  # the old checkpoint was already aside when the backend ran
+    kept = _kept(source)
+    assert len(kept) == 1 and kept[0].read_bytes() == original
+
+
+def test_resume_that_declined_a_verified_checkpoint_leaves_it_for_the_fresh_run(
+        fresh_env, source, monkeypatch):
+    from core.task import TranscriptionTask
+
+    t = fresh_env
+    monkeypatch.setattr(t, "_current_backend_and_model", lambda: ("cloud_stt", "m"))
+    original = _interrupted_run_a(t, source)
+    task = TranscriptionTask(str(source))
+    assert t.resume_transcription(task) is False
+    t._protect_existing_checkpoint(task, None)  # what transcribe() does next
+    assert cp.checkpoint_path(str(source)).read_bytes() == original
+    assert _kept(source) == []
