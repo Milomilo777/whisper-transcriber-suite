@@ -29,6 +29,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- **A language button above the tabs**: a globe, the own name of the language the app runs in and a
+  down arrow, in the top-right corner in every language. It opens a chooser with "Automatic (system:
+  <language>)", English right below it, then the other languages by their own names, with a check mark
+  on the current one. View > Interface language... opens the same chooser. After a change the app asks
+  "Restart now" or "Later" (on Windows; while a transcription or download is active only "Later" is
+  offered). Advanced settings keeps its picker and shares the same setting.
 - **One-click Groq preset for the AI provider**: "Use Groq" in Advanced > AI fills the Base URL and the model
   `llama-3.3-70b-versatile`. Groq has a free key at console.groq.com, and the model stays editable.
 - **Help > Copy MCP setup**: copies the `claude mcp add` command that registers this app's MCP endpoint
