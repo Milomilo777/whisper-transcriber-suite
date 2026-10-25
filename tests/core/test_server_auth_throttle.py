@@ -1,7 +1,8 @@
-"""Wrong access passwords are slowed down per client address (roadmap S1a).
+"""Wrong access passwords are slowed down per host (roadmap S1a).
 
 Unit tests drive :class:`AuthThrottle` with a fake clock; the HTTP tests use
-a loopback server with ephemeral ports and a throttle that has a fake clock.
+a loopback server with ephemeral ports and a throttle that has a fake clock,
+plus one test that guesses from many threads at once.
 """
 from __future__ import annotations
 
@@ -11,7 +12,7 @@ import threading
 
 import pytest
 
-from core.server.auth_throttle import AuthThrottle, client_key
+from core.server.auth_throttle import AuthThrottle, host_key, subnet_key
 from tests.core.test_server_security import _RunningServer, _request
 
 
@@ -25,100 +26,163 @@ class _Clock:
 
 def _throttle(clock: _Clock, **kw) -> AuthThrottle:
     kw.setdefault("free_attempts", 3)
+    kw.setdefault("subnet_free_attempts", 10)
     kw.setdefault("base_delay", 10.0)
     kw.setdefault("max_delay", 80.0)
     kw.setdefault("forget_after", 300.0)
     return AuthThrottle(clock=clock, **kw)
 
 
+def _lock_after(t: AuthThrottle, clock: _Clock, who: str, n: int) -> list[int]:
+    """Make n admitted (wrong) attempts, waiting out each lock; return waits."""
+    waits = []
+    for _ in range(n):
+        wait = t.admit(who)
+        while wait:
+            clock.now += wait
+            wait = t.admit(who)
+        waits.append(int(t.peek(who)))
+    return waits
+
+
 def test_free_attempts_then_growing_lockout():
     clock = _Clock()
     t = _throttle(clock)
     for _ in range(3):
-        assert t.failure("10.0.0.5") == 0
-        assert t.retry_after("10.0.0.5") == 0
-    assert t.failure("10.0.0.5") == 10
-    assert t.retry_after("10.0.0.5") == 11
+        assert t.admit("10.0.0.5") == 0
+        assert t.peek("10.0.0.5") == 0
+    assert t.admit("10.0.0.5") == 0  # the 4th is admitted and locks
+    assert t.peek("10.0.0.5") == 11
+    assert t.admit("10.0.0.5") == 11  # refused while locked, books nothing
     clock.now += 11
-    assert t.retry_after("10.0.0.5") == 0
-    assert t.failure("10.0.0.5") == 20  # doubles
+    assert t.admit("10.0.0.5") == 0
+    assert t.peek("10.0.0.5") == 21  # doubles
     clock.now += 21
-    assert t.failure("10.0.0.5") == 40
+    assert t.admit("10.0.0.5") == 0
+    assert t.peek("10.0.0.5") == 41
     clock.now += 41
-    assert t.failure("10.0.0.5") == 80
+    assert t.admit("10.0.0.5") == 0
+    assert t.peek("10.0.0.5") == 81
     clock.now += 81
-    assert t.failure("10.0.0.5") == 80  # capped, never longer
+    assert t.admit("10.0.0.5") == 0
+    assert t.peek("10.0.0.5") == 81  # capped, never longer
 
 
-def test_lockout_always_ends_and_other_clients_are_untouched():
-    clock = _Clock()
-    t = _throttle(clock)
-    for _ in range(10):
-        t.failure("10.0.0.5")
-    assert t.retry_after("10.0.0.5") > 0
-    assert t.retry_after("10.0.0.6") == 0
-    clock.now += 81
-    assert t.retry_after("10.0.0.5") == 0  # right password may be tried again
-
-
-def test_success_clears_the_count():
-    clock = _Clock()
-    t = _throttle(clock)
-    for _ in range(3):
-        t.failure("10.0.0.5")
-    t.success("10.0.0.5")
-    assert len(t) == 0
-    assert t.failure("10.0.0.5") == 0  # free attempts again
-
-
-def test_idle_client_is_forgotten():
+def test_refused_attempts_do_not_renew_the_lockout():
     clock = _Clock()
     t = _throttle(clock)
     for _ in range(4):
-        t.failure("10.0.0.5")
+        t.admit("10.0.0.5")
+    first = t.peek("10.0.0.5")
+    for _ in range(100):  # an attacker hammering a locked host
+        assert t.admit("10.0.0.5") > 0
+    assert t.peek("10.0.0.5") <= first
+
+
+def test_lockout_ends_and_other_hosts_are_untouched():
+    clock = _Clock()
+    t = _throttle(clock)
+    for _ in range(10):
+        t.admit("10.0.0.5")
+    assert t.peek("10.0.0.5") > 0
+    assert t.admit("10.0.0.6") == 0
+    assert t.peek("10.0.0.6") == 0
+    clock.now += 81
+    assert t.peek("10.0.0.5") == 0
+
+
+def test_refund_clears_the_count():
+    clock = _Clock()
+    t = _throttle(clock)
+    for _ in range(3):
+        t.admit("10.0.0.5")
+    t.admit("10.0.0.5")  # the right password, but it crossed the limit
+    t.refund("10.0.0.5")
+    assert t.peek("10.0.0.5") == 0
+    assert len(t) == 0
+    assert t.admit("10.0.0.5") == 0  # free attempts again
+
+
+def test_idle_host_is_forgotten():
+    clock = _Clock()
+    t = _throttle(clock)
+    for _ in range(4):
+        t.admit("10.0.0.5")
     clock.now += 301
-    assert t.retry_after("10.0.0.5") == 0
-    assert t.failure("10.0.0.5") == 0  # the old count is gone
+    assert t.peek("10.0.0.5") == 0
+    assert t.admit("10.0.0.5") == 0
+    assert t.peek("10.0.0.5") == 0  # the old count is gone
 
 
 def test_memory_is_bounded():
     clock = _Clock()
-    t = _throttle(clock, max_clients=50)
+    t = _throttle(clock, max_hosts=50, max_subnets=20)
     for n in range(500):
-        t.failure(f"10.1.{n // 250}.{n % 250}")
+        t.admit(f"10.1.{n // 250}.{n % 250}")
     assert len(t) == 50
+    for n in range(500):
+        t.admit(f"2001:db8:{n}::1")
+    assert len(t) == 50
+    assert len(t._subnets) == 20
 
 
-def test_ipv6_clients_share_their_64_network():
-    assert client_key("2001:db8:1:2:aaaa::1") == client_key("2001:db8:1:2:bbbb::9")
-    assert client_key("2001:db8:1:3::1") != client_key("2001:db8:1:2::1")
-    assert client_key("::ffff:10.0.0.5") == "10.0.0.5"
-    assert client_key("fe80::1%eth0") == client_key("fe80::2")
-    assert client_key("not an address") == "not an address"
+def test_keys():
+    assert host_key("2001:db8:1:2:aaaa::1") != host_key("2001:db8:1:2:bbbb::9")
+    assert subnet_key("2001:db8:1:2:aaaa::1") == subnet_key("2001:db8:1:2:bbbb::9")
+    assert subnet_key("2001:db8:1:3::1") != subnet_key("2001:db8:1:2::1")
+    assert host_key("::ffff:10.0.0.5") == "10.0.0.5"
+    assert subnet_key("10.0.0.5") is None
+    assert host_key("fe80::1%eth0") == host_key("fe80::1")
+    assert host_key("not an address") == "not an address"
 
 
-def test_thread_safe_counting():
-    t = AuthThrottle(free_attempts=10_000, max_clients=10)
+def test_one_ipv6_neighbour_cannot_lock_out_the_others():
+    """The attacker guesses from many addresses of one /64; a neighbour in the
+    same /64 that did nothing wrong is never locked, and its right password is
+    still admitted."""
+    clock = _Clock()
+    t = _throttle(clock)
+    for n in range(200):
+        t.admit(f"2001:db8:1:2::{n + 100:x}")
+    neighbour = "2001:db8:1:2::1"
+    assert t.peek(neighbour) == 0
+    assert t.admit(neighbour) == 0  # admitted: its password is compared
+    t.refund(neighbour)
+    assert t.peek(neighbour) == 0
 
-    def hammer() -> None:
-        for _ in range(500):
-            t.failure("10.0.0.5")
 
-    threads = [threading.Thread(target=hammer) for _ in range(8)]
+def test_subnet_pressure_removes_free_attempts_only_for_that_subnet():
+    clock = _Clock()
+    t = _throttle(clock)
+    for n in range(12):  # over the /64 budget (10)
+        t.admit(f"2001:db8:1:2::{n + 100:x}")
+    fresh = "2001:db8:1:2::1"
+    assert t.admit(fresh) == 0
+    assert t.peek(fresh) > 0  # first wrong password already locks this host
+    other = "2001:db8:1:9::1"
+    assert t.admit(other) == 0
+    assert t.peek(other) == 0  # another /64 keeps its free attempts
+    clock.now += 400  # quiet for a while: the pressure is gone
+    assert t.admit(fresh) == 0
+    assert t.peek(fresh) == 0
+
+
+def test_concurrent_guesses_are_admitted_at_most_limit_plus_one():
+    t = AuthThrottle(free_attempts=5, base_delay=600.0)
+    admitted = []
+    barrier = threading.Barrier(40)
+
+    def guess() -> None:
+        barrier.wait()
+        if t.admit("10.0.0.5") == 0:
+            admitted.append(1)
+
+    threads = [threading.Thread(target=guess) for _ in range(40)]
     for th in threads:
         th.start()
     for th in threads:
         th.join()
-    # 4000 wrong passwords, all counted: the 4001st is still inside the
-    # free allowance, so a lost update would be invisible; check via limit.
-    t2 = AuthThrottle(free_attempts=3999, base_delay=5.0, max_clients=10)
-    threads = [threading.Thread(target=lambda: [t2.failure("a") for _ in range(500)])
-               for _ in range(8)]
-    for th in threads:
-        th.start()
-    for th in threads:
-        th.join()
-    assert t2.retry_after("a") > 0  # 4000 > 3999 only if no update was lost
+    assert len(admitted) == 6  # 5 free + the one that crosses the limit
 
 
 # --- over HTTP -----------------------------------------------------------------
@@ -141,12 +205,12 @@ def test_wrong_passwords_lock_out_then_the_lockout_ends(tmp_path):
         assert _get(srv, "/api/health", "bad1")[0] == 401
         assert _get(srv, "/api/health", "bad2")[0] == 401
         status, retry, body = _get(srv, "/api/health", "bad3")
-        assert status == 401  # the 3rd wrong one is allowed through, then locks
+        assert status == 401  # the 3rd wrong one is compared, then locks
         status, retry, body = _get(srv, "/api/health", "bad4")
         assert status == 429
         assert int(retry) >= 1
         assert "too many wrong passwords" in json.loads(body)["error"]
-        # The right password is refused while locked, but only for a while.
+        # The right password is refused while THIS host is locked.
         assert _get(srv, "/api/health", "s3cret")[0] == 429
         clock.now += 1000
         assert _get(srv, "/api/health", "s3cret")[0] == 200
@@ -182,3 +246,38 @@ def test_openai_route_reports_429_with_retry_after(tmp_path, route):
         assert _get(srv, route, "bad")[0] == 401
         status, retry, _body = _get(srv, route, "bad")
         assert status == 429 and int(retry) >= 1
+
+
+def test_many_concurrent_http_guesses_compare_at_most_limit_plus_one(tmp_path):
+    clock = _Clock()
+    compared = []
+    from core.server import httpd
+
+    real = httpd.token_ok
+
+    def counting(expected, header, query):
+        compared.append(1)
+        return real(expected, header, query)
+
+    with _RunningServer(tmp_path, token="s3cret") as srv:
+        srv.server.auth_throttle = _throttle(clock, free_attempts=5,
+                                             base_delay=600.0)
+        httpd.token_ok = counting
+        try:
+            statuses: list[int] = []
+            barrier = threading.Barrier(30)
+
+            def guess(n: int) -> None:
+                barrier.wait()
+                statuses.append(_get(srv, "/api/health", f"guess{n}")[0])
+
+            threads = [threading.Thread(target=guess, args=(n,))
+                       for n in range(30)]
+            for th in threads:
+                th.start()
+            for th in threads:
+                th.join()
+        finally:
+            httpd.token_ok = real
+    assert len(compared) <= 6
+    assert statuses.count(401) <= 6 and statuses.count(429) >= 24

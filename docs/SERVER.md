@@ -464,18 +464,27 @@ it in one of three ways:
 Prefer a header for scripts. The comparison is constant-time, and the server
 log shows a query-string token as `token=[redacted]`.
 
-**Wrong passwords are slowed down.** The server counts wrong passwords per
-client address (an IPv6 client counts by its /64 network). The first 5 are
-free; after that the client is refused with HTTP 429 and a `Retry-After`
-header for 15 seconds, doubling with every further wrong password up to 15
-minutes. While locked out, even the right password is refused, but the lockout
-always ends by itself, and a client that stops trying is forgotten after 30
-minutes. A correct password clears the count. A request with no password at all
-gets 401 and is not counted. At most 2048 addresses are remembered (the least
-recently seen is dropped first), and the counts live in memory only, so a
-restart clears them. Behind a reverse proxy every client has the proxy's
-address, so one person's typos can lock out the others for a short time. This
-slows guessing down; it is not a replacement for a long password.
+**Wrong passwords are slowed down.** The server counts password attempts
+per host (one IPv4 address, or one IPv6 address). The first 5 wrong ones are
+free; after that the host is refused with HTTP 429 and a `Retry-After` header
+for 15 seconds, doubling with every further attempt up to 15 minutes.
+Refused requests never extend the lockout. The check and the count happen in
+one step before the password is compared, so many parallel guesses get at most
+6 comparisons between them. While a host is locked out, even the right
+password from that host is refused, but the lockout always ends by itself,
+and a host that stops trying is forgotten after 30 minutes. A correct password
+from a host that is not itself locked always works, whatever other hosts did:
+one host's wrong passwords never lock another out. Because an IPv6 attacker
+owns a whole /64, a second, higher budget (50 wrong passwords) is kept per
+/64; above it, hosts of that /64 get no free attempts (their first wrong
+password locks them) until it has been quiet for 30 minutes. A request with no
+password at all gets 401 and is not counted. At most 2048 hosts and 1024 /64
+networks are remembered (the least recently seen is dropped first), and the
+counts live in memory only, so a restart clears them. Behind a reverse proxy
+every client has the proxy's address, so one person's typos can lock out the
+others for a short time. This slows guessing down; it is not a replacement
+for a long password, and an attacker who can use very many IPv6 networks is
+limited only by the password itself.
 
 The page at `/` loads without a token; its API calls need one. Type it into
 the page's **Auth token** box, or open a link with it added, for example

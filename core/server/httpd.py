@@ -1560,21 +1560,27 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         if not srv.token:
             return True
         who = self.client_address[0] if self.client_address else ""
-        wait = srv.auth_throttle.retry_after(who)
+        header = self.headers.get("X-Auth-Token") or self._bearer_token()
+        query = route.query.get("token")
+        throttle = srv.auth_throttle
+        if not (header or query):
+            # No password at all is not a guess: refuse, book nothing.
+            self._auth_wait = throttle.peek(who)
+            return False
+        # Check the lockout AND book the attempt in one atomic step, before
+        # comparing, so concurrent guesses cannot all slip past the limit.
+        wait = throttle.admit(who)
         if wait:
             self._auth_wait = wait
             return False
-        header = self.headers.get("X-Auth-Token") or self._bearer_token()
-        query = route.query.get("token")
         if token_ok(srv.token, header, query):
-            srv.auth_throttle.success(who)
+            throttle.refund(who)
             return True
-        if header or query:
-            locked = srv.auth_throttle.failure(who)
-            if locked:
-                logger.warning(
-                    "server: %s sent too many wrong access passwords; "
-                    "refused for %d s", who, locked)
+        locked = throttle.peek(who)
+        if locked:
+            logger.warning(
+                "server: %s sent too many wrong access passwords; "
+                "refused for %d s", who, locked)
         return False
 
     def _send_json(self, status: int, payload: dict[str, Any], retry_after: int | None = None) -> None:
