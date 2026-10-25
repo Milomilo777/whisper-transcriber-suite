@@ -15,6 +15,7 @@ from __future__ import annotations
 import copy
 import json
 import os
+import sys
 
 import pytest
 
@@ -55,15 +56,24 @@ def _validate(src, data):
         data, backend="b", model_name="m", cfg_fingerprint="c")
 
 
+def _source_stat_blip(monkeypatch, source):
+    """Make os.stat fail for the source only (other paths keep working)."""
+    real_stat = os.stat
+    target = os.path.abspath(str(source))
+
+    def _blip(path, *a, **kw):
+        if os.path.abspath(os.fspath(path)) == target:
+            raise OSError(116, "share hiccup")
+        return real_stat(path, *a, **kw)
+
+    monkeypatch.setattr(cp.os, "stat", _blip)
+    return real_stat
+
+
 def test_transient_stat_failure_keeps_the_checkpoint_resumable(
         data_dir, source, monkeypatch):
     _write(source)
-    real_stat = os.stat
-
-    def _blip(path, *a, **kw):
-        raise OSError(116, "share hiccup")
-
-    monkeypatch.setattr(cp.os, "stat", _blip)
+    real_stat = _source_stat_blip(monkeypatch, source)
     # A momentary source-stat failure during a periodic write: the write
     # must still succeed (the segments are paid for) without poisoning it.
     _write(source)
@@ -76,19 +86,25 @@ def test_transient_stat_failure_keeps_the_checkpoint_resumable(
     assert _validate(source, data) == ""
 
 
-def test_stat_failure_stores_no_verification_fields(data_dir, source, monkeypatch):
-    def _blip(path, *a, **kw):
-        raise OSError(116, "share hiccup")
-
-    monkeypatch.setattr(cp.os, "stat", _blip)
+def test_stat_failure_without_known_identity_stores_no_verification_fields(
+        data_dir, source, monkeypatch):
+    # No earlier write and no identity noted at run start: nothing to keep.
+    real_stat = _source_stat_blip(monkeypatch, source)
+    cp._RUN_IDENTITY.clear()
     _write(source)
+    monkeypatch.setattr(cp.os, "stat", real_stat)
     data = load_checkpoint(str(source))
     assert data["source_size"] is None
     assert data["source_mtime"] is None
+    # ... and such a checkpoint is refused as unverifiable, never resumed.
+    assert _validate(source, data).startswith(cp.UNVERIFIABLE_PREFIX)
 
 
 def test_source_path_with_a_lone_surrogate_round_trips(data_dir, tmp_path):
-    src = tmp_path / "bad\ud800name.wav"
+    # A lone UTF-16 unit exists as a file name only on Windows; on POSIX the
+    # same class is an undecodable name byte (surrogateescape).
+    name = "bad\ud800name.wav" if sys.platform == "win32" else os.fsdecode(b"bad\xffname.wav")
+    src = tmp_path / name
     src.write_bytes(b"0123456789")
     # Every periodic write of the whole run used to raise
     # UnicodeEncodeError here; the transcriber then disabled checkpoints.

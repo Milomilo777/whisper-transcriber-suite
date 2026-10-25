@@ -140,6 +140,32 @@ WAIT_FOR_PID_TIMEOUT_S = 20.0
 _STILL_ACTIVE = 259
 
 
+def _is_zombie(pid: int) -> bool:
+    """POSIX: True for an exited process that nobody has reaped yet (it still
+    answers ``kill(pid, 0)`` but is gone for every practical purpose)."""
+    try:
+        with open(f"/proc/{pid}/stat", "rb") as f:
+            raw = f.read()
+        # "pid (comm) S ...": comm may hold spaces and parentheses, so cut at the last ")".
+        return raw[raw.rindex(b")") + 1:].split()[0] == b"Z"
+    except (OSError, ValueError, IndexError):
+        pass
+    try:
+        # No /proc (macOS): peek at an exited CHILD without reaping it.
+        waitid = getattr(os, "waitid", None)
+        flags = 0
+        for n in ("WEXITED", "WNOHANG", "WNOWAIT"):
+            flag = getattr(os, n, None)
+            if flag is None:
+                return False
+            flags |= int(flag)
+        if waitid is None:
+            return False
+        return waitid(getattr(os, "P_PID"), pid, flags) is not None
+    except (OSError, ChildProcessError):
+        return False
+
+
 def pid_alive(pid: int) -> bool:
     """True while process ``pid`` runs. Never raises; an unreadable PID counts as gone."""
     if pid <= 0:
@@ -160,7 +186,7 @@ def pid_alive(pid: int) -> bool:
             finally:
                 kernel32.CloseHandle(ctypes.c_void_p(handle))
         os.kill(pid, 0)
-        return True
+        return not _is_zombie(pid)
     except ProcessLookupError:
         return False
     except PermissionError:
