@@ -104,6 +104,14 @@ class HubSetupDialog(tk.Toplevel):
 
         # Centre on parent + grab focus once the layout is laid out.
         self.update_idletasks()
+        # Tk keeps a single grab per display: our grab_set() below silently
+        # replaces the master's (the Advanced dialog launches this picker
+        # while holding it), and destroying this window does not hand it
+        # back. Remember who had it so _close can restore it.
+        try:
+            self._master_had_grab = master.grab_current() is master
+        except tk.TclError:
+            self._master_had_grab = False
         try:
             self.grab_set()
         except tk.TclError:
@@ -280,6 +288,14 @@ class HubSetupDialog(tk.Toplevel):
             self.grab_release()
         except tk.TclError:
             pass
+        # Hand the modal grab back to the launching dialog (see __init__),
+        # but only when nothing newer holds it — never steal a grab.
+        if self._master_had_grab:
+            try:
+                if self.master.winfo_exists() and self.master.grab_current() is None:
+                    self.master.grab_set()
+            except tk.TclError:
+                pass
         if self._on_done is not None:
             try:
                 self._on_done(path)

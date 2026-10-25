@@ -45,6 +45,7 @@ from app.domain.cookies import (
 )
 from app import i18n, rtl_layout
 from app.dpi import fit_size, place_over, px, scaled, work_area
+from app.widgets.grab import take_grab_over
 from app.i18n import N_, _, ngettext, pgettext, translate
 from app.theme import bidi_display, script_fonts, tokens
 from app.widgets import tray
@@ -2227,10 +2228,10 @@ class AdvancedDialog(tk.Toplevel):
         )
         place_over(top, self)
         top.update_idletasks()
-        try:
-            top.grab_set()
-        except tk.TclError:
-            pass
+        # The popup takes the grab (a child of a grabbing window gets no
+        # clicks on macOS) and hands it back on close — without the
+        # hand-over, closing it left this dialog non-modal for good.
+        take_grab_over(self, top)
 
     def _model_downloaded(self, slug: str) -> bool:
         """True when the model's weights are already on disk under the
@@ -2985,10 +2986,9 @@ class AdvancedDialog(tk.Toplevel):
         )
         place_over(top, self)
         top.update_idletasks()
-        try:
-            top.grab_set()
-        except tk.TclError:
-            pass
+        # Grab hand-over as in _show_model_info: closing this help window
+        # must leave Advanced modal again.
+        take_grab_over(self, top)
 
     def _test_gcloud_connection(self) -> None:
         """Validate the service account on a DAEMON thread (never blocks UI).

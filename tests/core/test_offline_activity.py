@@ -293,8 +293,17 @@ def test_a_failing_look_shows_unknown_and_keeps_polling():
         def boom() -> offline.ConnectionCheck:
             raise RuntimeError("boom")
 
-        bar = status.OfflineStatusBar(root, post_to_main=lambda fn: fn(), poll=boom)
+        # The poll runs on a thread and lands via post_to_main: queue the
+        # landing and run it here on the "Tk thread", as the app's bridge does.
+        posted: list = []
+        bar = status.OfflineStatusBar(root, post_to_main=posted.append, poll=boom)
+        bar.pack()
         bar.tick()
+        deadline = time.time() + 10
+        while not posted and time.time() < deadline:
+            time.sleep(0.02)
+        for fn in posted:
+            fn()
         assert bar.check is not None and not bar.check.ok
         assert "unknown" in bar.text_var.get() and bar._after_id is not None
         bar.hide()

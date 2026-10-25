@@ -413,6 +413,7 @@ def plan_chunks(
     chunk_seconds: float,
     *,
     chunk_when_unknown: bool = False,
+    max_unknown_chunks: int = MAX_UNKNOWN_DURATION_CHUNKS,
 ) -> list[tuple[float, float]]:
     """Split ``[0, duration]`` into (start, end) windows of ``chunk_seconds``.
 
@@ -435,9 +436,14 @@ def plan_chunks(
     if duration <= 0:
         if not chunk_when_unknown:
             return [(0.0, 0.0)]  # 0.0 end = "to end of file" for the slicer
+        # The cap is a WINDOW COUNT, so it only means "16 h" for this
+        # module's own 480 s chunks. A caller with shorter windows (local
+        # nvidia_asr uses 30 s) must pass a count sized for them via
+        # *max_unknown_chunks*, or its coverage silently shrinks with the
+        # window length (120 * 30 s = one hour).
         unknown_chunks: list[tuple[float, float]] = []
         start = 0.0
-        for _ in range(MAX_UNKNOWN_DURATION_CHUNKS):
+        for _ in range(max(1, int(max_unknown_chunks))):
             unknown_chunks.append((start, start + chunk_seconds))
             start += chunk_seconds
         return unknown_chunks

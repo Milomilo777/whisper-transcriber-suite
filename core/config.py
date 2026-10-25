@@ -1113,8 +1113,13 @@ def fetch_online_config(
                 raise ValueError(
                     f"online config body exceeds {MAX_CONFIG_BYTES} bytes"
                 )
+            # utf-8-sig: the online body is a file a maintainer edits on
+            # Windows (Notepad saves UTF-8 with a BOM by default); the
+            # local-file parsers all tolerate one, and a BOM here made
+            # every fetch "fail" (json.loads raises on \ufeff) — the
+            # whole online layer silently inert, cache never written.
             data = json.loads(
-                raw.decode("utf-8"), parse_constant=_reject_nonfinite
+                raw.decode("utf-8-sig"), parse_constant=_reject_nonfinite
             )
             if isinstance(data, dict):
                 try:

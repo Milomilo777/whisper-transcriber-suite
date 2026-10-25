@@ -142,6 +142,19 @@ def _timing(line: str) -> re.Match[str] | None:
     return _CUE.match(line.lstrip().lstrip(_LEADING_INVISIBLE))
 
 
+def _is_ascii_digits(line: str) -> bool:
+    """True when *line* is nothing but ASCII digits (an SRT cue number).
+
+    ``str.isdigit()`` also accepts non-ASCII digit characters — Persian
+    ``U+06F1 U+06F2 U+06F3`` (Persian digits), superscript ``²`` — so using it here ate a cue whose last text
+    line is a countdown or a year in those scripts (compact SRT, no blank
+    separator): the line was popped as "the next cue's index" and the cue
+    lost its text. SRT sequence numbers are ASCII; text lines are not.
+    """
+    stripped = line.strip()
+    return bool(stripped) and stripped.isascii() and stripped.isdigit()
+
+
 def _clock_to_seconds(
     h: str | None, m: str, s: str, frac: str | None
 ) -> float:
@@ -280,7 +293,7 @@ def _parse_cue_format(text: str, path: str, *, vtt: bool = False) -> list[dict]:
                 i += 1  # YouTube's " " before the text
                 continue
             if _timing(lines[i]):
-                if body_lines and body_lines[-1].strip().isdigit():
+                if body_lines and _is_ascii_digits(body_lines[-1]):
                     body_lines.pop()
                 break
             body_lines.append(lines[i])
@@ -951,5 +964,11 @@ def _replace_atomically(target: str, payload: bytes) -> None:
             _checkpoint._flush_to_disk(fb)
         os.replace(tmp, target)
     finally:
-        if os.path.exists(tmp):
-            os.unlink(tmp)
+        # Best-effort cleanup only: if the replace already failed, a failing
+        # unlink (AV / indexer holding the .part) must not replace the error
+        # the caller actually needs to see.
+        try:
+            if os.path.exists(tmp):
+                os.unlink(tmp)
+        except OSError:
+            pass

@@ -157,3 +157,17 @@ class TestSpeedMeter:
         sm.update(50.0)
         assert sm.speed_x is not None
         assert sm.eta_s is None
+
+
+def test_reset_speed_also_resets_live_audio_s():
+    """live_audio_s is a live sibling of live_speed_x/live_eta_s and must
+    not survive a re-run's reset: a stale value from the previous run
+    would flash in the speed display until the first progress event."""
+    task = type("T", (), {})()
+    task.live_speed_x = 2.0
+    task.live_eta_s = 30.0
+    task.live_audio_s = 120.0
+    reset_speed(task)
+    assert task.live_speed_x is None
+    assert task.live_eta_s is None
+    assert task.live_audio_s is None

@@ -449,3 +449,25 @@ def test_decode_window_timeout_is_a_clear_error(monkeypatch):
     _fake_ffmpeg(monkeypatch, run)
     with pytest.raises(RuntimeError, match="timed out"):
         na._decode_window("clip.wav", 0.0, 30.0)
+
+
+# ------------------------------------------------- unknown-duration planning
+
+def test_unknown_duration_plan_covers_long_files():
+    # Regression: cloud_stt.plan_chunks' unknown-duration cap is a fixed
+    # 120-WINDOW count sized for cloud's 480 s chunks (16 h there). At this
+    # backend's default 30 s windows those 120 windows covered only ONE
+    # hour, so a longer file whose duration ffprobe could not read was
+    # silently truncated at 60 minutes with progress at 100%.
+    plan = na.unknown_duration_plan(na.DEFAULT_CHUNK_SECONDS)
+    assert plan, "unknown-duration plan must not be empty"
+    assert plan[0] == (0.0, na.DEFAULT_CHUNK_SECONDS)
+    assert plan[-1][1] >= 16 * 3600
+
+
+def test_unknown_duration_plan_follows_configured_chunk_seconds():
+    # ``nvidia_asr_chunk_seconds`` is user-configurable; the coverage cap
+    # is by TIME, so a smaller window still plans the same total span.
+    plan = na.unknown_duration_plan(10.0)
+    assert plan[0] == (0.0, 10.0)
+    assert plan[-1][1] >= 16 * 3600

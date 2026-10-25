@@ -347,7 +347,8 @@ def _opt_float(value: object) -> float | None:
 def reset_speed(task: object) -> None:
     """Forget a previous run's numbers (a re-run starts a fresh meter)."""
     for name, value in (
-        ("live_speed_x", None), ("live_eta_s", None), ("speed_x", 0.0),
+        ("live_speed_x", None), ("live_eta_s", None), ("live_audio_s", None),
+        ("speed_x", 0.0),
         ("speed_audio_s", 0.0), ("speed_seconds", 0.0),
         ("speed_resumed", False), ("speed_model", ""), ("speed_device", ""),
         ("speed_live", True),

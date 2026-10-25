@@ -345,3 +345,36 @@ def test_dedupe_rolling_captions_does_not_turn_null_text_into_the_word_none():
         {"start": 1.0, "end": 2.0, "text": "kept"},
     ])
     assert [s["text"] for s in cleaned] == ["kept"]
+
+
+def test_compact_srt_keeps_a_unicode_digit_final_text_line():
+    """In a cue-number-less SRT the line before a timing line is assumed to
+    be the next cue's SRT index — but only ASCII digits are ever an index.
+    A Persian-digit (or ``²``) text line must stay part of the cue."""
+    text = (
+        "1\n"
+        "00:00:01,000 --> 00:00:02,000\n"
+        "\u06f2\u06f4\n"
+        "00:00:03,000 --> 00:00:04,000\n"
+        "Next cue\n"
+    )
+    segments = convert._parse_cue_format(text, "compact.srt")
+    assert segments[0]["text"] == "\u06f2\u06f4"
+
+
+def test_replace_atomically_reports_the_replace_error_not_the_cleanup_one(monkeypatch, tmp_path):
+    """When the replace fails (target locked) and the temp file cannot be
+    removed either, the caller must see the REPLACE error; the unlink error
+    used to replace it inside the finally block."""
+    target = tmp_path / "out.srt"
+
+    def _locked(src, dst):
+        raise OSError(13, "target locked by a viewer")
+
+    def _unlink_boom(path):
+        raise OSError(5, "access denied by the indexer")
+
+    monkeypatch.setattr(convert.os, "replace", _locked)
+    monkeypatch.setattr(convert.os, "unlink", _unlink_boom)
+    with pytest.raises(OSError, match="target locked"):
+        convert._replace_atomically(str(target), b"x")

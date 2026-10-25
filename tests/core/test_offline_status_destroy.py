@@ -1,6 +1,7 @@
 """The Work-offline status bar leaves no pending timer when its window is destroyed."""
 from __future__ import annotations
 
+import time
 import tkinter as tk
 from tkinter import ttk
 
@@ -38,10 +39,18 @@ def _ok() -> offline.ConnectionCheck:
 def test_destroying_the_bar_cancels_its_tick(root: tk.Tk) -> None:
     holder = ttk.Frame(root)
     holder.pack()
-    bar = status.OfflineStatusBar(holder, post_to_main=lambda fn: fn(), poll=_ok)
+    posted: list = []
+    bar = status.OfflineStatusBar(holder, post_to_main=posted.append, poll=_ok)
     sibling = ttk.Frame(holder)
     sibling.pack()
     bar.show(before=sibling)
+    # The poll runs on a thread and lands via post_to_main; run the landing
+    # here (the "Tk thread"), which arms the next tick.
+    deadline = time.time() + 10
+    while not posted and time.time() < deadline:
+        time.sleep(0.02)
+    for fn in posted:
+        fn()
     assert any("tick" in s for s in _pending(root)), "control: a tick is pending"
     holder.destroy()
     assert not any("tick" in s for s in _pending(root))

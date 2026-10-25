@@ -60,8 +60,12 @@ def measure(exe: Path, timeout_s: float = 1200.0) -> float | None:
             time.sleep(0.1)
         return None
     finally:
+        # Kill THIS process tree by pid, never by image name: /IM matches
+        # every process with that name, so measuring a differently named
+        # copy leaked the started app, and measuring while the real
+        # installed app was open force-killed the user's session.
         subprocess.run(
-            ["taskkill", "/F", "/IM", "WhisperTranscriberSuite.exe"],
+            ["taskkill", "/F", "/T", "/PID", str(proc.pid)],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )

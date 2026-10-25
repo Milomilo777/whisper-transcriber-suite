@@ -77,3 +77,13 @@ def test_stats_ignore_a_finished_row_with_a_null_duration(db):
     stats = db.stats()
     assert stats["transcriptions_finished"] == 2
     assert stats["transcription_minutes"] == 2.0
+
+
+def test_finish_transcription_keeps_the_stored_language_on_the_error_path(db):
+    """A forced language recorded at insert time must survive a finish with
+    no detected language (error/cancel before detection ran), exactly like
+    mark_transcription_finished_after_exit's COALESCE already does."""
+    rid = db.insert_transcription("clip.mp4", language="fa")
+    assert db.finish_transcription(rid, "error", error="backend died") is True
+    rows = db.list_transcriptions()
+    assert rows[0]["language"] == "fa"

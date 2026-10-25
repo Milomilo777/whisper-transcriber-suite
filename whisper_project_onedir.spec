@@ -251,6 +251,8 @@ a = Analysis(
         'app.theme.tokens',
         'app.widgets.error_dialog',
         'app.widgets.notice',
+        'app.widgets.wheel',
+        'app.widgets.grab',
         'app.widgets.tooltip',
         'core',
         'core._checkpoint',

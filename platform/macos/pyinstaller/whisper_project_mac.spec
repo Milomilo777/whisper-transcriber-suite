@@ -416,6 +416,8 @@ a = Analysis(
         'app.widgets.audio_visualizer',
         'app.widgets.error_dialog',
         'app.widgets.notice',
+        'app.widgets.wheel',
+        'app.widgets.grab',
         'app.widgets.smtv_tab',
         'app.widgets.book_panel',
         'app.widgets.chip_cloud',

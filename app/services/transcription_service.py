@@ -39,6 +39,14 @@ logger = logging.getLogger(__name__)
 # expected (see _poll_once) and is only logged at debug level.
 _LATE_EVENTS = frozenset({"heartbeat", "worker_exit"})
 
+#: How many consecutive 500-ms dispatch ticks a task's history insert may
+#: fail before the task is errored out (see dispatch_waiting). Transient
+#: SQLite locks (antivirus scanning history.db) clear in seconds, so ~30 s
+#: of sustained failure means a genuinely broken DB/disk; retrying forever
+#: wedged the task at 'waiting' with two log lines per tick and nothing
+#: in the UI.
+_MAX_HISTORY_INSERT_ATTEMPTS = 60
+
 
 def output_formats_for(task: Any, configured: Any) -> list[str]:
     """The formats *task* writes: the current selection, plus ``srt`` when
@@ -298,6 +306,10 @@ class TranscriptionService:
         # Retired workers whose process a helper thread is still stopping
         # (retire_worker runs on the Tk thread; stop_all still covers them).
         self._retiring: list[dict[str, Any]] = []
+        # id(task) -> consecutive history-insert failures in dispatch_waiting;
+        # see _MAX_HISTORY_INSERT_ATTEMPTS. Pruned to the current waiting set
+        # each tick, so it cannot outlive the tasks it counts.
+        self._history_insert_failures: dict[int, int] = {}
         # The CPU warning's "is there an unusable NVIDIA GPU?" check runs
         # once per session, on a daemon thread (see _maybe_warn_cpu).
         self._gpu_check_thread: threading.Thread | None = None
@@ -1831,7 +1843,16 @@ class TranscriptionService:
             return
         waiting = [t for t in app.queue if t.status == "waiting"]
         if not waiting:
+            self._history_insert_failures.clear()
             return
+        # Drop counters for tasks that left the waiting set (dispatched,
+        # cancelled, removed); a stale id must not shorten a later task's
+        # retry window.
+        waiting_ids = {id(t) for t in waiting}
+        self._history_insert_failures = {
+            tid: n for tid, n in self._history_insert_failures.items()
+            if tid in waiting_ids
+        }
         active_count = len(self.active_workers())
         idle_count = len(self.idle_workers())
         limit = self.worker_limit()
@@ -1883,15 +1904,47 @@ class TranscriptionService:
                         t.task_id = ""
                     except Exception:  # noqa: BLE001 - frozen/tuple-like tasks
                         pass
+                    # A success after earlier failures clears the retry count.
+                    self._history_insert_failures.pop(id(t), None)
                 except Exception as e:
-                    logger.exception(
-                        "history insert failed for %s; deferring dispatch",
-                        t.file_path,
-                    )
-                    app.log(f"Could not record task in history: {e}")
+                    # A transient DB lock (antivirus) is common on Windows:
+                    # leave the task 'waiting' for the next tick. A SUSTAINED
+                    # failure (corrupt DB, full disk) once retried forever —
+                    # two log lines per 500-ms tick, task wedged at 'waiting'
+                    # with no error anywhere the user could see. Count per
+                    # task and give up visibly at the cap.
+                    failures = self._history_insert_failures.get(id(t), 0) + 1
+                    self._history_insert_failures[id(t)] = failures
+                    if failures >= _MAX_HISTORY_INSERT_ATTEMPTS:
+                        logger.error(
+                            "history insert failed %d times for %s; "
+                            "marking the task as errored",
+                            failures, t.file_path,
+                        )
+                        t.status = "error"
+                        t.error_reason = (
+                            f"Could not record this task in the history "
+                            f"database after {failures} attempts: {e}"
+                        )
+                        t.end_time = _time.time()
+                        app.log(
+                            f" Giving up on {t.file_path}: {t.error_reason}"
+                        )
+                        app.update_overall_progress()
+                        continue
+                    if failures == 1:
+                        logger.exception(
+                            "history insert failed for %s; deferring dispatch",
+                            t.file_path,
+                        )
+                        app.log(f"Could not record task in history: {e}")
+                    else:
+                        logger.debug(
+                            "history insert still failing for %s (attempt %d)",
+                            t.file_path, failures,
+                        )
                     # Leave status='waiting' so the next dispatch
-                    # tick picks it up again (transient DB locks
-                    # are common on Windows with antivirus).
+                    # tick picks it up again.
                     continue
 
             worker["task"] = t

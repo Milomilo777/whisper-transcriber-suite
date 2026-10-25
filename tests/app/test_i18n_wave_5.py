@@ -520,6 +520,13 @@ def capture_tk(mp: pytest.MonkeyPatch) -> dict[str, Any]:
         unknown = offline.ConnectionCheck(time.time(), False, error="no psutil")
         bar = ost.OfflineStatusBar(root, post_to_main=posted.append, poll=lambda: unknown)
         bar.show(before=frame)
+        # The bar polls on a thread and lands via post_to_main (as the
+        # verify window above): drain the landing before reading texts.
+        deadline = time.time() + 10
+        while not posted and time.time() < deadline:
+            time.sleep(0.02)
+        for fn in posted:
+            fn()
         out["offline.bar"] = _texts(bar)
         bar.destroy()
 

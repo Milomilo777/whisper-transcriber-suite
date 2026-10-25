@@ -89,6 +89,26 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **A failed or cancelled run no longer erases the language of its history row**, and a task whose history
+  insert keeps failing (full disk, corrupt database) now ends as an error after about 30 seconds instead of
+  waiting forever.
+- **A single failed read of the source file no longer ruins a resume checkpoint**: the checkpoint is stored
+  without size/time verification instead of with values no resume accepts, a full disk makes the periodic write
+  fail instead of publishing an empty file, and a source path with an unpaired surrogate no longer disables
+  checkpoints for the run.
+- **Subtitle burn**: a Cancel that lands just after ffmpeg finished keeps the finished video, two jobs that
+  reserve the same output name at once no longer release each other's placeholder, and a failing progress
+  callback no longer leaves ffmpeg running.
+- **The offline bar polls connections off the Tk thread**, so it no longer stalls the window every 10 seconds
+  while it is showing.
+- **Scrolling panels keep the mouse wheel while the pointer is over their content**, and closing the model-info
+  or Google Cloud help popup (or the hub folder picker) in Advanced makes Advanced modal again.
+- **Server**: a failed write of an uploaded file no longer leaves a "queued" job that never runs.
+- **NVIDIA ASR**: a file of unknown length is no longer cut at one hour (the plan now covers 16 hours).
+- **Smaller fixes**: the online config and the Google Cloud key file accept a UTF-8 BOM; a compact SRT keeps a cue
+  whose last line is a non-ASCII number; a convert write error is no longer masked by a failed cleanup; a failed
+  language-model download thread start no longer blocks later downloads; the speed meter resets the live audio
+  position on a re-run; `tools/measure_startup.py` stops only the process it started.
 - **Transcript viewer: embedded video never attached (black Multimedia tab, `00:00 / 00:00`, Play greyed,
   segment double-click did nothing)**: the viewer handed its window to VLC before Tk had mapped it, and then gave
   up on embedded playback for good. It now waits for the video area to appear (the map event plus a bounded

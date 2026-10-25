@@ -25,6 +25,7 @@ from tkinter import ttk
 from typing import Deque, Literal
 
 from app.i18n import plain
+from app.widgets.wheel import pointer_inside
 from app.theme import tokens
 
 logger = logging.getLogger(__name__)
@@ -195,15 +196,11 @@ class NoticeHost:
         self._cancel_timer()
 
     def _on_leave(self, *_args: object) -> None:
-        # <Leave> also fires when the pointer moves between the notice's own children.
-        # Ask Tk where the pointer is; a pointer still inside the frame is still hovering.
-        try:
-            x, y = self.frame.winfo_pointerxy()
-            inside = self.frame.winfo_containing(x, y)
-        except tk.TclError:
-            inside = None
-        frame_path = str(self.frame)
-        if inside is not None and (str(inside) == frame_path or str(inside).startswith(frame_path + ".")):
+        # <Leave> also fires when the pointer moves between the notice's own
+        # children. The shared pointer_inside() (app/widgets/wheel.py, lifted
+        # from this very check) keeps the hover while the pointer is still
+        # inside the frame.
+        if pointer_inside(self.frame):
             return
         self._hovered = False
         if self.current is None:
