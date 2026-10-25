@@ -552,7 +552,10 @@ class HistoryDB:
 
         ``speed_x`` / ``device`` record how fast the run went and on what;
         a non-empty ``model`` replaces the model stored at insert time with
-        the one the worker reports it actually used.
+        the one the worker reports it actually used; likewise a non-empty
+        ``language`` (the detected one) replaces the insert-time value, while
+        an empty one — an error/cancel before detection ran — keeps it
+        (same COALESCE as mark_transcription_finished_after_exit).
 
         See finish_download's docstring: an id that matches no row
         (a swallowed insert_transcription failure, or a stale id after
@@ -563,7 +566,8 @@ class HistoryDB:
         with self._txn() as conn:
             cur = conn.execute(
                 "UPDATE transcriptions SET status=?, finished_at=?,"
-                " output_paths=?, duration_seconds=?, language=?, error=?,"
+                " output_paths=?, duration_seconds=?,"
+                " language=COALESCE(NULLIF(?, ''), language), error=?,"
                 " word_count=?, speed_x=?, device=?,"
                 " model=COALESCE(NULLIF(?, ''), model) WHERE id=?",
                 (status, int(time.time()), paths_json, duration_seconds,
