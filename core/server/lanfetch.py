@@ -96,8 +96,25 @@ class _Watchdog(threading.Thread):
         self.reason = ""
 
     def watch(self, sock: socket.socket | None) -> None:
+        """Register the socket the next blocking calls use. When the job was
+        already stopped (for example during connect, before any socket was
+        registered), the socket is shut down at once, so no later read can
+        wait on a server that keeps answering."""
         with self._lock:
             self._sock = sock
+            if sock is None:
+                return
+            reason = self.reason or self.poll()
+            if reason:
+                self.reason = reason
+                self._shutdown(sock)
+
+    @staticmethod
+    def _shutdown(sock: socket.socket) -> None:
+        try:
+            sock.shutdown(socket.SHUT_RDWR)
+        except OSError:
+            pass
 
     def poll(self) -> str:
         limits = self._limits
@@ -115,14 +132,11 @@ class _Watchdog(threading.Thread):
             reason = self.poll()
             if not reason:
                 continue
-            self.reason = reason
             with self._lock:
+                self.reason = reason
                 sock = self._sock
-            if sock is not None:
-                try:
-                    sock.shutdown(socket.SHUT_RDWR)
-                except OSError:
-                    pass
+                if sock is not None:
+                    self._shutdown(sock)
             return
 
     def stop(self) -> None:
@@ -135,10 +149,11 @@ def _wait_readable(sock: Any, dog: _Watchdog,
     the cancel flag are honoured while a server stays silent."""
     waited = time.monotonic()
     while True:
+        _raise_if_stopped(dog, limits)
         ready, _w, _x = select.select([sock], [], [], 0.25)
         if ready:
+            _raise_if_stopped(dog, limits)
             return
-        _raise_if_stopped(dog, limits)
         if time.monotonic() - waited > _READ_TIMEOUT_S:
             raise RuntimeError("could not fetch the link: the server did "
                                "not answer in time")
@@ -185,6 +200,7 @@ def fetch(url: str, dest_dir: str, limits: DownloadLimits | None = None) -> str:
     dog.start()
     part = ""
     conn: http.client.HTTPConnection | None = None
+    response: http.client.HTTPResponse | None = None
     try:
         current = url
         for _hop in range(_MAX_REDIRECTS + 1):
@@ -199,12 +215,15 @@ def fetch(url: str, dest_dir: str, limits: DownloadLimits | None = None) -> str:
             target = urllib.parse.urlunsplit(
                 ("", "", parts.path or "/", parts.query, ""))
             try:
+                conn.connect()
+                # getresponse() hands the socket to the response and clears
+                # conn.sock, so keep our own reference for the watchdog. A
+                # stop that came during connect shuts the socket down here.
+                dog.watch(conn.sock)
+                _raise_if_stopped(dog, limits)
                 conn.request("GET", target, headers={
                     "User-Agent": "WhisperTranscriberSuite",
                     "Accept-Encoding": "identity", "Connection": "close"})
-                # getresponse() hands the socket to the response and clears
-                # conn.sock, so keep our own reference for the watchdog.
-                dog.watch(conn.sock)
                 _wait_readable(conn.sock, dog, limits)
                 response = conn.getresponse()
             except netguard.BlockedAddressError:
@@ -214,7 +233,12 @@ def fetch(url: str, dest_dir: str, limits: DownloadLimits | None = None) -> str:
                 raise RuntimeError(f"could not fetch the link: {exc}") from exc
             if response.status in (301, 302, 303, 307, 308):
                 location = response.getheader("Location")
-                conn.close()  # the redirect body is NOT read
+                # The redirect body is NOT read. A response detached from the
+                # connection (HTTP/1.0, Connection: close) keeps the socket
+                # open after conn.close(), so close both explicitly.
+                response.close()
+                response = None
+                conn.close()
                 conn = None
                 if not location:
                     raise RuntimeError("the link redirects without a target")
@@ -257,6 +281,8 @@ def fetch(url: str, dest_dir: str, limits: DownloadLimits | None = None) -> str:
         return path
     finally:
         dog.stop()
+        if response is not None:
+            response.close()
         if conn is not None:
             conn.close()
         if part:  # an unfinished file of this download only
