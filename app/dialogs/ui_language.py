@@ -65,10 +65,6 @@ def chooser_entries(setting: object) -> list[tuple[str, str]]:
 
 # --- the button ------------------------------------------------------------------------------
 
-def _icon_colour() -> str:
-    return "#e6e6e6" if tokens.current_theme() == "dark" else "#1f1f1f"
-
-
 def build_button(app: Any, parent: tk.Misc) -> ttk.Button:
     """The permanent button in the top-right corner of ``parent`` (the same place in every
     language, right to left too). Keyboard focusable; ``app.open_ui_language_chooser`` runs on click."""
@@ -87,7 +83,7 @@ def build_button(app: Any, parent: tk.Misc) -> ttk.Button:
 
 def _tint(button: ttk.Button) -> None:
     try:
-        photo = icons.load_icon(button, "globe", _icon_colour(), 16)
+        photo = icons.load_icon(button, "globe", icons.text_colour(), 16)
     except Exception:  # noqa: BLE001 - a missing icon must not stop the window opening
         logger.warning("Could not load the language icon", exc_info=True)
         return
@@ -270,3 +266,4 @@ def restart_now(app: Any) -> None:
     finally:
         if not getattr(app, "_closing", False):
             process_exit.cancel_relaunch()
+

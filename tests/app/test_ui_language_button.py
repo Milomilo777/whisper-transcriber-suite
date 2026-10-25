@@ -230,7 +230,9 @@ def test_tk_the_button_sits_top_right_with_the_icon_the_name_and_a_tooltip(tk_ap
     assert str(bar.pack_info()["side"]) == "top" and str(bar.pack_info()["fill"]) == "x"
     assert str(button.pack_info()["side"]) == "right"
     # Same place and same icon in a right-to-left interface: the bar is never mirrored.
-    assert getattr(bar, "_wts_keep_ltr", True) is not None
+    from app import rtl_layout
+
+    assert getattr(bar, rtl_layout.KEEP_ATTR, False) is True
 
 
 def test_tk_the_button_opens_the_chooser(tk_app: Any) -> None:
@@ -240,6 +242,15 @@ def test_tk_the_button_opens_the_chooser(tk_app: Any) -> None:
     assert dlg.winfo_exists()
     ui_language.open_chooser(tk_app)  # a second click raises the same window, no second one
     assert tk_app._ui_language_chooser is dlg
+
+
+def _key(widget: Any, sequence: str) -> None:
+    """Send a key event to a widget that has the keyboard focus (events need it on Windows)."""
+    widget.update()
+    widget.focus_force()
+    widget.update()
+    widget.event_generate(sequence)
+    widget.update()
 
 
 def _listbox(widget: Any) -> Any:
@@ -273,7 +284,7 @@ def test_tk_picking_a_language_saves_it_and_asks_about_the_restart(
     box = _listbox(dlg)
     box.selection_clear(0, "end")
     box.selection_set(2)  # Deutsch
-    box.event_generate("<Return>")
+    _key(box, "<Return>")
     assert saved == ["de"] and asked == ["de"]
     assert tk_app._ui_language_chooser is None
 
@@ -281,7 +292,7 @@ def test_tk_picking_a_language_saves_it_and_asks_about_the_restart(
 def test_tk_picking_the_current_language_changes_nothing(tk_app: Any, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(ui_language, "save_config", lambda _cfg: pytest.fail("must not save"))
     ui_language.open_chooser(tk_app)
-    _listbox(tk_app._ui_language_chooser).event_generate("<Return>")
+    _key(_listbox(tk_app._ui_language_chooser), "<Return>")
     assert tk_app.app_config["ui_language"] == "auto"
 
 
@@ -289,7 +300,7 @@ def test_tk_cancel_and_escape_close_without_saving(tk_app: Any, monkeypatch: pyt
     monkeypatch.setattr(ui_language, "save_config", lambda _cfg: pytest.fail("must not save"))
     ui_language.open_chooser(tk_app)
     dlg = tk_app._ui_language_chooser
-    dlg.event_generate("<Escape>")
+    _key(dlg, "<Escape>")
     assert tk_app._ui_language_chooser is None and not _exists(dlg)
 
 
