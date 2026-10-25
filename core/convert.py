@@ -964,5 +964,11 @@ def _replace_atomically(target: str, payload: bytes) -> None:
             _checkpoint._flush_to_disk(fb)
         os.replace(tmp, target)
     finally:
-        if os.path.exists(tmp):
-            os.unlink(tmp)
+        # Best-effort cleanup only: if the replace already failed, a failing
+        # unlink (AV / indexer holding the .part) must not replace the error
+        # the caller actually needs to see.
+        try:
+            if os.path.exists(tmp):
+                os.unlink(tmp)
+        except OSError:
+            pass

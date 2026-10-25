@@ -360,3 +360,21 @@ def test_compact_srt_keeps_a_unicode_digit_final_text_line():
     )
     segments = convert._parse_cue_format(text, "compact.srt")
     assert segments[0]["text"] == "\u06f2\u06f4"
+
+
+def test_replace_atomically_reports_the_replace_error_not_the_cleanup_one(monkeypatch, tmp_path):
+    """When the replace fails (target locked) and the temp file cannot be
+    removed either, the caller must see the REPLACE error; the unlink error
+    used to replace it inside the finally block."""
+    target = tmp_path / "out.srt"
+
+    def _locked(src, dst):
+        raise OSError(13, "target locked by a viewer")
+
+    def _unlink_boom(path):
+        raise OSError(5, "access denied by the indexer")
+
+    monkeypatch.setattr(convert.os, "replace", _locked)
+    monkeypatch.setattr(convert.os, "unlink", _unlink_boom)
+    with pytest.raises(OSError, match="target locked"):
+        convert._replace_atomically(str(target), b"x")
