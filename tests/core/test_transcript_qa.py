@@ -333,6 +333,27 @@ def test_numbers_are_compared_as_whole_values(answer, source, unsupported):
     assert qa.check_answer(answer, qa.build_evidence(segs, [0]), segs).unsupported == unsupported
 
 
+def test_decimal_comma_numbers_are_not_split_into_two():
+    """A decimal comma ("3,5" — German/French/Persian style) must compare
+    equal to "3.5"; the old _numbers split it into the two whole numbers
+    "3" and "5", so a faithful answer was flagged as unsupported."""
+    segs = _segs("The rate is 3.5 percent.")
+    # The answer restates the source number with a decimal comma.
+    assert qa.check_answer("It is 3,5 percent [E1]",
+                           qa.build_evidence(segs, [0]), segs).unsupported == []
+    # The source uses the decimal comma, the answer the decimal point.
+    comma_segs = _segs("the rate is 3,5")
+    assert qa.check_answer("It is 3.5 percent [E1]",
+                           qa.build_evidence(comma_segs, [0]), comma_segs).unsupported == []
+    # A real thousands group is unaffected.
+    thousand_segs = _segs("It cost 1,200 total.")
+    assert qa.check_answer("It cost 1,200 [E1]",
+                           qa.build_evidence(thousand_segs, [0]), thousand_segs).unsupported == []
+    assert qa.check_answer("It cost 3500 [E1]",
+                           qa.build_evidence(_segs("It cost 3,500."), [0]),
+                           _segs("It cost 3,500.")).unsupported == []
+
+
 @pytest.mark.parametrize("raw,abstained", [
     ("Whether X is not in transcript order is unclear [E1]", False),
     ("NOT-IN-TRANSCRIPT", True),

@@ -114,6 +114,28 @@ def test_a_transcript_that_becomes_unparseable_drops_its_stale_hits(tmp_path, co
     assert len(sm.search("dog", conn=conn)) == 1
 
 
+# --- a corrupt index database ------------------------------------------------
+
+
+def test_a_corrupt_index_database_is_rebuilt_not_fatal(tmp_path):
+    """A search.db that is not a SQLite file at all (disk fault, truncated
+    write) must not break search for good: the index is a rebuildable
+    cache, so _open_db drops the file and starts over. The old code let
+    sqlite3.DatabaseError("file is not a database") escape from every
+    search and every reindex until the user deleted the file by hand."""
+    db = tmp_path / "search.db"
+    db.write_bytes(b"this is definitely not a sqlite database" * 16)
+    conn = sm._open_db(db)
+    try:
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == sm.SCHEMA_VERSION
+        p = tmp_path / "t.json"
+        _write(p, [_segment("recoverable words")])
+        sm.index_file(str(p), conn=conn)
+        assert len(sm.search("recoverable", conn=conn)) == 1
+    finally:
+        conn.close()
+
+
 # --- reindexing from history -------------------------------------------------
 
 

@@ -81,6 +81,9 @@ _DIGITS_TO_ASCII = {k: v for k, v in _FOLD_MAP.items() if v.isdigit()}
 _NUMBER = re.compile(
     f"\\d+(?:[,{_AR_THOUSANDS}{_AR_COMMA}]\\d{{3}})*(?:[.{_AR_DECIMAL}]\\d+)?"
 )
+# A comma between digits that is not a thousands group ("3,5", "3,50") is a
+# decimal comma ("3.5"); ",ddd" stays a thousands separator ("1,200").
+_DECIMAL_COMMA = re.compile(f"(\\d)[,{_AR_COMMA}](\\d{{1,2}})(?!\\d)")
 _LATIN_WORD = re.compile(r"[a-z]{2,}")
 _ABSTAIN_SHAPE = re.compile(r"not[\s_-]*in[\s_-]*(?:this[\s_-]*)?transcript", re.IGNORECASE)
 
@@ -316,6 +319,7 @@ def _numbers(text: str) -> list[str]:
     """Whole numbers in ``text`` in one spelling: ASCII digits, no thousands separators,
     "." as the decimal mark."""
     s = text.translate(_DIGITS_TO_ASCII)
+    s = _DECIMAL_COMMA.sub(r"\1.\2", s)
     out: list[str] = []
     for match in _NUMBER.finditer(s):
         value = match.group(0).replace(_AR_DECIMAL, ".")

@@ -504,17 +504,15 @@ def _schema_version(conn: sqlite3.Connection) -> int:
     return int(conn.execute("PRAGMA user_version").fetchone()[0])
 
 
-def _open_db(path: Path | None = None) -> sqlite3.Connection:
-    p = path if path is not None else search_db_path()
-    p.parent.mkdir(parents=True, exist_ok=True)
+def _prepare_db(p: Path) -> sqlite3.Connection:
     conn = sqlite3.connect(str(p), check_same_thread=False)
     conn.row_factory = sqlite3.Row
-    if _schema_version(conn) == SCHEMA_VERSION:
-        return conn
-    # Fresh or old-layout index: rebuild once. The write lock is taken only
-    # on this path so a normal open never waits for a running reindex, and
-    # the version is re-read under the lock so two openers do not both reset.
     try:
+        if _schema_version(conn) == SCHEMA_VERSION:
+            return conn
+        # Fresh or old-layout index: rebuild once. The write lock is taken only
+        # on this path so a normal open never waits for a running reindex, and
+        # the version is re-read under the lock so two openers do not both reset.
         conn.execute("BEGIN IMMEDIATE")
         if _schema_version(conn) != SCHEMA_VERSION:
             for table in ("segments_fts", "embeddings", "indexed_files"):
@@ -528,6 +526,28 @@ def _open_db(path: Path | None = None) -> sqlite3.Connection:
         conn.close()
         raise
     return conn
+
+
+def _open_db(path: Path | None = None) -> sqlite3.Connection:
+    p = path if path is not None else search_db_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        return _prepare_db(p)
+    except sqlite3.DatabaseError as e:
+        message = str(e).lower()
+        if isinstance(e, sqlite3.OperationalError) and (
+            "locked" in message or "busy" in message
+        ):
+            raise  # a concurrent writer, not corruption: leave the file alone
+        # The index is a rebuildable cache; a corrupt file ("file is not a
+        # database", "malformed database image", a half-written header) must
+        # not fail every search and reindex until the user deletes it by
+        # hand. Drop the file once and start over.
+        try:
+            p.unlink(missing_ok=True)
+        except OSError:
+            pass  # held open by another process: the retry below re-raises it
+        return _prepare_db(p)
 
 
 def _uses_trigram(conn: sqlite3.Connection) -> bool:

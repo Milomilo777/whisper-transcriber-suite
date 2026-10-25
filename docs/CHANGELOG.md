@@ -108,6 +108,13 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **Usage statistics name only models the app offers**: an opted-in statistics report now carries a model or engine name only when it is one the app itself lists; a custom model name or a relative folder path is sent as `local-model`.
 - **PDF export no longer fails on unassigned characters**: a right-to-left line holding a character that Unicode has not assigned (a newer emoji, U+FFFE) was lost together with the whole PDF. Such characters now print as a replacement mark, and a line the bidi library still cannot order is drawn unjoined.
 - **A pinned model mirror is kept**: a `hf_repo` you set for the selected model now wins over the built-in and the online model catalog, so a mirror is no longer ignored and the online settings cannot re-point its download.
+- **Transcript search recovers from a damaged index**: a corrupt search database ("file is not a database")
+  used to break every search and re-index until the file was deleted by hand; the index is rebuilt from the
+  transcripts instead (a locked database is still left alone).
+- **Decimal commas are no longer flagged as unsupported numbers**: the AI answer check read "3,5" as the two
+  numbers 3 and 5; it now reads a comma followed by one or two digits as a decimal mark ("1,200" stays a
+  thousands separator).
+
 - **The saved text of an interrupted run is kept unless its media is verified unchanged**: only re-running
   the same, unchanged file with another engine, model or setting discards a checkpoint. A replaced, deleted
   or unverifiable source keeps it aside instead (on resume, on a new job for the same path, and with an
