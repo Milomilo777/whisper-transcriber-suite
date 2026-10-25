@@ -1168,6 +1168,150 @@ def test_viewer_disables_transport_when_vlc_init_fails(tmp_path, monkeypatch):
         root.destroy()
 
 
+# ---------- deferred VLC window bind (unmapped window at construction) ----------
+
+
+class _FakePlayer:
+    def __init__(self):
+        self.hwnd_calls: list[int] = []
+        self.play_calls = 0
+
+    def set_media(self, _m):
+        pass
+
+    def set_hwnd(self, h):
+        self.hwnd_calls.append(h)
+
+    set_xwindow = set_nsobject = set_hwnd
+
+    def play(self):
+        self.play_calls += 1
+
+    def pause(self):
+        pass
+
+    def stop(self):
+        pass
+
+    def release(self):
+        pass
+
+    def is_playing(self):
+        return False
+
+    def get_time(self):
+        return 0
+
+    def get_length(self):
+        return 0
+
+    def get_position(self):
+        return 0.0
+
+    def set_time(self, _ms):
+        pass
+
+
+class _FakeVLC:
+    def __init__(self):
+        self.player = _FakePlayer()
+
+    def Instance(self, *_a, **_kw):  # noqa: N802 - mirrors python-vlc
+        outer = self
+
+        class _Inst:
+            def media_player_new(self):
+                return outer.player
+
+            def media_new(self, _p):
+                return object()
+
+            def release(self):
+                pass
+
+        return _Inst()
+
+
+def _viewer_with_fake_vlc(tmp_path, monkeypatch, root):
+    from app.dialogs import transcript_viewer as tv_mod
+
+    fake = _FakeVLC()
+    media = tmp_path / "clip.mp4"
+    media.write_bytes(b"")
+    p = tmp_path / "clip.json"
+    p.write_text(json.dumps(SAMPLE_SEGMENTS), encoding="utf-8")
+    monkeypatch.setattr(tv_mod, "_try_load_vlc", lambda: (fake, ""))
+    return fake, tv_mod.TranscriptViewer(root, str(p))
+
+
+def _pump(root, rounds=30):
+    import time
+
+    for _ in range(rounds):
+        root.update()
+        time.sleep(0.01)
+
+
+def test_vlc_bind_waits_for_unmapped_window_then_attaches(tmp_path, monkeypatch):
+    """The bind runs before the window is mapped. It must not call set_hwnd on the
+    unmapped canvas, must not drop the player, and must attach once the window appears."""
+    root = tk.Tk()
+    root.withdraw()
+    try:
+        fake, viewer = _viewer_with_fake_vlc(tmp_path, monkeypatch, root)
+        viewer.withdraw()
+        try:
+            _pump(root)
+            assert not viewer.video_canvas.winfo_ismapped()
+            assert fake.player.hwnd_calls == []  # never bound on an unmapped window
+            assert viewer.vlc_player is fake.player  # not given up on
+            assert "disabled" in viewer.play_btn.state()
+            # Controls are inert while waiting: no libvlc window of its own.
+            viewer._toggle_play()
+            viewer._on_segment_double_click(None)
+            assert fake.player.play_calls == 0
+            # The window appears: the bind happens, controls come alive.
+            root.deiconify()
+            viewer.deiconify()
+            for _ in range(100):
+                root.update()
+                if fake.player.hwnd_calls:
+                    break
+            assert fake.player.hwnd_calls == [viewer.video_canvas.winfo_id()]
+            assert fake.player.hwnd_calls[0] != 0
+            assert "disabled" not in viewer.play_btn.state()
+            viewer._toggle_play()
+            assert fake.player.play_calls == 1
+        finally:
+            viewer._on_close()
+    finally:
+        root.destroy()
+
+
+def test_vlc_bind_gives_up_after_bounded_tries(tmp_path, monkeypatch):
+    """A window that never appears ends in the system-player fallback, with no bind."""
+    from app.dialogs import transcript_viewer as tv_mod
+
+    monkeypatch.setattr(tv_mod, "_VLC_BIND_MAX_TRIES", 3)
+    monkeypatch.setattr(tv_mod, "_VLC_BIND_RETRY_MS", 1)
+    root = tk.Tk()
+    root.withdraw()
+    try:
+        fake, viewer = _viewer_with_fake_vlc(tmp_path, monkeypatch, root)
+        viewer.withdraw()
+        try:
+            _pump(root)
+            assert fake.player.hwnd_calls == []
+            assert viewer.vlc_player is None
+            _assert_transport_disabled(viewer)
+            viewer._toggle_play()  # harmless no-op
+            assert fake.player.play_calls == 0
+        finally:
+            viewer._on_close()
+    finally:
+        root.destroy()
+
+
 # ---------- right-click menu lifecycle ----------------------------------------
 
 
