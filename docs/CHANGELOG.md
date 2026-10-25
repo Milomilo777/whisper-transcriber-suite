@@ -85,6 +85,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Usage statistics name only models the app offers**: an opted-in statistics report now carries a model or engine name only when it is one the app itself lists; a custom model name or a relative folder path is sent as `local-model`.
 - **PDF export no longer fails on unassigned characters**: a right-to-left line holding a character that Unicode has not assigned (a newer emoji, U+FFFE) was lost together with the whole PDF. Such characters now print as a replacement mark, and a line the bidi library still cannot order is drawn unjoined.
 - **A pinned model mirror is kept**: a `hf_repo` you set for the selected model now wins over the built-in and the online model catalog, so a mirror is no longer ignored and the online settings cannot re-point its download.
 - **The saved text of an interrupted run is kept unless its media is verified unchanged**: only re-running
