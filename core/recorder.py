@@ -40,6 +40,8 @@ logger = logging.getLogger(__name__)
 
 
 SAMPLE_RATE = 16_000
+#: How long stop() waits for the capture thread before aborting its stream.
+_ABORT_GRACE_S = 0.5
 CHANNELS = 1
 SAMPLE_WIDTH_BYTES = 2  # int16
 
@@ -187,6 +189,9 @@ class Recorder:
     _started_at: float = 0.0
     _stopped_at: float = 0.0
     _wrote_wave: bool = False
+    #: The open microphone stream while the capture thread owns it, so
+    #: :meth:`stop` can abort a read that does not return on its own.
+    _stream: Any = field(default=None, repr=False)
     last_error: Optional[str] = None
 
     def start(self) -> None:
@@ -235,7 +240,14 @@ class Recorder:
         self._stop_event.set()
         thread = self._thread
         if thread is not None and thread.is_alive():
-            thread.join(timeout=timeout)
+            began = time.monotonic()
+            # A healthy read returns within one block (~64 ms). Only when it
+            # does not, abort the stream so a blocked read raises and the
+            # capture thread can close its own WAV (it deletes nothing).
+            thread.join(timeout=min(_ABORT_GRACE_S, timeout))
+            if thread.is_alive():
+                self._abort_stream()
+                thread.join(timeout=max(0.0, timeout - (time.monotonic() - began)))
         self._stopped_at = time.time()
         # If the capture thread is wedged (still alive after join), leave
         # whatever it has streamed to disk untouched rather than racing it
@@ -254,6 +266,26 @@ class Recorder:
                 self.last_error = str(e)
                 logger.exception("Writing the fallback empty WAV failed")
         return self.output_path
+
+    def _abort_stream(self) -> None:
+        """Abort the microphone stream from the stopping thread.
+
+        sounddevice's ``abort()`` is documented as safe to call while
+        another thread is blocked in ``read()``: that read then raises.
+        A stream without ``abort`` (the WASAPI loopback one) is left alone:
+        closing it under a blocked read is not safe, and its capture thread
+        ends by itself when the next block arrives.
+        """
+        stream = self._stream
+        abort = getattr(stream, "abort", None)
+        if not callable(abort):
+            return
+        logger.warning("Capture thread did not stop in %.1f s; aborting the stream",
+                       _ABORT_GRACE_S)
+        try:
+            abort()
+        except Exception:  # noqa: BLE001
+            logger.exception("Aborting the audio stream failed")
 
     def duration_seconds(self) -> float:
         end = self._stopped_at or time.time()
@@ -330,6 +362,7 @@ class Recorder:
                 # Stream straight to disk — never buffer the whole take in
                 # memory (a multi-hour recording would OOM the app).
                 wf = self._open_wave(actual_rate)
+                self._stream = stream
                 while not self._stop_event.is_set():
                     data, _overflow = stream.read(1024)
                     block = bytes(data)
@@ -337,9 +370,14 @@ class Recorder:
                     wrote_any_frames = True
                     self._emit_frames(block, actual_rate)
         except Exception as e:  # noqa: BLE001
-            self.last_error = str(e)
-            logger.exception("Mic recording failed: %s", e)
+            if self._stop_event.is_set():
+                # stop() aborted a read that did not return: not a failure.
+                logger.info("Mic read ended by Stop: %s", e)
+            else:
+                self.last_error = str(e)
+                logger.exception("Mic recording failed: %s", e)
         finally:
+            self._stream = None
             if wf is not None:
                 try:
                     wf.close()

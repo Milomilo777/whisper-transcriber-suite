@@ -355,7 +355,7 @@ def test_a_later_second_press_still_discards(tmp_path):
     assert _wait(lambda: any("_stopped" in f.__code__.co_names for f in app.posted))
     for fn in list(app.posted):
         fn()
-    assert any("Discard rest used" in line for line in app.logged)
+    assert any("Discard rest" in line and "discarded" in line for line in app.logged)
 
 
 # ----------------------------------------- audio kept when words are missing
@@ -427,3 +427,19 @@ def test_exit_with_a_backlog_never_deletes_the_audio(tmp_path):
     live_tab.stop_live_session(app)  # stop(timeout=3.0) cannot drain 2 slow chunks
     assert os.path.isfile(s.recording_path)
     t.stop()
+
+
+# ------------------------------------------- cleanup waits for a stuck thread
+
+
+def test_cleanup_outlives_the_deferral_and_runs_when_the_thread_ends(tmp_path):
+    s = _plain_session(tmp_path)
+    s.defer_s = 0.2
+    running = {"value": True}
+    s._recorder = types.SimpleNamespace(  # type: ignore[assignment]
+        is_running=lambda: running["value"], last_error=None)
+    s.finish_recording()
+    time.sleep(0.8)  # well past the deferral: still nothing is touched
+    assert os.path.isfile(s.recording_path)
+    running["value"] = False  # the capture thread finally ends
+    assert _wait(lambda: not os.path.exists(s.work_dir), timeout=5)

@@ -85,6 +85,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Stopping the microphone no longer leaves a stuck capture behind**: if the audio driver does not return
+  within half a second of Stop, the stream is aborted so the capture thread ends and closes its own file. The
+  session audio is deleted only after that thread has really ended, however long it takes.
 - **The Live session audio is kept when words are missing from the transcript**: if chunks were skipped
   because transcription fell behind, failed, were thrown away by "Discard rest", or were still waiting at
   exit, the session audio stays on disk and its path is logged, because it is then the only copy of those words.

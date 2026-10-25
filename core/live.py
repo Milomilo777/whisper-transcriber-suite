@@ -676,10 +676,17 @@ class LiveSession:
 
     def _finish_when_idle(self) -> None:
         deadline = time.monotonic() + self.defer_s
+        warned = False
         while self._threads_alive():
             if time.monotonic() >= deadline:
-                logger.warning("Live threads still running; keeping %s", self.work_dir)
-                return
+                # Never give up: a stuck capture thread still owns the WAV,
+                # which is deleted only after that thread has really ended.
+                if not warned:
+                    warned = True
+                    logger.warning("Live threads still running; keeping %s "
+                                   "until they end", self.work_dir)
+                time.sleep(min(5.0, max(0.25, self.defer_s)))
+                continue
             time.sleep(0.25)
         kept = self._finish_now()
         if kept:
