@@ -810,6 +810,7 @@ class TranscriptViewer(tk.Toplevel):
         # nothing may start playback in between, or libvlc opens a window of its own.
         self._vlc_bind_pending = False
         self._vlc_bind_tries = 0
+        self._vlc_binding = False
         self._vlc_bind_id: str | None = None
         # True while the user is dragging the transport seek slider. The
         # position loop checks this and skips updating the slider so its
@@ -2333,6 +2334,17 @@ class TranscriptViewer(tk.Toplevel):
         system player" button rather than risk the access-violation, and we
         do NOT start the position loop (no embedded surface to track).
         """
+        if self._vlc_binding:
+            # update_idletasks() below can deliver the canvas <Map> event right here;
+            # that nested call must not bind a second time.
+            return
+        self._vlc_binding = True
+        try:
+            self._bind_vlc_window_once()
+        finally:
+            self._vlc_binding = False
+
+    def _bind_vlc_window_once(self) -> None:
         if self._vlc_bind_id is not None:
             # Called directly (a <Map> event): drop the timer that is still queued.
             try:
