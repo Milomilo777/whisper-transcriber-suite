@@ -301,3 +301,25 @@ def test_startup_error_handler_survives_a_failing_retire(tmp_path, monkeypatch):
     app.worker_events.put(_startup_error(2, "tok2"))
     svc.poll()
     assert app.workers == [w1] and t.status == "running"
+
+
+def test_failed_worker_process_is_stopped_even_if_the_refresh_raises(tmp_path, monkeypatch):
+    """The real retire_worker clears the process reference before its UI
+    refresh; when that refresh raises the process must still be stopped."""
+    calls = _Calls()
+    app, hist = _app(tmp_path, calls)  # status_var=None: the refresh raises
+    svc = TranscriptionService(app)
+    stopped: list = []
+    monkeypatch.setattr(svc, "_stop_in_background", lambda w, p: stopped.append(p))
+    alive = SimpleNamespace(poll=lambda: None, pid=11)
+    bad_proc = SimpleNamespace(poll=lambda: None, pid=12)
+    t = _task(str(tmp_path / "long.mp4"), hist)
+    w1 = _worker(1, "tok1", t)
+    w1["process"] = alive
+    w2 = _worker(2, "tok2", ready=False)
+    w2["process"] = bad_proc
+    app.workers.extend([w1, w2])
+    app.worker_events.put(_startup_error(2, "tok2"))
+    svc.poll()
+    assert app.workers == [w1] and t.status == "running"
+    assert stopped == [bad_proc]

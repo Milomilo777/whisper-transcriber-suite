@@ -1479,6 +1479,9 @@ class TranscriptionService:
             "Worker %s failed to start; keeping %d healthy worker(s) running",
             failed.get("id", "?"), len(healthy),
         )
+        # retire_worker clears worker["process"] before its UI refresh, so keep
+        # our own reference to stop the process if that refresh raises.
+        process = failed.get("process")
         try:
             self.retire_worker(failed)
         except Exception:  # noqa: BLE001 - the startup_error handler must never raise
@@ -1486,7 +1489,6 @@ class TranscriptionService:
             # can still fail afterwards is the UI refresh. Make sure the
             # worker is gone and its process is stopped regardless.
             logger.exception("Retiring failed worker %s raised", failed.get("id", "?"))
-            process = failed.get("process")
             failed["process"] = None
             failed["ready"] = False
             if failed in self.app.workers:

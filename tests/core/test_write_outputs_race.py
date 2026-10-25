@@ -113,3 +113,42 @@ def test_all_writers_failing_leaves_no_claim_files(tmp_path, monkeypatch):
             base, [], str(tmp_path / "talk.mp4"), ["srt", "json"], chapters=chapters
         )
     assert sorted(p.name for p in tmp_path.iterdir()) == []
+
+
+def test_failed_claim_of_absent_name_is_never_published_to(tmp_path, monkeypatch):
+    """A claim that fails on a name that looks absent must not authorise
+    publishing there: a concurrent writer's file at that name survives."""
+    base = str(tmp_path / "talk")
+    target = tmp_path / "talk.srt"
+    real_open = os.open
+
+    def flaky_open(path, flags, *a, **k):
+        if os.path.basename(str(path)) == "talk.srt":
+            raise PermissionError(13, "Access is denied")
+        return real_open(path, flags, *a, **k)
+
+    def writer(segments, audio_path):
+        # the concurrent writer wins the name between our check and replace
+        target.write_bytes(b"concurrent transcript\n")
+        return "mine\n"
+
+    monkeypatch.setattr(os, "open", flaky_open)
+    monkeypatch.setattr(tr, "get_writer", lambda name: writer)
+    written = tr._write_outputs(base, [], str(tmp_path / "talk.mp4"), ["srt"])
+    assert target.read_bytes() == b"concurrent transcript\n"
+    assert [os.path.basename(p) for p in written] == ["talk (1).srt"]
+    assert (tmp_path / "talk (1).srt").read_text(encoding="utf-8") == "mine\n"
+
+
+def test_no_claimable_name_fails_instead_of_writing_unclaimed(tmp_path, monkeypatch):
+    base = str(tmp_path / "talk")
+
+    def deny(path, flags, *a, **k):
+        raise PermissionError(13, "Access is denied")
+
+    monkeypatch.setattr(os, "open", deny)
+    monkeypatch.setattr(tr, "get_writer", lambda name: lambda s, a: "x\n")
+    import pytest
+    with pytest.raises(RuntimeError):
+        tr._write_outputs(base, [], str(tmp_path / "talk.mp4"), ["srt"])
+    assert list(tmp_path.iterdir()) == []
