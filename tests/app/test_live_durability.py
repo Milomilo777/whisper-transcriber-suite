@@ -356,3 +356,74 @@ def test_a_later_second_press_still_discards(tmp_path):
     for fn in list(app.posted):
         fn()
     assert any("Discard rest used" in line for line in app.logged)
+
+
+# ----------------------------------------- audio kept when words are missing
+
+
+def _plain_session(tmp_path):
+    s = live.LiveSession(transcribe_chunk=lambda p: "", work_dir=str(tmp_path / "w"))
+    os.makedirs(s.work_dir)
+    s.recording_path = os.path.join(s.work_dir, "live-session.wav")
+    with open(s.recording_path, "wb") as fh:
+        fh.write(b"RIFF")
+    return s
+
+
+def test_complete_session_audio_is_still_deleted(tmp_path):
+    s = _plain_session(tmp_path)
+    assert s.incomplete_reason == ""
+    assert s.finish_recording() == ""
+    assert not os.path.exists(s.work_dir)
+
+
+@pytest.mark.parametrize("attr, value, word", [
+    ("dropped_chunks", 2, "skipped"),
+    ("_failed_chunks", 1, "failed"),
+    ("_discarded_chunks", 3, "discarded"),
+    ("_queued", 1, "not transcribed"),
+])
+def test_audio_is_kept_when_words_are_missing(tmp_path, attr, value, word):
+    s = _plain_session(tmp_path)
+    setattr(s, attr, value)
+    assert word in s.incomplete_reason
+    assert s.finish_recording() == s.recording_path
+    assert os.path.isfile(s.recording_path)
+
+
+def test_a_failed_chunk_marks_the_session_incomplete(tmp_path):
+    def boom(path):
+        raise RuntimeError("worker died")
+
+    s = live.LiveSession(transcribe_chunk=boom, work_dir=str(tmp_path / "live" / "f"),
+                         max_consecutive_errors=99)
+    s.start()
+    for b in _blocks(_pcm(2.0, 0.5)):
+        s._on_frames(b, RATE)
+    for b in _blocks(_pcm(0.6, 0.0)):
+        s._on_frames(b, RATE)
+    s.stop_capture()
+    assert s.wait_drained(timeout=10)
+    assert "failed" in s.incomplete_reason
+    assert s.finish_recording() == s.recording_path
+
+
+def test_discard_rest_keeps_the_session_audio(tmp_path):
+    s, t = _spoken_session(tmp_path, delay=5.0)
+    app = _make_app(s, t, tmp_path)
+    live_tab._stop(app)
+    app._live_stop_at -= live_tab._STOP_DEBOUNCE_S + 1.0
+    live_tab._stop(app)
+    assert _wait(lambda: any("_stopped" in f.__code__.co_names for f in app.posted))
+    for fn in list(app.posted):
+        fn()
+    assert os.path.isfile(s.recording_path), "discarded words: the audio is the only copy"
+    assert any("discarded" in line and "kept at" in line for line in app.logged)
+
+
+def test_exit_with_a_backlog_never_deletes_the_audio(tmp_path):
+    s, t = _spoken_session(tmp_path, delay=3.0, sentences=2)
+    app = _make_app(s, t, tmp_path)
+    live_tab.stop_live_session(app)  # stop(timeout=3.0) cannot drain 2 slow chunks
+    assert os.path.isfile(s.recording_path)
+    t.stop()

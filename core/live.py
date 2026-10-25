@@ -439,6 +439,11 @@ class LiveSession:
     _fatal_emitted: bool = False
     #: Text events produced so far (each was journaled before it was shown).
     _text_events: int = 0
+    #: Chunks whose words never reached the transcript: failed (write or
+    #: transcription) or thrown away by Discard rest. The session audio is
+    #: then the only copy of those words and is kept.
+    _failed_chunks: int = 0
+    _discarded_chunks: int = 0
     #: time.monotonic() of start(), of the last block and of the last
     #: block holding any non-zero sample (0.0 = never).
     _started_at: float = 0.0
@@ -566,6 +571,7 @@ class LiveSession:
                 break
             if item is not None:
                 dropped += 1
+                self._discarded_chunks += 1
                 with self._lock:
                     self._queued = max(0, self._queued - 1)
         self._put_sentinel()
@@ -699,9 +705,15 @@ class LiveSession:
             return ""
         _remove_quietly(self.journal_path)
         kept = ""
+        incomplete = self.incomplete_reason
         if self.recording_path and os.path.isfile(self.recording_path):
             if self.keep_recording:
                 kept = self.recording_path
+            elif incomplete:
+                # Words are missing from the transcript; the audio is the
+                # only place they still exist.
+                kept = self.recording_path
+                logger.warning("Live session audio kept at %s (%s)", kept, incomplete)
             else:
                 _remove_quietly(self.recording_path)
         if not kept:
@@ -809,6 +821,7 @@ class LiveSession:
     def _consume_one(self, item: tuple[int, bytes, float, int]) -> None:
         seq, pcm, start_s, rate = item
         if self._discard.is_set():
+            self._discarded_chunks += 1
             return
         path = os.path.join(self.work_dir, f"chunk-{seq:06d}.wav")
         try:
@@ -822,6 +835,7 @@ class LiveSession:
             if self._discard.is_set():
                 # The user chose to discard the rest; the worker was
                 # stopped under this chunk on purpose.
+                self._discarded_chunks += 1
                 return
             # One failed chunk must not end the session.
             logger.exception("Live chunk transcription failed: %s", e)
@@ -849,6 +863,25 @@ class LiveSession:
     def unsaved_text(self) -> bool:
         """True while finished sentences exist that the caller has not saved."""
         return self._text_events > 0 and not self.transcript_saved
+
+    @property
+    def incomplete_reason(self) -> str:
+        """Why the transcript lacks words that the session audio still has.
+
+        "" when every captured chunk was transcribed. Otherwise a short
+        English reason (dropped, failed, discarded or still waiting chunks).
+        """
+        parts = []
+        if self.dropped_chunks:
+            parts.append(f"{self.dropped_chunks} chunk(s) skipped because transcription fell behind")
+        if self._failed_chunks:
+            parts.append(f"{self._failed_chunks} chunk(s) failed")
+        if self._discarded_chunks:
+            parts.append(f"{self._discarded_chunks} chunk(s) discarded")
+        waiting = self.pending_chunks()
+        if waiting:
+            parts.append(f"{waiting} chunk(s) not transcribed yet")
+        return ", ".join(parts)
 
     @property
     def journal_path(self) -> str:
@@ -888,6 +921,7 @@ class LiveSession:
         once; the UI stops the session and shows ``detail``.
         """
         self._emit(LiveEvent(kind="error", detail=detail))
+        self._failed_chunks += 1
         self._consecutive_errors += 1
         if (self._consecutive_errors >= max(1, self.max_consecutive_errors)
                 and not self._fatal_emitted):

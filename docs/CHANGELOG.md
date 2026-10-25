@@ -85,6 +85,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **The Live session audio is kept when words are missing from the transcript**: if chunks were skipped
+  because transcription fell behind, failed, were thrown away by "Discard rest", or were still waiting at
+  exit, the session audio stays on disk and its path is logged, because it is then the only copy of those words.
 - **A double-click on Stop no longer drops the last sentence**: a second press within 2 seconds of the first
   is ignored instead of acting as "Discard rest". A real Discard is logged with what it dropped.
 - **Live captions survive a crash or power cut after Stop**: every finished sentence is written to a small

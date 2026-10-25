@@ -1158,7 +1158,7 @@ def _release_one(app: Any, session: Any) -> None:
     session.transcript_saved = True
     kept = _finish_recording(session, bool(getattr(session, "keep_recording", False)))
     if kept:
-        app.log(f"Live: the session audio was kept at {kept}")
+        app.log(f"Live: the session audio was kept at {kept}{_incomplete_note(session)}")
 
 
 def _release_saved(app: Any) -> None:
@@ -1202,13 +1202,19 @@ def _stopped(app: Any, kept: str = "") -> None:
     app.live_status_var.set(_("Stopped: {reason}", reason=reason) if reason else _("Stopped."))
     app.log("Live transcription stopped.")
     if kept:
-        app.log(f"Live: the session audio was kept at {kept}")
+        app.log(f"Live: the session audio was kept at {kept}{_incomplete_note(session)}")
     try:
         viz = getattr(app, "live_visualizer", None)
         if viz is not None:
             viz.set_active(False)
     except Exception:  # noqa: BLE001
         logger.debug("Could not deactivate visualizer", exc_info=True)
+
+
+def _incomplete_note(session: Any) -> str:
+    """" (reason)" when the transcript lacks words the audio still has."""
+    reason = getattr(session, "incomplete_reason", "")
+    return f" ({reason}: the audio holds the missing words)" if reason and isinstance(reason, str) else ""
 
 
 def stop_live_session(app: Any) -> None:
@@ -1248,9 +1254,12 @@ def stop_live_session(app: Any) -> None:
     if session is not None:
         session.transcript_saved = text_safe
         kept = _finish_recording(session, keep)
-        if forced and kept:
+        if kept:
             try:
-                app.log(f"The transcript could not be saved; the session audio was kept at {kept}")
+                if forced:
+                    app.log(f"The transcript could not be saved; the session audio was kept at {kept}")
+                else:
+                    app.log(f"Live: the session audio was kept at {kept}{_incomplete_note(session)}")
             except Exception:  # noqa: BLE001 - the window may already be going away
                 logger.debug("Could not log the kept recording", exc_info=True)
     app.live_session = None
