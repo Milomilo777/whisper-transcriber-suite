@@ -6,9 +6,11 @@ exist. Each test states its scenario in the docstring.
 from __future__ import annotations
 
 import queue
+import sqlite3
 import time
 from types import SimpleNamespace
 
+import app.services.transcription_service as ts
 from app.services.transcription_service import TranscriptionService
 from core.history import HistoryDB
 from core.task import TranscriptionTask
@@ -121,3 +123,112 @@ def test_failed_second_worker_is_not_respawned_in_a_tight_loop(tmp_path):
     svc._spawn_hold_until = 0.0
     svc.dispatch_waiting()
     assert len(spawned) == 1
+
+
+def _cancelled_task_with_done(tmp_path, outputs, no_speech=False):
+    calls = _Calls()
+    app, hist = _app(tmp_path, calls)
+    svc = TranscriptionService(app)
+    t = _task(str(tmp_path / "a.mp4"), hist)
+    t.cancelled = True
+    t.status = "cancelled"  # app.cancel() did this at click time
+    app.workers.append(_worker(1, "tok1", t))
+    app.worker_events.put({"event": "done", "task_id": t.task_id, "outputs": outputs,
+                           "no_speech": no_speech, "word_count": 1, "audio_duration": 1.0,
+                           "_token": "tok1", "_worker_id": 1, "_pid": 5})
+    svc.poll()
+    return t, hist, calls
+
+
+def test_cancel_after_outputs_written_ends_finished_with_result_card(tmp_path):
+    """Cancel clicked while the worker was writing: the done event carries the
+    files, so the run is finished (row, status and result card), not cancelled."""
+    out = tmp_path / "a.srt"
+    out.write_text("1\n00:00:00,000 --> 00:00:01,000\nhi\n\n", encoding="utf-8")
+    js = tmp_path / "a.json"
+    js.write_text("{}", encoding="utf-8")
+    t, hist, calls = _cancelled_task_with_done(tmp_path, [str(out), str(js)])
+    row = hist.list_transcriptions()[0]
+    assert row["status"] == "finished" and row["output_paths"] == [str(out), str(js)]
+    assert t.status == "finished" and calls.shown == [t]
+
+
+def test_cancel_with_only_some_formats_written_stays_cancelled(tmp_path):
+    """A partial file set (a cancel during the export steps) is not a result."""
+    out = tmp_path / "a.srt"
+    out.write_text("partial", encoding="utf-8")
+    t, hist, calls = _cancelled_task_with_done(tmp_path, [str(out)])
+    assert hist.list_transcriptions()[0]["status"] == "cancelled"
+    assert t.status == "cancelled" and calls.shown == []
+
+
+def test_cancel_without_outputs_stays_cancelled(tmp_path):
+    """A normal cancel (checkpoint only, empty outputs) is unchanged."""
+    t, hist, calls = _cancelled_task_with_done(tmp_path, [])
+    assert hist.list_transcriptions()[0]["status"] == "cancelled"
+    assert t.status == "cancelled" and calls.shown == []
+
+
+def test_cancel_after_no_speech_result_ends_finished(tmp_path):
+    """A complete no-speech result (empty outputs, no_speech set) is finished too."""
+    t, hist, calls = _cancelled_task_with_done(tmp_path, [], no_speech=True)
+    assert hist.list_transcriptions()[0]["status"] == "finished"
+    assert t.status == "finished"
+
+
+def _locked_once(hist, failures: int):
+    real = hist.finish_transcription
+    state = {"n": 0}
+
+    def flaky(*a, **k):
+        state["n"] += 1
+        if state["n"] <= failures:
+            raise sqlite3.OperationalError("database is locked")
+        return real(*a, **k)
+
+    hist.finish_transcription = flaky  # type: ignore[method-assign]
+    return state
+
+
+def _done_event(t, out):
+    return {"event": "done", "task_id": t.task_id, "outputs": [str(out)],
+            "word_count": 1, "audio_duration": 1.0,
+            "_token": "tok1", "_worker_id": 1, "_pid": 5}
+
+
+def test_locked_history_write_is_retried_and_row_is_finished(tmp_path, monkeypatch):
+    """A transient lock at finish time must not leave the row 'running'."""
+    monkeypatch.setattr(ts, "_HISTORY_LOCK_RETRY_DELAYS", (0.0, 0.0, 0.0))
+    calls = _Calls()
+    app, hist = _app(tmp_path, calls)
+    svc = TranscriptionService(app)
+    out = tmp_path / "b.srt"
+    out.write_text("x", encoding="utf-8")
+    t = _task(str(tmp_path / "b.mp4"), hist)
+    app.workers.append(_worker(1, "tok1", t))
+    state = _locked_once(hist, failures=2)
+    app.worker_events.put(_done_event(t, out))
+    svc.poll()
+    assert state["n"] == 3
+    assert t.status == "finished" and calls.shown == [t]
+    assert hist.list_transcriptions()[0]["status"] == "finished"
+
+
+def test_persistent_lock_still_reports_finished_and_logs_loudly(tmp_path, monkeypatch, caplog):
+    """When the lock outlasts the retries the files are still reported as
+    done and the failure is logged at error level."""
+    monkeypatch.setattr(ts, "_HISTORY_LOCK_RETRY_DELAYS", (0.0, 0.0, 0.0))
+    calls = _Calls()
+    app, hist = _app(tmp_path, calls)
+    svc = TranscriptionService(app)
+    out = tmp_path / "b.srt"
+    out.write_text("x", encoding="utf-8")
+    t = _task(str(tmp_path / "b.mp4"), hist)
+    app.workers.append(_worker(1, "tok1", t))
+    state = _locked_once(hist, failures=99)
+    app.worker_events.put(_done_event(t, out))
+    with caplog.at_level("ERROR"):
+        svc.poll()
+    assert state["n"] == 4  # first try + 3 retries
+    assert t.status == "finished" and calls.shown == [t]
+    assert any("History record update failed" in r.getMessage() for r in caplog.records)

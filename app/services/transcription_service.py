@@ -288,6 +288,31 @@ def transcribe_command(t: Any) -> dict[str, Any]:
 HEADLESS_READY_TIMEOUT_S: float = 1200.0 if sys.platform == "darwin" else 120.0
 
 
+#: Pauses (s) between attempts to write the finished row while the history
+#: database is locked by another connection (kept short: finish_task runs on
+#: the Tk thread).
+_HISTORY_LOCK_RETRY_DELAYS: tuple[float, ...] = (0.1, 0.25, 0.5)
+
+
+def _retry_on_lock(fn: Any) -> Any:
+    """Call ``fn()``; retry a few times on a transient "database is locked".
+
+    Any other error, and a lock that outlasts the retries, propagates to
+    the caller (which logs it loudly).
+    """
+    import sqlite3
+    import time as _time
+    from core.history import _is_transient_lock_error
+    for delay in (*_HISTORY_LOCK_RETRY_DELAYS, None):
+        try:
+            return fn()
+        except sqlite3.Error as e:
+            if delay is None or not _is_transient_lock_error(e):
+                raise
+            logger.warning("history.db is locked while finishing a task (%s); retrying", e)
+            _time.sleep(delay)
+
+
 class TranscriptionService:
     def __init__(self, app: "App") -> None:
         self.app = app
@@ -2231,8 +2256,21 @@ class TranscriptionService:
         # via time.time() - start_time forever.
         if getattr(task, "end_time", None) is None:
             task.end_time = _time.time()
+        # A Cancel that arrived after the worker had already written ALL its
+        # files (or had found no speech) still ends in a ``done`` event that
+        # carries the result: that run is finished, not cancelled, so its
+        # history row and result card must exist. A partial set (a cancel
+        # during the export steps) stays cancelled.
+        completed_despite_cancel = bool(
+            not keep_status
+            and task.cancelled
+            and (
+                getattr(task, "no_speech", False)
+                or self._written_outputs_cover_formats(task)
+            )
+        )
         newly_finished = (
-            not keep_status and not task.cancelled
+            not keep_status and (not task.cancelled or completed_despite_cancel)
         )
         # The status this run must be recorded/reported under. task.status
         # itself isn't flipped to "finished" until after the history write
@@ -2288,7 +2326,7 @@ class TranscriptionService:
                         f"{base}.{ext}"
                         for ext in (app.app_config.get("output_formats") or ["srt", "json"])
                     ]
-                persisted = history.finish_transcription(
+                persisted = _retry_on_lock(lambda: history.finish_transcription(
                     task.history_id,
                     status=terminal_status,
                     output_paths=paths,
@@ -2312,7 +2350,7 @@ class TranscriptionService:
                     if newly_finished else "",
                     model=str(getattr(task, "speed_model", "") or "")
                     if newly_finished else "",
-                )
+                ))
                 if not persisted:
                     # Surfaced, not swallowed: the transcript FILES are
                     # still safely on disk (the worker wrote them before
@@ -2326,6 +2364,11 @@ class TranscriptionService:
                         "themselves are still on disk."
                     )
             except Exception as e:  # noqa: BLE001
+                logger.error(
+                    "History record update failed for %r: %s (the history row "
+                    "stays 'running'; the transcript files are on disk)",
+                    task.file_path, e,
+                )
                 app.log(
                     f"History record update failed: {e}; the transcript "
                     "files themselves are still on disk."
@@ -2393,6 +2436,25 @@ class TranscriptionService:
         app.update_overall_progress()
         if worker.get("temporary") and not any(t.status == "waiting" for t in app.queue):
             self.retire_worker(worker)
+
+    def _written_outputs_cover_formats(self, task: Any) -> bool:
+        """True when the worker-reported output files exist, are non-empty and
+        include an extension for every requested output format."""
+        try:
+            written = [str(p) for p in (getattr(task, "output_paths", None) or [])]
+            if not written:
+                return False
+            formats = getattr(task, "output_formats", None)
+            if formats is None:
+                formats = self.app.app_config.get("output_formats") or ["srt", "json"]
+            from core.writers import extension_for
+            wanted = {extension_for(str(f)) for f in formats}
+            got = {os.path.splitext(p)[1].lower().lstrip(".") for p in written}
+            if not wanted <= got:
+                return False
+            return all(os.path.getsize(p) > 0 for p in written)
+        except Exception:  # noqa: BLE001 - unsure: keep the cancelled outcome
+            return False
 
     def _derive_transcript_stats(self, task: Any) -> tuple[int, float]:
         """Best-effort ``(word_count, audio_duration)`` from a produced
