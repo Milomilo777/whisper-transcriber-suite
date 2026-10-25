@@ -36,6 +36,7 @@ from app.theme import system_fonts, tokens
 from app.widgets.book_panel import BookPanel
 from app.widgets import chip_cloud
 from app.widgets.chip_cloud import ChipCloud
+from app.widgets.wheel import bind_wheel_while_inside
 from core._threads import safe_thread
 from core.integrations import smtv_books
 
@@ -257,23 +258,17 @@ def _section_heading(parent: Any, text: str, count: int, *, row: int, top: int) 
 
 
 def _bind_wheel(canvas: tk.Canvas, inner: Any) -> None:
-    """Mouse-wheel scrolls the list only while the pointer is over it."""
+    """Mouse-wheel scrolls the list only while the pointer is over it.
+
+    The shared binder keeps the wheel alive while the pointer crosses
+    between the list's own children (a <Leave> onto a child is detail
+    Inferior, not an exit — see app/widgets/wheel.py).
+    """
     def _wheel(e: "tk.Event[Any]") -> None:
         delta = e.delta if e.delta else (120 if getattr(e, "num", 0) == 4 else -120)
         canvas.yview_scroll(int(-delta / 120) or (-1 if delta > 0 else 1), "units")
 
-    def _enter(_e: Any) -> None:
-        canvas.bind_all("<MouseWheel>", _wheel)
-        canvas.bind_all("<Button-4>", _wheel)
-        canvas.bind_all("<Button-5>", _wheel)
-
-    def _leave(_e: Any) -> None:
-        for seq in ("<MouseWheel>", "<Button-4>", "<Button-5>"):
-            canvas.unbind_all(seq)
-
-    for w in (canvas, inner):
-        w.bind("<Enter>", _enter)
-        w.bind("<Leave>", _leave)
+    bind_wheel_while_inside(canvas, _wheel, inner)
 
 
 class _HeroPills:

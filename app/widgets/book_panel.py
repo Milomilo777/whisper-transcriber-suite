@@ -21,6 +21,7 @@ from typing import Any, Callable
 
 from app.dpi import scale_factor
 from app.theme import system_fonts, tokens
+from app.widgets.wheel import bind_wheel_while_inside
 from core import offline
 from core.integrations import smtv_books
 from core.integrations.smtv_books import Book
@@ -244,7 +245,14 @@ class BookPanel(ttk.Frame):
             pass
 
     def _bind_wheel(self) -> None:
-        """The mouse wheel scrolls the panel only while the pointer is over it."""
+        """The mouse wheel scrolls the panel only while the pointer is over it.
+
+        The shared binder keeps the wheel alive while the pointer crosses
+        between the card's own children — the title, facts and cover cover
+        the whole card, and a <Leave> onto them is detail Inferior, not an
+        exit (see app/widgets/wheel.py). Before that guard the wheel died
+        as soon as the pointer touched the content.
+        """
         canvas = self._canvas
 
         def wheel(e: "tk.Event[Any]") -> None:
@@ -253,17 +261,7 @@ class BookPanel(ttk.Frame):
             delta = e.delta if e.delta else (120 if getattr(e, "num", 0) == 4 else -120)
             canvas.yview_scroll(int(-delta / 120) or (-1 if delta > 0 else 1), "units")
 
-        def enter(_e: Any) -> None:
-            for seq in ("<MouseWheel>", "<Button-4>", "<Button-5>"):
-                canvas.bind_all(seq, wheel)
-
-        def leave(_e: Any) -> None:
-            for seq in ("<MouseWheel>", "<Button-4>", "<Button-5>"):
-                canvas.unbind_all(seq)
-
-        for widget in (canvas, self._card):
-            widget.bind("<Enter>", enter)
-            widget.bind("<Leave>", leave)
+        bind_wheel_while_inside(canvas, wheel, self._card)
 
     def _on_resize(self, _event: Any = None) -> None:
         try:
