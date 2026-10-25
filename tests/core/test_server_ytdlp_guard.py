@@ -37,6 +37,11 @@ class _SpyPopen:
         return None
 
 
+def _leftovers(folder):
+    return [n for n in os.listdir(folder)
+            if n.startswith(server.GUARD_CONFIG_PREFIX)]
+
+
 @pytest.fixture
 def spy(monkeypatch):
     _SpyPopen.seen = []
@@ -92,7 +97,7 @@ def test_a_filtered_out_live_stream_gets_a_clear_error(tmp_path, spy):
         "[download] Some live does not pass filter (!is_live), skipping ..\n")
     with pytest.raises(RuntimeError, match="live streams are not supported"):
         server._download_url("https://example.com/v", str(tmp_path))
-    assert not (tmp_path / server.GUARD_CONFIG_NAME).exists()
+    assert _leftovers(tmp_path) == []
 
 
 def test_config_is_removed_when_the_process_cannot_start(tmp_path, monkeypatch):
@@ -103,4 +108,61 @@ def test_config_is_removed_when_the_process_cannot_start(tmp_path, monkeypatch):
     monkeypatch.setattr("core.js_runtime.yt_dlp_js_args", lambda _p=None: [])
     with pytest.raises(OSError):
         server._download_url("https://example.com/v", str(tmp_path))
-    assert not (tmp_path / server.GUARD_CONFIG_NAME).exists()
+    assert _leftovers(tmp_path) == []
+
+
+class _HalfWriter:
+    """File object that takes the first line and then fails (disk full)."""
+
+    def __init__(self, real):
+        self._real = real
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self._real.close()
+        return False
+
+    def write(self, text):
+        self._real.write(text.split("\n", 1)[0] + "\n")
+        self._real.flush()
+        raise OSError(28, "No space left on device")
+
+
+def test_config_is_removed_when_writing_it_fails_midway(tmp_path, monkeypatch):
+    real_fdopen = os.fdopen
+    monkeypatch.setattr(server.os, "fdopen",
+                        lambda *a, **k: _HalfWriter(real_fdopen(*a, **k)))
+    monkeypatch.setattr("core.js_runtime.yt_dlp_js_args", lambda _p=None: [])
+    with pytest.raises(OSError, match="No space"):
+        server._download_url("https://example.com/v", str(tmp_path))
+    assert _leftovers(tmp_path) == []
+
+
+@pytest.mark.parametrize("target", ["core.js_runtime.yt_dlp_js_args",
+                                    "core.paths.bin_dir"])
+def test_config_is_removed_when_building_the_command_fails(
+        tmp_path, monkeypatch, target):
+    def boom(*_a, **_k):
+        raise RuntimeError("cannot build the command")
+
+    monkeypatch.setattr("core.js_runtime.yt_dlp_js_args", lambda _p=None: [])
+    monkeypatch.setattr(target, boom)
+    with pytest.raises(RuntimeError, match="cannot build"):
+        server._download_url("https://example.com/v", str(tmp_path))
+    assert _leftovers(tmp_path) == []
+
+
+def test_an_existing_file_or_alias_is_never_reused(tmp_path, monkeypatch):
+    monkeypatch.setattr(server.secrets, "token_hex", lambda _n: "fixed")
+    taken = tmp_path / (server.GUARD_CONFIG_PREFIX + "fixed"
+                        + server.GUARD_CONFIG_SUFFIX)
+    taken.write_text("keep me")
+    with pytest.raises(FileExistsError):
+        server._write_guard_config(str(tmp_path), "http://wts:x@127.0.0.1:1")
+    assert taken.read_text() == "keep me"
+    monkeypatch.undo()
+    first = server._write_guard_config(str(tmp_path), "http://wts:x@127.0.0.1:1")
+    second = server._write_guard_config(str(tmp_path), "http://wts:x@127.0.0.1:1")
+    assert first != second

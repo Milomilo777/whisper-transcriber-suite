@@ -22,12 +22,14 @@ from __future__ import annotations
 import logging
 import os
 import re
+import secrets
 import socket
 import subprocess
 import sys
 import threading
 import time
-from typing import Any, Callable
+from contextlib import contextmanager
+from typing import Any, Callable, Iterator
 
 from core.server import lanfetch
 from core.server.dlproxy import shared_proxy
@@ -151,7 +153,8 @@ LIVE_REFUSED = (
     "live streams are not supported by the server; use a recorded video "
     "or upload the file")
 _FILTERED_OUT_RE = re.compile(r"does not pass filter", re.IGNORECASE)
-GUARD_CONFIG_NAME = ".wts-ytdlp-guard.conf"
+GUARD_CONFIG_PREFIX = ".wts-ytdlp-guard-"
+GUARD_CONFIG_SUFFIX = ".conf"
 
 
 def _write_guard_config(dest_dir: str, proxy_url: str) -> str:
@@ -164,15 +167,48 @@ def _write_guard_config(dest_dir: str, proxy_url: str) -> str:
     segment fetches go through the guard. The proxy password sits in this
     file (owner-only, in the job folder, removed after the run), never in the
     command line.
+
+    Known residual (accepted): yt-dlp starts ffmpeg with ``-http_proxy`` and
+    the proxy URL, credentials included, in ffmpeg's argv, which other local
+    accounts can read on a multi-user POSIX machine. The credential is per
+    run, short-lived and only valid for the loopback guard, which still
+    enforces the destination policy.
+
+    The file gets a new unique name and is created exclusively, so an
+    existing file or alias is never reused. It is removed again here when
+    writing fails; :func:`_guard_config` removes it after the run.
     """
-    path = os.path.join(dest_dir, GUARD_CONFIG_NAME)
+    path = os.path.join(
+        dest_dir,
+        GUARD_CONFIG_PREFIX + secrets.token_hex(8) + GUARD_CONFIG_SUFFIX)
     text = (f"--proxy {proxy_url}\n"
             f'--downloader-args "ffmpeg_i:-http_proxy {proxy_url}"\n')
-    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_BINARY", 0)
+    flags = (os.O_WRONLY | os.O_CREAT | os.O_EXCL
+             | getattr(os, "O_BINARY", 0))
     fd = os.open(path, flags, 0o600)
-    with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as handle:
-        handle.write(text)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as handle:
+            handle.write(text)
+    except BaseException:
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+        raise
     return path
+
+
+@contextmanager
+def _guard_config(dest_dir: str, proxy_url: str) -> Iterator[str]:
+    """The guard config file for one run; removed on every way out."""
+    path = _write_guard_config(dest_dir, proxy_url)
+    try:
+        yield path
+    finally:
+        try:
+            os.remove(path)  # holds the proxy password
+        except OSError:
+            pass
 # yt-dlp's message when no extractor accepts the address (with the generic one
 # switched off that is every direct media link and every unknown site).
 _UNSUPPORTED_URL_RE = re.compile(
@@ -220,9 +256,9 @@ def _download_url(url: str, dest_dir: str,
     out_template = os.path.join(dest_dir, "%(title).80s.%(ext)s")
     # Registered as a running download: an update of the user-writable
     # yt-dlp copy waits for it, and this waits for a running update.
-    with yt_dlp_update.download_running():
+    with yt_dlp_update.download_running(), \
+            _guard_config(dest_dir, proxy.url) as guard_config:
         yt_dlp = yt_dlp_update.resolve_yt_dlp_path()  # newer of bundled / updated copy
-        guard_config = _write_guard_config(dest_dir, proxy.url)
         command = [
             yt_dlp,
             *yt_dlp_js_args(yt_dlp),  # Deno for YouTube's JS challenges, if present
@@ -256,20 +292,13 @@ def _download_url(url: str, dest_dir: str,
         # End-of-options separator: the URL is never treated as a flag.
         command += ["--", url]
         logger.info("server: downloading %s", strip_url_secrets(url))
-        try:
-            process = subprocess.Popen(
-                command, stdin=subprocess.DEVNULL,
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                text=True, encoding="utf-8", errors="replace",
-                env=_proxy_environment(proxy.url),
-                **new_session_kwargs(),
-            )
-        except BaseException:
-            try:
-                os.remove(guard_config)
-            except OSError:
-                pass
-            raise
+        process = subprocess.Popen(
+            command, stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            text=True, encoding="utf-8", errors="replace",
+            env=_proxy_environment(proxy.url),
+            **new_session_kwargs(),
+        )
         try:
             started = time.monotonic()
             while True:
@@ -308,10 +337,6 @@ def _download_url(url: str, dest_dir: str,
                     process.communicate(timeout=10)
                 except (subprocess.TimeoutExpired, OSError, ValueError):
                     pass
-            try:
-                os.remove(guard_config)  # holds the proxy password
-            except OSError:
-                pass
     # Pick the newest media file yt-dlp left in the dir.
     candidates = [
         os.path.join(dest_dir, n) for n in os.listdir(dest_dir)
