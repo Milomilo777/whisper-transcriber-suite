@@ -64,7 +64,9 @@ def _bare_app(monkeypatch, tmp_path, *, url: str, episode):
     if "faster_whisper" not in sys.modules:
         fw = types.ModuleType("faster_whisper")
         fw.WhisperModel = object  # type: ignore[attr-defined]
-        sys.modules["faster_whisper"] = fw
+        # setitem, not a bare assignment: the stub must go away after the test,
+        # or later tests that patch faster_whisper.utils find a package-less stub.
+        monkeypatch.setitem(sys.modules, "faster_whisper", fw)
     from app.app import App
 
     import app.services.download_service as ds
