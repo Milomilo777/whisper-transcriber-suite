@@ -150,20 +150,37 @@ def _is_zombie(pid: int) -> bool:
         return raw[raw.rindex(b")") + 1:].split()[0] == b"Z"
     except (OSError, ValueError, IndexError):
         pass
+    # No /proc entry. First peek at an exited CHILD without reaping it.
     try:
-        # No /proc (macOS): peek at an exited CHILD without reaping it.
         waitid = getattr(os, "waitid", None)
         flags = 0
         for n in ("WEXITED", "WNOHANG", "WNOWAIT"):
             flag = getattr(os, n, None)
             if flag is None:
-                return False
+                flags = 0
+                break
             flags |= int(flag)
-        if waitid is None:
-            return False
-        return waitid(getattr(os, "P_PID"), pid, flags) is not None
+        if waitid is not None and flags and waitid(getattr(os, "P_PID"), pid, flags) is not None:
+            return True
     except (OSError, ChildProcessError):
+        pass  # not our child (ECHILD): waitid cannot tell, ask ps below
+    # waitid only sees children. Where /proc is absent (macOS, BSD) a zombie
+    # that is not our child is visible only through ps.
+    if sys.platform.startswith("linux") or os.path.isdir("/proc/self"):
         return False
+    return _ps_says_zombie(pid)
+
+
+def _ps_says_zombie(pid: int) -> bool:
+    """True when ``ps -o stat=`` reports a Z state for ``pid``; any failure means no."""
+    try:
+        out = subprocess.run(
+            ["ps", "-o", "stat=", "-p", str(int(pid))],
+            capture_output=True, text=True, timeout=2.0, check=False, shell=False,
+        ).stdout
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return False
+    return out.strip().startswith("Z")
 
 
 def pid_alive(pid: int) -> bool:

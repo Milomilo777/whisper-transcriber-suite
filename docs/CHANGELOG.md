@@ -97,6 +97,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   the saved text stays untouched.
 - **Kept-aside checkpoints can be read without the app**: a plain-text copy of the saved transcript is
   written next to each one (`<hash>.unverified-<time>.txt`); the startup sweep never deletes either file.
+- **A relaunch no longer waits 20 seconds for a zombie on macOS**: a finished process that is not a child of
+  the app is now detected with `ps` where `/proc` does not exist.
 - **Two burn jobs racing for one output name no longer lose a placeholder's reservation**: every
   reservation attempt now owns its own token and a failed attempt removes only that token, so the watched
   folder never takes a job's empty placeholder for user input.
