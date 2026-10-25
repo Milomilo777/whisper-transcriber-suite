@@ -85,6 +85,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Live captions survive a crash or power cut after Stop**: every finished sentence is written to a small
+  `live-journal.txt` next to the session audio before it appears in the window, and Stop no longer deletes
+  that audio. The files are removed only once the transcript is saved (Save, or the exit autosave); older
+  runs whose text was never saved are listed in the log at the next Start and are never deleted.
 - **The saved text of an interrupted run is kept unless its media is verified unchanged**: only re-running
   the same, unchanged file with another engine, model or setting discards a checkpoint. A replaced, deleted
   or unverifiable source keeps it aside instead (on resume, on a new job for the same path, and with an
