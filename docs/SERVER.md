@@ -714,6 +714,10 @@ Behaviour to know:
   server"): yt-dlp hands them to ffmpeg. For the few recorded videos that
   also need ffmpeg (HLS that yt-dlp cannot read itself), ffmpeg is pointed at
   the same download guard, so its segment requests get the same address check.
+  Residual: ffmpeg is started with the guard's per-job address and password in
+  its command line, which other local accounts can read on a shared Unix
+  machine; the credential only works for the loopback guard, lasts one job and
+  does not widen what the guard allows.
   **Server link jobs only use yt-dlp's site-specific extractors.** The
   generic extractor, which fetches any address, is switched off
   (`--use-extractors default,-generic`), so a plain media link
