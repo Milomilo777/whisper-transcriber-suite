@@ -85,6 +85,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Two transcriptions of files with the same name (for example talk.mp4 and talk.m4a) finishing at the same moment no longer overwrite each other's transcript or fail; the second one is saved as "talk (1)".
 - **The saved text of an interrupted run is kept unless its media is verified unchanged**: only re-running
   the same, unchanged file with another engine, model or setting discards a checkpoint. A replaced, deleted
   or unverifiable source keeps it aside instead (on resume, on a new job for the same path, and with an

@@ -1294,11 +1294,59 @@ def _write_outputs(
     # not leave its chapters at the previous run's name while the
     # transcripts move to " (1)".
     want_sidecar = bool(chapters)
+    #
+    # The index is CLAIMED, not just probed: every indexed name is created
+    # exclusively (O_CREAT|O_EXCL) as an empty placeholder, so two parallel
+    # workers with one stem (talk.mp4 + talk.m4a, two clips of one file)
+    # can never both settle on the same name. The loser sees
+    # FileExistsError and moves to the next index. Only placeholders THIS
+    # call created are ever removed again.
+    claimed: set[str] = set()
+
+    def _claim(path: str) -> bool:
+        """True when *path* is free (placeholder created) or cannot be
+        probed at all (the later write then reports the real error);
+        False when the name is already taken."""
+        out_dir = os.path.dirname(path)
+        if out_dir and not os.path.isdir(out_dir):
+            try:
+                os.makedirs(out_dir, exist_ok=True)
+            except OSError:
+                return True
+        try:
+            fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o666)
+        except FileExistsError:
+            return False
+        except OSError:
+            return True
+        os.close(fd)
+        claimed.add(path)
+        return True
+
+    def _release(path: str) -> None:
+        if path in claimed:
+            claimed.discard(path)
+            try:
+                os.unlink(path)
+            except OSError:
+                pass
+
     index = 0
-    while index < 10000 and (
-        any(os.path.exists(_final_path(f, p, index)) for f, p in indexed_planned)
-        or (want_sidecar and os.path.exists(_indexed_sidecar_path(base, index)))
-    ):
+    while True:
+        candidates = [_final_path(f, p, index) for f, p in indexed_planned]
+        if want_sidecar:
+            candidates.append(_indexed_sidecar_path(base, index))
+        taken = False
+        for cand in candidates:
+            if not _claim(cand):
+                taken = True
+                break
+        if not taken:
+            break
+        for cand in candidates:
+            _release(cand)
+        if index >= 10000:
+            break
         index += 1
 
     for fmt_name, rendered in planned:
@@ -1354,11 +1402,13 @@ def _write_outputs(
                     fs.write(payload_s)
                     _checkpoint._flush_to_disk(fs)
             os.replace(part_path, path)
+            claimed.discard(path)
         except Exception as e:  # noqa: BLE001
             try:
                 os.unlink(part_path)
             except OSError:
                 pass
+            _release(path)
             # Isolate per-format failures: one broken writer (a missing
             # optional dependency, or a single format's encoding bug) must
             # NOT discard the formats that wrote fine. Each format is
@@ -1385,7 +1435,10 @@ def _write_outputs(
             _indexed_sidecar_path(base, index), chapters or []
         )
         if sidecar_path:
+            claimed.discard(sidecar_path)
             written.append(sidecar_path)
+        else:
+            _release(_indexed_sidecar_path(base, index))
     return written
 
 
