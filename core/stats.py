@@ -56,6 +56,7 @@ except ImportError:  # pragma: no cover - exercised via a blocked import in test
 
 from core import __version__ as _PROGRAM_VERSION
 from .text_metrics import count_words
+from .verified_download import urlopen_https_only
 
 logger = logging.getLogger(__name__)
 
@@ -353,7 +354,7 @@ def _post(url: str, payload: dict[str, str], timeout: float) -> None:
                 "User-Agent": "WhisperTranscriberSuite",
             },
         )
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        with urlopen_https_only(req, timeout=timeout) as resp:
             resp.read(1)  # drain a byte; we don't care about the body
         logger.debug("usage stats posted to %s", url)
     except (urllib.error.URLError, OSError, ValueError) as e:

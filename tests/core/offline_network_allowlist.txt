@@ -21,10 +21,10 @@ core/backends/cloud_stt.py::CloudSttBackend._upload_file  only reached from tran
 core/backends/cloud_stt.py::CloudSttBackend._wait_for_active  only reached from _upload_file (see above)
 core/backends/cloud_stt.py::CloudSttBackend._delete_file  only reached from transcribe() / _upload_file (see above)
 core/backends/cloud_stt.py::CloudSttBackend._post_json  only reached from transcribe() (see above)
-core/config.py::fetch_online_config  load_config() asks is_offline() and passes an empty URL while offline (no request)
 core/js_runtime.py::_download  only reached from install_deno(), which asks first
 core/llm.py::RemoteLLMRunner._post_once  only reached from the request method that refuses a non-local base_url while offline
 core/model_manager.py::_download_via_huggingface  only reached from ensure_model(), which calls require_online() first
+core/verified_download.py::urlopen_https_only  shared opener for the online config, update check, usage stats and problem report; each caller asks core.offline (or is skipped while offline) before it
 core/offline.py::self_test.tcp  the Verify offline now probe; self_test() runs it only while offline, to a reserved address
 core/offline.py::self_test.udp  the Verify offline now probe (see tcp)
 core/server/__init__.py::_primary_lan_ip  a UDP connect that only picks a route and sends nothing
@@ -33,7 +33,6 @@ core/server/__init__.py::find_available_port  binds local ports; no connection
 core/server/jobs.py::post_webhook  only reached from _fire_webhook(), which skips it while offline
 core/server/netguard.py::connect_checked  only reached from post_webhook (skipped while offline) and the download proxy of server link jobs (queued jobs call offline.require_online first)
 core/server/dlproxy.py::_connect_through  only used by the download proxy of server link jobs (queued jobs call offline.require_online first)
-core/stats.py::_post  only reached from the stats sender, which skips it while offline
 core/tts_kokoro.py::_fetch_archive  only reached after require_online("downloading the Kokoro voice model")
 core/local_llm_server.py::LocalLLMServer._health  connects only to 127.0.0.1 (LOOPBACK), the app's own llama-server child
 core/local_llm_server.py::LocalLLMServer.open_chat  connects only to 127.0.0.1 (LOOPBACK), the app's own llama-server child

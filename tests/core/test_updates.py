@@ -141,7 +141,7 @@ def test_check_for_update_silent_on_bad_json(monkeypatch: pytest.MonkeyPatch) ->
         def __exit__(self, *_a: object) -> bool:
             return False
 
-        def read(self) -> bytes:
+        def read(self, _n: int = -1) -> bytes:
             return b"this is not json"
 
     monkeypatch.setattr(urllib.request, "urlopen", lambda *_a, **_k: _Resp())
@@ -163,7 +163,7 @@ def test_check_for_update_parses_and_compares(monkeypatch: pytest.MonkeyPatch) -
         def __exit__(self, *_a: object) -> bool:
             return False
 
-        def read(self) -> bytes:
+        def read(self, _n: int = -1) -> bytes:
             return body
 
     monkeypatch.setattr(urllib.request, "urlopen", lambda *_a, **_k: _Resp())

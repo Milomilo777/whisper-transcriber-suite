@@ -23,6 +23,7 @@ from typing import Any
 
 from core import __version__ as _APP_VERSION
 from core import offline
+from core.verified_download import urlopen_https_only
 
 logger = logging.getLogger(__name__)
 
@@ -114,7 +115,7 @@ def send(config: dict[str, Any], text: str, *, timeout: float = 15.0) -> None:
                  "User-Agent": "WhisperTranscriberSuite"},
     )
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        with urlopen_https_only(req, timeout=timeout) as resp:
             resp.read(1)
     except urllib.error.HTTPError as e:
         logger.info("problem report refused: HTTP %s", e.code)

@@ -24,6 +24,7 @@ from typing import Any
 import platformdirs
 
 from core import offline
+from core.verified_download import urlopen_https_only
 
 # Module-level lock serialises concurrent save_config calls — on
 # Windows os.replace fails with PermissionError when another thread
@@ -1093,7 +1094,7 @@ def fetch_online_config(
             req = urllib.request.Request(
                 url, headers={"User-Agent": "WhisperTranscriberSuite"}
             )
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
+            with urlopen_https_only(req, timeout=timeout) as resp:
                 # Reject an oversized body BEFORE buffering it whole: a
                 # hostile/MITM host could stream multiple GB and exhaust
                 # memory on the launch path. The Content-Length (if sent)

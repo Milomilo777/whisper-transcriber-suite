@@ -43,6 +43,8 @@ from datetime import date, timedelta
 from pathlib import Path
 from typing import Any, Mapping, MutableMapping, NamedTuple
 
+from core.verified_download import urlopen_https_only
+
 logger = logging.getLogger(__name__)
 
 # --- Repository coordinates ------------------------------------------------
@@ -63,6 +65,8 @@ RELEASES_PAGE_URL = (
 # A short, honest User-Agent. GitHub's REST API rejects requests with no
 # User-Agent header (HTTP 403), so this is required, not cosmetic.
 _USER_AGENT = "WhisperTranscriberSuite-update-check"
+# The GitHub release JSON is tens of KB; a larger body is not one.
+MAX_RELEASE_BYTES = 2 * 1024 * 1024
 
 # Default network timeout, in seconds, for the single GET. Kept small so
 # the daemon thread never lingers on a dead network.
@@ -760,8 +764,10 @@ def check_for_update(timeout: int = _DEFAULT_TIMEOUT_S) -> UpdateInfo | None:
         },
     )
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            raw = resp.read()
+        with urlopen_https_only(req, timeout=timeout) as resp:
+            raw = resp.read(MAX_RELEASE_BYTES + 1)
+        if len(raw) > MAX_RELEASE_BYTES:
+            raise ValueError(f"release response exceeds {MAX_RELEASE_BYTES} bytes")
         text = raw.decode("utf-8", errors="replace")
         details = parse_release(text)
     except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError) as e:
