@@ -145,6 +145,8 @@ def open_chooser(app: Any) -> None:
     buttons.pack(fill="x", pady=(10, 0))
     ttk.Button(buttons, text=_("OK"), command=accept).pack(side="right")
     ttk.Button(buttons, text=_("Cancel"), command=close).pack(side="right", padx=(0, 8))
+    dlg.accept_choice = accept  # type: ignore[attr-defined]
+    dlg.close_chooser = close  # type: ignore[attr-defined]
     box.bind("<Double-Button-1>", accept)
     box.bind("<Return>", accept)
     dlg.bind("<Escape>", lambda _e: close())

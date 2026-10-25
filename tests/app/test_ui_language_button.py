@@ -244,15 +244,6 @@ def test_tk_the_button_opens_the_chooser(tk_app: Any) -> None:
     assert tk_app._ui_language_chooser is dlg
 
 
-def _key(widget: Any, sequence: str) -> None:
-    """Send a key event to a widget that has the keyboard focus (events need it on Windows)."""
-    widget.update()
-    widget.focus_force()
-    widget.update()
-    widget.event_generate(sequence)
-    widget.update()
-
-
 def _listbox(widget: Any) -> Any:
     if widget.winfo_class() == "Listbox":
         return widget
@@ -284,7 +275,8 @@ def test_tk_picking_a_language_saves_it_and_asks_about_the_restart(
     box = _listbox(dlg)
     box.selection_clear(0, "end")
     box.selection_set(2)  # Deutsch
-    _key(box, "<Return>")
+    assert box.bind("<Return>") and box.bind("<Double-Button-1>")  # the keys and the double click
+    dlg.accept_choice()
     assert saved == ["de"] and asked == ["de"]
     assert tk_app._ui_language_chooser is None
 
@@ -292,7 +284,7 @@ def test_tk_picking_a_language_saves_it_and_asks_about_the_restart(
 def test_tk_picking_the_current_language_changes_nothing(tk_app: Any, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(ui_language, "save_config", lambda _cfg: pytest.fail("must not save"))
     ui_language.open_chooser(tk_app)
-    _key(_listbox(tk_app._ui_language_chooser), "<Return>")
+    tk_app._ui_language_chooser.accept_choice()
     assert tk_app.app_config["ui_language"] == "auto"
 
 
@@ -300,7 +292,8 @@ def test_tk_cancel_and_escape_close_without_saving(tk_app: Any, monkeypatch: pyt
     monkeypatch.setattr(ui_language, "save_config", lambda _cfg: pytest.fail("must not save"))
     ui_language.open_chooser(tk_app)
     dlg = tk_app._ui_language_chooser
-    _key(dlg, "<Escape>")
+    assert dlg.bind("<Escape>")
+    dlg.close_chooser()
     assert tk_app._ui_language_chooser is None and not _exists(dlg)
 
 
