@@ -16,19 +16,79 @@ from __future__ import annotations
 
 import http.client
 import ipaddress
+import logging
 import socket
 import ssl
+import threading
+import time
 import urllib.request
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 class BlockedAddressError(OSError):
     """The host resolves to an address the server must not connect to."""
 
 
+_NETWORKS_TTL_S = 5.0
+_networks_lock = threading.Lock()
+_networks_cache: tuple[float, tuple[Any, ...]] = (float("-inf"), ())
+
+
+def parse_private_networks(values: Any) -> tuple[Any, ...]:
+    """The usable networks of a ``server_allowed_private_networks`` value.
+
+    Entries that are not CIDR text are ignored with a warning. Listing a
+    loopback or link-local network has no effect: those addresses are refused
+    before this list is looked at.
+    """
+    if not isinstance(values, (list, tuple)):
+        return ()
+    nets = []
+    for value in values:
+        try:
+            nets.append(ipaddress.ip_network(str(value).strip(), strict=False))
+        except ValueError:
+            logger.warning("server: ignoring %r in "
+                           "server_allowed_private_networks (not a CIDR)",
+                           value)
+    return tuple(nets)
+
+
+def configured_private_networks() -> tuple[Any, ...]:
+    """The private networks the operator allowed for link jobs (config key
+    ``server_allowed_private_networks``; empty by default). Re-read at most
+    every few seconds."""
+    global _networks_cache
+    now = time.monotonic()
+    with _networks_lock:
+        stamp, cached = _networks_cache
+        if now - stamp < _NETWORKS_TTL_S:
+            return cached
+    try:
+        from core.config import load_config
+        nets = parse_private_networks(
+            load_config(fetch_online=False).get(
+                "server_allowed_private_networks", []))
+    except Exception:  # noqa: BLE001 -- a broken config means "none allowed"
+        logger.exception("server: could not read the allowed private networks")
+        nets = ()
+    with _networks_lock:
+        _networks_cache = (now, nets)
+    return nets
+
+
 def address_blocked(ip: "ipaddress.IPv4Address | ipaddress.IPv6Address",
-                    *, allow_private: bool = True) -> bool:
+                    *, allow_private: bool = True,
+                    allowed_networks: Any = None) -> bool:
     """True when ``ip`` is a target the server must not connect to.
+
+    With ``allow_private`` False a private-network address is refused unless
+    it lies in ``allowed_networks`` (default: the configured
+    ``server_allowed_private_networks``). Loopback, link-local (cloud
+    metadata), unspecified, multicast and reserved addresses are refused
+    whatever that list says.
 
     An IPv4-mapped IPv6 address (``::ffff:a.b.c.d``) is judged as its IPv4
     address: Python before 3.11.10 / 3.12.4 calls every such address
@@ -41,7 +101,10 @@ def address_blocked(ip: "ipaddress.IPv4Address | ipaddress.IPv6Address",
             or ip.is_multicast or ip.is_reserved):
         return True
     if not allow_private and not ip.is_global:
-        return True
+        nets = (configured_private_networks() if allowed_networks is None
+                else allowed_networks)
+        return not any(ip.version == net.version and ip in net
+                       for net in nets)
     if isinstance(ip, ipaddress.IPv6Address):
         return _ipv6_embeds_blocked_ipv4(ip, allow_private)
     return False

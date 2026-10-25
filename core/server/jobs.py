@@ -772,7 +772,8 @@ class JobManager:
             raise ValueError(
                 "only http(s) URLs to a public host are accepted "
                 "(this computer's own, link-local and local-network "
-                "addresses are refused)"
+                "addresses are refused unless the operator lists the "
+                "network in server_allowed_private_networks)"
             )
         with self._lock:
             job = self._new_job("url", formats, language, url,

@@ -647,7 +647,8 @@ Behaviour to know:
   1 in 100 ordinary public IPv6 hosts; an IPv6-only network that relies on
   DNS64 cannot use link jobs. If the proxy cannot start, the job fails
   instead of downloading without it. **Residual risk:** a link job cannot
-  fetch from a server on your own network (use an upload for that); a
+  fetch from a server on your own network unless you list that network in
+  `server_allowed_private_networks` (or use an upload); a
   computer that needs a company proxy to reach the internet cannot use link
   jobs, because the guard connects directly; what a public site itself
   returns is trusted as content (the downloaded file is only transcribed,
@@ -757,7 +758,17 @@ server_share_lan       false    in-app toggle: bind 0.0.0.0 (LAN) vs 127.0.0.1
 server_token           ""       optional access password (cleartext; see below)
 server_https_enabled   false    serve over TLS (self-signed certificate)
 server_webhook_url     ""       completion webhook target (empty = off)
+server_allowed_private_networks  []  local networks link jobs may use (CIDRs)
 ```
+
+`server_allowed_private_networks` is a list of CIDR strings, for example
+`["192.168.1.0/24"]`, edited in `config.json` only (there is no setting for it
+in the app). By default link jobs reach public hosts only. A listed network is
+accepted when a link job is submitted and by the download proxy; loopback and
+link-local (cloud metadata) addresses stay refused even if listed, and so do
+IPv6 addresses that carry such an IPv4 address. A change is picked up within a
+few seconds. The completion webhook is not affected (a receiver on the local
+network is always allowed there).
 
 `server_token` is stored in cleartext, the same as cookies / API keys:
 `config.json` is per-user under `%LOCALAPPDATA%\WhisperTranscriberSuite` and is not

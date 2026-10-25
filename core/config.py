@@ -426,6 +426,12 @@ DEFAULT_CONFIG = {
     #     cloud-metadata addresses. The CLI equivalent is --webhook.
     "server_https_enabled": False,
     "server_webhook_url": "",
+    #   server_allowed_private_networks — CIDR strings (for example
+    #     "192.168.1.0/24") of local networks that server LINK jobs may
+    #     download from. Empty (the default) = public hosts only. Loopback and
+    #     link-local / cloud-metadata addresses stay refused even if listed.
+    #     No UI: edit config.json (see docs/SERVER.md).
+    "server_allowed_private_networks": [],
     # Window / privacy toggles set in the Advanced dialog's "App behaviour"
     # section and read at runtime. Defaulted here (tray OFF, stats ON) so
     # reads are always a plain bool and they get the same merge +
