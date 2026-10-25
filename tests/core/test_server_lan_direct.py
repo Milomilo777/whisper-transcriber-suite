@@ -17,6 +17,7 @@ import threading
 import pytest
 
 import core.server as server
+from core import offline
 from core.server import netguard
 from core.server.jobs import DownloadCancelled, DownloadLimits
 
@@ -146,6 +147,15 @@ def test_an_http_error_is_reported_and_leaves_nothing(
         server._download_url(f"http://127.0.0.1:{origin}/missing.wav",
                              str(tmp_path), _limits())
     assert os.listdir(tmp_path) == []
+
+
+def test_work_offline_refuses_the_direct_download(origin, tmp_path, monkeypatch):
+    _lift_guard(monkeypatch)
+    monkeypatch.setattr(offline, "is_offline", lambda: True)
+    with pytest.raises(offline.OfflineModeError):
+        server._download_url(f"http://127.0.0.1:{origin}/a.wav",
+                             str(tmp_path), _limits())
+    assert _Origin.hits == []
 
 
 def test_a_host_outside_the_allowlist_keeps_using_the_downloader(

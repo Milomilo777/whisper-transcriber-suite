@@ -30,6 +30,7 @@ import urllib.parse
 import urllib.request
 from typing import Any
 
+from core import offline
 from core.server import netguard
 from core.server.jobs import DownloadCancelled, DownloadLimits, strip_url_secrets
 
@@ -115,6 +116,7 @@ def _file_name(url: str, content_type: str) -> str:
 
 def fetch(url: str, dest_dir: str, limits: DownloadLimits | None = None) -> str:
     """Download ``url`` into ``dest_dir``; return the saved file's path."""
+    offline.require_online("downloading this link")
     opener = urllib.request.build_opener(
         urllib.request.ProxyHandler({}), _LanHTTPHandler(), _LanHTTPSHandler(),
         _Redirects())
