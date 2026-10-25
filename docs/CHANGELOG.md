@@ -4,6 +4,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Security
+
+- **The server slows down wrong access passwords**: after 5 wrong passwords from one client address, that
+  address gets HTTP 429 with a growing `Retry-After` (15 seconds, doubling, at most 15 minutes). The lockout
+  always ends by itself; the right password works again afterwards.
+
 ### Changed
 
 - **The README describes the whole product again**: a full FAQ (36 questions), the browser version, every

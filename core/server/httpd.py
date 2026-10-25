@@ -93,6 +93,7 @@ from core.server.jobs import (
     redact_paths,
 )
 from core.server import mcp
+from core.server.auth_throttle import AuthThrottle
 from core.writers import get_writer, supported_formats
 
 
@@ -288,6 +289,10 @@ def parse_route(method: str, raw_path: str) -> Route:
     if parts == ["v1", "audio", "transcriptions"]:
         return Route(m, "openai_transcriptions", "", query)
     return Route(m, "unknown", "", query)
+
+
+_THROTTLE_MESSAGE = ("too many wrong passwords from this address; "
+                     "wait and try again")
 
 
 def token_ok(expected: str, header_token: str | None,
@@ -1169,6 +1174,8 @@ class JobHTTPServer(ThreadingHTTPServer):
             self.address_family = socket.AF_INET6
         self.manager = manager
         self.token = token
+        # Slows down repeated wrong access passwords per client address.
+        self.auth_throttle = AuthThrottle()
         self.max_upload_bytes = (
             min(max(1, max_upload_mb), _ABSOLUTE_MAX_UPLOAD_MB) * 1024 * 1024
         )
@@ -1540,11 +1547,35 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         return None
 
     def _authed(self, route: Route) -> bool:
-        return token_ok(
-            self._srv.token,
-            self.headers.get("X-Auth-Token") or self._bearer_token(),
-            route.query.get("token"),
-        )
+        """True when the request may proceed.
+
+        With an access password set, a client address that sent too many wrong
+        passwords is refused for a growing time (``_auth_wait`` then holds the
+        seconds, and the caller answers 429 instead of 401). A request that
+        carries no password at all is refused but not counted: only a wrong
+        password is a guess.
+        """
+        self._auth_wait = 0
+        srv = self._srv
+        if not srv.token:
+            return True
+        who = self.client_address[0] if self.client_address else ""
+        wait = srv.auth_throttle.retry_after(who)
+        if wait:
+            self._auth_wait = wait
+            return False
+        header = self.headers.get("X-Auth-Token") or self._bearer_token()
+        query = route.query.get("token")
+        if token_ok(srv.token, header, query):
+            srv.auth_throttle.success(who)
+            return True
+        if header or query:
+            locked = srv.auth_throttle.failure(who)
+            if locked:
+                logger.warning(
+                    "server: %s sent too many wrong access passwords; "
+                    "refused for %d s", who, locked)
+        return False
 
     def _send_json(self, status: int, payload: dict[str, Any], retry_after: int | None = None) -> None:
         body = json.dumps(payload).encode("utf-8")
@@ -1626,7 +1657,12 @@ class JobRequestHandler(BaseHTTPRequestHandler):
             self._serve_index()
             return
         if not self._authed(route):
-            self._send_error_json(HTTPStatus.UNAUTHORIZED, "auth required")
+            if self._auth_wait:
+                self._send_error_json(
+                    HTTPStatus.TOO_MANY_REQUESTS, _THROTTLE_MESSAGE,
+                    retry_after=self._auth_wait)
+            else:
+                self._send_error_json(HTTPStatus.UNAUTHORIZED, "auth required")
             return
         if route.name == "health":
             payload: dict[str, Any] = {
@@ -1795,7 +1831,17 @@ class JobRequestHandler(BaseHTTPRequestHandler):
             # keep-alive an unread request body desyncs the connection —
             # the next request would read this body's leftover bytes. We
             # send Connection: close as a belt-and-braces guard too.
-            if route.name == "openai_transcriptions":
+            if self._auth_wait:
+                if route.name == "openai_transcriptions":
+                    self._reject_openai_post_early(
+                        HTTPStatus.TOO_MANY_REQUESTS, _THROTTLE_MESSAGE,
+                        code="rate_limit_exceeded",
+                        retry_after=self._auth_wait)
+                else:
+                    self._reject_post_early(
+                        HTTPStatus.TOO_MANY_REQUESTS, _THROTTLE_MESSAGE,
+                        retry_after=self._auth_wait)
+            elif route.name == "openai_transcriptions":
                 self._reject_openai_post_early(
                     HTTPStatus.UNAUTHORIZED, "Incorrect API key provided.",
                     code="invalid_api_key")
