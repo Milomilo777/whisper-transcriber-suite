@@ -231,3 +231,71 @@ def test_the_engine_snapshot_reads_the_saved_model():
         "model_name": "medium",
         "spawn_nvidia_model_id": "",
     }
+
+
+def test_sustained_history_failure_errors_the_task_instead_of_spinning(sent):
+    """A locked DB for a moment must retry (test above); a locked-forever DB
+    must not leave the task 'waiting' for eternity with two log lines per
+    500 ms tick. After the cap the task becomes a normal error row."""
+    class _DeadHistory:
+        def insert_transcription(self, **_kw):
+            raise RuntimeError("disk I/O error")
+
+    from app.services.transcription_service import (
+        _MAX_HISTORY_INSERT_ATTEMPTS,
+    )
+
+    logs: list[str] = []
+    app = _app(history=_DeadHistory(), log=logs.append)
+    task = SimpleNamespace(status="waiting", file_path="clip.mp4")
+    app.queue.append(task)
+    worker = _idle_worker()
+    app.workers.append(worker)
+
+    svc = TranscriptionService(app)
+    for _ in range(_MAX_HISTORY_INSERT_ATTEMPTS):
+        svc.dispatch_waiting()
+
+    assert task.status == "error"
+    assert "history" in (task.error_reason or "")
+    assert task.end_time is not None
+    # One visible failure note, then silence — not a line per tick.
+    visible = [m for m in logs if "history" in m]
+    assert len(visible) <= 2, visible
+    # Terminal: further ticks do not touch it.
+    svc.dispatch_waiting()
+    assert task.status == "error"
+    assert worker["task"] is None
+
+
+def test_history_failure_count_resets_after_a_success(sent):
+    class _FlakyHistory:
+        fail = True
+
+        def insert_transcription(self, **_kw):
+            if self.fail:
+                raise RuntimeError("database is locked")
+            return 789
+
+    app = _app(history=None)
+    hist = _FlakyHistory()
+    task = SimpleNamespace(status="waiting", file_path="clip.mp4")
+    app.queue.append(task)
+    app.workers.append(_idle_worker())
+
+    svc = TranscriptionService(app)
+    app.history = hist
+    svc.dispatch_waiting()          # 1 failure
+    assert task.status == "waiting"
+    hist.fail = False
+    svc.dispatch_waiting()          # dispatch succeeds
+    assert task.status == "running"
+    assert task.history_id == 789
+    # A NEW waiting task failing once still gets the full retry window:
+    # the count is per task, not a global fuse.
+    hist.fail = True
+    task2 = SimpleNamespace(status="waiting", file_path="clip2.mp4")
+    app.queue.append(task2)
+    app.workers.append(_idle_worker())
+    svc.dispatch_waiting()
+    assert task2.status == "waiting"
