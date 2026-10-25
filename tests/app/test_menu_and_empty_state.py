@@ -33,7 +33,7 @@ def _menu_host() -> _MenuHost:
     for name in (
         "browse", "convert_transcript", "show_statistics", "_force_exit", "apply_theme",
         "_save_chime_pref", "_open_transcript_viewer_picker", "_open_search_dialog",
-        "open_log_folder", "_check_for_updates_manual", "_save_telemetry_pref",
+        "open_log_folder", "copy_mcp_setup", "_check_for_updates_manual", "_save_telemetry_pref",
         "_show_about", "_populate_recent_menu", "_toggle_work_offline",
     ):
         setattr(root, name, MagicMock(name=name))
