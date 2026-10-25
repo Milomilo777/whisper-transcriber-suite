@@ -85,6 +85,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- If the transcription engine reports a late error after all output files were already written, the finished transcript is now kept and shown instead of being marked as failed.
+- A transcription whose Cancel button was pressed just after its files were written is now recorded as finished and shows its result, instead of as cancelled with no result.
+- The history entry of a finished transcription is now written again after a short wait when the history database is briefly locked, so the run is not offered again as interrupted at the next start.
+- A second parallel worker that fails to load its model (for example out of memory) no longer stops and fails a transcription that is running fine on the first worker; only the failed worker is dropped.
+- Two transcriptions of files with the same name (for example talk.mp4 and talk.m4a) finishing at the same moment no longer overwrite each other's transcript or fail; the second one is saved as "talk (1)".
 - **The saved text of an interrupted run is kept unless its media is verified unchanged**: only re-running
   the same, unchanged file with another engine, model or setting discards a checkpoint. A replaced, deleted
   or unverifiable source keeps it aside instead (on resume, on a new job for the same path, and with an

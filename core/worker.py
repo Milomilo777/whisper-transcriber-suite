@@ -1037,6 +1037,7 @@ def _main() -> int:
             continue
         task_id = _normalise_task_id(command.get("task_id"))
 
+        task: TranscriptionTask | None = None
         try:
             task = TranscriptionTask(file_path)
             task.task_id = task_id
@@ -1128,7 +1129,17 @@ def _main() -> int:
                 # cancelled task has saved its checkpoint; just exit.
                 _clear_parked_controls()
                 return 0
-            emit("error", message=str(e), file_path=file_path, task_id=task_id)
+            # Files already written stay reported (add-only field): a failure
+            # after the outputs exist (a late post-processing step) must not
+            # make the parent discard a finished transcript.
+            written = [
+                str(p) for p in (getattr(task, "output_paths", None) or [])
+            ]
+            if written:
+                emit("error", message=str(e), file_path=file_path,
+                     task_id=task_id, outputs=written)
+            else:
+                emit("error", message=str(e), file_path=file_path, task_id=task_id)
 
 
 if __name__ == "__main__":
