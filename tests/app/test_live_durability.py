@@ -59,8 +59,9 @@ class FakeRecorder:
 
 
 class FakeTranscriber:
-    def __init__(self, delay=0.0, text="sentence"):
+    def __init__(self, delay=0.0, text="sentence", gate=None):
         self.delay = delay
+        self.gate = gate  # when set, a chunk is not transcribed until it is set
         self.text = text
         self.stopped = threading.Event()
         self.calls = 0
@@ -68,6 +69,8 @@ class FakeTranscriber:
     def transcribe_chunk(self, wav_path):
         self.calls += 1
         n = self.calls
+        if self.gate is not None and not self.gate.wait(timeout=30):
+            raise RuntimeError("gate never opened")
         if self.stopped.wait(timeout=self.delay):
             raise RuntimeError("Live session stopped.")
         return {"text": f"{self.text}-{n}", "language": "en"}
@@ -145,8 +148,8 @@ def _no_real_device(monkeypatch):
     monkeypatch.setattr(live_tab.script_fonts, "tag_script_lines", lambda *a, **k: None)
 
 
-def _spoken_session(tmp_path, *, delay=0.0, sentences=1):
-    t = FakeTranscriber(delay=delay)
+def _spoken_session(tmp_path, *, delay=0.0, sentences=1, gate=None):
+    t = FakeTranscriber(delay=delay, gate=gate)
     s = live.LiveSession(transcribe_chunk=t.transcribe_chunk,
                          work_dir=str(tmp_path / "live" / "run1"))
     s.start()
@@ -180,7 +183,8 @@ def _run_stop(app):
 
 
 def test_text_reaches_the_journal_before_it_is_shown(tmp_path):
-    s, t = _spoken_session(tmp_path)
+    gate = threading.Event()  # no chunk is transcribed before the spy is installed
+    s, t = _spoken_session(tmp_path, gate=gate)
     seen: list[str] = []
     real_emit = s._emit
 
@@ -191,6 +195,7 @@ def test_text_reaches_the_journal_before_it_is_shown(tmp_path):
         real_emit(event)
 
     s._emit = spy  # type: ignore[method-assign]
+    gate.set()
     s.stop_capture()
     assert s.wait_drained(timeout=10)
     assert seen and "sentence-1" in seen[0], "journal must hold the text when the event is sent"
@@ -426,7 +431,66 @@ def test_exit_with_a_backlog_never_deletes_the_audio(tmp_path):
     app = _make_app(s, t, tmp_path)
     live_tab.stop_live_session(app)  # stop(timeout=3.0) cannot drain 2 slow chunks
     assert os.path.isfile(s.recording_path)
-    t.stop()
+    t.stop()  # the slow chunks now fail, the threads end, the deferred cleanup runs
+    assert _wait(lambda: not s._threads_alive())
+    assert _wait(lambda: not any(th.name == "live-cleanup" for th in threading.enumerate()))
+    assert os.path.isfile(s.recording_path), "lost chunks: the audio must outlive the cleanup too"
+
+
+def test_exit_with_a_late_event_does_not_release_the_session(tmp_path):
+    gate = threading.Event()
+    s, t = _spoken_session(tmp_path, gate=gate)
+    app = _make_app(s, types.SimpleNamespace(stop=lambda: None), tmp_path)  # the model finishes anyway
+    app.live_lines = ["earlier line"]  # something to autosave
+    live_tab.stop_live_session(app)  # the chunk is still in the model: not settled
+    assert s.transcript_saved is False
+    gate.set()  # the final sentence arrives AFTER the autosave
+    assert _wait(lambda: not s._threads_alive())
+    assert _wait(lambda: not any(th.name == "live-cleanup" for th in threading.enumerate()))
+    with open(s.journal_path, encoding="utf-8") as fh:
+        assert "sentence-1" in fh.read(), "the late sentence must stay in the journal"
+    assert os.path.isfile(s.recording_path)
+    saved = list((tmp_path / "dl").glob("live-transcript-*.txt"))
+    assert saved and "sentence-1" not in saved[0].read_text(encoding="utf-8")
+
+
+# ------------------------------- saving onto the session's own files (R2)
+
+
+def test_saving_onto_the_journal_itself_never_deletes_it(tmp_path, monkeypatch):
+    s, t = _spoken_session(tmp_path)
+    app = _make_app(s, t, tmp_path)
+    _run_stop(app)
+    monkeypatch.setattr(live_tab.filedialog, "asksaveasfilename", lambda **kw: s.journal_path)
+    assert live_tab._save(app)
+    with open(s.journal_path, encoding="utf-8") as fh:
+        assert "sentence-1" in fh.read(), "the saved file must survive the release"
+    assert app._live_held == []
+
+
+def test_saving_onto_a_hard_link_of_the_journal_never_deletes_it(tmp_path, monkeypatch):
+    s, t = _spoken_session(tmp_path)
+    app = _make_app(s, t, tmp_path)
+    _run_stop(app)
+    alias = tmp_path / "alias.txt"
+    try:
+        os.link(s.journal_path, alias)
+    except OSError:
+        pytest.skip("hard links are not available here")
+    monkeypatch.setattr(live_tab.filedialog, "asksaveasfilename", lambda **kw: str(alias))
+    assert live_tab._save(app)
+    assert os.path.isfile(s.journal_path) and alias.is_file()
+
+
+def test_saving_inside_the_session_folder_keeps_the_saved_file(tmp_path, monkeypatch):
+    s, t = _spoken_session(tmp_path)
+    app = _make_app(s, t, tmp_path)
+    _run_stop(app)
+    target = os.path.join(s.work_dir, "my-notes.txt")
+    monkeypatch.setattr(live_tab.filedialog, "asksaveasfilename", lambda **kw: target)
+    assert live_tab._save(app)
+    with open(target, encoding="utf-8") as fh:
+        assert "sentence-1" in fh.read()
 
 
 # ------------------------------------------- cleanup waits for a stuck thread

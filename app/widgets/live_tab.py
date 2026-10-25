@@ -497,6 +497,8 @@ def build_live_tab(app: Any, parent: Any) -> None:
     #: Stopped sessions whose audio + text journal wait for the transcript to
     #: be saved: [(session, len(live_lines) when it ended)].
     app._live_held = []
+    #: Files the transcript was saved to; session artifacts are never deleted if they are one.
+    app._live_saved_paths = []
     app._live_poll_scheduled = False
     app._live_cancel_pending = False
     app._live_stop_reason = ""
@@ -1154,7 +1156,24 @@ def _hold_session(app: Any, session: Any) -> None:
     _release_saved(app)
 
 
+def _note_saved_path(app: Any, path: str) -> None:
+    paths = getattr(app, "_live_saved_paths", None)
+    if paths is None:
+        paths = app._live_saved_paths = []
+    paths.append(path)
+
+
+def _protect_saved(app: Any, session: Any) -> None:
+    """Tell the session which files hold the saved transcript."""
+    protect = getattr(session, "protect_path", None)
+    if not callable(protect):
+        return
+    for path in list(getattr(app, "_live_saved_paths", None) or []):
+        protect(path)
+
+
 def _release_one(app: Any, session: Any) -> None:
+    _protect_saved(app, session)
     session.transcript_saved = True
     kept = _finish_recording(session, bool(getattr(session, "keep_recording", False)))
     if kept:
@@ -1221,13 +1240,22 @@ def stop_live_session(app: Any) -> None:
     """Tear the session down on app exit. Safe when nothing is running."""
     session = getattr(app, "live_session", None)
     transcriber = getattr(app, "live_transcriber", None)
+    settled = True  # no more text can still arrive for this session
     if session is not None:
         try:
             session.stop(timeout=3.0)
         except Exception:  # noqa: BLE001
             logger.exception("Live session teardown failed")
+        # Checked BEFORE the last drain: once the transcribe thread has ended
+        # nothing can be added after the drain below.
+        idle = getattr(session, "is_idle", None)
+        settled = bool(idle()) if callable(idle) else True
         # Text the tail produced during that wait belongs in the transcript.
-        _poll_once(app)
+        for _round in range(16):
+            _poll_once(app)
+            events = getattr(session, "events", None)
+            if events is None or events.empty():
+                break
     if transcriber is not None:
         try:
             transcriber.stop()
@@ -1252,7 +1280,16 @@ def stop_live_session(app: Any) -> None:
     if text_safe:
         _release_all(app)
     if session is not None:
-        session.transcript_saved = text_safe
+        _protect_saved(app, session)
+        # Still transcribing (a backlog at exit): a later sentence is in the
+        # journal but not in the file just saved, so nothing may be released.
+        session.transcript_saved = text_safe and (
+            settled or bool(getattr(app, "_live_exit_discard", False)))
+        if not settled:
+            try:
+                app.log(f"Live: the session was still transcribing at exit; its text and audio stay in {session.work_dir}")
+            except Exception:  # noqa: BLE001
+                logger.debug("Could not log the unfinished session", exc_info=True)
         kept = _finish_recording(session, keep)
         if kept:
             try:
@@ -1460,6 +1497,7 @@ def _save(app: Any) -> bool:
                    _("Writing {file} failed.", file=os.path.basename(path)), detail=str(e))
         return False
     app._live_saved_count = count
+    _note_saved_path(app, path)
     app.log(f"Live transcript saved to {path}")
     _release_saved(app)
     return True
@@ -1538,6 +1576,7 @@ def autosave_unsaved_transcript(app: Any) -> str:
         logger.error("Autosaving the live transcript failed: no free file name")
         return ""
     app._live_saved_count = len(getattr(app, "live_lines", []) or [])
+    _note_saved_path(app, path)
     _release_saved(app)
     logger.info("Live transcript autosaved to %s", path)
     try:
