@@ -195,12 +195,7 @@ def jobs_running(app: Any) -> bool:
             if getattr(task, "status", "") not in _IDLE_STATUSES:
                 return True
     counter = getattr(app, "active_server_jobs", None)
-    if callable(counter):
-        try:
-            return int(counter()) > 0
-        except (TypeError, ValueError):
-            logger.info("Could not read the active server jobs", exc_info=True)
-    return False
+    return bool(counter()) if callable(counter) else False
 
 
 def restart_supported() -> bool:
