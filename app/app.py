@@ -781,7 +781,7 @@ def build_about_sections() -> list[AboutSection]:
                 _("Loopback by default: only this computer can reach it "
                 "(no firewall prompt)"),
                 _("Optional \"Share on local network\" so phones and other "
-                "PCs can use it (Windows may ask to allow the firewall — "
+                "PCs can use it (your system may ask to allow the firewall — "
                 "click Allow)"),
                 _("Optional access password if you want to limit who can use it"),
                 _("Use it only on a network you trust — it is not encrypted"),

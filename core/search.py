@@ -693,7 +693,10 @@ def reindex_all_history(
     *,
     embedder: "Embedder | None" = None,
 ) -> int:
-    """Walk history.db, reindex every transcript JSON. Returns rows touched."""
+    """Walk history.db, reindex every transcript JSON. Returns the total segments indexed.
+
+    The count covers the whole index afterwards, not only what this pass added.
+    """
     from .history import HistoryDB
 
     total = 0
@@ -722,6 +725,8 @@ def reindex_all_history(
                                 p, type(e).__name__, e,
                             )
         prune_missing_files(db_conn)
+        row = db_conn.execute("SELECT COUNT(*) FROM segments_fts").fetchone()
+        total = int(row[0]) if row else total
     finally:
         db_conn.close()
     return total

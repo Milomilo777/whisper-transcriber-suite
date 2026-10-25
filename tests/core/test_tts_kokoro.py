@@ -229,3 +229,15 @@ def test_damaged_archive_is_removed(kokoro_cache):
         k.download()
     assert not (folder / f"{k.MODEL_NAME}.tar.bz2.part").exists()
     assert not k.is_downloaded()
+
+
+def test_voice_texts_do_not_hard_code_the_voice_count():
+    """The Voice tab text must use the real count ({n}), not a number typed in
+    the source (it said 53 while VOICES had 54)."""
+    import re
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[2]
+    for rel in ("app/widgets/voice_clone_tab.py", "core/tts_kokoro.py"):
+        source = (root / rel).read_text(encoding="utf-8")
+        assert not re.search(r"\b\d+ ready-made voices", source), rel

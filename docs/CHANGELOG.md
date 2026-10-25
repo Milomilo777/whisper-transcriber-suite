@@ -30,6 +30,15 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **Remote AI calls were refused by Groq (HTTP 403, error 1010)**: every request to an AI provider, including
   the cloud speech-to-text calls, now sends a `WhisperTranscriberSuite/<version>` User-Agent instead of
   urllib's default.
+- **Search status showed 0 segments after a full index**: Help > Search transcripts counted only the segments
+  added in that pass. It now reports the total number of segments indexed.
+- **Voice tab named the wrong number of Kokoro voices**: the text said 53 while the list has 54. The count
+  is now read from the voice list, so it cannot drift again.
+- **"Windows" firewall wording shown on macOS**: the Web / LAN access tab and the About text now say "your
+  system" may ask to allow the connection, which is right on every platform.
+- **Finished re-run not recovered after a crash when file names used another Unicode form**: if the worker
+  died after writing `name (1).srt` and `name (1).json`, the check looked only for the NFC spelling and
+  recorded the run as failed. It now finds the set in either NFC or NFD form on Windows and Linux too.
 - **Audio-only download of an episode page that has no audio file yet**: new episodes get their MP3 weeks
   after the video, and until then the audio list stayed empty and Download kept saying "Wait for formats to
   load, then select an audio format." The app now downloads the page's 720p video, keeps only its sound in the

@@ -14,7 +14,7 @@ import sys
 import threading
 import unicodedata
 from queue import Empty
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from app import desktop_alert
 from app.domain.task_outputs import is_sidecar_json, task_transcript_json
@@ -96,21 +96,74 @@ def _mark_stopped_early(task: Any) -> None:
         task.error_reason = _("The transcription stopped before it finished; try the file again.")
 
 
-def _newest_output_set(paths: list[str]) -> list[str]:
+def _respell(path: str, form: Literal["NFC", "NFD"] | None) -> str:
+    """*path* with only its file name put in Unicode *form* (the folder is kept exactly)."""
+    if form is None:
+        return path
+    folder, name = os.path.split(path)
+    return os.path.join(folder, unicodedata.normalize(form, name))
+
+
+def _path_exists(path: str) -> bool:
+    return os.path.exists(path)
+
+
+def _same_file(a: str, b: str) -> bool:
+    """True when both paths are the same physical file (stat identity); False on any error."""
+    try:
+        return os.path.samefile(a, b)
+    except OSError:
+        return False
+
+
+def _same_set(first: list[str], second: list[str]) -> bool:
+    """True when two output sets are the same physical files (one volume, two spellings)."""
+    for a, b in zip(first, second):
+        a_there, b_there = _path_exists(a), _path_exists(b)
+        if a_there != b_there or (a_there and not _same_file(a, b)):
+            return False
+    return True
+
+
+def _newest_output_set(paths: list[str], source: str | None = None) -> list[str]:
     """The last ``name (N).ext`` set the writer would have produced for *paths*.
 
     ``core.transcriber._write_outputs`` keeps earlier runs' files and writes a re-run
     as ``name (1).srt`` + ``name (1).json`` (one shared index), so the files a crashed
-    re-run left are the highest-numbered set, not the plain names. Returns *paths*
-    unchanged when none of the plain names exists (the caller then reports them
-    missing, or finds a macOS NFD spelling).
+    re-run left are the highest-numbered set, not the plain names.
+
+    NTFS and ext4 keep NFC and NFD file names apart. Only the file name is re-spelled
+    (the folder is never changed) and ONE spelling is used for every format. An alternate
+    spelling is used only when no DISTINCT source file with that spelling sits next to
+    *source* (it would own those outputs). Spellings that are the same physical files
+    (macOS) count once. If two different spellings both have files the set is
+    ambiguous: an empty list is returned so the caller records a failure rather than a
+    wrong transcript. Returns *paths* unchanged when none of the plain names exists.
     """
-    index = 0
-    while index < 10000 and any(os.path.exists(_indexed_path(p, index)) for p in paths):
-        index += 1
-    if index == 0:
+    forms: list[Literal["NFC", "NFD"] | None] = [None, "NFC", "NFD"]
+    spellings: list[list[str]] = []
+    for form in forms:
+        if form is not None and source is not None:
+            alt_source = _respell(source, form)
+            if alt_source != source and _path_exists(alt_source)                     and not _same_file(alt_source, source):
+                continue  # a different source file owns that spelling
+        spelled = [_respell(p, form) for p in paths]
+        if spelled not in spellings:
+            spellings.append(spelled)
+    found: list[tuple[int, list[str]]] = []
+    for spelled in spellings:
+        index = 0
+        while index < 10000 and any(_path_exists(_indexed_path(p, index)) for p in spelled):
+            index += 1
+        if index:
+            newest = [_indexed_path(p, index - 1) for p in spelled]
+            if not any(i == index and _same_set(newest, other) for i, other in found):
+                found.append((index, newest))
+    if not found:
         return paths
-    return [_indexed_path(p, index - 1) for p in paths]
+    if len(found) > 1:
+        return []
+    return found[0][1]
 
 
 def _indexed_path(path: str, index: int) -> str:
@@ -1045,11 +1098,8 @@ class TranscriptionService:
                 formats = self.app.app_config.get("output_formats") or ["srt", "json"]
             # The on-disk extension, not the format key ("elan" writes ".eaf").
             from core.writers import extension_for
-            paths = [
-                unicodedata.normalize('NFC', f"{base}.{extension_for(str(fmt))}")
-                for fmt in formats
-            ]
-            paths = _newest_output_set(paths)
+            paths = [f"{base}.{extension_for(str(fmt))}" for fmt in formats]
+            paths = _newest_output_set(paths, file_path)
 
         no_speech = bool(getattr(task, "no_speech", False))
         if not paths:
@@ -1064,15 +1114,7 @@ class TranscriptionService:
                     if start_time and os.path.getmtime(p) < start_time - 2.0:
                         return False
                 except OSError:
-                    # try the NFD spelling (macOS)
-                    p_nfd = unicodedata.normalize('NFD', p)
-                    if p != p_nfd:
-                        if not (os.path.getsize(p_nfd) > 0 or no_speech):
-                            return False
-                        if start_time and os.path.getmtime(p_nfd) < start_time - 2.0:
-                            return False
-                    else:
-                        raise
+                    return False  # a missing file: the set is not complete
             if derived:
                 # finish_task's own fallback derives names from the CONFIG formats only; hand it
                 # the files this task really wrote so history records all of them.
