@@ -19,7 +19,7 @@ import pytest
 
 import core.server as server
 from core import offline
-from core.server import netguard
+from core.server import dlproxy, netguard
 from core.server.jobs import DownloadCancelled, DownloadLimits
 
 PAYLOAD = b"RIFF" + bytes(range(256)) * 40
@@ -85,13 +85,17 @@ class _Origin(http.server.BaseHTTPRequestHandler):
 
 
 @pytest.fixture
-def origin():
+def origin(monkeypatch):
     _Origin.hits = []
     _Origin.aborted = False
     _Origin.sent = 0
     httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _Origin)
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
     thread.start()
+    # The port rule (80 and 443 only) is lifted for this ephemeral port, like
+    # the proxy tests do; the refusal tests below put it back.
+    monkeypatch.setattr(dlproxy, "ALLOWED_PORTS",
+                        dlproxy.ALLOWED_PORTS | {httpd.server_address[1]})
     yield httpd.server_address[1]
     httpd.shutdown()
     httpd.server_close()
@@ -304,11 +308,13 @@ class _StrictOrigin(http.server.BaseHTTPRequestHandler):
 
 
 @pytest.fixture
-def strict_origin():
+def strict_origin(monkeypatch):
     _StrictOrigin.closed.clear()
     httpd = http.server.HTTPServer(("127.0.0.1", 0), _StrictOrigin)
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
     thread.start()
+    monkeypatch.setattr(dlproxy, "ALLOWED_PORTS",
+                        dlproxy.ALLOWED_PORTS | {httpd.server_address[1]})
     yield httpd.server_address[1]
     httpd.shutdown()
     httpd.server_close()

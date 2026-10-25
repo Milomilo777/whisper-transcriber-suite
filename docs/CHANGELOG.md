@@ -21,6 +21,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   cannot read itself, to ffmpeg, which fetched their segments without the download guard. Live streams are now
   refused with a clear message, and ffmpeg is routed through the guard (its login travels in a per-job file
   that is deleted after the run, never on the command line).
+- **Local-network link fetches use ports 80 and 443 only**: the direct download of a link on an allowed local
+  network, and each of its redirects, now follows the same port rule as the download proxy. A link job with
+  another port is refused when it is submitted, so it cannot probe other services of a listed host.
 - **The completion webhook checks the address at connect time**: the host name is resolved once, only the
   checked addresses are connected to, and proxies from the environment are not used. LAN receivers stay
   allowed.
