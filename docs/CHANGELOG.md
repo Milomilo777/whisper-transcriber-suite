@@ -85,6 +85,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **A double-click on Stop no longer drops the last sentence**: a second press within 2 seconds of the first
+  is ignored instead of acting as "Discard rest". A real Discard is logged with what it dropped.
 - **Live captions survive a crash or power cut after Stop**: every finished sentence is written to a small
   `live-journal.txt` next to the session audio before it appears in the window, and Stop no longer deletes
   that audio. The files are removed only once the transcript is saved (Save, or the exit autosave); older

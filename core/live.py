@@ -558,6 +558,7 @@ class LiveSession:
         """
         self._discard.set()
         dropped = 0
+        logger.warning("Live discard: dropping the chunks still waiting for transcription")
         while True:
             try:
                 item = self._chunks.get_nowait()

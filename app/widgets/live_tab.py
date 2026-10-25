@@ -1007,6 +1007,10 @@ def _start_failed(app: Any, error: Exception) -> None:
     )
 
 
+#: Presses of Stop this soon after the first one are ignored (double-click).
+_STOP_DEBOUNCE_S = 2.0
+
+
 def _stop(app: Any) -> None:
     session = app.live_session
     transcriber = app.live_transcriber
@@ -1026,6 +1030,12 @@ def _stop(app: Any) -> None:
             logger.debug("Could not update live controls", exc_info=True)
         return
     if getattr(app, "_live_draining", False):
+        # A double-click on Stop must not land on "Discard rest" and drop the
+        # last sentence: presses right after the first one are ignored.
+        since = time.monotonic() - float(getattr(app, "_live_stop_at", 0.0) or 0.0)
+        if since < _STOP_DEBOUNCE_S:
+            logger.info("Live: Stop pressed again after %.2f s; ignored", since)
+            return
         _discard_rest(app, session, transcriber)
         return
     # First press: the microphone stops now, but every chunk already
@@ -1033,6 +1043,7 @@ def _stop(app: Any) -> None:
     # whole backlog here to a fixed 10 s join timeout. The button turns
     # into "Discard rest" for anyone who does not want to wait.
     app._live_draining = True
+    app._live_stop_at = time.monotonic()
     try:
         viz = getattr(app, "live_visualizer", None)
         if viz is not None:
@@ -1076,10 +1087,10 @@ def _discard_rest(app: Any, session: Any, transcriber: Any) -> None:
     def worker() -> None:
         try:
             dropped = session.discard_pending()
-            if dropped:
-                app.post_to_main(
-                    lambda: app.log(f"Live: discarded {dropped} untranscribed chunk(s).")
-                )
+            note = (f"Live: Discard rest used: {dropped} waiting chunk(s) dropped"
+                    " and any chunk being transcribed was cancelled.")
+            logger.warning(note)
+            app.post_to_main(lambda: app.log(note))
         except Exception:  # noqa: BLE001
             logger.exception("Discarding live chunks failed")
         try:

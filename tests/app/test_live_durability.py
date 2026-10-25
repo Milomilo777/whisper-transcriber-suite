@@ -326,3 +326,33 @@ def test_start_logs_leftover_folders(tmp_path, monkeypatch):
     live_tab._report_leftover_sessions(app)
     assert any(str(left) in line for line in app.logged)
     assert (left / live.JOURNAL_NAME).exists()
+
+
+# ------------------------------------------------------- Stop double-click
+
+
+def test_double_click_on_stop_does_not_discard_the_last_sentence(tmp_path):
+    s, t = _spoken_session(tmp_path, delay=0.8)
+    app = _make_app(s, t, tmp_path)
+    live_tab._stop(app)
+    assert app._live_draining
+    live_tab._stop(app)  # the second click of a double-click, a few ms later
+    assert not s._discard.is_set(), "the second press must be ignored"
+    assert app.live_stop_btn.opts.get("state") != "disabled"
+    assert _wait(lambda: any("_stopped" in f.__code__.co_names for f in app.posted))
+    for fn in list(app.posted):
+        fn()
+    assert app.live_lines == ["sentence-1"], "the last sentence must survive"
+
+
+def test_a_later_second_press_still_discards(tmp_path):
+    s, t = _spoken_session(tmp_path, delay=5.0)
+    app = _make_app(s, t, tmp_path)
+    live_tab._stop(app)
+    app._live_stop_at -= live_tab._STOP_DEBOUNCE_S + 1.0  # the user waited
+    live_tab._stop(app)
+    assert _wait(s._discard.is_set)
+    assert _wait(lambda: any("_stopped" in f.__code__.co_names for f in app.posted))
+    for fn in list(app.posted):
+        fn()
+    assert any("Discard rest used" in line for line in app.logged)
