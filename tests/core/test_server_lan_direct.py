@@ -13,6 +13,7 @@ import ipaddress
 import os
 import subprocess
 import threading
+import time
 
 import pytest
 
@@ -32,6 +33,37 @@ class _Origin(http.server.BaseHTTPRequestHandler):
 
     def do_GET(self):  # noqa: N802
         type(self).hits.append(self.path)
+        if self.path.startswith("/redirect-big"):
+            # A redirect with an enormous body: a client must not read it.
+            self.send_response(302)
+            self.send_header("Location", "/media/a.wav")
+            self.send_header("Content-Length", str(64 * 1024 * 1024))
+            self.end_headers()
+            sent = 0
+            try:
+                while sent < 64 * 1024 * 1024:
+                    self.wfile.write(b"x" * 65536)
+                    sent += 65536
+            except OSError:
+                type(self).aborted = True
+            type(self).sent = sent
+            return
+        if self.path.startswith("/slow"):
+            # 200 with a body that trickles: one byte every 0.3 s.
+            self.send_response(200)
+            self.send_header("Content-Length", "1000")
+            self.end_headers()
+            try:
+                for _ in range(1000):
+                    self.wfile.write(b"y")
+                    self.wfile.flush()
+                    time.sleep(0.3)
+            except OSError:
+                pass
+            return
+        if self.path.startswith("/silent"):
+            time.sleep(8)  # never answers within the test's deadline
+            return
         if self.path.startswith("/redirect-meta"):
             self.send_response(302)
             self.send_header("Location", "http://169.254.169.254/latest")
@@ -55,6 +87,8 @@ class _Origin(http.server.BaseHTTPRequestHandler):
 @pytest.fixture
 def origin():
     _Origin.hits = []
+    _Origin.aborted = False
+    _Origin.sent = 0
     httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _Origin)
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
     thread.start()
@@ -175,3 +209,48 @@ def test_nothing_is_direct_when_no_network_is_listed(tmp_path, monkeypatch):
     with pytest.raises(AssertionError, match="yt-dlp must not be used"):
         server._download_url("http://127.0.0.1:9/a.wav", str(tmp_path),
                              _limits())
+
+
+def test_a_redirect_body_is_never_drained(origin, tmp_path, monkeypatch):
+    """The 64 MiB body of a 302 must not be read: the client follows the
+    Location straight away and drops that connection."""
+    _lift_guard(monkeypatch)
+    path = server._download_url(f"http://127.0.0.1:{origin}/redirect-big",
+                                str(tmp_path), _limits())
+    assert open(path, "rb").read() == PAYLOAD
+    deadline = time.monotonic() + 5
+    while not _Origin.aborted and time.monotonic() < deadline:
+        time.sleep(0.05)
+    assert _Origin.aborted and _Origin.sent < 32 * 1024 * 1024
+
+
+def test_the_deadline_stops_a_trickling_body(origin, tmp_path, monkeypatch):
+    _lift_guard(monkeypatch)
+    started = time.monotonic()
+    with pytest.raises(TimeoutError):
+        server._download_url(f"http://127.0.0.1:{origin}/slow",
+                             str(tmp_path), _limits(timeout_s=1.0))
+    assert time.monotonic() - started < 4.0
+    assert os.listdir(tmp_path) == []
+
+
+def test_cancel_stops_a_trickling_body_quickly(origin, tmp_path, monkeypatch):
+    _lift_guard(monkeypatch)
+    flag = {"stop": False}
+    threading.Timer(0.6, lambda: flag.update(stop=True)).start()
+    started = time.monotonic()
+    with pytest.raises(DownloadCancelled):
+        server._download_url(f"http://127.0.0.1:{origin}/slow", str(tmp_path),
+                             DownloadLimits(cancelled=lambda: flag["stop"]))
+    assert time.monotonic() - started < 4.0
+    assert os.listdir(tmp_path) == []
+
+
+def test_cancel_and_deadline_apply_while_waiting_for_the_header(
+        origin, tmp_path, monkeypatch):
+    _lift_guard(monkeypatch)
+    started = time.monotonic()
+    with pytest.raises(TimeoutError):
+        server._download_url(f"http://127.0.0.1:{origin}/silent",
+                             str(tmp_path), _limits(timeout_s=1.0))
+    assert time.monotonic() - started < 4.0

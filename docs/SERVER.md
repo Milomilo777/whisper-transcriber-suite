@@ -678,10 +678,11 @@ Behaviour to know:
   link whose host (every address it resolves to) lies inside a network listed
   in `server_allowed_private_networks`, for example a file on a NAS, is
   fetched by the app's own downloader instead of yt-dlp. It follows at most 5
-  redirects, only to `http(s)`, and every connection (each redirect included)
+  redirects, only to `http(s)`, never reads the body of a redirect, and every connection (each redirect included)
   gets the same connect-time address check, so loopback, link-local and
   metadata addresses are refused even there. The job's size cap, time limit and
-  Cancel apply, and no proxy from the environment is used. A server with a
+  Cancel apply while it waits for the answer and on every read (a stalled read
+  is cut after 30 seconds; only the connect step itself waits up to 30 seconds), and no proxy from the environment is used. A server with a
   self-signed certificate fails the certificate check; use plain `http` on the
   trusted network or upload the file. Links to unlisted hosts are refused as
   above.

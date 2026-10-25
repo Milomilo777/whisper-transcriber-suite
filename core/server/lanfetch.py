@@ -19,15 +19,16 @@ Hosts outside the listed networks still go to yt-dlp as before.
 from __future__ import annotations
 
 import ipaddress
+import http.client
 import logging
 import mimetypes
 import os
 import re
+import select
 import socket
+import threading
 import time
-import urllib.error
 import urllib.parse
-import urllib.request
 from typing import Any
 
 from core import offline
@@ -80,26 +81,77 @@ class _LanHTTPSConnection(netguard.GuardedHTTPSConnection):
     allow_private = False
 
 
-class _LanHTTPHandler(urllib.request.HTTPHandler):
-    def http_open(self, req: urllib.request.Request) -> Any:
-        return self.do_open(_LanHTTPConnection, req)
+class _Watchdog(threading.Thread):
+    """Enforces the job's deadline and cancel flag during EVERY blocking
+    network call (connect aside): when either trips, it shuts the current
+    socket down, which wakes the blocked read."""
+
+    def __init__(self, limits: DownloadLimits | None, started: float) -> None:
+        super().__init__(name="lanfetch-watchdog", daemon=True)
+        self._limits = limits
+        self._t0 = started
+        self._stop_event = threading.Event()
+        self._lock = threading.Lock()
+        self._sock: socket.socket | None = None
+        self.reason = ""
+
+    def watch(self, sock: socket.socket | None) -> None:
+        with self._lock:
+            self._sock = sock
+
+    def poll(self) -> str:
+        limits = self._limits
+        if limits is None:
+            return ""
+        if limits.cancelled():
+            return "cancelled"
+        if (limits.timeout_s > 0
+                and time.monotonic() - self._t0 > limits.timeout_s):
+            return "timeout"
+        return ""
+
+    def run(self) -> None:
+        while not self._stop_event.wait(0.2):
+            reason = self.poll()
+            if not reason:
+                continue
+            self.reason = reason
+            with self._lock:
+                sock = self._sock
+            if sock is not None:
+                try:
+                    sock.shutdown(socket.SHUT_RDWR)
+                except OSError:
+                    pass
+            return
+
+    def stop(self) -> None:
+        self._stop_event.set()
 
 
-class _LanHTTPSHandler(urllib.request.HTTPSHandler):
-    def https_open(self, req: urllib.request.Request) -> Any:
-        return self.do_open(_LanHTTPSConnection, req)
+def _wait_readable(sock: Any, dog: _Watchdog,
+                   limits: DownloadLimits | None) -> None:
+    """Wait for the first answer bytes in short slices, so the deadline and
+    the cancel flag are honoured while a server stays silent."""
+    waited = time.monotonic()
+    while True:
+        ready, _w, _x = select.select([sock], [], [], 0.25)
+        if ready:
+            return
+        _raise_if_stopped(dog, limits)
+        if time.monotonic() - waited > _READ_TIMEOUT_S:
+            raise RuntimeError("could not fetch the link: the server did "
+                               "not answer in time")
 
 
-class _Redirects(urllib.request.HTTPRedirectHandler):
-    max_redirections = _MAX_REDIRECTS
-
-    def redirect_request(self, req: Any, fp: Any, code: int, msg: str,
-                         headers: Any, newurl: str) -> Any:
-        scheme = urllib.parse.urlsplit(newurl).scheme.lower()
-        if scheme not in ("http", "https"):
-            raise RuntimeError(
-                "the link redirects to an address that is not http(s)")
-        return super().redirect_request(req, fp, code, msg, headers, newurl)
+def _raise_if_stopped(dog: _Watchdog, limits: DownloadLimits | None) -> None:
+    reason = dog.reason or dog.poll()
+    if reason == "cancelled":
+        raise DownloadCancelled()
+    if reason == "timeout":
+        minutes = int((limits.timeout_s if limits else 0) // 60)
+        raise TimeoutError(
+            f"the download took longer than {minutes} minutes and was stopped")
 
 
 def _file_name(url: str, content_type: str) -> str:
@@ -115,63 +167,98 @@ def _file_name(url: str, content_type: str) -> str:
 
 
 def fetch(url: str, dest_dir: str, limits: DownloadLimits | None = None) -> str:
-    """Download ``url`` into ``dest_dir``; return the saved file's path."""
+    """Download ``url`` into ``dest_dir``; return the saved file's path.
+
+    Redirects are followed here, one hop at a time, and the body of a redirect
+    is never read: the connection is simply dropped. The job's deadline and
+    cancel flag are enforced by a watchdog during connect-free waits (headers,
+    redirects, every body read); every read also has a stall timeout.
+    """
     offline.require_online("downloading this link")
-    opener = urllib.request.build_opener(
-        urllib.request.ProxyHandler({}), _LanHTTPHandler(), _LanHTTPSHandler(),
-        _Redirects())
-    request = urllib.request.Request(
-        url, headers={"User-Agent": "WhisperTranscriberSuite"})
     max_bytes = limits.max_bytes if limits is not None else 0
     too_big = ("download produced no file: the file is larger than the "
                "server's download limit")
     logger.info("server: downloading %s from the local network",
                 strip_url_secrets(url))
     started = time.monotonic()
+    dog = _Watchdog(limits, started)
+    dog.start()
     part = ""
+    conn: http.client.HTTPConnection | None = None
     try:
-        try:
-            response = opener.open(request, timeout=_READ_TIMEOUT_S)
-        except urllib.error.HTTPError as exc:
+        current = url
+        for _hop in range(_MAX_REDIRECTS + 1):
+            _raise_if_stopped(dog, limits)
+            parts = urllib.parse.urlsplit(current)
+            if parts.scheme not in ("http", "https") or not parts.hostname:
+                raise RuntimeError(
+                    "the link redirects to an address that is not http(s)")
+            cls = (_LanHTTPSConnection if parts.scheme == "https"
+                   else _LanHTTPConnection)
+            conn = cls(parts.hostname, parts.port, timeout=_READ_TIMEOUT_S)
+            target = urllib.parse.urlunsplit(
+                ("", "", parts.path or "/", parts.query, ""))
+            try:
+                conn.request("GET", target, headers={
+                    "User-Agent": "WhisperTranscriberSuite",
+                    "Accept-Encoding": "identity", "Connection": "close"})
+                # getresponse() hands the socket to the response and clears
+                # conn.sock, so keep our own reference for the watchdog.
+                dog.watch(conn.sock)
+                _wait_readable(conn.sock, dog, limits)
+                response = conn.getresponse()
+            except netguard.BlockedAddressError:
+                raise
+            except (OSError, http.client.HTTPException) as exc:
+                _raise_if_stopped(dog, limits)
+                raise RuntimeError(f"could not fetch the link: {exc}") from exc
+            if response.status in (301, 302, 303, 307, 308):
+                location = response.getheader("Location")
+                conn.close()  # the redirect body is NOT read
+                conn = None
+                if not location:
+                    raise RuntimeError("the link redirects without a target")
+                current = urllib.parse.urljoin(current, location)
+                continue
+            break
+        else:
+            raise RuntimeError("the link redirects too many times")
+        if response.status != 200:
             raise RuntimeError(
-                f"the server answered HTTP {exc.code} for the link") from exc
-        except urllib.error.URLError as exc:
-            if isinstance(exc.reason, netguard.BlockedAddressError):
-                raise exc.reason from exc
-            raise RuntimeError(
-                f"could not fetch the link: {exc.reason}") from exc
-        with response:
-            declared = response.headers.get("Content-Length", "")
-            if max_bytes > 0 and declared.isdigit() and int(declared) > max_bytes:
-                raise RuntimeError(too_big)
-            name = _file_name(response.geturl(),
-                              response.headers.get("Content-Type", ""))
-            path = os.path.join(dest_dir, name)
-            part = path + ".part"
-            total = 0
-            with open(part, "wb") as out:
-                while True:
-                    if limits is not None and limits.cancelled():
-                        raise DownloadCancelled()
-                    if (limits is not None and limits.timeout_s > 0
-                            and time.monotonic() - started > limits.timeout_s):
-                        minutes = int(limits.timeout_s // 60)
-                        raise TimeoutError(
-                            f"the download took longer than {minutes} "
-                            "minutes and was stopped")
+                f"the server answered HTTP {response.status} for the link")
+        declared = response.getheader("Content-Length", "")
+        if max_bytes > 0 and declared.isdigit() and int(declared) > max_bytes:
+            raise RuntimeError(too_big)
+        name = _file_name(current, response.getheader("Content-Type", ""))
+        path = os.path.join(dest_dir, name)
+        part = path + ".part"
+        total = 0
+        with open(part, "wb") as out:
+            while True:
+                try:
                     chunk = response.read(_CHUNK)
-                    if not chunk:
-                        break
-                    total += len(chunk)
-                    if max_bytes > 0 and total > max_bytes:
-                        raise RuntimeError(too_big)
-                    out.write(chunk)
+                except (OSError, http.client.HTTPException) as exc:
+                    _raise_if_stopped(dog, limits)
+                    raise RuntimeError(
+                        f"the download was interrupted: {exc}") from exc
+                _raise_if_stopped(dog, limits)
+                if not chunk:
+                    break
+                total += len(chunk)
+                if max_bytes > 0 and total > max_bytes:
+                    raise RuntimeError(too_big)
+                out.write(chunk)
+        if declared.isdigit() and total < int(declared):
+            raise RuntimeError("the download ended early")
         if total == 0:
             raise RuntimeError("download produced no file")
         os.replace(part, path)
         part = ""
         return path
     finally:
+        dog.stop()
+        if conn is not None:
+            conn.close()
         if part:  # an unfinished file of this download only
             try:
                 os.remove(part)
