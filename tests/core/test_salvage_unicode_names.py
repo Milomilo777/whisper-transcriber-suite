@@ -86,9 +86,9 @@ def test_other_unicode_form_directory_is_never_searched(tmp_path):
     nfc_dir = tmp_path / NFC_STEM
     nfd_dir = tmp_path / NFD_STEM
     nfc_dir.mkdir()
-    nfd_dir.mkdir()
-    if nfc_dir.samefile(nfd_dir):
+    if nfd_dir.exists():
         pytest.skip("this filesystem folds NFC and NFD names together")
+    nfd_dir.mkdir()
     start = time.time() - 30.0
     (nfc_dir / "clip.mp4").touch()
     _write(nfd_dir, "clip", ".srt", "someone else's")
@@ -119,3 +119,35 @@ def test_two_spellings_with_files_are_ambiguous_and_not_salvaged(tmp_path):
         _write(tmp_path, stem, ".json", "{}")
     task = SimpleNamespace(file_path=str(tmp_path / f"{NFC_STEM}.mp4"), start_time=start)
     assert _service()._are_outputs_complete(task) is False
+
+
+def test_distinct_alternate_spelled_source_owns_its_outputs(tmp_path):
+    """NFC and NFD 'x.mp4' can be two sources: the NFC task must not take the NFD one's set."""
+    _require_distinct_spellings(tmp_path)
+    start = time.time() - 30.0
+    (tmp_path / f"{NFC_STEM}.mp4").touch()
+    (tmp_path / f"{NFD_STEM}.mp4").touch()
+    _write(tmp_path, NFD_STEM, ".srt", "other source")
+    _write(tmp_path, NFD_STEM, ".json", "{}")
+    task = SimpleNamespace(file_path=str(tmp_path / f"{NFC_STEM}.mp4"), start_time=start)
+    assert _service()._are_outputs_complete(task) is False
+
+
+def test_normalization_insensitive_volume_counts_one_set_once(tmp_path, monkeypatch):
+    """On macOS NFC and NFD name the same file: both spellings find one set, which is valid."""
+    from app.services import transcription_service as ts
+
+    start = time.time() - 30.0
+    (tmp_path / f"{NFC_STEM}.mp4").touch()
+    _write(tmp_path, NFC_STEM, ".srt", "text")
+    _write(tmp_path, NFC_STEM, ".json", "{}")
+
+    def fold(path: str) -> str:
+        return unicodedata.normalize("NFC", path)
+
+    monkeypatch.setattr(ts, "_path_exists", lambda p: os.path.exists(fold(p)))
+    monkeypatch.setattr(ts, "_same_file", lambda a, b: fold(a) == fold(b))
+    task = SimpleNamespace(file_path=str(tmp_path / f"{NFC_STEM}.mp4"), start_time=start)
+    assert _service()._are_outputs_complete(task) is True
+    assert sorted(task.output_paths) == sorted(
+        [str(tmp_path / f"{NFC_STEM}.srt"), str(tmp_path / f"{NFC_STEM}.json")])

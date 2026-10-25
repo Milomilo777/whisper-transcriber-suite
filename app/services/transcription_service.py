@@ -104,7 +104,28 @@ def _respell(path: str, form: Literal["NFC", "NFD"] | None) -> str:
     return os.path.join(folder, unicodedata.normalize(form, name))
 
 
-def _newest_output_set(paths: list[str]) -> list[str]:
+def _path_exists(path: str) -> bool:
+    return os.path.exists(path)
+
+
+def _same_file(a: str, b: str) -> bool:
+    """True when both paths are the same physical file (stat identity); False on any error."""
+    try:
+        return os.path.samefile(a, b)
+    except OSError:
+        return False
+
+
+def _same_set(first: list[str], second: list[str]) -> bool:
+    """True when two output sets are the same physical files (one volume, two spellings)."""
+    for a, b in zip(first, second):
+        a_there, b_there = _path_exists(a), _path_exists(b)
+        if a_there != b_there or (a_there and not _same_file(a, b)):
+            return False
+    return True
+
+
+def _newest_output_set(paths: list[str], source: str | None = None) -> list[str]:
     """The last ``name (N).ext`` set the writer would have produced for *paths*.
 
     ``core.transcriber._write_outputs`` keeps earlier runs' files and writes a re-run
@@ -112,32 +133,37 @@ def _newest_output_set(paths: list[str]) -> list[str]:
     re-run left are the highest-numbered set, not the plain names.
 
     NTFS and ext4 keep NFC and NFD file names apart. Only the file name is re-spelled
-    (the folder is never changed) and ONE spelling is used for every format. If two
-    spellings both have files the set is ambiguous (two different sources): an empty list
-    is returned so the caller records a failure rather than a wrong transcript. Returns
-    *paths* unchanged when none of the plain names exists.
+    (the folder is never changed) and ONE spelling is used for every format. An alternate
+    spelling is used only when no DISTINCT source file with that spelling sits next to
+    *source* (it would own those outputs). Spellings that are the same physical files
+    (macOS) count once. If two different spellings both have files the set is
+    ambiguous: an empty list is returned so the caller records a failure rather than a
+    wrong transcript. Returns *paths* unchanged when none of the plain names exists.
     """
     forms: list[Literal["NFC", "NFD"] | None] = [None, "NFC", "NFD"]
     spellings: list[list[str]] = []
     for form in forms:
+        if form is not None and source is not None:
+            alt_source = _respell(source, form)
+            if alt_source != source and _path_exists(alt_source)                     and not _same_file(alt_source, source):
+                continue  # a different source file owns that spelling
         spelled = [_respell(p, form) for p in paths]
         if spelled not in spellings:
             spellings.append(spelled)
     found: list[tuple[int, list[str]]] = []
     for spelled in spellings:
         index = 0
-        while index < 10000 and any(
-            os.path.exists(_indexed_path(p, index)) for p in spelled
-        ):
+        while index < 10000 and any(_path_exists(_indexed_path(p, index)) for p in spelled):
             index += 1
         if index:
-            found.append((index, spelled))
+            newest = [_indexed_path(p, index - 1) for p in spelled]
+            if not any(i == index and _same_set(newest, other) for i, other in found):
+                found.append((index, newest))
     if not found:
         return paths
     if len(found) > 1:
         return []
-    index, spelled = found[0]
-    return [_indexed_path(p, index - 1) for p in spelled]
+    return found[0][1]
 
 
 def _indexed_path(path: str, index: int) -> str:
@@ -1073,7 +1099,7 @@ class TranscriptionService:
             # The on-disk extension, not the format key ("elan" writes ".eaf").
             from core.writers import extension_for
             paths = [f"{base}.{extension_for(str(fmt))}" for fmt in formats]
-            paths = _newest_output_set(paths)
+            paths = _newest_output_set(paths, file_path)
 
         no_speech = bool(getattr(task, "no_speech", False))
         if not paths:
