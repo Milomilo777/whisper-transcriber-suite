@@ -25,6 +25,7 @@ Contents: [In-app toggle](#easiest-the-one-click-toggle-in-the-app) ·
 [Quick start with curl](#quick-start-with-curl) ·
 [OpenAI-compatible API](#openai-compatible-api) ·
 [Open WebUI](#use-it-from-open-webui) ·
+[Claude Code](#use-it-from-claude-code) ·
 [JSON job API](#json-job-api) ·
 [Authentication](#authentication) ·
 [HTTPS](#https-self-signed-certificate) ·
@@ -281,6 +282,28 @@ or `host.docker.internal` as `<host>`; any other host name needs a password
 (see [Browser protections](#browser-protections)). Menu labels can differ between Open
 WebUI versions. The `/v1` calls above were tested with `curl`; this page has
 not been run against a live Open WebUI.
+
+## Use it from Claude Code
+
+[Claude Code](https://claude.com/claude-code) can use the server's
+[MCP endpoint](#mcp-for-ai-assistants) as tools. The app's server must be
+**on** — start it with the **Web / LAN access** tab's **Start web access**
+button, or `python gui.py serve` — then register it once:
+
+```
+claude mcp add --transport http whisper http://127.0.0.1:<port>/mcp --header "Authorization: Bearer <access password>"
+```
+
+- `<port>` is the server's port (the default is 8765). The app's Help menu
+  has a **Copy MCP setup** item that copies this command with the live port
+  filled in; only the password is left for you to replace.
+- `<access password>` is the server's optional **Access password**. With no
+  password set, leave the whole `--header` argument out.
+- The MCP tools take **http(s) links only** (`transcribe_url` downloads the
+  media); there is no way to hand them a file path on this computer.
+- Claude Desktop cannot reach a local server directly (it runs local MCP
+  servers as commands and wants a public HTTPS address for remote ones), so
+  this command is for Claude Code on a machine that can reach the server.
 
 ## MCP (for AI assistants)
 
