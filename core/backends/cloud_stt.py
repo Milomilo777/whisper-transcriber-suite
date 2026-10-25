@@ -66,7 +66,7 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from .. import offline
+from .. import APP_USER_AGENT, offline
 from .._liveness_tick import liveness_tick
 from ..config import load_config
 from .base import (
@@ -592,7 +592,7 @@ class CloudSttBackend(Backend):
             return False, offline.refused("testing the key")
         url = f"{API_HOST}/{API_VERSION}/models?pageSize=1"
         req = urllib.request.Request(
-            url, method="GET", headers={API_KEY_HEADER: self._api_key}
+            url, method="GET", headers={API_KEY_HEADER: self._api_key, "User-Agent": APP_USER_AGENT}
         )
         try:
             with urllib.request.urlopen(req, timeout=20) as resp:  # noqa: S310
@@ -855,6 +855,7 @@ class CloudSttBackend(Backend):
             method="POST",
             headers={
                 API_KEY_HEADER: self._api_key,
+                "User-Agent": APP_USER_AGENT,
                 "X-Goog-Upload-Protocol": "resumable",
                 "X-Goog-Upload-Command": "start",
                 "X-Goog-Upload-Header-Content-Length": str(num_bytes),
@@ -886,6 +887,7 @@ class CloudSttBackend(Backend):
             method="POST",
             headers={
                 "Content-Length": str(num_bytes),
+                "User-Agent": APP_USER_AGENT,
                 "X-Goog-Upload-Offset": "0",
                 "X-Goog-Upload-Command": "upload, finalize",
             },
@@ -949,7 +951,7 @@ class CloudSttBackend(Backend):
         deadline = time.time() + FILE_ACTIVE_TIMEOUT_S
         while time.time() < deadline:
             req = urllib.request.Request(
-                url, method="GET", headers={API_KEY_HEADER: self._api_key}
+                url, method="GET", headers={API_KEY_HEADER: self._api_key, "User-Agent": APP_USER_AGENT}
             )
             try:
                 with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310
@@ -996,7 +998,7 @@ class CloudSttBackend(Backend):
             return True
         url = f"{API_HOST}/{API_VERSION}/{file_name}"
         req = urllib.request.Request(
-            url, method="DELETE", headers={API_KEY_HEADER: self._api_key}
+            url, method="DELETE", headers={API_KEY_HEADER: self._api_key, "User-Agent": APP_USER_AGENT}
         )
         try:
             with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310
@@ -1026,6 +1028,7 @@ class CloudSttBackend(Backend):
             headers={
                 "Content-Type": "application/json",
                 API_KEY_HEADER: self._api_key,
+                "User-Agent": APP_USER_AGENT,
             },
         )
         try:

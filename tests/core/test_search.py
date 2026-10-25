@@ -509,3 +509,30 @@ def test_reindex_all_history_isolates_one_bad_file(tmp_path, monkeypatch):
     monkeypatch.setattr(sm, "index_file", flaky)
     total = sm.reindex_all_history()
     assert total == 2, "the two good transcripts must still be indexed"
+
+
+def test_reindex_all_history_reports_total_indexed_on_unchanged_rerun(tmp_path, monkeypatch):
+    """The status line says "{n} segment(s) up to date": a second pass over an
+    unchanged index must report everything indexed, not the 0 newly added."""
+    first = tmp_path / "a.json"
+    second = tmp_path / "b.json"
+    _write_transcript(first, [{"start": 0.0, "end": 1.0, "text": "one"},
+                              {"start": 1.0, "end": 2.0, "text": "two"}])
+    _write_transcript(second, [{"start": 0.0, "end": 1.0, "text": "three"}])
+
+    class _FakeHistory:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_exc):
+            return False
+
+        def list_transcriptions(self, limit: int = 200):
+            return [{"output_paths": [str(first)]},
+                    {"output_paths": [str(second)]}]
+
+    monkeypatch.setattr("core.history.HistoryDB", _FakeHistory)
+    monkeypatch.setattr(sm, "user_data_dir", lambda: tmp_path)
+
+    assert sm.reindex_all_history() == 3
+    assert sm.reindex_all_history() == 3, "unchanged rerun must still report the total"

@@ -1,7 +1,7 @@
 """The Clone Your Voice / Text to Voice tab.
 
 Completely independent feature, two models: Kokoro (``core.tts_kokoro``)
-speaks typed text in one of 53 ready-made voices; OmniVoice
+speaks typed text in one of its ready-made voices; OmniVoice
 (``core.voice_clone``) clones a voice from a few short recordings,
 designs one from attributes, or picks one itself. Off by default (see ``core.hub.voice_clone_tab_enabled``);
 its speech model downloads on demand the first time "Generate" is
@@ -73,7 +73,7 @@ _KOKORO_DOWNLOAD_LINE = N_("The Kokoro voice model downloads first (about 350 MB
 _OMNI_DOWNLOAD_LINE = N_("OmniVoice downloads first (about 2 GB, one time).")
 
 # The model picker shows these (translated); the config stores "kokoro" / "omnivoice".
-_ENGINE_KOKORO = N_("Kokoro — 53 ready-made voices, 9 languages (fast; ~350 MB download)")
+_ENGINE_KOKORO = N_("Kokoro — {n} ready-made voices, 9 languages (fast; ~350 MB download)")
 _ENGINE_OMNI = N_("OmniVoice — clone any voice, or design one (slow on CPU; ~2 GB download)")
 
 _MODE_CLONE = "clone"
@@ -125,7 +125,10 @@ def _design_label(value: str) -> str:
 
 
 def _engine_label(kokoro: bool) -> str:
-    return translate(_ENGINE_KOKORO if kokoro else _ENGINE_OMNI)
+    if not kokoro:
+        return translate(_ENGINE_OMNI)
+    from core import tts_kokoro
+    return translate(_ENGINE_KOKORO, n=len(tts_kokoro.VOICES))
 
 
 def _engine_labels() -> dict[str, str]:
@@ -252,11 +255,11 @@ def build_voice_clone_tab(app: Any, parent: Any) -> None:
     # ── Model ───────────────────────────────────────────────────────────
     eng = section_labelframe(
         parent, pgettext("speech model", "Model"),
-        _("Kokoro speaks in one of 53 ready-made voices and is fast on any "
+        _("Kokoro speaks in one of {n} ready-made voices and is fast on any "
           "computer. OmniVoice can clone a voice from a short recording, or "
           "design a new one from a description (gender, age, pitch, accent); "
           "it is much slower without a supported graphics card. Each model "
-          "downloads once, the first time it is used."),
+          "downloads once, the first time it is used.", n=len(tts_kokoro.VOICES)),
     )
     eng.grid(row=0, column=0, sticky="ew", padx=15, pady=(15, 6))
     eng.columnconfigure(1, weight=1)

@@ -673,12 +673,16 @@
    "Base URL"
   ],
   [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe6.!button2",
+   "Use Groq"
+  ],
+  [
    ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe6.!label6",
    "API key"
   ],
   [
    ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe6.!label7",
-   "For the real OpenAI API, get a key at platform.openai.com. Leave blank for a local server that doesn't need one."
+   "Get a key at platform.openai.com (OpenAI) or a free one at console.groq.com. Leave blank for a local server that doesn't need one."
   ],
   [
    ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe6.!label8",
@@ -1080,7 +1084,7 @@
   ],
   [
    "tooltip#39",
-   "The exact model id your endpoint expects, e.g. gpt-4o-mini or gpt-4o for the real OpenAI API, or a locally-loaded model's name for Ollama/LM Studio. This app does not pick one for you — different accounts/servers have different models available."
+   "The exact model id your endpoint expects, e.g. gpt-4o-mini for OpenAI, llama-3.3-70b-versatile for Groq, or a locally-loaded model's name for Ollama/LM Studio. Different accounts/servers have different models available."
   ],
   [
    "tooltip#40",

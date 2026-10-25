@@ -68,7 +68,7 @@ def test_preview_plays_through_the_same_opener(root, fakes, monkeypatch):
     played: list = []
     monkeypatch.setattr(vct, "open_async", lambda path, parent, on_done, **k: played.append(path))
     app = _build(root, fakes)
-    _engine(app, vct._ENGINE_KOKORO, "")
+    _engine(app, vct._engine_label(True), "")
     vct._preview(app)
     assert played == [app.vc_last_output]
 
@@ -94,7 +94,7 @@ def test_a_job_the_disk_cannot_hold_never_starts_even_without_the_confirm_step(
     monkeypatch.setattr(tts_plan, "needs_confirm", lambda _est: False)
     fakes["free"] = 1000
     app = _build(root, fakes)
-    _engine(app, vct._ENGINE_KOKORO, "Hello there.")
+    _engine(app, vct._engine_label(True), "Hello there.")
     app.vc_generate_btn.invoke()
     assert fakes["kokoro"] == []
     assert _confirm_shown(app)
@@ -115,7 +115,7 @@ def _finish_long_kokoro(app: Any) -> str:
 def test_generate_on_a_finished_job_reuses_its_file(root, fakes, monkeypatch):
     monkeypatch.setitem(tts_job.PIECE_CHARS, "kokoro", 600)
     app = _build(root, fakes)
-    _engine(app, vct._ENGINE_KOKORO, LONG)
+    _engine(app, vct._engine_label(True), LONG)
     out = _finish_long_kokoro(app)
     stamp = os.stat(out).st_mtime_ns
     spoken = len(fakes["kokoro"])
@@ -136,7 +136,7 @@ def test_generate_on_a_finished_job_reuses_its_file(root, fakes, monkeypatch):
 def test_start_over_on_a_finished_job_speaks_it_again(root, fakes, monkeypatch):
     monkeypatch.setitem(tts_job.PIECE_CHARS, "kokoro", 600)
     app = _build(root, fakes)
-    _engine(app, vct._ENGINE_KOKORO, LONG)
+    _engine(app, vct._engine_label(True), LONG)
     _finish_long_kokoro(app)
     fakes["kokoro"].clear()
     app.vc_generate_btn.invoke()
@@ -151,7 +151,7 @@ def test_a_continued_job_shows_the_time_for_the_pieces_left(root, fakes, monkeyp
     monkeypatch.setitem(tts_job.PIECE_CHARS, "kokoro", 600)
     _cancel_kokoro_after(monkeypatch, fakes, 3)
     app = _build(root, fakes)
-    _engine(app, vct._ENGINE_KOKORO, LONG)
+    _engine(app, vct._engine_label(True), LONG)
     _kokoro_job(app)
     app.vc_confirm_start_btn.invoke()
     monkeypatch.setattr(tts_kokoro, "generate", _plain_kokoro(fakes))
@@ -182,7 +182,7 @@ def test_voice_controls_are_locked_on_the_confirm_step_and_while_a_job_runs(
     from core import tts_kokoro
 
     app = _build(root, fakes)
-    _engine(app, vct._ENGINE_KOKORO, LONG)
+    _engine(app, vct._engine_label(True), LONG)
     assert not any(_disabled(w) for w in _voice_controls(app) if w is not app.vc_lang_combo)
     app.vc_generate_btn.invoke()
     assert _confirm_shown(app)
@@ -298,7 +298,7 @@ def test_kokoro_refuses_a_script_none_of_its_voices_read(root, fakes, monkeypatc
     monkeypatch.setattr(tts_kokoro, "is_downloaded", lambda: False)
     monkeypatch.setattr(tts_kokoro, "download", lambda **_k: downloads.append(1))
     app = _build(root, fakes)
-    _engine(app, vct._ENGINE_KOKORO, text)
+    _engine(app, vct._engine_label(True), text)
     app.vc_generate_btn.invoke()
     assert [e[1] for e in no_dialogs] == ["Kokoro has no voice for this text"]
     assert "OmniVoice" in no_dialogs[0][2]
@@ -315,7 +315,7 @@ def test_kokoro_refuses_a_script_none_of_its_voices_read(root, fakes, monkeypatc
 ])
 def test_kokoro_accepts_the_scripts_its_voices_read(root, fakes, no_dialogs, text):
     app = _build(root, fakes)
-    _engine(app, vct._ENGINE_KOKORO, text)
+    _engine(app, vct._engine_label(True), text)
     app.vc_generate_btn.invoke()
     assert no_dialogs == []
     assert fakes["kokoro"] == [text]
@@ -352,7 +352,7 @@ def test_start_over_is_refused_while_another_window_runs_the_job(root, fakes, mo
     monkeypatch.setitem(tts_job.PIECE_CHARS, "kokoro", 600)
     _cancel_kokoro_after(monkeypatch, fakes, 1)
     app = _build(root, fakes)
-    _engine(app, vct._ENGINE_KOKORO, LONG)
+    _engine(app, vct._engine_label(True), LONG)
     _kokoro_job(app)
     app.vc_confirm_start_btn.invoke()
     monkeypatch.setattr(tts_kokoro, "generate", _plain_kokoro(fakes))
@@ -391,7 +391,7 @@ def test_continue_while_another_window_runs_the_job_says_so(root, fakes, monkeyp
     monkeypatch.setitem(tts_job.PIECE_CHARS, "kokoro", 600)
     _cancel_kokoro_after(monkeypatch, fakes, 1)
     app = _build(root, fakes)
-    _engine(app, vct._ENGINE_KOKORO, LONG)
+    _engine(app, vct._engine_label(True), LONG)
     _kokoro_job(app)
     app.vc_confirm_start_btn.invoke()
     monkeypatch.setattr(tts_kokoro, "generate", _plain_kokoro(fakes))

@@ -2,7 +2,7 @@
 
 The second engine of the Clone Your Voice / Text to Voice tab, next to
 OmniVoice (``core.voice_clone``). OmniVoice clones or designs a voice
-but is slow on a CPU; Kokoro has 53 ready-made voices and runs several
+but is slow on a CPU; Kokoro has ready-made voices and runs several
 times faster than real time on an ordinary CPU.
 
 Runs on ``sherpa-onnx``, which the app already ships for diarization, so

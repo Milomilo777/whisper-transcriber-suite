@@ -51,7 +51,7 @@ Optional settings on that tab (all remembered for next time):
   shows you the one it used.
 - **Share on local network**: OFF (default) = only this computer can use it
   and there is no firewall prompt. ON = other devices on your network can
-  use it; Windows may ask to allow it through the firewall, click **Allow**.
+  use it; your system may ask to allow it through the firewall, click **Allow**.
 - **Access password (optional)**: leave blank for none. If you set one,
   share it; see [Authentication](#authentication) for how clients send it.
 - **Use HTTPS (self-signed certificate)**: serve over TLS, see
