@@ -33,14 +33,18 @@ logger = logging.getLogger(__name__)
 
 
 def _flush_to_disk(f: Any) -> None:
-    """Flush and fsync a file, logging but swallowing OSErrors.
+    """Flush and fsync a file, tolerating only fsync failures.
 
     Certain network shares, FUSE systems, or USB filesystems return
     EINVAL/ENOTSUP for fsync. A failed durability sync must never discard
-    a transcript that was written successfully.
+    a transcript that was written successfully — but a failed FLUSH means
+    the data never reached the OS at all (a full disk raises ENOSPC at
+    flush time, not at write time, once the 8 KB text buffer spills), so
+    that error propagates and the caller counts the write as failed
+    instead of publishing an empty or truncated file.
     """
+    f.flush()
     try:
-        f.flush()
         os.fsync(f.fileno())
     except OSError as e:
         logger.warning("Could not fsync file: %s", e)
@@ -104,9 +108,19 @@ _UNSET = object()
 
 
 def partials_dir() -> Path:
-    """Folder where checkpoint JSONs live. Created on demand."""
+    """Folder where checkpoint JSONs live. Created on demand, best effort.
+
+    The mkdir is best-effort so the READ paths (``has_checkpoint``,
+    ``load_checkpoint``, the startup sweep) degrade to "no checkpoint"
+    on a read-only profile or a file occupying the path instead of
+    raising into the resume menu; a WRITE that needs the dir then fails
+    naturally at its own I/O.
+    """
     p = user_data_dir() / "partials"
-    p.mkdir(parents=True, exist_ok=True)
+    try:
+        p.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        logger.debug("Could not create partials dir %s: %s", p, e)
     return p
 
 
@@ -209,14 +223,18 @@ def write_checkpoint(
     abs_path = os.path.abspath(source_path)
     try:
         st = os.stat(abs_path)
-        size = int(st.st_size)
-        mtime = float(st.st_mtime)
+        size: int | None = int(st.st_size)
+        mtime: float | None = float(st.st_mtime)
     except OSError:
-        # If we can't stat the source at write time, store zeros — the
-        # resume path will refuse on mismatch anyway. Keep going so
-        # the segments aren't lost.
-        size = 0
-        mtime = 0.0
+        # A transient stat blip (USB/SMB hiccup) must not poison the
+        # checkpoint: storing zeros made validate_checkpoint refuse on
+        # mismatch, and the resume path DELETES the partial on refusal —
+        # the exact loss this module exists to prevent. Store no
+        # verification fields instead; the resume then checks existence
+        # and the backend/model/fingerprint, and this one checkpoint is
+        # simply verified a little less strictly.
+        size = None
+        mtime = None
 
     payload: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
@@ -256,7 +274,13 @@ def write_checkpoint(
     replaced = False
     try:
         with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as f:
-            json.dump(payload, f, ensure_ascii=False)
+            # ensure_ascii=True: a Windows path can carry lone UTF-16
+            # surrogates, which UTF-8 encoding rejects — with
+            # ensure_ascii=False every checkpoint write of such a run
+            # raised and the transcriber disabled checkpoints for it.
+            # JSON \udXXX escapes round-trip through json.load, so the
+            # resume sees the same string; the file is machine-read only.
+            json.dump(payload, f, ensure_ascii=True)
             _flush_to_disk(f)
         # Two writers can still legitimately race AT the rename itself
         # (two app instances resuming the same source at nearly the same
@@ -416,13 +440,39 @@ def validate_checkpoint(
         st = os.stat(src)
     except OSError as e:
         return f"could not stat source: {e}"
-    if int(data.get("source_size") or -1) != int(st.st_size):
-        return "source file size has changed since checkpoint"
-    saved_mtime = float(data.get("source_mtime") or 0.0)
-    # Allow 1 ms slop — filesystem mtime granularity on some volumes
-    # is coarser than Python's float repr suggests.
-    if abs(saved_mtime - float(st.st_mtime)) > 0.001:
-        return "source file mtime has changed since checkpoint"
+    # A checkpoint written during a transient stat blip carries the
+    # verification fields as null (write_checkpoint stores None rather
+    # than values no resume can accept): skip that comparison and rely
+    # on existence + backend/model/fingerprint. A field that is absent
+    # outright is still rejected (as before — a checkpoint that cannot
+    # be verified at all must not resume), and so is a non-numeric one.
+    if "source_size" not in data:
+        return "checkpoint missing source_size"
+    if "source_mtime" not in data:
+        return "checkpoint missing source_mtime"
+    # The OLD write_checkpoint's stat-failure output was size=0/mtime=0.0 —
+    # a poison pair no real file carries (a genuine 0-byte source has its
+    # real mtime). It must keep refusing with the size reason, exactly as
+    # the `or -1` sentinel did, so an old poisoned checkpoint on disk can
+    # never validate a 0-byte source.
+    if data.get("source_size") == 0 and data.get("source_mtime") == 0.0:
+        return "checkpoint carries the stat-failure sentinel (source_size 0)"
+    saved_size = data["source_size"]
+    if saved_size is not None:
+        try:
+            if int(saved_size) != int(st.st_size):
+                return "source file size has changed since checkpoint"
+        except (TypeError, ValueError):
+            return f"checkpoint source_size is not a number: {saved_size!r}"
+    saved_mtime = data["source_mtime"]
+    if saved_mtime is not None:
+        try:
+            # Allow 1 ms slop — filesystem mtime granularity on some
+            # volumes is coarser than Python's float repr suggests.
+            if abs(float(saved_mtime) - float(st.st_mtime)) > 0.001:
+                return "source file mtime has changed since checkpoint"
+        except (TypeError, ValueError):
+            return f"checkpoint source_mtime is not a number: {saved_mtime!r}"
     if str(data.get("backend") or "") != backend:
         return (
             f"backend changed: checkpoint={data.get('backend')!r} "

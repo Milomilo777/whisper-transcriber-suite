@@ -3346,7 +3346,13 @@ def resume_transcription(
         _checked_whisper_task(task, backend_for_check or "faster_whisper")
 
         cp_language = str(data.get("language") or "")
-        cp_lang_prob = float(data.get("language_probability") or 0.0)
+        try:
+            cp_lang_prob = float(data.get("language_probability") or 0.0)
+        except (TypeError, ValueError):
+            # A semantically corrupt field must fall back to a fresh run,
+            # never raise out of the worker (validate_checkpoint only
+            # checks the fields it resumes on).
+            cp_lang_prob = 0.0
         # Re-announce the detected language so the UI label stays accurate
         # after the resume. Before either branch: a task rebuilt from history
         # after a crash knows no language yet, and the completed branch below
@@ -3383,7 +3389,16 @@ def resume_transcription(
             _write_resumed_outputs(task, done_segments, done_language, speaker_count, log_cb, progress_cb)
             return True
 
-        last_end_time = float(data.get("last_end_time") or 0.0)
+        try:
+            last_end_time = float(data.get("last_end_time") or 0.0)
+        except (TypeError, ValueError):
+            log(
+                "Resume: checkpoint last_end_time is not a number; "
+                "deleting partial and re-running from scratch.",
+                log_cb,
+            )
+            _checkpoint.delete_checkpoint(task.file_path)
+            return False
         prior_segments = list(data.get("segments") or [])
         # A mixed-language run continues as one, also when the task was rebuilt
         # from history after a crash (the history row has no field for it).
