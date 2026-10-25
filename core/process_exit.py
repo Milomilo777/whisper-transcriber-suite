@@ -176,7 +176,8 @@ def _ps_says_zombie(pid: int) -> bool:
     try:
         out = subprocess.run(
             ["ps", "-o", "stat=", "-p", str(int(pid))],
-            capture_output=True, text=True, timeout=2.0, check=False, shell=False,
+            stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=2.0, check=False,
+            shell=False,
         ).stdout
     except (OSError, subprocess.SubprocessError, ValueError):
         return False
