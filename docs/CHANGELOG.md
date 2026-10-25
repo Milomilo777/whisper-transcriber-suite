@@ -19,6 +19,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Search status showed 0 segments after a full index**: Help > Search transcripts counted only the segments
+  added in that pass. It now reports the total number of segments indexed.
 - **Audio-only download of an episode page that has no audio file yet**: new episodes get their MP3 weeks
   after the video, and until then the audio list stayed empty and Download kept saying "Wait for formats to
   load, then select an audio format." The app now downloads the page's 720p video, keeps only its sound in the
