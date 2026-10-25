@@ -267,6 +267,58 @@ def test_stop_waits_for_the_launchers_children(model, tmp_path, monkeypatch):
     assert waited == [marker]
 
 
+def test_wait_descendants_passes_the_procs_and_a_timeout_to_psutil(monkeypatch, caplog):
+    seen: dict[str, object] = {}
+
+    class Alive:
+        pid = 4242
+
+    def fake_wait(procs, timeout=None):
+        seen.update(procs=procs, timeout=timeout)
+        return [], list(procs)
+
+    monkeypatch.setattr(psutil, "wait_procs", fake_wait)
+    procs = [Alive()]
+    with caplog.at_level("WARNING", logger=lls.logger.name):
+        lls._wait_descendants(procs)
+    assert seen == {"procs": procs, "timeout": lls._DESCENDANTS_WAIT_S}
+    assert "4242" in caplog.text
+
+
+def test_wait_descendants_is_quiet_when_all_ended(monkeypatch, caplog):
+    monkeypatch.setattr(psutil, "wait_procs", lambda procs, timeout=None: (list(procs), []))
+    with caplog.at_level("WARNING", logger=lls.logger.name):
+        lls._wait_descendants([object()])
+    assert not caplog.records
+
+
+def test_real_helpers_wait_until_a_real_child_is_gone():
+    code = ("import subprocess, sys, time; "
+            "c = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(2)']); "
+            "print(c.pid, flush=True); time.sleep(30)")
+    parent = subprocess.Popen(
+        [sys.executable, "-c", code],
+        stdout=subprocess.PIPE, text=True, creationflags=NO_WINDOW)
+    child = 0
+    try:
+        assert parent.stdout is not None
+        child = int(parent.stdout.readline())
+        found = lls._descendants(parent.pid)
+        assert child in [p.pid for p in found]  # a python launcher may add a hop
+        parent.kill()
+        parent.wait(timeout=10)
+        assert psutil.pid_exists(child)  # still running: the wait below has real work
+        lls._wait_descendants(found)
+        assert not psutil.pid_exists(child)
+    finally:
+        parent.kill()
+        if child and psutil.pid_exists(child):
+            try:
+                psutil.Process(child).kill()
+            except psutil.NoSuchProcess:
+                pass
+
+
 # ---------------------------------------------------------------- records and stop
 
 
