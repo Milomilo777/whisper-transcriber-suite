@@ -189,9 +189,14 @@ _MAX_CONNECTIONS = 64
 # are "pending": a client that drips bytes (slowloris) holds a thread without
 # having proven anything, not even a password. They get a small budget of
 # their own, so they cannot take every slot: at most this many per client
-# address, and three quarters of the slots in all. Beyond that a new connection
-# is refused with the same fast 503 as a full server.
+# address, and three quarters of the slots in all. Beyond the per-address
+# limit a new connection is refused with the same fast 503 as a full server.
+# Beyond the global limit it is still served while handler slots are free, but
+# it has only _OVERFLOW_HEADER_S seconds to send its header (an honest client
+# needs milliseconds): drippers that fill the normal pending budget cannot
+# lock everybody else out, and a dripper in the overflow is cut after seconds.
 _MAX_PENDING_PER_HOST = 4
+_OVERFLOW_HEADER_S = 2.0
 
 # Synchronous /v1 requests hold a handler thread (and a slot) until their job
 # ends, which can be hours behind a long queue. At most this many may wait at
@@ -1198,7 +1203,9 @@ class JobHTTPServer(ThreadingHTTPServer):
         self._max_pending = max(1, max_pending if max_pending is not None
                                 else self._max_connections * 3 // 4)
         self._max_pending_per_host = max(1, max_pending_per_host)
-        self._pending: dict[tuple[Any, ...], str] = {}
+        # connection -> (client host, True when it is an overflow connection)
+        self._pending: dict[tuple[Any, ...], tuple[str, bool]] = {}
+        self._pending_normal = 0
         self._pending_hosts: dict[str, int] = {}
         self._slots = threading.BoundedSemaphore(self._max_connections)
         if max_sync_waits is None:
@@ -1268,21 +1275,32 @@ class JobHTTPServer(ThreadingHTTPServer):
         host = str(client_address[0]) if client_address else "?"
         key = tuple(client_address) if client_address else ()
         with self._active_lock:
-            if (len(self._pending) >= self._max_pending
-                    or self._pending_hosts.get(host, 0)
-                    >= self._max_pending_per_host):
+            if self._pending_hosts.get(host, 0) >= self._max_pending_per_host:
                 return False
-            self._pending[key] = host
+            overflow = self._pending_normal >= self._max_pending
+            if not overflow:
+                self._pending_normal += 1
+            self._pending[key] = (host, overflow)
             self._pending_hosts[host] = self._pending_hosts.get(host, 0) + 1
             return True
+
+    def header_deadline_for(self, client_address: Any) -> float:
+        """Seconds a new connection has for its first request header."""
+        key = tuple(client_address) if client_address else ()
+        with self._active_lock:
+            entry = self._pending.get(key)
+        return _OVERFLOW_HEADER_S if entry and entry[1] else _HEADER_TOTAL_S
 
     def release_pending(self, client_address: Any) -> None:
         """The connection has sent its headers (or ended): no longer pending."""
         key = tuple(client_address) if client_address else ()
         with self._active_lock:
-            host = self._pending.pop(key, None)
-            if host is None:
+            entry = self._pending.pop(key, None)
+            if entry is None:
                 return
+            host, overflow = entry
+            if not overflow:
+                self._pending_normal -= 1
             left = self._pending_hosts.get(host, 1) - 1
             if left > 0:
                 self._pending_hosts[host] = left
@@ -1461,7 +1479,7 @@ class JobRequestHandler(BaseHTTPRequestHandler):
 
     def handle_one_request(self) -> None:
         """Serve one request; waiting for its request line + headers is budgeted."""
-        self._set_deadline(_HEADER_TOTAL_S)
+        self._set_deadline(self._srv.header_deadline_for(self.client_address))
         try:
             super().handle_one_request()
         finally:

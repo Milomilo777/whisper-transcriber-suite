@@ -83,8 +83,10 @@ def test_pending_connections_leave_the_budget_when_headers_arrive(tmp_path):
         srv.close()
 
 
-def test_global_pending_budget_leaves_slots_for_complete_requests(tmp_path):
-    srv = _Server(tmp_path, max_connections=8, max_pending=4,
+def test_full_pending_budget_still_serves_a_prompt_complete_request(tmp_path):
+    """Round-2 finding: 48 drippers used to make every other connection a
+    503 although handler slots were free."""
+    srv = _Server(tmp_path, max_connections=12, max_pending=4,
                   max_pending_per_host=100)
     held = []
     try:
@@ -93,10 +95,35 @@ def test_global_pending_budget_leaves_slots_for_complete_requests(tmp_path):
             s.sendall(b"GET /")
             held.append(s)
         assert _wait_until(lambda: srv.server.pending_connections() == 4)
-        extra = socket.create_connection(("127.0.0.1", srv.port), timeout=3)
-        assert _read_status(extra).startswith(b"HTTP/1.1 503")
+        status, _ = _request(srv, "GET", "/api/health")
+        assert status == 200
+    finally:
+        for s in held:
+            s.close()
+        srv.close()
+
+
+def test_a_dripper_in_the_overflow_is_cut_after_a_short_deadline(
+        tmp_path, monkeypatch):
+    monkeypatch.setattr(httpd, "_OVERFLOW_HEADER_S", 0.5)
+    srv = _Server(tmp_path, max_connections=12, max_pending=2,
+                  max_pending_per_host=100)
+    held = []
+    try:
+        for _ in range(2):
+            s = socket.create_connection(("127.0.0.1", srv.port))
+            s.sendall(b"GET /")
+            held.append(s)
+        assert _wait_until(lambda: srv.server.pending_connections() == 2)
+        extra = socket.create_connection(("127.0.0.1", srv.port))
+        extra.sendall(b"GET /")  # overflow connection that never finishes
+        assert _wait_until(lambda: srv.server.pending_connections() == 3)
+        started = time.monotonic()
+        assert _closed_by_server(extra, 3.0)
+        assert time.monotonic() - started < 3.0
         extra.close()
-        assert srv.server.active_connections() == 4  # 4 slots stay free
+        # The normal pending connections keep their long (15 s) deadline.
+        assert _wait_until(lambda: srv.server.pending_connections() == 2)
     finally:
         for s in held:
             s.close()

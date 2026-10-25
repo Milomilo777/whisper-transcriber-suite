@@ -706,10 +706,11 @@ Behaviour to know:
   without a TLS handshake), sees the connection closed instead.
   A connection that has not yet sent its whole request line and headers is
   "pending", and pending connections have a budget of their own: at most 4 per
-  client address and 48 in all (three quarters of the slots), so a client that
-  drips bytes cannot take every slot; beyond that a new connection gets the same
-  fast 503. Many different addresses together can still fill the 48 for the
-  15 seconds of the header deadline.
+  client address (beyond that a new connection gets the fast 503) and 48 with the
+  full 15-second header deadline. A further connection is still served while
+  handler slots are free, but has only 2 seconds to send its header, so drippers
+  that fill the 48 cannot lock out other clients; they can only keep the
+  overflow busy by reconnecting.
   Once three quarters of the slots are in use, every reply ends its connection
   (`Connection: close`), and an idle keep-alive connection is kept for at most
   15 seconds, so browsers cannot hold the slots between requests.
