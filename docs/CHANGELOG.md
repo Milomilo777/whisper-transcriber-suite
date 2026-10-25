@@ -17,6 +17,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   instead). The desktop Download tab is unchanged. Exception: a direct link to a host inside
   `server_allowed_private_networks` (for example a NAS) is fetched by the app's own downloader, with the
   connect-time address check on every redirect hop. Its time limit and cancel flag also apply during connect, and redirect and rejected responses are closed at once.
+- **Server link jobs refuse live streams and guard ffmpeg too**: yt-dlp hands live streams, and HLS videos it
+  cannot read itself, to ffmpeg, which fetched their segments without the download guard. Live streams are now
+  refused with a clear message, and ffmpeg is routed through the guard (its login travels in a per-job file
+  that is deleted after the run, never on the command line).
 - **The completion webhook checks the address at connect time**: the host name is resolved once, only the
   checked addresses are connected to, and proxies from the environment are not used. LAN receivers stay
   allowed.

@@ -710,6 +710,10 @@ Behaviour to know:
   job is submitted. A name that fails to resolve is let through (yt-dlp then
   reports the real error). yt-dlp performs the actual download with an
   end-of-options `--` guard so a URL can never be parsed as a yt-dlp flag.
+  **Live streams are refused** ("live streams are not supported by the
+  server"): yt-dlp hands them to ffmpeg. For the few recorded videos that
+  also need ffmpeg (HLS that yt-dlp cannot read itself), ffmpeg is pointed at
+  the same download guard, so its segment requests get the same address check.
   **Server link jobs only use yt-dlp's site-specific extractors.** The
   generic extractor, which fetches any address, is switched off
   (`--use-extractors default,-generic`), so a plain media link

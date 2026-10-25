@@ -143,6 +143,36 @@ def _proxy_environment(proxy_url: str) -> dict[str, str]:
 
 # yt-dlp option value: every extractor except the generic one.
 GENERIC_EXTRACTOR_OFF = "default,-generic"
+# yt-dlp match filter that skips live streams. A live HLS stream is fetched by
+# ffmpeg (yt-dlp's own HLS downloader cannot do it), and a server job must not
+# depend on ffmpeg's network behaviour for an endless download anyway.
+NOT_LIVE_FILTER = "!is_live"
+LIVE_REFUSED = (
+    "live streams are not supported by the server; use a recorded video "
+    "or upload the file")
+_FILTERED_OUT_RE = re.compile(r"does not pass filter", re.IGNORECASE)
+GUARD_CONFIG_NAME = ".wts-ytdlp-guard.conf"
+
+
+def _write_guard_config(dest_dir: str, proxy_url: str) -> str:
+    """Write the per-job yt-dlp config that routes ffmpeg through the guard.
+
+    yt-dlp falls back to ffmpeg for some HLS/DASH media (live streams, HLS it
+    cannot parse itself, e.g. SAMPLE-AES) and hands it only the proxy
+    *environment*, which ffmpeg ignores for https links and, off Windows, for
+    http links too. ``-http_proxy`` is ffmpeg's own proxy option, so the
+    segment fetches go through the guard. The proxy password sits in this
+    file (owner-only, in the job folder, removed after the run), never in the
+    command line.
+    """
+    path = os.path.join(dest_dir, GUARD_CONFIG_NAME)
+    text = (f"--proxy {proxy_url}\n"
+            f'--downloader-args "ffmpeg_i:-http_proxy {proxy_url}"\n')
+    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_BINARY", 0)
+    fd = os.open(path, flags, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as handle:
+        handle.write(text)
+    return path
 # yt-dlp's message when no extractor accepts the address (with the generic one
 # switched off that is every direct media link and every unknown site).
 _UNSUPPORTED_URL_RE = re.compile(
@@ -192,6 +222,7 @@ def _download_url(url: str, dest_dir: str,
     # yt-dlp copy waits for it, and this waits for a running update.
     with yt_dlp_update.download_running():
         yt_dlp = yt_dlp_update.resolve_yt_dlp_path()  # newer of bundled / updated copy
+        guard_config = _write_guard_config(dest_dir, proxy.url)
         command = [
             yt_dlp,
             *yt_dlp_js_args(yt_dlp),  # Deno for YouTube's JS challenges, if present
@@ -207,8 +238,14 @@ def _download_url(url: str, dest_dir: str,
             "--use-extractors", GENERIC_EXTRACTOR_OFF,
             # yt-dlp's native downloaders keep fragment fetches inside
             # yt-dlp, so they use the proxy (set through the environment
-            # below) as well.
+            # below) as well. The few streams they cannot fetch fall back to
+            # ffmpeg: live streams are refused, and the config file below
+            # points ffmpeg at the proxy for the rest. --ignore-config keeps
+            # a user's own yt-dlp config out of a server job.
             "--downloader", "native",
+            "--match-filters", NOT_LIVE_FILTER,
+            "--ignore-config",
+            "--config-locations", guard_config,
             # The frozen yt-dlp.exe ignores PYTHONUTF8 and prints cp1252,
             # dropping non-Latin title characters from its output.
             "--encoding", "utf-8",
@@ -219,13 +256,20 @@ def _download_url(url: str, dest_dir: str,
         # End-of-options separator: the URL is never treated as a flag.
         command += ["--", url]
         logger.info("server: downloading %s", strip_url_secrets(url))
-        process = subprocess.Popen(
-            command, stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            text=True, encoding="utf-8", errors="replace",
-            env=_proxy_environment(proxy.url),
-            **new_session_kwargs(),
-        )
+        try:
+            process = subprocess.Popen(
+                command, stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                text=True, encoding="utf-8", errors="replace",
+                env=_proxy_environment(proxy.url),
+                **new_session_kwargs(),
+            )
+        except BaseException:
+            try:
+                os.remove(guard_config)
+            except OSError:
+                pass
+            raise
         try:
             started = time.monotonic()
             while True:
@@ -264,12 +308,19 @@ def _download_url(url: str, dest_dir: str,
                     process.communicate(timeout=10)
                 except (subprocess.TimeoutExpired, OSError, ValueError):
                     pass
+            try:
+                os.remove(guard_config)  # holds the proxy password
+            except OSError:
+                pass
     # Pick the newest media file yt-dlp left in the dir.
     candidates = [
         os.path.join(dest_dir, n) for n in os.listdir(dest_dir)
         if _is_downloaded_media(dest_dir, n)
     ]
     if not candidates:
+        # yt-dlp skips a live stream (match filter) and exits 0.
+        if _FILTERED_OUT_RE.search(stdout or ""):
+            raise RuntimeError(LIVE_REFUSED)
         # yt-dlp skips a file over --max-filesize and still exits 0.
         if "max-filesize" in (stdout or "").lower():
             raise RuntimeError(
