@@ -18,9 +18,11 @@ modules so tests can exercise it without faster_whisper installed.
 """
 from __future__ import annotations
 
+import errno
 import hashlib
 import json
 import logging
+import math
 import os
 import re
 import tempfile
@@ -211,8 +213,13 @@ UNVERIFIABLE_PREFIX = "checkpoint identity cannot be verified"
 def note_source_identity(source_path: str) -> None:
     """Remember the size and mtime of the media a run starts on.
 
-    Call once at run start, before the first checkpoint write. A failed
-    stat leaves any earlier note for this path untouched.
+    Call once at run start, before the first checkpoint write. The note is
+    authoritative for the whole run: :func:`write_checkpoint` never replaces
+    it, so media swapped in mid-run cannot relabel segments that came from
+    the original. A failed stat DROPS any earlier note: it may belong to a
+    previous run on different media, and trusting it would stamp this run's
+    segments with the wrong identity. Without a note, the first checkpoint
+    write stats the file and records what it sees.
     """
     abs_path = os.path.abspath(source_path)
     try:
@@ -237,29 +244,283 @@ def _previous_identity(abs_path: str) -> tuple[int, float] | None:
     return size, float(mtime)
 
 
-def quarantine_checkpoint(source_path: str) -> Path | None:
-    """Move the checkpoint aside, keeping it; return the new path.
+class CheckpointNotKeptError(RuntimeError):
+    """The saved checkpoint could be neither moved nor copied aside.
 
-    The new name does not end in ``.json``, so the resume path no longer
-    sees it and the age sweep never reaps it. A fresh run can then start
-    without touching the saved segments. Never raises.
+    It is still in place and a fresh run would overwrite or delete it, so the
+    caller must not start one.
+    """
+
+
+# fsync errors that only mean "this file system cannot sync a file". Every
+# other OSError (EIO, ENOSPC, ...) means the bytes may not be on disk.
+_FSYNC_UNSUPPORTED = frozenset(
+    code
+    for code in (
+        getattr(errno, "EINVAL", None),
+        getattr(errno, "ENOTSUP", None),
+        getattr(errno, "EOPNOTSUPP", None),
+    )
+    if code is not None
+)
+
+
+def _strict_sync(f: Any) -> None:
+    """Flush and fsync ``f``; only "fsync unsupported" is tolerated.
+
+    The best-effort :func:`_flush_to_disk` is right for ordinary checkpoint
+    writes (the next write retries). A copy that authorises a fresh run to
+    replace the original must really be durable, so any other error raises.
+    """
+    f.flush()
+    try:
+        os.fsync(f.fileno())
+    except OSError as e:
+        if e.errno in _FSYNC_UNSUPPORTED:
+            logger.warning("File system cannot fsync (%s); keeping the copy anyway", e)
+            return
+        raise
+
+
+# validate_checkpoint reasons that may DISCARD the partial. Every other
+# non-empty reason keeps it aside (a reason not listed here, including any
+# added later, is kept): the saved text can be the only copy of hours of work.
+# These four are reached only after the media identity was verified (the media
+# is intact and can be transcribed again), except "segments is not a list",
+# where there is no text to lose.
+DISCARD_PREFIXES: tuple[str, ...] = (
+    "backend changed",
+    "model changed",
+    "transcription config changed",
+    "checkpoint segments field is not a list",
+)
+
+
+def keeps_text(reason: str) -> bool:
+    """True if a validate_checkpoint ``reason`` must keep the checkpoint aside."""
+    return bool(reason) and not reason.startswith(DISCARD_PREFIXES)
+
+
+def _segment_stamp(start: Any) -> str:
+    """``HH:MM:SS`` for a segment start, ``??:??:??`` for anything unusable."""
+    if isinstance(start, bool) or not isinstance(start, (int, float)):
+        return "??:??:??"
+    try:
+        if not math.isfinite(start) or start < 0 or start > 1e9:
+            return "??:??:??"
+        total = int(start)
+    except (ValueError, OverflowError):
+        return "??:??:??"
+    return f"{total // 3600:02d}:{total % 3600 // 60:02d}:{total % 60:02d}"
+
+
+def _segment_line(seg: Any) -> str | None:
+    """One readable line for a saved segment (None = not a segment)."""
+    if not isinstance(seg, dict):
+        return None
+    try:
+        text = str(seg.get("text", "")).strip()
+    except Exception:  # noqa: BLE001 - a hostile value must not hide the others
+        text = "(text could not be read)"
+    return f"[{_segment_stamp(seg.get('start'))}] {text}\n"
+
+
+def recovery_text_path(kept: Path) -> Path:
+    """Where the readable copy of the kept-aside checkpoint ``kept`` lives.
+
+    ``<sha1>.json.unverified-<tag>`` pairs with ``<sha1>.unverified-<tag>.txt``
+    (no ``.json`` in the name, so nothing that looks for kept checkpoints by
+    their ``.json.unverified-`` name takes the text file for one).
+    """
+    return kept.with_name(kept.name.replace(".json.unverified-", ".unverified-", 1) + ".txt")
+
+
+def _write_recovery_sidecar(kept: Path, source_path: str, reason: str) -> None:
+    """Write the readable text copy of a quarantined checkpoint. Never raises.
+
+    Lines go to the file one by one, so a very large transcript is not also
+    built as one big string (the JSON itself still has to be loaded).
     """
     import time as _time
 
+    sidecar: Path | None = None
+    try:
+        sidecar = recovery_text_path(kept)
+        try:
+            with open(kept, encoding="utf-8") as f:
+                data = json.load(f)
+        except (OSError, ValueError):
+            data = None
+        segs = data.get("segments") if isinstance(data, dict) else None
+        # errors="replace": a lone surrogate in a Windows path cannot be
+        # encoded; lose that character, not the whole sidecar.
+        with open(sidecar, "w", encoding="utf-8", newline="\n", errors="replace") as f:
+            f.write("Kept-aside transcript (safe to delete once you no longer need it).\n")
+            f.write(f"Source file: {source_path}\n")
+            f.write(f"Kept aside at: {_time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"Reason: {reason or 'not recorded'}\n\n")
+            wrote = False
+            if isinstance(segs, list):
+                for seg in segs:
+                    line = _segment_line(seg)
+                    if line is not None:
+                        f.write(line)
+                        wrote = True
+            if not wrote:
+                f.write("(no readable segments in the saved checkpoint)\n")
+            _flush_to_disk(f)
+    except Exception as e:  # noqa: BLE001 - the sidecar is a courtesy, never a failure
+        logger.warning("Could not write the readable copy %s: %s", sidecar, e)
+
+
+def _kept_name(path: Path) -> Path:
+    """A kept-aside name no other attempt (or process) can also pick."""
+    import secrets
+    import time as _time
+
+    return path.with_name(
+        f"{path.name}.unverified-{int(_time.time())}-{os.getpid()}-{secrets.token_hex(4)}"
+    )
+
+
+class CheckpointInUseError(CheckpointNotKeptError):
+    """The checkpoint could not be renamed (usually another process holds it).
+
+    A byte-exact copy WAS kept, but no fresh run may start: it would write over
+    the file the other process is using. The caller stops the task.
+    ``kept`` is the copy (new, or an identical one that already existed).
+    """
+
+    kept: Path | None = None
+
+
+def _identical_kept_copy(path: Path, data: bytes) -> Path | None:
+    """An existing kept-aside copy of this very checkpoint, if there is one."""
+    try:
+        for cand in sorted(path.parent.glob(path.name + ".unverified-*")):
+            try:
+                if cand.stat().st_size == len(data) and cand.read_bytes() == data:
+                    return cand
+            except OSError:
+                continue
+    except OSError:
+        pass
+    return None
+
+
+def _copy_aside(path: Path, why: OSError) -> tuple[Path | None, bool]:
+    """Preserve the bytes of ``path`` in a kept file; never touch ``path``.
+
+    Returns ``(kept path, newly created)``. A byte-identical copy that is
+    already kept for this checkpoint is reused (no duplicate on every retry).
+
+    The bytes are read once, written to a file created exclusively (so no
+    existing file can be overwritten), synced strictly and read back for
+    comparison. On failure only a file THIS call created is removed. Returns
+    None when ``path`` no longer exists (someone else kept it aside already).
+    """
+    try:
+        data = path.read_bytes()
+    except FileNotFoundError:
+        return None, False
+    except OSError as e:
+        raise CheckpointNotKeptError(
+            f"the saved checkpoint {path} could not be kept aside ({why}; read: {e}); "
+            "the task was stopped so the saved text is not overwritten"
+        ) from e
+    existing = _identical_kept_copy(path, data)
+    if existing is not None:
+        return existing, False
+    last: OSError = why
+    for _ in range(8):
+        target = _kept_name(path)
+        created = False
+        try:
+            with open(target, "xb") as f:
+                created = True
+                f.write(data)
+                _strict_sync(f)
+            if target.read_bytes() != data:
+                raise OSError("the copy does not match the checkpoint it was made from")
+            return target, True
+        except FileExistsError as e:
+            last = e  # not ours: leave it alone and pick another name
+            continue
+        except OSError as e:
+            last = e
+            if created:
+                try:
+                    target.unlink()
+                except OSError:
+                    pass
+            break
+    raise CheckpointNotKeptError(
+        f"the saved checkpoint {path} could not be kept aside ({why}; copy: {last}); "
+        "the task was stopped so the saved text is not overwritten"
+    ) from last
+
+
+def quarantine_checkpoint(source_path: str, reason: str = "") -> Path | None:
+    """Keep the checkpoint aside; return the kept path (None = nothing to keep).
+
+    The kept name does not end in ``.json``, so the resume path no longer
+    sees it and the age sweep never reaps it. Next to it a ``.txt`` file
+    holds the saved text, readable without the app. A fresh run can then
+    start without touching the saved segments.
+
+    The file is renamed to a unique name (checked free first; ``os.rename``
+    also refuses an existing target on Windows). If the rename fails, the
+    file is usually held by another process: its bytes are copied
+    (:func:`_copy_aside`, never deleting the original) and
+    :class:`CheckpointInUseError` is raised, so no fresh run starts over it.
+    If the text cannot be kept either way this raises
+    :class:`CheckpointNotKeptError`. Returns None when the checkpoint is
+    already gone (another process kept it aside).
+    """
     path = checkpoint_path(source_path)
     if not path.exists():
         return None
-    target = path.with_name(f"{path.name}.unverified-{int(_time.time())}")
-    n = 0
-    while target.exists():
-        n += 1
-        target = path.with_name(f"{path.name}.unverified-{int(_time.time())}-{n}")
-    try:
-        os.replace(path, target)
-    except OSError as e:
-        logger.warning("Could not quarantine checkpoint %s: %s", path, e)
-        return None
+    target: Path | None = None
+    rename_error: OSError | None = None
+    for _ in range(8):
+        candidate = _kept_name(path)
+        if candidate.exists():
+            continue
+        try:
+            # Residual risk, accepted: on POSIX os.rename replaces an existing
+            # target, so a file created at this name after the exists() check
+            # above would be lost. The name carries pid, time and a random
+            # tag, so no realistic actor can pick it.
+            os.rename(path, candidate)
+            target = candidate
+        except FileNotFoundError as e:
+            if not path.exists():
+                return None  # kept aside by someone else in the meantime
+            rename_error = e
+        except OSError as e:
+            rename_error = e
+        break
+    else:
+        rename_error = FileExistsError("no free kept-aside name")
+    if target is None:
+        assert rename_error is not None
+        logger.warning(
+            "Could not move checkpoint %s aside (%s); copying it", path, rename_error
+        )
+        copy, created = _copy_aside(path, rename_error)
+        if copy is None:
+            return None
+        if created:
+            logger.warning("Checkpoint %s copied aside as %s", path, copy)
+            _write_recovery_sidecar(copy, os.path.abspath(source_path), reason)
+        busy = CheckpointInUseError(
+            f"the checkpoint {path} is in use or locked ({rename_error}); a copy was "
+            f"kept at {copy}; the task was stopped so the saved text is not overwritten"
+        )
+        busy.kept = copy
+        raise busy from rename_error
     logger.warning("Checkpoint %s kept aside as %s", path, target)
+    _write_recovery_sidecar(target, os.path.abspath(source_path), reason)
     return target
 
 
@@ -287,19 +548,22 @@ def write_checkpoint(
     import time as _time
 
     abs_path = os.path.abspath(source_path)
-    identity: tuple[int, float] | None
-    try:
-        st = os.stat(abs_path)
-        identity = (int(st.st_size), float(st.st_mtime))
-        _RUN_IDENTITY[abs_path] = identity
-    except OSError:
-        # A transient stat blip (USB/SMB hiccup) must not replace the
-        # identity of the media the segments came from: keep the identity
-        # noted at run start, else the one on the checkpoint already on
-        # disk. Only when neither exists are the fields stored as null, and
-        # then validate_checkpoint refuses the checkpoint (kept, never
-        # auto-resumed) because the media cannot be verified.
-        identity = _RUN_IDENTITY.get(abs_path) or _previous_identity(abs_path)
+    # The identity noted at run start is authoritative: a later stat would
+    # describe whatever sits at the path NOW, and media replaced mid-run
+    # would then be recorded for segments that came from the original.
+    identity: tuple[int, float] | None = _RUN_IDENTITY.get(abs_path)
+    if identity is None:
+        try:
+            st = os.stat(abs_path)
+            identity = (int(st.st_size), float(st.st_mtime))
+            _RUN_IDENTITY[abs_path] = identity
+        except OSError:
+            # A transient stat blip (USB/SMB hiccup) must not blank the
+            # identity: use the one on the checkpoint already on disk. Only
+            # when that is missing too are the fields stored as null, and
+            # then validate_checkpoint refuses the checkpoint (kept, never
+            # auto-resumed) because the media cannot be verified.
+            identity = _previous_identity(abs_path)
     size: int | None = identity[0] if identity else None
     mtime: float | None = identity[1] if identity else None
 
@@ -479,20 +743,24 @@ def sweep_partials(
     return removed
 
 
-def validate_checkpoint(
-    data: dict[str, Any],
-    *,
-    backend: str,
-    model_name: str,
-    cfg_fingerprint: str | tuple[str, ...],
-) -> str:
-    """Return "" if the checkpoint is usable, else a human reason.
+def _identity_number(value: Any) -> float | None:
+    """A saved size or mtime as a finite float, else None (bool, NaN, inf, junk)."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    try:
+        number = float(value)
+    except (OverflowError, ValueError):
+        return None
+    return number if math.isfinite(number) else None
 
-    ``cfg_fingerprint`` is one fingerprint or the tuple of accepted ones
-    (:func:`accepted_fingerprints`).
 
-    Caller is responsible for deleting the stale partial when the
-    return value is non-empty.
+def media_identity_problem(data: dict[str, Any]) -> str:
+    """"" if the checkpoint is verified to belong to the media now at its path.
+
+    Only the identity part of :func:`validate_checkpoint` (schema, source path,
+    the file exists and can be stat-ed, saved size and date are usable and
+    match). Backend, model and settings are NOT looked at: they say nothing
+    about the media, and the text can be regenerated when only they differ.
     """
     if not isinstance(data, dict):
         return "checkpoint payload is not a dict"
@@ -526,20 +794,43 @@ def validate_checkpoint(
         return f"{UNVERIFIABLE_PREFIX} (stat-failure sentinel, source_size 0)"
     if data["source_size"] is None or data["source_mtime"] is None:
         return f"{UNVERIFIABLE_PREFIX} (source size or mtime was not recorded)"
-    saved_size = data["source_size"]
+    saved_size = _identity_number(data["source_size"])
+    saved_mtime = _identity_number(data["source_mtime"])
+    if saved_size is None or saved_mtime is None:
+        return (
+            f"{UNVERIFIABLE_PREFIX} (source_size or source_mtime is not a finite "
+            f"number: {data['source_size']!r}, {data['source_mtime']!r})"
+        )
     try:
         if int(saved_size) != int(st.st_size):
             return "source file size has changed since checkpoint"
-    except (TypeError, ValueError):
-        return f"checkpoint source_size is not a number: {saved_size!r}"
-    saved_mtime = data["source_mtime"]
-    try:
-        # Allow 1 ms slop -- filesystem mtime granularity on some
-        # volumes is coarser than Python's float repr suggests.
-        if abs(float(saved_mtime) - float(st.st_mtime)) > 0.001:
-            return "source file mtime has changed since checkpoint"
-    except (TypeError, ValueError):
-        return f"checkpoint source_mtime is not a number: {saved_mtime!r}"
+    except (ValueError, OverflowError):
+        return f"{UNVERIFIABLE_PREFIX} (source_size {saved_size!r} is unusable)"
+    # Allow 1 ms slop -- filesystem mtime granularity on some volumes is
+    # coarser than Python's float repr suggests.
+    if abs(saved_mtime - float(st.st_mtime)) > 0.001:
+        return "source file mtime has changed since checkpoint"
+    return ""
+
+
+def validate_checkpoint(
+    data: dict[str, Any],
+    *,
+    backend: str,
+    model_name: str,
+    cfg_fingerprint: str | tuple[str, ...],
+) -> str:
+    """Return "" if the checkpoint is usable, else a human reason.
+
+    ``cfg_fingerprint`` is one fingerprint or the tuple of accepted ones
+    (:func:`accepted_fingerprints`).
+
+    Caller is responsible for deleting the stale partial when the
+    return value is non-empty.
+    """
+    problem = media_identity_problem(data)
+    if problem:
+        return problem
     if str(data.get("backend") or "") != backend:
         return (
             f"backend changed: checkpoint={data.get('backend')!r} "

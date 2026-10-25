@@ -89,6 +89,24 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Media swapped during a run can no longer relabel saved text**: the size and date of the media noted when
+  a run starts stay in every checkpoint of that run, on every route (also web/LAN language-model jobs in a
+  long-lived worker), so a resume refuses text that came from the original file.
+- **A checkpoint that cannot be renamed aside is never overwritten or deleted**: the app keeps a verified
+  copy (exclusive, synced, read back; reused on retries) and stops the task with an error instead of starting
+  a fresh run over a file that another process may hold. Kept-aside names are unique.
+- **Saved text is kept unless the media is verified unchanged**: only a changed engine, model or setting (or
+  an unusable segment list) discards a checkpoint; a missing or changed source, an unknown format or an
+  unusable size or date keeps it aside, also when the current engine cannot resume. NaN, infinite or boolean
+  identity values no longer pass as a match.
+- **A new job on replaced media keeps the old saved text**: a fresh transcription of a path whose earlier
+  checkpoint belongs to other (or unverifiable) media now keeps that checkpoint aside first, instead of
+  overwriting or deleting it; a checkpoint of the same unchanged media is left as before.
+- **Kept-aside checkpoints can be read without the app**: a plain-text copy of the saved transcript is
+  written next to each one (`<hash>.unverified-<tag>.txt`), also when a segment time is invalid; the startup
+  sweep never deletes either file.
+- **A relaunch no longer waits 20 seconds for a zombie on macOS**: a finished process that is not a child of
+  the app is now detected with `ps` where `/proc` does not exist.
 - **Two burn jobs racing for one output name no longer lose a placeholder's reservation**: every
   reservation attempt now owns its own token and a failed attempt removes only that token, so the watched
   folder never takes a job's empty placeholder for user input.

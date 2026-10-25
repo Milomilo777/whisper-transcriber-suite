@@ -892,6 +892,56 @@ def _current_backend_and_model() -> tuple[str, str]:
     return backend, model_name
 
 
+def _note_run_identity(task: "TranscriptionTask") -> None:
+    """Record the media this run starts on (size and date) for its checkpoints.
+
+    Every route that can write a checkpoint calls this at run start (fresh
+    run, resume, language-model/alt-backend run). The identity cache is keyed
+    by path and lives as long as the worker, so a run that skipped this would
+    stamp its text with an EARLIER run's media identity.
+    """
+    _checkpoint.note_source_identity(task.file_path)
+    try:
+        task.identity_noted = True
+    except AttributeError:
+        pass
+
+
+def _protect_existing_checkpoint(
+    task: "TranscriptionTask", log_cb: Callable[[str], None] | None
+) -> None:
+    """Keep an earlier run's checkpoint aside before a fresh whole-file run.
+
+    A fresh run overwrites the checkpoint with its first write and deletes it
+    on success (also with zero segments). A new job added for a path whose
+    media was replaced meanwhile never passes ``resume_transcription``'s
+    check, so this runs at the start of every fresh route. Only the media
+    identity is judged: a checkpoint that is unreadable or not verified to
+    belong to the media now at the path is kept aside (with its text copy);
+    one for the same unchanged media stays and is regenerated as before, also
+    when only the backend, model or settings differ. Clipped runs never touch
+    the checkpoint and are skipped. A failure to keep it aside propagates and
+    stops the task.
+    """
+    if _clip_timestamps_arg(task) is not None:
+        return
+    if not _checkpoint.has_checkpoint(task.file_path):
+        return
+    data = _checkpoint.load_checkpoint(task.file_path)
+    if data is None:
+        reason = "the saved checkpoint file is unreadable"
+    else:
+        reason = _checkpoint.media_identity_problem(data)
+        if not reason:
+            return
+    kept = _keep_checkpoint_aside(task, reason, log_cb)
+    log(
+        f"Found an earlier checkpoint that is not for this media ({reason}); "
+        f"it is kept aside ({kept}) and the run starts fresh.",
+        log_cb,
+    )
+
+
 def _write_periodic_checkpoint(
     task: "TranscriptionTask",
     segments_data: list[dict[str, Any]],
@@ -914,6 +964,11 @@ def _write_periodic_checkpoint(
     """
     if periodic and task.checkpoint_failures >= _CHECKPOINT_MAX_CONSECUTIVE_FAILURES:
         return
+    if not getattr(task, "identity_noted", False):
+        # Last line of defence at the single place that writes checkpoints:
+        # a route that never noted its media still must not inherit the
+        # identity of an earlier run on this path. Late, but never stale.
+        _note_run_identity(task)
     backend, model_name = _current_backend_and_model()
     whisper_task = _translate.normalise_task(getattr(task, "whisper_task", None))
     try:
@@ -1619,6 +1674,8 @@ def transcribe_with_language_model(
         return
     release_default_model()
     backend = _language_model_backend(model_id, log_cb)
+    _protect_existing_checkpoint(task, log_cb)
+    _note_run_identity(task)
     with _runtime_overrides_scope(task):
         logger.info("transcribe_backend=nvidia_asr language_model=%s file=%s", model_id, task.file_path)
         _transcribe_via_alt_backend("nvidia_asr", task, progress_cb, log_cb, language_cb, backend=backend)
@@ -2395,9 +2452,11 @@ def transcribe(
         # and slicing that would run before the first cancel check.
         log("Task cancelled", log_cb)
         return
-    # Remember which media this run starts on, so a later stat blip cannot
+    # An earlier run's checkpoint of other media is kept aside first; then
+    # remember which media this run starts on, so a later stat blip cannot
     # blank the identity stored in its checkpoints.
-    _checkpoint.note_source_identity(task.file_path)
+    _protect_existing_checkpoint(task, log_cb)
+    _note_run_identity(task)
     # Wrap the per-file work in ``_runtime_overrides_scope`` so any
     # ``.whisperproject.json`` mutation of the module-level ``config``
     # is reverted before the next file runs (audit P0-6). The scope
@@ -3310,6 +3369,23 @@ def _recover_resume_cursor(data: dict[str, Any]) -> float | None:
     return max(ends)
 
 
+def _keep_checkpoint_aside(
+    task: TranscriptionTask, reason: str, log_cb: Callable[[str], None] | None
+) -> Path | None:
+    """Quarantine the task's checkpoint before a fresh run may start.
+
+    The saved text can be the only copy of hours of work, and a fresh run
+    overwrites that file and deletes it on success. If it cannot be kept
+    (neither renamed nor copied) the task FAILS instead: nothing is written,
+    the checkpoint stays exactly as it is, and the error says why.
+    """
+    try:
+        return _checkpoint.quarantine_checkpoint(task.file_path, reason)
+    except _checkpoint.CheckpointNotKeptError as e:
+        log(f"ERROR: Resume: {e}. The task is stopped so the saved text is not overwritten.", log_cb)
+        raise
+
+
 def resume_transcription(
     task: TranscriptionTask,
     progress_cb: Callable[[int], None] | None = None,
@@ -3367,17 +3443,6 @@ def resume_transcription(
         # faster_whisper run of this file can still resume it if the
         # fallback crashes before writing anything.
         backend_for_check = backend
-        # A COMPLETED checkpoint needs no slicer: only the post steps are
-        # redone, so every backend may use it (a cloud engine would
-        # otherwise bill the whole file a second time).
-        if backend and backend != "faster_whisper" and not data.get("transcription_completed"):
-            log(
-                f"Resume: backend={backend!r} does not support resume; "
-                "falling back to full re-run.",
-                log_cb,
-            )
-            return False
-
         # The checkpoint's own task wins over whatever the task was queued
         # with: the captured half is already in that task, so the tail must
         # use it too or one transcript would mix two tasks.
@@ -3389,13 +3454,26 @@ def resume_transcription(
             model_name=model_name,
             cfg_fingerprint=cfg_fp,
         )
-        if reason.startswith(_checkpoint.UNVERIFIABLE_PREFIX):
-            # Cannot tell which media the saved text came from: never resume
-            # onto whatever sits at the path now, but never destroy it either.
-            kept = _checkpoint.quarantine_checkpoint(task.file_path)
+        if _checkpoint.keeps_text(reason):
+            # The media is gone, changed or cannot be verified: never resume
+            # onto whatever sits at the path now, but never destroy the saved
+            # text either (it may be the only copy of hours of work).
+            kept = _keep_checkpoint_aside(task, reason, log_cb)
             log(
                 f"Resume: {reason}; the checkpoint is kept aside ({kept}) "
                 "and a fresh run starts.",
+                log_cb,
+            )
+            return False
+        # Decided only AFTER the media check above: a checkpoint of other
+        # media must be kept aside before any fresh run can replace it.
+        # A COMPLETED checkpoint needs no slicer: only the post steps are
+        # redone, so every backend may use it (a cloud engine would
+        # otherwise bill the whole file a second time).
+        if backend and backend != "faster_whisper" and not data.get("transcription_completed"):
+            log(
+                f"Resume: backend={backend!r} does not support resume; "
+                "falling back to full re-run.",
                 log_cb,
             )
             return False
@@ -3403,7 +3481,7 @@ def resume_transcription(
             log(f"Resume: checkpoint invalid ({reason}); deleting partial.", log_cb)
             _checkpoint.delete_checkpoint(task.file_path)
             return False
-        _checkpoint.note_source_identity(task.file_path)
+        _note_run_identity(task)
         task.whisper_task = cp_task
         _checked_whisper_task(task, backend_for_check or "faster_whisper")
 
@@ -3453,7 +3531,9 @@ def resume_transcription(
 
         recovered = _recover_resume_cursor(data)
         if recovered is None:
-            kept = _checkpoint.quarantine_checkpoint(task.file_path)
+            kept = _keep_checkpoint_aside(
+                task, "last_end_time is malformed and cannot be recovered", log_cb
+            )
             log(
                 "Resume: checkpoint last_end_time is malformed and cannot be "
                 "recovered from the saved segments; the checkpoint is kept "

@@ -47,6 +47,9 @@ class TranscriptionTask:
         # success). Once it reaches core.transcriber's limit the periodic
         # writer stops retrying for the rest of the run.
         self.checkpoint_failures: int = 0
+        # True once core.transcriber noted the source media's size and date
+        # for this run's checkpoints (every run route does it at its start).
+        self.identity_noted: bool = False
         # Set by the app when this task was auto-spawned from a finished
         # download. Holds the originating VideoDownloadTask so the
         # Download row can mirror "transcribing" + progress and flip back
