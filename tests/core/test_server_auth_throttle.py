@@ -347,16 +347,17 @@ def test_a_saturated_table_still_limits_a_fresh_host():
     assert t.admit("203.0.113.9") == 0
 
 
-def test_a_trusted_host_still_passes_a_saturated_table():
+def test_a_trusted_address_is_bounded_by_the_overflow_budget_too():
+    """Trust belongs to an address; another person behind the same NAT must
+    not inherit unlimited comparisons while the table is saturated."""
     clock = _Clock()
-    t = _throttle(clock, max_hosts=20, overflow_budget=2)
+    t = _throttle(clock, max_hosts=20, overflow_budget=5)
     assert t.admit("198.51.100.7") == 0
     t.refund("198.51.100.7")
     _saturate(t, clock, 20)
-    for _ in range(2):
-        t.admit("203.0.113.9")
-    assert t.admit("203.0.113.9") > 0
-    assert t.admit("198.51.100.7") == 0
+    admitted = sum(1 for _ in range(10000) if t.admit("198.51.100.7") == 0)
+    assert admitted <= 5
+
 
 
 def _raw_get(srv, path, headers):

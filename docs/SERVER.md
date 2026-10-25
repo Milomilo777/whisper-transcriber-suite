@@ -511,7 +511,8 @@ the table does not free a locked host). If all 2048 stored hosts are locked at
 once, a new address is not stored; its attempts (and those of every other
 unstored address) share one overflow budget of 30 comparisons per 10 minutes for
 the whole server, so a full table cannot be used to guess without limit; during
-that state a legitimate newcomer without a recent login can be refused too. The
+that state a legitimate newcomer without a session cookie can be refused too,
+even from an address that logged in recently. The
 counts live in memory only, so a restart clears them. Behind a reverse proxy
 every client has the proxy's address, so one person's typos can lock out the
 others for a short time. This slows guessing down; it is not a replacement

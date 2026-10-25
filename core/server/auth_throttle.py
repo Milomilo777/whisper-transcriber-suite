@@ -26,9 +26,9 @@ Rules that keep the throttle from becoming a weapon:
   (storing it would evict a locked entry, and evicting its own fresh entry
   would let it guess without limit). Such attempts share ONE bounded overflow
   limiter instead (``overflow_budget`` comparisons per ``overflow_window``
-  seconds, counted for the whole server). While the table is saturated a
-  stranger's guesses are therefore capped as a group; hosts that gave the right
-  password recently are counted but never refused.
+  seconds, counted for the whole server). While the table is saturated every
+  unstored host's guesses are therefore capped as a group, recently
+  authenticated addresses included (their session cookie is the way in).
 * A lockout always ends by itself and an idle host is forgotten, so the right
   password is never refused forever.
 
@@ -209,8 +209,9 @@ class AuthThrottle:
                 ovf = self._overflow
                 if now - ovf[1] >= self._overflow_window:
                     ovf[0], ovf[1] = 0.0, now
-                if (ovf[0] >= self._overflow_budget
-                        and not self._is_trusted(key, now)):
+                # Trust belongs to an address, so it does not exempt anyone
+                # here: logged-in clients use their session cookie instead.
+                if ovf[0] >= self._overflow_budget:
                     return int(ovf[1] + self._overflow_window - now) + 1
                 ovf[0] += 1
                 return 0
