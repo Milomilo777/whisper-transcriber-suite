@@ -63,8 +63,11 @@ class _Listener:
 
 
 @pytest.fixture
-def private():
+def private(monkeypatch):
     srv = _Listener()
+    # Open the listener's port, so the ADDRESS check is what refuses it.
+    monkeypatch.setattr(dlproxy, "ALLOWED_PORTS",
+                        dlproxy.ALLOWED_PORTS | {srv.port})
     yield srv
     srv.close()
 
@@ -260,6 +263,8 @@ def test_a_redirect_to_an_internal_host_is_refused(proxy, monkeypatch):
         pytest.skip("127.0.0.2 is not available as a loopback address here")
     public = None
     try:
+        monkeypatch.setattr(dlproxy, "ALLOWED_PORTS",
+                            dlproxy.ALLOWED_PORTS | {internal.port})
         _resolving(monkeypatch, {"public.example": ["127.0.0.1"],
                                  "internal.example": ["127.0.0.2"]})
         # "public.example" is allowed, 127.0.0.2 stays blocked.
@@ -268,6 +273,8 @@ def test_a_redirect_to_an_internal_host_is_refused(proxy, monkeypatch):
             reply=(b"HTTP/1.1 302 Found\r\nLocation: http://internal.example:"
                    + str(internal.port).encode() + b"/secret\r\n"
                    b"Content-Length: 0\r\nConnection: close\r\n\r\n"))
+        monkeypatch.setattr(dlproxy, "ALLOWED_PORTS",
+                            dlproxy.ALLOWED_PORTS | {internal.port, public.port})
         with pytest.raises(urllib.error.HTTPError) as info:
             _opener(proxy).open(
                 f"http://public.example:{public.port}/start", timeout=5)
@@ -298,8 +305,11 @@ class _FakePopen:
     seen: list = []
     returncode = 0
 
+    envs: list = []
+
     def __init__(self, cmd, **kwargs):
         type(self).seen.append(list(cmd))
+        type(self).envs.append(kwargs.get("env"))
         self.pid = 4242
 
     def communicate(self, timeout=None):
@@ -312,19 +322,42 @@ class _FakePopen:
 @pytest.fixture
 def fake_yt_dlp(monkeypatch):
     _FakePopen.seen = []
+    _FakePopen.envs = []
+    _FakePopen.returncode = 0
     monkeypatch.setattr(server.subprocess, "Popen", _FakePopen)
     monkeypatch.setattr("core.js_runtime.yt_dlp_js_args", lambda _p=None: [])
 
 
-def test_server_job_command_goes_through_the_proxy(tmp_path, fake_yt_dlp):
+def test_server_job_goes_through_the_proxy_without_a_password_in_argv(
+        tmp_path, fake_yt_dlp, monkeypatch):
+    monkeypatch.setenv("NO_PROXY", "*")
+    monkeypatch.setenv("http_proxy", "http://corp.example:3128")
     (tmp_path / "clip.mp4").write_bytes(b"media")
     server._download_url("https://example.com/v", str(tmp_path))
     cmd = _FakePopen.seen[0]
-    proxy_url = cmd[cmd.index("--proxy") + 1]
-    assert proxy_url == dlproxy.shared_proxy().url
-    assert proxy_url.startswith("http://wts:") and "@127.0.0.1:" in proxy_url
+    url = dlproxy.shared_proxy().url
+    password = url.split("//wts:", 1)[1].split("@", 1)[0]
+    assert "--proxy" not in cmd
+    assert not any(password in part for part in cmd), "password in argv"
+    env = _FakePopen.envs[0]
+    for name in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY"):
+        assert env[name] == url
+    assert env["NO_PROXY"] == ""
+    assert "http_proxy" not in env  # the user's own proxy setting is replaced
+    assert url.startswith("http://wts:") and "@127.0.0.1:" in url
     assert cmd[cmd.index("--downloader") + 1] == "native"
-    assert cmd.index("--proxy") < cmd.index("--")
+
+
+def test_a_failed_download_error_does_not_carry_the_password(
+        tmp_path, fake_yt_dlp):
+    import subprocess
+
+    _FakePopen.returncode = 1
+    password = dlproxy.shared_proxy().url.split("//wts:", 1)[1].split("@")[0]
+    with pytest.raises(subprocess.CalledProcessError) as info:
+        server._download_url("https://example.com/v", str(tmp_path))
+    assert password not in repr(info.value.cmd)
+    assert password not in str(info.value)
 
 
 def test_server_job_does_not_run_without_the_proxy(
@@ -336,3 +369,17 @@ def test_server_job_does_not_run_without_the_proxy(
     with pytest.raises(RuntimeError, match="download guard could not start"):
         server._download_url("https://example.com/v", str(tmp_path))
     assert _FakePopen.seen == []
+
+
+def test_only_ports_80_and_443_are_relayed(proxy, monkeypatch):
+    other = _Listener()
+    try:
+        # Address check lifted: only the PORT rule can refuse this.
+        _lift_guard(monkeypatch)
+        reply = _talk(proxy, f"CONNECT 127.0.0.1:{other.port} HTTP/1.1")
+        assert _status(reply) == 403 and b"port refused" in reply
+        reply = _talk(proxy, f"GET http://127.0.0.1:{other.port}/ HTTP/1.1")
+        assert _status(reply) == 403
+        assert other.connections == 0
+    finally:
+        other.close()

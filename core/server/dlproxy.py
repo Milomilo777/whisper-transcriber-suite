@@ -39,6 +39,9 @@ _IDLE_TIMEOUT_S = 120.0
 _MAX_HEADER_BYTES = 16 * 1024
 _MAX_HEADER_LINES = 100
 _MAX_CONNECTIONS = 128
+# Destination ports the proxy connects to. Media sites serve on the standard
+# ports; refusing the rest keeps the proxy from probing other services.
+ALLOWED_PORTS = frozenset({80, 443})
 _HOP_BY_HOP = {"proxy-authorization", "proxy-connection", "connection",
                "keep-alive", "te", "trailer", "upgrade"}
 
@@ -128,6 +131,10 @@ class _Handler(socketserver.StreamRequestHandler):
         return False
 
     def _connect_upstream(self, host: str, port: int) -> socket.socket | None:
+        if port not in ALLOWED_PORTS:
+            logger.warning("server: download proxy refused port %d", port)
+            self._reply(403, "port refused: only 80 and 443 are allowed")
+            return None
         try:
             return guarded_create_connection(
                 (host, port), _CONNECT_TIMEOUT_S, allow_private=False)

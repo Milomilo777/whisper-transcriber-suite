@@ -117,6 +117,24 @@ def _is_downloaded_media(dest_dir: str, name: str) -> bool:
         return False
 
 
+def _proxy_environment(proxy_url: str) -> dict[str, str]:
+    """The child's environment with every request routed to the guard proxy.
+
+    The proxy password travels in the environment, not in the command line, so
+    it never appears in an error text or a log line (``CalledProcessError``
+    carries the command). Any proxy setting already in the environment is
+    replaced, and ``NO_PROXY`` is emptied so nothing bypasses the guard.
+    """
+    env = dict(os.environ)
+    for name in list(env):
+        if name.lower() in ("http_proxy", "https_proxy", "all_proxy",
+                            "no_proxy", "ftp_proxy"):
+            del env[name]
+    env.update({"HTTP_PROXY": proxy_url, "HTTPS_PROXY": proxy_url,
+                "ALL_PROXY": proxy_url, "NO_PROXY": ""})
+    return env
+
+
 # yt-dlp option value: every extractor except the generic one.
 GENERIC_EXTRACTOR_OFF = "default,-generic"
 # yt-dlp's message when no extractor accepts the address (with the generic one
@@ -176,11 +194,9 @@ def _download_url(url: str, dest_dir: str,
             # job therefore never uses it (a direct media link is refused
             # below); the desktop Download tab keeps it.
             "--use-extractors", GENERIC_EXTRACTOR_OFF,
-            # Every request yt-dlp makes (and every redirect it follows) goes
-            # through the app's own proxy, which refuses non-public addresses
-            # at connect time. yt-dlp's native downloaders keep fragment
-            # fetches in yt-dlp, so they pass through the proxy as well.
-            "--proxy", proxy.url,
+            # yt-dlp's native downloaders keep fragment fetches inside
+            # yt-dlp, so they use the proxy (set through the environment
+            # below) as well.
             "--downloader", "native",
             # The frozen yt-dlp.exe ignores PYTHONUTF8 and prints cp1252,
             # dropping non-Latin title characters from its output.
@@ -196,6 +212,7 @@ def _download_url(url: str, dest_dir: str,
             command, stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             text=True, encoding="utf-8", errors="replace",
+            env=_proxy_environment(proxy.url),
             **new_session_kwargs(),
         )
         try:
