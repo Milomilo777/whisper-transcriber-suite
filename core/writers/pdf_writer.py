@@ -142,10 +142,15 @@ def write_bytes(segments: list[dict], audio_path: str = "") -> bytes:
         eng = pdf_bidi.engine()
         if eng is None:
             return None
-        lines, rtl = pdf_bidi.layout(
-            prefix, body, line_width,
-            lambda t, b: measure(t, b or bold_body, size), eng,
-        )
+        try:
+            lines, rtl = pdf_bidi.layout(
+                prefix, body, line_width,
+                lambda t, b: measure(t, b or bold_body, size), eng,
+            )
+        except AssertionError:
+            # python-bidi asserts on input it cannot order; draw this
+            # paragraph on the plain path rather than lose the whole PDF.
+            return None
         rows = []
         for line in lines:
             parts = []

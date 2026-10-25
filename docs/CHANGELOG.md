@@ -85,6 +85,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **PDF export no longer fails on unassigned characters**: a right-to-left line holding a character that Unicode has not assigned (a newer emoji, U+FFFE) was lost together with the whole PDF. Such characters now print as a replacement mark, and a line the bidi library still cannot order is drawn unjoined.
 - **A pinned model mirror is kept**: a `hf_repo` you set for the selected model now wins over the built-in and the online model catalog, so a mirror is no longer ignored and the online settings cannot re-point its download.
 - **The saved text of an interrupted run is kept unless its media is verified unchanged**: only re-running
   the same, unchanged file with another engine, model or setting discards a checkpoint. A replaced, deleted

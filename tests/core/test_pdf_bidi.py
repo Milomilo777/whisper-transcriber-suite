@@ -408,3 +408,43 @@ def test_real_pdf_persian_line_is_joined():
     text = "".join(page.get_text() for page in fitz.open(stream=data, filetype="pdf"))
     assert any(_is_presentation_form(ch) for ch in text)
     assert not _letters(sample) - _letters(text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["سلام \U0001FAC9", "￾א", "سلام ͸ x"],
+)
+def test_pdf_survives_code_points_without_a_bidi_class(text):
+    """python-bidi asserts on unassigned code points and non-characters; the
+    PDF must still be written, with U+FFFD in their place."""
+    from core import writers
+
+    out = writers.get_binary_writer("pdf")(
+        [{"start": 0, "end": 1, "text": text, "speaker": "A͸"}], "ملف͸.mp3"
+    )
+    assert out.startswith(b"%PDF")
+
+
+def test_bidi_markup_assertion_falls_back_to_plain_text(monkeypatch):
+    from core import writers
+    from core.writers import pdf_bidi
+
+    def boom(*_a, **_k):
+        raise AssertionError("not allowed here")
+
+    monkeypatch.setattr(pdf_bidi, "layout", boom)
+    out = writers.get_binary_writer("pdf")(
+        [{"start": 0, "end": 1, "text": "سلام"}], "x.mp3"
+    )
+    assert out.startswith(b"%PDF")
+
+
+def test_engine_scrubs_code_points_without_a_bidi_class():
+    from core.writers import pdf_bidi
+
+    eng = pdf_bidi._load()
+    if eng is None:
+        pytest.skip("arabic_reshaper or python-bidi missing")
+    for text in ("سلام ͸", "￾א", "س \U0001FAC9"):
+        assert "�" in eng.reorder(text, "R")
+        assert "�" in eng.reshape(text)
