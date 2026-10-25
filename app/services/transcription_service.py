@@ -1472,7 +1472,23 @@ class TranscriptionService:
             "Worker %s failed to start; keeping %d healthy worker(s) running",
             failed.get("id", "?"), len(healthy),
         )
-        self.retire_worker(failed)
+        try:
+            self.retire_worker(failed)
+        except Exception:  # noqa: BLE001 - the startup_error handler must never raise
+            # retire_worker finishes the failed worker's own task first; what
+            # can still fail afterwards is the UI refresh. Make sure the
+            # worker is gone and its process is stopped regardless.
+            logger.exception("Retiring failed worker %s raised", failed.get("id", "?"))
+            process = failed.get("process")
+            failed["process"] = None
+            failed["ready"] = False
+            if failed in self.app.workers:
+                self.app.workers.remove(failed)
+            if process is not None and process.poll() is None:
+                try:
+                    self._stop_in_background(failed, process)
+                except Exception:  # noqa: BLE001
+                    logger.exception("Could not stop failed worker %s", failed.get("id", "?"))
         return True
 
     def _fail_tasks_and_clear_workers_on_startup_error(self) -> None:
