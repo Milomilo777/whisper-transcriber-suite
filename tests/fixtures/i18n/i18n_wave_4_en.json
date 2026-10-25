@@ -4583,6 +4583,10 @@
    "Leave blank for none. When set, the server POSTs a small JSON summary to this URL each time a job finishes (or fails). Loopback and private cloud-metadata addresses are refused."
   ],
   [
+   ".!frame6.!frame.!labelframe.!frame5.!label",
+   "Webhook secret (optional):"
+  ],
+  [
    ".!frame6.!frame.!label5",
    "Use this only on a network you trust (your home or office Wi-Fi). It has no accounts, and unless you turn on HTTPS above it is not encrypted — anyone who can reach the address (and knows the password, if you set one) can use it. The first time you turn it on it may need to download the speech model; jobs will wait for that."
   ],
