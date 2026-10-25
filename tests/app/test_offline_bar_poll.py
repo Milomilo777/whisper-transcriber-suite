@@ -93,3 +93,31 @@ def test_poll_failure_is_a_reported_check_not_a_crash(root):
         assert "psutil exploded" in (bar.check.error or "")
     finally:
         bar.destroy()
+
+
+def test_a_bar_hidden_during_a_poll_does_not_start_polling_again(root):
+    bridge = _Bridge()
+    started = threading.Event()
+    release = threading.Event()
+
+    def slow_poll() -> offline.ConnectionCheck:
+        started.set()
+        release.wait(timeout=5.0)
+        return offline.ConnectionCheck(time.time(), True)
+
+    bar = osm.OfflineStatusBar(root, post_to_main=bridge, poll=slow_poll)
+    bar.pack()
+    try:
+        bar.tick()
+        assert started.wait(timeout=2.0), "the poll never started"
+        bar.hide()  # unpacks and cancels the timer while the poll is in the air
+        release.set()
+        deadline = time.monotonic() + 2.0
+        while time.monotonic() < deadline and bar.check is None:
+            root.update()
+            bridge.drain()
+            time.sleep(0.02)
+        assert bar.check is not None
+        assert bar._after_id is None, "a hidden bar re-armed its poll timer"
+    finally:
+        bar.destroy()

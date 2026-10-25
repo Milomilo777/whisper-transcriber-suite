@@ -352,7 +352,10 @@ class OfflineStatusBar(ttk.Frame):
         if self._closed:
             return
         self.check = result
-        self._after_id = self.after(POLL_MS, self.tick)
+        # A bar hidden while its poll was in the air must not start polling
+        # again (hide() cancelled the timer, but this landing would re-arm it).
+        if self.visible:
+            self._after_id = self.after(POLL_MS, self.tick)
         self.render()
 
     def render(self) -> None:
