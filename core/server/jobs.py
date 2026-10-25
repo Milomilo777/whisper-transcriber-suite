@@ -56,6 +56,7 @@ from core.config import (
     user_data_dir,
     webhook_secret_valid,
 )
+from core.server import dlproxy
 from core.server.netguard import (
     GuardedHTTPHandler,
     GuardedHTTPSHandler,
@@ -801,15 +802,15 @@ class JobManager:
         if offline.is_offline():
             # Before is_safe_url, which looks the host name up.
             raise ValueError(offline.refused("a link job"))
-        if not is_safe_url(url, allow_private=False):
+        if not is_safe_url(url, allow_private=False, restrict_ports=True):
             # is_safe_url also refuses loopback / link-local / cloud-metadata
             # hosts (SSRF guard); say so, instead of claiming a plain
             # http://127.0.0.1/... link is not http.
             raise ValueError(
-                "only http(s) URLs to a public host are accepted "
-                "(this computer's own, link-local and local-network "
-                "addresses are refused unless the operator lists the "
-                "network in server_allowed_private_networks)"
+                "only http(s) URLs to a public host on port 80 or 443 are "
+                "accepted (this computer's own, link-local and "
+                "local-network addresses are refused unless the operator "
+                "lists the network in server_allowed_private_networks)"
             )
         with self._lock:
             job = self._new_job("url", formats, language, url,
@@ -1645,7 +1646,8 @@ def _parse_legacy_ipv4(host: str) -> ipaddress.IPv4Address | None:
         return None
 
 
-def is_safe_url(url: str, *, allow_private: bool = True) -> bool:
+def is_safe_url(url: str, *, allow_private: bool = True,
+                restrict_ports: bool = False) -> bool:
     """True iff ``url`` is an http(s) URL with a host that is not an obvious
     internal / cloud-metadata target.
 
@@ -1660,6 +1662,10 @@ def is_safe_url(url: str, *, allow_private: bool = True) -> bool:
     ``allow_private=False`` also refuses private LAN ranges (10.x, 172.16-31.x,
     192.168.x, 100.64/10): server link jobs pass it, because their download
     goes through a proxy that refuses those at connect time anyway.
+
+    ``restrict_ports=True`` also refuses an explicit port other than the
+    download proxy's (80 and 443), which link jobs pass because the proxy
+    would refuse it anyway.
 
     By default NOT blocked: ordinary RFC-1918 private ranges (10.x,
     172.16-31.x, 192.168.x). This server is documented to run on a trusted
@@ -1686,6 +1692,13 @@ def is_safe_url(url: str, *, allow_private: bool = True) -> bool:
         return False
     if not host:
         return False
+    if restrict_ports:
+        try:
+            port = parsed.port
+        except ValueError:
+            return False
+        if port is not None and port not in dlproxy.ALLOWED_PORTS:
+            return False
 
     # Loopback (127.0.0.0/8, ::1), link-local (169.254/16 incl. the
     # cloud-metadata IP, fe80::/10), unspecified, multicast and reserved

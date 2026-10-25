@@ -149,6 +149,15 @@ def address_blocked(ip: "ipaddress.IPv4Address | ipaddress.IPv6Address",
     if (ip.is_loopback or ip.is_link_local or ip.is_unspecified
             or ip.is_multicast or ip.is_reserved):
         return True
+    # "This network" (0.0.0.0/8) reaches the local host on some stacks and is
+    # only "private" to Python; the deprecated IPv6 site-local range
+    # (fec0::/10) is never routed on the public internet. Neither is ever a
+    # valid download or webhook target, so no policy or allowlist admits them.
+    if isinstance(ip, ipaddress.IPv4Address):
+        if ip in _THIS_NETWORK_V4:
+            return True
+    elif ip.is_site_local:
+        return True
     nets = ()
     if not allow_private:
         nets = (configured_private_networks() if allowed_networks is None
@@ -167,6 +176,7 @@ def address_blocked(ip: "ipaddress.IPv4Address | ipaddress.IPv6Address",
     return False
 
 
+_THIS_NETWORK_V4 = ipaddress.ip_network("0.0.0.0/8")
 _NAT64_WELL_KNOWN = ipaddress.ip_network("64:ff9b::/96")
 _NAT64_LOCAL_USE = ipaddress.ip_network("64:ff9b:1::/48")
 _TEREDO = ipaddress.ip_network("2001::/32")

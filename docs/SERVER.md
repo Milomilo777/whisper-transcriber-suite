@@ -710,6 +710,10 @@ Behaviour to know:
   job is submitted. A name that fails to resolve is let through (yt-dlp then
   reports the real error). yt-dlp performs the actual download with an
   end-of-options `--` guard so a URL can never be parsed as a yt-dlp flag.
+  **Live streams are refused** ("live streams are not supported by the
+  server"): yt-dlp hands them to ffmpeg. For the few recorded videos that
+  also need ffmpeg (HLS that yt-dlp cannot read itself), ffmpeg is pointed at
+  the same download guard, so its segment requests get the same address check.
   **Server link jobs only use yt-dlp's site-specific extractors.** The
   generic extractor, which fetches any address, is switched off
   (`--use-extractors default,-generic`), so a plain media link
@@ -721,7 +725,9 @@ Behaviour to know:
   fetched by the app's own downloader instead of yt-dlp. It follows at most 5
   redirects, only to `http(s)`, never reads the body of a redirect, and every connection (each redirect included)
   gets the same connect-time address check, so loopback, link-local and
-  metadata addresses are refused even there. The job's size cap, time limit and
+  metadata addresses are refused even there. Like the download proxy, it only
+  uses ports 80 and 443, on the first link and on every redirect; a link with
+  another port is refused when it is submitted. The job's size cap, time limit and
   Cancel apply while it waits for the answer and on every read (a stalled read
   is cut after 30 seconds; only the connect step itself waits up to 30 seconds), and no proxy from the environment is used. A server with a
   self-signed certificate fails the certificate check; use plain `http` on the
