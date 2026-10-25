@@ -702,8 +702,21 @@ class JobManager:
                                 clip_end=clip_end, language2=language2,
                                 language_model=language_model)
             media_path = os.path.join(job.work_dir, safe)
-            with open(media_path, "wb") as f:
-                f.write(data)
+            try:
+                with open(media_path, "wb") as f:
+                    f.write(data)
+            except OSError:
+                # Disk full / unwritable dir: unregister the just-created
+                # job instead of stranding a "queued" phantom. It was never
+                # enqueued and only terminal jobs are evicted, so leaving it
+                # would occupy a max_jobs slot (and show as queued in the
+                # API) forever. Inline the discard() body: that helper takes
+                # this same non-reentrant lock.
+                self._jobs.pop(job.job_id, None)
+                if job.job_id in self._order:
+                    self._order.remove(job.job_id)
+                self._discard_dir(job.work_dir, job)
+                raise
             job.media_path = media_path
             self._queue.put(job.job_id)
             return job.job_id

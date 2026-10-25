@@ -19,6 +19,7 @@ from core.server.jobs import (
     STATUS_CANCELLED,
     STATUS_ERROR,
     STATUS_FINISHED,
+    STATUS_QUEUED,
     JobManager,
     QueueFull,
 )
@@ -433,3 +434,34 @@ def test_language_model_note_message_shows_no_local_paths(monkeypatch):
 def test_is_safe_url_module_level():
     assert jobs_mod.is_safe_url("https://x.test/a") is True
     assert jobs_mod.is_safe_url("file:///x") is False
+
+
+def test_submit_upload_media_write_failure_leaves_no_phantom_job(
+        tmp_path, monkeypatch):
+    # Disk-full (or any OSError) while writing the uploaded media must not
+    # strand a "queued" job: it is never enqueued, never runs, and only
+    # terminal jobs are evicted — so it would occupy a max_jobs slot and
+    # show as queued in /api/jobs forever.
+    import builtins
+
+    import core.server.jobs as jobs_mod
+
+    def refusing_open(file, mode="r", *args, **kwargs):
+        if "wb" in mode:
+            raise OSError(28, "No space left on device")
+        return builtins.open(file, mode, *args, **kwargs)
+
+    monkeypatch.setattr(jobs_mod, "open", refusing_open, raising=False)
+    mgr = _make_manager(tmp_path, _writing_transcribe())
+    try:
+        with pytest.raises(OSError):
+            mgr.submit_upload("clip.mp4", b"\x00\x01", ["srt"])
+        # The failed job is fully unregistered and its work dir gone.
+        assert mgr._jobs == {}, f"phantom job left behind: {list(mgr._jobs)}"
+        work_dirs = [
+            d for d in os.listdir(str(tmp_path / "server_jobs"))
+            if os.path.isdir(os.path.join(str(tmp_path / "server_jobs"), d))
+        ] if os.path.isdir(str(tmp_path / "server_jobs")) else []
+        assert work_dirs == [], f"work dir left behind: {work_dirs}"
+    finally:
+        mgr.stop()
