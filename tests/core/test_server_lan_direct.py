@@ -254,3 +254,100 @@ def test_cancel_and_deadline_apply_while_waiting_for_the_header(
         server._download_url(f"http://127.0.0.1:{origin}/silent",
                              str(tmp_path), _limits(timeout_s=1.0))
     assert time.monotonic() - started < 4.0
+
+
+class _StrictOrigin(http.server.BaseHTTPRequestHandler):
+    """Served by a SINGLE-worker server: one stuck connection blocks all."""
+
+    closed = threading.Event()
+
+    def log_message(self, *a):
+        pass
+
+    def do_GET(self):  # noqa: N802
+        if self.path.startswith("/redirect-big"):
+            self.send_response(302)
+            self.send_header("Location", "/media/a.wav")
+            self.send_header("Content-Length", str(64 * 1024 * 1024))
+            self.end_headers()
+            try:
+                for _ in range(1024):
+                    self.wfile.write(b"x" * 65536)
+            except OSError:
+                pass
+            return
+        if self.path.startswith("/huge"):
+            self.send_response(200)
+            self.send_header("Content-Length", str(10 * 1024 * 1024))
+            self.end_headers()
+            self.wfile.flush()
+            try:  # wait until the client closes its end
+                while self.connection.recv(4096):
+                    pass
+            except OSError:
+                pass
+            type(self).closed.set()
+            return
+        if self.path.startswith("/trickle-head"):
+            try:
+                for ch in b"HTTP/1.0 200 OK\r\nX-Pad: " + b"a" * 200:
+                    self.wfile.write(bytes([ch]))
+                    self.wfile.flush()
+                    time.sleep(0.1)
+            except OSError:
+                pass
+            return
+        self.send_response(200)
+        self.send_header("Content-Length", str(len(PAYLOAD)))
+        self.end_headers()
+        self.wfile.write(PAYLOAD)
+
+
+@pytest.fixture
+def strict_origin():
+    _StrictOrigin.closed.clear()
+    httpd = http.server.HTTPServer(("127.0.0.1", 0), _StrictOrigin)
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    yield httpd.server_address[1]
+    httpd.shutdown()
+    httpd.server_close()
+
+
+def test_a_redirect_closes_its_detached_response(
+        strict_origin, tmp_path, monkeypatch):
+    """A single-worker origin is still blocked sending the redirect body when
+    the client asks for the target: the client must have closed that socket."""
+    _lift_guard(monkeypatch)
+    path = server._download_url(
+        f"http://127.0.0.1:{strict_origin}/redirect-big", str(tmp_path),
+        _limits(timeout_s=8.0))
+    assert open(path, "rb").read() == PAYLOAD
+
+
+def test_a_size_rejection_leaves_no_open_socket(
+        strict_origin, tmp_path, monkeypatch):
+    _lift_guard(monkeypatch)
+    with pytest.raises(RuntimeError, match="larger than"):
+        server._download_url(f"http://127.0.0.1:{strict_origin}/huge",
+                             str(tmp_path), _limits(max_bytes=1024))
+    assert _StrictOrigin.closed.wait(2.0)
+    assert os.listdir(tmp_path) == []
+
+
+def test_a_deadline_during_connect_still_stops_trickling_headers(
+        strict_origin, tmp_path, monkeypatch):
+    _lift_guard(monkeypatch)
+    real = netguard.guarded_create_connection
+
+    def slow_connect(*a, **k):
+        time.sleep(0.5)
+        return real(*a, **k)
+
+    monkeypatch.setattr(netguard, "guarded_create_connection", slow_connect)
+    started = time.monotonic()
+    with pytest.raises(TimeoutError):
+        server._download_url(f"http://127.0.0.1:{strict_origin}/trickle-head",
+                             str(tmp_path), _limits(timeout_s=0.1))
+    assert time.monotonic() - started < 1.0  # 0.5 s connect + well under 0.5
+    assert os.listdir(tmp_path) == []

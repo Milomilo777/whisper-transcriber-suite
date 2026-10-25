@@ -16,7 +16,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   `--use-extractors default,-generic`. A plain media link is refused with a clear message (upload the file
   instead). The desktop Download tab is unchanged. Exception: a direct link to a host inside
   `server_allowed_private_networks` (for example a NAS) is fetched by the app's own downloader, with the
-  connect-time address check on every redirect hop.
+  connect-time address check on every redirect hop. Its time limit and cancel flag also apply during connect, and redirect and rejected responses are closed at once.
 - **The completion webhook checks the address at connect time**: the host name is resolved once, only the
   checked addresses are connected to, and proxies from the environment are not used. LAN receivers stay
   allowed.
