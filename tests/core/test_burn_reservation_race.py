@@ -46,3 +46,65 @@ def test_a_pre_existing_user_file_is_not_left_reserved(tmp_path):
     assert got == str(tmp_path / "out (2).mp4")
     assert burn.is_reserved(str(target)) is False
     assert burn.is_reserved(got) is True
+
+
+def test_loser_cleanup_cannot_unreserve_a_placeholder_created_but_not_yet_returned(
+        monkeypatch, tmp_path):
+    """Coordinated two-thread interleaving: job A has listed the name and is
+    paused right before its exclusive create; job B lists the name, creates
+    the placeholder and is paused right after the create; only then A runs
+    its failed create and cleanup. B's placeholder must stay reserved, or the
+    watched folder takes the empty file for user input."""
+    import threading
+
+    target = tmp_path / "out.mp4"
+    real_open = burn.os.open
+    a_before_open = threading.Event()
+    a_go = threading.Event()
+    b_created = threading.Event()
+    b_go = threading.Event()
+    seen = {"b_path": None, "a_paused": False, "b_paused": False}
+
+    def _open(path, flags, *a, **k):
+        name = threading.current_thread().name
+        if name == "job-A" and not seen["a_paused"]:
+            seen["a_paused"] = True
+            a_before_open.set()
+            assert a_go.wait(10)
+        fd = real_open(path, flags, *a, **k)
+        if name == "job-B" and not seen["b_paused"]:
+            seen["b_paused"] = True
+            seen["b_path"] = str(path)
+            b_created.set()
+            assert b_go.wait(10)
+        return fd
+
+    monkeypatch.setattr(burn.os, "open", _open)
+    results: dict[str, str] = {}
+
+    def _job(label):
+        results[label] = burn.reserve_output_path(str(target))
+
+    ta = threading.Thread(target=_job, args=("A",), name="job-A")
+    tb = threading.Thread(target=_job, args=("B",), name="job-B")
+    ta.start()
+    assert a_before_open.wait(10)
+    tb.start()
+    # With the fix B may be held back until A has finished; either way the
+    # check below runs at the moment B has created its placeholder.
+    b_created.wait(1.0)
+    a_go.set()
+    if not b_created.is_set():
+        ta.join(10)
+        assert b_created.wait(10)
+    else:
+        ta.join(10)
+    try:
+        assert not ta.is_alive()
+        assert seen["b_path"] is not None
+        assert burn.is_reserved(seen["b_path"]) is True
+    finally:
+        b_go.set()
+        tb.join(10)
+    assert results["A"] != results["B"]
+    assert burn.is_reserved(results["A"]) and burn.is_reserved(results["B"])

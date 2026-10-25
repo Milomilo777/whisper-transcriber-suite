@@ -249,13 +249,16 @@ def free_output_path(path: str) -> str:
 
 
 # Placeholders this run of the app reserved and has not yet released or
-# replaced: output-path key -> the owning reservation's token. The mapping is
-# filled BEFORE the file exists, so the watched folder's create event (and a
-# download's file recovery) can always tell the app's own placeholder from a
-# file the user put there, whatever its name or size. The token follows the
-# job that WON the exclusive create, so a losing job's cleanup can never
-# release the winner's reservation.
-_reserved: dict[str, str] = {}
+# replaced: output-path key -> tokens of the reservation attempts that listed
+# it. A token is added BEFORE the file exists, so the watched folder's create
+# event (and a download's file recovery) can always tell the app's own
+# placeholder from a file the user put there, whatever its name or size.
+# Every attempt owns its own token: a failed attempt removes only its own
+# token (compare-and-delete), and the attempt that WON the exclusive create
+# keeps its token, so a loser can never make the winner's placeholder look
+# unreserved. The key leaves the mapping when its last token is gone or the
+# placeholder is released.
+_reserved: dict[str, set[str]] = {}
 _reserved_lock = threading.Lock()
 
 
@@ -263,6 +266,17 @@ def is_reserved(path: str) -> bool:
     """True while *path* is a placeholder this run reserved for a burn."""
     with _reserved_lock:
         return _output_key(path) in _reserved
+
+
+def _drop_reservation_token(key: str, token: str) -> None:
+    """Remove one attempt's token; forget the key when no token is left."""
+    with _reserved_lock:
+        tokens = _reserved.get(key)
+        if tokens is None:
+            return
+        tokens.discard(token)
+        if not tokens:
+            del _reserved[key]
 
 
 def reserve_output_path(path: str) -> str:
@@ -278,33 +292,23 @@ def reserve_output_path(path: str) -> str:
     while True:
         key = _output_key(candidate)
         with _reserved_lock:
-            _reserved.setdefault(key, token)
+            _reserved.setdefault(key, set()).add(token)
         try:
             fd = os.open(candidate, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o666)
         except FileExistsError:
-            # The file exists. Whichever job WON the exclusive create has
-            # replaced the mapping with its own token (below), so a
-            # mapping that is still OURS means the file is a
-            # pre-existing/user file — release the key so the watcher
-            # keeps seeing it, and try the next name. Discarding on the
-            # old held_by_another_job flag lost exactly this race: B's
-            # add+create landed between A's add and A's open, and A's
-            # cleanup deleted B's reservation.
-            with _reserved_lock:
-                if _reserved.get(key) == token:
-                    del _reserved[key]
+            # The file exists: either another job won the create (its own
+            # token stays listed) or it is a pre-existing/user file (no token
+            # is left once ours is gone, so the watcher keeps seeing it).
+            # Only OUR token is removed, whatever the other jobs do meanwhile.
+            _drop_reservation_token(key, token)
             candidate = f"{stem} ({n}){ext}"
             n += 1
             continue
         except BaseException:
-            with _reserved_lock:
-                if _reserved.get(key) == token:
-                    del _reserved[key]
+            _drop_reservation_token(key, token)
             raise
-        # We won the create: the placeholder is ours, whoever else was
-        # also waiting for the name.
-        with _reserved_lock:
-            _reserved[key] = token
+        # We won the create: the placeholder is ours and our token stays
+        # listed until release_reserved_path or burn() clears the key.
         os.close(fd)
         return candidate
 

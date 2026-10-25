@@ -89,6 +89,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Two burn jobs racing for one output name no longer lose a placeholder's reservation**: every
+  reservation attempt now owns its own token and a failed attempt removes only that token, so the watched
+  folder never takes a job's empty placeholder for user input.
 - **A malformed resume cursor no longer deletes saved transcript text**: when a checkpoint's end-time field
   is not a usable number, the cursor is recovered from the latest saved segment end and the resume
   continues. If no cursor can be recovered, the checkpoint is moved aside (kept) and a fresh run starts.
