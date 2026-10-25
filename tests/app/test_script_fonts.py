@@ -315,10 +315,17 @@ def test_run_pieces_prefer_spaces_and_respect_clusters() -> None:
     assert script_fonts.run_pieces("short") == [(0, 5)]
 
 
+def test_tk_index_counts_an_astral_character_by_tk_version() -> None:
+    line = "a" + chr(0x1F600) + "b"
+    assert script_fonts._tk_index(line, 3) == 4              # Tk 8.6: two UTF-16 halves
+    assert script_fonts._tk_index(line, 3, tk_major=9) == 3  # Tk 9: one character
+    assert script_fonts._tk_index(line, 1, tk_major=9) == script_fonts._tk_index(line, 1) == 1
+
+
 def test_long_lines_are_tagged_in_alternating_pieces(windows: set[str], root: tk.Tk) -> None:
     text = tk.Text(root)
     sri = "ශ්" + ZWJ + "රී "
-    line = sri * 30 + chr(0x1F600) + sri * 10  # an emoji: Tk counts it as two characters
+    line = sri * 30 + chr(0x1F600) + sri * 10  # an emoji: Tk 8.6 counts it as two characters, Tk 9 as one
     text.insert("1.0", line + "\nEnglish")
     script_fonts.tag_script_lines(text)
     ranges = []
