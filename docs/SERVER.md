@@ -510,12 +510,32 @@ not extend the window. So during an attack from your own /64 a host that has
 not logged in recently can be locked out for up to 10 minutes. A request with no
 password at all gets 401 and is not counted. At most 2048 hosts and 1024 /64
 networks are remembered (the oldest idle entry whose lockout has ended is dropped first, so flooding
-the table does not free a locked host), and the
+the table does not free a locked host). If all 2048 stored hosts are locked at
+once, a new address is not stored; its attempts (and those of every other
+unstored address) share one overflow budget of 30 comparisons per 10 minutes for
+the whole server, so a full table cannot be used to guess without limit; during
+that state a legitimate newcomer without a session cookie can be refused too,
+even from an address that logged in recently. The
 counts live in memory only, so a restart clears them. Behind a reverse proxy
 every client has the proxy's address, so one person's typos can lock out the
 others for a short time. This slows guessing down; it is not a replacement
 for a long password, and an attacker who can use very many IPv6 networks is
 limited only by the password itself.
+
+**Logged-in clients keep working during a lockout.** A client that sent the
+right password also receives a signed session cookie (`wts_session`, `HttpOnly`,
+`SameSite=Strict`, `Secure` over HTTPS, valid for 15 minutes and renewed while
+in use). A request with a valid cookie is accepted without comparing a password
+and without reading or changing the address's failure count, so an attacker
+behind the same NAT or reverse proxy cannot lock out a user who is already
+logged in by renewing the lockout. The cookie is signed with a random key made
+at server start and tied to the current access password: it stops working at
+its expiry, when the password changes and when the server restarts, and it is
+not tied to an address. Whoever holds it has the access the password gives.
+Scripts that send the password in a header do not need it, and are still
+subject to the lockout. **Trade-off:** a user who has NOT logged in recently is
+still locked out with the rest of the address, and a stolen cookie works for
+up to 15 minutes without the password.
 
 The page at `/` loads without a token; its API calls need one. Type it into
 the page's **Auth token** box, or open a link with it added, for example
@@ -695,7 +715,18 @@ Behaviour to know:
   (`--use-extractors default,-generic`), so a plain media link
   (`https://host/file.mp3`) or an unknown web page is refused with "this link
   is not from a site the server can download from"; upload the file instead.
-  The desktop Download tab is not affected.
+  The desktop Download tab is not affected. **Exception:** a plain `http(s)`
+  link whose host (every address it resolves to) lies inside a network listed
+  in `server_allowed_private_networks`, for example a file on a NAS, is
+  fetched by the app's own downloader instead of yt-dlp. It follows at most 5
+  redirects, only to `http(s)`, never reads the body of a redirect, and every connection (each redirect included)
+  gets the same connect-time address check, so loopback, link-local and
+  metadata addresses are refused even there. The job's size cap, time limit and
+  Cancel apply while it waits for the answer and on every read (a stalled read
+  is cut after 30 seconds; only the connect step itself waits up to 30 seconds), and no proxy from the environment is used. A server with a
+  self-signed certificate fails the certificate check; use plain `http` on the
+  trusted network or upload the file. Links to unlisted hosts are refused as
+  above.
   **Every request yt-dlp makes for a server job goes through a small proxy
   inside the app** (listening on 127.0.0.1 only, with a random per-run
   password that reaches yt-dlp through its environment, never its command
@@ -703,7 +734,12 @@ Behaviour to know:
   downloaders are used, not ffmpeg). It connects to ports 80 and 443 only. A client must send its request header
   within 5 seconds in all (not 5 seconds per byte); at most 16 connections
   without a complete header get that long, and further ones get 1 second, so
-  slow drippers cannot keep yt-dlp out.
+  slow drippers cannot keep yt-dlp out. When all 128 handler slots are taken,
+  a new connection evicts the oldest connection that still has no complete
+  header (the overflow ones first) instead of being dropped; connections whose
+  header has arrived are never evicted. An evicted connection keeps its slot
+  until its handler has really ended; at most 32 may be ending at once, so
+  there are never more than 160 living handlers (then new ones are dropped).
   **Behind a company proxy:** when `HTTPS_PROXY` / `HTTP_PROXY` (or
   `ALL_PROXY`) is set in the environment of the app, `NO_PROXY` is honoured
   (entries with or without a port, such as `site.example:443`; it only picks
@@ -719,7 +755,9 @@ Behaviour to know:
   settings is not read (set the environment variables instead). A plain `http://` request body is
   forwarded by its declared framing only (`Content-Length` or `chunked`); a
   request with conflicting framing is refused with HTTP 400, and nothing sent
-  after the declared body is forwarded. The
+  after the declared body is forwarded. `Expect: 100-continue` is answered by
+  the proxy itself (an interim `100 Continue` once the destination is checked
+  and connected) and is not forwarded; any other expectation gets HTTP 417. The
   proxy resolves each destination itself, refuses a loopback, link-local
   (cloud metadata), private-network (10.x, 172.16-31.x, 192.168.x, 100.64/10),
   multicast, unspecified or otherwise non-public address at connect time, and
@@ -728,16 +766,21 @@ Behaviour to know:
   (NAT64, 6to4, Teredo) is judged by the IPv4 address inside it: the well-known
   NAT64 prefix `64:ff9b::/96`, 6to4 and Teredo are refused, and any other IPv6
   address whose last 32 bits look like a loopback or link-local (or, for link
-  jobs outside a listed network, private-network) IPv4 address is refused too,
-  also inside a network listed in `server_allowed_private_networks`. The well-known
-  prefixes are decoded exactly by their RFC 6052 layout; a translator with a
-  /32 to /64 prefix of its own cannot be recognised without knowing its prefix
-  (residual risk), which also refuses about
+  jobs outside a listed network, private-network or 100.64/10) IPv4 address is
+  refused too, also inside a network listed in `server_allowed_private_networks`.
+  The well-known prefixes are decoded exactly by their RFC 6052 layout, and so
+  is every prefix in `server_nat64_prefixes` (lengths 32, 40, 48, 56, 64 and 96;
+  the IPv4 address inside gets the full policy before any allowlist is
+  consulted). A listed IPv6 network whose length is one of those also has its
+  own layout tried for an embedded loopback or link-local address. A translator
+  prefix that is neither well-known nor configured cannot be recognised
+  (residual risk) and the last-32-bits rule refuses about
   1 in 100 ordinary public IPv6 hosts; an IPv6-only network that relies on
   DNS64 cannot use link jobs. If the proxy cannot start, the job fails
   instead of downloading without it. **Residual risk:** a link job cannot
   fetch from a server on your own network unless you list that network in
-  `server_allowed_private_networks` (or use an upload); what a public site
+  `server_allowed_private_networks` (plain media links there are then fetched
+  directly, as described above) or use an upload; what a public site
   itself returns is trusted as content (the downloaded file is only transcribed,
   never run); the guard covers yt-dlp's connections, not other programs.
 - **Bounded queue.** Total and queued job counts are capped; once full the
@@ -756,7 +799,16 @@ Behaviour to know:
   full 15-second header deadline. A further connection is still served while
   handler slots are free, but has only 2 seconds to send its header, so drippers
   that fill the 48 cannot lock out other clients; they can only keep the
-  overflow busy by reconnecting.
+  overflow busy by reconnecting. When all 64 slots are taken, a new connection
+  evicts the oldest connection that has no complete header, overflow ones
+  first, so a crowd of slow clients on many addresses cannot starve a prompt
+  one. An address that is at its own pending limit (4) has ITS oldest stalled
+  connection replaced instead of being refused, so slow connections from a
+  shared NAT cannot lock that address out. An evicted connection keeps its slot
+  until its handler has really ended; at most 16 may be ending at once, so
+  there are never more than 80 living handlers. Connections whose header has
+  arrived are never evicted; when no pending connection can be replaced, or
+  the allowance is used up, the answer is 503.
   Once three quarters of the slots are in use, every reply ends its connection
   (`Connection: close`), and an idle keep-alive connection is kept for at most
   15 seconds, so browsers cannot hold the slots between requests.
@@ -850,6 +902,7 @@ server_webhook_url     ""       completion webhook target (empty = off)
 server_webhook_secret  ""       secret sent as a header on every webhook POST (empty = no header; cleartext)
 server_webhook_header_name  "X-Whisper-Webhook-Secret"  name of that header
 server_allowed_private_networks  []  local networks link jobs may use (CIDRs)
+server_nat64_prefixes  []  NAT64/DNS64 translator prefixes of this network (IPv6 CIDRs)
 ```
 
 `server_allowed_private_networks` is a list of CIDR strings, for example
@@ -860,6 +913,14 @@ link-local (cloud metadata) addresses stay refused even if listed, and so do
 IPv6 addresses that carry such an IPv4 address. A change is picked up within a
 few seconds. The completion webhook is not affected (a receiver on the local
 network is always allowed there).
+
+`server_nat64_prefixes` is a list of IPv6 CIDR strings, for example
+`["2001:db8:64::/96"]`, edited in `config.json` only. Add the prefix of your
+own NAT64/DNS64 translator (lengths 32, 40, 48, 56, 64 or 96, RFC 6052) so the
+server can see the IPv4 address inside and refuse loopback, link-local,
+private-network and similar targets behind it. Entries of any other kind are
+ignored with a warning. The default is empty; only `64:ff9b::/96` is then
+decoded. A change is picked up within a few seconds.
 
 `server_token` and `server_webhook_secret` are stored in cleartext, the same as cookies / API keys:
 `config.json` is per-user under `%LOCALAPPDATA%\WhisperTranscriberSuite` and is not

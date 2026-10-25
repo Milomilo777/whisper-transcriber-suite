@@ -82,7 +82,7 @@ def test_config_keys_documented_exist_in_defaults(doc: str) -> None:
     from core.config import DEFAULT_CONFIG
 
     block = _section(doc, "Configuration")
-    keys = re.findall(r"^(server_[a-z_]+)\s", block, re.M)
+    keys = re.findall(r"^(server_[a-z0-9_]+)\s", block, re.M)
     assert set(keys) == {k for k in DEFAULT_CONFIG if k.startswith("server_")}
 
 

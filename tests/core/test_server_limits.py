@@ -69,6 +69,12 @@ def _wait_until(predicate, timeout=5.0):
     return predicate()
 
 
+# A request whose header is complete but whose body never comes: the handler
+# is busy (no longer "pending"), so it is never evicted to make room.
+BUSY_HEAD = (b"POST /api/jobs HTTP/1.1" + bytes([13, 10]) + b"Host: x"
+             + bytes([13, 10]) + b"Content-Length: 10" + bytes([13, 10, 13, 10]))
+
+
 class _Server:
     """A JobHTTPServer with explicit constructor arguments."""
 
@@ -108,7 +114,7 @@ def test_connections_beyond_the_cap_get_a_fast_503(small_server):
     try:
         for _ in range(3):
             s = socket.create_connection(("127.0.0.1", small_server.port))
-            s.sendall(b"GET /api/he")  # half a request line: the handler waits
+            s.sendall(BUSY_HEAD)  # header in, body never comes: handler busy
             held.append(s)
         assert _wait_until(
             lambda: small_server.server.active_connections() == 3)
@@ -681,8 +687,10 @@ def test_sync_v1_waits_are_capped_and_leave_slots_for_the_web_page(tmp_path):
 def test_a_surplus_client_in_the_middle_of_an_upload_still_sees_the_503(tmp_path):
     srv = _Server(tmp_path, max_connections=1)
     holder = socket.create_connection(("127.0.0.1", srv.port))
+    holder.sendall(BUSY_HEAD)
     try:
         assert _wait_until(lambda: srv.server.active_connections() == 1)
+        assert _wait_until(lambda: srv.server.pending_connections() == 0)
         got = 0
         for _ in range(5):
             size = 3 * 1024 * 1024
@@ -711,8 +719,10 @@ def test_the_refusal_drain_is_bounded(tmp_path, monkeypatch):
     monkeypatch.setattr(httpd, "_REFUSE_DRAIN_BYTES", 64 * 1024)
     srv = _Server(tmp_path, max_connections=1)
     holder = socket.create_connection(("127.0.0.1", srv.port))
+    holder.sendall(BUSY_HEAD)
     try:
         assert _wait_until(lambda: srv.server.active_connections() == 1)
+        assert _wait_until(lambda: srv.server.pending_connections() == 0)
         c = socket.create_connection(("127.0.0.1", srv.port), timeout=5)
         c.sendall(b"POST /api/jobs HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: 99999999\r\n\r\n")
         assert c.recv(4096).startswith(b"HTTP/1.1 503")

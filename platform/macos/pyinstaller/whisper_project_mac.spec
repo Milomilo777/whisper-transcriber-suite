@@ -439,6 +439,8 @@ a = Analysis(
         'core.live_model',
         'core.optional_deps',
         'core.server.tls',
+        'core.server.auth_session',
+        'core.server.lanfetch',
         'core.server.auth_throttle',
         'core.server.netguard',
         'core.server.dlproxy',

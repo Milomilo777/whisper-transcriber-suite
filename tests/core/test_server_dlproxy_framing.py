@@ -181,3 +181,66 @@ def test_a_strict_receiver_sees_exactly_one_content_length(
     assert names.count("content-length") == 1
     assert names.count("transfer-encoding") == 0
     assert b"Content-Length: 3" in body_listener.received[0]
+
+
+def _expect_exchange(proxy_, port: int, body: bytes, extra: list[bytes]):
+    """A compliant client: send the head, WAIT for the interim 100 Continue,
+    only then send the body. Returns (interim bytes, final reply)."""
+    sock = socket.create_connection(("127.0.0.1", proxy_.port), timeout=3)
+    try:
+        sock.sendall(_head(proxy_, port, [b"Expect: 100-continue"] + extra))
+        interim = b""
+        try:
+            interim = sock.recv(4096)
+        except OSError:
+            return b"", b""
+        sock.sendall(body)
+        out = b""
+        while True:
+            try:
+                chunk = sock.recv(65536)
+            except OSError:
+                break
+            if not chunk:
+                break
+            out += chunk
+        return interim, out
+    finally:
+        sock.close()
+
+
+def test_expect_100_continue_is_answered_locally(
+        proxy, body_listener, monkeypatch):
+    _lift_guard(monkeypatch)
+    interim, reply = _expect_exchange(
+        proxy, body_listener.port, b"abc", [b"Content-Length: 3"])
+    assert interim.startswith(b"HTTP/1.1 100"), interim
+    assert _status(reply) == 200
+    got = body_listener.received[0]
+    assert got.endswith(CRLF + CRLF + b"abc")
+    assert b"expect" not in got.lower()  # the origin never waits for it
+
+
+def test_expect_100_continue_with_a_chunked_body(
+        proxy, body_listener, monkeypatch):
+    _lift_guard(monkeypatch)
+    body = b"3" + CRLF + b"hey" + CRLF + b"0" + CRLF + CRLF
+    interim, reply = _expect_exchange(
+        proxy, body_listener.port, body, [b"Transfer-Encoding: chunked"])
+    assert interim.startswith(b"HTTP/1.1 100"), interim
+    assert _status(reply) == 200
+    assert body_listener.received[0].endswith(body)
+
+
+def test_no_100_continue_when_the_destination_is_refused(proxy, monkeypatch):
+    """The interim answer is only for requests the proxy will forward."""
+    interim, reply = _expect_exchange(proxy, 80, b"abc", [b"Content-Length: 3"])
+    assert not interim.startswith(b"HTTP/1.1 100")
+
+
+def test_an_unknown_expectation_is_refused_with_417(proxy, body_listener, monkeypatch):
+    _lift_guard(monkeypatch)
+    reply = _send(proxy, _head(proxy, body_listener.port,
+                               [b"Expect: magic", b"Content-Length: 3"]) + b"abc")
+    assert _status(reply) == 417
+    assert body_listener.connections == 0

@@ -47,7 +47,11 @@ _HEADER_TIMEOUT_S = 15.0
 # connections get _HEADER_DEADLINE_S; more are still served while handler
 # slots are free, but only get _OVERFLOW_HEADER_S, so drippers that fill the
 # normal budget cannot lock the real client (yt-dlp, which sends its header in
-# milliseconds) out.
+# milliseconds) out. When every handler slot is taken, a new connection evicts
+# the oldest pending one (overflow first) instead of being dropped; connections
+# that have sent a whole header are never evicted. An evicted connection holds
+# its slot until its thread has ended; at most a quarter of the cap may be in
+# that state, so living handlers stay within the cap plus that allowance.
 _HEADER_DEADLINE_S = 5.0
 _OVERFLOW_HEADER_S = 1.0
 _MAX_PENDING = 16
@@ -62,6 +66,10 @@ ALLOWED_PORTS = frozenset({80, 443})
 _FRAMING_HEADERS = {"content-length", "transfer-encoding"}
 _HOP_BY_HOP = {"proxy-authorization", "proxy-connection", "connection",
                "keep-alive", "te", "trailer", "upgrade"}
+# ``Expect: 100-continue`` is answered by the proxy itself and not forwarded:
+# the proxy reads the whole body before it reads any upstream answer, so a
+# client waiting for the origin's interim 100 would deadlock with it.
+_EXPECT = "expect"
 
 
 def _split_host_port(target: str, default_port: int | None
@@ -354,6 +362,12 @@ class _Handler(socketserver.StreamRequestHandler):
         if framing is None:
             self._reply(400, "conflicting or unsupported message framing")
             return
+        expectations = [token.strip().lower() for name, value in headers
+                        if name.lower() == _EXPECT
+                        for token in value.split(",")]
+        if any(token != "100-continue" for token in expectations):
+            self._reply(417, "expectation failed")
+            return
         upstream = self._connect_upstream(*hp, scheme="http")
         if upstream is None:
             return
@@ -365,7 +379,8 @@ class _Handler(socketserver.StreamRequestHandler):
                 # The framing headers are dropped and re-emitted once below,
                 # in canonical form: a copy of the client's own would
                 # duplicate them for a strict receiver.
-                if name.lower() not in _HOP_BY_HOP | _FRAMING_HEADERS:
+                if name.lower() not in (_HOP_BY_HOP | _FRAMING_HEADERS
+                                        | {_EXPECT}):
                     out.append(f"{name}: {value}")
             if framing == "chunked":
                 out.append("Transfer-Encoding: chunked")
@@ -373,6 +388,11 @@ class _Handler(socketserver.StreamRequestHandler):
                 out.append(f"Content-Length: {framing}")
             out.append("Connection: close")
             upstream.sendall(("\r\n".join(out) + "\r\n\r\n").encode("latin-1"))
+            if (expectations and framing != 0
+                    and version.upper() == "HTTP/1.1"):
+                # The destination is checked and connected: invite the body.
+                self.wfile.write(b"HTTP/1.1 100 Continue\r\n\r\n")
+                self.wfile.flush()
             # One framing-aware path: exactly the declared body is forwarded,
             # nothing the client sends after it (no request smuggling).
             if not self._forward_body(upstream, framing):
@@ -482,11 +502,14 @@ class _ProxyServer(socketserver.ThreadingTCPServer):
 
     def __init__(self, credentials: bytes) -> None:
         self.credentials = credentials
-        self._slots = threading.BoundedSemaphore(_MAX_CONNECTIONS)
         self._pending_lock = threading.Lock()
-        # connection -> True when it is an overflow connection
-        self._pending: dict[tuple[Any, ...], bool] = {}
+        self._active = 0
+        # connection -> [overflow?, accepted at, socket]
+        self._pending: dict[tuple[Any, ...], list[Any]] = {}
         self._pending_normal = 0
+        # Evicted connections whose thread has not ended: they still hold
+        # their slot (``_active``) until it has.
+        self._evicted: set[tuple[Any, ...]] = set()
         super().__init__(("127.0.0.1", 0), _Handler)
 
     def pending_connections(self) -> int:
@@ -495,32 +518,65 @@ class _ProxyServer(socketserver.ThreadingTCPServer):
 
     def header_deadline_for(self, client_address: Any) -> float:
         with self._pending_lock:
-            overflow = self._pending.get(tuple(client_address), False)
-        return _OVERFLOW_HEADER_S if overflow else _HEADER_DEADLINE_S
+            entry = self._pending.get(tuple(client_address))
+        return (_OVERFLOW_HEADER_S if entry and entry[0]
+                else _HEADER_DEADLINE_S)
 
     def release_pending(self, client_address: Any) -> None:
         with self._pending_lock:
-            overflow = self._pending.pop(tuple(client_address), None)
-            if overflow is False:
+            entry = self._pending.pop(tuple(client_address), None)
+            if entry is not None and not entry[0]:
                 self._pending_normal -= 1
 
     def process_request(self, request: Any, client_address: Any) -> None:
-        if not self._slots.acquire(blocking=False):
-            self.shutdown_request(request)
-            return
+        key = tuple(client_address)
+        victim_sock = None
         with self._pending_lock:
+            if self._active >= _MAX_CONNECTIONS:
+                victim = min(
+                    self._pending,
+                    key=lambda k: (not self._pending[k][0],
+                                   self._pending[k][1]),
+                    default=None)
+                if (victim is None
+                        or len(self._evicted) >= max(1, _MAX_CONNECTIONS // 4)):
+                    # Every slot is a request in progress, or the allowance
+                    # of evicted handlers still ending is used up.
+                    self.shutdown_request(request)
+                    return
+                entry = self._pending.pop(victim)
+                if not entry[0]:
+                    self._pending_normal -= 1
+                victim_sock = entry[2]
+                self._evicted.add(victim)  # its slot stays held until it ends
             overflow = self._pending_normal >= _MAX_PENDING
             if not overflow:
                 self._pending_normal += 1
-            self._pending[tuple(client_address)] = overflow
-        super().process_request(request, client_address)
+            self._pending[key] = [overflow, time.monotonic(), request]
+            self._active += 1
+        if victim_sock is not None:
+            try:  # wakes the evicted connection's thread, which then ends
+                victim_sock.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+        try:
+            super().process_request(request, client_address)
+        except BaseException:
+            self.release_pending(client_address)
+            self._release_slot(key)
+            raise
 
     def process_request_thread(self, request: Any, client_address: Any) -> None:
         try:
             super().process_request_thread(request, client_address)
         finally:
             self.release_pending(client_address)
-            self._slots.release()
+            self._release_slot(tuple(client_address))
+
+    def _release_slot(self, key: tuple[Any, ...]) -> None:
+        with self._pending_lock:
+            self._evicted.discard(key)
+            self._active -= 1
 
 
 class DownloadProxy:

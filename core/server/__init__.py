@@ -29,6 +29,7 @@ import threading
 import time
 from typing import Any, Callable
 
+from core.server import lanfetch
 from core.server.dlproxy import shared_proxy
 from core.server.httpd import JobHTTPServer
 from core.server.jobs import (
@@ -171,6 +172,11 @@ def _download_url(url: str, dest_dir: str,
     from core import yt_dlp_update
     from core.js_runtime import yt_dlp_js_args
 
+    # A direct link to a host inside an operator-listed local network
+    # (server_allowed_private_networks) is fetched by the app's own guarded
+    # downloader: yt-dlp's generic extractor is off, so it would be refused.
+    if lanfetch.is_lan_direct_url(url):
+        return lanfetch.fetch(url, dest_dir, limits)
     # Started on first use. If it cannot start, the job fails: a server job
     # never downloads without the connect-time address check.
     try:

@@ -92,7 +92,7 @@ from core.server.jobs import (
     QueueFull,
     redact_paths,
 )
-from core.server import mcp
+from core.server import auth_session, mcp
 from core.server.auth_throttle import AuthThrottle
 from core.writers import get_writer, supported_formats
 
@@ -195,6 +195,14 @@ _MAX_CONNECTIONS = 64
 # it has only _OVERFLOW_HEADER_S seconds to send its header (an honest client
 # needs milliseconds): drippers that fill the normal pending budget cannot
 # lock everybody else out, and a dripper in the overflow is cut after seconds.
+# When every handler slot is taken, a new connection EVICTS the oldest pending
+# one (overflow first) instead of being refused, so a flood of slow
+# unauthenticated clients cannot starve prompt ones. Connections that have
+# sent a whole header are never evicted. An evicted connection keeps holding
+# its slot until its handler thread has really ended, so the number of living
+# handlers never exceeds the cap plus a small fixed number of evicted ones
+# (a quarter of the cap); when that allowance is used, a new connection is
+# refused with the fast 503 as before.
 _MAX_PENDING_PER_HOST = 4
 _OVERFLOW_HEADER_S = 2.0
 
@@ -1190,6 +1198,9 @@ class JobHTTPServer(ThreadingHTTPServer):
         self.token = token
         # Slows down repeated wrong access passwords per client address.
         self.auth_throttle = AuthThrottle()
+        # Signs the session cookies of clients that already logged in (they
+        # are then independent of the per-address failure counts).
+        self.session_key = os.urandom(32)
         self.max_upload_bytes = (
             min(max(1, max_upload_mb), _ABSOLUTE_MAX_UPLOAD_MB) * 1024 * 1024
         )
@@ -1203,11 +1214,14 @@ class JobHTTPServer(ThreadingHTTPServer):
         self._max_pending = max(1, max_pending if max_pending is not None
                                 else self._max_connections * 3 // 4)
         self._max_pending_per_host = max(1, max_pending_per_host)
-        # connection -> (client host, True when it is an overflow connection)
-        self._pending: dict[tuple[Any, ...], tuple[str, bool]] = {}
+        # connection -> (client host, overflow?, accepted at, socket)
+        self._pending: dict[tuple[Any, ...],
+                            tuple[str, bool, float, Any]] = {}
+        # Keys of evicted connections whose thread has not ended yet; they
+        # still count in ``_active`` until it has.
+        self._evicted: set[tuple[Any, ...]] = set()
         self._pending_normal = 0
         self._pending_hosts: dict[str, int] = {}
-        self._slots = threading.BoundedSemaphore(self._max_connections)
         if max_sync_waits is None:
             max_sync_waits = min(_MAX_SYNC_WAITS,
                                  max(1, self._max_connections * 2 // 3))
@@ -1254,35 +1268,82 @@ class JobHTTPServer(ThreadingHTTPServer):
 
         Runs on the single accept thread, so the refusal must never block.
         """
-        if not self._slots.acquire(blocking=False):
+        victim = self._take_pending(request, client_address)
+        if victim is False:
             self._refuse_busy(request, client_address)
             return
-        if not self._take_pending(client_address):
-            self._slots.release()
-            self._refuse_busy(request, client_address)
-            return
-        with self._active_lock:
-            self._active += 1
+        if victim is not None:
+            try:  # wakes the evicted connection's thread, which then ends
+                victim.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
         try:
             super().process_request(request, client_address)
         except BaseException:
             self.release_pending(client_address)
-            self._release_slot()
+            self._release_slot(client_address)
             raise
 
-    def _take_pending(self, client_address: Any) -> bool:
-        """Count a new connection as pending (no complete request yet)."""
+    def _take_pending(self, request: Any, client_address: Any) -> Any:
+        """Take a slot and count the connection as pending (no complete
+        request yet).
+
+        Returns False when it must be refused, else None, or the socket of the
+        pending connection that was evicted to make room (its slot is given
+        back here; the caller shuts the socket down).
+        """
         host = str(client_address[0]) if client_address else "?"
         key = tuple(client_address) if client_address else ()
+        victim_sock = None
         with self._active_lock:
-            if self._pending_hosts.get(host, 0) >= self._max_pending_per_host:
-                return False
+            host_full = (self._pending_hosts.get(host, 0)
+                         >= self._max_pending_per_host)
+            if host_full or self._active >= self._max_connections:
+                # Make room by replacing a stalled pending connection: this
+                # address's oldest when the address is at its own limit
+                # (a shared NAT must not lock itself out), else the oldest.
+                if len(self._evicted) >= max(1, self._max_connections // 4):
+                    return False
+                victim = self._oldest_pending_locked(
+                    host if host_full else None)
+                if victim is None:
+                    return False
+                victim_sock = self._pending[victim][3]
+                self._drop_pending_locked(victim)
+                self._evicted.add(victim)  # its slot stays held until it ends
             overflow = self._pending_normal >= self._max_pending
             if not overflow:
                 self._pending_normal += 1
-            self._pending[key] = (host, overflow)
+            self._pending[key] = (host, overflow, time.monotonic(), request)
             self._pending_hosts[host] = self._pending_hosts.get(host, 0) + 1
-            return True
+            self._active += 1
+            return victim_sock
+
+    def _oldest_pending_locked(self, host: str | None = None
+                               ) -> tuple[Any, ...] | None:
+        """The pending connection to evict: overflow ones first, oldest first
+        (only those of ``host`` when given)."""
+        best = None
+        for key, (phost, overflow, since, _sock) in self._pending.items():
+            if host is not None and phost != host:
+                continue
+            rank = (0 if overflow else 1, since)
+            if best is None or rank < best[0]:
+                best = (rank, key)
+        return None if best is None else best[1]
+
+    def _drop_pending_locked(self, key: tuple[Any, ...]) -> None:
+        entry = self._pending.pop(key, None)
+        if entry is None:
+            return
+        host, overflow = entry[0], entry[1]
+        if not overflow:
+            self._pending_normal -= 1
+        left = self._pending_hosts.get(host, 1) - 1
+        if left > 0:
+            self._pending_hosts[host] = left
+        else:
+            self._pending_hosts.pop(host, None)
 
     def header_deadline_for(self, client_address: Any) -> float:
         """Seconds a new connection has for its first request header."""
@@ -1295,17 +1356,7 @@ class JobHTTPServer(ThreadingHTTPServer):
         """The connection has sent its headers (or ended): no longer pending."""
         key = tuple(client_address) if client_address else ()
         with self._active_lock:
-            entry = self._pending.pop(key, None)
-            if entry is None:
-                return
-            host, overflow = entry
-            if not overflow:
-                self._pending_normal -= 1
-            left = self._pending_hosts.get(host, 1) - 1
-            if left > 0:
-                self._pending_hosts[host] = left
-            else:
-                self._pending_hosts.pop(host, None)
+            self._drop_pending_locked(key)
 
     def pending_connections(self) -> int:
         with self._active_lock:
@@ -1316,12 +1367,13 @@ class JobHTTPServer(ThreadingHTTPServer):
             super().process_request_thread(request, client_address)
         finally:
             self.release_pending(client_address)
-            self._release_slot()
+            self._release_slot(client_address)
 
-    def _release_slot(self) -> None:
+    def _release_slot(self, client_address: Any) -> None:
+        key = tuple(client_address) if client_address else ()
         with self._active_lock:
+            self._evicted.discard(key)
             self._active -= 1
-        self._slots.release()
 
     def _refuse_busy(self, request: Any, client_address: Any) -> None:
         """Answer a surplus connection with a short 503 and close it.
@@ -1496,6 +1548,8 @@ class JobRequestHandler(BaseHTTPRequestHandler):
 
     # Status code of the response being written (0 before the first one).
     _status_code = 0
+    # Session cookie value to send with the next final response, if any.
+    _session_cookie: str | None = None
 
     def send_response_only(self, code: int, message: str | None = None) -> None:
         # Covers the interim "100 Continue" too, which send_response() skips.
@@ -1509,6 +1563,14 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         if (self._status_code >= 200 and not self.close_connection
                 and self._srv.crowded()):
             self.send_header("Connection", "close")
+        if self._status_code >= 200 and self._session_cookie:
+            secure = "; Secure" if self._srv.ssl_context is not None else ""
+            self.send_header(
+                "Set-Cookie",
+                f"{auth_session.COOKIE_NAME}={self._session_cookie}; "
+                f"Path=/; Max-Age={int(auth_session.SESSION_TTL_S)}; "
+                f"HttpOnly; SameSite=Strict{secure}")
+            self._session_cookie = None
         super().end_headers()
 
     def _client_gone(self) -> bool:
@@ -1626,9 +1688,22 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         password is a guess.
         """
         self._auth_wait = 0
+        self._session_cookie = None
         srv = self._srv
         if not srv.token:
             return True
+        now = time.time()
+        cookie = auth_session.from_cookie_header(self.headers.get("Cookie"))
+        if cookie:
+            left = auth_session.remaining(srv.session_key, srv.token, cookie,
+                                          now=now)
+            if left > 0:
+                # An already authenticated client: no password is compared and
+                # the address's failure count is neither read nor changed.
+                if left < auth_session.SESSION_TTL_S / 2:
+                    self._session_cookie = auth_session.issue(
+                        srv.session_key, srv.token, now=now)
+                return True
         who = self.client_address[0] if self.client_address else ""
         header = self.headers.get("X-Auth-Token") or self._bearer_token()
         query = route.query.get("token")
@@ -1645,6 +1720,8 @@ class JobRequestHandler(BaseHTTPRequestHandler):
             return False
         if token_ok(srv.token, header, query):
             throttle.refund(who)
+            self._session_cookie = auth_session.issue(
+                srv.session_key, srv.token, now=now)
             return True
         locked = throttle.peek(who)
         if locked:

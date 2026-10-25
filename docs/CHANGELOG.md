@@ -14,7 +14,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   connect to the checked address. Local networks can be allowed in `server_allowed_private_networks`.
 - **Server link jobs no longer use the generic extractor**: the server runs yt-dlp with
   `--use-extractors default,-generic`. A plain media link is refused with a clear message (upload the file
-  instead). The desktop Download tab is unchanged.
+  instead). The desktop Download tab is unchanged. Exception: a direct link to a host inside
+  `server_allowed_private_networks` (for example a NAS) is fetched by the app's own downloader, with the
+  connect-time address check on every redirect hop.
 - **The completion webhook checks the address at connect time**: the host name is resolved once, only the
   checked addresses are connected to, and proxies from the environment are not used. LAN receivers stay
   allowed.
@@ -22,10 +24,23 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   HTTP 429 with a growing `Retry-After` (15 seconds, doubling, at most 15 minutes). The check and the count
   are one atomic step and one host never locks out another. Each IPv6 /64 shares a budget of 50 comparisons
   per 10 minutes (hosts that logged in recently are exempt), so rotating addresses gains nothing. The
-  lockout always ends by itself.
+  lockout always ends by itself. When the host table is full of locked hosts, new addresses share a bounded
+  overflow budget instead of getting a fresh start with every guess.
+- **Logged-in clients survive a shared-address lockout**: after a correct password the server sets a signed,
+  15-minute session cookie. A valid cookie is accepted without touching the per-address failure count, so
+  an attacker behind the same NAT or reverse proxy cannot keep a logged-in user locked out.
+- **The download proxy handles `Expect: 100-continue`**: it sends the interim `100 Continue` itself and does
+  not forward the header, so a client that waits for it no longer stalls until the timeout. Other
+  expectations get HTTP 417.
+- **Own NAT64 prefixes are decoded**: the new `server_nat64_prefixes` setting (empty by default) lists
+  translator prefixes of any RFC 6052 length; the IPv4 address inside gets the full address policy before an
+  allowlist is consulted. Shared (100.64/10) addresses inside other IPv6 addresses are refused too.
 - **Slow header senders are limited**, in the server and in the download proxy: the header has an absolute
   deadline, and connections without a complete header have a small budget (further ones are still served
-  but get only 1 to 2 seconds), so drippers cannot lock out other clients.
+  but get only 1 to 2 seconds), so drippers cannot lock out other clients. When every connection slot is
+  taken, a new connection evicts the oldest one that still has no complete header instead of being refused
+  (an address at its own pending limit replaces its oldest). Evicted handlers keep their slot until they have
+  ended, so the number of living handlers stays bounded.
 
 ### Added
 
