@@ -79,3 +79,43 @@ def test_nfd_named_rerun_with_nonascii_folder(tmp_path):
     )
     assert _service()._are_outputs_complete(task) is True
     assert task.output_paths == [str(out)]
+
+
+def test_other_unicode_form_directory_is_never_searched(tmp_path):
+    """NFC and NFD folders are two folders: another folder's fresh files are not ours."""
+    nfc_dir = tmp_path / NFC_STEM
+    nfd_dir = tmp_path / NFD_STEM
+    nfc_dir.mkdir()
+    nfd_dir.mkdir()
+    if nfc_dir.samefile(nfd_dir):
+        pytest.skip("this filesystem folds NFC and NFD names together")
+    start = time.time() - 30.0
+    (nfc_dir / "clip.mp4").touch()
+    _write(nfd_dir, "clip", ".srt", "someone else's")
+    _write(nfd_dir, "clip", ".json", "{}")
+    task = SimpleNamespace(file_path=str(nfc_dir / "clip.mp4"), start_time=start)
+    assert _service()._are_outputs_complete(task) is False
+
+
+def test_outputs_of_two_sources_are_never_mixed_into_one_set(tmp_path):
+    """NFC '(1).srt' from one source and NFD '(1).json' from another is not a complete set."""
+    _require_distinct_spellings(tmp_path)
+    start = time.time() - 30.0
+    (tmp_path / f"{NFC_STEM}.mp4").touch()
+    _write(tmp_path, NFC_STEM, ".srt", "old", start - 600.0)
+    _write(tmp_path, NFC_STEM, ".json", "{}", start - 600.0)
+    _write(tmp_path, NFC_STEM, " (1).srt", "this run, srt only")
+    _write(tmp_path, NFD_STEM, " (1).json", "{}")  # another source's file
+    task = SimpleNamespace(file_path=str(tmp_path / f"{NFC_STEM}.mp4"), start_time=start)
+    assert _service()._are_outputs_complete(task) is False
+
+
+def test_two_spellings_with_files_are_ambiguous_and_not_salvaged(tmp_path):
+    _require_distinct_spellings(tmp_path)
+    start = time.time() - 30.0
+    (tmp_path / f"{NFC_STEM}.mp4").touch()
+    for stem in (NFC_STEM, NFD_STEM):
+        _write(tmp_path, stem, ".srt", "fresh")
+        _write(tmp_path, stem, ".json", "{}")
+    task = SimpleNamespace(file_path=str(tmp_path / f"{NFC_STEM}.mp4"), start_time=start)
+    assert _service()._are_outputs_complete(task) is False

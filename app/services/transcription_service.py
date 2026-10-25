@@ -14,7 +14,7 @@ import sys
 import threading
 import unicodedata
 from queue import Empty
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from app import desktop_alert
 from app.domain.task_outputs import is_sidecar_json, task_transcript_json
@@ -96,28 +96,12 @@ def _mark_stopped_early(task: Any) -> None:
         task.error_reason = _("The transcription stopped before it finished; try the file again.")
 
 
-def _resolve_on_disk(path: str) -> str | None:
-    """The spelling of *path* that exists, trying NFC and NFD forms of the name.
-
-    macOS stores names as NFD; NTFS and ext4 keep whatever the writer used, so the
-    source file and its outputs can differ in Unicode form. Only the file name is
-    re-spelled first so a folder part is kept as the task gave it; whole-path forms
-    follow. Returns None when no spelling exists.
-    """
+def _respell(path: str, form: Literal["NFC", "NFD"] | None) -> str:
+    """*path* with only its file name put in Unicode *form* (the folder is kept exactly)."""
+    if form is None:
+        return path
     folder, name = os.path.split(path)
-    seen: list[str] = []
-    for candidate in (
-        path,
-        os.path.join(folder, unicodedata.normalize("NFC", name)),
-        os.path.join(folder, unicodedata.normalize("NFD", name)),
-        unicodedata.normalize("NFC", path),
-        unicodedata.normalize("NFD", path),
-    ):
-        if candidate not in seen:
-            seen.append(candidate)
-            if os.path.exists(candidate):
-                return candidate
-    return None
+    return os.path.join(folder, unicodedata.normalize(form, name))
 
 
 def _newest_output_set(paths: list[str]) -> list[str]:
@@ -125,20 +109,35 @@ def _newest_output_set(paths: list[str]) -> list[str]:
 
     ``core.transcriber._write_outputs`` keeps earlier runs' files and writes a re-run
     as ``name (1).srt`` + ``name (1).json`` (one shared index), so the files a crashed
-    re-run left are the highest-numbered set, not the plain names. Each name is matched
-    in its NFC and NFD spelling and the spelling found on disk is returned. Returns
-    *paths* unchanged when none of the plain names exists (the caller then reports
-    them missing).
+    re-run left are the highest-numbered set, not the plain names.
+
+    NTFS and ext4 keep NFC and NFD file names apart. Only the file name is re-spelled
+    (the folder is never changed) and ONE spelling is used for every format. If two
+    spellings both have files the set is ambiguous (two different sources): an empty list
+    is returned so the caller records a failure rather than a wrong transcript. Returns
+    *paths* unchanged when none of the plain names exists.
     """
-    index = 0
-    while index < 10000 and any(
-        _resolve_on_disk(_indexed_path(p, index)) is not None for p in paths
-    ):
-        index += 1
-    if index == 0:
+    forms: list[Literal["NFC", "NFD"] | None] = [None, "NFC", "NFD"]
+    spellings: list[list[str]] = []
+    for form in forms:
+        spelled = [_respell(p, form) for p in paths]
+        if spelled not in spellings:
+            spellings.append(spelled)
+    found: list[tuple[int, list[str]]] = []
+    for spelled in spellings:
+        index = 0
+        while index < 10000 and any(
+            os.path.exists(_indexed_path(p, index)) for p in spelled
+        ):
+            index += 1
+        if index:
+            found.append((index, spelled))
+    if not found:
         return paths
-    newest = [_indexed_path(p, index - 1) for p in paths]
-    return [_resolve_on_disk(p) or p for p in newest]
+    if len(found) > 1:
+        return []
+    index, spelled = found[0]
+    return [_indexed_path(p, index - 1) for p in spelled]
 
 
 def _indexed_path(path: str, index: int) -> str:
@@ -1089,15 +1088,7 @@ class TranscriptionService:
                     if start_time and os.path.getmtime(p) < start_time - 2.0:
                         return False
                 except OSError:
-                    # try the NFD spelling (macOS)
-                    p_nfd = unicodedata.normalize('NFD', p)
-                    if p != p_nfd:
-                        if not (os.path.getsize(p_nfd) > 0 or no_speech):
-                            return False
-                        if start_time and os.path.getmtime(p_nfd) < start_time - 2.0:
-                            return False
-                    else:
-                        raise
+                    return False  # a missing file: the set is not complete
             if derived:
                 # finish_task's own fallback derives names from the CONFIG formats only; hand it
                 # the files this task really wrote so history records all of them.
