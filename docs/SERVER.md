@@ -631,7 +631,18 @@ Behaviour to know:
   inside the app** (listening on 127.0.0.1 only, with a random per-run
   password that reaches yt-dlp through its environment, never its command
   line, so error texts and logs do not carry it; yt-dlp's own native
-  downloaders are used, not ffmpeg). It connects to ports 80 and 443 only. A plain `http://` request body is
+  downloaders are used, not ffmpeg). It connects to ports 80 and 443 only.
+  **Behind a company proxy:** when `HTTPS_PROXY` / `HTTP_PROXY` (or
+  `ALL_PROXY`) is set in the environment of the app, `NO_PROXY` is honoured,
+  and the guard proxy first resolves and checks the destination itself, then
+  asks your proxy to `CONNECT` to the checked numeric address (never the
+  name; the program still talks TLS to the real host name through the tunnel,
+  so the certificate is verified against it). Your proxy therefore sees an IP
+  address instead of a host name, must allow `CONNECT` to ports 80 and 443,
+  and must be a plain `http://` proxy (user and password in the URL are sent);
+  with any other kind of proxy (https, socks) link jobs fail with a clear
+  message instead of bypassing the check. The proxy list of the Windows
+  settings is not read (set the environment variables instead). A plain `http://` request body is
   forwarded by its declared framing only (`Content-Length` or `chunked`); a
   request with conflicting framing is refused with HTTP 400, and nothing sent
   after the declared body is forwarded. The
@@ -648,10 +659,8 @@ Behaviour to know:
   DNS64 cannot use link jobs. If the proxy cannot start, the job fails
   instead of downloading without it. **Residual risk:** a link job cannot
   fetch from a server on your own network unless you list that network in
-  `server_allowed_private_networks` (or use an upload); a
-  computer that needs a company proxy to reach the internet cannot use link
-  jobs, because the guard connects directly; what a public site itself
-  returns is trusted as content (the downloaded file is only transcribed,
+  `server_allowed_private_networks` (or use an upload); what a public site
+  itself returns is trusted as content (the downloaded file is only transcribed,
   never run); the guard covers yt-dlp's connections, not other programs.
 - **Bounded queue.** Total and queued job counts are capped; once full the
   server replies HTTP 503 with a `Retry-After: 30` header. A full queue is answered before an upload body is

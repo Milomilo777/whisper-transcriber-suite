@@ -176,6 +176,15 @@ def guarded_create_connection(
     """``socket.create_connection`` that connects only to checked addresses."""
     host, port = address
     infos = resolve_checked(host.strip("[]"), port, allow_private=allow_private)
+    return connect_checked(infos, timeout, source_address, host=host)
+
+
+def connect_checked(infos: list[tuple[int, int, int, str, Any]],
+                    timeout: Any = None,
+                    source_address: tuple[str, int] | None = None,
+                    *, host: str = "") -> socket.socket:
+    """Connect to the first reachable of already checked ``getaddrinfo``
+    answers (no second lookup)."""
     last: OSError | None = None
     for family, socktype, proto, _canon, sockaddr in infos:
         sock = socket.socket(family, socktype, proto)

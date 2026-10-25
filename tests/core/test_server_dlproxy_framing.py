@@ -49,6 +49,14 @@ def _head(proxy_, port: int, extra: list[bytes]) -> bytes:
     return CRLF.join(lines) + CRLF + CRLF
 
 
+@pytest.fixture(autouse=True)
+def _no_environment_proxy(monkeypatch):
+    """A proxy set on the developer's machine must not change these tests."""
+    for name in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY",
+                 "http_proxy", "https_proxy", "all_proxy", "no_proxy"):
+        monkeypatch.delenv(name, raising=False)
+
+
 class _BodyListener(_Listener):
     """Records the whole request (head and body) the upstream receives."""
 

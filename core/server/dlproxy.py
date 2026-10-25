@@ -27,9 +27,14 @@ import socket
 import socketserver
 import threading
 import urllib.parse
+import urllib.request
 from typing import Any
 
-from core.server.netguard import BlockedAddressError, guarded_create_connection
+from core.server.netguard import (
+    BlockedAddressError,
+    connect_checked,
+    resolve_checked,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +75,76 @@ def _split_host_port(target: str, default_port: int | None
 
 
 _MAX_REQUEST_BODY = 16 * 1024 * 1024
+
+
+class _UpstreamProxyError(OSError):
+    """The operator's own proxy refused or could not be used."""
+
+
+def upstream_proxy_for(scheme: str, host: str) -> "urllib.parse.SplitResult | None":
+    """The operator's HTTP proxy for a destination, from the environment.
+
+    Reads ``HTTPS_PROXY`` / ``HTTP_PROXY`` / ``ALL_PROXY`` (not the Windows
+    registry) and honours ``NO_PROXY``. None means connect directly. Only
+    plain ``http://`` proxies are supported; anything else raises
+    :class:`_UpstreamProxyError` rather than silently going direct.
+    """
+    proxies = urllib.request.getproxies_environment()
+    url = proxies.get(scheme) or proxies.get("all")
+    if not url:
+        return None
+    if urllib.request.proxy_bypass_environment(host, proxies):
+        return None
+    split = urllib.parse.urlsplit(url if "://" in url else "http://" + url)
+    if split.scheme != "http" or not split.hostname:
+        raise _UpstreamProxyError(
+            "only an http:// proxy in HTTP_PROXY / HTTPS_PROXY is supported")
+    return split
+
+
+def _connect_through(proxy: "urllib.parse.SplitResult",
+                     infos: list[tuple[int, int, int, str, Any]],
+                     port: int) -> socket.socket:
+    """Open a tunnel to the CHECKED numeric address through ``proxy``.
+
+    The proxy is asked to ``CONNECT`` to the address this process resolved and
+    checked, never to the name, so it cannot be steered to another address by
+    a second lookup. The client keeps talking TLS to the real host name
+    through the tunnel, so the certificate is still verified against it.
+    """
+    last: OSError | None = None
+    for _family, _type, _proto, _canon, sockaddr in infos:
+        ip = str(sockaddr[0]).split("%", 1)[0]
+        target = f"[{ip}]:{port}" if ":" in ip else f"{ip}:{port}"
+        sock = socket.create_connection(
+            (proxy.hostname or "", proxy.port or 80),
+            timeout=_CONNECT_TIMEOUT_S)
+        try:
+            lines = [f"CONNECT {target} HTTP/1.1", f"Host: {target}"]
+            if proxy.username is not None:
+                cred = (f"{urllib.parse.unquote(proxy.username)}:"
+                        f"{urllib.parse.unquote(proxy.password or '')}")
+                lines.append("Proxy-Authorization: Basic "
+                             + base64.b64encode(cred.encode()).decode())
+            sock.sendall(("\r\n".join(lines) + "\r\n\r\n").encode("latin-1"))
+            head = b""
+            while b"\r\n\r\n" not in head:
+                chunk = sock.recv(4096)
+                if not chunk or len(head) > _MAX_HEADER_BYTES:
+                    raise _UpstreamProxyError("no answer to CONNECT")
+                head += chunk
+            first = head.split(b"\r\n", 1)[0]
+            status = first.split()
+            if len(status) < 2 or status[1] != b"200":
+                raise _UpstreamProxyError(
+                    "CONNECT refused: " + first.decode("latin-1")[:80])
+            if head.split(b"\r\n\r\n", 1)[1]:
+                raise _UpstreamProxyError("unexpected data after CONNECT")
+            return sock
+        except OSError as exc:
+            last = exc
+            sock.close()
+    raise last or _UpstreamProxyError("could not connect")
 
 
 def _request_framing(headers: list[tuple[str, str]]) -> "int | str | None":
@@ -158,18 +233,28 @@ class _Handler(socketserver.StreamRequestHandler):
             return hmac.compare_digest(given, self.server.credentials)
         return False
 
-    def _connect_upstream(self, host: str, port: int) -> socket.socket | None:
+    def _connect_upstream(self, host: str, port: int,
+                          scheme: str = "https") -> socket.socket | None:
+        """Resolve and check the destination, then connect to the CHECKED
+        address: directly, or through the operator's own HTTP proxy (see
+        :func:`upstream_proxy_for`)."""
         if port not in ALLOWED_PORTS:
             logger.warning("server: download proxy refused port %d", port)
             self._reply(403, "port refused: only 80 and 443 are allowed")
             return None
         try:
-            return guarded_create_connection(
-                (host, port), _CONNECT_TIMEOUT_S, allow_private=False)
+            infos = resolve_checked(host.strip("[]"), port, allow_private=False)
+            via = upstream_proxy_for(scheme, host)
+            if via is None:
+                return connect_checked(infos, _CONNECT_TIMEOUT_S, host=host)
+            return _connect_through(via, infos, port)
         except BlockedAddressError:
             logger.warning("server: download proxy refused %s:%d "
                            "(not a public address)", host, port)
             self._reply(403, "address refused: not a public address")
+        except _UpstreamProxyError as exc:
+            logger.warning("server: upstream proxy: %s", exc)
+            self._reply(502, f"upstream proxy: {exc}")
         except (OSError, UnicodeError):
             self._reply(502, "could not connect")
         return None
@@ -195,7 +280,7 @@ class _Handler(socketserver.StreamRequestHandler):
             if hp is None:
                 self._reply(400, "bad request")
                 return
-            upstream = self._connect_upstream(*hp)
+            upstream = self._connect_upstream(*hp, scheme="https")
             if upstream is None:
                 return
             with upstream:
@@ -216,7 +301,7 @@ class _Handler(socketserver.StreamRequestHandler):
         if framing is None:
             self._reply(400, "conflicting or unsupported message framing")
             return
-        upstream = self._connect_upstream(*hp)
+        upstream = self._connect_upstream(*hp, scheme="http")
         if upstream is None:
             return
         with upstream:
