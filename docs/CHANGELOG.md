@@ -27,6 +27,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Script fonts placed one character off after an emoji with Tk 9**: the transcript viewer counted every
+  character outside the Basic Multilingual Plane as two Tk positions, which is only true for Tk 8.6. It now asks
+  Tk for its version, so lines with emoji keep the right font runs when the app runs on Python with Tk 9.
 - **Remote AI calls were refused by Groq (HTTP 403, error 1010)**: every request to an AI provider, including
   the cloud speech-to-text calls, now sends a `WhisperTranscriberSuite/<version>` User-Agent instead of
   urllib's default.
