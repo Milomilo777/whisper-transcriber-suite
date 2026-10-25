@@ -30,6 +30,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **The download proxy handles `Expect: 100-continue`**: it sends the interim `100 Continue` itself and does
   not forward the header, so a client that waits for it no longer stalls until the timeout. Other
   expectations get HTTP 417.
+- **Own NAT64 prefixes are decoded**: the new `server_nat64_prefixes` setting (empty by default) lists
+  translator prefixes of any RFC 6052 length; the IPv4 address inside gets the full address policy before an
+  allowlist is consulted. Shared (100.64/10) addresses inside other IPv6 addresses are refused too.
 - **Slow header senders are limited**, in the server and in the download proxy: the header has an absolute
   deadline, and connections without a complete header have a small budget (further ones are still served
   but get only 1 to 2 seconds), so drippers cannot lock out other clients. When every connection slot is

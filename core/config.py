@@ -432,6 +432,13 @@ DEFAULT_CONFIG = {
     #     link-local / cloud-metadata addresses stay refused even if listed.
     #     No UI: edit config.json (see docs/SERVER.md).
     "server_allowed_private_networks": [],
+    #   server_nat64_prefixes — IPv6 CIDR strings of NAT64/DNS64 translator
+    #     prefixes on this network (for example "2001:db8:64::/96"; lengths 32,
+    #     40, 48, 56, 64 or 96). The server decodes them (RFC 6052) and applies
+    #     its IPv4 address policy to the address inside. Empty (the default)
+    #     = only the well-known 64:ff9b::/96 is decoded. No UI: edit
+    #     config.json (see docs/SERVER.md).
+    "server_nat64_prefixes": [],
     # Window / privacy toggles set in the Advanced dialog's "App behaviour"
     # section and read at runtime. Defaulted here (tray OFF, stats ON) so
     # reads are always a plain bool and they get the same merge +

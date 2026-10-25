@@ -711,11 +711,15 @@ Behaviour to know:
   (NAT64, 6to4, Teredo) is judged by the IPv4 address inside it: the well-known
   NAT64 prefix `64:ff9b::/96`, 6to4 and Teredo are refused, and any other IPv6
   address whose last 32 bits look like a loopback or link-local (or, for link
-  jobs outside a listed network, private-network) IPv4 address is refused too,
-  also inside a network listed in `server_allowed_private_networks`. The well-known
-  prefixes are decoded exactly by their RFC 6052 layout; a translator with a
-  /32 to /64 prefix of its own cannot be recognised without knowing its prefix
-  (residual risk), which also refuses about
+  jobs outside a listed network, private-network or 100.64/10) IPv4 address is
+  refused too, also inside a network listed in `server_allowed_private_networks`.
+  The well-known prefixes are decoded exactly by their RFC 6052 layout, and so
+  is every prefix in `server_nat64_prefixes` (lengths 32, 40, 48, 56, 64 and 96;
+  the IPv4 address inside gets the full policy before any allowlist is
+  consulted). A listed IPv6 network whose length is one of those also has its
+  own layout tried for an embedded loopback or link-local address. A translator
+  prefix that is neither well-known nor configured cannot be recognised
+  (residual risk) and the last-32-bits rule refuses about
   1 in 100 ordinary public IPv6 hosts; an IPv6-only network that relies on
   DNS64 cannot use link jobs. If the proxy cannot start, the job fails
   instead of downloading without it. **Residual risk:** a link job cannot
@@ -835,6 +839,7 @@ server_token           ""       optional access password (cleartext; see below)
 server_https_enabled   false    serve over TLS (self-signed certificate)
 server_webhook_url     ""       completion webhook target (empty = off)
 server_allowed_private_networks  []  local networks link jobs may use (CIDRs)
+server_nat64_prefixes  []  NAT64/DNS64 translator prefixes of this network (IPv6 CIDRs)
 ```
 
 `server_allowed_private_networks` is a list of CIDR strings, for example
@@ -845,6 +850,14 @@ link-local (cloud metadata) addresses stay refused even if listed, and so do
 IPv6 addresses that carry such an IPv4 address. A change is picked up within a
 few seconds. The completion webhook is not affected (a receiver on the local
 network is always allowed there).
+
+`server_nat64_prefixes` is a list of IPv6 CIDR strings, for example
+`["2001:db8:64::/96"]`, edited in `config.json` only. Add the prefix of your
+own NAT64/DNS64 translator (lengths 32, 40, 48, 56, 64 or 96, RFC 6052) so the
+server can see the IPv4 address inside and refuse loopback, link-local,
+private-network and similar targets behind it. Entries of any other kind are
+ignored with a warning. The default is empty; only `64:ff9b::/96` is then
+decoded. A change is picked up within a few seconds.
 
 `server_token` is stored in cleartext, the same as cookies / API keys:
 `config.json` is per-user under `%LOCALAPPDATA%\WhisperTranscriberSuite` and is not
