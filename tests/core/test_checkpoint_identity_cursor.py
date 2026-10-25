@@ -165,3 +165,65 @@ def test_quarantine_never_overwrites_an_earlier_one(transcriber, audio):
         _write(transcriber, task, audio)
         assert cp.quarantine_checkpoint(str(audio)) is not None
     assert len(_quarantined(audio)) == 2
+
+
+# --- finding 2: malformed cursor --------------------------------------------
+
+
+@pytest.mark.parametrize("bad", ["abc", [1], {"x": 1}, float("nan"), -5.0, True])
+def test_malformed_cursor_is_recovered_from_segments(
+        transcriber, audio, monkeypatch, bad):
+    from core.task import TranscriptionTask
+
+    task = TranscriptionTask(str(audio))
+    _write(transcriber, task, audio)
+    path = cp.checkpoint_path(str(audio))
+    data = json.loads(path.read_text(encoding="utf-8"))
+    data["last_end_time"] = bad
+    path.write_text(json.dumps(data), encoding="utf-8")
+
+    seen: dict[str, float] = {}
+
+    def _slice(src, start, out_dir):
+        seen["start"] = start
+        raise RuntimeError("fresh run would fail here")
+
+    monkeypatch.setattr(transcriber, "_slice_audio_from", _slice)
+    assert transcriber.resume_transcription(task) is False
+
+    assert seen["start"] == 80.0  # recovered from the latest segment end
+    kept = json.loads(path.read_text(encoding="utf-8"))
+    assert [s["text"] for s in kept["segments"]] == ["a", "b"]  # nothing deleted
+
+
+def test_unrecoverable_cursor_quarantines_instead_of_deleting(
+        transcriber, audio, monkeypatch):
+    from core.task import TranscriptionTask
+
+    task = TranscriptionTask(str(audio))
+    _write(transcriber, task, audio, segments=[{"start": 0.0, "text": "no end"}])
+    path = cp.checkpoint_path(str(audio))
+    data = json.loads(path.read_text(encoding="utf-8"))
+    data["last_end_time"] = "abc"
+    path.write_text(json.dumps(data), encoding="utf-8")
+
+    monkeypatch.setattr(
+        transcriber, "_slice_audio_from",
+        lambda *a, **kw: pytest.fail("no cursor, nothing to slice"),
+    )
+    assert transcriber.resume_transcription(task) is False
+
+    assert not path.exists()
+    kept = _quarantined(audio)
+    assert len(kept) == 1
+    assert json.loads(kept[0].read_text(encoding="utf-8"))["segments"][0]["text"] == "no end"
+
+
+def test_recover_cursor_rules(transcriber):
+    f = transcriber._recover_resume_cursor
+    assert f({"last_end_time": 12.5, "segments": []}) == 12.5
+    assert f({"segments": []}) == 0.0
+    assert f({"last_end_time": "x", "segments": []}) is None
+    assert f({"last_end_time": "x", "segments": [{"end": 3}, {"end": 9.5}]}) == 9.5
+    assert f({"last_end_time": "x", "segments": [{"end": 3}, {"end": "?"}]}) is None
+    assert f({"last_end_time": "x", "segments": ["junk"]}) is None

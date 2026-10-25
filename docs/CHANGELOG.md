@@ -89,6 +89,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **A malformed resume cursor no longer deletes saved transcript text**: when a checkpoint's end-time field
+  is not a usable number, the cursor is recovered from the latest saved segment end and the resume
+  continues. If no cursor can be recovered, the checkpoint is moved aside (kept) and a fresh run starts.
 - **A resume never continues onto different media**: a failed read of the source's size and date no longer
   blanks them in the saved checkpoint; the values noted at the start of the run (or stored by the
   previous write) are kept. A checkpoint whose media cannot be verified is moved aside, not resumed and

@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import copy
 import gc
+import math
 import logging
 import os
 import subprocess
@@ -3262,6 +3263,53 @@ def _write_resumed_outputs(
         progress_cb(100)
 
 
+def _cursor_or_none(v: Any) -> float | None:
+    """``v`` as a float, or None when it is not a number."""
+    if v is None or v == "":
+        return 0.0
+    if isinstance(v, bool):
+        return None
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return None
+
+
+def _recover_resume_cursor(data: dict[str, Any]) -> float | None:
+    """Cursor (seconds) to resume from, or None when none can be trusted.
+
+    Uses the checkpoint's ``last_end_time`` when it is a finite number
+    >= 0. A malformed one is recovered from the saved segments: the latest
+    end time among them is where the captured text stops. None means there
+    is no usable cursor and the caller must quarantine the checkpoint.
+    """
+    def _num(v: Any) -> float | None:
+        if isinstance(v, bool):
+            return None
+        try:
+            f = float(v)
+        except (TypeError, ValueError):
+            return None
+        return f if math.isfinite(f) and f >= 0.0 else None
+
+    raw = data.get("last_end_time")
+    if raw is None or raw == "":
+        return 0.0
+    cursor = _num(raw)
+    if cursor is not None:
+        return cursor
+    segs = data.get("segments")
+    if not isinstance(segs, list) or not segs:
+        return None
+    ends = []
+    for seg in segs:
+        end = _num(seg.get("end")) if isinstance(seg, dict) else None
+        if end is None:
+            return None
+        ends.append(end)
+    return max(ends)
+
+
 def resume_transcription(
     task: TranscriptionTask,
     progress_cb: Callable[[int], None] | None = None,
@@ -3403,16 +3451,23 @@ def resume_transcription(
             _write_resumed_outputs(task, done_segments, done_language, speaker_count, log_cb, progress_cb)
             return True
 
-        try:
-            last_end_time = float(data.get("last_end_time") or 0.0)
-        except (TypeError, ValueError):
+        recovered = _recover_resume_cursor(data)
+        if recovered is None:
+            kept = _checkpoint.quarantine_checkpoint(task.file_path)
             log(
-                "Resume: checkpoint last_end_time is not a number; "
-                "deleting partial and re-running from scratch.",
+                "Resume: checkpoint last_end_time is malformed and cannot be "
+                "recovered from the saved segments; the checkpoint is kept "
+                f"aside ({kept}) and a fresh run starts.",
                 log_cb,
             )
-            _checkpoint.delete_checkpoint(task.file_path)
             return False
+        if recovered != _cursor_or_none(data.get("last_end_time")):
+            log(
+                "Resume: checkpoint last_end_time is malformed; using the "
+                f"latest saved segment end ({recovered:.2f}s) instead.",
+                log_cb,
+            )
+        last_end_time = recovered
         prior_segments = list(data.get("segments") or [])
         # A mixed-language run continues as one, also when the task was rebuilt
         # from history after a crash (the history row has no field for it).
