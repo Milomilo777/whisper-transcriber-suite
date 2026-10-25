@@ -1796,6 +1796,10 @@ class App(tk.Tk):
         h.add_separator()
         h.add_command(label=folder_label(_("Open log folder"), _("Open Log Folder in Finder")),
                       command=self.open_log_folder)
+        # For AI assistants: the `claude mcp add` command for this app's MCP
+        # endpoint, with the live port filled in (the password stays a
+        # placeholder — the clipboard never carries the real one).
+        h.add_command(label=_("Copy MCP setup"), command=self.copy_mcp_setup)
         h.add_separator()
         # Manual update check — always runs (ignores the once-per-day
         # throttle the quiet launch check obeys) and DOES report the
@@ -6206,6 +6210,34 @@ class App(tk.Tk):
         self.clipboard_clear()
         self.clipboard_append(link)
         self.log(_("Phone link copied."))
+
+    def copy_mcp_setup(self) -> None:
+        """Copy the ``claude mcp add`` command for this app's MCP endpoint.
+
+        The port is the one the server is bound to while it runs (a free
+        port the app picked because the chosen one was busy), else the port
+        chosen on the Web / LAN tab. The password stays a placeholder: the
+        clipboard must never carry the real access password.
+        """
+        # __dict__, not getattr: on a widget-less App (tests) Tk.__getattr__ recurses
+        handle = self.__dict__.get("_server_handle")
+        if handle is not None and handle.is_running():
+            port = int(handle.port or 0)
+            scheme = "https" if handle.https else "http"
+        else:
+            try:
+                port = int(self.server_port_var.get())
+            except (tk.TclError, ValueError):
+                port = int(self.app_config.get("server_port", 8765))
+            scheme = "https" if bool(self.server_https_enabled_var.get()) else "http"
+        port = port if 1 <= port <= 65535 else 8765
+        command = (
+            f"claude mcp add --transport http whisper "
+            f"{scheme}://127.0.0.1:{port}/mcp "
+            '--header "Authorization: Bearer <access password>"')
+        self.clipboard_clear()
+        self.clipboard_append(command)
+        self.log(_("MCP setup command copied."))
 
     def open_server_in_browser(self) -> None:
         """Open the loopback URL in the default browser."""

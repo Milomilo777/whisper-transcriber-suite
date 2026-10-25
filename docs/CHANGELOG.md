@@ -8,6 +8,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 - **One-click Groq preset for the AI provider**: "Use Groq" in Advanced > AI fills the Base URL and the model
   `llama-3.3-70b-versatile`. Groq has a free key at console.groq.com, and the model stays editable.
+- **Help > Copy MCP setup**: copies the `claude mcp add` command that registers this app's MCP endpoint
+  with Claude Code, with the server's live port filled in and the password left as a `<access password>`
+  placeholder. docs/SERVER.md gained a "Use it from Claude Code" section with the same command and the
+  caveats (the server must be on; the MCP tools take http(s) links only; Claude Desktop cannot reach a
+  local server directly).
 
 ### Changed
 
