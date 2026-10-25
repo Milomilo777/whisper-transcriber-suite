@@ -664,7 +664,9 @@ Behaviour to know:
   without a complete header get that long, and further ones get 1 second, so
   slow drippers cannot keep yt-dlp out.
   **Behind a company proxy:** when `HTTPS_PROXY` / `HTTP_PROXY` (or
-  `ALL_PROXY`) is set in the environment of the app, `NO_PROXY` is honoured,
+  `ALL_PROXY`) is set in the environment of the app, `NO_PROXY` is honoured
+  (entries with or without a port, such as `site.example:443`; it only picks
+  direct or proxy, the address checks still run),
   and the guard proxy first resolves and checks the destination itself, then
   asks your proxy to `CONNECT` to the checked numeric address (never the
   name; the program still talks TLS to the real host name through the tunnel,

@@ -215,3 +215,28 @@ def test_an_upstream_that_refuses_connect_gives_502(
         assert _status(head) == 502
     finally:
         stub.close()
+
+
+def test_no_proxy_entries_with_a_port_are_honoured(monkeypatch):
+    monkeypatch.setenv("HTTPS_PROXY", "http://corp.example:3128")
+    monkeypatch.setenv("NO_PROXY", "site.example:443,other.example")
+    # host:port entry: bypassed on that port only
+    assert dlproxy.upstream_proxy_for("https", "site.example", 443) is None
+    assert dlproxy.upstream_proxy_for("https", "site.example", 80) is not None
+    assert dlproxy.upstream_proxy_for("https", "www.site.example", 443) is None
+    # plain host entry: bypassed on every port
+    assert dlproxy.upstream_proxy_for("https", "other.example", 443) is None
+    assert dlproxy.upstream_proxy_for("http", "other.example", 80) is None
+    # a different host still goes through the proxy
+    assert dlproxy.upstream_proxy_for("https", "third.example", 443) is not None
+
+
+def test_a_bypassed_destination_is_still_checked(proxy, monkeypatch):
+    """NO_PROXY only chooses direct vs proxy; the address checks still run."""
+    for name in ("HTTP_PROXY", "http_proxy", "ALL_PROXY", "all_proxy"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("HTTPS_PROXY", "http://127.0.0.1:9")
+    monkeypatch.setenv("NO_PROXY", "rebind.example:443")
+    _resolving(monkeypatch, {"rebind.example": ["127.0.0.1"]})
+    head, _ = _tunnel(proxy, "rebind.example:443", b"x")
+    assert _status(head) == 403

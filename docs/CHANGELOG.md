@@ -8,7 +8,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 - **Server link jobs download through a guarded local proxy**: every request yt-dlp makes (and every
   redirect) is resolved and checked by the app at connect time on ports 80 and 443; loopback, link-local,
-  metadata and private-network addresses (and IPv6 addresses that embed them) are refused, so DNS
+  metadata and private-network addresses (and IPv6 addresses that embed them, decoded by their RFC 6052 layout) are refused, so DNS
   rebinding and redirects to internal hosts fail. The proxy password stays out of the command line and
   error texts. Behind a company `HTTP(S)_PROXY` the guard checks the destination, then asks that proxy to
   connect to the checked address. Local networks can be allowed in `server_allowed_private_networks`.
@@ -20,10 +20,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   allowed.
 - **The server slows down wrong access passwords**: after 5 wrong passwords from one host, that host gets
   HTTP 429 with a growing `Retry-After` (15 seconds, doubling, at most 15 minutes). The check and the count
-  are one atomic step, one host never locks out another, and an IPv6 /64 has a higher budget of its own.
-  The lockout always ends by itself.
-- **Slow header senders are limited**: connections that have not finished their request header count as
-  pending (at most 4 per client address and three quarters of the slots in all).
+  are one atomic step and one host never locks out another. Each IPv6 /64 shares a budget of 50 comparisons
+  per 10 minutes (hosts that logged in recently are exempt), so rotating addresses gains nothing. The
+  lockout always ends by itself.
+- **Slow header senders are limited**, in the server and in the download proxy: the header has an absolute
+  deadline, and connections without a complete header have a small budget (further ones are still served
+  but get only 1 to 2 seconds), so drippers cannot lock out other clients.
 
 ### Added
 

@@ -94,11 +94,13 @@ class _UpstreamProxyError(OSError):
     """The operator's own proxy refused or could not be used."""
 
 
-def upstream_proxy_for(scheme: str, host: str) -> "urllib.parse.SplitResult | None":
+def upstream_proxy_for(scheme: str, host: str, port: int | None = None
+                       ) -> "urllib.parse.SplitResult | None":
     """The operator's HTTP proxy for a destination, from the environment.
 
     Reads ``HTTPS_PROXY`` / ``HTTP_PROXY`` / ``ALL_PROXY`` (not the Windows
-    registry) and honours ``NO_PROXY``. None means connect directly. Only
+    registry) and honours ``NO_PROXY`` entries with or without a port
+    (``site.example`` and ``site.example:443``). None means connect directly. Only
     plain ``http://`` proxies are supported; anything else raises
     :class:`_UpstreamProxyError` rather than silently going direct.
     """
@@ -106,8 +108,13 @@ def upstream_proxy_for(scheme: str, host: str) -> "urllib.parse.SplitResult | No
     url = proxies.get(scheme) or proxies.get("all")
     if not url:
         return None
+    bare = host.strip("[]")
+    shown = f"[{bare}]" if ":" in bare else bare
+    # proxy_bypass_environment matches an entry against the bare host and,
+    # when the entry has a port, against "host:port".
+    target = f"{shown}:{port}" if port is not None else shown
     if urllib.request.proxy_bypass_environment(  # pyright: ignore[reportAttributeAccessIssue]
-            host, proxies):
+            target, proxies):
         return None
     split = urllib.parse.urlsplit(url if "://" in url else "http://" + url)
     if split.scheme != "http" or not split.hostname:
@@ -286,7 +293,7 @@ class _Handler(socketserver.StreamRequestHandler):
             return None
         try:
             infos = resolve_checked(host.strip("[]"), port, allow_private=False)
-            via = upstream_proxy_for(scheme, host)
+            via = upstream_proxy_for(scheme, host, port)
             if via is None:
                 return connect_checked(infos, _CONNECT_TIMEOUT_S, host=host)
             return _connect_through(via, infos, port)
