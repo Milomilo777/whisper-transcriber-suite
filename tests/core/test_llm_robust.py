@@ -475,3 +475,43 @@ def test_a_batch_waits_out_one_retry_after_then_stops(monkeypatch):
     runner = _runner()
     llm.translate_segments(runner, [{"text": "a"}])
     assert runner._batch_waits is None                  # a later single click may wait again
+
+
+def test_503_retry_after_shares_the_180s_budget_of_one_call(monkeypatch):
+    sleeps = []
+    monkeypatch.setattr(llm.time, "sleep", sleeps.append)
+    calls = _script(monkeypatch, [lambda r: _http_error(r, 503, retry_after=120)])
+    with pytest.raises(llm.RemoteLLMError, match="503") as info:
+        _runner()._chat([{"role": "user", "content": "hi"}])
+    assert not isinstance(info.value, llm.RemoteLLMRateLimitError)   # only a 429 is a rate-limit error
+    assert sleeps == [120.0] and len(calls) == 2 and sum(sleeps) <= llm._MAX_TOTAL_WAIT_S
+
+
+def test_mixed_429_and_503_waits_never_pass_the_total(monkeypatch):
+    sleeps = []
+    monkeypatch.setattr(llm.time, "sleep", sleeps.append)
+    _script(monkeypatch, [lambda r: _http_error(r, 503, retry_after=100),
+                          lambda r: _http_error(r, 429, retry_after=100), _Resp()])
+    with pytest.raises(llm.RemoteLLMRateLimitError):
+        _runner()._chat([{"role": "user", "content": "hi"}])
+    assert sleeps == [100.0] and sum(sleeps) <= llm._MAX_TOTAL_WAIT_S
+
+
+def test_503_waits_within_the_budget_still_succeed(monkeypatch):
+    sleeps = []
+    monkeypatch.setattr(llm.time, "sleep", sleeps.append)
+    _script(monkeypatch, [lambda r: _http_error(r, 503, retry_after=90),
+                          lambda r: _http_error(r, 503, retry_after=60), _Resp()])
+    assert _runner()._chat([{"role": "user", "content": "hi"}]) == "ok"
+    assert sleeps == [90.0, 60.0]
+
+
+def test_a_batch_waits_out_one_503_retry_after_in_total(monkeypatch):
+    sleeps = []
+    monkeypatch.setattr(llm.time, "sleep", sleeps.append)
+    _script(monkeypatch, [lambda r: _http_error(r, 503, retry_after=5), _Resp(),
+                          lambda r: _http_error(r, 503, retry_after=5), _Resp()])
+    failed: list[int] = []
+    out = llm.translate_segments(_runner(), [{"text": t} for t in "ab"], failed=failed)
+    assert sleeps == [5.0]                      # the second item does not wait again
+    assert out[0] == "ok" and out[1] == "" and failed == [1]
