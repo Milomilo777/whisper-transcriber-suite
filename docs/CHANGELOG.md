@@ -14,7 +14,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   connect to the checked address. Local networks can be allowed in `server_allowed_private_networks`.
 - **Server link jobs no longer use the generic extractor**: the server runs yt-dlp with
   `--use-extractors default,-generic`. A plain media link is refused with a clear message (upload the file
-  instead). The desktop Download tab is unchanged.
+  instead). The desktop Download tab is unchanged. Exception: a direct link to a host inside
+  `server_allowed_private_networks` (for example a NAS) is fetched by the app's own downloader, with the
+  connect-time address check on every redirect hop.
 - **The completion webhook checks the address at connect time**: the host name is resolved once, only the
   checked addresses are connected to, and proxies from the environment are not used. LAN receivers stay
   allowed.

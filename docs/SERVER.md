@@ -673,7 +673,17 @@ Behaviour to know:
   (`--use-extractors default,-generic`), so a plain media link
   (`https://host/file.mp3`) or an unknown web page is refused with "this link
   is not from a site the server can download from"; upload the file instead.
-  The desktop Download tab is not affected.
+  The desktop Download tab is not affected. **Exception:** a plain `http(s)`
+  link whose host (every address it resolves to) lies inside a network listed
+  in `server_allowed_private_networks`, for example a file on a NAS, is
+  fetched by the app's own downloader instead of yt-dlp. It follows at most 5
+  redirects, only to `http(s)`, and every connection (each redirect included)
+  gets the same connect-time address check, so loopback, link-local and
+  metadata addresses are refused even there. The job's size cap, time limit and
+  Cancel apply, and no proxy from the environment is used. A server with a
+  self-signed certificate fails the certificate check; use plain `http` on the
+  trusted network or upload the file. Links to unlisted hosts are refused as
+  above.
   **Every request yt-dlp makes for a server job goes through a small proxy
   inside the app** (listening on 127.0.0.1 only, with a random per-run
   password that reaches yt-dlp through its environment, never its command
@@ -724,7 +734,8 @@ Behaviour to know:
   DNS64 cannot use link jobs. If the proxy cannot start, the job fails
   instead of downloading without it. **Residual risk:** a link job cannot
   fetch from a server on your own network unless you list that network in
-  `server_allowed_private_networks` (or use an upload); what a public site
+  `server_allowed_private_networks` (plain media links there are then fetched
+  directly, as described above) or use an upload; what a public site
   itself returns is trusted as content (the downloaded file is only transcribed,
   never run); the guard covers yt-dlp's connections, not other programs.
 - **Bounded queue.** Total and queued job counts are capped; once full the
