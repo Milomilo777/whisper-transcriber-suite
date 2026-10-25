@@ -267,7 +267,7 @@ def public_model_name(value: object) -> str:
     if match:
         prefix, text = match.group(1), match.group(2).strip()
         if not text:
-            return prefix
+            return prefix if prefix in _ENGINE_IDS else LOCAL_MODEL_LABEL
         prefix += ":"
     known_models, engines = _known_public_models()
     if prefix and prefix[:-1] not in engines:

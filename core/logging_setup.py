@@ -167,12 +167,18 @@ def _prune_worker_logs(log_dir: Path) -> None:
     except OSError:
         return
     cutoff = time.time() - WORKER_LOG_MAX_AGE_DAYS * 24 * 60 * 60
-    own = re.compile(rf"(?:voiceclone-)?worker-{os.getpid()}\.log(?:\.\d+)?")
+    from core.process_exit import pid_alive
+
+    named = re.compile(r"(?:voiceclone-)?worker-(\d+)\.log(?:\.\d+)?")
+    own_pid = os.getpid()
     total = sum(found[p][1] for p in candidates[:WORKER_LOG_KEEP])
     for index, path in enumerate(candidates[WORKER_LOG_KEEP:], start=WORKER_LOG_KEEP):
         mtime, size = found[path]
         total += size
-        if own.fullmatch(path.name):
+        m = named.fullmatch(path.name)
+        # A live worker's log (ours included) is never removed: POSIX lets
+        # an open file be unlinked, and the worker would log into the void.
+        if m and (int(m.group(1)) == own_pid or pid_alive(int(m.group(1)))):
             continue
         too_many = index >= WORKER_LOG_MAX_FILES or total > WORKER_LOG_MAX_BYTES
         try:
