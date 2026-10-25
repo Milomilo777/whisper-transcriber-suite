@@ -677,7 +677,11 @@ Behaviour to know:
   (NAT64, 6to4, Teredo) is judged by the IPv4 address inside it: the well-known
   NAT64 prefix `64:ff9b::/96`, 6to4 and Teredo are refused, and any other IPv6
   address whose last 32 bits look like a loopback or link-local (or, for link
-  jobs, private-network) IPv4 address is refused too, which also refuses about
+  jobs outside a listed network, private-network) IPv4 address is refused too,
+  also inside a network listed in `server_allowed_private_networks`. The well-known
+  prefixes are decoded exactly by their RFC 6052 layout; a translator with a
+  /32 to /64 prefix of its own cannot be recognised without knowing its prefix
+  (residual risk), which also refuses about
   1 in 100 ordinary public IPv6 hosts; an IPv6-only network that relies on
   DNS64 cannot use link jobs. If the proxy cannot start, the job fails
   instead of downloading without it. **Residual risk:** a link job cannot

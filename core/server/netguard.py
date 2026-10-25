@@ -100,13 +100,19 @@ def address_blocked(ip: "ipaddress.IPv4Address | ipaddress.IPv6Address",
     if (ip.is_loopback or ip.is_link_local or ip.is_unspecified
             or ip.is_multicast or ip.is_reserved):
         return True
-    if not allow_private and not ip.is_global:
+    nets = ()
+    if not allow_private:
         nets = (configured_private_networks() if allowed_networks is None
                 else allowed_networks)
-        return not any(ip.version == net.version and ip in net
-                       for net in nets)
-    if isinstance(ip, ipaddress.IPv6Address):
-        return _ipv6_embeds_blocked_ipv4(ip, allow_private)
+    allowlisted = any(ip.version == net.version and ip in net for net in nets)
+    # Embedded IPv4 forms are judged BEFORE the allowlist is looked at: a
+    # listed network must not let a translation address through that reaches
+    # loopback or the metadata address.
+    if isinstance(ip, ipaddress.IPv6Address) and _ipv6_embeds_blocked_ipv4(
+            ip, allow_private, allowlisted):
+        return True
+    if not allow_private and not ip.is_global:
+        return not allowlisted
     return False
 
 
@@ -115,8 +121,31 @@ _NAT64_LOCAL_USE = ipaddress.ip_network("64:ff9b:1::/48")
 _TEREDO = ipaddress.ip_network("2001::/32")
 
 
+def rfc6052_embedded(ip: ipaddress.IPv6Address,
+                     prefix_len: int) -> ipaddress.IPv4Address:
+    """The IPv4 address an RFC 6052 translator embeds in ``ip``.
+
+    ``prefix_len`` is the translator prefix length: 32, 40, 48, 56, 64 or 96.
+    Bits 64-71 (the "u" octet) are skipped, so for 40 to 64 the IPv4 address is
+    split around them.
+    """
+    b = ip.packed
+    layouts = {
+        32: b[4:8],
+        40: b[5:8] + b[9:10],
+        48: b[6:8] + b[9:11],
+        56: b[7:8] + b[9:12],
+        64: b[9:13],
+        96: b[12:16],
+    }
+    if prefix_len not in layouts:
+        raise ValueError(f"not an RFC 6052 prefix length: {prefix_len}")
+    return ipaddress.IPv4Address(layouts[prefix_len])
+
+
 def _ipv6_embeds_blocked_ipv4(ip: ipaddress.IPv6Address,
-                              allow_private: bool) -> bool:
+                              allow_private: bool,
+                              allowlisted: bool = False) -> bool:
     """True when an IPv6 address carries a blocked IPv4 address inside it.
 
     NAT64 gateways (and 6to4) turn an IPv6 destination into an IPv4 one, so
@@ -124,21 +153,26 @@ def _ipv6_embeds_blocked_ipv4(ip: ipaddress.IPv6Address,
     address itself looks like an ordinary global one. The rule is deliberately
     conservative:
 
-    * 64:ff9b::/96 (well-known NAT64) and 6to4 (2002::/16): the embedded IPv4
-      address gets the full check.
-    * 64:ff9b:1::/48 (local-use NAT64, where the IPv4 sits in a split field)
-      and Teredo (2001::/32): refused outright.
-    * Any other address: the LAST 32 bits are read as IPv4 (an operator's own
-      NAT64 prefix is a /96 anywhere) and refused when they are a loopback,
-      link-local (metadata) or, with ``allow_private`` False, a private-range
-      address. The price: a public IPv6 host whose last 32 bits happen to look
-      like such an address (about 1 in 100) is refused too.
+    * The well-known prefixes are decoded exactly (RFC 6052 layouts):
+      64:ff9b::/96 and the local-use 64:ff9b:1::/48; the embedded IPv4 address
+      gets the full check. 6to4 (2002::/16) is decoded the same way.
+    * Teredo (2001::/32) is refused outright.
+    * Any other address: a translator prefix of an operator's own can have any
+      value and length, so only the LAST 32 bits are read as IPv4 (the common
+      /96 case) and refused when they are a loopback, link-local (metadata)
+      or, with ``allow_private`` False and the address not in a listed
+      network, a private-range address. The price: a public IPv6 host whose
+      last 32 bits happen to look like such an address (about 1 in 100) is
+      refused too. **Residual:** a translator with a /32 to /64 prefix of its
+      own cannot be recognised without knowing the prefix; configure none, or
+      list nothing that routes through it.
     """
-    if ip in _NAT64_LOCAL_USE or ip in _TEREDO:
+    if ip in _TEREDO:
         return True
-    if ip in _NAT64_WELL_KNOWN:
-        return address_blocked(ipaddress.IPv4Address(int(ip) & 0xFFFFFFFF),
-                               allow_private=allow_private)
+    for net, length in ((_NAT64_WELL_KNOWN, 96), (_NAT64_LOCAL_USE, 48)):
+        if ip in net:
+            return address_blocked(rfc6052_embedded(ip, length),
+                                   allow_private=allow_private)
     sixtofour = ip.sixtofour
     if sixtofour is not None and address_blocked(
             sixtofour, allow_private=allow_private):
@@ -146,7 +180,9 @@ def _ipv6_embeds_blocked_ipv4(ip: ipaddress.IPv6Address,
     low = ipaddress.IPv4Address(int(ip) & 0xFFFFFFFF)
     if low.is_loopback or low.is_link_local:
         return True
-    return not allow_private and low.is_private and not low.is_unspecified         and int(low) >> 24 != 0
+    if allow_private or allowlisted:
+        return False
+    return low.is_private and not low.is_unspecified and int(low) >> 24 != 0
 
 
 def resolve_checked(host: str, port: int, *, allow_private: bool = True
