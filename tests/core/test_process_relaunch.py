@@ -5,6 +5,7 @@ import os
 import subprocess
 import sys
 import threading
+import time
 from pathlib import Path
 from typing import Any
 
@@ -58,7 +59,9 @@ def test_end_process_starts_the_command_after_the_flush_and_before_the_exit(monk
     process_exit.end_process(0)
     assert order == ["flush", "spawn", "exit0"]
     cmd, kw = started[0]
-    assert cmd == [sys.executable, os.path.abspath(__file__)]
+    # The replacement is told which process to wait for, so it cannot be rejected by a lock the
+    # old process still holds (it starts before the hard exit).
+    assert cmd == [sys.executable, os.path.abspath(__file__), "--wait-for-pid", str(os.getpid())]
     assert kw["stdin"] is subprocess.DEVNULL and kw["close_fds"] is True
 
 
@@ -87,3 +90,82 @@ def test_a_failed_start_still_ends_the_process(monkeypatch: pytest.MonkeyPatch) 
     process_exit.end_process(3)
     assert codes == [3]
     assert threading.current_thread() is threading.main_thread()
+
+
+# --- the replacement waits for the old process ------------------------------------------------
+
+def _clock() -> Any:
+    now = [0.0]
+
+    def tick() -> float:
+        return now[0]
+
+    def sleep(seconds: float) -> None:
+        now[0] += seconds
+
+    return tick, sleep
+
+
+def test_the_replacement_waits_while_the_old_process_lives_and_goes_on_after() -> None:
+    tick, sleep = _clock()
+    lives = iter([True, True, True, False])
+    seen: list[int] = []
+
+    def alive(pid: int) -> bool:
+        seen.append(pid)
+        return next(lives)
+
+    argv = ["gui.py", "--wait-for-pid", "4242", "movie one.mp4"]
+    out = process_exit.consume_wait_for_pid(argv, alive=alive, sleep=sleep, clock=tick)
+    assert out == ["gui.py", "movie one.mp4"]  # the option is gone; other arguments keep their form
+    assert seen == [4242] * 4 and 0.25 < tick() < 0.5  # it polled until the process ended
+
+
+def test_the_wait_is_bounded() -> None:
+    tick, sleep = _clock()
+    out = process_exit.consume_wait_for_pid(["gui.py", "--wait-for-pid", "7"], alive=lambda _p: True,
+                                            sleep=sleep, clock=tick, timeout=2.0)
+    assert out == ["gui.py"] and 2.0 <= tick() < 2.5
+
+
+def test_no_option_means_no_wait_and_a_bad_pid_is_dropped() -> None:
+    def never(_pid: int) -> bool:
+        raise AssertionError("must not look at any process")
+
+    argv = ["gui.py", "x.mp4"]
+    assert process_exit.consume_wait_for_pid(argv, alive=never) is argv
+    assert process_exit.consume_wait_for_pid(["gui.py", "--wait-for-pid", "abc"], alive=never) == ["gui.py", "abc"]
+    assert process_exit.consume_wait_for_pid(["gui.py", "--wait-for-pid"], alive=never) == ["gui.py"]
+
+
+def test_no_restart_loop_the_consumed_argv_never_carries_the_option() -> None:
+    out = process_exit.consume_wait_for_pid(["gui.py", "--wait-for-pid", "1"], alive=lambda _p: False)
+    assert process_exit.WAIT_FOR_PID_ARG not in out
+    process_exit.request_relaunch([sys.executable, "gui.py"])
+    assert process_exit._relaunch == [[sys.executable, "gui.py"]]  # the stored command stays clean
+
+
+def test_a_real_process_is_waited_for() -> None:
+    child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(1.5)"])
+    try:
+        assert process_exit.pid_alive(child.pid) is True
+        start = time.monotonic()
+        process_exit.consume_wait_for_pid(["g", "--wait-for-pid", str(child.pid)], timeout=15)
+        assert time.monotonic() - start > 0.5
+        assert process_exit.pid_alive(child.pid) is False
+    finally:
+        child.wait(timeout=20)
+    assert process_exit.pid_alive(child.pid) is False
+    assert process_exit.pid_alive(0) is False
+
+
+def test_gui_waits_before_the_tls_setup_the_mutex_or_any_config_use() -> None:
+    import inspect
+
+    import gui
+
+    src = inspect.getsource(gui.main)
+    wait_at = src.index("consume_wait_for_pid")
+    for later in ("tls_trust.configure()", "_hold_app_mutex", "_activate_safe_mode", "load_config"):
+        if later in src:
+            assert wait_at < src.index(later), later

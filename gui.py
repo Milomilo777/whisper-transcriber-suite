@@ -509,6 +509,11 @@ def main() -> int:
     import multiprocessing
     multiprocessing.freeze_support()
 
+    # A restart starts this process with "--wait-for-pid <old pid>": wait for the old process to
+    # end before anything takes a lock, reads the config or writes to it.
+    from core import process_exit
+    sys.argv = process_exit.consume_wait_for_pid(sys.argv)
+
     # Before any HTTPS request and before the workers start (they inherit
     # it): the frozen macOS build would otherwise look for the build
     # machine's CA file and every urllib request would fail verification.
