@@ -56,15 +56,14 @@ def test_one_address_cannot_hold_more_than_its_pending_budget(tmp_path):
             s.sendall(b"GET /api/he")  # never finishes its request line
             held.append(s)
         assert _wait_until(lambda: srv.server.pending_connections() == 3)
-        extra = socket.create_connection(("127.0.0.1", srv.port), timeout=3)
-        assert _read_status(extra).startswith(b"HTTP/1.1 503")
-        extra.close()
-        assert srv.server.pending_connections() == 3
-        # Closing one dripper frees budget: a normal request works again.
-        held.pop().close()
-        assert _wait_until(lambda: srv.server.pending_connections() == 2)
+        # A fourth connection from the address REPLACES its oldest stalled one
+        # (the address never holds more than its budget, and a prompt client
+        # of the same address is still served).
         status, _ = _request(srv, "GET", "/api/health")
         assert status == 200
+        assert srv.server.pending_connections() <= 3
+        assert _wait_until(lambda: sum(
+            1 for s in held if _closed_by_server(s, 0.2)) == 1)
     finally:
         for s in held:
             s.close()
@@ -174,6 +173,81 @@ def test_connections_that_sent_their_header_are_never_evicted(tmp_path):
         assert _read_status(extra).startswith(b"HTTP/1.1 503")
         extra.close()
         assert srv.server.active_connections() == 3
+    finally:
+        for s in held:
+            s.close()
+        srv.close()
+
+
+def _track_live_handlers(monkeypatch, cls, delay=0.4):
+    """Count LIVING handler threads: from the start of a handler to the end of
+    its slot release, which is slowed down so a late exit is visible."""
+    import threading
+    lock = threading.Lock()
+    live = {"now": 0, "peak": 0}
+    orig_thread = cls.process_request_thread
+    orig_release = cls._release_slot
+
+    def thread(self, request, client_address):
+        with lock:
+            live["now"] += 1
+            live["peak"] = max(live["peak"], live["now"])
+        try:
+            orig_thread(self, request, client_address)
+        finally:
+            with lock:
+                live["now"] -= 1
+
+    def release(self, *a):
+        time.sleep(delay)
+        return orig_release(self, *a)
+
+    monkeypatch.setattr(cls, "process_request_thread", thread)
+    monkeypatch.setattr(cls, "_release_slot", release)
+    return live
+
+
+def test_evicted_handlers_never_exceed_the_hard_bound(tmp_path, monkeypatch):
+    """A burst of new connections evicts stalled ones; the number of LIVING
+    handlers (not a counter) stays within capacity plus a small bound."""
+    live = _track_live_handlers(monkeypatch, httpd.JobHTTPServer)
+    srv = _Server(tmp_path, max_connections=4, max_pending=4,
+                  max_pending_per_host=100)
+    socks = []
+    try:
+        for _ in range(40):
+            s = socket.create_connection(("127.0.0.1", srv.port))
+            try:
+                s.sendall(b"GET /api/he")
+            except OSError:
+                pass
+            socks.append(s)
+            time.sleep(0.01)
+        time.sleep(0.5)
+        assert live["peak"] <= 4 + 4 // 4 + 1, live
+    finally:
+        for s in socks:
+            s.close()
+        srv.close()
+
+
+def test_the_default_per_address_limit_does_not_lock_out_a_shared_address(
+        tmp_path):
+    """Four slow connections from one address (a shared NAT) must not stop a
+    prompt fifth one: the address's oldest stalled connection is replaced."""
+    srv = _Server(tmp_path, max_connections=64, max_pending=48,
+                  max_pending_per_host=httpd._MAX_PENDING_PER_HOST)
+    held = []
+    try:
+        for _ in range(httpd._MAX_PENDING_PER_HOST):
+            s = socket.create_connection(("127.0.0.1", srv.port))
+            s.sendall(b"GET /api/he")
+            held.append(s)
+        assert _wait_until(lambda: srv.server.pending_connections()
+                           == httpd._MAX_PENDING_PER_HOST)
+        status, _ = _request(srv, "GET", "/api/health")
+        assert status == 200
+        assert srv.server.pending_connections() <= httpd._MAX_PENDING_PER_HOST
     finally:
         for s in held:
             s.close()

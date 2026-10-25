@@ -49,7 +49,9 @@ _HEADER_TIMEOUT_S = 15.0
 # normal budget cannot lock the real client (yt-dlp, which sends its header in
 # milliseconds) out. When every handler slot is taken, a new connection evicts
 # the oldest pending one (overflow first) instead of being dropped; connections
-# that have sent a whole header are never evicted.
+# that have sent a whole header are never evicted. An evicted connection holds
+# its slot until its thread has ended; at most a quarter of the cap may be in
+# that state, so living handlers stay within the cap plus that allowance.
 _HEADER_DEADLINE_S = 5.0
 _OVERFLOW_HEADER_S = 1.0
 _MAX_PENDING = 16
@@ -505,7 +507,8 @@ class _ProxyServer(socketserver.ThreadingTCPServer):
         # connection -> [overflow?, accepted at, socket]
         self._pending: dict[tuple[Any, ...], list[Any]] = {}
         self._pending_normal = 0
-        # Evicted connections whose thread has not ended: slot already freed.
+        # Evicted connections whose thread has not ended: they still hold
+        # their slot (``_active``) until it has.
         self._evicted: set[tuple[Any, ...]] = set()
         super().__init__(("127.0.0.1", 0), _Handler)
 
@@ -535,15 +538,17 @@ class _ProxyServer(socketserver.ThreadingTCPServer):
                     key=lambda k: (not self._pending[k][0],
                                    self._pending[k][1]),
                     default=None)
-                if victim is None:  # every slot is a request in progress
+                if (victim is None
+                        or len(self._evicted) >= max(1, _MAX_CONNECTIONS // 4)):
+                    # Every slot is a request in progress, or the allowance
+                    # of evicted handlers still ending is used up.
                     self.shutdown_request(request)
                     return
                 entry = self._pending.pop(victim)
                 if not entry[0]:
                     self._pending_normal -= 1
                 victim_sock = entry[2]
-                self._evicted.add(victim)
-                self._active -= 1
+                self._evicted.add(victim)  # its slot stays held until it ends
             overflow = self._pending_normal >= _MAX_PENDING
             if not overflow:
                 self._pending_normal += 1
@@ -570,10 +575,8 @@ class _ProxyServer(socketserver.ThreadingTCPServer):
 
     def _release_slot(self, key: tuple[Any, ...]) -> None:
         with self._pending_lock:
-            if key in self._evicted:  # freed when it was evicted
-                self._evicted.discard(key)
-            else:
-                self._active -= 1
+            self._evicted.discard(key)
+            self._active -= 1
 
 
 class DownloadProxy:

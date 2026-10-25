@@ -198,7 +198,11 @@ _MAX_CONNECTIONS = 64
 # When every handler slot is taken, a new connection EVICTS the oldest pending
 # one (overflow first) instead of being refused, so a flood of slow
 # unauthenticated clients cannot starve prompt ones. Connections that have
-# sent a whole header are never evicted.
+# sent a whole header are never evicted. An evicted connection keeps holding
+# its slot until its handler thread has really ended, so the number of living
+# handlers never exceeds the cap plus a small fixed number of evicted ones
+# (a quarter of the cap); when that allowance is used, a new connection is
+# refused with the fast 503 as before.
 _MAX_PENDING_PER_HOST = 4
 _OVERFLOW_HEADER_S = 2.0
 
@@ -1213,8 +1217,8 @@ class JobHTTPServer(ThreadingHTTPServer):
         # connection -> (client host, overflow?, accepted at, socket)
         self._pending: dict[tuple[Any, ...],
                             tuple[str, bool, float, Any]] = {}
-        # Keys of evicted connections whose thread has not ended yet: their
-        # slot was already given back.
+        # Keys of evicted connections whose thread has not ended yet; they
+        # still count in ``_active`` until it has.
         self._evicted: set[tuple[Any, ...]] = set()
         self._pending_normal = 0
         self._pending_hosts: dict[str, int] = {}
@@ -1292,16 +1296,21 @@ class JobHTTPServer(ThreadingHTTPServer):
         key = tuple(client_address) if client_address else ()
         victim_sock = None
         with self._active_lock:
-            if self._pending_hosts.get(host, 0) >= self._max_pending_per_host:
-                return False
-            if self._active >= self._max_connections:
-                victim = self._oldest_pending_locked()
+            host_full = (self._pending_hosts.get(host, 0)
+                         >= self._max_pending_per_host)
+            if host_full or self._active >= self._max_connections:
+                # Make room by replacing a stalled pending connection: this
+                # address's oldest when the address is at its own limit
+                # (a shared NAT must not lock itself out), else the oldest.
+                if len(self._evicted) >= max(1, self._max_connections // 4):
+                    return False
+                victim = self._oldest_pending_locked(
+                    host if host_full else None)
                 if victim is None:
                     return False
                 victim_sock = self._pending[victim][3]
                 self._drop_pending_locked(victim)
-                self._evicted.add(victim)
-                self._active -= 1
+                self._evicted.add(victim)  # its slot stays held until it ends
             overflow = self._pending_normal >= self._max_pending
             if not overflow:
                 self._pending_normal += 1
@@ -1310,10 +1319,14 @@ class JobHTTPServer(ThreadingHTTPServer):
             self._active += 1
             return victim_sock
 
-    def _oldest_pending_locked(self) -> tuple[Any, ...] | None:
-        """The pending connection to evict: overflow ones first, oldest first."""
+    def _oldest_pending_locked(self, host: str | None = None
+                               ) -> tuple[Any, ...] | None:
+        """The pending connection to evict: overflow ones first, oldest first
+        (only those of ``host`` when given)."""
         best = None
-        for key, (_host, overflow, since, _sock) in self._pending.items():
+        for key, (phost, overflow, since, _sock) in self._pending.items():
+            if host is not None and phost != host:
+                continue
             rank = (0 if overflow else 1, since)
             if best is None or rank < best[0]:
                 best = (rank, key)
@@ -1359,10 +1372,8 @@ class JobHTTPServer(ThreadingHTTPServer):
     def _release_slot(self, client_address: Any) -> None:
         key = tuple(client_address) if client_address else ()
         with self._active_lock:
-            if key in self._evicted:  # its slot went back when it was evicted
-                self._evicted.discard(key)
-            else:
-                self._active -= 1
+            self._evicted.discard(key)
+            self._active -= 1
 
     def _refuse_busy(self, request: Any, client_address: Any) -> None:
         """Answer a surplus connection with a short 503 and close it.
