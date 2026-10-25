@@ -21,11 +21,13 @@ from __future__ import annotations
 import base64
 import binascii
 import hmac
+import io
 import logging
 import secrets
 import socket
 import socketserver
 import threading
+import time
 import urllib.parse
 import urllib.request
 from typing import Any
@@ -39,6 +41,16 @@ from core.server.netguard import (
 logger = logging.getLogger(__name__)
 
 _HEADER_TIMEOUT_S = 15.0
+# A client that has not finished its request header is "pending" and has not
+# proven it knows the password. Its header must arrive within an ABSOLUTE
+# deadline (not one that restarts with every byte). At most _MAX_PENDING
+# connections get _HEADER_DEADLINE_S; more are still served while handler
+# slots are free, but only get _OVERFLOW_HEADER_S, so drippers that fill the
+# normal budget cannot lock the real client (yt-dlp, which sends its header in
+# milliseconds) out.
+_HEADER_DEADLINE_S = 5.0
+_OVERFLOW_HEADER_S = 1.0
+_MAX_PENDING = 16
 _CONNECT_TIMEOUT_S = 15.0
 _IDLE_TIMEOUT_S = 120.0
 _MAX_HEADER_BYTES = 16 * 1024
@@ -173,12 +185,40 @@ def _request_framing(headers: list[tuple[str, str]]) -> "int | str | None":
     return int(value)
 
 
+class _DeadlineRaw(io.RawIOBase):
+    """Socket reader that stops at an absolute deadline (a socket timeout
+    alone restarts with every received byte)."""
+
+    def __init__(self, sock: socket.socket) -> None:
+        super().__init__()
+        self._sock = sock
+        self.deadline: float | None = None
+
+    def readable(self) -> bool:
+        return True
+
+    def readinto(self, buffer: Any) -> int:
+        if self.deadline is not None:
+            remaining = self.deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError("request header took too long")
+            self._sock.settimeout(remaining)
+        return self._sock.recv_into(buffer)
+
+
 class _Handler(socketserver.StreamRequestHandler):
     server: "_ProxyServer"
+
+    def setup(self) -> None:
+        super().setup()
+        self._raw = _DeadlineRaw(self.connection)
+        self.rfile = io.BufferedReader(self._raw)  # type: ignore[assignment]
 
     def handle(self) -> None:
         try:
             self.connection.settimeout(_HEADER_TIMEOUT_S)
+            self._raw.deadline = time.monotonic() + (
+                self.server.header_deadline_for(self.client_address))
             self._serve()
         except (OSError, ValueError):
             pass
@@ -264,6 +304,10 @@ class _Handler(socketserver.StreamRequestHandler):
 
     def _serve(self) -> None:
         head = self._read_head()
+        # The header is in (or failed): no longer pending, no more deadline.
+        self._raw.deadline = None
+        self.connection.settimeout(_HEADER_TIMEOUT_S)
+        self.server.release_pending(self.client_address)
         if head is None:
             self._reply(400, "bad request")
             return
@@ -426,18 +470,43 @@ class _ProxyServer(socketserver.ThreadingTCPServer):
     def __init__(self, credentials: bytes) -> None:
         self.credentials = credentials
         self._slots = threading.BoundedSemaphore(_MAX_CONNECTIONS)
+        self._pending_lock = threading.Lock()
+        # connection -> True when it is an overflow connection
+        self._pending: dict[tuple[Any, ...], bool] = {}
+        self._pending_normal = 0
         super().__init__(("127.0.0.1", 0), _Handler)
+
+    def pending_connections(self) -> int:
+        with self._pending_lock:
+            return len(self._pending)
+
+    def header_deadline_for(self, client_address: Any) -> float:
+        with self._pending_lock:
+            overflow = self._pending.get(tuple(client_address), False)
+        return _OVERFLOW_HEADER_S if overflow else _HEADER_DEADLINE_S
+
+    def release_pending(self, client_address: Any) -> None:
+        with self._pending_lock:
+            overflow = self._pending.pop(tuple(client_address), None)
+            if overflow is False:
+                self._pending_normal -= 1
 
     def process_request(self, request: Any, client_address: Any) -> None:
         if not self._slots.acquire(blocking=False):
             self.shutdown_request(request)
             return
+        with self._pending_lock:
+            overflow = self._pending_normal >= _MAX_PENDING
+            if not overflow:
+                self._pending_normal += 1
+            self._pending[tuple(client_address)] = overflow
         super().process_request(request, client_address)
 
     def process_request_thread(self, request: Any, client_address: Any) -> None:
         try:
             super().process_request_thread(request, client_address)
         finally:
+            self.release_pending(client_address)
             self._slots.release()
 
 

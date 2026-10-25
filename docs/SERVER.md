@@ -659,7 +659,10 @@ Behaviour to know:
   inside the app** (listening on 127.0.0.1 only, with a random per-run
   password that reaches yt-dlp through its environment, never its command
   line, so error texts and logs do not carry it; yt-dlp's own native
-  downloaders are used, not ffmpeg). It connects to ports 80 and 443 only.
+  downloaders are used, not ffmpeg). It connects to ports 80 and 443 only. A client must send its request header
+  within 5 seconds in all (not 5 seconds per byte); at most 16 connections
+  without a complete header get that long, and further ones get 1 second, so
+  slow drippers cannot keep yt-dlp out.
   **Behind a company proxy:** when `HTTPS_PROXY` / `HTTP_PROXY` (or
   `ALL_PROXY`) is set in the environment of the app, `NO_PROXY` is honoured,
   and the guard proxy first resolves and checks the destination itself, then
