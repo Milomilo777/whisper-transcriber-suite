@@ -195,6 +195,10 @@ _MAX_CONNECTIONS = 64
 # it has only _OVERFLOW_HEADER_S seconds to send its header (an honest client
 # needs milliseconds): drippers that fill the normal pending budget cannot
 # lock everybody else out, and a dripper in the overflow is cut after seconds.
+# When every handler slot is taken, a new connection EVICTS the oldest pending
+# one (overflow first) instead of being refused, so a flood of slow
+# unauthenticated clients cannot starve prompt ones. Connections that have
+# sent a whole header are never evicted.
 _MAX_PENDING_PER_HOST = 4
 _OVERFLOW_HEADER_S = 2.0
 
@@ -1206,11 +1210,14 @@ class JobHTTPServer(ThreadingHTTPServer):
         self._max_pending = max(1, max_pending if max_pending is not None
                                 else self._max_connections * 3 // 4)
         self._max_pending_per_host = max(1, max_pending_per_host)
-        # connection -> (client host, True when it is an overflow connection)
-        self._pending: dict[tuple[Any, ...], tuple[str, bool]] = {}
+        # connection -> (client host, overflow?, accepted at, socket)
+        self._pending: dict[tuple[Any, ...],
+                            tuple[str, bool, float, Any]] = {}
+        # Keys of evicted connections whose thread has not ended yet: their
+        # slot was already given back.
+        self._evicted: set[tuple[Any, ...]] = set()
         self._pending_normal = 0
         self._pending_hosts: dict[str, int] = {}
-        self._slots = threading.BoundedSemaphore(self._max_connections)
         if max_sync_waits is None:
             max_sync_waits = min(_MAX_SYNC_WAITS,
                                  max(1, self._max_connections * 2 // 3))
@@ -1257,35 +1264,73 @@ class JobHTTPServer(ThreadingHTTPServer):
 
         Runs on the single accept thread, so the refusal must never block.
         """
-        if not self._slots.acquire(blocking=False):
+        victim = self._take_pending(request, client_address)
+        if victim is False:
             self._refuse_busy(request, client_address)
             return
-        if not self._take_pending(client_address):
-            self._slots.release()
-            self._refuse_busy(request, client_address)
-            return
-        with self._active_lock:
-            self._active += 1
+        if victim is not None:
+            try:  # wakes the evicted connection's thread, which then ends
+                victim.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
         try:
             super().process_request(request, client_address)
         except BaseException:
             self.release_pending(client_address)
-            self._release_slot()
+            self._release_slot(client_address)
             raise
 
-    def _take_pending(self, client_address: Any) -> bool:
-        """Count a new connection as pending (no complete request yet)."""
+    def _take_pending(self, request: Any, client_address: Any) -> Any:
+        """Take a slot and count the connection as pending (no complete
+        request yet).
+
+        Returns False when it must be refused, else None, or the socket of the
+        pending connection that was evicted to make room (its slot is given
+        back here; the caller shuts the socket down).
+        """
         host = str(client_address[0]) if client_address else "?"
         key = tuple(client_address) if client_address else ()
+        victim_sock = None
         with self._active_lock:
             if self._pending_hosts.get(host, 0) >= self._max_pending_per_host:
                 return False
+            if self._active >= self._max_connections:
+                victim = self._oldest_pending_locked()
+                if victim is None:
+                    return False
+                victim_sock = self._pending[victim][3]
+                self._drop_pending_locked(victim)
+                self._evicted.add(victim)
+                self._active -= 1
             overflow = self._pending_normal >= self._max_pending
             if not overflow:
                 self._pending_normal += 1
-            self._pending[key] = (host, overflow)
+            self._pending[key] = (host, overflow, time.monotonic(), request)
             self._pending_hosts[host] = self._pending_hosts.get(host, 0) + 1
-            return True
+            self._active += 1
+            return victim_sock
+
+    def _oldest_pending_locked(self) -> tuple[Any, ...] | None:
+        """The pending connection to evict: overflow ones first, oldest first."""
+        best = None
+        for key, (_host, overflow, since, _sock) in self._pending.items():
+            rank = (0 if overflow else 1, since)
+            if best is None or rank < best[0]:
+                best = (rank, key)
+        return None if best is None else best[1]
+
+    def _drop_pending_locked(self, key: tuple[Any, ...]) -> None:
+        entry = self._pending.pop(key, None)
+        if entry is None:
+            return
+        host, overflow = entry[0], entry[1]
+        if not overflow:
+            self._pending_normal -= 1
+        left = self._pending_hosts.get(host, 1) - 1
+        if left > 0:
+            self._pending_hosts[host] = left
+        else:
+            self._pending_hosts.pop(host, None)
 
     def header_deadline_for(self, client_address: Any) -> float:
         """Seconds a new connection has for its first request header."""
@@ -1298,17 +1343,7 @@ class JobHTTPServer(ThreadingHTTPServer):
         """The connection has sent its headers (or ended): no longer pending."""
         key = tuple(client_address) if client_address else ()
         with self._active_lock:
-            entry = self._pending.pop(key, None)
-            if entry is None:
-                return
-            host, overflow = entry
-            if not overflow:
-                self._pending_normal -= 1
-            left = self._pending_hosts.get(host, 1) - 1
-            if left > 0:
-                self._pending_hosts[host] = left
-            else:
-                self._pending_hosts.pop(host, None)
+            self._drop_pending_locked(key)
 
     def pending_connections(self) -> int:
         with self._active_lock:
@@ -1319,12 +1354,15 @@ class JobHTTPServer(ThreadingHTTPServer):
             super().process_request_thread(request, client_address)
         finally:
             self.release_pending(client_address)
-            self._release_slot()
+            self._release_slot(client_address)
 
-    def _release_slot(self) -> None:
+    def _release_slot(self, client_address: Any) -> None:
+        key = tuple(client_address) if client_address else ()
         with self._active_lock:
-            self._active -= 1
-        self._slots.release()
+            if key in self._evicted:  # its slot went back when it was evicted
+                self._evicted.discard(key)
+            else:
+                self._active -= 1
 
     def _refuse_busy(self, request: Any, client_address: Any) -> None:
         """Answer a surplus connection with a short 503 and close it.

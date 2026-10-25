@@ -47,7 +47,9 @@ _HEADER_TIMEOUT_S = 15.0
 # connections get _HEADER_DEADLINE_S; more are still served while handler
 # slots are free, but only get _OVERFLOW_HEADER_S, so drippers that fill the
 # normal budget cannot lock the real client (yt-dlp, which sends its header in
-# milliseconds) out.
+# milliseconds) out. When every handler slot is taken, a new connection evicts
+# the oldest pending one (overflow first) instead of being dropped; connections
+# that have sent a whole header are never evicted.
 _HEADER_DEADLINE_S = 5.0
 _OVERFLOW_HEADER_S = 1.0
 _MAX_PENDING = 16
@@ -482,11 +484,13 @@ class _ProxyServer(socketserver.ThreadingTCPServer):
 
     def __init__(self, credentials: bytes) -> None:
         self.credentials = credentials
-        self._slots = threading.BoundedSemaphore(_MAX_CONNECTIONS)
         self._pending_lock = threading.Lock()
-        # connection -> True when it is an overflow connection
-        self._pending: dict[tuple[Any, ...], bool] = {}
+        self._active = 0
+        # connection -> [overflow?, accepted at, socket]
+        self._pending: dict[tuple[Any, ...], list[Any]] = {}
         self._pending_normal = 0
+        # Evicted connections whose thread has not ended: slot already freed.
+        self._evicted: set[tuple[Any, ...]] = set()
         super().__init__(("127.0.0.1", 0), _Handler)
 
     def pending_connections(self) -> int:
@@ -495,32 +499,65 @@ class _ProxyServer(socketserver.ThreadingTCPServer):
 
     def header_deadline_for(self, client_address: Any) -> float:
         with self._pending_lock:
-            overflow = self._pending.get(tuple(client_address), False)
-        return _OVERFLOW_HEADER_S if overflow else _HEADER_DEADLINE_S
+            entry = self._pending.get(tuple(client_address))
+        return (_OVERFLOW_HEADER_S if entry and entry[0]
+                else _HEADER_DEADLINE_S)
 
     def release_pending(self, client_address: Any) -> None:
         with self._pending_lock:
-            overflow = self._pending.pop(tuple(client_address), None)
-            if overflow is False:
+            entry = self._pending.pop(tuple(client_address), None)
+            if entry is not None and not entry[0]:
                 self._pending_normal -= 1
 
     def process_request(self, request: Any, client_address: Any) -> None:
-        if not self._slots.acquire(blocking=False):
-            self.shutdown_request(request)
-            return
+        key = tuple(client_address)
+        victim_sock = None
         with self._pending_lock:
+            if self._active >= _MAX_CONNECTIONS:
+                victim = min(
+                    self._pending,
+                    key=lambda k: (not self._pending[k][0],
+                                   self._pending[k][1]),
+                    default=None)
+                if victim is None:  # every slot is a request in progress
+                    self.shutdown_request(request)
+                    return
+                entry = self._pending.pop(victim)
+                if not entry[0]:
+                    self._pending_normal -= 1
+                victim_sock = entry[2]
+                self._evicted.add(victim)
+                self._active -= 1
             overflow = self._pending_normal >= _MAX_PENDING
             if not overflow:
                 self._pending_normal += 1
-            self._pending[tuple(client_address)] = overflow
-        super().process_request(request, client_address)
+            self._pending[key] = [overflow, time.monotonic(), request]
+            self._active += 1
+        if victim_sock is not None:
+            try:  # wakes the evicted connection's thread, which then ends
+                victim_sock.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+        try:
+            super().process_request(request, client_address)
+        except BaseException:
+            self.release_pending(client_address)
+            self._release_slot(key)
+            raise
 
     def process_request_thread(self, request: Any, client_address: Any) -> None:
         try:
             super().process_request_thread(request, client_address)
         finally:
             self.release_pending(client_address)
-            self._slots.release()
+            self._release_slot(tuple(client_address))
+
+    def _release_slot(self, key: tuple[Any, ...]) -> None:
+        with self._pending_lock:
+            if key in self._evicted:  # freed when it was evicted
+                self._evicted.discard(key)
+            else:
+                self._active -= 1
 
 
 class DownloadProxy:

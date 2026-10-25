@@ -29,7 +29,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   an attacker behind the same NAT or reverse proxy cannot keep a logged-in user locked out.
 - **Slow header senders are limited**, in the server and in the download proxy: the header has an absolute
   deadline, and connections without a complete header have a small budget (further ones are still served
-  but get only 1 to 2 seconds), so drippers cannot lock out other clients.
+  but get only 1 to 2 seconds), so drippers cannot lock out other clients. When every connection slot is
+  taken, a new connection evicts the oldest one that still has no complete header instead of being refused.
 
 ### Added
 

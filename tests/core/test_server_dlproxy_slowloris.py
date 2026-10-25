@@ -98,3 +98,26 @@ def test_pending_connections_leave_the_budget_after_their_header(proxy):
     for _ in range(40):  # far more than the budget, one after the other
         assert _status(_talk(proxy, "CONNECT 169.254.169.254:80 HTTP/1.1")) == 403
     assert _wait_until(lambda: proxy._server.pending_connections() == 0)
+
+
+def test_a_prompt_client_is_served_when_every_slot_holds_a_dripper(
+        monkeypatch):
+    """All handler slots taken by half-sent headers: the oldest stalled
+    pending connection is evicted so a complete request still gets in."""
+    monkeypatch.setattr(dlproxy, "_MAX_CONNECTIONS", 4)
+    monkeypatch.setattr(dlproxy, "_MAX_PENDING", 4)
+    p = dlproxy.DownloadProxy()
+    held = []
+    try:
+        for _ in range(4):
+            s = socket.create_connection(("127.0.0.1", p.port))
+            s.sendall(b"CONNECT exa")
+            held.append(s)
+        assert _wait_until(lambda: p._server.pending_connections() == 4)
+        reply = _talk(p, "CONNECT 169.254.169.254:80 HTTP/1.1")
+        assert _status(reply) == 403
+        assert sum(1 for s in held if _closed(s, 0.3)) == 1
+    finally:
+        for s in held:
+            s.close()
+        p.close()

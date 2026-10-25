@@ -681,7 +681,10 @@ Behaviour to know:
   downloaders are used, not ffmpeg). It connects to ports 80 and 443 only. A client must send its request header
   within 5 seconds in all (not 5 seconds per byte); at most 16 connections
   without a complete header get that long, and further ones get 1 second, so
-  slow drippers cannot keep yt-dlp out.
+  slow drippers cannot keep yt-dlp out. When all 128 handler slots are taken,
+  a new connection evicts the oldest connection that still has no complete
+  header (the overflow ones first) instead of being dropped; connections whose
+  header has arrived are never evicted.
   **Behind a company proxy:** when `HTTPS_PROXY` / `HTTP_PROXY` (or
   `ALL_PROXY`) is set in the environment of the app, `NO_PROXY` is honoured
   (entries with or without a port, such as `site.example:443`; it only picks
@@ -734,7 +737,12 @@ Behaviour to know:
   full 15-second header deadline. A further connection is still served while
   handler slots are free, but has only 2 seconds to send its header, so drippers
   that fill the 48 cannot lock out other clients; they can only keep the
-  overflow busy by reconnecting.
+  overflow busy by reconnecting. When all 64 slots are taken, a new connection
+  (from an address under its pending limit) evicts the oldest connection that
+  has no complete header, overflow ones first, so a crowd of slow clients on
+  many addresses cannot starve a prompt one; connections whose header has
+  arrived are never evicted, and only a server full of requests in progress
+  answers 503.
   Once three quarters of the slots are in use, every reply ends its connection
   (`Connection: close`), and an idle keep-alive connection is kept for at most
   15 seconds, so browsers cannot hold the slots between requests.

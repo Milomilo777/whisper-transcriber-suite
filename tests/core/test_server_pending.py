@@ -128,3 +128,53 @@ def test_a_dripper_in_the_overflow_is_cut_after_a_short_deadline(
         for s in held:
             s.close()
         srv.close()
+
+
+def test_a_prompt_client_is_served_when_every_slot_holds_a_dripper(tmp_path):
+    """Capacity full of unauthenticated half-sent requests: the oldest stalled
+    pending connection is evicted, so a complete request still gets in."""
+    # Many addresses are simulated by a per-address budget above the slot count.
+    srv = _Server(tmp_path, max_connections=4, max_pending=4,
+                  max_pending_per_host=10)
+    held = []
+    try:
+        for _ in range(4):
+            s = socket.create_connection(("127.0.0.1", srv.port))
+            s.sendall(b"GET /api/he")
+            held.append(s)
+        assert _wait_until(lambda: srv.server.active_connections() == 4)
+        status, _ = _request(srv, "GET", "/api/health")
+        assert status == 200
+        # The evicted dripper's connection was closed by the server.
+        assert _wait_until(lambda: srv.server.active_connections() <= 4)
+        assert sum(1 for s in held if _closed_by_server(s, 0.3)) == 1
+    finally:
+        for s in held:
+            s.close()
+        srv.close()
+
+
+HEAD = (b"POST /api/jobs HTTP/1.1" + bytes([13, 10]) + b"Host: x" + bytes([13, 10])
+        + b"Content-Length: 10" + bytes([13, 10, 13, 10]))
+
+
+def test_connections_that_sent_their_header_are_never_evicted(tmp_path):
+    srv = _Server(tmp_path, max_connections=3, max_pending=3,
+                  max_pending_per_host=10)
+    held = []
+    try:
+        for _ in range(3):
+            s = socket.create_connection(("127.0.0.1", srv.port))
+            # Header complete, body still to come: not pending any more.
+            s.sendall(HEAD)
+            held.append(s)
+        assert _wait_until(lambda: srv.server.pending_connections() == 0)
+        assert _wait_until(lambda: srv.server.active_connections() == 3)
+        extra = socket.create_connection(("127.0.0.1", srv.port), timeout=3)
+        assert _read_status(extra).startswith(b"HTTP/1.1 503")
+        extra.close()
+        assert srv.server.active_connections() == 3
+    finally:
+        for s in held:
+            s.close()
+        srv.close()
