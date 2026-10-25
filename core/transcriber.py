@@ -1303,17 +1303,13 @@ def _write_outputs(
     # call created are ever removed again.
     claimed: set[str] = set()
 
-    # Names that could not be claimed although nothing exists there (an
-    # unwritable folder, a full disk): the write is still attempted, but never
-    # over a file that appeared meanwhile.
-    unclaimed: set[str] = set()
-
     def _claim(path: str) -> bool:
-        """True when *path* is ours (placeholder created) or nothing exists
-        there yet (the write then reports the real error); False when the
-        name is taken. Fails CLOSED: only a missing file may be written
-        unclaimed, so a transient error on an EXISTING file (an antivirus
-        scan, a lock) moves on to the next index instead of overwriting it."""
+        """True only when *path* is ours (placeholder created exclusively).
+
+        Fails CLOSED: any failure, a taken name or a transient error such as
+        a PermissionError from a scanner, means "not ours" and the caller
+        moves to the next index. Nothing is ever published to a name this
+        run did not claim."""
         out_dir = os.path.dirname(path)
         if out_dir and not os.path.isdir(out_dir):
             try:
@@ -1322,13 +1318,8 @@ def _write_outputs(
                 pass
         try:
             fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o666)
-        except FileExistsError:
-            return False
         except OSError:
-            if os.path.lexists(path):
-                return False
-            unclaimed.add(path)
-            return True
+            return False
         os.close(fd)
         claimed.add(path)
         return True
@@ -1356,7 +1347,10 @@ def _write_outputs(
         for cand in candidates:
             _release(cand)
         if index >= 10000:
-            break
+            raise RuntimeError(
+                "Could not claim a free output file name next to "
+                f"{base!r}; nothing was written."
+            )
         index += 1
 
     try:
@@ -1412,8 +1406,6 @@ def _write_outputs(
                     with open(part_path, "w", encoding="utf-8", newline="\n") as fs:
                         fs.write(payload_s)
                         _checkpoint._flush_to_disk(fs)
-                if path in unclaimed and os.path.lexists(path):
-                    raise FileExistsError(f"{path} appeared while writing; not overwritten")
                 os.replace(part_path, path)
                 claimed.discard(path)
             except Exception as e:  # noqa: BLE001
@@ -1443,10 +1435,6 @@ def _write_outputs(
         # Auto-chapter sidecar: same set, same index. A sidecar failure is
         # non-fatal (chapters are an optional extra, never worth failing the
         # transcript over) — _write_chapter_sidecar returns None on error.
-        if want_sidecar and _indexed_sidecar_path(base, index) in unclaimed and os.path.lexists(
-            _indexed_sidecar_path(base, index)
-        ):
-            want_sidecar = False  # appeared meanwhile: never overwrite it
         if want_sidecar:
             sidecar_path = _write_chapter_sidecar(
                 _indexed_sidecar_path(base, index), chapters or []
