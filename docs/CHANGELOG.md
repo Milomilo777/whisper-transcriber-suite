@@ -90,6 +90,18 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - The history entry of a finished transcription is now written again after a short wait when the history database is briefly locked, so the run is not offered again as interrupted at the next start.
 - A second parallel worker that fails to load its model (for example out of memory) no longer stops and fails a transcription that is running fine on the first worker; only the failed worker is dropped.
 - Two transcriptions of files with the same name (for example talk.mp4 and talk.m4a) finishing at the same moment no longer overwrite each other's transcript or fail; the second one is saved as "talk (1)".
+- **Stopping the microphone no longer leaves a stuck capture behind**: if the audio driver does not return
+  within half a second of Stop, the stream is aborted so the capture thread ends and closes its own file. The
+  session audio is deleted only after that thread has really ended, however long it takes.
+- **The Live session audio is kept when words are missing from the transcript**: if chunks were skipped
+  because transcription fell behind, failed, were thrown away by "Discard rest", or were still waiting at
+  exit, the session audio stays on disk and its path is logged, because it is then the only copy of those words.
+- **A double-click on Stop no longer drops the last sentence**: a second press within 2 seconds of the first
+  is ignored instead of acting as "Discard rest". A real Discard is logged with what it dropped.
+- **Live captions survive a crash or power cut after Stop**: every finished sentence is written to a small
+  `live-journal.txt` next to the session audio before it appears in the window, and Stop no longer deletes
+  that audio. The files are removed only once the transcript is saved (Save, or the exit autosave); older
+  runs whose text was never saved are listed in the log at the next Start and are never deleted.
 - **The saved text of an interrupted run is kept unless its media is verified unchanged**: only re-running
   the same, unchanged file with another engine, model or setting discards a checkpoint. A replaced, deleted
   or unverifiable source keeps it aside instead (on resume, on a new job for the same path, and with an

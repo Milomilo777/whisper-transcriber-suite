@@ -382,6 +382,10 @@ class LiveSession:
     #: full-session recording is 115-345 MB per hour and used to pile up
     #: in the cache forever. See :meth:`finish_recording`.
     keep_recording: bool = False
+    #: Set by the caller once the transcript of this session is safely
+    #: on disk (or the user chose to throw it away). Until then the
+    #: session audio and the text journal stay: they are the only copy.
+    transcript_saved: bool = False
     config: SegmenterConfig = field(default_factory=SegmenterConfig)
     #: Bounded so a slow machine drops audio visibly instead of growing
     #: an unbounded backlog and drifting further behind reality.
@@ -433,6 +437,13 @@ class LiveSession:
     _resampler: Optional[RateConverter] = field(default=None, repr=False)
     _consecutive_errors: int = 0
     _fatal_emitted: bool = False
+    #: Text events produced so far (each was journaled before it was shown).
+    _text_events: int = 0
+    #: Chunks whose words never reached the transcript: failed (write or
+    #: transcription) or thrown away by Discard rest. The session audio is
+    #: then the only copy of those words and is kept.
+    _failed_chunks: int = 0
+    _discarded_chunks: int = 0
     #: time.monotonic() of start(), of the last block and of the last
     #: block holding any non-zero sample (0.0 = never).
     _started_at: float = 0.0
@@ -552,6 +563,7 @@ class LiveSession:
         """
         self._discard.set()
         dropped = 0
+        logger.warning("Live discard: dropping the chunks still waiting for transcription")
         while True:
             try:
                 item = self._chunks.get_nowait()
@@ -559,6 +571,7 @@ class LiveSession:
                 break
             if item is not None:
                 dropped += 1
+                self._discarded_chunks += 1
                 with self._lock:
                     self._queued = max(0, self._queued - 1)
         self._put_sentinel()
@@ -633,7 +646,10 @@ class LiveSession:
         """Delete this session's audio files unless the recording is kept.
 
         Returns the kept recording's path, else "". Leftover chunk WAVs
-        always go. Only files this session wrote are touched, then the
+        always go. While finished sentences exist that the caller has not
+        marked saved (``transcript_saved``), the session audio and the text
+        journal are NOT deleted: call again once the text is safe. Only
+        files this session wrote are touched, then the
         folder if it is empty. While the capture thread still runs (a
         WASAPI loopback read can block ~49 s when nothing plays) or the
         consumer still transcribes a chunk, nothing is touched now: a
@@ -660,10 +676,17 @@ class LiveSession:
 
     def _finish_when_idle(self) -> None:
         deadline = time.monotonic() + self.defer_s
+        warned = False
         while self._threads_alive():
             if time.monotonic() >= deadline:
-                logger.warning("Live threads still running; keeping %s", self.work_dir)
-                return
+                # Never give up: a stuck capture thread still owns the WAV,
+                # which is deleted only after that thread has really ended.
+                if not warned:
+                    warned = True
+                    logger.warning("Live threads still running; keeping %s "
+                                   "until they end", self.work_dir)
+                time.sleep(min(5.0, max(0.25, self.defer_s)))
+                continue
             time.sleep(0.25)
         kept = self._finish_now()
         if kept:
@@ -678,10 +701,26 @@ class LiveSession:
         for name in names:
             if name.startswith("chunk-") and name.endswith(".wav"):
                 _remove_quietly(os.path.join(work, name))
+        if self.unsaved_text:
+            # Finished sentences exist that are not saved anywhere yet: the
+            # window holds them, and this audio + journal is the only other
+            # copy. Nothing is deleted until the caller says they are safe.
+            logger.info("Live session %s is kept until its transcript is saved",
+                        work)
+            if self.recording_path and os.path.isfile(self.recording_path)                     and self.keep_recording:
+                return self.recording_path
+            return ""
+        _remove_quietly(self.journal_path)
         kept = ""
+        incomplete = self.incomplete_reason
         if self.recording_path and os.path.isfile(self.recording_path):
             if self.keep_recording:
                 kept = self.recording_path
+            elif incomplete:
+                # Words are missing from the transcript; the audio is the
+                # only place they still exist.
+                kept = self.recording_path
+                logger.warning("Live session audio kept at %s (%s)", kept, incomplete)
             else:
                 _remove_quietly(self.recording_path)
         if not kept:
@@ -789,6 +828,7 @@ class LiveSession:
     def _consume_one(self, item: tuple[int, bytes, float, int]) -> None:
         seq, pcm, start_s, rate = item
         if self._discard.is_set():
+            self._discarded_chunks += 1
             return
         path = os.path.join(self.work_dir, f"chunk-{seq:06d}.wav")
         try:
@@ -802,6 +842,7 @@ class LiveSession:
             if self._discard.is_set():
                 # The user chose to discard the rest; the worker was
                 # stopped under this chunk on purpose.
+                self._discarded_chunks += 1
                 return
             # One failed chunk must not end the session.
             logger.exception("Live chunk transcription failed: %s", e)
@@ -813,6 +854,10 @@ class LiveSession:
         text, language = _result_text(result)
         if not text:
             return
+        # Save first, report second: the words reach the journal file
+        # before the UI can show them.
+        self._text_events += 1
+        self._journal(text)
         self._emit(LiveEvent(
             kind="text",
             text=text,
@@ -820,6 +865,59 @@ class LiveSession:
             end=start_s + (len(pcm) / float(self.config.bytes_per_second())),
             language=language,
         ))
+
+    @property
+    def unsaved_text(self) -> bool:
+        """True while finished sentences exist that the caller has not saved."""
+        return self._text_events > 0 and not self.transcript_saved
+
+    @property
+    def incomplete_reason(self) -> str:
+        """Why the transcript lacks words that the session audio still has.
+
+        "" when every captured chunk was transcribed. Otherwise a short
+        English reason (dropped, failed, discarded or still waiting chunks).
+        """
+        parts = []
+        if self.dropped_chunks:
+            parts.append(f"{self.dropped_chunks} chunk(s) skipped because transcription fell behind")
+        if self._failed_chunks:
+            parts.append(f"{self._failed_chunks} chunk(s) failed")
+        if self._discarded_chunks:
+            parts.append(f"{self._discarded_chunks} chunk(s) discarded")
+        waiting = self.pending_chunks()
+        if waiting:
+            parts.append(f"{waiting} chunk(s) not transcribed yet")
+        return ", ".join(parts)
+
+    @property
+    def journal_path(self) -> str:
+        """Plain-text journal of every finished sentence (one per line)."""
+        return os.path.join(self.work_dir, JOURNAL_NAME)
+
+    def _journal(self, text: str) -> None:
+        """Append one finished sentence to the journal, flushed to disk.
+
+        The transcript otherwise lives only in the window until the user
+        saves it; this file is what survives a crash or a power cut. A
+        failing disk is logged and never stops the session (the session
+        audio is still there as the fallback copy).
+        """
+        line = " ".join(text.splitlines()).strip()
+        if not line:
+            return
+        try:
+            with open(self.journal_path, "a", encoding="utf-8",
+                      errors="replace", newline="\n") as fp:
+                fp.write(line + "\n")
+                fp.flush()
+                try:
+                    os.fsync(fp.fileno())
+                except OSError:
+                    pass  # flushed to the OS; a failed fsync is not a lost line
+        except OSError as e:
+            logger.warning("Could not write the live journal %s: %s",
+                           self.journal_path, e)
 
     def _chunk_failed(self, detail: str) -> None:
         """Report one failed chunk; after too many in a row, report death.
@@ -830,6 +928,7 @@ class LiveSession:
         once; the UI stops the session and shows ``detail``.
         """
         self._emit(LiveEvent(kind="error", detail=detail))
+        self._failed_chunks += 1
         self._consecutive_errors += 1
         if (self._consecutive_errors >= max(1, self.max_consecutive_errors)
                 and not self._fatal_emitted):
@@ -855,6 +954,43 @@ class LiveSession:
             except queue.Empty:
                 break
         return out
+
+
+JOURNAL_NAME = "live-journal.txt"
+
+
+def find_leftover_sessions(live_root: str | None = None,
+                           exclude: tuple[str, ...] = ()) -> list[str]:
+    """Session folders of earlier runs whose journal holds finished text.
+
+    A run that crashed, lost power or was stopped and never saved leaves
+    its folder (journal + session audio) behind. They are only listed,
+    never deleted: that text may exist nowhere else. Folders without a
+    journal line (older versions, empty runs) are not reported and not
+    touched either. ``exclude`` = folders of sessions this app still owns.
+    """
+    if live_root is None:
+        from .config import user_cache_dir
+
+        live_root = str(user_cache_dir() / "live")
+    skip = {os.path.normcase(os.path.abspath(p)) for p in exclude}
+    found: list[str] = []
+    try:
+        names = sorted(os.listdir(live_root))
+    except OSError:
+        return found
+    for name in names:
+        folder = os.path.join(live_root, name)
+        if os.path.normcase(os.path.abspath(folder)) in skip:
+            continue
+        journal = os.path.join(folder, JOURNAL_NAME)
+        try:
+            with open(journal, "r", encoding="utf-8", errors="replace") as fp:
+                if fp.read(65536).strip():
+                    found.append(folder)
+        except OSError:
+            continue
+    return found
 
 
 def _remove_quietly(path: str) -> None:

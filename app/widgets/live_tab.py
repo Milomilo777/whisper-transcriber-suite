@@ -494,6 +494,9 @@ def build_live_tab(app: Any, parent: Any) -> None:
     app.live_lines = []
     #: len(live_lines) at the last save; more lines = unsaved text.
     app._live_saved_count = 0
+    #: Stopped sessions whose audio + text journal wait for the transcript to
+    #: be saved: [(session, len(live_lines) when it ended)].
+    app._live_held = []
     app._live_poll_scheduled = False
     app._live_cancel_pending = False
     app._live_stop_reason = ""
@@ -797,6 +800,7 @@ def _start(app: Any) -> None:
     work_dir = _live.session_work_dir()
     keep = _keep_recording(app)
     viz = getattr(app, "live_visualizer", None)
+    _report_leftover_sessions(app)
 
     def _meter(pcm: bytes, rate: int) -> None:
         # Runs on the recorder's capture thread: push_frames is
@@ -1003,6 +1007,10 @@ def _start_failed(app: Any, error: Exception) -> None:
     )
 
 
+#: Presses of Stop this soon after the first one are ignored (double-click).
+_STOP_DEBOUNCE_S = 2.0
+
+
 def _stop(app: Any) -> None:
     session = app.live_session
     transcriber = app.live_transcriber
@@ -1022,6 +1030,12 @@ def _stop(app: Any) -> None:
             logger.debug("Could not update live controls", exc_info=True)
         return
     if getattr(app, "_live_draining", False):
+        # A double-click on Stop must not land on "Discard rest" and drop the
+        # last sentence: presses right after the first one are ignored.
+        since = time.monotonic() - float(getattr(app, "_live_stop_at", 0.0) or 0.0)
+        if since < _STOP_DEBOUNCE_S:
+            logger.info("Live: Stop pressed again after %.2f s; ignored", since)
+            return
         _discard_rest(app, session, transcriber)
         return
     # First press: the microphone stops now, but every chunk already
@@ -1029,6 +1043,7 @@ def _stop(app: Any) -> None:
     # whole backlog here to a fixed 10 s join timeout. The button turns
     # into "Discard rest" for anyone who does not want to wait.
     app._live_draining = True
+    app._live_stop_at = time.monotonic()
     try:
         viz = getattr(app, "live_visualizer", None)
         if viz is not None:
@@ -1072,10 +1087,10 @@ def _discard_rest(app: Any, session: Any, transcriber: Any) -> None:
     def worker() -> None:
         try:
             dropped = session.discard_pending()
-            if dropped:
-                app.post_to_main(
-                    lambda: app.log(f"Live: discarded {dropped} untranscribed chunk(s).")
-                )
+            note = (f"Live: discarded {dropped} untranscribed chunk(s) (Discard rest);"
+                    " any chunk being transcribed was cancelled.")
+            logger.warning(note)
+            app.post_to_main(lambda: app.log(note))
         except Exception:  # noqa: BLE001
             logger.exception("Discarding live chunks failed")
         try:
@@ -1101,9 +1116,80 @@ def _finish_recording(session: Any, keep: bool) -> str:
         return ""
 
 
+def _report_leftover_sessions(app: Any) -> None:
+    """Log earlier session folders that hold text which was never saved.
+
+    A crash or power cut after Stop leaves the folder (text journal + audio)
+    behind. They are only listed in the log, never deleted or opened.
+    """
+    from core import live as _live
+
+    try:
+        mine = tuple(
+            str(getattr(sess, "work_dir", "")) for sess, _n in getattr(app, "_live_held", [])
+        )
+        found = _live.find_leftover_sessions(exclude=mine)
+    except Exception:  # noqa: BLE001 - a log hint must never block Start
+        logger.debug("Could not look for leftover live sessions", exc_info=True)
+        return
+    for folder in found[:20]:
+        logger.warning("Unsaved live text from an earlier run: %s", folder)
+        app.log(f"Live: unsaved text of an earlier run is in {folder} "
+                f"(live-journal.txt; the session audio is next to it)")
+    if len(found) > 20:
+        app.log(f"Live: {len(found) - 20} more earlier runs hold unsaved text in the same parent folder")
+
+
+def _hold_session(app: Any, session: Any) -> None:
+    """Remember a stopped session whose files wait for a saved transcript."""
+    if getattr(session, "unsaved_text", False) is not True:
+        return
+    held = getattr(app, "_live_held", None)
+    if held is None:
+        held = app._live_held = []
+    held.append((session, len(getattr(app, "live_lines", []) or [])))
+    where = str(getattr(session, "work_dir", ""))
+    logger.info("Live session files kept until the transcript is saved: %s", where)
+    app.log(f"Live: the session text and audio stay in {where} until the transcript is saved")
+    _release_saved(app)
+
+
+def _release_one(app: Any, session: Any) -> None:
+    session.transcript_saved = True
+    kept = _finish_recording(session, bool(getattr(session, "keep_recording", False)))
+    if kept:
+        app.log(f"Live: the session audio was kept at {kept}{_incomplete_note(session)}")
+
+
+def _release_saved(app: Any) -> None:
+    """Delete the audio + journal of stopped sessions whose text is now saved."""
+    held = getattr(app, "_live_held", None)
+    if not held:
+        return
+    saved = int(getattr(app, "_live_saved_count", 0) or 0)
+    still: list[tuple[Any, int]] = []
+    for session, mark in held:
+        if mark <= saved:
+            _release_one(app, session)
+        else:
+            still.append((session, mark))
+    app._live_held = still
+
+
+def _release_all(app: Any) -> None:
+    """The user chose not to save: let go of every held session."""
+    held = getattr(app, "_live_held", None) or []
+    app._live_held = []
+    for session, _mark in held:
+        _release_one(app, session)
+
+
 def _stopped(app: Any, kept: str = "") -> None:
+    session = app.live_session
     # Drain whatever the tail produced before dropping the session.
     _poll_once(app)
+    if session is not None:
+        _hold_session(app, session)
     app.live_session = None
     app.live_transcriber = None
     app._live_draining = False
@@ -1116,13 +1202,19 @@ def _stopped(app: Any, kept: str = "") -> None:
     app.live_status_var.set(_("Stopped: {reason}", reason=reason) if reason else _("Stopped."))
     app.log("Live transcription stopped.")
     if kept:
-        app.log(f"Live: the session audio was kept at {kept}")
+        app.log(f"Live: the session audio was kept at {kept}{_incomplete_note(session)}")
     try:
         viz = getattr(app, "live_visualizer", None)
         if viz is not None:
             viz.set_active(False)
     except Exception:  # noqa: BLE001
         logger.debug("Could not deactivate visualizer", exc_info=True)
+
+
+def _incomplete_note(session: Any) -> str:
+    """" (reason)" when the transcript lacks words the audio still has."""
+    reason = getattr(session, "incomplete_reason", "")
+    return f" ({reason}: the audio holds the missing words)" if reason and isinstance(reason, str) else ""
 
 
 def stop_live_session(app: Any) -> None:
@@ -1146,6 +1238,7 @@ def stop_live_session(app: Any) -> None:
     # permission) the recording is kept instead of being deleted too.
     keep = _keep_recording(app)
     forced = False
+    text_safe = True  # on disk, or the user chose not to save it
     if not getattr(app, "_live_exit_discard", False):
         unsaved = has_unsaved_transcript(app)
         try:
@@ -1155,11 +1248,18 @@ def stop_live_session(app: Any) -> None:
             saved = ""
         forced = bool(unsaved and not saved and not keep)
         keep = keep or forced
+        text_safe = not (unsaved and not saved)
+    if text_safe:
+        _release_all(app)
     if session is not None:
+        session.transcript_saved = text_safe
         kept = _finish_recording(session, keep)
-        if forced and kept:
+        if kept:
             try:
-                app.log(f"The transcript could not be saved; the session audio was kept at {kept}")
+                if forced:
+                    app.log(f"The transcript could not be saved; the session audio was kept at {kept}")
+                else:
+                    app.log(f"Live: the session audio was kept at {kept}{_incomplete_note(session)}")
             except Exception:  # noqa: BLE001 - the window may already be going away
                 logger.debug("Could not log the kept recording", exc_info=True)
     app.live_session = None
@@ -1361,6 +1461,7 @@ def _save(app: Any) -> bool:
         return False
     app._live_saved_count = count
     app.log(f"Live transcript saved to {path}")
+    _release_saved(app)
     return True
 
 
@@ -1437,6 +1538,7 @@ def autosave_unsaved_transcript(app: Any) -> str:
         logger.error("Autosaving the live transcript failed: no free file name")
         return ""
     app._live_saved_count = len(getattr(app, "live_lines", []) or [])
+    _release_saved(app)
     logger.info("Live transcript autosaved to %s", path)
     try:
         app.log(f"Live transcript autosaved to {path}")
@@ -1457,6 +1559,14 @@ def _copy(app: Any) -> None:
 
 
 def _clear(app: Any) -> None:
+    # Clearing is not saving: the journal and audio of stopped sessions stay on
+    # disk (an unsaved run is reported again at the next start).
+    for session, _mark in getattr(app, "_live_held", None) or []:
+        try:
+            app.log(f"Live: cleared; the unsaved text of an earlier session stays in {session.work_dir}")
+        except Exception:  # noqa: BLE001
+            logger.debug("Could not log the kept session", exc_info=True)
+    app._live_held = []
     app.live_lines = []
     app._live_saved_count = 0
     try:
