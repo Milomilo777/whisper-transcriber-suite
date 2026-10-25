@@ -96,21 +96,49 @@ def _mark_stopped_early(task: Any) -> None:
         task.error_reason = _("The transcription stopped before it finished; try the file again.")
 
 
+def _resolve_on_disk(path: str) -> str | None:
+    """The spelling of *path* that exists, trying NFC and NFD forms of the name.
+
+    macOS stores names as NFD; NTFS and ext4 keep whatever the writer used, so the
+    source file and its outputs can differ in Unicode form. Only the file name is
+    re-spelled first so a folder part is kept as the task gave it; whole-path forms
+    follow. Returns None when no spelling exists.
+    """
+    folder, name = os.path.split(path)
+    seen: list[str] = []
+    for candidate in (
+        path,
+        os.path.join(folder, unicodedata.normalize("NFC", name)),
+        os.path.join(folder, unicodedata.normalize("NFD", name)),
+        unicodedata.normalize("NFC", path),
+        unicodedata.normalize("NFD", path),
+    ):
+        if candidate not in seen:
+            seen.append(candidate)
+            if os.path.exists(candidate):
+                return candidate
+    return None
+
+
 def _newest_output_set(paths: list[str]) -> list[str]:
     """The last ``name (N).ext`` set the writer would have produced for *paths*.
 
     ``core.transcriber._write_outputs`` keeps earlier runs' files and writes a re-run
     as ``name (1).srt`` + ``name (1).json`` (one shared index), so the files a crashed
-    re-run left are the highest-numbered set, not the plain names. Returns *paths*
-    unchanged when none of the plain names exists (the caller then reports them
-    missing, or finds a macOS NFD spelling).
+    re-run left are the highest-numbered set, not the plain names. Each name is matched
+    in its NFC and NFD spelling and the spelling found on disk is returned. Returns
+    *paths* unchanged when none of the plain names exists (the caller then reports
+    them missing).
     """
     index = 0
-    while index < 10000 and any(os.path.exists(_indexed_path(p, index)) for p in paths):
+    while index < 10000 and any(
+        _resolve_on_disk(_indexed_path(p, index)) is not None for p in paths
+    ):
         index += 1
     if index == 0:
         return paths
-    return [_indexed_path(p, index - 1) for p in paths]
+    newest = [_indexed_path(p, index - 1) for p in paths]
+    return [_resolve_on_disk(p) or p for p in newest]
 
 
 def _indexed_path(path: str, index: int) -> str:
@@ -1045,10 +1073,7 @@ class TranscriptionService:
                 formats = self.app.app_config.get("output_formats") or ["srt", "json"]
             # The on-disk extension, not the format key ("elan" writes ".eaf").
             from core.writers import extension_for
-            paths = [
-                unicodedata.normalize('NFC', f"{base}.{extension_for(str(fmt))}")
-                for fmt in formats
-            ]
+            paths = [f"{base}.{extension_for(str(fmt))}" for fmt in formats]
             paths = _newest_output_set(paths)
 
         no_speech = bool(getattr(task, "no_speech", False))
