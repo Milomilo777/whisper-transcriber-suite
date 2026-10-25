@@ -31,6 +31,7 @@ ICON_NAMES = (
     "external-link",
     "file-text",
     "folder-open",
+    "globe",
     "info",
     "languages",
     "link",
