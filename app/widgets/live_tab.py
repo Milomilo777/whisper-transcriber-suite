@@ -1087,8 +1087,8 @@ def _discard_rest(app: Any, session: Any, transcriber: Any) -> None:
     def worker() -> None:
         try:
             dropped = session.discard_pending()
-            note = (f"Live: Discard rest used: {dropped} waiting chunk(s) dropped"
-                    " and any chunk being transcribed was cancelled.")
+            note = (f"Live: discarded {dropped} untranscribed chunk(s) (Discard rest);"
+                    " any chunk being transcribed was cancelled.")
             logger.warning(note)
             app.post_to_main(lambda: app.log(note))
         except Exception:  # noqa: BLE001

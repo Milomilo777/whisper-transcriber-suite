@@ -465,6 +465,7 @@ def test_first_stop_drains_backlog_second_stop_discards(built, root):
     live_tab._poll_once(built)
     assert "3 remaining" in built.live_status_var.get()
 
+    built._live_stop_at -= live_tab._STOP_DEBOUNCE_S + 1.0  # the user waited (no double-click)
     live_tab._stop(built)
     _drain_posted(built, root, lambda: built.live_session is None)
     assert calls.count("discard") == 1 and "worker" in calls
