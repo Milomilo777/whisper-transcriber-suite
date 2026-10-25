@@ -2504,6 +2504,11 @@ def build_server_tab(app: "App", parent: ttk.Frame) -> None:
     )
     hook_secret_entry.pack(side="left", padx=(8, 0))
     hook_secret_entry.bind("<FocusOut>", lambda _e: app._save_server_prefs())
+    ttk.Label(
+        opts,
+        text=_("Sent in plain text when the URL starts with http://"),
+        wraplength=px(560), justify="left", foreground=tokens.themed(tokens.TEXT_MUTED),
+    ).pack(anchor="w", padx=(0, 0), pady=(4, 0))
 
     # --- safety note ---------------------------------------------------------
     ttk.Label(

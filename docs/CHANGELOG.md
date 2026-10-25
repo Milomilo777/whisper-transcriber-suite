@@ -40,7 +40,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   **Webhook secret** field in the Web / LAN access tab) and every completion webhook carries it in the
   `X-Whisper-Webhook-Secret` header (rename it with `--webhook-header` / `server_webhook_header_name`), so
   receivers such as n8n (Webhook node, Header Auth) can reject other callers. The secret is never logged or
-  printed. Every webhook body also has a new `delivery_id`, unique per delivery.
+  printed. A secret that cannot be a header value (for example only a line break) is refused, never
+  turned into "no secret". The app, the start-up output and the log warn that the secret travels in plain
+  text when the webhook URL is `http://`. Every webhook body also has a new `delivery_id`, unique per
+  delivery.
 
 ### Changed
 

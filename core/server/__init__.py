@@ -24,6 +24,7 @@ import os
 import re
 import socket
 import subprocess
+import sys
 import threading
 import time
 from typing import Any, Callable
@@ -36,6 +37,8 @@ from core.server.jobs import (
     DownloadLimits,
     JobManager,
     strip_url_secrets,
+    webhook_secret_valid,
+    webhook_url_is_plain_http,
 )
 
 logger = logging.getLogger(__name__)
@@ -476,6 +479,15 @@ class ServerHandle:
                 return  # already running — idempotent double-start guard
             self._starting = True
             self._start_cancelled = False
+        if webhook_secret:
+            if not webhook_secret_valid(webhook_secret):
+                logger.warning(
+                    "server: the webhook secret cannot be used in an HTTP "
+                    "header; every webhook delivery will be refused")
+            elif webhook_url_is_plain_http(webhook_url):
+                logger.warning(
+                    "server: the webhook secret is sent in plain text to an "
+                    "http:// address; use an https:// receiver")
         try:
             if auto_port:
                 port = find_available_port(port, host)
@@ -517,11 +529,9 @@ class ServerHandle:
                     self.token = token
                     self.https = https
                     self.webhook_url = (webhook_url or "").strip()
-                    self.webhook_secret_set = bool(
-                        (webhook_secret or "").strip())
+                    self.webhook_secret_set = bool(webhook_secret)
                     self.webhook_header = (
-                        (webhook_header or "").strip()
-                        or DEFAULT_WEBHOOK_HEADER)
+                        webhook_header or DEFAULT_WEBHOOK_HEADER)
                     self._thread = threading.Thread(
                         target=server.serve_forever,
                         name="server-http", daemon=True,
@@ -599,6 +609,12 @@ def run_server(
     URL(s), and serves until Ctrl+C. Built on :class:`ServerHandle` so the
     blocking CLI and the non-blocking GUI share one start/stop path.
     """
+    if webhook_secret and not webhook_secret_valid(webhook_secret):
+        # Judged on the value as given (never trimmed) and never echoed.
+        print("The webhook secret cannot be used in an HTTP header (control "
+              "characters, characters outside Latin-1, or a space at either "
+              "end). Nothing was started.", file=sys.stderr, flush=True)
+        return 1
     handle = ServerHandle(load_model=load_model)
     try:
         # The CLI honours an explicit --port verbatim (auto_port off) so a
@@ -636,10 +652,13 @@ def run_server(
         # Origin only: the rest of a webhook URL often holds its secret.
         from core.server.jobs import redact_url
         print(f"Completion webhooks POST to {redact_url(webhook_url)}")
-        if (webhook_secret or "").strip():
+        if webhook_secret:
             # The header name only; the secret itself is never printed.
             print("Webhook secret set: sent in the "
                   f"{handle.webhook_header} header.")
+            if webhook_url_is_plain_http(webhook_url):
+                print("Warning: the webhook URL is http://, so the secret "
+                      "travels in plain text. Use an https:// receiver.")
     print("Press Ctrl+C to stop.")
 
     try:

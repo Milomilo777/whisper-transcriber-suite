@@ -382,8 +382,11 @@ class JobManager:
         # Optional shared secret sent as a header on every webhook POST. It
         # is kept only inside the default sender below: never logged, never
         # echoed.
-        secret = (webhook_secret or "").strip()
-        header = (webhook_header or "").strip() or DEFAULT_WEBHOOK_HEADER
+        # Used verbatim, never trimmed: trimming "\r\n" to "" would turn a
+        # bad secret into an unauthenticated delivery. An invalid secret makes
+        # post_webhook refuse every delivery instead.
+        secret = webhook_secret or ""
+        header = webhook_header or DEFAULT_WEBHOOK_HEADER
         if webhook_sender is not None:
             self._webhook_sender = webhook_sender
         elif secret:
@@ -1886,6 +1889,17 @@ def webhook_secret_header_ok(name: str, secret: str) -> bool:
     """
     if not _HEADER_NAME_RE.match(name) or name.lower() in _RESERVED_HEADERS:
         return False
+    return webhook_secret_valid(secret)
+
+
+def webhook_secret_valid(secret: str) -> bool:
+    """True for a non-empty secret usable verbatim as a header value.
+
+    Printable Latin-1 only (no control characters, so a line break cannot
+    split the header) and no space at either end, which a receiver or a
+    proxy may trim. The empty string is not "valid": it means "no secret"
+    and callers test for it first (see :func:`webhook_secret_from_input`).
+    """
     if not secret or secret != secret.strip():
         return False
     try:
@@ -1893,6 +1907,12 @@ def webhook_secret_header_ok(name: str, secret: str) -> bool:
     except UnicodeEncodeError:
         return False
     return all(32 <= ord(c) != 127 for c in secret)
+
+
+def webhook_url_is_plain_http(url: str | None) -> bool:
+    """True when ``url`` starts with ``http://`` (the secret would travel
+    unencrypted)."""
+    return (url or "").strip().lower().startswith("http://")
 
 
 def post_webhook(
@@ -1934,7 +1954,7 @@ def post_webhook(
         "User-Agent": f"WhisperTranscriberSuite/{__version__}",
     }
     if secret:
-        name = (header_name or "").strip() or DEFAULT_WEBHOOK_HEADER
+        name = header_name or DEFAULT_WEBHOOK_HEADER
         if not webhook_secret_header_ok(name, secret):
             logger.warning(
                 "server: webhook not sent: the webhook secret or header "

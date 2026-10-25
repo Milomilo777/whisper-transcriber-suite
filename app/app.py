@@ -79,7 +79,12 @@ from app.theme import (
 )
 from app.theme.bidi_display import ltr_base
 from core._proc import kill_process_tree
-from core.config import _PROJECT_KEY_RANGES, load_config, save_config
+from core.config import (
+    _PROJECT_KEY_RANGES,
+    load_config,
+    save_config,
+    webhook_secret_from_input,
+)
 from core.history import EXIT_REASON, HistoryDB
 from core.task import apply_run_options
 from core.hub import voice_clone_tab_enabled
@@ -5986,8 +5991,10 @@ class App(tk.Tk):
             self.server_https_enabled_var.get())
         self.app_config["server_webhook_url"] = (
             self.server_webhook_url_var.get().strip())
-        self.app_config["server_webhook_secret"] = (
-            self.server_webhook_secret_var.get().strip())
+        # Only surrounding spaces are trimmed; anything else invalid stays as
+        # typed so deliveries are refused rather than sent unauthenticated.
+        self.app_config["server_webhook_secret"] = webhook_secret_from_input(
+            self.server_webhook_secret_var.get())
         try:
             save_config(self.app_config)
         except Exception as e:  # noqa: BLE001
@@ -6034,7 +6041,8 @@ class App(tk.Tk):
         self._server_token_in_use = token
         https = bool(self.server_https_enabled_var.get())
         webhook_url = self.server_webhook_url_var.get().strip()
-        webhook_secret = self.server_webhook_secret_var.get().strip()
+        webhook_secret = webhook_secret_from_input(
+            self.server_webhook_secret_var.get())
         webhook_header = str(
             self.app_config.get("server_webhook_header_name", "") or "")
         max_upload_mb = int(self.app_config.get("server_max_upload_mb", 512))

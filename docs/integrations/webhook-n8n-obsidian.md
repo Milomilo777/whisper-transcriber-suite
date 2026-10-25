@@ -33,7 +33,10 @@ nothing in this repository talks to n8n or Obsidian.
   field (or pass `--webhook-secret SECRET`). Every POST then carries
   `X-Whisper-Webhook-Secret: SECRET`; the header name can be changed with
   `--webhook-header` or `server_webhook_header_name`. The secret is never
-  logged. See "Completion webhook" in [SERVER.md](../SERVER.md).
+  logged. See "Completion webhook" in [SERVER.md](../SERVER.md). The header is
+  sent in plain text over an `http://` webhook URL, so on any network you do not
+  fully trust, give n8n an `https://` address (for example behind a reverse
+  proxy with a certificate) and use that URL.
 
 ## 2. Receive it in n8n
 
@@ -46,7 +49,9 @@ reach a desktop, so self-host n8n on the same machine or on the LAN.
    that in the app's **Webhook URL** field. To reject other callers, set
    the node's **Authentication** to **Header Auth**: create a credential
    with the name `X-Whisper-Webhook-Secret` and your secret as the value,
-   and type the same secret into the app's **Webhook secret** field.
+   and type the same secret into the app's **Webhook secret** field. This
+   recipe uses `http://<n8n-host>:5678`, which sends the secret unencrypted
+   across the LAN; an `https://` receiver is the safer choice.
 2. Click **Listen for test event** and finish a job to capture a sample (it
    arrives on `/webhook-test/whisper-done`); then activate the workflow so
    `/webhook/whisper-done` serves every completion.

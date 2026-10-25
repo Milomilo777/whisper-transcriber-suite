@@ -262,14 +262,16 @@ def _cli_serve(args: argparse.Namespace) -> int:
         args.webhook if args.webhook is not None
         else str(cfg.get("server_webhook_url", ""))
     )
+    # Passed on exactly as given: run_server judges the original value, so a
+    # secret of "\r\n" is refused instead of shrinking to "" (no header).
     webhook_secret = (
         args.webhook_secret if args.webhook_secret is not None
         else str(cfg.get("server_webhook_secret", "") or "")
-    ).strip()
+    )
     webhook_header = (
         args.webhook_header if args.webhook_header is not None
         else str(cfg.get("server_webhook_header_name", "") or "")
-    ).strip()
+    )
     # The app's Access password protects the command-line server too (a
     # `serve --lan` used to run open even with a password set in the app).
     token = (

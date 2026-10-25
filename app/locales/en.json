@@ -1006,6 +1006,7 @@
   "Send usage statistics (on by default; also in the Help menu)": "Send usage statistics (on by default; also in the Help menu)",
   "Sending…": "Sending…",
   "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)",
+  "Sent in plain text when the URL starts with http://": "Sent in plain text when the URL starts with http://",
   "Sent with: {system}": "Sent with: {system}",
   "Serbian": "Serbian",
   "Service-account JSON file:": "Service-account JSON file:",

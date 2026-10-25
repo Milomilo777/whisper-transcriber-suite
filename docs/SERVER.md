@@ -614,16 +614,27 @@ Behaviour to know:
   NAME` or `server_webhook_header_name` renames the header. With no secret set
   no header is sent. The secret is stored in cleartext in `config.json` like
   the access password, and it is never written to the log or printed (the
-  start-up message says only that a secret is set). A secret that is not valid
-  in an HTTP header (a line break, a character outside Latin-1, spaces at either
-  end) or a header name that is not a plain token, or is one the request sets
-  itself (`Content-Type`, `Host` ...), stops the delivery with a log line that
-  does not repeat it. Redirects are not followed, so the secret cannot be passed
-  on to another address.
+  start-up message says only that a secret is set). The value is used exactly
+  as given, never trimmed: only a completely empty value means "no secret". The
+  app's field drops spaces around what you type, and nothing else. A secret
+  that is not valid in an HTTP header (a line break or other control character,
+  a character outside Latin-1, or a space at either end, so also a value made
+  only of spaces) or a header name that is not a plain token, or is one the
+  request sets itself (`Content-Type`, `Host` ...), is never sent as "no
+  secret": `serve` refuses to start (exit code 1), and the app's server refuses
+  every delivery, each with a message that does not repeat it. Redirects are not
+  followed, so the secret cannot be passed on to another address.
+- **Use an `https://` receiver.** The header travels exactly as the body does:
+  with an `http://` webhook URL, anyone on the network path can read the
+  secret. The start-up output and log warn when a secret is set and the URL
+  starts with `http://`, and the app's field says so. An `http://` receiver on
+  a trusted home network is a risk you choose; put n8n behind a reverse proxy
+  with a certificate (or use its HTTPS setup) when the path is not private.
 - **n8n recipe (Header Auth).** In n8n create a credential of type *Header
   Auth* with the name `X-Whisper-Webhook-Secret` and your secret as the value,
   then choose it in the Webhook node under **Authentication > Header Auth**.
-  n8n then answers 403 to any call without the right header. Other receivers:
+  n8n then answers 403 to any call without the right header. Prefer an
+  `https://` webhook URL for n8n so the secret is encrypted on the way. Other receivers:
   compare the header value in constant time. Check the job id against
   `GET /api/jobs/<id>` if the receiver must be extra careful.
 

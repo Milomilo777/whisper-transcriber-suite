@@ -2321,6 +2321,20 @@ def save_config(config: dict[str, Any]) -> None:
             config._config_baseline = snapshot
 
 
+def webhook_secret_from_input(raw: str | None) -> str:
+    """The secret to store for text typed into the app's field.
+
+    Only spaces around it are trimmed (a pasted trailing space is the usual
+    slip). Text that is only spaces, or holds other whitespace or control
+    characters, is returned unchanged so it stays invalid and deliveries are
+    refused: it must never shrink into "" (no secret) or into a different
+    credential than the one typed.
+    """
+    value = raw or ""
+    trimmed = value.strip(" ")
+    return trimmed if trimmed else value
+
+
 # Per-folder project overrides --------------------------------------------------
 
 PROJECT_FILE_NAME = ".whisperproject.json"
