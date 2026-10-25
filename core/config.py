@@ -1452,7 +1452,7 @@ def _write_text_atomic(path: Path, text: str) -> None:
     """Write ``text`` to ``path`` through a temp file (fsync + replace), so a
     crash leaves the old file or the new one, never half of it. Raises OSError
     (the temp file is removed)."""
-    fd, tmp_path = tempfile.mkstemp(
+    fd, staged = tempfile.mkstemp(
         prefix=".online-", suffix=".tmp", dir=str(path.parent) or "."
     )
     try:
@@ -1460,10 +1460,10 @@ def _write_text_atomic(path: Path, text: str) -> None:
             f.write(text)
             f.flush()
             os.fsync(f.fileno())
-        os.replace(tmp_path, path)
+        _replace_with_retry(staged, str(path))
     except BaseException:
         try:
-            os.unlink(tmp_path)
+            os.unlink(staged)
         except OSError:
             pass
         raise
