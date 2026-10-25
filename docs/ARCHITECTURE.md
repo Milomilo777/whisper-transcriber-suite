@@ -116,12 +116,15 @@ tests/                      hermetic suite; tests/smoke/ needs real resources
 
 **Resume checkpoints and kept-aside files.** While a file is transcribed, the saved text so far is written to
 `partials/<hash>.json` in the app's data folder (on Windows `%LOCALAPPDATA%\WhisperTranscriberSuite\partials`),
-and the media's size and date are recorded when the run starts. If the media at that path has changed, or a
-checkpoint cannot be trusted, it is never deleted: it is kept aside as `<hash>.json.unverified-<time>`, together
-with a plain-text copy of the saved transcript, `<hash>.unverified-<time>.txt`, that any text editor can open
-(source path, time, reason, then one line per segment with its start time). The app never picks up or removes
-these files by itself; once you no longer need them you can delete them by hand. If the checkpoint can be
-neither moved nor copied aside, the task stops with an error and the checkpoint stays untouched.
+and the media's size and date are recorded when the run starts and kept for the whole run. On resume, a
+checkpoint is **kept aside, never deleted**, when the media it came from is missing, has a different size or
+date, or cannot be verified: it is renamed to `<hash>.json.unverified-<tag>`, together with a plain-text copy of
+the saved transcript, `<hash>.unverified-<tag>.txt`, that any text editor can open (source path, time, reason,
+then one line per segment with its start time). A checkpoint whose settings, model or engine differ from the
+current ones is still discarded, because the media is intact and can be transcribed again. The app never picks
+up or removes the kept-aside files by itself; once you no longer need them you can delete them by hand. If the
+checkpoint can be neither renamed nor copied (and synced to disk) aside, the task stops with an error and the
+checkpoint stays untouched.
 
 ### Download
 

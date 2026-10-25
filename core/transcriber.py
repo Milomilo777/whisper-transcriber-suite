@@ -892,6 +892,21 @@ def _current_backend_and_model() -> tuple[str, str]:
     return backend, model_name
 
 
+def _note_run_identity(task: "TranscriptionTask") -> None:
+    """Record the media this run starts on (size and date) for its checkpoints.
+
+    Every route that can write a checkpoint calls this at run start (fresh
+    run, resume, language-model/alt-backend run). The identity cache is keyed
+    by path and lives as long as the worker, so a run that skipped this would
+    stamp its text with an EARLIER run's media identity.
+    """
+    _checkpoint.note_source_identity(task.file_path)
+    try:
+        task.identity_noted = True
+    except AttributeError:
+        pass
+
+
 def _write_periodic_checkpoint(
     task: "TranscriptionTask",
     segments_data: list[dict[str, Any]],
@@ -914,6 +929,11 @@ def _write_periodic_checkpoint(
     """
     if periodic and task.checkpoint_failures >= _CHECKPOINT_MAX_CONSECUTIVE_FAILURES:
         return
+    if not getattr(task, "identity_noted", False):
+        # Last line of defence at the single place that writes checkpoints:
+        # a route that never noted its media still must not inherit the
+        # identity of an earlier run on this path. Late, but never stale.
+        _note_run_identity(task)
     backend, model_name = _current_backend_and_model()
     whisper_task = _translate.normalise_task(getattr(task, "whisper_task", None))
     try:
@@ -1619,6 +1639,7 @@ def transcribe_with_language_model(
         return
     release_default_model()
     backend = _language_model_backend(model_id, log_cb)
+    _note_run_identity(task)
     with _runtime_overrides_scope(task):
         logger.info("transcribe_backend=nvidia_asr language_model=%s file=%s", model_id, task.file_path)
         _transcribe_via_alt_backend("nvidia_asr", task, progress_cb, log_cb, language_cb, backend=backend)
@@ -2397,7 +2418,7 @@ def transcribe(
         return
     # Remember which media this run starts on, so a later stat blip cannot
     # blank the identity stored in its checkpoints.
-    _checkpoint.note_source_identity(task.file_path)
+    _note_run_identity(task)
     # Wrap the per-file work in ``_runtime_overrides_scope`` so any
     # ``.whisperproject.json`` mutation of the module-level ``config``
     # is reverted before the next file runs (audit P0-6). The scope
@@ -3406,9 +3427,10 @@ def resume_transcription(
             model_name=model_name,
             cfg_fingerprint=cfg_fp,
         )
-        if reason.startswith(_checkpoint.UNVERIFIABLE_PREFIX):
-            # Cannot tell which media the saved text came from: never resume
-            # onto whatever sits at the path now, but never destroy it either.
+        if _checkpoint.keeps_text(reason):
+            # The media is gone, changed or cannot be verified: never resume
+            # onto whatever sits at the path now, but never destroy the saved
+            # text either (it may be the only copy of hours of work).
             kept = _keep_checkpoint_aside(task, reason, log_cb)
             log(
                 f"Resume: {reason}; the checkpoint is kept aside ({kept}) "
@@ -3420,7 +3442,7 @@ def resume_transcription(
             log(f"Resume: checkpoint invalid ({reason}); deleting partial.", log_cb)
             _checkpoint.delete_checkpoint(task.file_path)
             return False
-        _checkpoint.note_source_identity(task.file_path)
+        _note_run_identity(task)
         task.whisper_task = cp_task
         _checked_whisper_task(task, backend_for_check or "faster_whisper")
 

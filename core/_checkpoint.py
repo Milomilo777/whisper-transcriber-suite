@@ -18,9 +18,11 @@ modules so tests can exercise it without faster_whisper installed.
 """
 from __future__ import annotations
 
+import errno
 import hashlib
 import json
 import logging
+import math
 import os
 import re
 import tempfile
@@ -250,36 +252,88 @@ class CheckpointNotKeptError(RuntimeError):
     """
 
 
-def _recovery_text(data: Any, source_path: str, reason: str, when: str) -> str:
-    """Plain-text copy of a quarantined checkpoint a person can open and read."""
-    lines = [
-        "Kept-aside transcript (safe to delete once you no longer need it).",
-        f"Source file: {source_path}",
-        f"Kept aside at: {when}",
-        f"Reason: {reason or 'not recorded'}",
-        "",
-    ]
-    segs = data.get("segments") if isinstance(data, dict) else None
-    if not isinstance(segs, list) or not segs:
-        lines.append("(no readable segments in the saved checkpoint)")
-    else:
-        for seg in segs:
-            if not isinstance(seg, dict):
-                continue
-            start = seg.get("start")
-            if isinstance(start, bool) or not isinstance(start, (int, float)):
-                stamp = "??:??:??"
-            else:
-                total = max(0, int(start))
-                stamp = f"{total // 3600:02d}:{total % 3600 // 60:02d}:{total % 60:02d}"
-            lines.append(f"[{stamp}] {str(seg.get('text', '')).strip()}")
-    return "\n".join(lines) + "\n"
+# fsync errors that only mean "this file system cannot sync a file". Every
+# other OSError (EIO, ENOSPC, ...) means the bytes may not be on disk.
+_FSYNC_UNSUPPORTED = frozenset(
+    code
+    for code in (
+        getattr(errno, "EINVAL", None),
+        getattr(errno, "ENOTSUP", None),
+        getattr(errno, "EOPNOTSUPP", None),
+    )
+    if code is not None
+)
+
+
+def _strict_sync(f: Any) -> None:
+    """Flush and fsync ``f``; only "fsync unsupported" is tolerated.
+
+    The best-effort :func:`_flush_to_disk` is right for ordinary checkpoint
+    writes (the next write retries). A copy that authorises a fresh run to
+    replace the original must really be durable, so any other error raises.
+    """
+    f.flush()
+    try:
+        os.fsync(f.fileno())
+    except OSError as e:
+        if e.errno in _FSYNC_UNSUPPORTED:
+            logger.warning("File system cannot fsync (%s); keeping the copy anyway", e)
+            return
+        raise
+
+
+# Prefixes of validate_checkpoint reasons that mean "the saved text may be the
+# only copy and the media it came from is gone, changed or unverifiable": the
+# checkpoint is kept aside (never deleted) and a fresh run starts. Other
+# reasons (config, model, backend, schema, segments) keep the old behaviour of
+# discarding the partial, because the media is still there and can be
+# transcribed again.
+KEEP_ASIDE_PREFIXES: tuple[str, ...] = (
+    UNVERIFIABLE_PREFIX,
+    "source file no longer exists",
+    "source file size has changed",
+    "source file mtime has changed",
+    "could not stat source",
+    "checkpoint missing source_size",
+    "checkpoint missing source_mtime",
+    "checkpoint source_size is not a number",
+    "checkpoint source_mtime is not a number",
+)
+
+
+def keeps_text(reason: str) -> bool:
+    """True if a validate_checkpoint ``reason`` must keep the checkpoint aside."""
+    return reason.startswith(KEEP_ASIDE_PREFIXES)
+
+
+def _segment_stamp(start: Any) -> str:
+    """``HH:MM:SS`` for a segment start, ``??:??:??`` for anything unusable."""
+    if isinstance(start, bool) or not isinstance(start, (int, float)):
+        return "??:??:??"
+    try:
+        if not math.isfinite(start) or start < 0 or start > 1e9:
+            return "??:??:??"
+        total = int(start)
+    except (ValueError, OverflowError):
+        return "??:??:??"
+    return f"{total // 3600:02d}:{total % 3600 // 60:02d}:{total % 60:02d}"
+
+
+def _segment_line(seg: Any) -> str | None:
+    """One readable line for a saved segment (None = not a segment)."""
+    if not isinstance(seg, dict):
+        return None
+    try:
+        text = str(seg.get("text", "")).strip()
+    except Exception:  # noqa: BLE001 - a hostile value must not hide the others
+        text = "(text could not be read)"
+    return f"[{_segment_stamp(seg.get('start'))}] {text}\n"
 
 
 def recovery_text_path(kept: Path) -> Path:
     """Where the readable copy of the kept-aside checkpoint ``kept`` lives.
 
-    ``<sha1>.json.unverified-<time>`` pairs with ``<sha1>.unverified-<time>.txt``
+    ``<sha1>.json.unverified-<tag>`` pairs with ``<sha1>.unverified-<tag>.txt``
     (no ``.json`` in the name, so nothing that looks for kept checkpoints by
     their ``.json.unverified-`` name takes the text file for one).
     """
@@ -287,85 +341,144 @@ def recovery_text_path(kept: Path) -> Path:
 
 
 def _write_recovery_sidecar(kept: Path, source_path: str, reason: str) -> None:
-    """Write the readable text copy of a quarantined checkpoint. Never raises."""
+    """Write the readable text copy of a quarantined checkpoint. Never raises.
+
+    Lines go to the file one by one, so a very large transcript is not also
+    built as one big string (the JSON itself still has to be loaded).
+    """
     import time as _time
 
-    sidecar = recovery_text_path(kept)
+    sidecar: Path | None = None
     try:
+        sidecar = recovery_text_path(kept)
         try:
             with open(kept, encoding="utf-8") as f:
                 data = json.load(f)
         except (OSError, ValueError):
             data = None
-        when = _time.strftime("%Y-%m-%d %H:%M:%S")
-        text = _recovery_text(data, source_path, reason, when)
-        # ensure_ascii-style lone surrogates in a Windows path cannot be
-        # encoded: replace them rather than lose the whole sidecar.
+        segs = data.get("segments") if isinstance(data, dict) else None
+        # errors="replace": a lone surrogate in a Windows path cannot be
+        # encoded; lose that character, not the whole sidecar.
         with open(sidecar, "w", encoding="utf-8", newline="\n", errors="replace") as f:
-            f.write(text)
+            f.write("Kept-aside transcript (safe to delete once you no longer need it).\n")
+            f.write(f"Source file: {source_path}\n")
+            f.write(f"Kept aside at: {_time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"Reason: {reason or 'not recorded'}\n\n")
+            wrote = False
+            if isinstance(segs, list):
+                for seg in segs:
+                    line = _segment_line(seg)
+                    if line is not None:
+                        f.write(line)
+                        wrote = True
+            if not wrote:
+                f.write("(no readable segments in the saved checkpoint)\n")
             _flush_to_disk(f)
     except Exception as e:  # noqa: BLE001 - the sidecar is a courtesy, never a failure
         logger.warning("Could not write the readable copy %s: %s", sidecar, e)
 
 
-def _copy_aside(path: Path, target: Path) -> bool:
-    """Copy ``path`` to ``target``, sync it and verify the size. Never raises."""
-    import shutil
+def _kept_name(path: Path) -> Path:
+    """A kept-aside name no other attempt (or process) can also pick."""
+    import secrets
+    import time as _time
 
+    return path.with_name(
+        f"{path.name}.unverified-{int(_time.time())}-{os.getpid()}-{secrets.token_hex(4)}"
+    )
+
+
+def _copy_aside(path: Path, why: OSError) -> Path | None:
+    """Preserve the bytes of ``path`` in a new kept file; never touch ``path``.
+
+    The bytes are read once, written to a file created exclusively (so no
+    existing file can be overwritten), synced strictly and read back for
+    comparison. On failure only a file THIS call created is removed. Returns
+    None when ``path`` no longer exists (someone else kept it aside already).
+    """
     try:
-        shutil.copy2(path, target)
-        with open(target, "rb+") as f:
-            _flush_to_disk(f)
-        ok = target.stat().st_size == path.stat().st_size
+        data = path.read_bytes()
+    except FileNotFoundError:
+        return None
     except OSError as e:
-        logger.warning("Could not copy checkpoint %s aside: %s", path, e)
-        ok = False
-    if not ok:
+        raise CheckpointNotKeptError(
+            f"the saved checkpoint {path} could not be kept aside ({why}; read: {e}); "
+            "it was left as it is"
+        ) from e
+    last: OSError = why
+    for _ in range(8):
+        target = _kept_name(path)
+        created = False
         try:
-            target.unlink()
-        except OSError:
-            pass
-    return ok
+            with open(target, "xb") as f:
+                created = True
+                f.write(data)
+                _strict_sync(f)
+            if target.read_bytes() != data:
+                raise OSError("the copy does not match the checkpoint it was made from")
+            return target
+        except FileExistsError as e:
+            last = e  # not ours: leave it alone and pick another name
+            continue
+        except OSError as e:
+            last = e
+            if created:
+                try:
+                    target.unlink()
+                except OSError:
+                    pass
+            break
+    raise CheckpointNotKeptError(
+        f"the saved checkpoint {path} could not be kept aside ({why}; copy: {last}); "
+        "it was left as it is"
+    ) from last
 
 
 def quarantine_checkpoint(source_path: str, reason: str = "") -> Path | None:
-    """Keep the checkpoint aside; return the kept path (None = none existed).
+    """Keep the checkpoint aside; return the kept path (None = nothing to keep).
 
     The kept name does not end in ``.json``, so the resume path no longer
     sees it and the age sweep never reaps it. Next to it a ``.txt`` file
     holds the saved text, readable without the app. A fresh run can then
     start without touching the saved segments.
 
-    The file is renamed; if the rename fails it is copied, synced and
-    size-checked instead. If the text cannot be kept either way (the
-    checkpoint is the only copy, a fresh run would overwrite it) this raises
+    The file is renamed to a unique name (checked free first; ``os.rename``
+    also refuses an existing target on Windows). If the rename fails its
+    bytes are copied (:func:`_copy_aside`); this never deletes the original,
+    a fresh run replaces it later. If the text cannot be kept either way
+    (the checkpoint may be the only copy) this raises
     :class:`CheckpointNotKeptError` and the caller must not start that run.
+    Returns None when the checkpoint is already gone (another process kept it).
     """
-    import time as _time
-
     path = checkpoint_path(source_path)
     if not path.exists():
         return None
-    target = path.with_name(f"{path.name}.unverified-{int(_time.time())}")
-    n = 0
-    while target.exists():
-        n += 1
-        target = path.with_name(f"{path.name}.unverified-{int(_time.time())}-{n}")
-    try:
-        os.replace(path, target)
-    except OSError as e:
-        logger.warning("Could not move checkpoint %s aside (%s); copying it", path, e)
-        if not _copy_aside(path, target):
-            raise CheckpointNotKeptError(
-                f"the saved checkpoint {path} could not be kept aside "
-                f"({e}); it was left as it is"
-            ) from e
-        # The copy is durable: drop the original so it is not found again.
-        # If that fails too, it stays and the fresh run simply replaces it.
+    target: Path | None = None
+    rename_error: OSError | None = None
+    for _ in range(8):
+        candidate = _kept_name(path)
+        if candidate.exists():
+            continue
         try:
-            path.unlink()
-        except OSError:
-            pass
+            os.rename(path, candidate)
+            target = candidate
+        except FileNotFoundError as e:
+            if not path.exists():
+                return None  # kept aside by someone else in the meantime
+            rename_error = e
+        except OSError as e:
+            rename_error = e
+        break
+    else:
+        rename_error = FileExistsError("no free kept-aside name")
+    if target is None:
+        assert rename_error is not None
+        logger.warning(
+            "Could not move checkpoint %s aside (%s); copying it", path, rename_error
+        )
+        target = _copy_aside(path, rename_error)
+        if target is None:
+            return None
     logger.warning("Checkpoint %s kept aside as %s", path, target)
     _write_recovery_sidecar(target, os.path.abspath(source_path), reason)
     return target

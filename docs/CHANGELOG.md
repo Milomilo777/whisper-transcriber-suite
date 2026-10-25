@@ -90,13 +90,17 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 ### Fixed
 
 - **Media swapped during a run can no longer relabel saved text**: the size and date of the media noted when
-  a run starts now stay in every checkpoint of that run; a later checkpoint write no longer re-reads them, so
-  a resume refuses text that came from the original file instead of splicing it onto the new one.
-- **A checkpoint that cannot be moved aside is never overwritten**: if the rename fails, the app copies it
-  (synced and size-checked) before a fresh run starts; if even that fails, the task stops with an error and
-  the saved text stays untouched.
+  a run starts stay in every checkpoint of that run, on every route (also web/LAN language-model jobs in a
+  long-lived worker), so a resume refuses text that came from the original file.
+- **A checkpoint that cannot be kept aside is never overwritten or deleted**: if the rename fails, the bytes
+  are copied to a new exclusively created file, synced strictly and read back; the original is left alone. If
+  even that fails the task stops with an error. Kept-aside names are unique, so two processes cannot clash.
+- **Changed or missing media keeps the saved text**: when the source is gone, has another size or date, or
+  cannot be verified, the checkpoint is kept aside instead of deleted. Settings, model or engine changes still
+  discard it.
 - **Kept-aside checkpoints can be read without the app**: a plain-text copy of the saved transcript is
-  written next to each one (`<hash>.unverified-<time>.txt`); the startup sweep never deletes either file.
+  written next to each one (`<hash>.unverified-<tag>.txt`), also when a segment time is invalid; the startup
+  sweep never deletes either file.
 - **A relaunch no longer waits 20 seconds for a zombie on macOS**: a finished process that is not a child of
   the app is now detected with `ps` where `/proc` does not exist.
 - **Two burn jobs racing for one output name no longer lose a placeholder's reservation**: every

@@ -7,7 +7,6 @@ Hermetic: real files under tmp_path, no model, no ffmpeg.
 from __future__ import annotations
 
 import os
-import shutil
 import sys
 import time
 import types
@@ -99,9 +98,25 @@ def test_failed_stat_at_run_start_drops_an_older_note(data_dir, source, monkeypa
 
 def _kept(src):
     path = cp.checkpoint_path(str(src))
-    return sorted(
-        p for p in path.parent.glob(path.name + ".unverified-*") if p.suffix != ".txt"
-    )
+    return sorted(path.parent.glob(path.name + ".unverified-*"))
+
+
+def _no_rename(*_a, **_k):
+    raise PermissionError(13, "locked")
+
+
+def _fail(*_a, **_k):
+    raise OSError(28, "no space left")
+
+
+def test_kept_names_are_unique_and_keep_the_json_infix(data_dir, source):
+    names = set()
+    for _ in range(3):
+        _write(source)
+        kept = cp.quarantine_checkpoint(str(source), "r")
+        assert kept is not None and ".json.unverified-" in kept.name
+        names.add(kept.name)
+    assert len(names) == 3
 
 
 def test_failed_rename_falls_back_to_a_verified_copy(data_dir, source, monkeypatch):
@@ -109,15 +124,13 @@ def test_failed_rename_falls_back_to_a_verified_copy(data_dir, source, monkeypat
     path = cp.checkpoint_path(str(source))
     original = path.read_bytes()
 
-    def _no_rename(*_a, **_k):
-        raise PermissionError(13, "locked")
-
     with monkeypatch.context() as m:
-        m.setattr(cp.os, "replace", _no_rename)
+        m.setattr(cp.os, "rename", _no_rename)
         kept = cp.quarantine_checkpoint(str(source), "test reason")
 
     assert kept is not None and kept.read_bytes() == original
-    # A fresh run may now write over / delete the original.
+    # The copy never deletes the original; a fresh run replaces it later.
+    assert path.read_bytes() == original
     cp._RUN_IDENTITY.clear()
     _write(source, segments=[])
     cp.delete_checkpoint(str(source))
@@ -130,16 +143,148 @@ def test_rename_and_copy_failure_leaves_the_checkpoint_untouched(
     path = cp.checkpoint_path(str(source))
     original = path.read_bytes()
 
-    def _fail(*_a, **_k):
-        raise OSError(28, "no space left")
-
     with monkeypatch.context() as m:
-        m.setattr(cp.os, "replace", _fail)
-        m.setattr(shutil, "copy2", _fail)
+        m.setattr(cp.os, "rename", _fail)
+        m.setattr(cp, "_strict_sync", _fail)
         with pytest.raises(cp.CheckpointNotKeptError):
             cp.quarantine_checkpoint(str(source), "test reason")
 
     assert path.read_bytes() == original
+    assert _kept(source) == []
+
+
+def test_eio_on_fsync_of_the_copy_is_a_failure(data_dir, source, monkeypatch):
+    _write(source)
+    path = cp.checkpoint_path(str(source))
+    original = path.read_bytes()
+
+    def _eio(_fd):
+        raise OSError(5, "I/O error")
+
+    with monkeypatch.context() as m:
+        m.setattr(cp.os, "rename", _no_rename)
+        m.setattr(cp.os, "fsync", _eio)
+        with pytest.raises(cp.CheckpointNotKeptError):
+            cp.quarantine_checkpoint(str(source), "r")
+
+    assert path.read_bytes() == original
+    assert _kept(source) == []  # the half-made copy this attempt created is removed
+
+
+def test_fsync_not_supported_is_tolerated(data_dir, source, monkeypatch):
+    import errno
+
+    _write(source)
+    original = cp.checkpoint_path(str(source)).read_bytes()
+
+    def _unsupported(_fd):
+        raise OSError(errno.EINVAL, "fsync not supported")
+
+    with monkeypatch.context() as m:
+        m.setattr(cp.os, "rename", _no_rename)
+        m.setattr(cp.os, "fsync", _unsupported)
+        kept = cp.quarantine_checkpoint(str(source), "r")
+    assert kept is not None and kept.read_bytes() == original
+
+
+def test_existing_target_name_is_never_overwritten_or_deleted(
+        data_dir, source, monkeypatch):
+    _write(source)
+    path = cp.checkpoint_path(str(source))
+    original = path.read_bytes()
+    taken = path.with_name(path.name + ".unverified-taken")
+    taken.write_bytes(b"someone else's file")
+    names = iter(["taken", "taken", "fresh1", "fresh2"])
+    monkeypatch.setattr(
+        cp, "_kept_name", lambda p: p.with_name(p.name + ".unverified-" + next(names))
+    )
+
+    # rename path: skips the taken name
+    kept = cp.quarantine_checkpoint(str(source), "r")
+    assert kept is not None and kept.name.endswith("fresh1")
+    assert kept.read_bytes() == original
+    assert taken.read_bytes() == b"someone else's file"
+
+    # copy path: exclusive creation refuses the taken name
+    _write(source)
+    names2 = iter(["taken", "fresh3", "taken", "fresh4"])
+    monkeypatch.setattr(
+        cp, "_kept_name", lambda p: p.with_name(p.name + ".unverified-" + next(names2))
+    )
+    monkeypatch.setattr(cp.os, "rename", _no_rename)
+    kept2 = cp.quarantine_checkpoint(str(source), "r")
+    assert kept2 is not None and kept2.name.endswith("fresh4")
+    assert taken.read_bytes() == b"someone else's file"
+
+
+def test_exclusive_copy_failure_does_not_delete_a_foreign_file(
+        data_dir, source, monkeypatch):
+    _write(source)
+    path = cp.checkpoint_path(str(source))
+    taken = path.with_name(path.name + ".unverified-taken")
+    taken.write_bytes(b"foreign")
+    monkeypatch.setattr(
+        cp, "_kept_name", lambda p: p.with_name(p.name + ".unverified-taken")
+    )
+    monkeypatch.setattr(cp.os, "rename", _no_rename)
+    with pytest.raises(cp.CheckpointNotKeptError):
+        cp.quarantine_checkpoint(str(source), "r")
+    assert taken.read_bytes() == b"foreign"
+    assert path.exists()
+
+
+def test_original_replaced_during_the_copy_is_never_deleted(
+        data_dir, source, monkeypatch):
+    _write(source, segments=SEGS)
+    path = cp.checkpoint_path(str(source))
+    older = path.read_bytes()
+    newer = older.replace(b"first words", b"FIRST WORDS")  # same length
+    assert len(newer) == len(older) and newer != older
+    real_sync = cp._strict_sync
+
+    def _sync_then_writer_replaces(f):
+        real_sync(f)
+        tmp = path.with_name("writer.tmp")
+        tmp.write_bytes(newer)
+        os.replace(tmp, path)
+
+    with monkeypatch.context() as m:
+        m.setattr(cp.os, "rename", _no_rename)
+        m.setattr(cp, "_strict_sync", _sync_then_writer_replaces)
+        kept = cp.quarantine_checkpoint(str(source), "r")
+
+    assert kept is not None and kept.read_bytes() == older
+    assert path.read_bytes() == newer  # the newer checkpoint survives
+
+
+def test_checkpoint_already_kept_by_another_process_returns_none(
+        data_dir, source, monkeypatch):
+    _write(source)
+    path = cp.checkpoint_path(str(source))
+    other = path.with_name(path.name + ".unverified-other")
+    real_rename = os.rename
+
+    def _other_wins(src, dst):
+        real_rename(src, other)  # the other process moved it first
+        raise FileNotFoundError(2, "gone")
+
+    with monkeypatch.context() as m:
+        m.setattr(cp.os, "rename", _other_wins)
+        assert cp.quarantine_checkpoint(str(source), "r") is None
+    assert other.exists()  # the winner's file is untouched
+
+
+def test_original_gone_when_the_copy_starts_returns_none(data_dir, source, monkeypatch):
+    _write(source)
+    path = cp.checkpoint_path(str(source))
+
+    def _locked_then_gone(src, dst):
+        os.unlink(path)  # another process kept it aside meanwhile
+        raise PermissionError(13, "locked")
+
+    with monkeypatch.context() as m:
+        m.setattr(cp.os, "rename", _locked_then_gone)
+        assert cp.quarantine_checkpoint(str(source), "r") is None
     assert _kept(source) == []
 
 
@@ -157,21 +302,16 @@ def test_resume_stops_the_task_when_the_checkpoint_cannot_be_kept(
     original = path.read_bytes()
     monkeypatch.setattr(t, "_ensure_default_backend_loaded", lambda log_cb=None: None)
     monkeypatch.setattr(t, "_current_backend_and_model", lambda: ("faster_whisper", "m"))
-    # An unverifiable media identity sends the resume down the quarantine branch.
     monkeypatch.setattr(
         cp, "validate_checkpoint",
         lambda *a, **k: cp.UNVERIFIABLE_PREFIX + " (test)",
     )
-
-    def _fail(*_a, **_k):
-        raise OSError(28, "no space left")
-
     started = []
     monkeypatch.setattr(t, "transcribe", lambda *a, **k: started.append(1))
     logs: list[str] = []
     with monkeypatch.context() as m:
-        m.setattr(cp.os, "replace", _fail)
-        m.setattr(shutil, "copy2", _fail)
+        m.setattr(cp.os, "rename", _fail)
+        m.setattr(cp, "_strict_sync", _fail)
         with pytest.raises(cp.CheckpointNotKeptError):
             t.resume_transcription(TranscriptionTask(str(source)), log_cb=logs.append)
 
@@ -180,7 +320,132 @@ def test_resume_stops_the_task_when_the_checkpoint_cannot_be_kept(
     assert any("saved text is not overwritten" in m for m in logs)
 
 
-# --- defect 3: readable sidecar, sweep keeps both ----------------------------
+# --- defect E: changed or missing media keeps the text -----------------------
+
+
+@pytest.fixture
+def resume_env(data_dir, monkeypatch):
+    if "core.transcriber" not in sys.modules:
+        fake_fw = types.ModuleType("faster_whisper")
+        fake_fw.WhisperModel = object  # type: ignore[attr-defined]
+        sys.modules.setdefault("faster_whisper", fake_fw)
+    import core.transcriber as t
+
+    monkeypatch.setattr(t, "_ensure_default_backend_loaded", lambda log_cb=None: None)
+    monkeypatch.setattr(t, "_current_backend_and_model", lambda: ("faster_whisper", "m"))
+    return t
+
+
+@pytest.mark.parametrize("reason", [
+    "source file no longer exists: x",
+    "source file size has changed since checkpoint",
+    "source file mtime has changed since checkpoint",
+    "could not stat source: boom",
+    "checkpoint missing source_size",
+    "checkpoint missing source_mtime",
+    "checkpoint source_size is not a number: 'x'",
+    "checkpoint source_mtime is not a number: 'x'",
+    cp.UNVERIFIABLE_PREFIX + " (x)",
+])
+def test_media_problems_keep_the_text(resume_env, source, monkeypatch, reason):
+    from core.task import TranscriptionTask
+
+    t = resume_env
+    _write(source)
+    path = cp.checkpoint_path(str(source))
+    original = path.read_bytes()
+    monkeypatch.setattr(cp, "validate_checkpoint", lambda *a, **k: reason)
+    assert t.resume_transcription(TranscriptionTask(str(source))) is False
+    assert not path.exists()
+    kept = _kept(source)
+    assert len(kept) == 1 and kept[0].read_bytes() == original
+    assert cp.recovery_text_path(kept[0]).exists()
+
+
+@pytest.mark.parametrize("reason", [
+    "transcription config changed since checkpoint",
+    "model changed: checkpoint='a' current='b'",
+    "backend changed: checkpoint='a' current='b'",
+    "checkpoint schema_version 9 != expected 1",
+    "checkpoint segments field is not a list",
+])
+def test_config_problems_still_discard_the_partial(resume_env, source, monkeypatch, reason):
+    from core.task import TranscriptionTask
+
+    t = resume_env
+    _write(source)
+    monkeypatch.setattr(cp, "validate_checkpoint", lambda *a, **k: reason)
+    assert t.resume_transcription(TranscriptionTask(str(source))) is False
+    assert not cp.checkpoint_path(str(source)).exists()
+    assert _kept(source) == []
+
+
+def test_really_replaced_media_keeps_the_checkpoint_on_resume(resume_env, source):
+    from core.task import TranscriptionTask
+
+    t = resume_env
+    cp.note_source_identity(str(source))
+    _write(source, backend="faster_whisper", model_name="m")
+    original = cp.checkpoint_path(str(source)).read_bytes()
+    _replace_media(source)
+    task = TranscriptionTask(str(source))
+    assert t.resume_transcription(task) is False
+    kept = _kept(source)
+    assert len(kept) == 1 and kept[0].read_bytes() == original
+
+
+# --- defect D: identity at every run route -----------------------------------
+
+
+def test_language_model_route_notes_the_identity_of_its_own_run(
+        data_dir, source, monkeypatch):
+    if "core.transcriber" not in sys.modules:
+        fake_fw = types.ModuleType("faster_whisper")
+        fake_fw.WhisperModel = object  # type: ignore[attr-defined]
+        sys.modules.setdefault("faster_whisper", fake_fw)
+    import core.language_models as lm
+    import core.transcriber as t
+    from core.task import TranscriptionTask
+
+    # Run A is interrupted: its checkpoint stays and its identity stays cached.
+    task_a = TranscriptionTask(str(source))
+    t._note_run_identity(task_a)
+    t._write_periodic_checkpoint(task_a, [dict(SEGS[0])], 40.0, "en", 0.9, None)
+    assert cp.load_checkpoint(str(source))["source_size"] == 64
+    # The file is replaced by B and run B arrives through the alt-backend route.
+    _replace_media(source)
+    monkeypatch.setattr(lm, "by_model", lambda _id: types.SimpleNamespace(engine="other"))
+    monkeypatch.setattr(t, "release_default_model", lambda: None)
+    monkeypatch.setattr(t, "_language_model_backend", lambda *a, **k: object())
+    task_b = TranscriptionTask(str(source))
+
+    def _backend_run(name, task, *a, **k):
+        t._write_periodic_checkpoint(task, [dict(SEGS[1])], 80.0, "en", 0.9, None)
+
+    monkeypatch.setattr(t, "_transcribe_via_alt_backend", _backend_run)
+    t.transcribe_with_language_model("some-model", task_b)
+
+    data = cp.load_checkpoint(str(source))
+    assert data["source_size"] == 99
+    assert _validate(data).startswith("backend changed")  # identity checks passed
+
+
+def test_checkpoint_writer_notes_identity_when_no_route_did(data_dir, source):
+    if "core.transcriber" not in sys.modules:
+        fake_fw = types.ModuleType("faster_whisper")
+        fake_fw.WhisperModel = object  # type: ignore[attr-defined]
+        sys.modules.setdefault("faster_whisper", fake_fw)
+    import core.transcriber as t
+    from core.task import TranscriptionTask
+
+    cp.note_source_identity(str(source))  # stale note of an earlier run on A
+    _replace_media(source)
+    task = TranscriptionTask(str(source))  # a route that never noted
+    t._write_periodic_checkpoint(task, [dict(SEGS[0])], 40.0, "en", 0.9, None)
+    assert cp.load_checkpoint(str(source))["source_size"] == 99
+
+
+# --- defect 3 / F: readable sidecar, sweep keeps both ------------------------
 
 
 def test_quarantine_writes_a_readable_text_copy(data_dir, source):
@@ -188,6 +453,7 @@ def test_quarantine_writes_a_readable_text_copy(data_dir, source):
     kept = cp.quarantine_checkpoint(str(source), "media identity unknown")
     assert kept is not None
     sidecar = cp.recovery_text_path(kept)
+    assert ".json" not in sidecar.name
     raw = sidecar.read_bytes()
     assert b"\r" not in raw
     text = raw.decode("utf-8")
@@ -197,11 +463,34 @@ def test_quarantine_writes_a_readable_text_copy(data_dir, source):
     assert "[01:02:05] much later words" in text
 
 
+def test_sidecar_lists_every_segment_despite_bad_starts(data_dir, source):
+    segs = [
+        {"start": float("nan"), "end": 1.0, "text": "nan words"},
+        {"start": float("inf"), "end": 1.0, "text": "inf words"},
+        {"start": float("-inf"), "end": 1.0, "text": "neg inf words"},
+        {"start": 1e300, "end": 1.0, "text": "huge words"},
+        {"start": "7", "end": 1.0, "text": "string start words"},
+        {"start": None, "end": 1.0, "text": "none start words"},
+        {"start": -5, "end": 1.0, "text": "negative words"},
+        {"start": 61.5, "end": 70.0, "text": "good words"},
+    ]
+    _write(source, segments=segs)
+    kept = cp.quarantine_checkpoint(str(source), "r")
+    assert kept is not None
+    text = cp.recovery_text_path(kept).read_text(encoding="utf-8")
+    for seg in segs:
+        assert seg["text"] in text
+    assert "[00:01:01] good words" in text
+    assert text.count("??:??:??") == 7
+
+
 def test_sidecar_failure_never_fails_the_quarantine(data_dir, source, monkeypatch):
     _write(source)
-    monkeypatch.setattr(
-        cp, "_recovery_text", lambda *a, **k: (_ for _ in ()).throw(ValueError("x"))
-    )
+
+    def _boom(_kept):
+        raise ValueError("x")
+
+    monkeypatch.setattr(cp, "recovery_text_path", _boom)
     kept = cp.quarantine_checkpoint(str(source), "r")
     assert kept is not None and kept.exists()
 

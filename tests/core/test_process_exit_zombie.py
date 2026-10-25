@@ -75,8 +75,9 @@ def test_running_non_child_is_not_a_zombie(monkeypatch):
 def test_ps_failure_means_not_known_zombie(monkeypatch, exc):
     _no_proc(monkeypatch)
     _waitid_echild(monkeypatch)
-    _ps(monkeypatch, exc=exc)
+    calls = _ps(monkeypatch, exc=exc)
     assert process_exit._is_zombie(4242) is False
+    assert len(calls) == 1  # ps really was asked
 
 
 def test_exited_child_still_found_by_waitid_without_ps(monkeypatch):
