@@ -659,6 +659,12 @@ Behaviour to know:
   2 seconds or 16 MB, so the reply is not lost to a connection reset. A client
   that sends more than that, or any client over HTTPS (no reply is possible
   without a TLS handshake), sees the connection closed instead.
+  A connection that has not yet sent its whole request line and headers is
+  "pending", and pending connections have a budget of their own: at most 4 per
+  client address and 48 in all (three quarters of the slots), so a client that
+  drips bytes cannot take every slot; beyond that a new connection gets the same
+  fast 503. Many different addresses together can still fill the 48 for the
+  15 seconds of the header deadline.
   Once three quarters of the slots are in use, every reply ends its connection
   (`Connection: close`), and an idle keep-alive connection is kept for at most
   15 seconds, so browsers cannot hold the slots between requests.

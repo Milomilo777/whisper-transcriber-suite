@@ -77,6 +77,11 @@ class _Server:
             transcribe_fn, jobs_root=str(tmp_path / "jobs"),
             record_history=False, max_queued=kw.pop("max_queued", 50))
         self.manager.start()
+        # These tests exercise the slot cap with half-sent requests from one
+        # address; the pending-connection budget has its own tests in
+        # test_server_pending.py.
+        kw.setdefault("max_pending", kw.get("max_connections", 64))
+        kw.setdefault("max_pending_per_host", kw.get("max_connections", 64))
         self.server = JobHTTPServer(("127.0.0.1", 0), self.manager, **kw)
         self.port = self.server.server_address[1]
         self.thread = threading.Thread(

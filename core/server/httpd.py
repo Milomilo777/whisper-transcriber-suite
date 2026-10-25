@@ -185,6 +185,13 @@ _DISCARD_IDLE_S = 5.0
 # capped: beyond it a new client gets a quick 503 (or, over TLS, a closed
 # socket) instead of one more thread.
 _MAX_CONNECTIONS = 64
+# Connections that have not finished sending their request line and headers
+# are "pending": a client that drips bytes (slowloris) holds a thread without
+# having proven anything, not even a password. They get a small budget of
+# their own, so they cannot take every slot: at most this many per client
+# address, and three quarters of the slots in all. Beyond that a new connection
+# is refused with the same fast 503 as a full server.
+_MAX_PENDING_PER_HOST = 4
 
 # Synchronous /v1 requests hold a handler thread (and a slot) until their job
 # ends, which can be hours behind a long queue. At most this many may wait at
@@ -1169,7 +1176,9 @@ class JobHTTPServer(ThreadingHTTPServer):
                  max_upload_mb: int = 512,
                  ssl_context: ssl.SSLContext | None = None,
                  max_connections: int = _MAX_CONNECTIONS,
-                 max_sync_waits: int | None = None) -> None:
+                 max_sync_waits: int | None = None,
+                 max_pending: int | None = None,
+                 max_pending_per_host: int = _MAX_PENDING_PER_HOST) -> None:
         if server_address[0] and ":" in server_address[0]:
             self.address_family = socket.AF_INET6
         self.manager = manager
@@ -1186,6 +1195,11 @@ class JobHTTPServer(ThreadingHTTPServer):
         self.ssl_context = ssl_context
         self.own_names = own_host_names()
         self._max_connections = max(1, max_connections)
+        self._max_pending = max(1, max_pending if max_pending is not None
+                                else self._max_connections * 3 // 4)
+        self._max_pending_per_host = max(1, max_pending_per_host)
+        self._pending: dict[tuple[Any, ...], str] = {}
+        self._pending_hosts: dict[str, int] = {}
         self._slots = threading.BoundedSemaphore(self._max_connections)
         if max_sync_waits is None:
             max_sync_waits = min(_MAX_SYNC_WAITS,
@@ -1236,18 +1250,54 @@ class JobHTTPServer(ThreadingHTTPServer):
         if not self._slots.acquire(blocking=False):
             self._refuse_busy(request, client_address)
             return
+        if not self._take_pending(client_address):
+            self._slots.release()
+            self._refuse_busy(request, client_address)
+            return
         with self._active_lock:
             self._active += 1
         try:
             super().process_request(request, client_address)
         except BaseException:
+            self.release_pending(client_address)
             self._release_slot()
             raise
+
+    def _take_pending(self, client_address: Any) -> bool:
+        """Count a new connection as pending (no complete request yet)."""
+        host = str(client_address[0]) if client_address else "?"
+        key = tuple(client_address) if client_address else ()
+        with self._active_lock:
+            if (len(self._pending) >= self._max_pending
+                    or self._pending_hosts.get(host, 0)
+                    >= self._max_pending_per_host):
+                return False
+            self._pending[key] = host
+            self._pending_hosts[host] = self._pending_hosts.get(host, 0) + 1
+            return True
+
+    def release_pending(self, client_address: Any) -> None:
+        """The connection has sent its headers (or ended): no longer pending."""
+        key = tuple(client_address) if client_address else ()
+        with self._active_lock:
+            host = self._pending.pop(key, None)
+            if host is None:
+                return
+            left = self._pending_hosts.get(host, 1) - 1
+            if left > 0:
+                self._pending_hosts[host] = left
+            else:
+                self._pending_hosts.pop(host, None)
+
+    def pending_connections(self) -> int:
+        with self._active_lock:
+            return len(self._pending)
 
     def process_request_thread(self, request: Any, client_address: Any) -> None:
         try:
             super().process_request_thread(request, client_address)
         finally:
+            self.release_pending(client_address)
             self._release_slot()
 
     def _release_slot(self) -> None:
@@ -1421,8 +1471,10 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         try:
             return super().parse_request()
         finally:
-            # The headers are in: the handler sets its own body budget.
+            # The headers are in: the handler sets its own body budget, and
+            # the connection no longer counts as pending.
             self._set_deadline(None)
+            self._srv.release_pending(self.client_address)
 
     # Status code of the response being written (0 before the first one).
     _status_code = 0
