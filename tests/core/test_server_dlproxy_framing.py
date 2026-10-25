@@ -151,3 +151,33 @@ def test_a_malformed_chunk_is_refused(proxy, body_listener, monkeypatch):
                                [b"Transfer-Encoding: chunked"])
                   + b"zz" + CRLF + b"oops" + CRLF)
     assert _status(reply) == 400
+
+
+def _header_names(received: bytes) -> list[str]:
+    head = received.split(CRLF + CRLF, 1)[0].split(CRLF)[1:]
+    return [line.split(b":", 1)[0].strip().lower().decode() for line in head]
+
+
+def test_a_strict_receiver_sees_exactly_one_transfer_encoding(
+        proxy, body_listener, monkeypatch):
+    _lift_guard(monkeypatch)
+    body = b"3" + CRLF + b"abc" + CRLF + b"0" + CRLF + CRLF
+    # Mixed case and odd spacing in the client's own header.
+    _send(proxy, _head(proxy, body_listener.port,
+                       [b"transfer-ENCODING:   chunked"]) + body)
+    names = _header_names(body_listener.received[0])
+    assert names.count("transfer-encoding") == 1
+    assert names.count("content-length") == 0
+    assert names.count("connection") == 1
+    assert names.count("host") == 1
+
+
+def test_a_strict_receiver_sees_exactly_one_content_length(
+        proxy, body_listener, monkeypatch):
+    _lift_guard(monkeypatch)
+    _send(proxy, _head(proxy, body_listener.port,
+                       [b"content-length:  3"]) + b"abc")
+    names = _header_names(body_listener.received[0])
+    assert names.count("content-length") == 1
+    assert names.count("transfer-encoding") == 0
+    assert b"Content-Length: 3" in body_listener.received[0]

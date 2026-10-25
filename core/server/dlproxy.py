@@ -59,6 +59,7 @@ _MAX_CONNECTIONS = 128
 # Destination ports the proxy connects to. Media sites serve on the standard
 # ports; refusing the rest keeps the proxy from probing other services.
 ALLOWED_PORTS = frozenset({80, 443})
+_FRAMING_HEADERS = {"content-length", "transfer-encoding"}
 _HOP_BY_HOP = {"proxy-authorization", "proxy-connection", "connection",
                "keep-alive", "te", "trailer", "upgrade"}
 
@@ -354,10 +355,15 @@ class _Handler(socketserver.StreamRequestHandler):
                 ("", "", split.path or "/", split.query, ""))
             out = [f"{method} {path} {version}"]
             for name, value in headers:
-                if name.lower() not in _HOP_BY_HOP:
+                # The framing headers are dropped and re-emitted once below,
+                # in canonical form: a copy of the client's own would
+                # duplicate them for a strict receiver.
+                if name.lower() not in _HOP_BY_HOP | _FRAMING_HEADERS:
                     out.append(f"{name}: {value}")
             if framing == "chunked":
                 out.append("Transfer-Encoding: chunked")
+            elif any(n.lower() == "content-length" for n, _v in headers):
+                out.append(f"Content-Length: {framing}")
             out.append("Connection: close")
             upstream.sendall(("\r\n".join(out) + "\r\n\r\n").encode("latin-1"))
             # One framing-aware path: exactly the declared body is forwarded,
