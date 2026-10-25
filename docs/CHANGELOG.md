@@ -85,6 +85,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **A pinned model mirror is kept**: a `hf_repo` you set for the selected model now wins over the built-in and the online model catalog, so a mirror is no longer ignored and the online settings cannot re-point its download.
 - **The saved text of an interrupted run is kept unless its media is verified unchanged**: only re-running
   the same, unchanged file with another engine, model or setting discards a checkpoint. A replaced, deleted
   or unverifiable source keeps it aside instead (on resume, on a new job for the same path, and with an
