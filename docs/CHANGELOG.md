@@ -134,6 +134,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **A used-up AI provider limit no longer holds back your transcript files**: when the provider answers "rate limit reached" and asks for a wait of more than two minutes, the app stops at once (shorter waits are honoured, once per bilingual or chapter pass instead of once per item); chapter titles and bilingual lines fall back to the plain ones and the files are written right away.
 - **The first-run language question waits for Quick Start**: it no longer opens on top of the Quick Start or hub setup window, where its buttons could not be clicked.
 - **Exit and "Restart now" count jobs sent to the built-in server**: quitting the app or switching the interface language no longer cancels a running web or LAN job without asking.
+- **Cancelling, pausing or closing during a download no longer leaves a 24 MB temporary folder behind**: the downloader's helper processes are stopped first, so it can clean up after itself.
 - **The saved text of an interrupted run is kept unless its media is verified unchanged**: only re-running
   the same, unchanged file with another engine, model or setting discards a checkpoint. A replaced, deleted
   or unverifiable source keeps it aside instead (on resume, on a new job for the same path, and with an

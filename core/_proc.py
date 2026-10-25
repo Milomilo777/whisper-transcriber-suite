@@ -218,6 +218,58 @@ def kill_process_tree(
         pass
 
 
+def _kill_descendants(process: Any) -> int:
+    """Kill every descendant of ``process`` (deepest first) with psutil.
+    Returns how many were signalled; 0 when there are none or psutil cannot
+    list them. Never raises."""
+    try:
+        import psutil  # type: ignore[import-not-found] # noqa: PLC0415
+
+        children = psutil.Process(process.pid).children(recursive=True)
+    except Exception:  # noqa: BLE001 -- psutil missing or the parent already gone
+        logger.debug("could not list the child processes of %s", getattr(process, "pid", None),
+                     exc_info=True)
+        return 0
+    killed = 0
+    for child in reversed(children):
+        try:
+            child.kill()
+            killed += 1
+        except Exception:  # noqa: BLE001 -- already gone
+            pass
+    return killed
+
+
+def kill_download_tree(
+    process: Any, *, children_first: bool | None = None, timeout: float = 3.0
+) -> None:
+    """Stop a yt-dlp download and everything it started. Never raises.
+
+    The frozen ``yt-dlp.exe`` is a bootloader that runs the real yt-dlp as a
+    child and deletes its ``%TEMP%\\_MEI*`` unpack folder when that child
+    exits. ``taskkill /T /F`` ends the bootloader first, so the folder
+    (about 24 MB) stayed behind on every cancel, pause and app exit.
+    ``children_first`` (default: on Windows) ends the descendants first, gives
+    the bootloader up to ``timeout`` seconds to leave by itself and only then
+    falls back to the forced tree kill (the order of ``yt_dlp_update._end_tree``).
+    """
+    if process is None:
+        return
+    if children_first is None:
+        children_first = os.name == "nt"
+    if not children_first:
+        kill_process_tree(process, force=False)
+        return
+    try:
+        if process.poll() is not None:
+            return
+    except Exception:  # noqa: BLE001
+        return
+    if _kill_descendants(process) and _wait_for_exit(process, timeout):
+        return
+    kill_process_tree(process, force=True)
+
+
 def parent_identity() -> "tuple[int, float] | None":
     """(pid, start time) of the process that started this one, or None.
 

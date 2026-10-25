@@ -597,8 +597,8 @@ def test_cancel_download_snapshots_process_no_attributeerror(monkeypatch):
     worker nulls task.process between the truthiness test and .poll(),
     there is no None.poll() AttributeError on the Tk thread."""
     killed = {"n": 0}
-    monkeypatch.setattr("app.app.kill_process_tree",
-                        lambda proc, force=False: killed.__setitem__("n", killed["n"] + 1))
+    monkeypatch.setattr("app.app.kill_download_tree",
+                        lambda proc, **_kw: killed.__setitem__("n", killed["n"] + 1))
 
     proc = _LiveProc()
     task = _RacingTask(proc, url="u", folder="f", format_label="x",
@@ -622,8 +622,8 @@ def test_cancel_download_ignores_a_task_that_already_ended(monkeypatch, terminal
     while the download finishes, or a menu is left open) must not turn the
     finished row into a cancelled one nor cancel its follow-up transcription."""
     killed = {"n": 0}
-    monkeypatch.setattr("app.app.kill_process_tree",
-                        lambda proc, force=False: killed.__setitem__("n", killed["n"] + 1))
+    monkeypatch.setattr("app.app.kill_download_tree",
+                        lambda proc, **_kw: killed.__setitem__("n", killed["n"] + 1))
     task = VideoDownloadTask(url="u", folder="f", format_label="x",
                              format_info={"mode": "Audio"})
     task.status = terminal
@@ -652,8 +652,8 @@ def test_cancel_download_ignores_a_task_that_already_ended(monkeypatch, terminal
 
 def test_pause_download_snapshots_process_no_attributeerror(monkeypatch):
     killed = {"n": 0}
-    monkeypatch.setattr("app.app.kill_process_tree",
-                        lambda proc, force=False: killed.__setitem__("n", killed["n"] + 1))
+    monkeypatch.setattr("app.app.kill_download_tree",
+                        lambda proc, **_kw: killed.__setitem__("n", killed["n"] + 1))
 
     proc = _LiveProc()
     task = _RacingTask(proc, url="u", folder="f", format_label="x",

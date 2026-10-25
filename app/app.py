@@ -78,7 +78,7 @@ from app.theme import (
     mac_appearance, script_fonts, system_appearance, theme_colours, tokens, win_chrome, win_taskbar,
 )
 from app.theme.bidi_display import ltr_base
-from core._proc import kill_process_tree
+from core._proc import kill_download_tree
 from core.config import (
     _PROJECT_KEY_RANGES,
     load_config,
@@ -2793,7 +2793,7 @@ class App(tk.Tk):
                         # Tree-kill so yt-dlp's ffmpeg merge child dies too (a bare
                         # terminate() orphans it, holding the .part/output handle).
                         try:
-                            kill_process_tree(proc, force=False)
+                            kill_download_tree(proc)
                         except Exception:  # noqa: BLE001
                             pass
             except Exception:  # noqa: BLE001
@@ -5600,7 +5600,7 @@ class App(tk.Tk):
             # otherwise it keeps the .part/output handle open and the
             # follow-up unlink/replace can fail with PermissionError.
             try:
-                kill_process_tree(proc, force=False)
+                kill_download_tree(proc)
             except Exception:  # noqa: BLE001
                 pass
         # If the download had already handed off to auto-transcribe, stop
@@ -5658,7 +5658,7 @@ class App(tk.Tk):
             # Same tree-kill as cancel so the ffmpeg child dies with yt-dlp
             # and releases the .part handle — but we do NOT delete the .part.
             try:
-                kill_process_tree(proc, force=False)
+                kill_download_tree(proc)
             except Exception:  # noqa: BLE001
                 pass
         # Hold (don't cancel) any linked auto-transcribe: keep it referenced
