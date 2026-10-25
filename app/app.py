@@ -6264,7 +6264,10 @@ class App(tk.Tk):
             try:
                 port = int(self.server_port_var.get())
             except (tk.TclError, ValueError):
-                port = int(self.app_config.get("server_port", 8765))
+                try:
+                    port = int(self.app_config.get("server_port", 8765))
+                except (TypeError, ValueError):
+                    port = 8765  # junk in the config file: use the default port
             scheme = "https" if bool(self.server_https_enabled_var.get()) else "http"
         port = port if 1 <= port <= 65535 else 8765
         command = (

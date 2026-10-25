@@ -97,3 +97,17 @@ def test_an_https_server_yields_an_https_url(App, ui):
     a._server_handle = _Handle(8443, https=True)
     App.copy_mcp_setup(a)
     assert root.clipboard_get() == _expected(8443, scheme="https")
+
+
+class _BadVar(_Var):
+    def get(self):
+        raise ValueError("expected integer")
+
+
+@pytest.mark.parametrize("junk", ["abc", None, "", [1], "70000"])
+def test_junk_port_settings_fall_back_to_the_default_port(App, ui, junk):
+    a, root = ui
+    a.server_port_var = _BadVar()
+    a.app_config = {"server_port": junk}
+    App.copy_mcp_setup(a)
+    assert root.clipboard_get() == _expected(8765)

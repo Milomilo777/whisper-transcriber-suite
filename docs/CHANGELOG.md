@@ -86,6 +86,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **"Copy MCP setup" survives a damaged port setting**: it falls back to the default port instead of failing.
 - **Action items and Translate now say when the transcript was shortened**: like Summarise and Ask, they add the note when a remote AI provider only saw part of the text.
 - **A used-up AI provider limit no longer holds back your transcript files**: when the provider answers "rate limit reached" and asks for a long wait, the app stops at once instead of retrying for every segment or chapter; chapter titles and bilingual lines fall back to the plain ones and the files are written right away.
 - **The first-run language question waits for Quick Start**: it no longer opens on top of the Quick Start or hub setup window, where its buttons could not be clicked.
