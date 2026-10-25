@@ -846,7 +846,7 @@ python gui.py serve --lan --port 9000 --token SECRET
   and 4 when the transcription fails, so scripts can check the result.
 - On Linux, `whisper-transcribe /path/to/media.mp4 --formats srt json --language en` does the same without
   the window.
-- All `serve` options (`--host`, `--port`, `--token`, `--max-upload-mb`, `--https`, `--webhook`):
+- All `serve` options (`--host`, `--port`, `--token`, `--max-upload-mb`, `--https`, `--webhook`, `--webhook-secret`, `--webhook-header`):
   [docs/SERVER.md](docs/SERVER.md).
 
 ## How it compares

@@ -31,6 +31,7 @@ from typing import Any, Callable
 from core.server.dlproxy import shared_proxy
 from core.server.httpd import JobHTTPServer
 from core.server.jobs import (
+    DEFAULT_WEBHOOK_HEADER,
     DownloadCancelled,
     DownloadLimits,
     JobManager,
@@ -428,6 +429,10 @@ class ServerHandle:
         self.token = ""
         self.https = False
         self.webhook_url = ""
+        # Only whether a secret header is sent: the secret itself is never
+        # kept on the handle.
+        self.webhook_secret_set = False
+        self.webhook_header = ""
 
     def is_running(self) -> bool:
         with self._lock:
@@ -444,6 +449,8 @@ class ServerHandle:
         auto_port: bool = True,
         https: bool = False,
         webhook_url: str = "",
+        webhook_secret: str = "",
+        webhook_header: str = "",
     ) -> None:
         """Bind + start serving on a daemon thread (idempotent).
 
@@ -485,6 +492,7 @@ class ServerHandle:
             manager = JobManager(
                 self._transcribe_fn, download_fn=self._download_fn,
                 webhook_url=webhook_url,
+                webhook_secret=webhook_secret, webhook_header=webhook_header,
             )
             manager.start()
             try:
@@ -509,6 +517,11 @@ class ServerHandle:
                     self.token = token
                     self.https = https
                     self.webhook_url = (webhook_url or "").strip()
+                    self.webhook_secret_set = bool(
+                        (webhook_secret or "").strip())
+                    self.webhook_header = (
+                        (webhook_header or "").strip()
+                        or DEFAULT_WEBHOOK_HEADER)
                     self._thread = threading.Thread(
                         target=server.serve_forever,
                         name="server-http", daemon=True,
@@ -576,6 +589,8 @@ def run_server(
     load_model: bool = True,
     https: bool = False,
     webhook_url: str = "",
+    webhook_secret: str = "",
+    webhook_header: str = "",
 ) -> int:
     """Run the HTTP job server forever (blocking). Returns an exit code.
 
@@ -590,7 +605,9 @@ def run_server(
         # scripted caller binds exactly what it asked for, or sees the error.
         handle.start(host, port, token,
                      max_upload_mb=max_upload_mb, auto_port=False,
-                     https=https, webhook_url=webhook_url)
+                     https=https, webhook_url=webhook_url,
+                     webhook_secret=webhook_secret,
+                     webhook_header=webhook_header)
     except OSError as e:
         logger.error("server: could not bind %s:%s — %s", host, port, e)
         return 1
@@ -619,6 +636,10 @@ def run_server(
         # Origin only: the rest of a webhook URL often holds its secret.
         from core.server.jobs import redact_url
         print(f"Completion webhooks POST to {redact_url(webhook_url)}")
+        if (webhook_secret or "").strip():
+            # The header name only; the secret itself is never printed.
+            print("Webhook secret set: sent in the "
+                  f"{handle.webhook_header} header.")
     print("Press Ctrl+C to stop.")
 
     try:

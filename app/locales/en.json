@@ -1379,6 +1379,7 @@
   "Web page": "Web page",
   "WebVTT — .vtt": "WebVTT — .vtt",
   "Webhook URL (optional):": "Webhook URL (optional):",
+  "Webhook secret (optional):": "Webhook secret (optional):",
   "Welcome! Three quick choices": "Welcome! Three quick choices",
   "Welsh": "Welsh",
   "What is sent: model, language, audio length, processing time, job status, word count, app version, OS name/version, CPU and memory size, and the two-letter country of the OS region setting; the payload never includes the file's name or folder, the computer name or an IP address": "What is sent: model, language, audio length, processing time, job status, word count, app version, OS name/version, CPU and memory size, and the two-letter country of the OS region setting; the payload never includes the file's name or folder, the computer name or an IP address",

@@ -2491,6 +2491,20 @@ def build_server_tab(app: "App", parent: ttk.Frame) -> None:
         wraplength=px(560), justify="left", foreground=tokens.themed(tokens.TEXT_MUTED),
     ).pack(anchor="w", padx=(0, 0), pady=(4, 0))
 
+    # Optional secret sent as a header with every webhook POST.
+    hook_secret_row = ttk.Frame(opts)
+    hook_secret_row.pack(fill="x", pady=(6, 0))
+    ttk.Label(hook_secret_row, text=_("Webhook secret (optional):")).pack(side="left")
+    app.server_webhook_secret_var = tk.StringVar(
+        value=str(cfg.get("server_webhook_secret", ""))
+    )
+    hook_secret_entry = ttk.Entry(
+        hook_secret_row, textvariable=app.server_webhook_secret_var,
+        width=24, show="•",
+    )
+    hook_secret_entry.pack(side="left", padx=(8, 0))
+    hook_secret_entry.bind("<FocusOut>", lambda _e: app._save_server_prefs())
+
     # --- safety note ---------------------------------------------------------
     ttk.Label(
         frame,

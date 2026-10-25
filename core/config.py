@@ -426,6 +426,13 @@ DEFAULT_CONFIG = {
     #     cloud-metadata addresses. The CLI equivalent is --webhook.
     "server_https_enabled": False,
     "server_webhook_url": "",
+    #   server_webhook_secret — optional secret sent as a header on every
+    #     completion webhook POST so the receiver (n8n "Header Auth", a reverse
+    #     proxy rule) can trust the call. Empty = no header. Stored in CLEARTEXT
+    #     like server_token; never logged. CLI: --webhook-secret.
+    #   server_webhook_header_name — the header's name. CLI: --webhook-header.
+    "server_webhook_secret": "",
+    "server_webhook_header_name": "X-Whisper-Webhook-Secret",
     #   server_allowed_private_networks — CIDR strings (for example
     #     "192.168.1.0/24") of local networks that server LINK jobs may
     #     download from. Empty (the default) = public hosts only. Loopback and

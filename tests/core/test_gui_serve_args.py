@@ -64,6 +64,8 @@ def test_cli_serve_forwards_explicit_flags(monkeypatch):
         "max_upload_mb": 64,
         "https": False,
         "webhook_url": "",
+        "webhook_secret": "",
+        "webhook_header": "",
     }
 
 

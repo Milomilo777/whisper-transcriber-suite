@@ -573,6 +573,8 @@ Not a config key — a **File → Convert transcript…** menu action backed by 
 | `window_geometry` | string | `""` | Last window size and position. |
 | `server_https_enabled` | bool | `false` | Web / LAN access tab: serve over HTTPS. |
 | `server_webhook_url` | string | `""` | Web / LAN access tab: URL told about finished jobs (skipped while Work offline is on). |
+| `server_webhook_secret` | string | `""` | Web / LAN access tab: optional secret sent in a header on every completion webhook; empty sends no header. Stored in CLEARTEXT like `server_token`; never logged. |
+| `server_webhook_header_name` | string | `"X-Whisper-Webhook-Secret"` | Name of the header that carries `server_webhook_secret` (config file and `--webhook-header` only). |
 | `voice_clone` | object | `{}` | Clone Your Voice tab: engine, mode and Kokoro voice. |
 
 Not read by the app (planned only): `models`, `active_model`, `task`, `presets_dir`,

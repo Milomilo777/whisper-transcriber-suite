@@ -1126,6 +1126,7 @@ class App(tk.Tk):
     server_token_var: tk.StringVar
     server_https_enabled_var: tk.BooleanVar
     server_webhook_url_var: tk.StringVar
+    server_webhook_secret_var: tk.StringVar
     server_status_var: tk.StringVar
     server_url_var: tk.StringVar
     server_toggle_btn: "ttk.Button"
@@ -5985,6 +5986,8 @@ class App(tk.Tk):
             self.server_https_enabled_var.get())
         self.app_config["server_webhook_url"] = (
             self.server_webhook_url_var.get().strip())
+        self.app_config["server_webhook_secret"] = (
+            self.server_webhook_secret_var.get().strip())
         try:
             save_config(self.app_config)
         except Exception as e:  # noqa: BLE001
@@ -6031,6 +6034,9 @@ class App(tk.Tk):
         self._server_token_in_use = token
         https = bool(self.server_https_enabled_var.get())
         webhook_url = self.server_webhook_url_var.get().strip()
+        webhook_secret = self.server_webhook_secret_var.get().strip()
+        webhook_header = str(
+            self.app_config.get("server_webhook_header_name", "") or "")
         max_upload_mb = int(self.app_config.get("server_max_upload_mb", 512))
 
         self._server_busy = True
@@ -6054,7 +6060,9 @@ class App(tk.Tk):
                 # back to a free one rather than failing — we report what
                 # it actually bound.
                 handle.start(host, port, token, max_upload_mb=max_upload_mb,
-                             https=https, webhook_url=webhook_url)
+                             https=https, webhook_url=webhook_url,
+                             webhook_secret=webhook_secret,
+                             webhook_header=webhook_header)
                 if not handle.is_running():
                     # stop() cancelled the start (the app is exiting).
                     logger.info("Web / LAN server start was cancelled")

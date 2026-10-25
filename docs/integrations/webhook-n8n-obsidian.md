@@ -17,7 +17,8 @@ nothing in this repository talks to n8n or Obsidian.
 - Set the tab's **Webhook URL** to n8n's production webhook URL from step 2
   (or pass `--webhook URL`). When a job finishes or fails, the server sends
   one `POST` with a JSON body: `event` (`job.finished` / `job.error`),
-  `job_id`, `status`, `source`, `language`, `formats`, `outputs`
+  `delivery_id` (new for every delivery), `job_id`, `status`, `source`,
+  `language`, `formats`, `outputs`
   (`[{"fmt": "srt", "name": "meeting.srt"}]`), `error` and two timestamps.
   Cancelled jobs send nothing.
 - The webhook target must be `http`/`https` on another machine or a LAN
@@ -25,8 +26,14 @@ nothing in this repository talks to n8n or Obsidian.
   its own loopback. If n8n runs on the same computer, use that computer's
   LAN IP — never `127.0.0.1` or `localhost`.
 - Delivery is fire-and-forget: 10-second timeout, no retry, redirects are
-  not followed, and the request carries no signature. Check the `job_id`
-  against `GET /api/jobs/<id>` when the receiver must be picky.
+  not followed. To let n8n trust the call, set a webhook secret (next
+  paragraph); you can also check the `job_id` against `GET /api/jobs/<id>`
+  when the receiver must be picky.
+- Optional secret header: type a secret into the tab's **Webhook secret**
+  field (or pass `--webhook-secret SECRET`). Every POST then carries
+  `X-Whisper-Webhook-Secret: SECRET`; the header name can be changed with
+  `--webhook-header` or `server_webhook_header_name`. The secret is never
+  logged. See "Completion webhook" in [SERVER.md](../SERVER.md).
 
 ## 2. Receive it in n8n
 
@@ -36,7 +43,10 @@ reach a desktop, so self-host n8n on the same machine or on the LAN.
 1. New workflow, add a **Webhook** node: HTTP Method `POST`, Path e.g.
    `whisper-done`, Respond `Immediately` (the app ignores the reply). The
    production URL is `http://<n8n-host>:5678/webhook/whisper-done`; put
-   that in the app's **Webhook URL** field.
+   that in the app's **Webhook URL** field. To reject other callers, set
+   the node's **Authentication** to **Header Auth**: create a credential
+   with the name `X-Whisper-Webhook-Secret` and your secret as the value,
+   and type the same secret into the app's **Webhook secret** field.
 2. Click **Listen for test event** and finish a job to capture a sample (it
    arrives on `/webhook-test/whisper-done`); then activate the workflow so
    `/webhook/whisper-done` serves every completion.

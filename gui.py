@@ -262,6 +262,14 @@ def _cli_serve(args: argparse.Namespace) -> int:
         args.webhook if args.webhook is not None
         else str(cfg.get("server_webhook_url", ""))
     )
+    webhook_secret = (
+        args.webhook_secret if args.webhook_secret is not None
+        else str(cfg.get("server_webhook_secret", "") or "")
+    ).strip()
+    webhook_header = (
+        args.webhook_header if args.webhook_header is not None
+        else str(cfg.get("server_webhook_header_name", "") or "")
+    ).strip()
     # The app's Access password protects the command-line server too (a
     # `serve --lan` used to run open even with a password set in the app).
     token = (
@@ -272,6 +280,7 @@ def _cli_serve(args: argparse.Namespace) -> int:
         host=host, port=port, token=token,
         max_upload_mb=max_upload_mb,
         https=https, webhook_url=webhook_url,
+        webhook_secret=webhook_secret, webhook_header=webhook_header,
     )
 
 
@@ -426,6 +435,18 @@ def _build_argparser() -> argparse.ArgumentParser:
              "(success or failure); default: config server_webhook_url "
              "(empty = off). Loopback / link-local / cloud-metadata targets "
              "are refused",
+    )
+    sv.add_argument(
+        "--webhook-secret", default=None, dest="webhook_secret",
+        help="optional secret sent as a header on every webhook POST so the "
+             "receiver can trust the call; default: config "
+             "server_webhook_secret (empty = no header). Never printed",
+    )
+    sv.add_argument(
+        "--webhook-header", default=None, dest="webhook_header",
+        help="name of the header that carries the webhook secret "
+             "(default: config server_webhook_header_name, else "
+             "X-Whisper-Webhook-Secret)",
     )
     return p
 

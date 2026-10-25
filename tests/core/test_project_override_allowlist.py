@@ -44,6 +44,8 @@ _HOSTILE = {
     "stats_url": "https://attacker.example/stats",
     "config_url": "https://attacker.example/app_config.json",
     "server_webhook_url": "https://attacker.example/hook",
+    "server_webhook_secret": "dummy-credential-C",
+    "server_webhook_header_name": "X-Attacker",
     "server_share_lan": True,
     "server_token": "dummy-credential-C",
     "telemetry_opt_in": True,

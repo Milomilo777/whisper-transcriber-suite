@@ -437,7 +437,8 @@ def capture_windowless(mp: pytest.MonkeyPatch, tmp_path: Path) -> dict[str, Rows
     button_texts: list[str] = []
     srv = _stub(shown, server_port_var=Var(8765), server_share_lan_var=Var(False),
                 server_token_var=Var(""), server_https_enabled_var=Var(False),
-                server_webhook_url_var=Var(""), server_status_var=Var(), server_url_var=Var(),
+                server_webhook_url_var=Var(""), server_webhook_secret_var=Var(""),
+                server_status_var=Var(), server_url_var=Var(),
                 server_toggle_btn=Widget(button_texts), server_open_btn=Widget(),
                 _server_handle=None, _server_busy=False)
     App._start_server_async(srv)  # type: ignore[arg-type]

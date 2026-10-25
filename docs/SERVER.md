@@ -111,6 +111,8 @@ Options of `serve`:
 --max-upload-mb 200      # reject uploads larger than this (default: config, 512)
 --https                  # serve over TLS with a self-signed certificate
 --webhook URL            # POST a JSON summary to URL when a job finishes
+--webhook-secret SECRET  # send SECRET in a header on every webhook POST (default: config server_webhook_secret)
+--webhook-header NAME    # name of that header (default: config server_webhook_header_name, else X-Whisper-Webhook-Secret)
 ```
 
 Notes:
@@ -118,9 +120,10 @@ Notes:
 - Unlike the app's toggle, the command line uses exactly the port you give it
   and never picks another one. If something already listens there, it prints
   a "could not bind" error and exits with code 1.
-- `--token`, `--https` and `--webhook` fall back to the config keys
-  `server_token` (the app's **Access password**), `server_https_enabled` and
-  `server_webhook_url` when the flag is not given. `--token=` serves without
+- `--token`, `--https`, `--webhook`, `--webhook-secret` and `--webhook-header`
+  fall back to the config keys `server_token` (the app's **Access password**),
+  `server_https_enabled`, `server_webhook_url`, `server_webhook_secret` and
+  `server_webhook_header_name` when the flag is not given. `--token=` serves without
   a password even when the app has one (write it with the `=`: Windows
   PowerShell drops an empty `""` argument).
 - The server loads the Whisper model once at startup (the first start can
@@ -570,6 +573,7 @@ When a job ends the server sends one `POST` with a JSON body:
 ```
 {
   "event": "job.finished",        // or "job.error"
+  "delivery_id": "9f2c1d0e5a7b4c3e8d6f0a1b2c3d4e5f",  // new for every delivery
   "job_id": "45db6250929d46598b9ce55123743cfc",
   "status": "finished",           // or "error"
   "source": "meeting.wav",        // file name or URL of the job
@@ -601,9 +605,27 @@ Behaviour to know:
   addresses) or another reserved address is **refused**, so the receiver has
   to live on another machine or a LAN address. Ordinary private LAN addresses
   (10.x, 172.16-31.x, 192.168.x) are allowed.
-- Outputs are listed by file name only, never by path. The request carries no
-  signature or secret; treat the receiving URL itself as the secret, or check
-  the job id against `GET /api/jobs/<id>`.
+- Outputs are listed by file name only, never by path.
+- `delivery_id` is a fresh random id (32 hex characters) for every POST, so a
+  receiver can tell a repeated delivery from a new one.
+- **Webhook secret (optional).** With `--webhook-secret SECRET`, the
+  `server_webhook_secret` key or the **Webhook secret** field in the app, every
+  POST carries the header `X-Whisper-Webhook-Secret: SECRET`. `--webhook-header
+  NAME` or `server_webhook_header_name` renames the header. With no secret set
+  no header is sent. The secret is stored in cleartext in `config.json` like
+  the access password, and it is never written to the log or printed (the
+  start-up message says only that a secret is set). A secret that is not valid
+  in an HTTP header (a line break, a character outside Latin-1, spaces at either
+  end) or a header name that is not a plain token, or is one the request sets
+  itself (`Content-Type`, `Host` ...), stops the delivery with a log line that
+  does not repeat it. Redirects are not followed, so the secret cannot be passed
+  on to another address.
+- **n8n recipe (Header Auth).** In n8n create a credential of type *Header
+  Auth* with the name `X-Whisper-Webhook-Secret` and your secret as the value,
+  then choose it in the Webhook node under **Authentication > Header Auth**.
+  n8n then answers 403 to any call without the right header. Other receivers:
+  compare the header value in constant time. Check the job id against
+  `GET /api/jobs/<id>` if the receiver must be extra careful.
 
 ## Security caveats
 
@@ -794,7 +816,8 @@ server), so put a password on a server behind one.
 
 Keys in `config.json` (see [CONFIG.md](CONFIG.md)) hold the defaults. The
 `serve` subcommand reads `server_port`, `server_max_upload_mb`,
-`server_https_enabled` and `server_webhook_url` when its flags are omitted;
+`server_https_enabled`, `server_webhook_url`, `server_webhook_secret` and
+`server_webhook_header_name` when its flags are omitted;
 the in-app **Web / LAN access** toggle reads and writes all of them except
 `server_max_upload_mb`, which it only reads (edit that one in `config.json`):
 
@@ -805,6 +828,8 @@ server_share_lan       false    in-app toggle: bind 0.0.0.0 (LAN) vs 127.0.0.1
 server_token           ""       optional access password (cleartext; see below)
 server_https_enabled   false    serve over TLS (self-signed certificate)
 server_webhook_url     ""       completion webhook target (empty = off)
+server_webhook_secret  ""       secret sent as a header on every webhook POST (empty = no header; cleartext)
+server_webhook_header_name  "X-Whisper-Webhook-Secret"  name of that header
 server_allowed_private_networks  []  local networks link jobs may use (CIDRs)
 ```
 
@@ -817,7 +842,7 @@ IPv6 addresses that carry such an IPv4 address. A change is picked up within a
 few seconds. The completion webhook is not affected (a receiver on the local
 network is always allowed there).
 
-`server_token` is stored in cleartext, the same as cookies / API keys:
+`server_token` and `server_webhook_secret` are stored in cleartext, the same as cookies / API keys:
 `config.json` is per-user under `%LOCALAPPDATA%\WhisperTranscriberSuite` and is not
 encrypted. The CLI's `--lan` flag is the command-line equivalent of
 `server_share_lan` (the command line does not read that key). `--token`

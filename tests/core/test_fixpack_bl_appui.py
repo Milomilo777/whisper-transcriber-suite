@@ -140,7 +140,8 @@ def _make_fake_core_server(recorder):
             self.port = 0
 
         def start(self, host, port, token, *, max_upload_mb=512,  # noqa: ARG002
-                  https=False, webhook_url=""):
+                  https=False, webhook_url="", webhook_secret="",
+                  webhook_header=""):
             recorder["host"] = host
             recorder["port"] = port
             recorder["https"] = https
@@ -167,6 +168,7 @@ def _server_app(App, typed_port):
     a.server_token_var = _Var("")
     a.server_https_enabled_var = _Var(False)
     a.server_webhook_url_var = _Var("")
+    a.server_webhook_secret_var = _Var("")
     a.server_toggle_btn = _Btn()
     a.server_status_var = _Var("")
     a.server_url_var = _Var("")

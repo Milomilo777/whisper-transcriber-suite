@@ -36,6 +36,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   placeholder. docs/SERVER.md gained a "Use it from Claude Code" section with the same command and the
   caveats (the server must be on; the MCP tools take http(s) links only; Claude Desktop cannot reach a
   local server directly).
+- **Optional webhook secret header**: set a secret (`--webhook-secret`, `server_webhook_secret`, or the
+  **Webhook secret** field in the Web / LAN access tab) and every completion webhook carries it in the
+  `X-Whisper-Webhook-Secret` header (rename it with `--webhook-header` / `server_webhook_header_name`), so
+  receivers such as n8n (Webhook node, Header Auth) can reject other callers. The secret is never logged or
+  printed. Every webhook body also has a new `delivery_id`, unique per delivery.
 
 ### Changed
 

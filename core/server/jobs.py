@@ -363,6 +363,8 @@ class JobManager:
         jobs_root: str | None = None,
         webhook_url: str = "",
         webhook_sender: WebhookFn | None = None,
+        webhook_secret: str = "",
+        webhook_header: str = "",
         outputs_root: str | None = None,
         max_download_bytes: int = _DEFAULT_MAX_DOWNLOAD_BYTES,
         download_timeout_s: float = _DEFAULT_DOWNLOAD_TIMEOUT_S,
@@ -377,7 +379,20 @@ class JobManager:
         # Outgoing completion webhook (empty = disabled). ``webhook_sender``
         # is a test seam; the default ``post_webhook`` applies the SSRF gate.
         self._webhook_url = (webhook_url or "").strip()
-        self._webhook_sender = webhook_sender or post_webhook
+        # Optional shared secret sent as a header on every webhook POST. It
+        # is kept only inside the default sender below: never logged, never
+        # echoed.
+        secret = (webhook_secret or "").strip()
+        header = (webhook_header or "").strip() or DEFAULT_WEBHOOK_HEADER
+        if webhook_sender is not None:
+            self._webhook_sender = webhook_sender
+        elif secret:
+            def _send_with_secret(url: str, payload: dict[str, Any]) -> None:
+                post_webhook(url, payload, secret=secret, header_name=header)
+
+            self._webhook_sender = _send_with_secret
+        else:
+            self._webhook_sender = post_webhook
         self._jobs_root = (
             jobs_root if jobs_root is not None
             else str(user_cache_dir() / "server_jobs")
@@ -1803,6 +1818,15 @@ def _marker_owner_state(text: str) -> str:
 # --- outgoing webhooks -------------------------------------------------------
 
 _WEBHOOK_TIMEOUT_S = 10.0
+DEFAULT_WEBHOOK_HEADER = "X-Whisper-Webhook-Secret"
+# RFC 9110 "token" characters: what an HTTP header name may be made of.
+_HEADER_NAME_RE = re.compile(r"^[A-Za-z0-9!#$%&'*+.^_`|~-]+$")
+# Headers the POST sets itself (or that frame the message): a secret header
+# must never replace one of them.
+_RESERVED_HEADERS = frozenset({
+    "content-type", "content-length", "host", "user-agent", "connection",
+    "transfer-encoding", "expect", "upgrade",
+})
 _WEBHOOK_MAX_RESPONSE_BYTES = 64 * 1024
 
 
@@ -1832,11 +1856,14 @@ def webhook_payload(job: Job) -> dict[str, Any]:
 
     Pure: no I/O, so it is unit-testable. Outputs are reported by basename
     only — the webhook consumer does not need (and should not receive) the
-    host's internal file paths.
+    host's internal file paths. ``delivery_id`` is the one non-deterministic
+    field: a new random id on every call (one call per POST).
     """
     return {
         "event": ("job.finished" if job.status == STATUS_FINISHED
                   else "job.error"),
+        # One fresh id per delivery, so a receiver can drop a duplicate.
+        "delivery_id": uuid.uuid4().hex,
         "job_id": job.job_id,
         "status": job.status,
         "source": job.public_source(),
@@ -1850,13 +1877,39 @@ def webhook_payload(job: Job) -> dict[str, Any]:
     }
 
 
+def webhook_secret_header_ok(name: str, secret: str) -> bool:
+    """True when ``name: secret`` can go out as a plain HTTP header.
+
+    The name must be a header token and not one the POST sets itself; the
+    secret must be printable Latin-1 without control characters (a line
+    break would split the header).
+    """
+    if not _HEADER_NAME_RE.match(name) or name.lower() in _RESERVED_HEADERS:
+        return False
+    if not secret or secret != secret.strip():
+        return False
+    try:
+        secret.encode("latin-1")
+    except UnicodeEncodeError:
+        return False
+    return all(32 <= ord(c) != 127 for c in secret)
+
+
 def post_webhook(
     url: str,
     payload: dict[str, Any],
     *,
     timeout: float = _WEBHOOK_TIMEOUT_S,
+    secret: str = "",
+    header_name: str = "",
 ) -> None:
     """POST ``payload`` as JSON to ``url``, gated by the SSRF guard.
+
+    A non-empty ``secret`` is sent as the ``header_name`` header (default
+    ``X-Whisper-Webhook-Secret``) so the receiver can tell the call is ours.
+    The secret is never logged. A secret or header name that is not valid
+    in an HTTP header is refused before any connection is made, with a log
+    line that does not repeat it (http.client's own error would).
 
     Reuses :func:`is_safe_url` — the same loopback / link-local /
     cloud-metadata / reserved-address refusal the inbound URL-job path
@@ -1876,14 +1929,21 @@ def post_webhook(
         logger.warning("server: refusing webhook POST to unsafe URL %s",
                        redact_url(url))
         return
+    headers = {
+        "Content-Type": "application/json; charset=utf-8",
+        "User-Agent": f"WhisperTranscriberSuite/{__version__}",
+    }
+    if secret:
+        name = (header_name or "").strip() or DEFAULT_WEBHOOK_HEADER
+        if not webhook_secret_header_ok(name, secret):
+            logger.warning(
+                "server: webhook not sent: the webhook secret or header "
+                "name cannot be used in an HTTP header")
+            return
+        headers[name] = secret
     body = json.dumps(payload).encode("utf-8")
     request = urllib.request.Request(
-        url, data=body, method="POST",
-        headers={
-            "Content-Type": "application/json; charset=utf-8",
-            "User-Agent": f"WhisperTranscriberSuite/{__version__}",
-        },
-    )
+        url, data=body, method="POST", headers=headers)
     # An empty ProxyHandler replaces the default one that reads HTTP(S)_PROXY:
     # through a proxy the check would only see the proxy's address, and the
     # proxy would resolve the real target itself.
