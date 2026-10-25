@@ -942,3 +942,25 @@ def test_noisy_audio_preset_turns_on_cleanup_and_detection():
     # More conservative than the plain default (0.5): noisy audio's real
     # risk is background noise misread AS speech, not speech missed.
     assert preset["vad_threshold"] > cfg.DEFAULT_CONFIG["vad_threshold"]
+
+
+# --- online fetch: BOM, cache atomicity, save-path failure modes ------------
+
+def test_fetch_online_accepts_a_utf8_bom(tmp_path, monkeypatch):
+    """A maintainer saving app_config.json from Windows Notepad gets a BOM.
+
+    The local-file parsers all tolerate it (utf-8-sig); the online body
+    parser must too, or the online layer is permanently inert with only an
+    INFO log (every fetch "fails", the cache is never written).
+    """
+    import io
+    payload = {"latest_version": "9.9.9"}
+
+    def _fake_urlopen(req, timeout=0):  # noqa: ARG001
+        return io.BytesIO(b"\xef\xbb\xbf" + json.dumps(payload).encode("utf-8"))
+
+    monkeypatch.setattr(cfg.urllib.request, "urlopen", _fake_urlopen)
+    cache = tmp_path / "cache.json"
+    result = cfg.fetch_online_config("https://host/app.json", cache_path=cache)
+    assert result == payload
+    assert json.loads(cache.read_text(encoding="utf-8")) == payload
