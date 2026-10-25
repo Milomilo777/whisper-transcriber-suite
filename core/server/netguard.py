@@ -244,14 +244,17 @@ def _ipv6_embeds_blocked_ipv4(ip: ipaddress.IPv6Address,
             sixtofour, allow_private=allow_private, allowed_networks=nets,
             nat64_prefixes=()):
         return True
-    for net in nat64:
-        if net.version == 6 and ip in net:
-            # An exact decode of a translator the operator named: the full
-            # IPv4 policy, applied before any allowlist is consulted.
-            return address_blocked(
-                rfc6052_embedded(ip, net.prefixlen),
-                allow_private=allow_private, allowed_networks=nets,
-                nat64_prefixes=())
+    matching = [net for net in nat64 if net.version == 6 and ip in net]
+    if matching:
+        # The LONGEST matching prefix is the translator that really serves
+        # this address; the order of the configured list must not matter.
+        net = max(matching, key=lambda n: n.prefixlen)
+        # An exact decode of a translator the operator named: the full IPv4
+        # policy, applied before any allowlist is consulted.
+        return address_blocked(
+            rfc6052_embedded(ip, net.prefixlen),
+            allow_private=allow_private, allowed_networks=nets,
+            nat64_prefixes=())
     for net in nets:
         if (net.version == 6 and ip in net
                 and net.prefixlen in _NAT64_LENGTHS

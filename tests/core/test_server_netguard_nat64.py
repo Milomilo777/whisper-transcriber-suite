@@ -113,3 +113,12 @@ def test_parse_nat64_prefixes_keeps_only_valid_rfc6052_prefixes(caplog):
          "nonsense", 5])
     assert [str(n) for n in got] == ["2001:db8::/32", "2001:db8:1::/48"]
     assert netguard.parse_nat64_prefixes("2001:db8::/32") == ()
+
+
+@pytest.mark.parametrize("order", [0, 1])
+def test_the_longest_matching_prefix_wins_whatever_the_order(order):
+    wide = ipaddress.ip_network("2001:4860::/32")
+    narrow = ipaddress.ip_network("2001:4860:5db8:d822::/96")
+    prefixes = (wide, narrow) if order == 0 else (narrow, wide)
+    bad = ipaddress.ip_address("2001:4860:5db8:d822::a9fe:a9fe")
+    assert netguard.address_blocked(bad, nat64_prefixes=prefixes)
