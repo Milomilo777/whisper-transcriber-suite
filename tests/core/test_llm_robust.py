@@ -305,6 +305,26 @@ def test_groq_budget_covers_prompt_plus_answer(monkeypatch):
     assert used <= llm.GROQ_REQUEST_TOKEN_BUDGET
 
 
+def test_groq_trim_holds_for_cjk_transcripts(monkeypatch):
+    # A CJK character is about one token for real tokenizers; counting
+    # characters / 3 sent ~18k characters and Groq answered HTTP 413.
+    sent = _echo_body(monkeypatch)
+    runner = llm.RemoteLLMRunner(llm.RemoteLLMConfig(
+        base_url=llm.GROQ_BASE_URL, model="m"))
+    runner.summarise("发言人：今天的会议讨论了社区花园和浇水安排。\n" * 3000)
+    text = "".join(m["content"] for m in sent[0]["messages"])
+    cjk = sum(1 for ch in text if ord(ch) >= 0x2E80)
+    realistic = cjk + (len(text) - cjk) // 3  # ~1 token per CJK char, ~3 chars per token otherwise
+    assert runner.last_trimmed is True
+    assert realistic + sent[0]["max_tokens"] <= llm.GROQ_REQUEST_TOKEN_BUDGET
+
+
+def test_token_estimate_is_unchanged_for_ascii_and_never_raises():
+    assert llm._estimate_tokens("word " * 300) == len("word " * 300) // 3
+    assert llm._estimate_tokens("") == 1
+    assert llm._estimate_tokens("lone \ud800 surrogate") >= 1
+
+
 @pytest.mark.parametrize("tokens, expect", [
     (0, "Set llm_remote_max_input_tokens to a positive number"),
     (3000, "Lower llm_remote_max_input_tokens"),

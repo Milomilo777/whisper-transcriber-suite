@@ -340,10 +340,19 @@ def _strip_wrapped_quotes(text: str) -> str:
 _CONTEXT_OVERHEAD_TOKENS = 64
 #: How many tokens each message costs the chat template itself.
 _PER_MESSAGE_OVERHEAD_TOKENS = 4
-#: Fallback chars-per-token ratio when the loaded model exposes no
-#: usable ``tokenize``. English runs ~4 chars/token; 3 keeps the
-#: estimate on the safe side for other scripts.
-_CHARS_PER_TOKEN = 3
+#: Fallback UTF-8-bytes-per-token ratio when no tokenizer is available
+#: (remote endpoints, or a local model without ``tokenize``). Counting
+#: bytes, not characters, keeps the estimate safe for every script:
+#: English (1 byte/char) is counted as before at ~3 chars/token, while a
+#: CJK character (3 bytes) counts as one token, as real tokenizers see it.
+#: Counting characters let a Chinese transcript through at about a third
+#: of its real size, and Groq answered HTTP 413 (checked 2026-10-26).
+_BYTES_PER_TOKEN = 3
+
+
+def _estimate_tokens(text: str) -> int:
+    """Conservative token estimate from the UTF-8 length. Never raises."""
+    return max(1, len(text.encode("utf-8", "surrogatepass")) // _BYTES_PER_TOKEN)
 #: Inserted where an over-long prompt was cut apart.
 _TRUNCATION_MARKER = " […truncated to fit the model's context window…] "
 
@@ -363,9 +372,9 @@ def _token_counter(llama: Any) -> Callable[[str], int]:
                 tokens: Any = tokenize(text.encode("utf-8"), add_bos=False)
                 return len(tokens)
             except Exception:  # noqa: BLE001 — counting must never break a call
-                return max(1, len(text) // _CHARS_PER_TOKEN)
+                return _estimate_tokens(text)
         return _count
-    return lambda text: max(1, len(text) // _CHARS_PER_TOKEN)
+    return _estimate_tokens
 
 
 def _truncate_middle(text: str, keep_chars: int) -> str:

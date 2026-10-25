@@ -70,7 +70,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 ### Changed
 
 - **Long transcripts no longer overflow Groq's small per-minute cap**: requests to api.groq.com are trimmed to
-  a 6000-token budget, and the summary or answer says so. Other providers are never trimmed unless
+  a 6000-token budget, counted from the text's UTF-8 size so Chinese, Japanese and other scripts fit too, and
+  the summary or answer says so. Other providers are never trimmed unless
   `llm_remote_max_input_tokens` is set. A rate limit (HTTP 429) now gives a clear message.
 - **The README describes the whole product again**: a full FAQ (36 questions), the browser version, every
   engine, model and output format, measured accuracy and CPU speed, each tab, speaker labels, downloads, Live,
