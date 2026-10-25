@@ -117,14 +117,16 @@ tests/                      hermetic suite; tests/smoke/ needs real resources
 **Resume checkpoints and kept-aside files.** While a file is transcribed, the saved text so far is written to
 `partials/<hash>.json` in the app's data folder (on Windows `%LOCALAPPDATA%\WhisperTranscriberSuite\partials`),
 and the media's size and date are recorded when the run starts and kept for the whole run. On resume, a
-checkpoint is **kept aside, never deleted**, when the media it came from is missing, has a different size or
-date, or cannot be verified: it is renamed to `<hash>.json.unverified-<tag>`, together with a plain-text copy of
-the saved transcript, `<hash>.unverified-<tag>.txt`, that any text editor can open (source path, time, reason,
-then one line per segment with its start time). A checkpoint whose settings, model or engine differ from the
-current ones is still discarded, because the media is intact and can be transcribed again. The app never picks
+checkpoint is **kept aside, never deleted**, unless its settings, model or engine differ from the current ones
+(the media is verified unchanged and can be transcribed again) or its segment list is unusable. Anything else
+keeps it: the media is missing, has a different size or date, cannot be verified, or the checkpoint is from an
+unknown format. This is decided before a task on an engine without resume starts over the file. A kept-aside
+checkpoint is renamed to `<hash>.json.unverified-<tag>`, together with a plain-text copy of the saved
+transcript, `<hash>.unverified-<tag>.txt`, that any text editor can open (source path, time, reason, then one
+line per segment with its start time). The app never picks
 up or removes the kept-aside files by itself; once you no longer need them you can delete them by hand. If the
-checkpoint can be neither renamed nor copied (and synced to disk) aside, the task stops with an error and the
-checkpoint stays untouched.
+checkpoint cannot be renamed (usually another process holds it), a verified copy is kept and the task stops
+with an error; if it cannot be copied either, the task stops too. The checkpoint itself stays untouched.
 
 ### Download
 

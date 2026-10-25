@@ -282,28 +282,23 @@ def _strict_sync(f: Any) -> None:
         raise
 
 
-# Prefixes of validate_checkpoint reasons that mean "the saved text may be the
-# only copy and the media it came from is gone, changed or unverifiable": the
-# checkpoint is kept aside (never deleted) and a fresh run starts. Other
-# reasons (config, model, backend, schema, segments) keep the old behaviour of
-# discarding the partial, because the media is still there and can be
-# transcribed again.
-KEEP_ASIDE_PREFIXES: tuple[str, ...] = (
-    UNVERIFIABLE_PREFIX,
-    "source file no longer exists",
-    "source file size has changed",
-    "source file mtime has changed",
-    "could not stat source",
-    "checkpoint missing source_size",
-    "checkpoint missing source_mtime",
-    "checkpoint source_size is not a number",
-    "checkpoint source_mtime is not a number",
+# validate_checkpoint reasons that may DISCARD the partial. Every other
+# non-empty reason keeps it aside (a reason not listed here, including any
+# added later, is kept): the saved text can be the only copy of hours of work.
+# These four are reached only after the media identity was verified (the media
+# is intact and can be transcribed again), except "segments is not a list",
+# where there is no text to lose.
+DISCARD_PREFIXES: tuple[str, ...] = (
+    "backend changed",
+    "model changed",
+    "transcription config changed",
+    "checkpoint segments field is not a list",
 )
 
 
 def keeps_text(reason: str) -> bool:
     """True if a validate_checkpoint ``reason`` must keep the checkpoint aside."""
-    return reason.startswith(KEEP_ASIDE_PREFIXES)
+    return bool(reason) and not reason.startswith(DISCARD_PREFIXES)
 
 
 def _segment_stamp(start: Any) -> str:
@@ -388,8 +383,36 @@ def _kept_name(path: Path) -> Path:
     )
 
 
-def _copy_aside(path: Path, why: OSError) -> Path | None:
-    """Preserve the bytes of ``path`` in a new kept file; never touch ``path``.
+class CheckpointInUseError(CheckpointNotKeptError):
+    """The checkpoint could not be renamed (usually another process holds it).
+
+    A byte-exact copy WAS kept, but no fresh run may start: it would write over
+    the file the other process is using. The caller stops the task.
+    ``kept`` is the copy (new, or an identical one that already existed).
+    """
+
+    kept: Path | None = None
+
+
+def _identical_kept_copy(path: Path, data: bytes) -> Path | None:
+    """An existing kept-aside copy of this very checkpoint, if there is one."""
+    try:
+        for cand in sorted(path.parent.glob(path.name + ".unverified-*")):
+            try:
+                if cand.stat().st_size == len(data) and cand.read_bytes() == data:
+                    return cand
+            except OSError:
+                continue
+    except OSError:
+        pass
+    return None
+
+
+def _copy_aside(path: Path, why: OSError) -> tuple[Path | None, bool]:
+    """Preserve the bytes of ``path`` in a kept file; never touch ``path``.
+
+    Returns ``(kept path, newly created)``. A byte-identical copy that is
+    already kept for this checkpoint is reused (no duplicate on every retry).
 
     The bytes are read once, written to a file created exclusively (so no
     existing file can be overwritten), synced strictly and read back for
@@ -399,12 +422,15 @@ def _copy_aside(path: Path, why: OSError) -> Path | None:
     try:
         data = path.read_bytes()
     except FileNotFoundError:
-        return None
+        return None, False
     except OSError as e:
         raise CheckpointNotKeptError(
             f"the saved checkpoint {path} could not be kept aside ({why}; read: {e}); "
-            "it was left as it is"
+            "the task was stopped so the saved text is not overwritten"
         ) from e
+    existing = _identical_kept_copy(path, data)
+    if existing is not None:
+        return existing, False
     last: OSError = why
     for _ in range(8):
         target = _kept_name(path)
@@ -416,7 +442,7 @@ def _copy_aside(path: Path, why: OSError) -> Path | None:
                 _strict_sync(f)
             if target.read_bytes() != data:
                 raise OSError("the copy does not match the checkpoint it was made from")
-            return target
+            return target, True
         except FileExistsError as e:
             last = e  # not ours: leave it alone and pick another name
             continue
@@ -430,7 +456,7 @@ def _copy_aside(path: Path, why: OSError) -> Path | None:
             break
     raise CheckpointNotKeptError(
         f"the saved checkpoint {path} could not be kept aside ({why}; copy: {last}); "
-        "it was left as it is"
+        "the task was stopped so the saved text is not overwritten"
     ) from last
 
 
@@ -443,12 +469,13 @@ def quarantine_checkpoint(source_path: str, reason: str = "") -> Path | None:
     start without touching the saved segments.
 
     The file is renamed to a unique name (checked free first; ``os.rename``
-    also refuses an existing target on Windows). If the rename fails its
-    bytes are copied (:func:`_copy_aside`); this never deletes the original,
-    a fresh run replaces it later. If the text cannot be kept either way
-    (the checkpoint may be the only copy) this raises
-    :class:`CheckpointNotKeptError` and the caller must not start that run.
-    Returns None when the checkpoint is already gone (another process kept it).
+    also refuses an existing target on Windows). If the rename fails, the
+    file is usually held by another process: its bytes are copied
+    (:func:`_copy_aside`, never deleting the original) and
+    :class:`CheckpointInUseError` is raised, so no fresh run starts over it.
+    If the text cannot be kept either way this raises
+    :class:`CheckpointNotKeptError`. Returns None when the checkpoint is
+    already gone (another process kept it aside).
     """
     path = checkpoint_path(source_path)
     if not path.exists():
@@ -460,6 +487,10 @@ def quarantine_checkpoint(source_path: str, reason: str = "") -> Path | None:
         if candidate.exists():
             continue
         try:
+            # Residual risk, accepted: on POSIX os.rename replaces an existing
+            # target, so a file created at this name after the exists() check
+            # above would be lost. The name carries pid, time and a random
+            # tag, so no realistic actor can pick it.
             os.rename(path, candidate)
             target = candidate
         except FileNotFoundError as e:
@@ -476,9 +507,18 @@ def quarantine_checkpoint(source_path: str, reason: str = "") -> Path | None:
         logger.warning(
             "Could not move checkpoint %s aside (%s); copying it", path, rename_error
         )
-        target = _copy_aside(path, rename_error)
-        if target is None:
+        copy, created = _copy_aside(path, rename_error)
+        if copy is None:
             return None
+        if created:
+            logger.warning("Checkpoint %s copied aside as %s", path, copy)
+            _write_recovery_sidecar(copy, os.path.abspath(source_path), reason)
+        busy = CheckpointInUseError(
+            f"the checkpoint {path} is in use or locked ({rename_error}); a copy was "
+            f"kept at {copy}; the task was stopped so the saved text is not overwritten"
+        )
+        busy.kept = copy
+        raise busy from rename_error
     logger.warning("Checkpoint %s kept aside as %s", path, target)
     _write_recovery_sidecar(target, os.path.abspath(source_path), reason)
     return target
@@ -703,6 +743,17 @@ def sweep_partials(
     return removed
 
 
+def _identity_number(value: Any) -> float | None:
+    """A saved size or mtime as a finite float, else None (bool, NaN, inf, junk)."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    try:
+        number = float(value)
+    except (OverflowError, ValueError):
+        return None
+    return number if math.isfinite(number) else None
+
+
 def validate_checkpoint(
     data: dict[str, Any],
     *,
@@ -750,20 +801,22 @@ def validate_checkpoint(
         return f"{UNVERIFIABLE_PREFIX} (stat-failure sentinel, source_size 0)"
     if data["source_size"] is None or data["source_mtime"] is None:
         return f"{UNVERIFIABLE_PREFIX} (source size or mtime was not recorded)"
-    saved_size = data["source_size"]
+    saved_size = _identity_number(data["source_size"])
+    saved_mtime = _identity_number(data["source_mtime"])
+    if saved_size is None or saved_mtime is None:
+        return (
+            f"{UNVERIFIABLE_PREFIX} (source_size or source_mtime is not a finite "
+            f"number: {data['source_size']!r}, {data['source_mtime']!r})"
+        )
     try:
         if int(saved_size) != int(st.st_size):
             return "source file size has changed since checkpoint"
-    except (TypeError, ValueError):
-        return f"checkpoint source_size is not a number: {saved_size!r}"
-    saved_mtime = data["source_mtime"]
-    try:
-        # Allow 1 ms slop -- filesystem mtime granularity on some
-        # volumes is coarser than Python's float repr suggests.
-        if abs(float(saved_mtime) - float(st.st_mtime)) > 0.001:
-            return "source file mtime has changed since checkpoint"
-    except (TypeError, ValueError):
-        return f"checkpoint source_mtime is not a number: {saved_mtime!r}"
+    except (ValueError, OverflowError):
+        return f"{UNVERIFIABLE_PREFIX} (source_size {saved_size!r} is unusable)"
+    # Allow 1 ms slop -- filesystem mtime granularity on some volumes is
+    # coarser than Python's float repr suggests.
+    if abs(saved_mtime - float(st.st_mtime)) > 0.001:
+        return "source file mtime has changed since checkpoint"
     if str(data.get("backend") or "") != backend:
         return (
             f"backend changed: checkpoint={data.get('backend')!r} "

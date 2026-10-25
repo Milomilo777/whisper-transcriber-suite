@@ -126,15 +126,47 @@ def test_failed_rename_falls_back_to_a_verified_copy(data_dir, source, monkeypat
 
     with monkeypatch.context() as m:
         m.setattr(cp.os, "rename", _no_rename)
-        kept = cp.quarantine_checkpoint(str(source), "test reason")
+        with pytest.raises(cp.CheckpointInUseError) as ei:
+            cp.quarantine_checkpoint(str(source), "test reason")
+        # A second attempt reuses the identical copy: no duplicate, no new sidecar.
+        with pytest.raises(cp.CheckpointInUseError) as ei2:
+            cp.quarantine_checkpoint(str(source), "test reason")
 
+    kept = ei.value.kept
     assert kept is not None and kept.read_bytes() == original
-    # The copy never deletes the original; a fresh run replaces it later.
+    assert ei2.value.kept == kept
+    assert _kept(source) == [kept]
+    assert len(list(path.parent.glob("*.txt"))) == 1
+    assert "saved text is not overwritten" in str(ei.value)
+    # The copy never deletes the original; the stopped task left it in place.
     assert path.read_bytes() == original
     cp._RUN_IDENTITY.clear()
     _write(source, segments=[])
     cp.delete_checkpoint(str(source))
     assert kept.read_bytes() == original
+    assert cp.recovery_text_path(kept).exists()
+
+
+def test_read_back_comparison_catches_a_corrupt_copy(data_dir, source, monkeypatch):
+    _write(source)
+    path = cp.checkpoint_path(str(source))
+    original = path.read_bytes()
+    real_sync = cp._strict_sync
+
+    def _corrupting_sync(f):
+        real_sync(f)
+        name = f.name
+        with open(name, "r+b") as g:  # same length, different bytes
+            g.write(b"X")
+
+    with monkeypatch.context() as m:
+        m.setattr(cp.os, "rename", _no_rename)
+        m.setattr(cp, "_strict_sync", _corrupting_sync)
+        with pytest.raises(cp.CheckpointNotKeptError) as ei:
+            cp.quarantine_checkpoint(str(source), "r")
+    assert not isinstance(ei.value, cp.CheckpointInUseError)
+    assert path.read_bytes() == original
+    assert _kept(source) == []
 
 
 def test_rename_and_copy_failure_leaves_the_checkpoint_untouched(
@@ -183,8 +215,9 @@ def test_fsync_not_supported_is_tolerated(data_dir, source, monkeypatch):
     with monkeypatch.context() as m:
         m.setattr(cp.os, "rename", _no_rename)
         m.setattr(cp.os, "fsync", _unsupported)
-        kept = cp.quarantine_checkpoint(str(source), "r")
-    assert kept is not None and kept.read_bytes() == original
+        with pytest.raises(cp.CheckpointInUseError) as ei:
+            cp.quarantine_checkpoint(str(source), "r")
+    assert ei.value.kept is not None and ei.value.kept.read_bytes() == original
 
 
 def test_existing_target_name_is_never_overwritten_or_deleted(
@@ -205,14 +238,17 @@ def test_existing_target_name_is_never_overwritten_or_deleted(
     assert kept.read_bytes() == original
     assert taken.read_bytes() == b"someone else's file"
 
-    # copy path: exclusive creation refuses the taken name
-    _write(source)
+    # copy path: exclusive creation refuses the taken name (different bytes, so
+    # the identical-copy reuse does not apply)
+    _write(source, last_end_time=1.0)
     names2 = iter(["taken", "fresh3", "taken", "fresh4"])
     monkeypatch.setattr(
         cp, "_kept_name", lambda p: p.with_name(p.name + ".unverified-" + next(names2))
     )
     monkeypatch.setattr(cp.os, "rename", _no_rename)
-    kept2 = cp.quarantine_checkpoint(str(source), "r")
+    with pytest.raises(cp.CheckpointInUseError) as ei:
+        cp.quarantine_checkpoint(str(source), "r")
+    kept2 = ei.value.kept
     assert kept2 is not None and kept2.name.endswith("fresh4")
     assert taken.read_bytes() == b"someone else's file"
 
@@ -251,8 +287,10 @@ def test_original_replaced_during_the_copy_is_never_deleted(
     with monkeypatch.context() as m:
         m.setattr(cp.os, "rename", _no_rename)
         m.setattr(cp, "_strict_sync", _sync_then_writer_replaces)
-        kept = cp.quarantine_checkpoint(str(source), "r")
+        with pytest.raises(cp.CheckpointInUseError) as ei:
+            cp.quarantine_checkpoint(str(source), "r")
 
+    kept = ei.value.kept
     assert kept is not None and kept.read_bytes() == older
     assert path.read_bytes() == newer  # the newer checkpoint survives
 
@@ -345,6 +383,10 @@ def resume_env(data_dir, monkeypatch):
     "checkpoint missing source_mtime",
     "checkpoint source_size is not a number: 'x'",
     "checkpoint source_mtime is not a number: 'x'",
+    "checkpoint missing source_path",
+    "checkpoint schema_version 9 != expected 1",
+    "checkpoint payload is not a dict",
+    "some reason added in the future",
     cp.UNVERIFIABLE_PREFIX + " (x)",
 ])
 def test_media_problems_keep_the_text(resume_env, source, monkeypatch, reason):
@@ -366,7 +408,6 @@ def test_media_problems_keep_the_text(resume_env, source, monkeypatch, reason):
     "transcription config changed since checkpoint",
     "model changed: checkpoint='a' current='b'",
     "backend changed: checkpoint='a' current='b'",
-    "checkpoint schema_version 9 != expected 1",
     "checkpoint segments field is not a list",
 ])
 def test_config_problems_still_discard_the_partial(resume_env, source, monkeypatch, reason):
@@ -418,6 +459,9 @@ def test_language_model_route_notes_the_identity_of_its_own_run(
     monkeypatch.setattr(t, "release_default_model", lambda: None)
     monkeypatch.setattr(t, "_language_model_backend", lambda *a, **k: object())
     task_b = TranscriptionTask(str(source))
+    # A reused task: its flag is already set, so the writer's fallback stays
+    # silent and only the route's own note can give B its identity.
+    task_b.identity_noted = True
 
     def _backend_run(name, task, *a, **k):
         t._write_periodic_checkpoint(task, [dict(SEGS[1])], 80.0, "en", 0.9, None)
@@ -514,3 +558,110 @@ def test_sweep_never_deletes_kept_aside_files(data_dir, source):
         os.utime(p, (old, old))
     cp.sweep_partials(max_age_days=1.0, slice_max_age_minutes=0.0)
     assert kept.exists() and sidecar.exists()
+
+
+# --- H / I: conservative classification, finite identity ---------------------
+
+
+def test_only_the_listed_reasons_discard():
+    for reason in (
+        "backend changed: checkpoint='a' current='b'",
+        "model changed: checkpoint='a' current='b'",
+        "transcription config changed since checkpoint",
+        "checkpoint segments field is not a list",
+    ):
+        assert cp.keeps_text(reason) is False
+    for reason in (
+        "checkpoint schema_version 9 != expected 1",
+        "checkpoint missing source_path",
+        "source file no longer exists: x",
+        "something nobody has thought of yet",
+    ):
+        assert cp.keeps_text(reason) is True
+    assert cp.keeps_text("") is False  # a valid checkpoint is not kept aside
+
+
+def test_schema_mismatch_with_missing_media_keeps_the_text(resume_env, source, monkeypatch):
+    from core.task import TranscriptionTask
+
+    t = resume_env
+    _write(source)
+    path = cp.checkpoint_path(str(source))
+    original = path.read_bytes()
+    data = cp.load_checkpoint(str(source))
+    data["schema_version"] = 9
+    path.write_text(__import__("json").dumps(data), encoding="utf-8")
+    original = path.read_bytes()
+    source.unlink()
+    assert t.resume_transcription(TranscriptionTask(str(source))) is False
+    kept = _kept(source)
+    assert len(kept) == 1 and kept[0].read_bytes() == original
+
+
+@pytest.mark.parametrize("field", ["source_mtime", "source_size"])
+@pytest.mark.parametrize("bad", [float("nan"), float("inf"), float("-inf"), True, 10 ** 400, "5"])
+def test_unusable_identity_numbers_are_unverifiable(data_dir, source, field, bad):
+    _write(source)
+    data = cp.load_checkpoint(str(source))
+    data[field] = bad
+    reason = _validate(data)
+    assert reason.startswith(cp.UNVERIFIABLE_PREFIX)
+
+
+def test_nan_mtime_with_equal_size_changed_media_is_not_accepted(data_dir, source):
+    cp.note_source_identity(str(source))
+    _write(source)
+    data = cp.load_checkpoint(str(source))
+    assert _validate(data) == ""  # control: the genuine checkpoint validates
+    data["source_mtime"] = float("nan")
+    source.write_bytes(b"B" * 64)  # same size, different content
+    st = source.stat()
+    os.utime(source, (st.st_atime, st.st_mtime + 500))
+    assert _validate(data).startswith(cp.UNVERIFIABLE_PREFIX)
+
+
+def test_infinite_size_keeps_the_checkpoint_aside_without_error(resume_env, source):
+    from core.task import TranscriptionTask
+
+    t = resume_env
+    _write(source)
+    path = cp.checkpoint_path(str(source))
+    data = cp.load_checkpoint(str(source))
+    data["source_size"] = float("inf")
+    path.write_text(__import__("json").dumps(data), encoding="utf-8")
+    original = path.read_bytes()
+    assert t.resume_transcription(TranscriptionTask(str(source))) is False
+    kept = _kept(source)
+    assert len(kept) == 1 and kept[0].read_bytes() == original
+
+
+# --- J: the unsupported-backend early return -------------------------------
+
+
+def test_unsupported_backend_keeps_a_checkpoint_of_replaced_media(resume_env, source, monkeypatch):
+    from core.task import TranscriptionTask
+
+    t = resume_env
+    monkeypatch.setattr(t, "_current_backend_and_model", lambda: ("cloud_stt", "m"))
+    cp.note_source_identity(str(source))
+    _write(source, backend="faster_whisper", model_name="m")
+    original = cp.checkpoint_path(str(source)).read_bytes()
+    _replace_media(source)
+    assert t.resume_transcription(TranscriptionTask(str(source))) is False
+    assert not cp.checkpoint_path(str(source)).exists()
+    kept = _kept(source)
+    assert len(kept) == 1 and kept[0].read_bytes() == original
+    assert cp.recovery_text_path(kept[0]).exists()
+
+
+def test_unsupported_backend_leaves_a_checkpoint_of_verified_media_in_place(
+        resume_env, source, monkeypatch):
+    from core.task import TranscriptionTask
+
+    t = resume_env
+    monkeypatch.setattr(t, "_current_backend_and_model", lambda: ("cloud_stt", "m"))
+    cp.note_source_identity(str(source))
+    _write(source, backend="faster_whisper", model_name="m")
+    assert t.resume_transcription(TranscriptionTask(str(source))) is False
+    assert cp.checkpoint_path(str(source)).exists()
+    assert _kept(source) == []

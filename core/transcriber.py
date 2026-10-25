@@ -3405,17 +3405,6 @@ def resume_transcription(
         # faster_whisper run of this file can still resume it if the
         # fallback crashes before writing anything.
         backend_for_check = backend
-        # A COMPLETED checkpoint needs no slicer: only the post steps are
-        # redone, so every backend may use it (a cloud engine would
-        # otherwise bill the whole file a second time).
-        if backend and backend != "faster_whisper" and not data.get("transcription_completed"):
-            log(
-                f"Resume: backend={backend!r} does not support resume; "
-                "falling back to full re-run.",
-                log_cb,
-            )
-            return False
-
         # The checkpoint's own task wins over whatever the task was queued
         # with: the captured half is already in that task, so the tail must
         # use it too or one transcript would mix two tasks.
@@ -3435,6 +3424,18 @@ def resume_transcription(
             log(
                 f"Resume: {reason}; the checkpoint is kept aside ({kept}) "
                 "and a fresh run starts.",
+                log_cb,
+            )
+            return False
+        # Decided only AFTER the media check above: a checkpoint of other
+        # media must be kept aside before any fresh run can replace it.
+        # A COMPLETED checkpoint needs no slicer: only the post steps are
+        # redone, so every backend may use it (a cloud engine would
+        # otherwise bill the whole file a second time).
+        if backend and backend != "faster_whisper" and not data.get("transcription_completed"):
+            log(
+                f"Resume: backend={backend!r} does not support resume; "
+                "falling back to full re-run.",
                 log_cb,
             )
             return False
