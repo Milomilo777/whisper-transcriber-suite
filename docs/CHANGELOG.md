@@ -52,7 +52,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   <language>", "Keep English" and "Other...". Nothing changes without a click, any answer is remembered,
   and nothing is looked up online.
 - **One-click Groq preset for the AI provider**: "Use Groq" in Advanced > AI fills the Base URL and the model
-  `llama-3.3-70b-versatile`. Groq has a free key at console.groq.com, and the model stays editable.
+  `openai/gpt-oss-120b`. Groq has a free key at console.groq.com, and the model stays editable.
 - **Help > Copy MCP setup**: copies the `claude mcp add` command that registers this app's MCP endpoint
   with Claude Code, with the server's live port filled in and the password left as a `<access password>`
   placeholder. docs/SERVER.md gained a "Use it from Claude Code" section with the same command and the
@@ -70,7 +70,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 ### Changed
 
 - **Long transcripts no longer overflow Groq's small per-minute cap**: requests to api.groq.com are trimmed to
-  a 6000-token budget, and the summary or answer says so. Other providers are never trimmed unless
+  a 6000-token budget, counted from the text's UTF-8 size so Chinese, Japanese and other scripts fit too, and
+  the summary or answer says so. Other providers are never trimmed unless
   `llm_remote_max_input_tokens` is set. A rate limit (HTTP 429) now gives a clear message.
 - **The README describes the whole product again**: a full FAQ (36 questions), the browser version, every
   engine, model and output format, measured accuracy and CPU speed, each tab, speaker labels, downloads, Live,
@@ -115,6 +116,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   numbers 3 and 5; it now reads a comma followed by one or two digits as a decimal mark ("1,200" stays a
   thousands separator).
 
+- **"Copy MCP setup" survives a damaged port setting**: it falls back to the default port instead of failing.
+- **Action items and Translate now say when the transcript was shortened**: like Summarise and Ask, they add the note when a remote AI provider only saw part of the text.
+- **A used-up AI provider limit no longer holds back your transcript files**: when the provider answers "rate limit reached" and asks for a long wait, the app stops at once instead of retrying for every segment or chapter; chapter titles and bilingual lines fall back to the plain ones and the files are written right away.
+- **The first-run language question waits for Quick Start**: it no longer opens on top of the Quick Start or hub setup window, where its buttons could not be clicked.
+- **Exit and "Restart now" count jobs sent to the built-in server**: quitting the app or switching the interface language no longer cancels a running web or LAN job without asking.
 - **The saved text of an interrupted run is kept unless its media is verified unchanged**: only re-running
   the same, unchanged file with another engine, model or setting discards a checkpoint. A replaced, deleted
   or unverifiable source keeps it aside instead (on resume, on a new job for the same path, and with an

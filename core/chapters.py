@@ -35,6 +35,7 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
+from core.llm import RemoteLLMRateLimitError
 from core.text_metrics import count_words
 
 logger = logging.getLogger(__name__)
@@ -214,6 +215,11 @@ def title_chapters_with_llm(
             if raw and len(raw) <= 120:
                 titles.append(raw)
                 continue
+        except RemoteLLMRateLimitError as e:
+            # A spent limit would fail every remaining chapter the same way: keep the plain
+            # titles for the rest instead of trying (and waiting) once per chapter.
+            logger.warning("LLM titling stopped, using plain titles: %s", e)
+            runner = None
         except Exception as e:  # noqa: BLE001
             logger.debug("LLM titling failed: %s", e)
         titles.append(heuristic_title(segments, boundary))

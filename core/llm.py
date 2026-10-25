@@ -73,10 +73,12 @@ DEFAULT_MODEL_URL = (
 DEFAULT_MODEL_SIZE_BYTES = 1_117_000_000  # ~1.04 GB; tolerance check only
 
 # One-click remote preset (Advanced > AI). Groq serves an OpenAI-compatible API
-# and has a free tier. The model id is a production model listed at
-# https://console.groq.com/docs/models (checked 2026-10-25); the user can edit it.
+# and has a free tier. The model id must be one a free key can call: on 2026-10-26
+# GET /models listed openai/gpt-oss-120b, openai/gpt-oss-20b and qwen/qwen3.8-27b
+# as chat models, and llama-3.3-70b-versatile (the earlier preset) answered 404
+# model_not_found. Re-check with a real key before changing it; the user can edit it.
 GROQ_BASE_URL = "https://api.groq.com/openai/v1"
-GROQ_MODEL = "llama-3.3-70b-versatile"
+GROQ_MODEL = "openai/gpt-oss-120b"
 
 
 # ---------------------------------------------------------------- availability
@@ -338,10 +340,19 @@ def _strip_wrapped_quotes(text: str) -> str:
 _CONTEXT_OVERHEAD_TOKENS = 64
 #: How many tokens each message costs the chat template itself.
 _PER_MESSAGE_OVERHEAD_TOKENS = 4
-#: Fallback chars-per-token ratio when the loaded model exposes no
-#: usable ``tokenize``. English runs ~4 chars/token; 3 keeps the
-#: estimate on the safe side for other scripts.
-_CHARS_PER_TOKEN = 3
+#: Fallback UTF-8-bytes-per-token ratio when no tokenizer is available
+#: (remote endpoints, or a local model without ``tokenize``). Counting
+#: bytes, not characters, keeps the estimate safe for every script:
+#: English (1 byte/char) is counted as before at ~3 chars/token, while a
+#: CJK character (3 bytes) counts as one token, as real tokenizers see it.
+#: Counting characters let a Chinese transcript through at about a third
+#: of its real size, and Groq answered HTTP 413 (checked 2026-10-26).
+_BYTES_PER_TOKEN = 3
+
+
+def _estimate_tokens(text: str) -> int:
+    """Conservative token estimate from the UTF-8 length. Never raises."""
+    return max(1, len(text.encode("utf-8", "surrogatepass")) // _BYTES_PER_TOKEN)
 #: Inserted where an over-long prompt was cut apart.
 _TRUNCATION_MARKER = " […truncated to fit the model's context window…] "
 
@@ -361,9 +372,9 @@ def _token_counter(llama: Any) -> Callable[[str], int]:
                 tokens: Any = tokenize(text.encode("utf-8"), add_bos=False)
                 return len(tokens)
             except Exception:  # noqa: BLE001 — counting must never break a call
-                return max(1, len(text) // _CHARS_PER_TOKEN)
+                return _estimate_tokens(text)
         return _count
-    return lambda text: max(1, len(text) // _CHARS_PER_TOKEN)
+    return _estimate_tokens
 
 
 def _truncate_middle(text: str, keep_chars: int) -> str:
@@ -586,6 +597,11 @@ class RemoteLLMError(RuntimeError):
     """Raised when a remote OpenAI-compatible endpoint call fails."""
 
 
+class RemoteLLMRateLimitError(RemoteLLMError):
+    """The provider's rate or daily limit is spent and will not clear within a short wait
+    (HTTP 429 with a Retry-After above the retry cap). Loops over many calls stop on it."""
+
+
 class _RetryableLLMError(RemoteLLMError):
     """A failure worth another try (rate limit, server error, timeout)."""
 
@@ -794,6 +810,10 @@ class RemoteLLMRunner:
                         "The request is too large for this AI provider "
                         f"(HTTP 413). {hint} {body}"
                     )
+                if e.code == 429 and _retry_after_raw(e.headers) > _MAX_RETRY_AFTER_S:
+                    # Waiting that long per call (times every segment or chapter) would only
+                    # stall the run; fail at once so callers can skip the optional AI step.
+                    raise RemoteLLMRateLimitError(message) from e
                 if e.code in _RETRYABLE_STATUS:
                     raise _RetryableLLMError(
                         message, _retry_after_seconds(e.headers)) from e
@@ -926,6 +946,7 @@ def translate_segments(
     """
     out: list[str] = []
     total = len(segments)
+    limit_hit = False
     for i, seg in enumerate(segments):
         if cancel_event is not None and cancel_event.is_set():
             out.append("")
@@ -933,13 +954,22 @@ def translate_segments(
             text = (seg.get("text") or "").strip()
             if not text:
                 out.append("")
+            elif limit_hit:
+                out.append("")  # the provider's limit is spent: no more calls this pass
+                if failed is not None:
+                    failed.append(i)
             else:
                 try:
                     out.append(runner.translate(text, target_language=target_language))
                 except Exception as e:  # noqa: BLE001
                     if isinstance(e.__cause__, offline.OfflineModeError):
                         raise  # Work offline: every segment would fail the same way
-                    logger.warning("translate_segments: segment %d failed: %s", i, e)
+                    if isinstance(e, RemoteLLMRateLimitError):
+                        limit_hit = True
+                        logger.warning(
+                            "translate_segments: stopping at segment %d: %s", i, e)
+                    else:
+                        logger.warning("translate_segments: segment %d failed: %s", i, e)
                     out.append("")
                 if not out[-1] and failed is not None:
                     failed.append(i)
