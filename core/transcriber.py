@@ -2394,6 +2394,9 @@ def transcribe(
         # and slicing that would run before the first cancel check.
         log("Task cancelled", log_cb)
         return
+    # Remember which media this run starts on, so a later stat blip cannot
+    # blank the identity stored in its checkpoints.
+    _checkpoint.note_source_identity(task.file_path)
     # Wrap the per-file work in ``_runtime_overrides_scope`` so any
     # ``.whisperproject.json`` mutation of the module-level ``config``
     # is reverted before the next file runs (audit P0-6). The scope
@@ -3338,10 +3341,21 @@ def resume_transcription(
             model_name=model_name,
             cfg_fingerprint=cfg_fp,
         )
+        if reason.startswith(_checkpoint.UNVERIFIABLE_PREFIX):
+            # Cannot tell which media the saved text came from: never resume
+            # onto whatever sits at the path now, but never destroy it either.
+            kept = _checkpoint.quarantine_checkpoint(task.file_path)
+            log(
+                f"Resume: {reason}; the checkpoint is kept aside ({kept}) "
+                "and a fresh run starts.",
+                log_cb,
+            )
+            return False
         if reason:
             log(f"Resume: checkpoint invalid ({reason}); deleting partial.", log_cb)
             _checkpoint.delete_checkpoint(task.file_path)
             return False
+        _checkpoint.note_source_identity(task.file_path)
         task.whisper_task = cp_task
         _checked_whisper_task(task, backend_for_check or "faster_whisper")
 

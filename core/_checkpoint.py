@@ -197,6 +197,72 @@ def accepted_fingerprints(cfg: dict[str, Any], whisper_task: str = "transcribe")
     return (current,) if earlier == current else (current, earlier)
 
 
+# Source identity (size, mtime) of the media each run started on, keyed by
+# absolute path. A later stat blip must not replace it with "unknown": the
+# checkpoint then still says which media the saved segments came from.
+_RUN_IDENTITY: dict[str, tuple[int, float]] = {}
+
+# Prefix of every validate_checkpoint reason that means "the media identity
+# cannot be verified". The checkpoint is KEPT (quarantined) for those, never
+# deleted and never auto-resumed.
+UNVERIFIABLE_PREFIX = "checkpoint identity cannot be verified"
+
+
+def note_source_identity(source_path: str) -> None:
+    """Remember the size and mtime of the media a run starts on.
+
+    Call once at run start, before the first checkpoint write. A failed
+    stat leaves any earlier note for this path untouched.
+    """
+    abs_path = os.path.abspath(source_path)
+    try:
+        st = os.stat(abs_path)
+        _RUN_IDENTITY[abs_path] = (int(st.st_size), float(st.st_mtime))
+    except OSError:
+        _RUN_IDENTITY.pop(abs_path, None)
+
+
+def _previous_identity(abs_path: str) -> tuple[int, float] | None:
+    """Numeric identity stored in the checkpoint now on disk, if usable."""
+    prev = load_checkpoint(abs_path)
+    if not prev:
+        return None
+    size, mtime = prev.get("source_size"), prev.get("source_mtime")
+    if isinstance(size, bool) or isinstance(mtime, bool):
+        return None
+    if not isinstance(size, int) or not isinstance(mtime, (int, float)):
+        return None
+    if size == 0 and mtime == 0:
+        return None  # the old poison pair is not an identity
+    return size, float(mtime)
+
+
+def quarantine_checkpoint(source_path: str) -> Path | None:
+    """Move the checkpoint aside, keeping it; return the new path.
+
+    The new name does not end in ``.json``, so the resume path no longer
+    sees it and the age sweep never reaps it. A fresh run can then start
+    without touching the saved segments. Never raises.
+    """
+    import time as _time
+
+    path = checkpoint_path(source_path)
+    if not path.exists():
+        return None
+    target = path.with_name(f"{path.name}.unverified-{int(_time.time())}")
+    n = 0
+    while target.exists():
+        n += 1
+        target = path.with_name(f"{path.name}.unverified-{int(_time.time())}-{n}")
+    try:
+        os.replace(path, target)
+    except OSError as e:
+        logger.warning("Could not quarantine checkpoint %s: %s", path, e)
+        return None
+    logger.warning("Checkpoint %s kept aside as %s", path, target)
+    return target
+
+
 def write_checkpoint(
     source_path: str,
     *,
@@ -221,20 +287,21 @@ def write_checkpoint(
     import time as _time
 
     abs_path = os.path.abspath(source_path)
+    identity: tuple[int, float] | None
     try:
         st = os.stat(abs_path)
-        size: int | None = int(st.st_size)
-        mtime: float | None = float(st.st_mtime)
+        identity = (int(st.st_size), float(st.st_mtime))
+        _RUN_IDENTITY[abs_path] = identity
     except OSError:
-        # A transient stat blip (USB/SMB hiccup) must not poison the
-        # checkpoint: storing zeros made validate_checkpoint refuse on
-        # mismatch, and the resume path DELETES the partial on refusal —
-        # the exact loss this module exists to prevent. Store no
-        # verification fields instead; the resume then checks existence
-        # and the backend/model/fingerprint, and this one checkpoint is
-        # simply verified a little less strictly.
-        size = None
-        mtime = None
+        # A transient stat blip (USB/SMB hiccup) must not replace the
+        # identity of the media the segments came from: keep the identity
+        # noted at run start, else the one on the checkpoint already on
+        # disk. Only when neither exists are the fields stored as null, and
+        # then validate_checkpoint refuses the checkpoint (kept, never
+        # auto-resumed) because the media cannot be verified.
+        identity = _RUN_IDENTITY.get(abs_path) or _previous_identity(abs_path)
+    size: int | None = identity[0] if identity else None
+    mtime: float | None = identity[1] if identity else None
 
     payload: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
@@ -342,6 +409,7 @@ def load_checkpoint(source_path: str) -> dict[str, Any] | None:
 def delete_checkpoint(source_path: str) -> None:
     """Remove the checkpoint file for ``source_path``, if any."""
     path = checkpoint_path(source_path)
+    _RUN_IDENTITY.pop(os.path.abspath(source_path), None)
     try:
         path.unlink()
     except FileNotFoundError:
@@ -440,39 +508,38 @@ def validate_checkpoint(
         st = os.stat(src)
     except OSError as e:
         return f"could not stat source: {e}"
-    # A checkpoint written during a transient stat blip carries the
-    # verification fields as null (write_checkpoint stores None rather
-    # than values no resume can accept): skip that comparison and rely
-    # on existence + backend/model/fingerprint. A field that is absent
-    # outright is still rejected (as before — a checkpoint that cannot
-    # be verified at all must not resume), and so is a non-numeric one.
+    # A checkpoint written during a stat blip with no known earlier identity
+    # carries the verification fields as null. Matching backend/model says
+    # nothing about WHICH media is at the path, so such a checkpoint is
+    # refused with the unverifiable reason: the caller keeps it aside and
+    # runs fresh instead of resuming onto possibly different media. A field
+    # that is absent outright, or non-numeric, is refused as well.
     if "source_size" not in data:
         return "checkpoint missing source_size"
     if "source_mtime" not in data:
         return "checkpoint missing source_mtime"
-    # The OLD write_checkpoint's stat-failure output was size=0/mtime=0.0 —
+    # The OLD write_checkpoint's stat-failure output was size=0/mtime=0.0 --
     # a poison pair no real file carries (a genuine 0-byte source has its
-    # real mtime). It must keep refusing with the size reason, exactly as
-    # the `or -1` sentinel did, so an old poisoned checkpoint on disk can
-    # never validate a 0-byte source.
+    # real mtime). It must keep refusing so an old poisoned checkpoint on
+    # disk can never validate a 0-byte source.
     if data.get("source_size") == 0 and data.get("source_mtime") == 0.0:
-        return "checkpoint carries the stat-failure sentinel (source_size 0)"
+        return f"{UNVERIFIABLE_PREFIX} (stat-failure sentinel, source_size 0)"
+    if data["source_size"] is None or data["source_mtime"] is None:
+        return f"{UNVERIFIABLE_PREFIX} (source size or mtime was not recorded)"
     saved_size = data["source_size"]
-    if saved_size is not None:
-        try:
-            if int(saved_size) != int(st.st_size):
-                return "source file size has changed since checkpoint"
-        except (TypeError, ValueError):
-            return f"checkpoint source_size is not a number: {saved_size!r}"
+    try:
+        if int(saved_size) != int(st.st_size):
+            return "source file size has changed since checkpoint"
+    except (TypeError, ValueError):
+        return f"checkpoint source_size is not a number: {saved_size!r}"
     saved_mtime = data["source_mtime"]
-    if saved_mtime is not None:
-        try:
-            # Allow 1 ms slop — filesystem mtime granularity on some
-            # volumes is coarser than Python's float repr suggests.
-            if abs(float(saved_mtime) - float(st.st_mtime)) > 0.001:
-                return "source file mtime has changed since checkpoint"
-        except (TypeError, ValueError):
-            return f"checkpoint source_mtime is not a number: {saved_mtime!r}"
+    try:
+        # Allow 1 ms slop -- filesystem mtime granularity on some
+        # volumes is coarser than Python's float repr suggests.
+        if abs(float(saved_mtime) - float(st.st_mtime)) > 0.001:
+            return "source file mtime has changed since checkpoint"
+    except (TypeError, ValueError):
+        return f"checkpoint source_mtime is not a number: {saved_mtime!r}"
     if str(data.get("backend") or "") != backend:
         return (
             f"backend changed: checkpoint={data.get('backend')!r} "

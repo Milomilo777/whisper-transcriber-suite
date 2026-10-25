@@ -89,6 +89,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **A resume never continues onto different media**: a failed read of the source's size and date no longer
+  blanks them in the saved checkpoint; the values noted at the start of the run (or stored by the
+  previous write) are kept. A checkpoint whose media cannot be verified is moved aside, not resumed and
+  not deleted, and a fresh run starts.
 - **A failed or cancelled run no longer erases the language of its history row**, and a task whose history
   insert keeps failing (full disk, corrupt database) now ends as an error after about 30 seconds instead of
   waiting forever.
