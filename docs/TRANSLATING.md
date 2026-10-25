@@ -102,7 +102,8 @@ and expects an empty list, plus a test that its English texts did not change.
 
 ## How to test a language
 
-- **In the app.** Advanced settings > App behaviour > Interface language lists "Automatic
+- **In the app.** The globe button above the tabs (or View > Interface language...) and Advanced
+  settings > App behaviour > Interface language list "Automatic
   (system language)" and every catalog in `app/locales`, each language by its own name. Pick
   one, click Save and start the app again (a notice in the main window says so when the
   language will change). A catalog with status `"machine"` is listed as "<name> (machine

@@ -697,6 +697,7 @@ def _new_host(mp: pytest.MonkeyPatch) -> Any:
     for name in ("browse", "convert_transcript", "show_statistics", "_force_exit", "apply_theme",
                  "_save_chime_pref", "_open_transcript_viewer_picker", "_open_search_dialog",
                  "open_log_folder", "copy_mcp_setup", "_check_for_updates_manual", "_save_telemetry_pref",
+                 "open_ui_language_chooser",
                  "_show_about_mock", "_toggle_work_offline", "_open_problem_report",
                  "_star_open_page", "pause", "resume", "cancel", "resume_task", "_rerun_task",
                  "remove_task", "pause_download", "resume_download", "cancel_download",

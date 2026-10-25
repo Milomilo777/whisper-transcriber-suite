@@ -18,8 +18,11 @@ from __future__ import annotations
 
 import logging
 import os
+import subprocess
 import sys
 import threading
+import time
+from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -92,6 +95,127 @@ def _say_flush_timed_out() -> None:
     note.join(0.2)
 
 
+# --- restart: start the app again once this process has ended --------------------------------
+
+_relaunch: list[list[str]] = []
+
+
+def relaunch_command() -> list[str] | None:
+    """The command that starts this app again (no arguments), or None where that is not supported.
+
+    Windows only: the frozen exe, or the interpreter with the ``gui.py`` this run started from
+    (what the installer's shortcuts start). Elsewhere the caller keeps "restart the app yourself".
+    """
+    if sys.platform != "win32" or not sys.executable:
+        return None
+    if getattr(sys, "frozen", False):
+        return [sys.executable]
+    script = os.path.abspath(sys.argv[0]) if sys.argv and sys.argv[0] else ""
+    if not script.lower().endswith(".py") or not os.path.isfile(script):
+        return None
+    return [sys.executable, script]
+
+
+def request_relaunch(command: list[str] | None = None) -> bool:
+    """Ask :func:`end_process` to start the app again after it has ended. False if unsupported."""
+    command = command or relaunch_command()
+    if not command:
+        return False
+    _relaunch[:] = [list(command)]
+    return True
+
+
+def cancel_relaunch() -> None:
+    _relaunch.clear()
+
+
+def relaunch_requested() -> bool:
+    return bool(_relaunch)
+
+
+#: Argument the replacement process gets: it waits for the old process (this PID) to be gone.
+WAIT_FOR_PID_ARG = "--wait-for-pid"
+#: Longest the replacement waits for the old process before it starts anyway.
+WAIT_FOR_PID_TIMEOUT_S = 20.0
+_STILL_ACTIVE = 259
+
+
+def pid_alive(pid: int) -> bool:
+    """True while process ``pid`` runs. Never raises; an unreadable PID counts as gone."""
+    if pid <= 0:
+        return False
+    try:
+        if sys.platform == "win32":
+            import ctypes
+            kernel32 = getattr(ctypes, "windll").kernel32
+            kernel32.OpenProcess.restype = ctypes.c_void_p
+            handle = kernel32.OpenProcess(0x100000 | 0x1000, False, pid)  # SYNCHRONIZE | QUERY_LIMITED
+            if not handle:
+                return False
+            try:
+                code = ctypes.c_ulong(0)
+                if not kernel32.GetExitCodeProcess(ctypes.c_void_p(handle), ctypes.byref(code)):
+                    return False
+                return code.value == _STILL_ACTIVE
+            finally:
+                kernel32.CloseHandle(ctypes.c_void_p(handle))
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    except Exception:  # noqa: BLE001 - not knowing is not a reason to hang the start
+        logger.debug("Could not look at process %s", pid, exc_info=True)
+        return False
+
+
+def consume_wait_for_pid(
+    argv: list[str],
+    *,
+    alive: Callable[[int], bool] = pid_alive,
+    sleep: Callable[[float], None] = time.sleep,
+    clock: Callable[[], float] = time.monotonic,
+    timeout: float = WAIT_FOR_PID_TIMEOUT_S,
+) -> list[str]:
+    """Handle ``--wait-for-pid N`` at the very start of the program (before any single-instance
+    lock or config write): wait, at most ``timeout`` seconds, until process N has ended. Returns
+    ``argv`` without the option, so nothing later sees it and a restart never repeats it."""
+    if WAIT_FOR_PID_ARG not in argv:
+        return argv
+    at = argv.index(WAIT_FOR_PID_ARG)
+    rest = argv[:at] + argv[at + 2:]
+    try:
+        pid = int(argv[at + 1])
+    except (IndexError, ValueError):
+        logger.warning("Ignoring %s without a process id", WAIT_FOR_PID_ARG)
+        return argv[:at] + argv[at + 1:]
+    deadline = clock() + timeout
+    while alive(pid):
+        if clock() >= deadline:
+            logger.warning("Process %s is still running after %.0f s; starting anyway", pid, timeout)
+            break
+        sleep(0.1)
+    return rest
+
+
+def _spawn_relaunch() -> None:
+    """Start the requested command detached; a failure is logged, the exit goes on."""
+    if not _relaunch:
+        return
+    # The replacement waits for this process to end (it starts before the hard exit below): a
+    # single-instance check or a file this process still holds must not reject it.
+    command = _relaunch[0] + [WAIT_FOR_PID_ARG, str(os.getpid())]
+    flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+    try:
+        subprocess.Popen(  # noqa: S603 - our own interpreter and script
+            command, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            close_fds=True, creationflags=flags, cwd=os.path.dirname(_relaunch[0][-1]) or None,
+        )
+    except (OSError, ValueError):
+        logger.exception("Could not start the app again")
+
+
 def end_process(code: int = 0) -> None:
     """Flush Sentry, the logs and the standard streams, then end the process with *code*.
 
@@ -112,4 +236,5 @@ def end_process(code: int = 0) -> None:
     flusher.join(FLUSH_TIMEOUT_S)
     if flusher.is_alive():
         _say_flush_timed_out()
+    _spawn_relaunch()
     _hard_exit(code)

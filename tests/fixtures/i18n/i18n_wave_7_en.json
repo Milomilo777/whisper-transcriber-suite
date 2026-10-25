@@ -277,7 +277,8 @@
    "Light",
    "Dark",
    "System",
-   "Chime on completion"
+   "Chime on completion",
+   "Interface language…"
   ],
   "menu_2": [
    "Open transcript viewer...",

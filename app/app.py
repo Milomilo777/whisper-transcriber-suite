@@ -25,7 +25,7 @@ from app.dialogs.quick_start import (
     short_model_name,
     should_show,
 )
-from app.dialogs import share_page
+from app.dialogs import language_suggestion, share_page, ui_language
 from app import desktop_alert, mac_native, rtl_layout, shortcuts
 from app.i18n import N_, _, ngettext, pgettext, plain, translate
 from app.dialogs.transcript_viewer import confirm_unsaved_before_exit as confirm_unsaved_viewers_before_exit
@@ -1570,6 +1570,8 @@ class App(tk.Tk):
         # Bound the partials/ dir: sweep orphaned resume slices + aged-out
         # checkpoints so a killed/declined run doesn't accumulate forever.
         self.after(1500, self._sweep_partials_at_startup)
+        # First run, Windows: offer the language the regional format and the keyboard point to.
+        self.after(2500, lambda: language_suggestion.maybe_suggest(self))
 
         self.after(100, self._on_start)
         self.after(300, self.loop)
@@ -1784,6 +1786,9 @@ class App(tk.Tk):
             variable=self.chime_on_complete_var,
             command=self._save_chime_pref,
         )
+        v.add_separator()
+        # The same chooser as the globe button above the tabs.
+        v.add_command(label=_("Interface language…"), command=self.open_ui_language_chooser)
 
         h = tk.Menu(m, tearoff=0, **mac_native.help_menu_kwargs(self))
         h.add_command(label=_("Open transcript viewer..."), command=self._open_transcript_viewer_picker)
@@ -2901,7 +2906,13 @@ class App(tk.Tk):
             self.quit()
 
     # Tabs --------------------------------------------------------------------
+    def open_ui_language_chooser(self) -> None:
+        """The language chooser: the globe button above the tabs and View > Interface language."""
+        ui_language.open_chooser(self)
+
     def _build_tabs(self) -> None:
+        # The language button sits in the top-right corner above the tabs, in every language.
+        ui_language.build_button(self, self)
         self.nb = ttk.Notebook(self)
         self.nb.pack(fill="both", expand=True)
         self.t1 = ttk.Frame(self.nb)

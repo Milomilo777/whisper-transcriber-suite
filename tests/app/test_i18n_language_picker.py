@@ -248,6 +248,11 @@ def test_macos_and_linux_keep_the_platform_fonts(platform: str, monkeypatch: pyt
 def harness(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
     from tests.app.test_i18n_wave_2 import _Harness
 
+    from app.dialogs import ui_language
+
+    # These tests cover the plain notice; the restart question has its own tests
+    # (test_ui_language_button.py).
+    monkeypatch.setattr(ui_language, "restart_supported", lambda: False)
     h = _Harness(monkeypatch, tmp_path)
     h.notices = []  # type: ignore[attr-defined]
     monkeypatch.setattr(h.adv, "notify", lambda _w, text, kind="info": h.notices.append(text))  # type: ignore[attr-defined]

@@ -31,6 +31,7 @@ ICON_NAMES = (
     "external-link",
     "file-text",
     "folder-open",
+    "globe",
     "info",
     "languages",
     "link",
@@ -83,6 +84,13 @@ def tint(image: Image.Image, color: str) -> Image.Image:
     solid = Image.new("RGBA", rgba.size, color)
     solid.putalpha(rgba.getchannel("A"))
     return solid
+
+
+def text_colour() -> str:
+    """The colour of a plain icon beside text in the current theme (near-black or near-white)."""
+    from app.theme import tokens
+
+    return "#e6e6e6" if tokens.current_theme() == "dark" else "#1f1f1f"
 
 
 @lru_cache(maxsize=256)

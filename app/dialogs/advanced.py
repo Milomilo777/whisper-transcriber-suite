@@ -2592,24 +2592,17 @@ class AdvancedDialog(tk.Toplevel):
                     restart()
                 except Exception as e:  # noqa: BLE001
                     self.app.log(f"Watched-folder restart failed: {e}")
-        if ui_language_changed:
-            self._notify_ui_language_restart(str(cfg["ui_language"]))
         self._teardown_mousewheel()
         self.destroy()
+        # After the dialog is gone: "Restart now" closes the whole app.
+        if ui_language_changed:
+            self._notify_ui_language_restart(str(cfg["ui_language"]))
 
     def _notify_ui_language_restart(self, value: str) -> None:
-        """After a saved language change: say when it applies, in the main window."""
-        if os.environ.get(i18n.ENV_LANGUAGE, "").strip():
-            text = _(
-                "The {variable} environment variable sets the interface language of this run. "
-                "Your choice applies when the app starts without it.",
-                variable=i18n.ENV_LANGUAGE,
-            )
-        elif i18n.setting_language(value) != i18n.current_language():
-            text = _("The interface language changes the next time you start the app.")
-        else:
-            return
-        notify(self.app, text)
+        """After a saved language change: say when it applies (or ask to restart now)."""
+        from app.dialogs import ui_language
+
+        ui_language.offer_restart(self.app, value, notifier=notify)
 
     def _teardown_mousewheel(self) -> None:
         """Drop the global mousewheel binds before the dialog is destroyed.
