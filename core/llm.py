@@ -603,12 +603,27 @@ _RETRYABLE_STATUS = frozenset({408, 425, 429, 500, 502, 503, 504})
 # A chat reply is a few KB; this only stops a hostile or broken endpoint
 # from streaming for ever.
 _MAX_RESPONSE_BYTES = 16 * 1024 * 1024
-#: Default per-request budget for a remote provider (see RemoteLLMConfig).
-DEFAULT_REMOTE_MAX_INPUT_TOKENS = 6000
-#: Tacked onto a summary or answer made from a shortened transcript.
-_TRIMMED_NOTE = (
-    "\n\n(Note: the transcript was shortened to fit the AI provider's size limit.)"
-)
+#: Groq's free tier caps tokens per minute at a few thousand (8K for the models
+#: its rate-limit page lists), so requests to api.groq.com get this budget for
+#: prompt PLUS answer unless the user sets one. Other providers are never cut
+#: unless the user sets llm_remote_max_input_tokens.
+GROQ_REQUEST_TOKEN_BUDGET = 6000
+_GROQ_HOST = "api.groq.com"
+
+
+def effective_token_budget(base_url: str, configured: int) -> int:
+    """Token budget (prompt + answer) for one request; 0 means no trimming.
+
+    An explicit non-zero setting wins for every provider. With none, only
+    Groq's host gets its small default.
+    """
+    if configured > 0:
+        return configured
+    try:
+        host = (urllib.parse.urlsplit(base_url.strip()).hostname or "").lower()
+    except ValueError:
+        return 0
+    return GROQ_REQUEST_TOKEN_BUDGET if host == _GROQ_HOST else 0
 
 
 def _retry_after_raw(headers: Any) -> float:
@@ -637,10 +652,10 @@ class RemoteLLMConfig:
     model: str
     api_key: str = ""
     timeout: float = 120.0
-    #: Token budget (prompt + answer) for one request. Providers cap tokens
-    #: per minute (Groq's free tier: a few thousand), so a long transcript is
-    #: trimmed to fit instead of being refused. 0 turns trimming off.
-    max_input_tokens: int = DEFAULT_REMOTE_MAX_INPUT_TOKENS
+    #: Token budget (prompt + answer) for one request; a longer transcript is
+    #: trimmed to fit. 0 = automatic: off, except for api.groq.com (see
+    #: effective_token_budget).
+    max_input_tokens: int = 0
 
 
 class RemoteLLMRunner:
@@ -694,10 +709,11 @@ class RemoteLLMRunner:
             )
         url = f"{base}/chat/completions"
         self.last_trimmed = False
-        if self.cfg.max_input_tokens > 0:
+        budget = effective_token_budget(base, self.cfg.max_input_tokens)
+        if budget > 0:
             before = sum(len(str(m.get("content") or "")) for m in messages)
             messages, max_tokens = _fit_messages_to_context(
-                messages, max_tokens, self.cfg.max_input_tokens,
+                messages, max_tokens, budget,
                 _token_counter(None),
             )
             after = sum(len(str(m.get("content") or "")) for m in messages)
@@ -706,7 +722,7 @@ class RemoteLLMRunner:
                 logger.warning(
                     "remote LLM: input trimmed to the %d-token budget "
                     "(setting llm_remote_max_input_tokens).",
-                    self.cfg.max_input_tokens,
+                    budget,
                 )
         payload = {
             "model": self.cfg.model,
@@ -793,11 +809,10 @@ class RemoteLLMRunner:
         return raw
 
     def summarise(self, transcript_text: str, *, max_bullets: int = 8) -> str:
-        out = self._chat(
+        return self._chat(
             [{"role": "user", "content": _summarise_prompt(transcript_text, max_bullets)}],
             max_tokens=600,
         )
-        return out + _TRIMMED_NOTE if out and self.last_trimmed else out
 
     def action_items(self, transcript_text: str) -> list[str]:
         raw = self._chat(
@@ -807,11 +822,10 @@ class RemoteLLMRunner:
         return _parse_json_list(raw)
 
     def ask(self, transcript_text: str, question: str) -> str:
-        out = self._chat(
+        return self._chat(
             [{"role": "user", "content": _ask_prompt(transcript_text, question)}],
             max_tokens=400,
         )
-        return out + _TRIMMED_NOTE if out and self.last_trimmed else out
 
     def translate(self, text: str, *, target_language: str = "English") -> str:
         return _strip_wrapped_quotes(self._chat(
@@ -824,12 +838,11 @@ class RemoteLLMRunner:
 
 
 def _budget_from_config(config: dict[str, Any]) -> int:
-    """``llm_remote_max_input_tokens`` as an int; bad values use the default."""
+    """``llm_remote_max_input_tokens`` as an int; bad values mean 0 (automatic)."""
     try:
-        value = int(config.get("llm_remote_max_input_tokens",
-                               DEFAULT_REMOTE_MAX_INPUT_TOKENS))
+        value = int(config.get("llm_remote_max_input_tokens", 0))
     except (TypeError, ValueError):
-        return DEFAULT_REMOTE_MAX_INPUT_TOKENS
+        return 0
     return max(0, value)
 
 

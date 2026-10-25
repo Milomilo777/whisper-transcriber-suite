@@ -99,6 +99,13 @@ _LANGUAGE_NAMES = {
 }
 
 
+def _with_trim_note(runner: Any, result: str) -> str:
+    """Tell the user when a remote provider only saw a shortened transcript."""
+    if result and getattr(runner, "last_trimmed", False) is True:
+        return result + "\n\n" + _("(Shortened to fit the AI provider's size limit.)")
+    return result
+
+
 def _language_code(language: str | None) -> str:
     """``"en"`` from ``"en"``, ``"en-US"``, ``"en_GB"`` or ``"English"``; "" when unknown."""
     if not isinstance(language, str):
@@ -1468,7 +1475,11 @@ class TranscriptViewer(tk.Toplevel):
 
     def _run_summarise(self) -> None:
         text = self._full_transcript_text()
-        self._run_ai_task("Summarise", lambda runner: runner.summarise(text), self.language)
+        self._run_ai_task(
+            "Summarise",
+            lambda runner: _with_trim_note(runner, runner.summarise(text)),
+            self.language,
+        )
 
     def _run_action_items(self) -> None:
         text = self._full_transcript_text()
@@ -1487,7 +1498,11 @@ class TranscriptViewer(tk.Toplevel):
             notify(self, _("Type a question first."), "warning")
             return
         text = self._full_transcript_text()
-        self._run_ai_task("Ask", lambda runner: runner.ask(text, question), self.language)
+        self._run_ai_task(
+            "Ask",
+            lambda runner: _with_trim_note(runner, runner.ask(text, question)),
+            self.language,
+        )
 
     def _run_translate_preview(self) -> None:
         lang = (self._ai_target_lang_var.get() or "English").strip() or "English"

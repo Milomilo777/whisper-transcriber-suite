@@ -254,48 +254,84 @@ def _echo_body(monkeypatch):
     return sent
 
 
-def test_long_remote_input_is_trimmed_to_the_budget(monkeypatch, caplog):
+def _run(monkeypatch, base_url, tokens=0, text="word " * 20000, key="sk-secret"):
     sent = _echo_body(monkeypatch)
     runner = llm.RemoteLLMRunner(llm.RemoteLLMConfig(
-        base_url="https://llm.example/v1", model="m", api_key="sk-secret",
-        max_input_tokens=1000))
+        base_url=base_url, model="m", api_key=key, max_input_tokens=tokens))
+    runner.summarise(text)
+    return runner, sent[0]["messages"][0]["content"], len(text)
+
+
+def test_openai_like_host_is_not_trimmed_by_default(monkeypatch):
+    runner, prompt, n = _run(monkeypatch, "https://api.openai.com/v1")
+    assert len(prompt) > n
+    assert runner.last_trimmed is False
+
+
+def test_default_config_does_not_trim_an_openai_user(monkeypatch):
+    sent = _echo_body(monkeypatch)
+    runner = llm.build_runner_from_config({
+        "ai_enabled": True, "llm_provider": "remote", "llm_remote_model": "gpt-4o-mini",
+        "llm_remote_base_url": "https://api.openai.com/v1"})
     text = "word " * 20000
+    runner.summarise(text)
+    assert len(sent[0]["messages"][0]["content"]) > len(text)
+    assert runner.last_trimmed is False
+
+
+def test_groq_host_is_trimmed_by_default(monkeypatch, caplog):
     with caplog.at_level("WARNING"):
-        out = runner.summarise(text)
-    prompt = sent[0]["messages"][0]["content"]
-    assert len(prompt) < len(text) // 4
+        runner, prompt, n = _run(monkeypatch, llm.GROQ_BASE_URL)
+    assert len(prompt) < n // 4
     assert "truncated to fit" in prompt
     assert runner.last_trimmed is True
-    assert "shortened" in out
     assert "trimmed" in caplog.text
     assert "sk-secret" not in caplog.text
 
 
-def test_short_remote_input_is_sent_untouched(monkeypatch):
-    sent = _echo_body(monkeypatch)
-    runner = _runner()
-    out = runner.summarise("a short talk")
-    assert "a short talk" in sent[0]["messages"][0]["content"]
-    assert runner.last_trimmed is False
-    assert out == "ok"
-
-
-def test_budget_zero_turns_trimming_off(monkeypatch):
+def test_groq_budget_covers_prompt_plus_answer(monkeypatch):
     sent = _echo_body(monkeypatch)
     runner = llm.RemoteLLMRunner(llm.RemoteLLMConfig(
-        base_url="https://llm.example/v1", model="m", max_input_tokens=0))
+        base_url=llm.GROQ_BASE_URL, model="m"))
     runner.summarise("word " * 20000)
-    assert len(sent[0]["messages"][0]["content"]) > 90000
+    est = len(sent[0]["messages"][0]["content"]) // 3 + sent[0]["max_tokens"]
+    assert est <= llm.GROQ_REQUEST_TOKEN_BUDGET
 
 
-def test_budget_comes_from_config_and_bad_values_fall_back():
+def test_explicit_budget_trims_any_host(monkeypatch):
+    runner, prompt, n = _run(monkeypatch, "https://api.openai.com/v1", tokens=1000)
+    assert len(prompt) < n // 4
+    assert runner.last_trimmed is True
+
+
+def test_explicit_budget_overrides_the_groq_default(monkeypatch):
+    runner, prompt, n = _run(monkeypatch, llm.GROQ_BASE_URL, tokens=1000)
+    assert len(prompt) < 3500
+
+
+def test_short_remote_input_is_sent_untouched(monkeypatch):
+    runner, prompt, n = _run(monkeypatch, llm.GROQ_BASE_URL, text="a short talk")
+    assert "a short talk" in prompt
+    assert runner.last_trimmed is False
+
+
+def test_budget_host_matching_is_exact():
+    f = llm.effective_token_budget
+    assert f("https://api.groq.com/openai/v1", 0) == llm.GROQ_REQUEST_TOKEN_BUDGET
+    assert f("https://api.groq.com.evil.example/v1", 0) == 0
+    assert f("http://localhost:11434/v1", 0) == 0
+    assert f("not a url", 0) == 0
+    assert f("https://x/v1", 2500) == 2500
+
+
+def test_budget_comes_from_config_and_bad_values_mean_automatic():
     cfg = {"ai_enabled": True, "llm_provider": "remote",
            "llm_remote_base_url": "https://x/v1", "llm_remote_model": "m"}
-    assert llm.build_runner_from_config(cfg).cfg.max_input_tokens == 6000
+    assert llm.build_runner_from_config(cfg).cfg.max_input_tokens == 0
     assert llm.build_runner_from_config(
         dict(cfg, llm_remote_max_input_tokens="2500")).cfg.max_input_tokens == 2500
     assert llm.build_runner_from_config(
-        dict(cfg, llm_remote_max_input_tokens="junk")).cfg.max_input_tokens == 6000
+        dict(cfg, llm_remote_max_input_tokens="junk")).cfg.max_input_tokens == 0
 
 
 def test_rate_limit_message_is_clear(monkeypatch):

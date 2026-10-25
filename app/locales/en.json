@@ -10,6 +10,7 @@
   "'Audio and video' downloads a normal video file. 'Audio' extracts just the audio track — smaller and faster if you only need the sound or plan to transcribe it.": "'Audio and video' downloads a normal video file. 'Audio' extracts just the audio track — smaller and faster if you only need the sound or plan to transcribe it.",
   "'{needle}' not found.": "'{needle}' not found.",
   "(Pause stops the download but keeps the partial file; Resume continues it)": "(Pause stops the download but keeps the partial file; Resume continues it)",
+  "(Shortened to fit the AI provider's size limit.)": "(Shortened to fit the AI provider's size limit.)",
   "(local estimate — see Google Cloud Console for the real figure)": "(local estimate — see Google Cloud Console for the real figure)",
   "(no action items detected)": "(no action items detected)",
   "(no model set)": "(no model set)",
