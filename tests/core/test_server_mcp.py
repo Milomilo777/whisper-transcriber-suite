@@ -209,20 +209,20 @@ def test_invalid_requests(message):
 def test_transcribe_url_submits_normalized_values():
     mgr = _StubManager()
     res = _call(mgr, "transcribe_url", {
-        "url": " http://192.0.2.10/a.mp4 ", "language": "EN-us",
+        "url": " http://93.184.216.34/a.mp4 ", "language": "EN-us",
         "formats": ["SRT", "txt", "srt"], "clip_start": 10, "clip_end": 20.5})
     result = _tool_ok(res)
     assert result["structuredContent"] == {"job_id": "stub1"}
     assert json.loads(result["content"][0]["text"]) == {"job_id": "stub1"}
     assert mgr.submitted == [{
-        "url": "http://192.0.2.10/a.mp4", "formats": ["srt", "txt"],
+        "url": "http://93.184.216.34/a.mp4", "formats": ["srt", "txt"],
         "language": "en", "options": {}, "clip_start": 10.0,
         "clip_end": 20.5}]
 
 
 def test_transcribe_url_defaults():
     mgr = _StubManager()
-    _tool_ok(_call(mgr, "transcribe_url", {"url": "http://192.0.2.10/a",
+    _tool_ok(_call(mgr, "transcribe_url", {"url": "http://93.184.216.34/a",
                                            "language": None}))
     (sub,) = mgr.submitted
     assert sub["language"] == ""          # auto-detect, never "None"
@@ -527,7 +527,7 @@ def test_http_full_session_on_one_keep_alive_connection(tmp_path):
 
         sub = _post_rpc(conn, _rpc("tools/call", {
             "name": "transcribe_url",
-            "arguments": {"url": "http://192.0.2.10/a.mp4",
+            "arguments": {"url": "http://93.184.216.34/a.mp4",
                           "formats": ["txt", "docx"]}}, 3), hdr)
         job_id = sub["result"]["structuredContent"]["job_id"]
 
@@ -569,7 +569,7 @@ def test_http_cancel_job_of_a_queued_job(tmp_path):
         conn = srv.conn()
         sub = _post_rpc(conn, _rpc("tools/call", {
             "name": "transcribe_url",
-            "arguments": {"url": "http://192.0.2.10/a.mp4"}}))
+            "arguments": {"url": "http://93.184.216.34/a.mp4"}}))
         job_id = sub["result"]["structuredContent"]["job_id"]
         res = _post_rpc(conn, _rpc("tools/call", {
             "name": "cancel_job", "arguments": {"job_id": job_id}}, 2))
@@ -582,7 +582,7 @@ def test_http_bad_input_is_a_tool_error_not_a_job(tmp_path):
         conn = srv.conn()
         res = _post_rpc(conn, _rpc("tools/call", {
             "name": "transcribe_url",
-            "arguments": {"url": "http://192.0.2.10/a",
+            "arguments": {"url": "http://93.184.216.34/a",
                           "formats": ["../../evil"]}}))
         assert res["result"]["isError"] is True
         res = _post_rpc(conn, _rpc("tools/call", {

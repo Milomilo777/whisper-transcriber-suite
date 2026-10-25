@@ -220,7 +220,7 @@ def test_cancel_stops_a_download_in_progress(tmp_path):
     mgr = _manager(tmp_path, download_fn=download)
     mgr.start()
     try:
-        job_id = mgr.submit_url("http://192.0.2.10/a.mp4", ["srt"])
+        job_id = mgr.submit_url("http://93.184.216.34/a.mp4", ["srt"])
         assert started.wait(5)
         assert mgr.cancel(job_id)
         job = _wait(mgr, job_id)
@@ -247,7 +247,7 @@ def test_two_argument_download_functions_still_work(tmp_path):
     mgr = _manager(tmp_path, transcribe, download_fn=download)
     mgr.start()
     try:
-        job_id = mgr.submit_url("http://192.0.2.10/a.mp4", ["srt"])
+        job_id = mgr.submit_url("http://93.184.216.34/a.mp4", ["srt"])
         assert _wait(mgr, job_id).status == STATUS_FINISHED
     finally:
         mgr.stop()
@@ -264,7 +264,7 @@ def test_limits_reach_a_three_argument_download(tmp_path):
                    max_download_bytes=123, download_timeout_s=45.0)
     mgr.start()
     try:
-        job_id = mgr.submit_url("http://192.0.2.10/a.mp4", ["srt"])
+        job_id = mgr.submit_url("http://93.184.216.34/a.mp4", ["srt"])
         _wait(mgr, job_id)
     finally:
         mgr.stop()

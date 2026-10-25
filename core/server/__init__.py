@@ -28,6 +28,7 @@ import threading
 import time
 from typing import Any, Callable
 
+from core.server.dlproxy import shared_proxy
 from core.server.httpd import JobHTTPServer
 from core.server.jobs import (
     DownloadCancelled,
@@ -147,6 +148,14 @@ def _download_url(url: str, dest_dir: str,
     from core import yt_dlp_update
     from core.js_runtime import yt_dlp_js_args
 
+    # Started on first use. If it cannot start, the job fails: a server job
+    # never downloads without the connect-time address check.
+    try:
+        proxy = shared_proxy()
+    except OSError as exc:
+        raise RuntimeError(
+            "the download guard could not start; the link was not "
+            f"downloaded ({exc.strerror or 'network error'})") from exc
     # Short title: the job folder plus this name plus the output suffixes
     # must stay inside Windows' path limit.
     out_template = os.path.join(dest_dir, "%(title).80s.%(ext)s")
@@ -167,6 +176,12 @@ def _download_url(url: str, dest_dir: str,
             # job therefore never uses it (a direct media link is refused
             # below); the desktop Download tab keeps it.
             "--use-extractors", GENERIC_EXTRACTOR_OFF,
+            # Every request yt-dlp makes (and every redirect it follows) goes
+            # through the app's own proxy, which refuses non-public addresses
+            # at connect time. yt-dlp's native downloaders keep fragment
+            # fetches in yt-dlp, so they pass through the proxy as well.
+            "--proxy", proxy.url,
+            "--downloader", "native",
             # The frozen yt-dlp.exe ignores PYTHONUTF8 and prints cp1252,
             # dropping non-Latin title characters from its output.
             "--encoding", "utf-8",

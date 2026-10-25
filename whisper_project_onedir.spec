@@ -343,6 +343,7 @@ a = Analysis(
         'core.server.tls',
         'core.server.auth_throttle',
         'core.server.netguard',
+        'core.server.dlproxy',
         'core.writers',
         'core.writers.base',
         'core.writers.ass',

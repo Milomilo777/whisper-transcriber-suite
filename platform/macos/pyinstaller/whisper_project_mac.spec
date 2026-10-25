@@ -438,6 +438,7 @@ a = Analysis(
         'core.server.tls',
         'core.server.auth_throttle',
         'core.server.netguard',
+        'core.server.dlproxy',
         'core.star_invite',
         'core.tts_kokoro',
         'core.voice_clone',

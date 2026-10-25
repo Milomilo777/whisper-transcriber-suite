@@ -126,7 +126,7 @@ def _wait_terminal(manager, job_id, timeout=10.0):
 # Neutral shared value for the access-password tests.
 _SHARED = "letmein"
 
-_URL_JOB = json.dumps({"url": "http://192.0.2.10/a.mp4"}).encode()
+_URL_JOB = json.dumps({"url": "http://93.184.216.34/a.mp4"}).encode()
 
 
 # --- S11-12: Content-Type, Origin and Host checks ----------------------------

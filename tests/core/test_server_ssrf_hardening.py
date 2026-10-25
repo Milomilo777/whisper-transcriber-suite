@@ -251,3 +251,28 @@ def test_address_blocked_matches_the_old_job_url_rules():
         assert netguard.address_blocked(ipaddress.ip_address(text))
     for text in ("10.1.2.3", "192.168.0.9", "93.184.216.34"):
         assert not netguard.address_blocked(ipaddress.ip_address(text))
+
+
+# --- link jobs refuse private-network hosts up front ----------------------------
+
+@pytest.mark.parametrize("url", [
+    "http://10.0.0.5/v", "https://192.168.1.20/v", "http://172.16.3.4/v",
+    "http://100.64.0.9/v", "http://127.0.0.1/v",
+])
+def test_link_jobs_refuse_private_network_literals(url):
+    assert not jobs_mod.is_safe_url(url, allow_private=False)
+
+
+def test_default_is_safe_url_still_allows_the_lan(monkeypatch):
+    assert jobs_mod.is_safe_url("http://192.168.1.20/hook")
+    monkeypatch.setattr(socket, "getaddrinfo", _answers("192.168.1.20"))
+    assert jobs_mod.is_safe_url("http://nas.example/hook")
+    assert not jobs_mod.is_safe_url("http://nas.example/v", allow_private=False)
+
+
+def test_submit_url_refuses_a_lan_host(tmp_path):
+    mgr = jobs_mod.JobManager(lambda *a, **k: None,
+                              jobs_root=str(tmp_path / "jobs"),
+                              record_history=False)
+    with pytest.raises(ValueError, match="local-network"):
+        mgr.submit_url("http://192.168.1.20/v", ["srt"])

@@ -296,7 +296,7 @@ def test_server_link_job_is_refused_before_the_host_lookup(offline_on, tmp_path,
 def test_server_link_job_queued_before_the_switch_is_not_downloaded(tmp_path, monkeypatch):
     from core.server import jobs
 
-    monkeypatch.setattr(jobs, "is_safe_url", lambda _u: True)
+    monkeypatch.setattr(jobs, "is_safe_url", lambda _u, **_kw: True)
     mgr = jobs.JobManager(
         lambda *a, **k: None, jobs_root=str(tmp_path / "jobs"), record_history=False,
         download_fn=_boom,

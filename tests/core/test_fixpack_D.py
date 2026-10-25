@@ -390,7 +390,7 @@ def test_small_json_url_body_still_accepted(tmp_path, monkeypatch):
     """A normal small JSON url body is unaffected by the new cap."""
     # Keep it offline + deterministic: a literal public-ish address avoids a
     # real DNS lookup inside is_safe_url, but stub getaddrinfo too as a guard.
-    _stub_getaddrinfo(monkeypatch, {"media.lan.test": "203.0.113.10"})
+    _stub_getaddrinfo(monkeypatch, {"media.lan.test": "93.184.216.34"})
     with _RunningServer(tmp_path) as srv:
         payload = json.dumps({"url": "http://media.lan.test/v",
                               "formats": "srt"}).encode()

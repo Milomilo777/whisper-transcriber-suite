@@ -765,13 +765,14 @@ class JobManager:
         if offline.is_offline():
             # Before is_safe_url, which looks the host name up.
             raise ValueError(offline.refused("a link job"))
-        if not is_safe_url(url):
+        if not is_safe_url(url, allow_private=False):
             # is_safe_url also refuses loopback / link-local / cloud-metadata
             # hosts (SSRF guard); say so, instead of claiming a plain
             # http://127.0.0.1/... link is not http.
             raise ValueError(
-                "only http(s) URLs to a public or LAN host are accepted "
-                "(this computer's own / link-local addresses are refused)"
+                "only http(s) URLs to a public host are accepted "
+                "(this computer's own, link-local and local-network "
+                "addresses are refused)"
             )
         with self._lock:
             job = self._new_job("url", formats, language, url,
@@ -1607,7 +1608,7 @@ def _parse_legacy_ipv4(host: str) -> ipaddress.IPv4Address | None:
         return None
 
 
-def is_safe_url(url: str) -> bool:
+def is_safe_url(url: str, *, allow_private: bool = True) -> bool:
     """True iff ``url`` is an http(s) URL with a host that is not an obvious
     internal / cloud-metadata target.
 
@@ -1619,15 +1620,20 @@ def is_safe_url(url: str) -> bool:
     reach ``POST /api/jobs`` cannot make the server fetch its own loopback
     services or the cloud instance-metadata endpoint.
 
-    Deliberately NOT blocked: ordinary RFC-1918 private ranges (10.x,
+    ``allow_private=False`` also refuses private LAN ranges (10.x, 172.16-31.x,
+    192.168.x, 100.64/10): server link jobs pass it, because their download
+    goes through a proxy that refuses those at connect time anyway.
+
+    By default NOT blocked: ordinary RFC-1918 private ranges (10.x,
     172.16-31.x, 192.168.x). This server is documented to run on a trusted
     LAN where fetching from a private media server is a legitimate use, so
     blocking those would break the normal case. DNS resolution is best-effort:
     a name that fails to resolve is allowed through (yt-dlp will surface the
     real fetch error) rather than rejected, but a name that DOES resolve to a
     dangerous address is rejected. yt-dlp still follows its own redirects, so
-    this gate is a first line of defence, not a complete fix — keep URL jobs
-    on a trusted network. The static page carries the same warning.
+    this gate is a first line of defence, not a complete fix (server link
+    jobs add a connect-time proxy, :mod:`core.server.dlproxy`) — keep URL
+    jobs on a trusted network. The static page carries the same warning.
     """
     try:
         parsed = urllib.parse.urlparse((url or "").strip())
@@ -1646,9 +1652,12 @@ def is_safe_url(url: str) -> bool:
 
     # Loopback (127.0.0.0/8, ::1), link-local (169.254/16 incl. the
     # cloud-metadata IP, fe80::/10), unspecified, multicast and reserved
-    # addresses are refused; private RFC-1918 ranges are intentionally
-    # allowed (see netguard.address_blocked).
-    _addr_blocked = address_blocked
+    # addresses are refused; private RFC-1918 ranges are allowed unless the
+    # caller passes ``allow_private=False`` (see netguard.address_blocked).
+    def _addr_blocked(
+        ip: "ipaddress.IPv4Address | ipaddress.IPv6Address",
+    ) -> bool:
+        return address_blocked(ip, allow_private=allow_private)
 
     # A literal-IP host: decide directly, no DNS. Besides strict
     # dotted-decimal, also catch legacy inet_aton numeric forms (a fetch

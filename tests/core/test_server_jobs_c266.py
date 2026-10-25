@@ -451,10 +451,10 @@ def test_downloaded_media_is_deleted_but_a_users_own_file_is_not(tmp_path):
     mgr = _manager(tmp_path, _srt_transcribe, download_fn=download_own)
     mgr.start()
     try:
-        j1 = _wait_idle(mgr, mgr.submit_url("http://192.0.2.10/a.wav", ["srt"]))
+        j1 = _wait_idle(mgr, mgr.submit_url("http://93.184.216.34/a.wav", ["srt"]))
         assert own.read_bytes() == b"precious"
         mgr._download = download_inside
-        j2 = _wait_idle(mgr, mgr.submit_url("http://192.0.2.10/b.wav", ["srt"]))
+        j2 = _wait_idle(mgr, mgr.submit_url("http://93.184.216.34/b.wav", ["srt"]))
     finally:
         mgr.stop()
     assert j1.status == STATUS_FINISHED and j2.status == STATUS_FINISHED

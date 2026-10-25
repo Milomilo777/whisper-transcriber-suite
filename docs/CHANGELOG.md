@@ -6,6 +6,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Security
 
+- **Server link jobs download through a guarded local proxy**: every request yt-dlp makes (and every
+  redirect) is resolved and checked by the app at connect time; loopback, link-local, metadata and
+  private-network addresses are refused. Link jobs to a server on your own network are no longer accepted.
 - **Server link jobs no longer use the generic extractor**: the server runs yt-dlp with
   `--use-extractors default,-generic`, so it cannot be aimed at an internal address through a plain media
   link or its redirects. Such a link is refused with a clear message (upload the file instead). The desktop

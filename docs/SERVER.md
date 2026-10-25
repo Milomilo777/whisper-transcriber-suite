@@ -553,7 +553,8 @@ Behaviour to know:
   redirects are not followed, a failure is only logged. The address the name
   resolves to is checked again at connect time, on the addresses actually
   connected to, so a name that is public at first and points at loopback a
-  moment later (DNS rebinding) is refused too. Logs and the start-up
+  moment later (DNS rebinding) is refused too (a receiver on the local network
+  is still allowed). Logs and the start-up
   message show only the receiver's `scheme://host:port/...`, never the path or
   query of the URL.
 - Only `http` / `https` URLs are used, and a URL that points at this
@@ -605,23 +606,30 @@ Behaviour to know:
   webhook show a link's address without its query string and user info.
 - **URL safety.** Only `http`/`https` URLs are accepted (no `file://`), and
   a host that is, or resolves to, a loopback, link-local, unspecified,
-  multicast or otherwise reserved address is refused. A name that fails to
-  resolve is let through (yt-dlp then reports the real error).
-  yt-dlp performs the actual download with an end-of-options `--` guard so
-  a URL can never be parsed as a yt-dlp flag. Private LAN addresses are
-  allowed on purpose (fetching from a media server on the same network).
+  multicast, private-network or otherwise reserved address is refused when the
+  job is submitted. A name that fails to resolve is let through (yt-dlp then
+  reports the real error). yt-dlp performs the actual download with an
+  end-of-options `--` guard so a URL can never be parsed as a yt-dlp flag.
   **Server link jobs only use yt-dlp's site-specific extractors.** The
   generic extractor, which fetches any address, is switched off
   (`--use-extractors default,-generic`), so a plain media link
   (`https://host/file.mp3`) or an unknown web page is refused with "this link
   is not from a site the server can download from"; upload the file instead.
-  The desktop Download tab is not affected. What is guarded: a client cannot
-  make the server fetch an arbitrary address through the generic extractor,
-  nor through a redirect on such a link. **Residual risk:** this app cannot
-  see the requests yt-dlp makes. A supported site that redirects to, or an
-  extractor that resolves, an internal address is still followed, and a host
-  name is checked for its address when the job is accepted, not when yt-dlp
-  connects (DNS rebinding). Keep link jobs on a trusted network.
+  The desktop Download tab is not affected.
+  **Every request yt-dlp makes for a server job goes through a small proxy
+  inside the app** (`--proxy`, listening on 127.0.0.1 only, with a random
+  per-run password; yt-dlp's own native downloaders are used, not ffmpeg). The
+  proxy resolves each destination itself, refuses a loopback, link-local
+  (cloud metadata), private-network (10.x, 172.16-31.x, 192.168.x, 100.64/10),
+  multicast, unspecified or otherwise non-public address at connect time, and
+  connects only to the addresses it checked, so DNS rebinding and a redirect
+  to an internal address fail. If the proxy cannot start, the job fails
+  instead of downloading without it. **Residual risk:** a link job cannot
+  fetch from a server on your own network (use an upload for that); a
+  computer that needs a company proxy to reach the internet cannot use link
+  jobs, because the guard connects directly; what a public site itself
+  returns is trusted as content (the downloaded file is only transcribed,
+  never run); the guard covers yt-dlp's connections, not other programs.
 - **Bounded queue.** Total and queued job counts are capped; once full the
   server replies HTTP 503 with a `Retry-After: 30` header. A full queue is answered before an upload body is
   stored, so refused uploads do not fill the temp folder.
