@@ -25,7 +25,7 @@ from app.dialogs.quick_start import (
     short_model_name,
     should_show,
 )
-from app.dialogs import share_page, ui_language
+from app.dialogs import language_suggestion, share_page, ui_language
 from app import desktop_alert, mac_native, rtl_layout, shortcuts
 from app.i18n import N_, _, ngettext, pgettext, plain, translate
 from app.dialogs.transcript_viewer import confirm_unsaved_before_exit as confirm_unsaved_viewers_before_exit
@@ -1563,6 +1563,8 @@ class App(tk.Tk):
         # Bound the partials/ dir: sweep orphaned resume slices + aged-out
         # checkpoints so a killed/declined run doesn't accumulate forever.
         self.after(1500, self._sweep_partials_at_startup)
+        # First run, Windows: offer the language the regional format and the keyboard point to.
+        self.after(2500, lambda: language_suggestion.maybe_suggest(self))
 
         self.after(100, self._on_start)
         self.after(300, self.loop)
