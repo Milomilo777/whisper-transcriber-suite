@@ -73,10 +73,12 @@ DEFAULT_MODEL_URL = (
 DEFAULT_MODEL_SIZE_BYTES = 1_117_000_000  # ~1.04 GB; tolerance check only
 
 # One-click remote preset (Advanced > AI). Groq serves an OpenAI-compatible API
-# and has a free tier. The model id is a production model listed at
-# https://console.groq.com/docs/models (checked 2026-10-25); the user can edit it.
+# and has a free tier. The model id must be one a free key can call: on 2026-10-26
+# GET /models listed openai/gpt-oss-120b, openai/gpt-oss-20b and qwen/qwen3.8-27b
+# as chat models, and llama-3.3-70b-versatile (the earlier preset) answered 404
+# model_not_found. Re-check with a real key before changing it; the user can edit it.
 GROQ_BASE_URL = "https://api.groq.com/openai/v1"
-GROQ_MODEL = "llama-3.3-70b-versatile"
+GROQ_MODEL = "openai/gpt-oss-120b"
 
 
 # ---------------------------------------------------------------- availability

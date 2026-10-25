@@ -367,4 +367,4 @@ def test_groq_preset_is_a_complete_remote_config():
     runner = llm.build_runner_from_config(cfg)
     assert runner is not None
     assert runner.cfg.base_url == "https://api.groq.com/openai/v1"
-    assert runner.cfg.model == "llama-3.3-70b-versatile"
+    assert runner.cfg.model == "openai/gpt-oss-120b"
