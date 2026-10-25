@@ -288,6 +288,31 @@ def transcribe_command(t: Any) -> dict[str, Any]:
 HEADLESS_READY_TIMEOUT_S: float = 1200.0 if sys.platform == "darwin" else 120.0
 
 
+#: Pauses (s) between attempts to write the finished row while the history
+#: database is locked by another connection (kept short: finish_task runs on
+#: the Tk thread).
+_HISTORY_LOCK_RETRY_DELAYS: tuple[float, ...] = (0.1, 0.25, 0.5)
+
+
+def _retry_on_lock(fn: Any) -> Any:
+    """Call ``fn()``; retry a few times on a transient "database is locked".
+
+    Any other error, and a lock that outlasts the retries, propagates to
+    the caller (which logs it loudly).
+    """
+    import sqlite3
+    import time as _time
+    from core.history import _is_transient_lock_error
+    for delay in (*_HISTORY_LOCK_RETRY_DELAYS, None):
+        try:
+            return fn()
+        except sqlite3.Error as e:
+            if delay is None or not _is_transient_lock_error(e):
+                raise
+            logger.warning("history.db is locked while finishing a task (%s); retrying", e)
+            _time.sleep(delay)
+
+
 class TranscriptionService:
     def __init__(self, app: "App") -> None:
         self.app = app
@@ -323,6 +348,10 @@ class TranscriptionService:
         # each failed attempt emits its own startup_error — without this
         # the user got one stacked dialog per attempt.
         self._engine_error_dialog_at: float = 0.0
+        # monotonic time until which no EXTRA worker is spawned while another
+        # one is alive: set when a second worker failed to start, so a waiting
+        # queue does not respawn a failing worker in a tight loop.
+        self._spawn_hold_until: float = 0.0
 
     def _ensure_poll_scheduled(self) -> None:
         """Schedule poll() at most once; coalesces all callers."""
@@ -1075,6 +1104,37 @@ class TranscriptionService:
                                  getattr(task, "file_path", "?"))
         return settled
 
+    def _salvage_error_with_outputs(
+        self, worker: dict[str, Any], failed: Any, event: dict[str, Any], message: Any
+    ) -> bool:
+        """Finish a task as a success when its worker reports an ``error``
+        after the output files were already written.
+
+        The worker lists the files in the event's ``outputs``; when that set is
+        complete (the same check the ``worker_exit`` salvage uses) the
+        transcript is done and the late failure is only logged. Returns True
+        when the task was finished here.
+        """
+        outs = event.get("outputs")
+        if not (isinstance(outs, list) and outs) or getattr(failed, "status", None) != "running":
+            return False
+        previous = getattr(failed, "output_paths", None)
+        failed.output_paths = [str(p) for p in outs]
+        if not self._are_outputs_complete(failed):
+            failed.output_paths = previous
+            return False
+        failed.status = "finished"
+        failed.recovery_note = (
+            f"Worker reported an error after writing all outputs: {_short_message(message)}"
+        )
+        logger.warning(
+            "Worker error for task %s after complete outputs: salvaging as success (%s)",
+            event.get("task_id", "?"), message,
+        )
+        self.app.log(f"{message} (the output files are complete and were kept)")
+        self.finish_task(worker, keep_status=False)
+        return True
+
     def _are_outputs_complete(self, task: Any) -> bool:
         """Returns True if the output files expected for this task exist on disk.
 
@@ -1376,6 +1436,70 @@ class TranscriptionService:
         except Exception:  # noqa: BLE001 - never break poll on a guard
             return False
 
+    #: How long (s) no extra worker is spawned next to a live one after a
+    #: worker failed to start (for example out of memory on a second model copy).
+    SPAWN_HOLD_S: float = 60.0
+
+    def _retire_failed_worker_if_others_healthy(self, failed: dict[str, Any]) -> bool:
+        """Keep healthy workers when ONE worker failed to start.
+
+        A worker is healthy when it is ready and its process is alive. With such a
+        peer only the failed worker is retired (its own task, if any, ends
+        as an error): a second worker that cannot load its model copy (out
+        of memory) must not hard-stop and fail a running job. Returns True
+        when it did so; False means no worker is healthy and the caller
+        runs the full teardown.
+        """
+        def _alive(w: dict[str, Any]) -> bool:
+            proc = w.get("process")
+            return proc is None or proc.poll() is None
+
+        # Healthy = ready (a running job implies ready) with a live process. A
+        # worker that holds a task but never became ready is only waiting
+        # for its own model load, so it does not count.
+        healthy = [
+            w for w in self.app.workers
+            if w is not failed and w.get("ready") and _alive(w)
+        ]
+        if not healthy:
+            return False
+        otask = failed.get("task")
+        if otask is not None and getattr(otask, "status", None) not in (
+            "finished", "error", "cancelled",
+        ):
+            otask.status = "error"
+            if not getattr(otask, "error_reason", ""):
+                otask.error_reason = _(
+                    "The transcription engine or model could not start; "
+                    "try the file again."
+                )
+        import time as _time
+        self._spawn_hold_until = _time.monotonic() + self.SPAWN_HOLD_S
+        logger.warning(
+            "Worker %s failed to start; keeping %d healthy worker(s) running",
+            failed.get("id", "?"), len(healthy),
+        )
+        # retire_worker clears worker["process"] before its UI refresh, so keep
+        # our own reference to stop the process if that refresh raises.
+        process = failed.get("process")
+        try:
+            self.retire_worker(failed)
+        except Exception:  # noqa: BLE001 - the startup_error handler must never raise
+            # retire_worker finishes the failed worker's own task first; what
+            # can still fail afterwards is the UI refresh. Make sure the
+            # worker is gone and its process is stopped regardless.
+            logger.exception("Retiring failed worker %s raised", failed.get("id", "?"))
+            failed["process"] = None
+            failed["ready"] = False
+            if failed in self.app.workers:
+                self.app.workers.remove(failed)
+            if process is not None and process.poll() is None:
+                try:
+                    self._stop_in_background(failed, process)
+                except Exception:  # noqa: BLE001
+                    logger.exception("Could not stop failed worker %s", failed.get("id", "?"))
+        return True
+
     def _fail_tasks_and_clear_workers_on_startup_error(self) -> None:
         """Finish every in-flight task before discarding all worker dicts.
 
@@ -1546,8 +1670,10 @@ class TranscriptionService:
                     engine = _eng.normalise_engine(
                         app.app_config.get("transcribe_backend")
                     )
+                    kept_healthy = self._retire_failed_worker_if_others_healthy(worker)
                     if engine != "faster_whisper":
-                        self._fail_tasks_and_clear_workers_on_startup_error()
+                        if not kept_healthy:
+                            self._fail_tasks_and_clear_workers_on_startup_error()
                         detail = str(
                             event.get("message") or "engine failed to start"
                         )
@@ -1567,6 +1693,8 @@ class TranscriptionService:
                                 )
                             except Exception:  # noqa: BLE001
                                 pass
+                    elif kept_healthy:
+                        app.log("A worker failed to load the model; the other workers keep running.")
                     elif not app.model_setup_running:
                         app.log("Existing model failed to load. Starting required download.")
                         self._fail_tasks_and_clear_workers_on_startup_error()
@@ -1655,14 +1783,19 @@ class TranscriptionService:
                         else:
                             failed = worker["task"]
                             message = event.get("message", "Worker error")
-                            failed.status = "error"
-                            # Kept for the Queue row and the history row; both
-                            # said only "error" before.
-                            failed.error_reason = failure_reason(failed.file_path, message)
-                            if not getattr(failed, "recovery_note", ""):
-                                failed.recovery_note = _short_message(message)
-                            app.log(message)
-                            self.finish_task(worker, keep_status=True)
+                            # A late failure after every output file was written must
+                            # not discard the finished transcript.
+                            if not self._salvage_error_with_outputs(
+                                worker, failed, event, message
+                            ):
+                                failed.status = "error"
+                                # Kept for the Queue row and the history row; both
+                                # said only "error" before.
+                                failed.error_reason = failure_reason(failed.file_path, message)
+                                if not getattr(failed, "recovery_note", ""):
+                                    failed.recovery_note = _short_message(message)
+                                app.log(message)
+                                self.finish_task(worker, keep_status=True)
                     else:
                         app.log(event.get("message", "Worker error"))
                 elif event_type == "control_applied":
@@ -1857,8 +1990,11 @@ class TranscriptionService:
         idle_count = len(self.idle_workers())
         limit = self.worker_limit()
         needed = min(len(waiting), limit) - idle_count
+        import time as _t
         for _ in range(max(0, needed)):
             if active_count >= limit:
+                break
+            if active_count > 0 and _t.monotonic() < self._spawn_hold_until:
                 break
             self.start_worker(temporary=True)
             active_count += 1
@@ -2181,8 +2317,21 @@ class TranscriptionService:
         # via time.time() - start_time forever.
         if getattr(task, "end_time", None) is None:
             task.end_time = _time.time()
+        # A Cancel that arrived after the worker had already written ALL its
+        # files (or had found no speech) still ends in a ``done`` event that
+        # carries the result: that run is finished, not cancelled, so its
+        # history row and result card must exist. A partial set (a cancel
+        # during the export steps) stays cancelled.
+        completed_despite_cancel = bool(
+            not keep_status
+            and task.cancelled
+            and (
+                getattr(task, "no_speech", False)
+                or self._written_outputs_cover_formats(task)
+            )
+        )
         newly_finished = (
-            not keep_status and not task.cancelled
+            not keep_status and (not task.cancelled or completed_despite_cancel)
         )
         # The status this run must be recorded/reported under. task.status
         # itself isn't flipped to "finished" until after the history write
@@ -2238,7 +2387,7 @@ class TranscriptionService:
                         f"{base}.{ext}"
                         for ext in (app.app_config.get("output_formats") or ["srt", "json"])
                     ]
-                persisted = history.finish_transcription(
+                persisted = _retry_on_lock(lambda: history.finish_transcription(
                     task.history_id,
                     status=terminal_status,
                     output_paths=paths,
@@ -2262,7 +2411,7 @@ class TranscriptionService:
                     if newly_finished else "",
                     model=str(getattr(task, "speed_model", "") or "")
                     if newly_finished else "",
-                )
+                ))
                 if not persisted:
                     # Surfaced, not swallowed: the transcript FILES are
                     # still safely on disk (the worker wrote them before
@@ -2276,6 +2425,11 @@ class TranscriptionService:
                         "themselves are still on disk."
                     )
             except Exception as e:  # noqa: BLE001
+                logger.error(
+                    "History record update failed for %r: %s (the history row "
+                    "stays 'running'; the transcript files are on disk)",
+                    task.file_path, e,
+                )
                 app.log(
                     f"History record update failed: {e}; the transcript "
                     "files themselves are still on disk."
@@ -2343,6 +2497,25 @@ class TranscriptionService:
         app.update_overall_progress()
         if worker.get("temporary") and not any(t.status == "waiting" for t in app.queue):
             self.retire_worker(worker)
+
+    def _written_outputs_cover_formats(self, task: Any) -> bool:
+        """True when the worker-reported output files exist, are non-empty and
+        include an extension for every requested output format."""
+        try:
+            written = [str(p) for p in (getattr(task, "output_paths", None) or [])]
+            if not written:
+                return False
+            formats = getattr(task, "output_formats", None)
+            if formats is None:
+                formats = self.app.app_config.get("output_formats") or ["srt", "json"]
+            from core.writers import extension_for
+            wanted = {extension_for(str(f)) for f in formats}
+            got = {os.path.splitext(p)[1].lower().lstrip(".") for p in written}
+            if not wanted <= got:
+                return False
+            return all(os.path.getsize(p) > 0 for p in written)
+        except Exception:  # noqa: BLE001 - unsure: keep the cancelled outcome
+            return False
 
     def _derive_transcript_stats(self, task: Any) -> tuple[int, float]:
         """Best-effort ``(word_count, audio_duration)`` from a produced

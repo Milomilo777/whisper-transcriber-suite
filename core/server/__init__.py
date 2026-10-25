@@ -22,12 +22,14 @@ from __future__ import annotations
 import logging
 import os
 import re
+import secrets
 import socket
 import subprocess
 import sys
 import threading
 import time
-from typing import Any, Callable
+from contextlib import contextmanager
+from typing import Any, Callable, Iterator
 
 from core.server import lanfetch
 from core.server.dlproxy import shared_proxy
@@ -143,6 +145,70 @@ def _proxy_environment(proxy_url: str) -> dict[str, str]:
 
 # yt-dlp option value: every extractor except the generic one.
 GENERIC_EXTRACTOR_OFF = "default,-generic"
+# yt-dlp match filter that skips live streams. A live HLS stream is fetched by
+# ffmpeg (yt-dlp's own HLS downloader cannot do it), and a server job must not
+# depend on ffmpeg's network behaviour for an endless download anyway.
+NOT_LIVE_FILTER = "!is_live"
+LIVE_REFUSED = (
+    "live streams are not supported by the server; use a recorded video "
+    "or upload the file")
+_FILTERED_OUT_RE = re.compile(r"does not pass filter", re.IGNORECASE)
+GUARD_CONFIG_PREFIX = ".wts-ytdlp-guard-"
+GUARD_CONFIG_SUFFIX = ".conf"
+
+
+def _write_guard_config(dest_dir: str, proxy_url: str) -> str:
+    """Write the per-job yt-dlp config that routes ffmpeg through the guard.
+
+    yt-dlp falls back to ffmpeg for some HLS/DASH media (live streams, HLS it
+    cannot parse itself, e.g. SAMPLE-AES) and hands it only the proxy
+    *environment*, which ffmpeg ignores for https links and, off Windows, for
+    http links too. ``-http_proxy`` is ffmpeg's own proxy option, so the
+    segment fetches go through the guard. The proxy password sits in this
+    file (owner-only, in the job folder, removed after the run), never in the
+    command line.
+
+    Known residual (accepted): yt-dlp starts ffmpeg with ``-http_proxy`` and
+    the proxy URL, credentials included, in ffmpeg's argv, which other local
+    accounts can read on a multi-user POSIX machine. The credential is per
+    run, short-lived and only valid for the loopback guard, which still
+    enforces the destination policy.
+
+    The file gets a new unique name and is created exclusively, so an
+    existing file or alias is never reused. It is removed again here when
+    writing fails; :func:`_guard_config` removes it after the run.
+    """
+    path = os.path.join(
+        dest_dir,
+        GUARD_CONFIG_PREFIX + secrets.token_hex(8) + GUARD_CONFIG_SUFFIX)
+    text = (f"--proxy {proxy_url}\n"
+            f'--downloader-args "ffmpeg_i:-http_proxy {proxy_url}"\n')
+    flags = (os.O_WRONLY | os.O_CREAT | os.O_EXCL
+             | getattr(os, "O_BINARY", 0))
+    fd = os.open(path, flags, 0o600)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as handle:
+            handle.write(text)
+    except BaseException:
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+        raise
+    return path
+
+
+@contextmanager
+def _guard_config(dest_dir: str, proxy_url: str) -> Iterator[str]:
+    """The guard config file for one run; removed on every way out."""
+    path = _write_guard_config(dest_dir, proxy_url)
+    try:
+        yield path
+    finally:
+        try:
+            os.remove(path)  # holds the proxy password
+        except OSError:
+            pass
 # yt-dlp's message when no extractor accepts the address (with the generic one
 # switched off that is every direct media link and every unknown site).
 _UNSUPPORTED_URL_RE = re.compile(
@@ -190,7 +256,8 @@ def _download_url(url: str, dest_dir: str,
     out_template = os.path.join(dest_dir, "%(title).80s.%(ext)s")
     # Registered as a running download: an update of the user-writable
     # yt-dlp copy waits for it, and this waits for a running update.
-    with yt_dlp_update.download_running():
+    with yt_dlp_update.download_running(), \
+            _guard_config(dest_dir, proxy.url) as guard_config:
         yt_dlp = yt_dlp_update.resolve_yt_dlp_path()  # newer of bundled / updated copy
         command = [
             yt_dlp,
@@ -207,8 +274,14 @@ def _download_url(url: str, dest_dir: str,
             "--use-extractors", GENERIC_EXTRACTOR_OFF,
             # yt-dlp's native downloaders keep fragment fetches inside
             # yt-dlp, so they use the proxy (set through the environment
-            # below) as well.
+            # below) as well. The few streams they cannot fetch fall back to
+            # ffmpeg: live streams are refused, and the config file below
+            # points ffmpeg at the proxy for the rest. --ignore-config keeps
+            # a user's own yt-dlp config out of a server job.
             "--downloader", "native",
+            "--match-filters", NOT_LIVE_FILTER,
+            "--ignore-config",
+            "--config-locations", guard_config,
             # The frozen yt-dlp.exe ignores PYTHONUTF8 and prints cp1252,
             # dropping non-Latin title characters from its output.
             "--encoding", "utf-8",
@@ -270,6 +343,9 @@ def _download_url(url: str, dest_dir: str,
         if _is_downloaded_media(dest_dir, n)
     ]
     if not candidates:
+        # yt-dlp skips a live stream (match filter) and exits 0.
+        if _FILTERED_OUT_RE.search(stdout or ""):
+            raise RuntimeError(LIVE_REFUSED)
         # yt-dlp skips a file over --max-filesize and still exits 0.
         if "max-filesize" in (stdout or "").lower():
             raise RuntimeError(
@@ -448,6 +524,19 @@ class ServerHandle:
         with self._lock:
             return self._server is not None and self._thread is not None \
                 and self._thread.is_alive()
+
+    def active_jobs(self) -> int:
+        """Jobs submitted through the server that are waiting or running (0 when stopped)."""
+        with self._lock:
+            manager = self._manager
+        if manager is None:
+            return 0
+        try:
+            counts = manager.queue_counts()
+            return int(counts.get("queued", 0)) + int(counts.get("running", 0))
+        except Exception:  # noqa: BLE001 - a status probe must never block the exit prompt
+            logger.exception("Could not count the active server jobs")
+            return 0
 
     def start(
         self,

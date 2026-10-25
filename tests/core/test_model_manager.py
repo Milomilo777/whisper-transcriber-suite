@@ -477,6 +477,23 @@ def test_old_config_without_hf_repo_downloads_its_own_model():
     assert mm._hf_repo_for({}, custom) == "someone/my-own-model"
 
 
+def test_explicit_local_hf_repo_pin_beats_builtin_and_online_catalog():
+    """A user's pinned mirror is kept; the online catalog cannot re-point it."""
+    from core import config as cfg
+
+    local = {
+        "model": {"name": "faster-whisper-large-v3", "hf_repo": "my-org/my-mirror"},
+    }
+    online = {"model_catalog": {"large-v3": {
+        "name": "faster-whisper-large-v3", "hf_repo": "other-org/other-repo"}}}
+    for online_layer in (None, online):
+        merged = cfg.merge_config_sources(cfg.DEFAULT_CONFIG, online_layer, local)
+        assert mm._hf_repo_for(merged, merged["model"]) == "my-org/my-mirror"
+    # The stock default (no pin) still defers to the catalog.
+    stock = cfg.merge_config_sources(cfg.DEFAULT_CONFIG, None, {})
+    assert mm._hf_repo_for(stock, stock["model"]) == "Systran/faster-whisper-large-v3"
+
+
 def test_default_config_names_no_mirror():
     from core import config as cfgmod
 

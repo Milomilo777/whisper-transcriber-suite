@@ -89,14 +89,50 @@ def test_a_bad_key_is_not_retried(monkeypatch):
     assert len(calls) == 1
 
 
-def test_retry_after_is_honoured_and_capped(monkeypatch):
+def test_retry_after_is_honoured_exactly_up_to_the_cap(monkeypatch):
     llm_sleeps = []
     monkeypatch.setattr(llm.time, "sleep", llm_sleeps.append)
     _script(monkeypatch, [lambda r: _http_error(r, 429, retry_after=7),
-                          lambda r: _http_error(r, 429, retry_after=9999),
+                          lambda r: _http_error(r, 429, retry_after=llm._MAX_RETRY_AFTER_S),
                           _Resp()])
     _runner()._chat([{"role": "user", "content": "hi"}])
     assert llm_sleeps == [7.0, llm._MAX_RETRY_AFTER_S]
+
+
+def test_retry_after_above_the_cap_is_fatal_at_once_without_sleeping(monkeypatch):
+    llm_sleeps = []
+    monkeypatch.setattr(llm.time, "sleep", llm_sleeps.append)
+    calls = _script(monkeypatch, [lambda r: _http_error(r, 429, retry_after=9999), _Resp()])
+    with pytest.raises(llm.RemoteLLMRateLimitError, match="429"):
+        _runner()._chat([{"role": "user", "content": "hi"}])
+    assert len(calls) == 1 and llm_sleeps == []
+
+
+def test_translate_segments_stops_calling_after_a_spent_limit(monkeypatch):
+    calls = _script(monkeypatch, [_Resp(), lambda r: _http_error(r, 429, retry_after=9999), _Resp()])
+    monkeypatch.setattr(llm.time, "sleep", lambda _s: None)
+    segs = [{"text": t} for t in ("one", "", "two", "three", "four")]
+    failed: list[int] = []
+    progress: list[int] = []
+    out = llm.translate_segments(_runner(), segs, failed=failed,
+                                 progress_cb=lambda done, _t: progress.append(done))
+    assert out == ["ok", "", "", "", ""]
+    assert len(calls) == 2                      # the limit hit on the 2nd call; no further ones
+    assert failed == [2, 3, 4]                  # empty segment 1 is not a failure
+    assert progress == [1, 2, 3, 4, 5]
+
+
+def test_chapter_titling_stops_after_a_spent_limit(monkeypatch):
+    from core import chapters
+
+    calls = _script(monkeypatch, [lambda r: _http_error(r, 429, retry_after=9999)])
+    monkeypatch.setattr(llm.time, "sleep", lambda _s: None)
+    segs = [{"start": 0.0, "end": 5.0, "text": f"Segment text {i}."} for i in range(3)]
+    bounds = [chapters.ChapterBoundary(start=float(i), end=float(i) + 1, segment_start=i, segment_end=i)
+              for i in range(3)]
+    titles = chapters.title_chapters_with_llm(segs, bounds, runner=_runner())
+    assert len(titles) == 3 and all(titles)
+    assert len(calls) == 1
 
 
 @pytest.mark.parametrize("exc", [
@@ -305,6 +341,26 @@ def test_groq_budget_covers_prompt_plus_answer(monkeypatch):
     assert used <= llm.GROQ_REQUEST_TOKEN_BUDGET
 
 
+def test_groq_trim_holds_for_cjk_transcripts(monkeypatch):
+    # A CJK character is about one token for real tokenizers; counting
+    # characters / 3 sent ~18k characters and Groq answered HTTP 413.
+    sent = _echo_body(monkeypatch)
+    runner = llm.RemoteLLMRunner(llm.RemoteLLMConfig(
+        base_url=llm.GROQ_BASE_URL, model="m"))
+    runner.summarise("发言人：今天的会议讨论了社区花园和浇水安排。\n" * 3000)
+    text = "".join(m["content"] for m in sent[0]["messages"])
+    cjk = sum(1 for ch in text if ord(ch) >= 0x2E80)
+    realistic = cjk + (len(text) - cjk) // 3  # ~1 token per CJK char, ~3 chars per token otherwise
+    assert runner.last_trimmed is True
+    assert realistic + sent[0]["max_tokens"] <= llm.GROQ_REQUEST_TOKEN_BUDGET
+
+
+def test_token_estimate_is_unchanged_for_ascii_and_never_raises():
+    assert llm._estimate_tokens("word " * 300) == len("word " * 300) // 3
+    assert llm._estimate_tokens("") == 1
+    assert llm._estimate_tokens("lone \ud800 surrogate") >= 1
+
+
 @pytest.mark.parametrize("tokens, expect", [
     (0, "Set llm_remote_max_input_tokens to a positive number"),
     (3000, "Lower llm_remote_max_input_tokens"),
@@ -367,4 +423,95 @@ def test_groq_preset_is_a_complete_remote_config():
     runner = llm.build_runner_from_config(cfg)
     assert runner is not None
     assert runner.cfg.base_url == "https://api.groq.com/openai/v1"
-    assert runner.cfg.model == "llama-3.3-70b-versatile"
+    assert runner.cfg.model == "openai/gpt-oss-120b"
+
+
+def test_retry_after_31_waits_exactly_once_then_succeeds(monkeypatch):
+    sleeps = []
+    monkeypatch.setattr(llm.time, "sleep", sleeps.append)
+    calls = _script(monkeypatch, [lambda r: _http_error(r, 429, retry_after=31), _Resp()])
+    assert _runner()._chat([{"role": "user", "content": "hi"}]) == "ok"
+    assert sleeps == [31.0] and len(calls) == 2
+
+
+def test_retry_after_http_date_is_parsed(monkeypatch):
+    import email.utils
+    import time as _time
+    sleeps = []
+    monkeypatch.setattr(llm.time, "sleep", sleeps.append)
+    when = email.utils.formatdate(_time.time() + 61, usegmt=True)
+    _script(monkeypatch, [lambda r: _http_error(r, 429, retry_after=when), _Resp()])
+    assert _runner()._chat([{"role": "user", "content": "hi"}]) == "ok"
+    assert len(sleeps) == 1 and 55 <= sleeps[0] <= 62
+    assert llm._retry_after_raw({"Retry-After": "not a date"}) == 0.0
+    assert llm._retry_after_raw({"Retry-After": "inf"}) == 0.0
+
+
+def test_total_wait_of_one_call_is_capped(monkeypatch):
+    sleeps = []
+    monkeypatch.setattr(llm.time, "sleep", sleeps.append)
+    calls = _script(monkeypatch, [lambda r: _http_error(r, 429, retry_after=100)])
+    with pytest.raises(llm.RemoteLLMRateLimitError):
+        _runner()._chat([{"role": "user", "content": "hi"}])
+    assert sleeps == [100.0] and len(calls) == 2      # 100 + 100 would pass 180 s
+
+
+def test_a_429_that_never_clears_ends_as_a_rate_limit_error(monkeypatch):
+    _script(monkeypatch, [lambda r: _http_error(r, 429)])
+    with pytest.raises(llm.RemoteLLMRateLimitError, match="429"):
+        _runner()._chat([{"role": "user", "content": "hi"}])
+
+
+def test_a_batch_waits_out_one_retry_after_then_stops(monkeypatch):
+    sleeps = []
+    monkeypatch.setattr(llm.time, "sleep", sleeps.append)
+    calls = _script(monkeypatch, [
+        lambda r: _http_error(r, 429, retry_after=5), _Resp(),     # segment 0: waits once
+        lambda r: _http_error(r, 429, retry_after=5), _Resp()])    # segment 1: fatal
+    failed: list[int] = []
+    out = llm.translate_segments(_runner(), [{"text": t} for t in "abc"], failed=failed)
+    assert out == ["ok", "", ""] and failed == [1, 2]
+    assert sleeps == [5.0] and len(calls) == 3
+    runner = _runner()
+    llm.translate_segments(runner, [{"text": "a"}])
+    assert runner._batch_waits is None                  # a later single click may wait again
+
+
+def test_503_retry_after_shares_the_180s_budget_of_one_call(monkeypatch):
+    sleeps = []
+    monkeypatch.setattr(llm.time, "sleep", sleeps.append)
+    calls = _script(monkeypatch, [lambda r: _http_error(r, 503, retry_after=120)])
+    with pytest.raises(llm.RemoteLLMError, match="503") as info:
+        _runner()._chat([{"role": "user", "content": "hi"}])
+    assert not isinstance(info.value, llm.RemoteLLMRateLimitError)   # only a 429 is a rate-limit error
+    assert sleeps == [120.0] and len(calls) == 2 and sum(sleeps) <= llm._MAX_TOTAL_WAIT_S
+
+
+def test_mixed_429_and_503_waits_never_pass_the_total(monkeypatch):
+    sleeps = []
+    monkeypatch.setattr(llm.time, "sleep", sleeps.append)
+    _script(monkeypatch, [lambda r: _http_error(r, 503, retry_after=100),
+                          lambda r: _http_error(r, 429, retry_after=100), _Resp()])
+    with pytest.raises(llm.RemoteLLMRateLimitError):
+        _runner()._chat([{"role": "user", "content": "hi"}])
+    assert sleeps == [100.0] and sum(sleeps) <= llm._MAX_TOTAL_WAIT_S
+
+
+def test_503_waits_within_the_budget_still_succeed(monkeypatch):
+    sleeps = []
+    monkeypatch.setattr(llm.time, "sleep", sleeps.append)
+    _script(monkeypatch, [lambda r: _http_error(r, 503, retry_after=90),
+                          lambda r: _http_error(r, 503, retry_after=60), _Resp()])
+    assert _runner()._chat([{"role": "user", "content": "hi"}]) == "ok"
+    assert sleeps == [90.0, 60.0]
+
+
+def test_a_batch_waits_out_one_503_retry_after_in_total(monkeypatch):
+    sleeps = []
+    monkeypatch.setattr(llm.time, "sleep", sleeps.append)
+    _script(monkeypatch, [lambda r: _http_error(r, 503, retry_after=5), _Resp(),
+                          lambda r: _http_error(r, 503, retry_after=5), _Resp()])
+    failed: list[int] = []
+    out = llm.translate_segments(_runner(), [{"text": t} for t in "ab"], failed=failed)
+    assert sleeps == [5.0]                      # the second item does not wait again
+    assert out[0] == "ok" and out[1] == "" and failed == [1]

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import logging.handlers
+import os
 import re
 import sys
 import time
@@ -32,6 +33,11 @@ UI_LOGGER_NAME = "whisper.ui"
 # "reworker-output.log") and would delete them.
 WORKER_LOG_KEEP = 10
 WORKER_LOG_MAX_AGE_DAYS = 14
+# Age alone lets a busy fortnight pile up (a worker log can reach 4 x 5 MB with
+# its rotations), so the dead workers' logs are also capped by count and bytes,
+# oldest first. The WORKER_LOG_KEEP newest and this process's own are exempt.
+WORKER_LOG_MAX_FILES = 60
+WORKER_LOG_MAX_BYTES = 200 * 1024 * 1024
 _WORKER_LOG_GLOBS = ("worker-*.log*", "voiceclone-worker-*.log*")
 
 _configured = False
@@ -125,10 +131,13 @@ class RedactingFormatter(logging.Formatter):
         line.exc_info = line.exc_text = line.stack_info = None
         text = super().format(line)
         tail = []
-        if record.exc_info and not record.exc_text:
-            record.exc_text = self.formatException(record.exc_info)
-        if record.exc_text:
-            tail.append(record.exc_text)
+        # Not cached on the shared record: that would hand the unredacted
+        # traceback to every other handler of the same record.
+        exc_text = record.exc_text
+        if not exc_text and record.exc_info:
+            exc_text = self.formatException(record.exc_info)
+        if exc_text:
+            tail.append(exc_text)
         if record.stack_info:
             tail.append(self.formatStack(record.stack_info))
         if tail:
@@ -139,25 +148,41 @@ class RedactingFormatter(logging.Formatter):
 def _prune_worker_logs(log_dir: Path) -> None:
     """Best-effort cleanup of stale per-process worker logs.
 
-    Deletes files older than ``WORKER_LOG_MAX_AGE_DAYS``, always keeping
-    the ``WORKER_LOG_KEEP`` most recent worker-named files so a long-lived
-    process's own log is never unlinked out from under its open handler.
-    ``app.log`` and unrelated files are never touched. Never raises: a
+    Deletes files older than ``WORKER_LOG_MAX_AGE_DAYS``, and, oldest first,
+    whatever lies beyond ``WORKER_LOG_MAX_FILES`` files or
+    ``WORKER_LOG_MAX_BYTES`` in total. The ``WORKER_LOG_KEEP`` most recent
+    worker-named files and this process's own logs are always kept, so a
+    long-lived process's log is never unlinked out from under its open
+    handler. ``app.log`` and unrelated files are never touched. Never raises: a
     file that is locked by another process is simply skipped.
     """
     try:
-        found: dict[Path, float] = {}
+        found: dict[Path, tuple[float, int]] = {}
         for glob in _WORKER_LOG_GLOBS:
             for p in log_dir.glob(glob):
                 if p.is_file() and p not in found:
-                    found[p] = p.stat().st_mtime
-        candidates = sorted(found, key=lambda p: found[p], reverse=True)
+                    st = p.stat()
+                    found[p] = (st.st_mtime, st.st_size)
+        candidates = sorted(found, key=lambda p: found[p][0], reverse=True)
     except OSError:
         return
     cutoff = time.time() - WORKER_LOG_MAX_AGE_DAYS * 24 * 60 * 60
-    for path in candidates[WORKER_LOG_KEEP:]:
+    from core.process_exit import pid_alive
+
+    named = re.compile(r"(?:voiceclone-)?worker-(\d+)\.log(?:\.\d+)?")
+    own_pid = os.getpid()
+    total = sum(found[p][1] for p in candidates[:WORKER_LOG_KEEP])
+    for index, path in enumerate(candidates[WORKER_LOG_KEEP:], start=WORKER_LOG_KEEP):
+        mtime, size = found[path]
+        total += size
+        m = named.fullmatch(path.name)
+        # A live worker's log (ours included) is never removed: POSIX lets
+        # an open file be unlinked, and the worker would log into the void.
+        if m and (int(m.group(1)) == own_pid or pid_alive(int(m.group(1)))):
+            continue
+        too_many = index >= WORKER_LOG_MAX_FILES or total > WORKER_LOG_MAX_BYTES
         try:
-            if path.stat().st_mtime < cutoff:
+            if mtime < cutoff or too_many:
                 path.unlink()
         except OSError:
             continue

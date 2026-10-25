@@ -1294,99 +1294,162 @@ def _write_outputs(
     # not leave its chapters at the previous run's name while the
     # transcripts move to " (1)".
     want_sidecar = bool(chapters)
-    index = 0
-    while index < 10000 and (
-        any(os.path.exists(_final_path(f, p, index)) for f, p in indexed_planned)
-        or (want_sidecar and os.path.exists(_indexed_sidecar_path(base, index)))
-    ):
-        index += 1
+    #
+    # The index is CLAIMED, not just probed: every indexed name is created
+    # exclusively (O_CREAT|O_EXCL) as an empty placeholder, so two parallel
+    # workers with one stem (talk.mp4 + talk.m4a, two clips of one file)
+    # can never both settle on the same name. The loser sees
+    # FileExistsError and moves to the next index. Only placeholders THIS
+    # call created are ever removed again.
+    claimed: set[str] = set()
 
-    for fmt_name, rendered in planned:
-        path = (
-            rendered if fmt_name == "smtv_docx"
-            else _final_path(fmt_name, rendered, index)
-        )
-        # Honour template-supplied subdirectories. Defensive: only
-        # makedirs when the dirname is non-empty and differs from the
-        # source folder we're already writing into.
+    def _claim(path: str) -> bool:
+        """True only when *path* is ours (placeholder created exclusively).
+
+        Fails CLOSED: any failure, a taken name or a transient error such as
+        a PermissionError from a scanner, means "not ours" and the caller
+        moves to the next index. Nothing is ever published to a name this
+        run did not claim."""
         out_dir = os.path.dirname(path)
         if out_dir and not os.path.isdir(out_dir):
             try:
                 os.makedirs(out_dir, exist_ok=True)
             except OSError:
                 pass
-        # Unique .part suffix per pid + thread so two parallel
-        # workers transcribing the SAME source file don't race-write
-        # to the same .part path (Windows treats the second open as
-        # PermissionError because the first writer still holds the
-        # handle). os.replace onto the final path remains atomic;
-        # the last writer wins for the final file, which matches the
-        # POSIX "last writer wins" semantic that callers already
-        # expect for redundant parallel transcriptions.
-        part_path = (
-            f"{path}.{os.getpid()}-{threading.get_ident()}.part"
-        )
         try:
-            if fmt_name == "smtv_docx":
-                # Special case: the SMTV writer needs the detected
-                # language + work title beyond the frozen 2-arg writer
-                # contract, so call it directly (the registry's 2-arg
-                # adapter raises). work_title = source stem; language =
-                # the ISO code threaded in via ``lang``.
-                from .writers import smtv_docx_writer
-                payload_b = smtv_docx_writer.write_bytes(
-                    segments_data,
-                    audio_path,
-                    language=lang,
-                    work_title=os.path.basename(base),
-                )
-                with open(part_path, "wb") as fb:
-                    fb.write(payload_b)
-                    _checkpoint._flush_to_disk(fb)
-            elif is_binary(fmt_name):
-                payload_b = get_binary_writer(fmt_name)(segments_data, audio_path)
-                with open(part_path, "wb") as fb:
-                    fb.write(payload_b)
-                    _checkpoint._flush_to_disk(fb)
-            else:
-                payload_s = get_writer(fmt_name)(segments_data, audio_path)
-                with open(part_path, "w", encoding="utf-8", newline="\n") as fs:
-                    fs.write(payload_s)
-                    _checkpoint._flush_to_disk(fs)
-            os.replace(part_path, path)
-        except Exception as e:  # noqa: BLE001
+            fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o666)
+        except OSError:
+            return False
+        os.close(fd)
+        claimed.add(path)
+        return True
+
+    def _release(path: str) -> None:
+        if path in claimed:
+            claimed.discard(path)
             try:
-                os.unlink(part_path)
+                os.unlink(path)
             except OSError:
                 pass
-            # Isolate per-format failures: one broken writer (a missing
-            # optional dependency, or a single format's encoding bug) must
-            # NOT discard the formats that wrote fine. Each format is
-            # already atomic (os.replace) and indexed (never overwrites a
-            # prior run), so there's nothing to roll back — log and move
-            # on to the next format.
-            logger.warning("output format %r failed: %s", fmt_name, e)
-            write_errors.append(f"{fmt_name}: {e}")
-            continue
-        written.append(path)
-    # Requested known formats, but every writer failed (disk full, all
-    # writers broken) — surface it so the task doesn't report a silent
-    # "wrote 0 files" success.
-    if planned and not written:
-        raise RuntimeError(
-            "All output writers failed; last error: "
-            + (write_errors[-1] if write_errors else "unknown")
-        )
-    # Auto-chapter sidecar: same set, same index. A sidecar failure is
-    # non-fatal (chapters are an optional extra, never worth failing the
-    # transcript over) — _write_chapter_sidecar returns None on error.
-    if want_sidecar:
-        sidecar_path = _write_chapter_sidecar(
-            _indexed_sidecar_path(base, index), chapters or []
-        )
-        if sidecar_path:
-            written.append(sidecar_path)
-    return written
+
+    index = 0
+    while True:
+        candidates = [_final_path(f, p, index) for f, p in indexed_planned]
+        if want_sidecar:
+            candidates.append(_indexed_sidecar_path(base, index))
+        taken = False
+        for cand in candidates:
+            if not _claim(cand):
+                taken = True
+                break
+        if not taken:
+            break
+        for cand in candidates:
+            _release(cand)
+        if index >= 10000:
+            raise RuntimeError(
+                "Could not claim a free output file name next to "
+                f"{base!r}; nothing was written."
+            )
+        index += 1
+
+    try:
+        for fmt_name, rendered in planned:
+            path = (
+                rendered if fmt_name == "smtv_docx"
+                else _final_path(fmt_name, rendered, index)
+            )
+            # Honour template-supplied subdirectories. Defensive: only
+            # makedirs when the dirname is non-empty and differs from the
+            # source folder we're already writing into.
+            out_dir = os.path.dirname(path)
+            if out_dir and not os.path.isdir(out_dir):
+                try:
+                    os.makedirs(out_dir, exist_ok=True)
+                except OSError:
+                    pass
+            # Unique .part suffix per pid + thread so two parallel
+            # workers transcribing the SAME source file don't race-write
+            # to the same .part path (Windows treats the second open as
+            # PermissionError because the first writer still holds the
+            # handle). os.replace onto the final path remains atomic;
+            # the last writer wins for the final file, which matches the
+            # POSIX "last writer wins" semantic that callers already
+            # expect for redundant parallel transcriptions.
+            part_path = (
+                f"{path}.{os.getpid()}-{threading.get_ident()}.part"
+            )
+            try:
+                if fmt_name == "smtv_docx":
+                    # Special case: the SMTV writer needs the detected
+                    # language + work title beyond the frozen 2-arg writer
+                    # contract, so call it directly (the registry's 2-arg
+                    # adapter raises). work_title = source stem; language =
+                    # the ISO code threaded in via ``lang``.
+                    from .writers import smtv_docx_writer
+                    payload_b = smtv_docx_writer.write_bytes(
+                        segments_data,
+                        audio_path,
+                        language=lang,
+                        work_title=os.path.basename(base),
+                    )
+                    with open(part_path, "wb") as fb:
+                        fb.write(payload_b)
+                        _checkpoint._flush_to_disk(fb)
+                elif is_binary(fmt_name):
+                    payload_b = get_binary_writer(fmt_name)(segments_data, audio_path)
+                    with open(part_path, "wb") as fb:
+                        fb.write(payload_b)
+                        _checkpoint._flush_to_disk(fb)
+                else:
+                    payload_s = get_writer(fmt_name)(segments_data, audio_path)
+                    with open(part_path, "w", encoding="utf-8", newline="\n") as fs:
+                        fs.write(payload_s)
+                        _checkpoint._flush_to_disk(fs)
+                os.replace(part_path, path)
+                claimed.discard(path)
+            except Exception as e:  # noqa: BLE001
+                try:
+                    os.unlink(part_path)
+                except OSError:
+                    pass
+                _release(path)
+                # Isolate per-format failures: one broken writer (a missing
+                # optional dependency, or a single format's encoding bug) must
+                # NOT discard the formats that wrote fine. Each format is
+                # already atomic (os.replace) and indexed (never overwrites a
+                # prior run), so there's nothing to roll back — log and move
+                # on to the next format.
+                logger.warning("output format %r failed: %s", fmt_name, e)
+                write_errors.append(f"{fmt_name}: {e}")
+                continue
+            written.append(path)
+        # Requested known formats, but every writer failed (disk full, all
+        # writers broken) — surface it so the task doesn't report a silent
+        # "wrote 0 files" success.
+        if planned and not written:
+            raise RuntimeError(
+                "All output writers failed; last error: "
+                + (write_errors[-1] if write_errors else "unknown")
+            )
+        # Auto-chapter sidecar: same set, same index. A sidecar failure is
+        # non-fatal (chapters are an optional extra, never worth failing the
+        # transcript over) — _write_chapter_sidecar returns None on error.
+        if want_sidecar:
+            sidecar_path = _write_chapter_sidecar(
+                _indexed_sidecar_path(base, index), chapters or []
+            )
+            if sidecar_path:
+                claimed.discard(sidecar_path)
+                written.append(sidecar_path)
+            else:
+                _release(_indexed_sidecar_path(base, index))
+        return written
+    finally:
+        # Every claim that was not published (all writers failed, an
+        # unexpected error) goes away; published names left `claimed`.
+        for leftover in list(claimed):
+            _release(leftover)
 
 
 _ALT_BACKEND_LOCK = threading.Lock()

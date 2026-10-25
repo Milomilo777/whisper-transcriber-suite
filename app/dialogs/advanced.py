@@ -1654,7 +1654,7 @@ class AdvancedDialog(tk.Toplevel):
         model_help = help_icon(
             ai,
             _("The exact model id your endpoint expects, e.g. gpt-4o-mini "
-            "for OpenAI, llama-3.3-70b-versatile for Groq, or a "
+            "for OpenAI, openai/gpt-oss-120b for Groq, or a "
             "locally-loaded model's name for Ollama/LM Studio. "
             "Different accounts/servers have different models available."),
         )

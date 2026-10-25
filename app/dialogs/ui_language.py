@@ -194,7 +194,8 @@ def jobs_running(app: Any) -> bool:
         for task in getattr(app, queue_name, None) or []:
             if getattr(task, "status", "") not in _IDLE_STATUSES:
                 return True
-    return False
+    counter = getattr(app, "active_server_jobs", None)
+    return bool(counter()) if callable(counter) else False
 
 
 def restart_supported() -> bool:

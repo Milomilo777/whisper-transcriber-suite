@@ -39,7 +39,10 @@ def issue(key: bytes, token: str, *, now: float,
 def remaining(key: bytes, token: str, value: str, *, now: float) -> float:
     """Seconds the cookie stays valid; 0.0 when it is forged or expired."""
     expiry_text, dot, signature = value.partition(".")
-    if not dot or not expiry_text.isdigit() or len(expiry_text) > 12:
+    # isascii(): str.isdigit() is also true for superscript and other
+    # non-ASCII digits, which int() then rejects with a ValueError.
+    if (not dot or not expiry_text.isascii() or not expiry_text.isdigit()
+            or len(expiry_text) > 12):
         return 0.0
     expiry = int(expiry_text)
     if expiry <= now:

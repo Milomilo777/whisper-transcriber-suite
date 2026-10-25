@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import math
 
-from .base import coerce_seconds, labelled_text
+from .base import MAX_SECONDS, coerce_seconds, labelled_text
 
 
 def _ms(value: object) -> int:
@@ -32,7 +32,7 @@ def _ms(value: object) -> int:
         return 0
     if not math.isfinite(f) or f < 0:
         return 0
-    return int(round(f * 1000))
+    return int(round(min(f, MAX_SECONDS) * 1000))
 
 
 def write(segments: list[dict], audio_path: str = "") -> str:

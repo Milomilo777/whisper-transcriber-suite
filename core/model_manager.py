@@ -807,21 +807,34 @@ def _hf_model_ref(model_name: str, hf_repo: str | None = None) -> str | None:
     return None
 
 
+def _stock_model_hf_repo() -> str:
+    from core.config import DEFAULT_CONFIG
+
+    return str(DEFAULT_CONFIG["model"].get("hf_repo") or "")
+
+
 def _hf_repo_for(config: dict[str, Any], model: dict[str, Any]) -> str | None:
     """The ``hf_repo`` to download ``model`` from.
 
-    The catalog entry with the same ``name`` wins over ``model["hf_repo"]``:
-    ``config["model"]`` is deep-merged over the defaults, so a config.json
+    An explicit local ``hf_repo`` (anything but the stock default) wins.
+    Otherwise the catalog entry with the same ``name`` wins over
+    ``model["hf_repo"]``: ``config["model"]`` is deep-merged over the defaults, so a config.json
     saved before ``hf_repo`` existed carries its own ``name`` next to the
     DEFAULT model's ``hf_repo`` and would otherwise download another model
     into this model's folder.
     """
     name = str(model.get("name") or "")
+    local = model.get("hf_repo") or None
+    # An explicit local pin (a mirror) beats the catalog, built-in or online.
+    # Only an absent value or the stock default (the stale-default case above)
+    # defers to the catalog.
+    if local and local != _stock_model_hf_repo():
+        return str(local)
     if name:
         for entry in _merged_catalog(config).values():
             if entry.get("name") == name and entry.get("hf_repo"):
                 return str(entry["hf_repo"])
-    return model.get("hf_repo") or None
+    return local
 
 
 def _approx_model_bytes(config: dict[str, Any], name: str) -> int:

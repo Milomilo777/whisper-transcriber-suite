@@ -23,6 +23,7 @@ from typing import Any
 
 from core import __version__ as _APP_VERSION
 from core import offline
+from core.verified_download import urlopen_https_only
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +107,11 @@ def send(config: dict[str, Any], text: str, *, timeout: float = 15.0) -> None:
         raise ProblemReportError(
             "Work offline is on, so nothing is sent. Switch it off in the File menu and try again.")
     url = str(config.get("stats_url") or "").strip()
-    if not url or urllib.parse.urlsplit(url).scheme not in ("http", "https"):
+    try:
+        scheme = urllib.parse.urlsplit(url).scheme if url else ""
+    except ValueError:  # e.g. an unbalanced "[" in the host part
+        scheme = ""
+    if scheme not in ("http", "https"):
         raise ProblemReportError("This copy of the app has no report address set.")
     req = urllib.request.Request(
         url, data=urllib.parse.urlencode(payload).encode("utf-8"), method="POST",
@@ -114,7 +119,7 @@ def send(config: dict[str, Any], text: str, *, timeout: float = 15.0) -> None:
                  "User-Agent": "WhisperTranscriberSuite"},
     )
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        with urlopen_https_only(req, timeout=timeout) as resp:
             resp.read(1)
     except urllib.error.HTTPError as e:
         logger.info("problem report refused: HTTP %s", e.code)

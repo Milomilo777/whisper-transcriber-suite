@@ -1140,7 +1140,7 @@
     "The clips changed: tick the permission box again.": "片段已更改：请再次勾选许可框。",
     "The cloud backends above are the exception — they upload audio only when you choose one and start a job": "上面的云端后端是例外——只有在你选择其中一个并开始任务时才会上传音频",
     "The code and the copied link include your access password: show them only to people who may use this page.": "二维码和复制的链接包含你的访问密码：仅向允许使用此页面的人员出示。",
-    "The exact model id your endpoint expects, e.g. gpt-4o-mini for OpenAI, llama-3.3-70b-versatile for Groq, or a locally-loaded model's name for Ollama/LM Studio. Different accounts/servers have different models available.": "你的终结点所期望的确切模型 ID，例如 OpenAI 用 gpt-4o-mini，Groq 用 llama-3.3-70b-versatile，Ollama/LM Studio 用本地加载的模型名称。不同的账户和服务器可用的模型不同。",
+    "The exact model id your endpoint expects, e.g. gpt-4o-mini for OpenAI, openai/gpt-oss-120b for Groq, or a locally-loaded model's name for Ollama/LM Studio. Different accounts/servers have different models available.": "你的终结点所期望的确切模型 ID，例如 OpenAI 用 gpt-4o-mini，Groq 用 openai/gpt-oss-120b，Ollama/LM Studio 用本地加载的模型名称。不同的账户和服务器可用的模型不同。",
     "The finished pieces are kept; the same text and voice continue from there.": "已完成的部分会保留；之后用相同的文本和声音生成时，会从中断处继续。",
     "The interface language changes the next time you start the app.": "界面语言将在下次启动应用时更改。",
     "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A language marked \"machine translation\" was translated by a computer and not yet checked by a person. A change applies the next time you start the app.": "应用菜单、按钮和消息所用的语言。“自动”会在有译文时使用系统语言，否则使用英语。标有“机器翻译”的语言由计算机翻译，尚未经过人工检查。更改将在下次启动应用时生效。",

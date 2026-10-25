@@ -32,12 +32,13 @@ import urllib.parse
 from typing import Any
 
 from core import offline
-from core.server import netguard
+from core.server import dlproxy, netguard
 from core.server.jobs import DownloadCancelled, DownloadLimits, strip_url_secrets
 
 logger = logging.getLogger(__name__)
 
 _MAX_REDIRECTS = 5
+PORT_REFUSED = "only ports 80 and 443 are allowed for links"
 _READ_TIMEOUT_S = 30.0
 _CHUNK = 64 * 1024
 _UNSAFE_NAME_RE = re.compile(r"[^\w.\- ()]+")
@@ -55,6 +56,10 @@ def is_lan_direct_url(url: str) -> bool:
     except ValueError:
         return False
     if parsed.scheme not in ("http", "https") or not host:
+        return False
+    # Same destination ports as the download proxy; another port is never
+    # fetched here (and fetch() refuses it again on every hop).
+    if port is not None and port not in dlproxy.ALLOWED_PORTS:
         return False
     try:
         addresses = [ipaddress.ip_address(host.split("%", 1)[0])]
@@ -209,9 +214,17 @@ def fetch(url: str, dest_dir: str, limits: DownloadLimits | None = None) -> str:
             if parts.scheme not in ("http", "https") or not parts.hostname:
                 raise RuntimeError(
                     "the link redirects to an address that is not http(s)")
+            try:
+                hop_port = parts.port
+            except ValueError:
+                hop_port = -1
+            # Checked before any connection, with one fixed message, so the
+            # error text cannot tell which ports a host listens on.
+            if hop_port is not None and hop_port not in dlproxy.ALLOWED_PORTS:
+                raise RuntimeError(PORT_REFUSED)
             cls = (_LanHTTPSConnection if parts.scheme == "https"
                    else _LanHTTPConnection)
-            conn = cls(parts.hostname, parts.port, timeout=_READ_TIMEOUT_S)
+            conn = cls(parts.hostname, hop_port, timeout=_READ_TIMEOUT_S)
             target = urllib.parse.urlunsplit(
                 ("", "", parts.path or "/", parts.query, ""))
             try:

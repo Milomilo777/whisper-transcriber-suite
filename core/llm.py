@@ -43,6 +43,9 @@ placeholder. No silent partial work.
 """
 from __future__ import annotations
 
+import contextlib
+import datetime
+import email.utils
 import http.client
 import json
 import logging
@@ -55,7 +58,7 @@ import urllib.request
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Iterator
 
 from . import APP_USER_AGENT, offline
 from ._gc_import_guard import gc_disabled_import
@@ -73,10 +76,12 @@ DEFAULT_MODEL_URL = (
 DEFAULT_MODEL_SIZE_BYTES = 1_117_000_000  # ~1.04 GB; tolerance check only
 
 # One-click remote preset (Advanced > AI). Groq serves an OpenAI-compatible API
-# and has a free tier. The model id is a production model listed at
-# https://console.groq.com/docs/models (checked 2026-10-25); the user can edit it.
+# and has a free tier. The model id must be one a free key can call: on 2026-10-26
+# GET /models listed openai/gpt-oss-120b, openai/gpt-oss-20b and qwen/qwen3.8-27b
+# as chat models, and llama-3.3-70b-versatile (the earlier preset) answered 404
+# model_not_found. Re-check with a real key before changing it; the user can edit it.
 GROQ_BASE_URL = "https://api.groq.com/openai/v1"
-GROQ_MODEL = "llama-3.3-70b-versatile"
+GROQ_MODEL = "openai/gpt-oss-120b"
 
 
 # ---------------------------------------------------------------- availability
@@ -338,10 +343,19 @@ def _strip_wrapped_quotes(text: str) -> str:
 _CONTEXT_OVERHEAD_TOKENS = 64
 #: How many tokens each message costs the chat template itself.
 _PER_MESSAGE_OVERHEAD_TOKENS = 4
-#: Fallback chars-per-token ratio when the loaded model exposes no
-#: usable ``tokenize``. English runs ~4 chars/token; 3 keeps the
-#: estimate on the safe side for other scripts.
-_CHARS_PER_TOKEN = 3
+#: Fallback UTF-8-bytes-per-token ratio when no tokenizer is available
+#: (remote endpoints, or a local model without ``tokenize``). Counting
+#: bytes, not characters, keeps the estimate safe for every script:
+#: English (1 byte/char) is counted as before at ~3 chars/token, while a
+#: CJK character (3 bytes) counts as one token, as real tokenizers see it.
+#: Counting characters let a Chinese transcript through at about a third
+#: of its real size, and Groq answered HTTP 413 (checked 2026-10-26).
+_BYTES_PER_TOKEN = 3
+
+
+def _estimate_tokens(text: str) -> int:
+    """Conservative token estimate from the UTF-8 length. Never raises."""
+    return max(1, len(text.encode("utf-8", "surrogatepass")) // _BYTES_PER_TOKEN)
 #: Inserted where an over-long prompt was cut apart.
 _TRUNCATION_MARKER = " […truncated to fit the model's context window…] "
 
@@ -361,9 +375,9 @@ def _token_counter(llama: Any) -> Callable[[str], int]:
                 tokens: Any = tokenize(text.encode("utf-8"), add_bos=False)
                 return len(tokens)
             except Exception:  # noqa: BLE001 — counting must never break a call
-                return max(1, len(text) // _CHARS_PER_TOKEN)
+                return _estimate_tokens(text)
         return _count
-    return lambda text: max(1, len(text) // _CHARS_PER_TOKEN)
+    return _estimate_tokens
 
 
 def _truncate_middle(text: str, keep_chars: int) -> str:
@@ -586,19 +600,28 @@ class RemoteLLMError(RuntimeError):
     """Raised when a remote OpenAI-compatible endpoint call fails."""
 
 
+class RemoteLLMRateLimitError(RemoteLLMError):
+    """The provider's rate or daily limit is spent and will not clear within a short wait
+    (HTTP 429 with a Retry-After above the retry cap). Loops over many calls stop on it."""
+
+
 class _RetryableLLMError(RemoteLLMError):
     """A failure worth another try (rate limit, server error, timeout)."""
 
-    def __init__(self, message: str, retry_after: float = 0.0) -> None:
+    def __init__(self, message: str, retry_after: float = 0.0, *, rate_limited: bool = False) -> None:
         super().__init__(message)
         self.retry_after = retry_after
+        self.rate_limited = rate_limited
 
 
 # Waits before the 2nd, 3rd and 4th try of one request. A bilingual pass
 # makes one request per segment, so a rate limit must slow it down, not
 # silently blank the segments it hits.
 _RETRY_DELAYS_S = (2.0, 6.0, 15.0)
-_MAX_RETRY_AFTER_S = 30.0
+# A Retry-After up to this is waited out exactly; above it the limit will not clear soon and the
+# call fails at once with RemoteLLMRateLimitError. One call never waits longer than the total.
+_MAX_RETRY_AFTER_S = 120.0
+_MAX_TOTAL_WAIT_S = 180.0
 _RETRYABLE_STATUS = frozenset({408, 425, 429, 500, 502, 503, 504})
 # A chat reply is a few KB; this only stops a hostile or broken endpoint
 # from streaming for ever.
@@ -627,16 +650,40 @@ def effective_token_budget(base_url: str, configured: int) -> int:
 
 
 def _retry_after_raw(headers: Any) -> float:
-    """The Retry-After header in seconds, unbounded (0 when absent or bad)."""
+    """The Retry-After header in seconds, unbounded: delta-seconds or an HTTP-date
+    (0 when absent, bad or already past)."""
     try:
-        value = float((headers.get("Retry-After") or "").strip())
-    except (AttributeError, TypeError, ValueError):
+        text = (headers.get("Retry-After") or "").strip()
+    except (AttributeError, TypeError):
         return 0.0
-    return value if value > 0 and value == value else 0.0
+    if not text:
+        return 0.0
+    try:
+        value = float(text)
+    except ValueError:
+        try:
+            when = email.utils.parsedate_to_datetime(text)
+            if when.tzinfo is None:
+                when = when.replace(tzinfo=datetime.timezone.utc)
+            value = (when - datetime.datetime.now(datetime.timezone.utc)).total_seconds()
+        except (TypeError, ValueError, IndexError, OverflowError):
+            return 0.0
+    return value if value > 0 and value == value and value != float("inf") else 0.0
 
 
-def _retry_after_seconds(headers: Any) -> float:
-    return min(_retry_after_raw(headers), _MAX_RETRY_AFTER_S)
+@contextlib.contextmanager
+def rate_limit_batch(runner: Any) -> Iterator[None]:
+    """For a loop of many calls: the runner may wait out ONE explicit Retry-After in total,
+    then the next one raises RemoteLLMRateLimitError so the loop can stop."""
+    begin = getattr(runner, "begin_batch", None)
+    if callable(begin):
+        begin()
+    try:
+        yield
+    finally:
+        end = getattr(runner, "end_batch", None)
+        if callable(end):
+            end()
 
 
 @dataclass
@@ -673,6 +720,14 @@ class RemoteLLMRunner:
         self.cfg = cfg
         #: True when the last request had to be trimmed to the budget.
         self.last_trimmed = False
+        #: Explicit Retry-After waits still allowed in the running batch; None outside one.
+        self._batch_waits: int | None = None
+
+    def begin_batch(self) -> None:
+        self._batch_waits = 1
+
+    def end_batch(self) -> None:
+        self._batch_waits = None
 
     def is_loaded(self) -> bool:
         # Nothing to "load" for an HTTP client — always ready to try.
@@ -744,14 +799,28 @@ class RemoteLLMRunner:
             method="POST",
         )
         raw = b""
+        waited = 0.0
         for attempt in range(len(_RETRY_DELAYS_S) + 1):
             try:
                 raw = self._post_once(url, req)
                 break
             except _RetryableLLMError as e:
                 if attempt >= len(_RETRY_DELAYS_S):
+                    if e.rate_limited:
+                        raise RemoteLLMRateLimitError(str(e)) from e  # no progress after the retries
                     raise
                 delay = e.retry_after or _RETRY_DELAYS_S[attempt]
+                # One wait budget for every status: a server-given wait (Retry-After) counts
+                # once per batch pass, and no call sleeps more than _MAX_TOTAL_WAIT_S in all.
+                over_budget = waited + delay > _MAX_TOTAL_WAIT_S
+                if e.retry_after and self._batch_waits is not None:
+                    over_budget = over_budget or self._batch_waits <= 0
+                    self._batch_waits -= 1
+                if over_budget:
+                    if e.rate_limited:
+                        raise RemoteLLMRateLimitError(str(e)) from e
+                    raise
+                waited += delay
                 logger.info("remote LLM: %s; retrying in %.0f s", e, delay)
                 time.sleep(delay)
         try:
@@ -794,9 +863,15 @@ class RemoteLLMRunner:
                         "The request is too large for this AI provider "
                         f"(HTTP 413). {hint} {body}"
                     )
+                wait = _retry_after_raw(e.headers)
+                if e.code == 429 and wait > _MAX_RETRY_AFTER_S:
+                    # Too long to wait for a click, and per item it would stall a whole run:
+                    # fail at once so callers can skip the optional AI step.
+                    raise RemoteLLMRateLimitError(message) from e
                 if e.code in _RETRYABLE_STATUS:
                     raise _RetryableLLMError(
-                        message, _retry_after_seconds(e.headers)) from e
+                        message, min(wait, _MAX_RETRY_AFTER_S),
+                        rate_limited=e.code == 429) from e
                 raise RemoteLLMError(message) from e
             finally:
                 e.close()
@@ -905,6 +980,23 @@ def translate_segments(
     cancel_event: threading.Event | None = None,
     failed: list[int] | None = None,
 ) -> list[str]:
+    """Translate each segment (see ``_translate_segments``); the whole pass may wait out one
+    Retry-After, and stops calling the provider at the first limit that will not clear."""
+    with rate_limit_batch(runner):
+        return _translate_segments(
+            runner, segments, target_language=target_language, progress_cb=progress_cb,
+            cancel_event=cancel_event, failed=failed)
+
+
+def _translate_segments(
+    runner: Any,
+    segments: list[dict[str, Any]],
+    *,
+    target_language: str = "English",
+    progress_cb: Callable[[int, int], None] | None = None,
+    cancel_event: threading.Event | None = None,
+    failed: list[int] | None = None,
+) -> list[str]:
     """Translate each segment's text independently — one call per segment.
 
     A single whole-transcript :meth:`translate` call is faster but
@@ -926,6 +1018,7 @@ def translate_segments(
     """
     out: list[str] = []
     total = len(segments)
+    limit_hit = False
     for i, seg in enumerate(segments):
         if cancel_event is not None and cancel_event.is_set():
             out.append("")
@@ -933,13 +1026,22 @@ def translate_segments(
             text = (seg.get("text") or "").strip()
             if not text:
                 out.append("")
+            elif limit_hit:
+                out.append("")  # the provider's limit is spent: no more calls this pass
+                if failed is not None:
+                    failed.append(i)
             else:
                 try:
                     out.append(runner.translate(text, target_language=target_language))
                 except Exception as e:  # noqa: BLE001
                     if isinstance(e.__cause__, offline.OfflineModeError):
                         raise  # Work offline: every segment would fail the same way
-                    logger.warning("translate_segments: segment %d failed: %s", i, e)
+                    if isinstance(e, RemoteLLMRateLimitError):
+                        limit_hit = True
+                        logger.warning(
+                            "translate_segments: stopping at segment %d: %s", i, e)
+                    else:
+                        logger.warning("translate_segments: segment %d failed: %s", i, e)
                     out.append("")
                 if not out[-1] and failed is not None:
                     failed.append(i)

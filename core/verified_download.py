@@ -157,6 +157,20 @@ class _HttpsOnlyRedirects(urllib.request.HTTPRedirectHandler):
 _opener = urllib.request.build_opener(_HttpsOnlyRedirects)
 
 
+def urlopen_https_only(req, timeout: float):  # noqa: ANN001
+    """``urllib.request.urlopen`` that never follows a redirect from https to
+    another scheme (what the request carries would travel in clear).
+
+    Used for the small best-effort fetches and posts (online config, update
+    check, usage statistics, problem report). A replaced
+    ``urllib.request.urlopen`` (a test double) is honoured as it is.
+    """
+    stdlib = getattr(urllib.request.urlopen, "__module__", "") == "urllib.request"
+    if not stdlib:
+        return urllib.request.urlopen(req, timeout=timeout)
+    return _opener.open(req, timeout=timeout)
+
+
 def _check_free_space(folder: Path, needed: int) -> None:
     try:
         free = shutil.disk_usage(folder).free

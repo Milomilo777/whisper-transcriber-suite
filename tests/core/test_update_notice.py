@@ -197,7 +197,7 @@ def test_check_for_update_carries_the_details(
         def __exit__(self, *_a: object) -> bool:
             return False
 
-        def read(self) -> bytes:
+        def read(self, _n: int = -1) -> bytes:
             return body
 
     monkeypatch.setattr(u.urllib.request, "urlopen", lambda *_a, **_k: _Resp())

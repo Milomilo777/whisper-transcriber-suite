@@ -17,6 +17,19 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   instead). The desktop Download tab is unchanged. Exception: a direct link to a host inside
   `server_allowed_private_networks` (for example a NAS) is fetched by the app's own downloader, with the
   connect-time address check on every redirect hop. Its time limit and cancel flag also apply during connect, and redirect and rejected responses are closed at once.
+- **Server link jobs refuse live streams and guard ffmpeg too**: yt-dlp hands live streams, and HLS videos it
+  cannot read itself, to ffmpeg, which fetched their segments without the download guard. Live streams are now
+  refused with a clear message, and ffmpeg is routed through the guard (its login travels in a per-job file
+  that is deleted after the run, never on the command line).
+- **Local-network link fetches use ports 80 and 443 only**: the direct download of a link on an allowed local
+  network, and each of its redirects, now follows the same port rule as the download proxy. A link job with
+  another port is refused when it is submitted, so it cannot probe other services of a listed host.
+- **The server answers malformed or unlucky requests cleanly**: a session cookie with non-ASCII digits, a
+  deeply nested JSON body and non-finite clip times (`NaN`, `Infinity`) no longer break the request handler
+  (they get HTTP 400 or are ignored). A full or read-only disk while a job is created returns HTTP 500 with a
+  generic message, and MCP tool errors no longer show host paths; the details stay in the local log.
+- **The address guard also refuses `0.0.0.0/8` and the old IPv6 site-local range `fec0::/10`**, for link jobs,
+  the download proxy and the completion webhook alike, even when a local network is listed.
 - **The completion webhook checks the address at connect time**: the host name is resolved once, only the
   checked addresses are connected to, and proxies from the environment are not used. LAN receivers stay
   allowed.
@@ -52,7 +65,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   <language>", "Keep English" and "Other...". Nothing changes without a click, any answer is remembered,
   and nothing is looked up online.
 - **One-click Groq preset for the AI provider**: "Use Groq" in Advanced > AI fills the Base URL and the model
-  `llama-3.3-70b-versatile`. Groq has a free key at console.groq.com, and the model stays editable.
+  `openai/gpt-oss-120b`. Groq has a free key at console.groq.com, and the model stays editable.
 - **Help > Copy MCP setup**: copies the `claude mcp add` command that registers this app's MCP endpoint
   with Claude Code, with the server's live port filled in and the password left as a `<access password>`
   placeholder. docs/SERVER.md gained a "Use it from Claude Code" section with the same command and the
@@ -70,7 +83,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 ### Changed
 
 - **Long transcripts no longer overflow Groq's small per-minute cap**: requests to api.groq.com are trimmed to
-  a 6000-token budget, and the summary or answer says so. Other providers are never trimmed unless
+  a 6000-token budget, counted from the text's UTF-8 size so Chinese, Japanese and other scripts fit too, and
+  the summary or answer says so. Other providers are never trimmed unless
   `llm_remote_max_input_tokens` is set. A rate limit (HTTP 429) now gives a clear message.
 - **The README describes the whole product again**: a full FAQ (36 questions), the browser version, every
   engine, model and output format, measured accuracy and CPU speed, each tab, speaker labels, downloads, Live,
@@ -85,6 +99,41 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- If the transcription engine reports a late error after all output files were already written, the finished transcript is now kept and shown instead of being marked as failed.
+- A transcription whose Cancel button was pressed just after its files were written is now recorded as finished and shows its result, instead of as cancelled with no result.
+- The history entry of a finished transcription is now written again after a short wait when the history database is briefly locked, so the run is not offered again as interrupted at the next start.
+- A second parallel worker that fails to load its model (for example out of memory) no longer stops and fails a transcription that is running fine on the first worker; only the failed worker is dropped.
+- Two transcriptions of files with the same name (for example talk.mp4 and talk.m4a) finishing at the same moment no longer overwrite each other's transcript or fail; the second one is saved as "talk (1)".
+- **Stopping the microphone no longer leaves a stuck capture behind**: if the audio driver does not return
+  within half a second of Stop, the stream is aborted so the capture thread ends and closes its own file. The
+  session audio is deleted only after that thread has really ended, however long it takes.
+- **The Live session audio is kept when words are missing from the transcript**: if chunks were skipped
+  because transcription fell behind, failed, were thrown away by "Discard rest", or were still waiting at
+  exit, the session audio stays on disk and its path is logged, because it is then the only copy of those words.
+- **A double-click on Stop no longer drops the last sentence**: a second press within 2 seconds of the first
+  is ignored instead of acting as "Discard rest". A real Discard is logged with what it dropped.
+- **Live captions survive a crash or power cut after Stop**: every finished sentence is written to a small
+  `live-journal.txt` next to the session audio before it appears in the window, and Stop no longer deletes
+  that audio. The files are removed only once the transcript is saved (Save, or the exit autosave); older
+  runs whose text was never saved are listed in the log at the next Start and are never deleted.
+- **Small hardening**: the online-settings cache is written atomically, so a crash can no longer leave a half-written file; an unusable report address gives the usual "no report address" message; hidden control characters are dropped from exported text so the app can re-import its own SRT; and absurdly large times no longer break an export.
+- **Worker logs can no longer pile up within two weeks**: besides the age rule, logs of finished workers are capped at 60 files or 200 MB in total, oldest first. Tracebacks are also redacted without being cached unredacted on the shared log record.
+- **Update checks, online settings, statistics and problem reports refuse a redirect from https to http**: they used to follow one, which would send the report text or settings request in clear. The update check also reads at most 2 MB of the reply.
+- **Usage statistics name only models the app offers**: an opted-in statistics report now carries a model or engine name only when it is one the app itself lists; a custom model name or a relative folder path is sent as `local-model`.
+- **PDF export no longer fails on unassigned characters**: a right-to-left line holding a character that Unicode has not assigned (a newer emoji, U+FFFE) was lost together with the whole PDF. Such characters now print as a replacement mark, and a line the bidi library still cannot order is drawn unjoined.
+- **A pinned model mirror is kept**: a `hf_repo` you set for the selected model now wins over the built-in and the online model catalog, so a mirror is no longer ignored and the online settings cannot re-point its download.
+- **Transcript search recovers from a damaged index**: a corrupt search database ("file is not a database")
+  used to break every search and re-index until the file was deleted by hand; the index is rebuilt from the
+  transcripts instead (a locked database is still left alone).
+- **Decimal commas are no longer flagged as unsupported numbers**: the AI answer check read "3,5" as the two
+  numbers 3 and 5; it now reads a comma followed by one or two digits as a decimal mark ("1,200" stays a
+  thousands separator).
+
+- **"Copy MCP setup" survives a damaged port setting**: it falls back to the default port instead of failing.
+- **Action items and Translate now say when the transcript was shortened**: like Summarise and Ask, they add the note when a remote AI provider only saw part of the text.
+- **A used-up AI provider limit no longer holds back your transcript files**: when the provider answers "rate limit reached" and asks for a wait of more than two minutes, the app stops at once (shorter waits are honoured, once per bilingual or chapter pass instead of once per item); chapter titles and bilingual lines fall back to the plain ones and the files are written right away.
+- **The first-run language question waits for Quick Start**: it no longer opens on top of the Quick Start or hub setup window, where its buttons could not be clicked.
+- **Exit and "Restart now" count jobs sent to the built-in server**: quitting the app or switching the interface language no longer cancels a running web or LAN job without asking.
 - **The saved text of an interrupted run is kept unless its media is verified unchanged**: only re-running
   the same, unchanged file with another engine, model or setting discards a checkpoint. A replaced, deleted
   or unverifiable source keeps it aside instead (on resume, on a new job for the same path, and with an

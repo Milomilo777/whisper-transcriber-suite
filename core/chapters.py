@@ -35,6 +35,7 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
+from core.llm import RemoteLLMRateLimitError, rate_limit_batch
 from core.text_metrics import count_words
 
 logger = logging.getLogger(__name__)
@@ -191,6 +192,18 @@ def title_chapters_with_llm(
     *,
     runner: "Any | None" = None,
 ) -> list[str]:
+    """Label each chapter (see ``_title_chapters_with_llm``); the whole pass may wait out one
+    Retry-After and stops calling the provider at the first limit that will not clear."""
+    with rate_limit_batch(runner):
+        return _title_chapters_with_llm(segments, boundaries, runner=runner)
+
+
+def _title_chapters_with_llm(
+    segments: list[dict[str, Any]],
+    boundaries: list[ChapterBoundary],
+    *,
+    runner: "Any | None" = None,
+) -> list[str]:
     """Use the local LLM to label each chapter; fall back to heuristic.
 
     ``runner`` is a :class:`core.llm.LLMRunner` (or any object with
@@ -214,6 +227,11 @@ def title_chapters_with_llm(
             if raw and len(raw) <= 120:
                 titles.append(raw)
                 continue
+        except RemoteLLMRateLimitError as e:
+            # A spent limit would fail every remaining chapter the same way: keep the plain
+            # titles for the rest instead of trying (and waiting) once per chapter.
+            logger.warning("LLM titling stopped, using plain titles: %s", e)
+            runner = None
         except Exception as e:  # noqa: BLE001
             logger.debug("LLM titling failed: %s", e)
         titles.append(heuristic_title(segments, boundary))

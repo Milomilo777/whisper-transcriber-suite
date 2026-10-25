@@ -24,6 +24,7 @@ from typing import Any
 import platformdirs
 
 from core import offline
+from core.verified_download import urlopen_https_only
 
 # Module-level lock serialises concurrent save_config calls — on
 # Windows os.replace fails with PermissionError when another thread
@@ -1093,7 +1094,7 @@ def fetch_online_config(
             req = urllib.request.Request(
                 url, headers={"User-Agent": "WhisperTranscriberSuite"}
             )
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
+            with urlopen_https_only(req, timeout=timeout) as resp:
                 # Reject an oversized body BEFORE buffering it whole: a
                 # hostile/MITM host could stream multiple GB and exhaust
                 # memory on the launch path. The Content-Length (if sent)
@@ -1124,9 +1125,7 @@ def fetch_online_config(
             if isinstance(data, dict):
                 try:
                     cache_path.parent.mkdir(parents=True, exist_ok=True)
-                    cache_path.write_text(
-                        json.dumps(data), encoding="utf-8"
-                    )
+                    _write_text_atomic(cache_path, json.dumps(data))
                 except OSError as e:
                     logger.warning("Could not cache online config: %s", e)
                 _forget_online_missing(cache_path)
@@ -1152,8 +1151,8 @@ def fetch_online_config(
                 # so the next processes stay quiet and skip the request.
                 try:
                     cache_path.parent.mkdir(parents=True, exist_ok=True)
-                    _online_missing_marker(cache_path).write_text(
-                        _url_digest(url), encoding="utf-8"
+                    _write_text_atomic(
+                        _online_missing_marker(cache_path), _url_digest(url)
                     )
                 except OSError:
                     pass
@@ -1447,6 +1446,27 @@ def _config_file_lock(
                 except OSError:
                     pass
             fh.close()
+
+
+def _write_text_atomic(path: Path, text: str) -> None:
+    """Write ``text`` to ``path`` through a temp file (fsync + replace), so a
+    crash leaves the old file or the new one, never half of it. Raises OSError
+    (the temp file is removed)."""
+    fd, staged = tempfile.mkstemp(
+        prefix=".online-", suffix=".tmp", dir=str(path.parent) or "."
+    )
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(text)
+            f.flush()
+            os.fsync(f.fileno())
+        _replace_with_retry(staged, str(path))
+    except BaseException:
+        try:
+            os.unlink(staged)
+        except OSError:
+            pass
+        raise
 
 
 def _write_disk_dict(path: str, data: dict[str, Any]) -> None:

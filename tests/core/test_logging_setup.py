@@ -6,7 +6,15 @@ import os
 import time
 from pathlib import Path
 
+import pytest
+
 from core import logging_setup as ls
+
+
+@pytest.fixture(autouse=True)
+def _no_live_workers(monkeypatch):
+    """The fake worker pids in these tests must not match real processes."""
+    monkeypatch.setattr("core.process_exit.pid_alive", lambda pid: False)
 
 
 def _touch(path: Path, age_days: float) -> Path:
@@ -86,3 +94,77 @@ def test_prune_keeps_old_worker_logs_inside_the_keep_window(tmp_path, monkeypatc
 
     for path in olds:
         assert path.exists(), f"worker log inside the keep window was pruned: {path.name}"
+
+
+def _fresh_logs(tmp_path, n: int, size: int = 1) -> list[Path]:
+    """worker-0..n-1 logs, all recent; index 0 is the newest."""
+    out = []
+    for i in range(n):
+        p = tmp_path / f"worker-{1000 + i}.log"
+        p.write_text("x" * size, encoding="utf-8")
+        ts = time.time() - (i + 1) * 60
+        os.utime(p, (ts, ts))
+        out.append(p)
+    return out
+
+
+def test_prune_caps_the_number_of_recent_worker_logs(tmp_path, monkeypatch):
+    monkeypatch.setattr(ls, "WORKER_LOG_MAX_FILES", 14)
+    logs = _fresh_logs(tmp_path, 25)
+
+    _run_setup_logging(tmp_path, monkeypatch)
+
+    alive = [p for p in logs if p.exists()]
+    assert alive == logs[:14], "the oldest logs go first, the newest 14 stay"
+
+
+def test_prune_caps_the_total_bytes_of_worker_logs(tmp_path, monkeypatch):
+    monkeypatch.setattr(ls, "WORKER_LOG_MAX_BYTES", 12 * 100)
+    logs = _fresh_logs(tmp_path, 20, size=100)
+
+    _run_setup_logging(tmp_path, monkeypatch)
+
+    alive = [p for p in logs if p.exists()]
+    assert alive == logs[:12]
+    assert len(alive) >= ls.WORKER_LOG_KEEP
+
+
+def test_prune_never_removes_this_process_log(tmp_path, monkeypatch):
+    monkeypatch.setattr(ls, "WORKER_LOG_MAX_FILES", 12)
+    logs = _fresh_logs(tmp_path, 20)
+    own = tmp_path / f"worker-{os.getpid()}.log"
+    own_rotated = tmp_path / f"worker-{os.getpid()}.log.1"
+    for p in (own, own_rotated):
+        p.write_text("x", encoding="utf-8")
+        ts = time.time() - 90 * 24 * 60 * 60
+        os.utime(p, (ts, ts))
+
+    _run_setup_logging(tmp_path, monkeypatch)
+
+    assert own.exists() and own_rotated.exists()
+    assert not logs[-1].exists()
+
+
+def test_formatter_does_not_cache_an_unredacted_traceback_on_the_record():
+    try:
+        raise ValueError("https://user:secret@example.org/path")
+    except ValueError:
+        import sys
+
+        record = logging.LogRecord("t", logging.ERROR, __file__, 1, "boom", None, sys.exc_info())
+    out = ls.RedactingFormatter("%(message)s").format(record)
+    assert "secret" not in out
+    assert record.exc_text is None
+
+
+def test_prune_never_removes_a_live_workers_log(tmp_path, monkeypatch):
+    monkeypatch.setattr(ls, "WORKER_LOG_MAX_FILES", 12)
+    logs = _fresh_logs(tmp_path, 20)
+    live = logs[-1]  # the oldest, far beyond the cap
+    live_pid = int(live.name.split("-")[1].split(".")[0])
+    monkeypatch.setattr("core.process_exit.pid_alive", lambda pid: pid == live_pid)
+
+    _run_setup_logging(tmp_path, monkeypatch)
+
+    assert live.exists()
+    assert not logs[-2].exists()
