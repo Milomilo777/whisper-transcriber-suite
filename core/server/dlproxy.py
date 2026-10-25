@@ -69,6 +69,34 @@ def _split_host_port(target: str, default_port: int | None
     return host, port
 
 
+_MAX_REQUEST_BODY = 16 * 1024 * 1024
+
+
+def _request_framing(headers: list[tuple[str, str]]) -> "int | str | None":
+    """How the request body is framed: a length, ``"chunked"`` or 0 (none).
+
+    None when the framing is conflicting or unsupported: both Content-Length
+    and Transfer-Encoding, several different Content-Length values, a
+    Transfer-Encoding other than plain ``chunked``, or a bad length. Accepting
+    those is how request smuggling starts, so they are refused.
+    """
+    lengths = {v.strip() for n, v in headers if n.lower() == "content-length"}
+    encodings = [v.strip().lower() for n, v in headers
+                 if n.lower() == "transfer-encoding"]
+    if encodings:
+        if lengths or encodings != ["chunked"]:
+            return None
+        return "chunked"
+    if not lengths:
+        return 0
+    if len(lengths) > 1:
+        return None
+    value = next(iter(lengths))
+    if not value.isascii() or not value.isdigit():
+        return None
+    return int(value)
+
+
 class _Handler(socketserver.StreamRequestHandler):
     server: "_ProxyServer"
 
@@ -184,6 +212,10 @@ class _Handler(socketserver.StreamRequestHandler):
         if hp is None:
             self._reply(400, "bad request")
             return
+        framing = _request_framing(headers)
+        if framing is None:
+            self._reply(400, "conflicting or unsupported message framing")
+            return
         upstream = self._connect_upstream(*hp)
         if upstream is None:
             return
@@ -191,28 +223,88 @@ class _Handler(socketserver.StreamRequestHandler):
             path = urllib.parse.urlunsplit(
                 ("", "", split.path or "/", split.query, ""))
             out = [f"{method} {path} {version}"]
-            length = 0
             for name, value in headers:
-                low = name.lower()
-                if low in _HOP_BY_HOP:
-                    continue
-                if low == "content-length":
-                    try:
-                        length = max(0, int(value))
-                    except ValueError:
-                        self._reply(400, "bad request")
-                        return
-                out.append(f"{name}: {value}")
+                if name.lower() not in _HOP_BY_HOP:
+                    out.append(f"{name}: {value}")
+            if framing == "chunked":
+                out.append("Transfer-Encoding: chunked")
             out.append("Connection: close")
             upstream.sendall(("\r\n".join(out) + "\r\n\r\n").encode("latin-1"))
-            remaining = length
+            # One framing-aware path: exactly the declared body is forwarded,
+            # nothing the client sends after it (no request smuggling).
+            if not self._forward_body(upstream, framing):
+                return
+            self._relay_response(upstream)
+
+    def _forward_body(self, upstream: socket.socket, framing: "int | str"
+                      ) -> bool:
+        """Copy the request body (Content-Length or chunked); False on error."""
+        budget = _MAX_REQUEST_BODY
+        try:
+            if framing == "chunked":
+                return self._copy_chunked(upstream, budget)
+            remaining = int(framing)
+            if remaining > budget:
+                self._reply(413, "request body too large")
+                return False
             while remaining > 0:
                 chunk = self.rfile.read(min(remaining, 65536))
                 if not chunk:
-                    return
+                    return False
                 upstream.sendall(chunk)
                 remaining -= len(chunk)
-            self._relay(upstream)
+            return True
+        except ValueError:
+            self._reply(400, "bad request body")
+            return False
+
+    def _copy_chunked(self, upstream: socket.socket, budget: int) -> bool:
+        while True:
+            line = self.rfile.readline(1024)
+            if not line.endswith(b"\n"):
+                raise ValueError("chunk size line")
+            size = int(line.split(b";", 1)[0].strip(), 16)
+            if size < 0:
+                raise ValueError("negative chunk")
+            budget -= size
+            if budget < 0:
+                self._reply(413, "request body too large")
+                return False
+            upstream.sendall(line)
+            if size == 0:
+                break
+            remaining = size
+            while remaining > 0:
+                chunk = self.rfile.read(min(remaining, 65536))
+                if not chunk:
+                    return False
+                upstream.sendall(chunk)
+                remaining -= len(chunk)
+            end = self.rfile.readline(3)
+            if end not in (b"\r\n", b"\n"):
+                raise ValueError("chunk terminator")
+            upstream.sendall(end)
+        for _ in range(_MAX_HEADER_LINES):  # trailers, then the blank line
+            line = self.rfile.readline(_MAX_HEADER_BYTES + 1)
+            if not line or len(line) > _MAX_HEADER_BYTES:
+                raise ValueError("trailer")
+            upstream.sendall(line)
+            if line in (b"\r\n", b"\n"):
+                return True
+        raise ValueError("too many trailers")
+
+    def _relay_response(self, upstream: socket.socket) -> None:
+        """Send the upstream's answer to the client until it closes."""
+        upstream.settimeout(_IDLE_TIMEOUT_S)
+        try:
+            while True:
+                data = upstream.recv(65536)
+                if not data:
+                    break
+                self.wfile.write(data)
+                self.wfile.flush()
+        except OSError:
+            pass
 
     def _relay(self, upstream: socket.socket) -> None:
         client = self.connection

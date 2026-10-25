@@ -631,7 +631,10 @@ Behaviour to know:
   inside the app** (listening on 127.0.0.1 only, with a random per-run
   password that reaches yt-dlp through its environment, never its command
   line, so error texts and logs do not carry it; yt-dlp's own native
-  downloaders are used, not ffmpeg). It connects to ports 80 and 443 only. The
+  downloaders are used, not ffmpeg). It connects to ports 80 and 443 only. A plain `http://` request body is
+  forwarded by its declared framing only (`Content-Length` or `chunked`); a
+  request with conflicting framing is refused with HTTP 400, and nothing sent
+  after the declared body is forwarded. The
   proxy resolves each destination itself, refuses a loopback, link-local
   (cloud metadata), private-network (10.x, 172.16-31.x, 192.168.x, 100.64/10),
   multicast, unspecified or otherwise non-public address at connect time, and
