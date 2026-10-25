@@ -233,6 +233,40 @@ def test_previous_log_is_kept_as_dot_one(model, tmp_path):
     assert (tmp_path / "logs" / "llama-server.log").is_file()
 
 
+def test_log_rotation_retries_while_windows_holds_the_file(model, tmp_path, monkeypatch):
+    """WinError 32 right after the old server ended must not lose the previous log."""
+    server = make(model, tmp_path)
+    server.start()
+    server.stop()
+    real, calls = os.replace, []
+
+    def busy_twice(src, dst):
+        if Path(src).suffix != ".log":
+            return real(src, dst)  # the server record's own atomic write
+        calls.append(src)
+        if len(calls) <= 2:
+            raise PermissionError(13, "being used by another process", None, 32)
+        real(src, dst)
+
+    monkeypatch.setattr(lls.os, "replace", busy_twice)
+    server.start()
+    assert len(calls) == 3
+    assert (tmp_path / "logs" / "llama-server.1.log").is_file()
+    assert not list((tmp_path / "logs").glob("llama-server-*.log"))
+
+
+def test_stop_waits_for_the_launchers_children(model, tmp_path, monkeypatch):
+    """A launcher's child keeps the log open: stop() must not return before it is gone."""
+    marker = ["child-process"]
+    waited: list[list[str]] = []
+    monkeypatch.setattr(lls, "_descendants", lambda pid: marker)
+    monkeypatch.setattr(lls, "_wait_descendants", lambda procs: waited.append(procs))
+    server = make(model, tmp_path)
+    server.start()
+    server.stop()
+    assert waited == [marker]
+
+
 # ---------------------------------------------------------------- records and stop
 
 
@@ -383,6 +417,29 @@ def test_reaper_keeps_the_record_of_a_live_but_unreadable_process(tmp_path, fake
         assert lls.reap_stale_servers(tmp_path / "run") == []
         assert proc.poll() is None
         assert path.exists()
+    finally:
+        proc.kill()
+        proc.wait()
+
+
+def test_reaper_drops_the_record_of_a_server_that_was_unreadable_only_while_ending(
+        tmp_path, fake_is_server, monkeypatch):
+    """A process being torn down answers "denied" for a moment, then is gone."""
+    proc = _spawn_fake(tmp_path)
+    try:
+        path = _record(tmp_path / "run", proc.pid)
+        real = lls._lookup
+        answers = [lls._DENIED, lls._DENIED]
+
+        def ending(pid):
+            if pid == proc.pid:
+                return answers.pop(0) if answers else lls._GONE
+            return real(pid)
+
+        monkeypatch.setattr(lls, "_lookup", ending)
+        monkeypatch.setattr(lls.time, "sleep", lambda s: None)
+        assert lls.reap_stale_servers(tmp_path / "run") == []
+        assert not path.exists()
     finally:
         proc.kill()
         proc.wait()

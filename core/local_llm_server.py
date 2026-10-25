@@ -315,6 +315,23 @@ def _lookup(pid: int) -> tuple[float, str] | str:
         return _DENIED
 
 
+def _settled_lookup(pid: int, wait_s: float = 3.0) -> tuple[float, str] | str:
+    """Like ``_lookup``, but gives a process that is still ending time to finish.
+
+    A process that was just killed (by its Job Object, or by the reaper's
+    caller) can answer "access denied" for a moment while Windows tears it
+    down. Treating that as "alive but unreadable" would keep its record
+    forever, so a ``_DENIED`` answer is asked again for up to ``wait_s``.
+    A process that stays unreadable is still reported as ``_DENIED``.
+    """
+    found = _lookup(pid)
+    deadline = time.monotonic() + wait_s
+    while found == _DENIED and time.monotonic() < deadline:
+        time.sleep(0.1)
+        found = _lookup(pid)
+    return found
+
+
 def _process_identity(pid: int) -> tuple[float, str] | None:
     """(start time, executable path) of a live process, or None."""
     try:
@@ -381,7 +398,7 @@ def reap_stale_servers(folder: Path | None = None) -> list[int]:
         if pid <= 1 or pid == me:
             _remove(path)
             continue
-        owner = _lookup(owner_pid)
+        owner = _settled_lookup(owner_pid)
         if owner == _DENIED or (
                 isinstance(owner, tuple) and abs(owner[0] - owner_created) <= _START_TIME_SLACK_S):
             if owner_pid != me:
@@ -389,7 +406,7 @@ def reap_stale_servers(folder: Path | None = None) -> list[int]:
             with _live_lock:
                 if pid in _live:
                     continue  # ours, still managed
-        ident = _lookup(pid)
+        ident = _settled_lookup(pid)
         if ident == _DENIED:
             continue  # alive but unreadable: keep the record, never guess
         if (not isinstance(ident, tuple) or ident[0] != created or not _same_path(ident[1], exe)
@@ -425,6 +442,33 @@ def stop_all() -> None:
 # ---------------------------------------------------------------- log file
 
 
+_ROTATE_RETRY_S = 5.0
+_DESCENDANTS_WAIT_S = 5.0
+
+
+def _descendants(pid: int) -> list[Any]:
+    try:
+        import psutil  # noqa: PLC0415
+
+        return psutil.Process(pid).children(recursive=True)
+    except Exception:  # noqa: BLE001 - psutil missing or the process is already gone
+        return []
+
+
+def _wait_descendants(procs: list[Any]) -> None:
+    """Wait (bounded) until the given child processes are really gone."""
+    if not procs:
+        return
+    try:
+        import psutil  # noqa: PLC0415
+
+        _, alive = psutil.wait_procs(procs, timeout=_DESCENDANTS_WAIT_S)
+    except Exception:  # noqa: BLE001
+        return
+    if alive:
+        logger.warning("Offline AI server children still running after stop: %s", [p.pid for p in alive])
+
+
 def _open_log(path: Path) -> tuple[Any, Path]:
     """Open a fresh log for one server run; the previous run's log is kept as ``.1``.
 
@@ -438,12 +482,23 @@ def _open_log(path: Path) -> tuple[Any, Path]:
         except OSError:
             pass  # still open by a server that has not ended yet
     if path.exists():
-        try:
-            os.replace(path, path.with_name(path.stem + ".1" + path.suffix))
-        except OSError as e:
-            # Still open by a server that has not ended yet: write beside it.
-            logger.warning("Could not rotate %s: %s", path, e)
-            path = path.with_name(f"{path.stem}-{os.getpid()}-{int(time.time())}{path.suffix}")
+        previous = path.with_name(path.stem + ".1" + path.suffix)
+        # Windows keeps the file locked for a moment after the last writer ended
+        # (a launcher's child still shutting down, an antivirus scan): retry briefly.
+        deadline = time.monotonic() + _ROTATE_RETRY_S
+        while True:
+            try:
+                os.replace(path, previous)
+                break
+            except OSError as e:
+                if time.monotonic() < deadline and isinstance(e, PermissionError):
+                    logger.info("Log %s is busy, retrying the rotation: %s", path, e)
+                    time.sleep(0.1)
+                    continue
+                # Still open by a server that has not ended yet: write beside it.
+                logger.warning("Could not rotate %s: %s", path, e)
+                path = path.with_name(f"{path.stem}-{os.getpid()}-{int(time.time())}{path.suffix}")
+                break
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_BINARY", 0), 0o600)
     return os.fdopen(fd, "wb"), path
 
@@ -694,8 +749,11 @@ class LocalLLMServer:
     def _cleanup_locked(self) -> None:
         proc, self._proc = self._proc, None
         self._port, self._key = None, ""
+        descendants: list[Any] = []
         if proc is not None:
             if proc.poll() is None:
+                # A launcher (venv python.exe) leaves a child that keeps the log open.
+                descendants = _descendants(proc.pid)
                 if sys.platform == "win32":
                     # llama-server ignores taskkill's close request; it has no children.
                     try:
@@ -713,6 +771,7 @@ class LocalLLMServer:
         if self._job is not None:
             self._job.close()
             self._job = None
+        _wait_descendants(descendants)
         if self._record is not None:
             if proc is None or proc.poll() is not None:
                 _remove(self._record)
