@@ -597,6 +597,11 @@ class RemoteLLMError(RuntimeError):
     """Raised when a remote OpenAI-compatible endpoint call fails."""
 
 
+class RemoteLLMRateLimitError(RemoteLLMError):
+    """The provider's rate or daily limit is spent and will not clear within a short wait
+    (HTTP 429 with a Retry-After above the retry cap). Loops over many calls stop on it."""
+
+
 class _RetryableLLMError(RemoteLLMError):
     """A failure worth another try (rate limit, server error, timeout)."""
 
@@ -805,6 +810,10 @@ class RemoteLLMRunner:
                         "The request is too large for this AI provider "
                         f"(HTTP 413). {hint} {body}"
                     )
+                if e.code == 429 and _retry_after_raw(e.headers) > _MAX_RETRY_AFTER_S:
+                    # Waiting that long per call (times every segment or chapter) would only
+                    # stall the run; fail at once so callers can skip the optional AI step.
+                    raise RemoteLLMRateLimitError(message) from e
                 if e.code in _RETRYABLE_STATUS:
                     raise _RetryableLLMError(
                         message, _retry_after_seconds(e.headers)) from e
@@ -937,6 +946,7 @@ def translate_segments(
     """
     out: list[str] = []
     total = len(segments)
+    limit_hit = False
     for i, seg in enumerate(segments):
         if cancel_event is not None and cancel_event.is_set():
             out.append("")
@@ -944,13 +954,22 @@ def translate_segments(
             text = (seg.get("text") or "").strip()
             if not text:
                 out.append("")
+            elif limit_hit:
+                out.append("")  # the provider's limit is spent: no more calls this pass
+                if failed is not None:
+                    failed.append(i)
             else:
                 try:
                     out.append(runner.translate(text, target_language=target_language))
                 except Exception as e:  # noqa: BLE001
                     if isinstance(e.__cause__, offline.OfflineModeError):
                         raise  # Work offline: every segment would fail the same way
-                    logger.warning("translate_segments: segment %d failed: %s", i, e)
+                    if isinstance(e, RemoteLLMRateLimitError):
+                        limit_hit = True
+                        logger.warning(
+                            "translate_segments: stopping at segment %d: %s", i, e)
+                    else:
+                        logger.warning("translate_segments: segment %d failed: %s", i, e)
                     out.append("")
                 if not out[-1] and failed is not None:
                     failed.append(i)

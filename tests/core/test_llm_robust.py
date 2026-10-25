@@ -89,14 +89,50 @@ def test_a_bad_key_is_not_retried(monkeypatch):
     assert len(calls) == 1
 
 
-def test_retry_after_is_honoured_and_capped(monkeypatch):
+def test_retry_after_is_honoured_up_to_the_cap(monkeypatch):
     llm_sleeps = []
     monkeypatch.setattr(llm.time, "sleep", llm_sleeps.append)
     _script(monkeypatch, [lambda r: _http_error(r, 429, retry_after=7),
-                          lambda r: _http_error(r, 429, retry_after=9999),
+                          lambda r: _http_error(r, 429, retry_after=llm._MAX_RETRY_AFTER_S),
                           _Resp()])
     _runner()._chat([{"role": "user", "content": "hi"}])
     assert llm_sleeps == [7.0, llm._MAX_RETRY_AFTER_S]
+
+
+def test_a_retry_after_above_the_cap_fails_at_once_without_sleeping(monkeypatch):
+    llm_sleeps = []
+    monkeypatch.setattr(llm.time, "sleep", llm_sleeps.append)
+    calls = _script(monkeypatch, [lambda r: _http_error(r, 429, retry_after=9999), _Resp()])
+    with pytest.raises(llm.RemoteLLMRateLimitError, match="429"):
+        _runner()._chat([{"role": "user", "content": "hi"}])
+    assert len(calls) == 1 and llm_sleeps == []
+
+
+def test_translate_segments_stops_calling_after_a_spent_limit(monkeypatch):
+    calls = _script(monkeypatch, [_Resp(), lambda r: _http_error(r, 429, retry_after=9999), _Resp()])
+    monkeypatch.setattr(llm.time, "sleep", lambda _s: None)
+    segs = [{"text": t} for t in ("one", "", "two", "three", "four")]
+    failed: list[int] = []
+    progress: list[int] = []
+    out = llm.translate_segments(_runner(), segs, failed=failed,
+                                 progress_cb=lambda done, _t: progress.append(done))
+    assert out == ["ok", "", "", "", ""]
+    assert len(calls) == 2                      # the limit hit on the 2nd call; no further ones
+    assert failed == [2, 3, 4]                  # empty segment 1 is not a failure
+    assert progress == [1, 2, 3, 4, 5]
+
+
+def test_chapter_titling_stops_after_a_spent_limit(monkeypatch):
+    from core import chapters
+
+    calls = _script(monkeypatch, [lambda r: _http_error(r, 429, retry_after=9999)])
+    monkeypatch.setattr(llm.time, "sleep", lambda _s: None)
+    segs = [{"start": 0.0, "end": 5.0, "text": f"Segment text {i}."} for i in range(3)]
+    bounds = [chapters.ChapterBoundary(start=float(i), end=float(i) + 1, segment_start=i, segment_end=i)
+              for i in range(3)]
+    titles = chapters.title_chapters_with_llm(segs, bounds, runner=_runner())
+    assert len(titles) == 3 and all(titles)
+    assert len(calls) == 1
 
 
 @pytest.mark.parametrize("exc", [
