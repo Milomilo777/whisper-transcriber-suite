@@ -323,6 +323,10 @@ class TranscriptionService:
         # each failed attempt emits its own startup_error — without this
         # the user got one stacked dialog per attempt.
         self._engine_error_dialog_at: float = 0.0
+        # monotonic time until which no EXTRA worker is spawned while another
+        # one is alive: set when a second worker failed to start, so a waiting
+        # queue does not respawn a failing worker in a tight loop.
+        self._spawn_hold_until: float = 0.0
 
     def _ensure_poll_scheduled(self) -> None:
         """Schedule poll() at most once; coalesces all callers."""
@@ -1376,6 +1380,45 @@ class TranscriptionService:
         except Exception:  # noqa: BLE001 - never break poll on a guard
             return False
 
+    #: How long (s) no extra worker is spawned next to a live one after a
+    #: worker failed to start (for example out of memory on a second model copy).
+    SPAWN_HOLD_S: float = 60.0
+
+    def _retire_failed_worker_if_others_healthy(self, failed: dict[str, Any]) -> bool:
+        """Keep healthy workers when ONE worker failed to start.
+
+        A worker is healthy when it is ready or holds a task. With such a
+        peer only the failed worker is retired (its own task, if any, ends
+        as an error): a second worker that cannot load its model copy (out
+        of memory) must not hard-stop and fail a running job. Returns True
+        when it did so; False means no worker is healthy and the caller
+        runs the full teardown.
+        """
+        healthy = [
+            w for w in self.app.workers
+            if w is not failed and (w.get("task") is not None or w.get("ready"))
+        ]
+        if not healthy:
+            return False
+        otask = failed.get("task")
+        if otask is not None and getattr(otask, "status", None) not in (
+            "finished", "error", "cancelled",
+        ):
+            otask.status = "error"
+            if not getattr(otask, "error_reason", ""):
+                otask.error_reason = _(
+                    "The transcription engine or model could not start; "
+                    "try the file again."
+                )
+        import time as _time
+        self._spawn_hold_until = _time.monotonic() + self.SPAWN_HOLD_S
+        logger.warning(
+            "Worker %s failed to start; keeping %d healthy worker(s) running",
+            failed.get("id", "?"), len(healthy),
+        )
+        self.retire_worker(failed)
+        return True
+
     def _fail_tasks_and_clear_workers_on_startup_error(self) -> None:
         """Finish every in-flight task before discarding all worker dicts.
 
@@ -1546,8 +1589,10 @@ class TranscriptionService:
                     engine = _eng.normalise_engine(
                         app.app_config.get("transcribe_backend")
                     )
+                    kept_healthy = self._retire_failed_worker_if_others_healthy(worker)
                     if engine != "faster_whisper":
-                        self._fail_tasks_and_clear_workers_on_startup_error()
+                        if not kept_healthy:
+                            self._fail_tasks_and_clear_workers_on_startup_error()
                         detail = str(
                             event.get("message") or "engine failed to start"
                         )
@@ -1567,6 +1612,8 @@ class TranscriptionService:
                                 )
                             except Exception:  # noqa: BLE001
                                 pass
+                    elif kept_healthy:
+                        app.log("A worker failed to load the model; the other workers keep running.")
                     elif not app.model_setup_running:
                         app.log("Existing model failed to load. Starting required download.")
                         self._fail_tasks_and_clear_workers_on_startup_error()
@@ -1857,8 +1904,11 @@ class TranscriptionService:
         idle_count = len(self.idle_workers())
         limit = self.worker_limit()
         needed = min(len(waiting), limit) - idle_count
+        import time as _t
         for _ in range(max(0, needed)):
             if active_count >= limit:
+                break
+            if active_count > 0 and _t.monotonic() < self._spawn_hold_until:
                 break
             self.start_worker(temporary=True)
             active_count += 1
