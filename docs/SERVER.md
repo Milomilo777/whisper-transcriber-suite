@@ -625,7 +625,13 @@ Behaviour to know:
   (cloud metadata), private-network (10.x, 172.16-31.x, 192.168.x, 100.64/10),
   multicast, unspecified or otherwise non-public address at connect time, and
   connects only to the addresses it checked, so DNS rebinding and a redirect
-  to an internal address fail. If the proxy cannot start, the job fails
+  to an internal address fail. An IPv6 address that carries an IPv4 address
+  (NAT64, 6to4, Teredo) is judged by the IPv4 address inside it: the well-known
+  NAT64 prefix `64:ff9b::/96`, 6to4 and Teredo are refused, and any other IPv6
+  address whose last 32 bits look like a loopback or link-local (or, for link
+  jobs, private-network) IPv4 address is refused too, which also refuses about
+  1 in 100 ordinary public IPv6 hosts; an IPv6-only network that relies on
+  DNS64 cannot use link jobs. If the proxy cannot start, the job fails
   instead of downloading without it. **Residual risk:** a link job cannot
   fetch from a server on your own network (use an upload for that); a
   computer that needs a company proxy to reach the internet cannot use link

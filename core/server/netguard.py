@@ -42,7 +42,48 @@ def address_blocked(ip: "ipaddress.IPv4Address | ipaddress.IPv6Address",
         return True
     if not allow_private and not ip.is_global:
         return True
+    if isinstance(ip, ipaddress.IPv6Address):
+        return _ipv6_embeds_blocked_ipv4(ip, allow_private)
     return False
+
+
+_NAT64_WELL_KNOWN = ipaddress.ip_network("64:ff9b::/96")
+_NAT64_LOCAL_USE = ipaddress.ip_network("64:ff9b:1::/48")
+_TEREDO = ipaddress.ip_network("2001::/32")
+
+
+def _ipv6_embeds_blocked_ipv4(ip: ipaddress.IPv6Address,
+                              allow_private: bool) -> bool:
+    """True when an IPv6 address carries a blocked IPv4 address inside it.
+
+    NAT64 gateways (and 6to4) turn an IPv6 destination into an IPv4 one, so
+    ``64:ff9b::a9fe:a9fe`` can reach ``169.254.169.254`` although the IPv6
+    address itself looks like an ordinary global one. The rule is deliberately
+    conservative:
+
+    * 64:ff9b::/96 (well-known NAT64) and 6to4 (2002::/16): the embedded IPv4
+      address gets the full check.
+    * 64:ff9b:1::/48 (local-use NAT64, where the IPv4 sits in a split field)
+      and Teredo (2001::/32): refused outright.
+    * Any other address: the LAST 32 bits are read as IPv4 (an operator's own
+      NAT64 prefix is a /96 anywhere) and refused when they are a loopback,
+      link-local (metadata) or, with ``allow_private`` False, a private-range
+      address. The price: a public IPv6 host whose last 32 bits happen to look
+      like such an address (about 1 in 100) is refused too.
+    """
+    if ip in _NAT64_LOCAL_USE or ip in _TEREDO:
+        return True
+    if ip in _NAT64_WELL_KNOWN:
+        return address_blocked(ipaddress.IPv4Address(int(ip) & 0xFFFFFFFF),
+                               allow_private=allow_private)
+    sixtofour = ip.sixtofour
+    if sixtofour is not None and address_blocked(
+            sixtofour, allow_private=allow_private):
+        return True
+    low = ipaddress.IPv4Address(int(ip) & 0xFFFFFFFF)
+    if low.is_loopback or low.is_link_local:
+        return True
+    return not allow_private and low.is_private and not low.is_unspecified         and int(low) >> 24 != 0
 
 
 def resolve_checked(host: str, port: int, *, allow_private: bool = True

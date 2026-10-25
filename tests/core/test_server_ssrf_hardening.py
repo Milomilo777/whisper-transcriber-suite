@@ -299,3 +299,37 @@ def test_webhook_ignores_proxy_environment(monkeypatch, listener, scheme, var):
     with pytest.raises(urllib.error.URLError):
         post_webhook(f"{scheme}://hook.example:9/x", {}, timeout=3)
     assert listener.connections == 0
+
+
+# --- NAT64 / translation prefixes ------------------------------------------------
+
+@pytest.mark.parametrize("addr", [
+    "64:ff9b::a9fe:a9fe",        # well-known NAT64 -> 169.254.169.254
+    "64:ff9b::7f00:1",           # -> 127.0.0.1
+    "64:ff9b:1::a9fe:a9fe",      # local-use NAT64
+    "2001:4860:64::a9fe:a9fe",   # operator /96 prefix -> 169.254.169.254
+    "2001:db8:1:2:3:4:7f00:1",   # operator /96 prefix -> 127.0.0.1
+    "2002:a9fe:a9fe::1",         # 6to4 of the metadata address
+    "2001:0:4136:e378:8000:63bf:3fff:fdd2",  # Teredo
+])
+def test_translation_prefixes_embedding_blocked_ipv4_are_refused(addr):
+    assert netguard.address_blocked(ipaddress.ip_address(addr))
+
+
+@pytest.mark.parametrize("addr", [
+    "2606:4700:4700::1111", "2a00:1450:4001:81b::200e", "2001:4860:4860::8888",
+])
+def test_ordinary_global_ipv6_stays_allowed(addr):
+    assert not netguard.address_blocked(ipaddress.ip_address(addr))
+
+
+def test_well_known_nat64_is_refused_even_for_public_targets():
+    """64:ff9b::/96 is in Python's reserved ::/8; an IPv6-only host with DNS64
+    cannot use link jobs or webhooks (documented)."""
+    assert netguard.address_blocked(ipaddress.ip_address("64:ff9b::5db8:d822"))
+
+
+def test_translation_prefix_to_a_private_range_follows_allow_private():
+    ip = ipaddress.ip_address("2001:4860:64::c0a8:114")  # -> 192.168.1.20
+    assert not netguard.address_blocked(ip)
+    assert netguard.address_blocked(ip, allow_private=False)
