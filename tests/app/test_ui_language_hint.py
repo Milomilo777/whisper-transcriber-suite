@@ -19,8 +19,9 @@ def _rtl_ready(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def decide(config: dict[str, Any] | None = None, running: str = "en", fmt: str | None = "de-DE",
-           keys: list[int] | None = None, available: Any = AVAILABLE) -> str | None:
-    return hint.suggestion(config or {}, running_language=running, format_locale=fmt,
+           keys: list[int] | None = None, available: Any = AVAILABLE, display: str | None = "en-US") -> str | None:
+    return hint.suggestion(config or {}, running_language=running, display_language=display,
+                           format_locale=fmt,
                            keyboard_langids=[EN, DE] if keys is None else keys, available=available)
 
 
@@ -48,6 +49,23 @@ def test_unset_or_automatic_counts_as_no_explicit_choice(config: dict[str, Any])
 
 def test_a_display_language_that_is_not_english_gives_no_suggestion() -> None:
     assert decide(running="fr") is None
+
+
+@pytest.mark.parametrize("display", ["ja-JP", "xx-YY", "th-TH", "", None])
+def test_an_unsupported_display_language_that_falls_back_to_english_gives_no_suggestion(
+        display: str | None) -> None:
+    # The app runs in English only because it has no catalog for the display language; German
+    # format and a German keyboard must not turn that into "this person wants German".
+    assert decide(running="en", display=display, fmt="de-DE", keys=[DE]) is None
+    assert decide(running="en", display="en-GB", fmt="de-DE", keys=[DE]) == "de"  # control
+
+
+def test_the_display_language_is_read_from_windows() -> None:
+    assert hint.read_display_language(SimpleNamespace(
+        kernel32=SimpleNamespace(GetUserDefaultUILanguage=lambda: 0x0809))) == "en-GB"
+    assert hint.read_display_language(SimpleNamespace(
+        kernel32=SimpleNamespace(GetUserDefaultUILanguage=lambda: 0x7777))) is None  # unknown id
+    assert hint.read_display_language(SimpleNamespace()) is None
 
 
 @pytest.mark.parametrize(("fmt", "keys"), [
@@ -78,7 +96,8 @@ def test_a_language_without_a_usable_catalog_is_never_suggested() -> None:
 def test_only_windows_asks(platform: str) -> None:
     called: list[str] = []
     out = hint.suggestion_for_this_machine(
-        {}, platform=platform, environ={}, read_locale=lambda: called.append("l") or "de-DE",
+        {}, platform=platform, environ={}, read_display=lambda: "en-US",
+        read_locale=lambda: called.append("l") or "de-DE",
         read_keyboards=lambda: called.append("k") or [DE])
     assert out is None and called == []
 
@@ -86,7 +105,7 @@ def test_only_windows_asks(platform: str) -> None:
 def test_the_environment_override_means_no_suggestion(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(i18n, "current_language", lambda: "en")
     assert hint.suggestion_for_this_machine(
-        {}, platform="win32", environ={i18n.ENV_LANGUAGE: "qps-ploc"},
+        {}, platform="win32", environ={i18n.ENV_LANGUAGE: "qps-ploc"}, read_display=lambda: "en-US",
         read_locale=lambda: "de-DE", read_keyboards=lambda: [DE]) is None
 
 
@@ -94,13 +113,18 @@ def test_this_machine_path_uses_the_readers_and_survives_their_failure(monkeypat
     monkeypatch.setattr(i18n, "current_language", lambda: "en")
     monkeypatch.setattr(i18n, "catalog_statuses", lambda: AVAILABLE)
     assert hint.suggestion_for_this_machine(
-        {}, platform="win32", environ={}, read_locale=lambda: "de-DE", read_keyboards=lambda: [DE]) == "de"
+        {}, platform="win32", environ={}, read_display=lambda: "en-US",
+        read_locale=lambda: "de-DE", read_keyboards=lambda: [DE]) == "de"
+    assert hint.suggestion_for_this_machine(  # an unknown display language: no suggestion
+        {}, platform="win32", environ={}, read_display=lambda: None,
+        read_locale=lambda: "de-DE", read_keyboards=lambda: [DE]) is None
 
     def boom() -> Any:
         raise OSError("blocked")
 
     assert hint.suggestion_for_this_machine(
-        {}, platform="win32", environ={}, read_locale=boom, read_keyboards=lambda: [DE]) is None
+        {}, platform="win32", environ={}, read_display=lambda: "en-US",
+        read_locale=boom, read_keyboards=lambda: [DE]) is None
 
 
 # --- the Win32 readers with a fake windll ----------------------------------------------------

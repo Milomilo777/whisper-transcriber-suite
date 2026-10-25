@@ -5,7 +5,8 @@ whose regional FORMAT (dates, numbers) and installed KEYBOARD point to a languag
 probably prefers it, so the first run offers it once. All of these must hold:
 
   * no explicit ``ui_language`` is saved yet and the question was never answered,
-  * the app runs in English (the display language resolved to English),
+  * the Windows display language itself is English (an unsupported display language that makes
+    the app fall back to English does not count) and the app runs in English,
   * the regional format locale maps to a supported non-English language ``L``,
   * an installed keyboard layout is a layout of ``L``.
 
@@ -44,6 +45,20 @@ def read_format_locale(windll: Any = None) -> str | None:
         return name or None
     except Exception:  # noqa: BLE001 - a hint is a nicety; any failure is "no hint"
         logger.debug("Could not read the regional format locale", exc_info=True)
+        return None
+
+
+def read_display_language(windll: Any = None) -> str | None:
+    """The Windows display language as a tag ("en-US") from GetUserDefaultUILanguage, or None."""
+    try:
+        if windll is None:
+            import ctypes
+            windll = getattr(ctypes, "windll")
+        langid = int(windll.kernel32.GetUserDefaultUILanguage())
+        name = locale.windows_locale.get(langid) if langid else None
+        return name.replace("_", "-") if name else None
+    except Exception:  # noqa: BLE001
+        logger.debug("Could not read the Windows display language", exc_info=True)
         return None
 
 
@@ -87,6 +102,7 @@ def suggestion(
     config: Mapping[str, Any],
     *,
     running_language: str,
+    display_language: str | None,
     format_locale: str | None,
     keyboard_langids: list[int],
     available: Mapping[str, str],
@@ -98,6 +114,10 @@ def suggestion(
     if str(saved if saved is not None else "").strip().lower() not in ("", "auto"):
         return None
     if running_language != i18n.SOURCE_LANGUAGE:
+        return None
+    # The display language itself must be English: the app also shows English for a display
+    # language it has no catalog for, and that person did not choose English. Unknown = no hint.
+    if not display_language or display_language.split("-")[0].lower() != "en":
         return None
     if not format_locale or not keyboard_langids:
         return None
@@ -114,6 +134,7 @@ def suggestion_for_this_machine(
     *,
     platform: str | None = None,
     environ: Mapping[str, str] | None = None,
+    read_display: Callable[[], str | None] = read_display_language,
     read_locale: Callable[[], str | None] = read_format_locale,
     read_keyboards: Callable[[], list[int]] = read_keyboard_langids,
 ) -> str | None:
@@ -126,6 +147,7 @@ def suggestion_for_this_machine(
         return suggestion(
             config,
             running_language=i18n.current_language(),
+            display_language=read_display(),
             format_locale=read_locale(),
             keyboard_langids=read_keyboards(),
             available=i18n.catalog_statuses(),
