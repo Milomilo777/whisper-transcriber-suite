@@ -1104,6 +1104,37 @@ class TranscriptionService:
                                  getattr(task, "file_path", "?"))
         return settled
 
+    def _salvage_error_with_outputs(
+        self, worker: dict[str, Any], failed: Any, event: dict[str, Any], message: Any
+    ) -> bool:
+        """Finish a task as a success when its worker reports an ``error``
+        after the output files were already written.
+
+        The worker lists the files in the event's ``outputs``; when that set is
+        complete (the same check the ``worker_exit`` salvage uses) the
+        transcript is done and the late failure is only logged. Returns True
+        when the task was finished here.
+        """
+        outs = event.get("outputs")
+        if not (isinstance(outs, list) and outs) or getattr(failed, "status", None) != "running":
+            return False
+        previous = getattr(failed, "output_paths", None)
+        failed.output_paths = [str(p) for p in outs]
+        if not self._are_outputs_complete(failed):
+            failed.output_paths = previous
+            return False
+        failed.status = "finished"
+        failed.recovery_note = (
+            f"Worker reported an error after writing all outputs: {_short_message(message)}"
+        )
+        logger.warning(
+            "Worker error for task %s after complete outputs: salvaging as success (%s)",
+            event.get("task_id", "?"), message,
+        )
+        self.app.log(f"{message} (the output files are complete and were kept)")
+        self.finish_task(worker, keep_status=False)
+        return True
+
     def _are_outputs_complete(self, task: Any) -> bool:
         """Returns True if the output files expected for this task exist on disk.
 
@@ -1727,14 +1758,19 @@ class TranscriptionService:
                         else:
                             failed = worker["task"]
                             message = event.get("message", "Worker error")
-                            failed.status = "error"
-                            # Kept for the Queue row and the history row; both
-                            # said only "error" before.
-                            failed.error_reason = failure_reason(failed.file_path, message)
-                            if not getattr(failed, "recovery_note", ""):
-                                failed.recovery_note = _short_message(message)
-                            app.log(message)
-                            self.finish_task(worker, keep_status=True)
+                            # A late failure after every output file was written must
+                            # not discard the finished transcript.
+                            if not self._salvage_error_with_outputs(
+                                worker, failed, event, message
+                            ):
+                                failed.status = "error"
+                                # Kept for the Queue row and the history row; both
+                                # said only "error" before.
+                                failed.error_reason = failure_reason(failed.file_path, message)
+                                if not getattr(failed, "recovery_note", ""):
+                                    failed.recovery_note = _short_message(message)
+                                app.log(message)
+                                self.finish_task(worker, keep_status=True)
                     else:
                         app.log(event.get("message", "Worker error"))
                 elif event_type == "control_applied":

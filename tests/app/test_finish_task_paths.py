@@ -232,3 +232,52 @@ def test_persistent_lock_still_reports_finished_and_logs_loudly(tmp_path, monkey
     assert state["n"] == 4  # first try + 3 retries
     assert t.status == "finished" and calls.shown == [t]
     assert any("History record update failed" in r.getMessage() for r in caplog.records)
+
+
+def _error_event(t, outputs, message="post step failed"):
+    ev = {"event": "error", "task_id": t.task_id, "message": message,
+          "_token": "tok1", "_worker_id": 1, "_pid": 5}
+    if outputs is not None:
+        ev["outputs"] = outputs
+    return ev
+
+
+def test_error_event_after_complete_outputs_is_salvaged_as_finished(tmp_path):
+    """A late worker failure after the files were written keeps the transcript."""
+    calls = _Calls()
+    app, hist = _app(tmp_path, calls)
+    svc = TranscriptionService(app)
+    out = tmp_path / "e.srt"
+    out.write_text("1\n00:00:00,000 --> 00:00:01,000\nhi\n\n", encoding="utf-8")
+    t = _task(str(tmp_path / "e.mp4"), hist)
+    app.workers.append(_worker(1, "tok1", t))
+    app.worker_events.put(_error_event(t, [str(out)]))
+    svc.poll()
+    row = hist.list_transcriptions()[0]
+    assert row["status"] == "finished" and row["output_paths"] == [str(out)]
+    assert t.status == "finished" and calls.shown == [t]
+    assert "post step failed" in t.recovery_note
+
+
+def test_error_event_with_missing_output_file_stays_an_error(tmp_path):
+    calls = _Calls()
+    app, hist = _app(tmp_path, calls)
+    svc = TranscriptionService(app)
+    t = _task(str(tmp_path / "e.mp4"), hist)
+    app.workers.append(_worker(1, "tok1", t))
+    app.worker_events.put(_error_event(t, [str(tmp_path / "gone.srt")]))
+    svc.poll()
+    assert t.status == "error" and calls.shown == []
+    assert hist.list_transcriptions()[0]["status"] == "error"
+
+
+def test_error_event_without_outputs_is_unchanged(tmp_path):
+    calls = _Calls()
+    app, hist = _app(tmp_path, calls)
+    svc = TranscriptionService(app)
+    (tmp_path / "e.srt").write_text("x", encoding="utf-8")  # an old file must not count
+    t = _task(str(tmp_path / "e.mp4"), hist)
+    app.workers.append(_worker(1, "tok1", t))
+    app.worker_events.put(_error_event(t, None))
+    svc.poll()
+    assert t.status == "error" and calls.shown == []
