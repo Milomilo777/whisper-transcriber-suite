@@ -15,11 +15,12 @@ import pytest
 
 
 @pytest.fixture
-def App():
+def App(monkeypatch):
     if "faster_whisper" not in sys.modules:
         fw = types.ModuleType("faster_whisper")
         fw.WhisperModel = object  # type: ignore[attr-defined]
-        sys.modules["faster_whisper"] = fw
+        # setitem: the stub must not outlive the test (later tests patch faster_whisper.utils)
+        monkeypatch.setitem(sys.modules, "faster_whisper", fw)
     from app.app import App as _App
     return _App
 
@@ -50,6 +51,9 @@ class _Handle:
 def ui(App):
     root = tk.Tk()
     root.withdraw()
+    # Let Tk create the window before the clipboard is used: on Tk 9 (Windows) a
+    # clipboard call on a root that never processed its events crashed the process.
+    root.update_idletasks()
     a = App.__new__(App)
     a.app_config = {"server_port": 8765}
     a.server_port_var = _Var(8765)
