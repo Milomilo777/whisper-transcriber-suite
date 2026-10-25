@@ -118,6 +118,10 @@ def content_disposition_attachment(filename: str) -> str:
 
 logger = logging.getLogger(__name__)
 
+# What a client is told when the job folder cannot be created (disk full,
+# read-only drive); the reason goes to the local log only.
+_JOB_STORAGE_FAILED = "the server could not store the job; try again later"
+
 _STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 
 # Hard ceiling regardless of config, so a typo in config can't open the
@@ -991,6 +995,12 @@ def parse_clip(raw_start: Any, raw_end: Any) -> tuple[float | None, float | None
     """
     start = _coerce_float(raw_start)
     end = _coerce_float(raw_end)
+    # JSON allows NaN / Infinity / 1e999; neither is a time. Treated like a
+    # missing bound.
+    if start is not None and not math.isfinite(start):
+        start = None
+    if end is not None and not math.isfinite(end):
+        end = None
     if start is not None and start <= 0.0:
         start = None
     if end is not None and end <= 0.0:
@@ -2399,6 +2409,11 @@ class JobRequestHandler(BaseHTTPRequestHandler):
             except ValueError as e:
                 self._send_error_json(HTTPStatus.BAD_REQUEST, str(e))
                 return
+            except OSError as e:
+                logger.warning("server: could not create a job: %s", e)
+                self._send_error_json(HTTPStatus.INTERNAL_SERVER_ERROR,
+                                      _JOB_STORAGE_FAILED)
+                return
             try:
                 # Copy just the file part's byte range from the temp file to
                 # its final per-job location, in fixed-size chunks — the
@@ -2537,7 +2552,8 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         manager = self._srv.manager
         try:
             data = json.loads(body.decode("utf-8") or "{}")
-        except (ValueError, UnicodeDecodeError):
+        except (ValueError, UnicodeDecodeError, RecursionError):
+            # RecursionError: a deeply nested body ("[[[[...").
             self._send_error_json(HTTPStatus.BAD_REQUEST, "invalid JSON body")
             return
         if not isinstance(data, dict):
@@ -2571,6 +2587,11 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         except QueueFull as e:
             self._send_error_json(HTTPStatus.SERVICE_UNAVAILABLE, str(e), retry_after=30)
             return
+        except OSError as e:
+            logger.warning("server: could not create a job: %s", e)
+            self._send_error_json(HTTPStatus.INTERNAL_SERVER_ERROR,
+                                  _JOB_STORAGE_FAILED)
+            return
         self._send_json(HTTPStatus.ACCEPTED, {"job_id": job_id})
 
     def _mcp_dispatch(self) -> None:
@@ -2600,7 +2621,7 @@ class JobRequestHandler(BaseHTTPRequestHandler):
             return
         try:
             data = json.loads(body.decode("utf-8"))
-        except (ValueError, UnicodeDecodeError):
+        except (ValueError, UnicodeDecodeError, RecursionError):
             self._send_json(HTTPStatus.BAD_REQUEST, mcp.error_response(
                 None, mcp.PARSE_ERROR, "Parse error: body is not JSON"))
             return
@@ -2741,6 +2762,12 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         except ValueError as e:
             self._send_openai_error(
                 HTTPStatus.BAD_REQUEST, str(e), param="file")
+            return
+        except OSError as e:
+            logger.warning("server: could not create a job: %s", e)
+            self._send_openai_error(
+                HTTPStatus.INTERNAL_SERVER_ERROR, _JOB_STORAGE_FAILED,
+                err_type="server_error")
             return
         try:
             self._copy_range(upload.tmp_path, media_path,

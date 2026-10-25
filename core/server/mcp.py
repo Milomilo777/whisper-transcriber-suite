@@ -22,7 +22,7 @@ import logging
 import math
 from typing import Any, Callable
 
-from core.server.jobs import STATUS_FINISHED, QueueFull
+from core.server.jobs import STATUS_FINISHED, QueueFull, public_error_text
 from core.writers import BINARY_WRITERS, extension_for, supported_formats
 
 logger = logging.getLogger(__name__)
@@ -378,7 +378,9 @@ def _tools_call(msg_id: Any, params: dict[str, Any],
         return _result(msg_id, _tool_error(str(exc)))
     except Exception as exc:  # noqa: BLE001 - reported to the client + logged
         logger.exception("mcp: tool %s failed", name)
-        return _result(msg_id, _tool_error(f"{name} failed: {exc}"))
+        # The full text (it may hold host paths) stays in the log.
+        return _result(msg_id, _tool_error(
+            f"{name} failed: {public_error_text(exc)}"))
 
 
 def handle(message: Any, manager: Any, *,

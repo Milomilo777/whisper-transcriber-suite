@@ -24,6 +24,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **Local-network link fetches use ports 80 and 443 only**: the direct download of a link on an allowed local
   network, and each of its redirects, now follows the same port rule as the download proxy. A link job with
   another port is refused when it is submitted, so it cannot probe other services of a listed host.
+- **The server answers malformed or unlucky requests cleanly**: a session cookie with non-ASCII digits, a
+  deeply nested JSON body and non-finite clip times (`NaN`, `Infinity`) no longer break the request handler
+  (they get HTTP 400 or are ignored). A full or read-only disk while a job is created returns HTTP 500 with a
+  generic message, and MCP tool errors no longer show host paths; the details stay in the local log.
 - **The completion webhook checks the address at connect time**: the host name is resolved once, only the
   checked addresses are connected to, and proxies from the environment are not used. LAN receivers stay
   allowed.
