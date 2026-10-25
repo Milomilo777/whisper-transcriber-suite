@@ -27,6 +27,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **Logged-in clients survive a shared-address lockout**: after a correct password the server sets a signed,
   15-minute session cookie. A valid cookie is accepted without touching the per-address failure count, so
   an attacker behind the same NAT or reverse proxy cannot keep a logged-in user locked out.
+- **The download proxy handles `Expect: 100-continue`**: it sends the interim `100 Continue` itself and does
+  not forward the header, so a client that waits for it no longer stalls until the timeout. Other
+  expectations get HTTP 417.
 - **Slow header senders are limited**, in the server and in the download proxy: the header has an absolute
   deadline, and connections without a complete header have a small budget (further ones are still served
   but get only 1 to 2 seconds), so drippers cannot lock out other clients. When every connection slot is

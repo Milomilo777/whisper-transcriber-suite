@@ -700,7 +700,9 @@ Behaviour to know:
   settings is not read (set the environment variables instead). A plain `http://` request body is
   forwarded by its declared framing only (`Content-Length` or `chunked`); a
   request with conflicting framing is refused with HTTP 400, and nothing sent
-  after the declared body is forwarded. The
+  after the declared body is forwarded. `Expect: 100-continue` is answered by
+  the proxy itself (an interim `100 Continue` once the destination is checked
+  and connected) and is not forwarded; any other expectation gets HTTP 417. The
   proxy resolves each destination itself, refuses a loopback, link-local
   (cloud metadata), private-network (10.x, 172.16-31.x, 192.168.x, 100.64/10),
   multicast, unspecified or otherwise non-public address at connect time, and

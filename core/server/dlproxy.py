@@ -64,6 +64,10 @@ ALLOWED_PORTS = frozenset({80, 443})
 _FRAMING_HEADERS = {"content-length", "transfer-encoding"}
 _HOP_BY_HOP = {"proxy-authorization", "proxy-connection", "connection",
                "keep-alive", "te", "trailer", "upgrade"}
+# ``Expect: 100-continue`` is answered by the proxy itself and not forwarded:
+# the proxy reads the whole body before it reads any upstream answer, so a
+# client waiting for the origin's interim 100 would deadlock with it.
+_EXPECT = "expect"
 
 
 def _split_host_port(target: str, default_port: int | None
@@ -356,6 +360,12 @@ class _Handler(socketserver.StreamRequestHandler):
         if framing is None:
             self._reply(400, "conflicting or unsupported message framing")
             return
+        expectations = [token.strip().lower() for name, value in headers
+                        if name.lower() == _EXPECT
+                        for token in value.split(",")]
+        if any(token != "100-continue" for token in expectations):
+            self._reply(417, "expectation failed")
+            return
         upstream = self._connect_upstream(*hp, scheme="http")
         if upstream is None:
             return
@@ -367,7 +377,8 @@ class _Handler(socketserver.StreamRequestHandler):
                 # The framing headers are dropped and re-emitted once below,
                 # in canonical form: a copy of the client's own would
                 # duplicate them for a strict receiver.
-                if name.lower() not in _HOP_BY_HOP | _FRAMING_HEADERS:
+                if name.lower() not in (_HOP_BY_HOP | _FRAMING_HEADERS
+                                        | {_EXPECT}):
                     out.append(f"{name}: {value}")
             if framing == "chunked":
                 out.append("Transfer-Encoding: chunked")
@@ -375,6 +386,11 @@ class _Handler(socketserver.StreamRequestHandler):
                 out.append(f"Content-Length: {framing}")
             out.append("Connection: close")
             upstream.sendall(("\r\n".join(out) + "\r\n\r\n").encode("latin-1"))
+            if (expectations and framing != 0
+                    and version.upper() == "HTTP/1.1"):
+                # The destination is checked and connected: invite the body.
+                self.wfile.write(b"HTTP/1.1 100 Continue\r\n\r\n")
+                self.wfile.flush()
             # One framing-aware path: exactly the declared body is forwarded,
             # nothing the client sends after it (no request smuggling).
             if not self._forward_body(upstream, framing):
