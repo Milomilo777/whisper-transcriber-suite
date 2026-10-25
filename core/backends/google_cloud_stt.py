@@ -245,7 +245,10 @@ def read_project_id(credentials_json_path: str) -> str:
             "Advanced > Backend."
         )
     try:
-        with open(path, "r", encoding="utf-8") as fp:
+        # utf-8-sig: a key file saved by a Windows editor with a UTF-8 BOM
+        # is valid JSON to the user but raised "may be corrupt" here; the
+        # codec strips the BOM when present and reads clean UTF-8 identically.
+        with open(path, "r", encoding="utf-8-sig") as fp:
             data = json.load(fp)
     except (OSError, UnicodeDecodeError, ValueError) as e:
         raise RuntimeError(

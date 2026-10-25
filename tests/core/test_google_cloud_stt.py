@@ -46,6 +46,18 @@ def test_read_project_id_happy(tmp_path):
     assert g.read_project_id(path) == "my-proj-123"
 
 
+def test_read_project_id_with_utf8_bom(tmp_path):
+    # Windows editors (Notepad legacy mode, some PowerShell redirects) save
+    # UTF-8 with a BOM; json.load on a plain "utf-8" read sees U+FEFF as the
+    # first character and rejects the file, telling the user a key they just
+    # downloaded is "corrupt".
+    p = tmp_path / "sa_bom.json"
+    p.write_bytes(bytes([0xEF, 0xBB, 0xBF]) + json.dumps(
+        {"project_id": "my-proj-123", "type": "service_account"}
+    ).encode("utf-8"))
+    assert g.read_project_id(str(p)) == "my-proj-123"
+
+
 def test_read_project_id_empty_path():
     with pytest.raises(RuntimeError) as e:
         g.read_project_id("")
