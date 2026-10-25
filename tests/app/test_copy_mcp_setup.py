@@ -104,7 +104,7 @@ class _BadVar(_Var):
         raise ValueError("expected integer")
 
 
-@pytest.mark.parametrize("junk", ["abc", None, "", [1], "70000"])
+@pytest.mark.parametrize("junk", ["abc", None, "", [1], "70000", float("inf")])
 def test_junk_port_settings_fall_back_to_the_default_port(App, ui, junk):
     a, root = ui
     a.server_port_var = _BadVar()
