@@ -7,3 +7,7 @@ from __future__ import annotations
 # displayed version never goes stale. Bump it alongside pyproject.toml
 # and the two .iss files on every release.
 __version__ = "2.2.0"
+
+# Sent on every HTTP request to an AI provider. Some providers (Groq, behind
+# Cloudflare) answer urllib's default User-Agent with HTTP 403 "error code: 1010".
+APP_USER_AGENT = f"WhisperTranscriberSuite/{__version__}"

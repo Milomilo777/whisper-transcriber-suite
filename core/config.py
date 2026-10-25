@@ -345,6 +345,9 @@ DEFAULT_CONFIG = {
     # Advanced dialog's help text shows examples (gpt-4o-mini, etc.).
     "llm_remote_base_url": "https://api.openai.com/v1",
     "llm_remote_model": "",
+    # Token budget (prompt + answer) per remote request; longer input is trimmed
+    # to fit, since providers cap tokens per minute. 0 = never trim.
+    "llm_remote_max_input_tokens": 6000,
     # Stored in CLEARTEXT here, consistent with cloud_stt_api_key /
     # gcloud_stt_credentials_json / server_token above — config.json is
     # per-user under %LOCALAPPDATA%\WhisperTranscriberSuite and is not encrypted.

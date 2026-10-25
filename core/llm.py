@@ -57,7 +57,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
 
-from . import offline
+from . import APP_USER_AGENT, offline
 from ._gc_import_guard import gc_disabled_import
 from .config import user_cache_dir
 from .text_metrics import count_words
@@ -71,6 +71,12 @@ DEFAULT_MODEL_URL = (
     "resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf"
 )
 DEFAULT_MODEL_SIZE_BYTES = 1_117_000_000  # ~1.04 GB; tolerance check only
+
+# One-click remote preset (Advanced > AI). Groq serves an OpenAI-compatible API
+# and has a free tier. The model id is a production model listed at
+# https://console.groq.com/docs/models (checked 2026-10-25); the user can edit it.
+GROQ_BASE_URL = "https://api.groq.com/openai/v1"
+GROQ_MODEL = "llama-3.3-70b-versatile"
 
 
 # ---------------------------------------------------------------- availability
@@ -597,14 +603,25 @@ _RETRYABLE_STATUS = frozenset({408, 425, 429, 500, 502, 503, 504})
 # A chat reply is a few KB; this only stops a hostile or broken endpoint
 # from streaming for ever.
 _MAX_RESPONSE_BYTES = 16 * 1024 * 1024
+#: Default per-request budget for a remote provider (see RemoteLLMConfig).
+DEFAULT_REMOTE_MAX_INPUT_TOKENS = 6000
+#: Tacked onto a summary or answer made from a shortened transcript.
+_TRIMMED_NOTE = (
+    "\n\n(Note: the transcript was shortened to fit the AI provider's size limit.)"
+)
 
 
-def _retry_after_seconds(headers: Any) -> float:
+def _retry_after_raw(headers: Any) -> float:
+    """The Retry-After header in seconds, unbounded (0 when absent or bad)."""
     try:
         value = float((headers.get("Retry-After") or "").strip())
     except (AttributeError, TypeError, ValueError):
         return 0.0
-    return max(0.0, min(value, _MAX_RETRY_AFTER_S))
+    return value if value > 0 and value == value else 0.0
+
+
+def _retry_after_seconds(headers: Any) -> float:
+    return min(_retry_after_raw(headers), _MAX_RETRY_AFTER_S)
 
 
 @dataclass
@@ -620,6 +637,10 @@ class RemoteLLMConfig:
     model: str
     api_key: str = ""
     timeout: float = 120.0
+    #: Token budget (prompt + answer) for one request. Providers cap tokens
+    #: per minute (Groq's free tier: a few thousand), so a long transcript is
+    #: trimmed to fit instead of being refused. 0 turns trimming off.
+    max_input_tokens: int = DEFAULT_REMOTE_MAX_INPUT_TOKENS
 
 
 class RemoteLLMRunner:
@@ -635,6 +656,8 @@ class RemoteLLMRunner:
 
     def __init__(self, cfg: RemoteLLMConfig) -> None:
         self.cfg = cfg
+        #: True when the last request had to be trimmed to the budget.
+        self.last_trimmed = False
 
     def is_loaded(self) -> bool:
         # Nothing to "load" for an HTTP client — always ready to try.
@@ -670,13 +693,32 @@ class RemoteLLMRunner:
                 "the AI provider address must start with http:// or https://"
             )
         url = f"{base}/chat/completions"
+        self.last_trimmed = False
+        if self.cfg.max_input_tokens > 0:
+            before = sum(len(str(m.get("content") or "")) for m in messages)
+            messages, max_tokens = _fit_messages_to_context(
+                messages, max_tokens, self.cfg.max_input_tokens,
+                _token_counter(None),
+            )
+            after = sum(len(str(m.get("content") or "")) for m in messages)
+            self.last_trimmed = after < before
+            if self.last_trimmed:
+                logger.warning(
+                    "remote LLM: input trimmed to the %d-token budget "
+                    "(setting llm_remote_max_input_tokens).",
+                    self.cfg.max_input_tokens,
+                )
         payload = {
             "model": self.cfg.model,
             "messages": messages,
             "max_tokens": max_tokens,
             "temperature": temperature,
         }
-        headers = {"Content-Type": "application/json"}
+        headers = {
+            "Content-Type": "application/json",
+            # urllib's default agent is refused by Groq (HTTP 403, error 1010).
+            "User-Agent": APP_USER_AGENT,
+        }
         if self.cfg.api_key:
             headers["Authorization"] = f"Bearer {self.cfg.api_key}"
         req = urllib.request.Request(
@@ -718,6 +760,16 @@ class RemoteLLMRunner:
                 except Exception:  # noqa: BLE001
                     pass
                 message = f"{url} returned HTTP {e.code}: {body or e.reason}"
+                if e.code == 429:
+                    message = (
+                        "The AI provider's rate limit was reached (HTTP 429). "
+                        f"{body or e.reason}"
+                    )
+                elif e.code == 413:
+                    message = (
+                        "The request is too large for this AI provider "
+                        f"(HTTP 413). Lower llm_remote_max_input_tokens. {body}"
+                    )
                 if e.code in _RETRYABLE_STATUS:
                     raise _RetryableLLMError(
                         message, _retry_after_seconds(e.headers)) from e
@@ -741,10 +793,11 @@ class RemoteLLMRunner:
         return raw
 
     def summarise(self, transcript_text: str, *, max_bullets: int = 8) -> str:
-        return self._chat(
+        out = self._chat(
             [{"role": "user", "content": _summarise_prompt(transcript_text, max_bullets)}],
             max_tokens=600,
         )
+        return out + _TRIMMED_NOTE if out and self.last_trimmed else out
 
     def action_items(self, transcript_text: str) -> list[str]:
         raw = self._chat(
@@ -754,10 +807,11 @@ class RemoteLLMRunner:
         return _parse_json_list(raw)
 
     def ask(self, transcript_text: str, question: str) -> str:
-        return self._chat(
+        out = self._chat(
             [{"role": "user", "content": _ask_prompt(transcript_text, question)}],
             max_tokens=400,
         )
+        return out + _TRIMMED_NOTE if out and self.last_trimmed else out
 
     def translate(self, text: str, *, target_language: str = "English") -> str:
         return _strip_wrapped_quotes(self._chat(
@@ -767,6 +821,16 @@ class RemoteLLMRunner:
 
 
 # ---------------------------------------------------------------- factory
+
+
+def _budget_from_config(config: dict[str, Any]) -> int:
+    """``llm_remote_max_input_tokens`` as an int; bad values use the default."""
+    try:
+        value = int(config.get("llm_remote_max_input_tokens",
+                               DEFAULT_REMOTE_MAX_INPUT_TOKENS))
+    except (TypeError, ValueError):
+        return DEFAULT_REMOTE_MAX_INPUT_TOKENS
+    return max(0, value)
 
 
 def build_runner_from_config(
@@ -794,6 +858,7 @@ def build_runner_from_config(
             base_url=base_url,
             model=model,
             api_key=(config.get("llm_remote_api_key") or "").strip(),
+            max_input_tokens=_budget_from_config(config),
         ))
     try:
         if not runtime_available():

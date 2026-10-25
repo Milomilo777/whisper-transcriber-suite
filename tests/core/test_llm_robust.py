@@ -231,3 +231,84 @@ def test_http_and_https_base_urls_are_still_used(monkeypatch, base_url):
     runner = llm.RemoteLLMRunner(llm.RemoteLLMConfig(base_url=base_url, model="m"))
     assert runner._chat([{"role": "user", "content": "hi"}]) == "ok"
     assert len(calls) == 1
+
+
+def test_every_remote_request_sends_the_app_user_agent(monkeypatch):
+    # Groq refuses urllib's default agent with HTTP 403 "error code: 1010".
+    from core import APP_USER_AGENT
+    calls = _script(monkeypatch, [_Resp()])
+    _runner()._chat([{"role": "user", "content": "hi"}])
+    agent = calls[0].get_header("User-agent")
+    assert agent == APP_USER_AGENT
+    assert agent.startswith("WhisperTranscriberSuite/")
+
+
+def _echo_body(monkeypatch):
+    sent = []
+
+    def fake(req, timeout=None):
+        sent.append(json.loads(req.data.decode("utf-8")))
+        return _Resp()
+
+    monkeypatch.setattr(llm.urllib.request, "urlopen", fake)
+    return sent
+
+
+def test_long_remote_input_is_trimmed_to_the_budget(monkeypatch, caplog):
+    sent = _echo_body(monkeypatch)
+    runner = llm.RemoteLLMRunner(llm.RemoteLLMConfig(
+        base_url="https://llm.example/v1", model="m", api_key="sk-secret",
+        max_input_tokens=1000))
+    text = "word " * 20000
+    with caplog.at_level("WARNING"):
+        out = runner.summarise(text)
+    prompt = sent[0]["messages"][0]["content"]
+    assert len(prompt) < len(text) // 4
+    assert "truncated to fit" in prompt
+    assert runner.last_trimmed is True
+    assert "shortened" in out
+    assert "trimmed" in caplog.text
+    assert "sk-secret" not in caplog.text
+
+
+def test_short_remote_input_is_sent_untouched(monkeypatch):
+    sent = _echo_body(monkeypatch)
+    runner = _runner()
+    out = runner.summarise("a short talk")
+    assert "a short talk" in sent[0]["messages"][0]["content"]
+    assert runner.last_trimmed is False
+    assert out == "ok"
+
+
+def test_budget_zero_turns_trimming_off(monkeypatch):
+    sent = _echo_body(monkeypatch)
+    runner = llm.RemoteLLMRunner(llm.RemoteLLMConfig(
+        base_url="https://llm.example/v1", model="m", max_input_tokens=0))
+    runner.summarise("word " * 20000)
+    assert len(sent[0]["messages"][0]["content"]) > 90000
+
+
+def test_budget_comes_from_config_and_bad_values_fall_back():
+    cfg = {"ai_enabled": True, "llm_provider": "remote",
+           "llm_remote_base_url": "https://x/v1", "llm_remote_model": "m"}
+    assert llm.build_runner_from_config(cfg).cfg.max_input_tokens == 6000
+    assert llm.build_runner_from_config(
+        dict(cfg, llm_remote_max_input_tokens="2500")).cfg.max_input_tokens == 2500
+    assert llm.build_runner_from_config(
+        dict(cfg, llm_remote_max_input_tokens="junk")).cfg.max_input_tokens == 6000
+
+
+def test_rate_limit_message_is_clear(monkeypatch):
+    _script(monkeypatch, [lambda r: _http_error(r, 429)])
+    with pytest.raises(llm.RemoteLLMError, match="rate limit was reached"):
+        _runner()._chat([{"role": "user", "content": "hi"}])
+
+
+def test_groq_preset_is_a_complete_remote_config():
+    cfg = {"ai_enabled": True, "llm_provider": "remote",
+           "llm_remote_base_url": llm.GROQ_BASE_URL,
+           "llm_remote_model": llm.GROQ_MODEL}
+    runner = llm.build_runner_from_config(cfg)
+    assert runner is not None
+    assert runner.cfg.base_url == "https://api.groq.com/openai/v1"
+    assert runner.cfg.model == "llama-3.3-70b-versatile"

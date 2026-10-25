@@ -469,3 +469,20 @@ def test_get_backend_unknown_still_falls_back_to_faster_whisper():
         sys.modules["faster_whisper"] = fake
     b = get_backend("does_not_exist")
     assert b.name == "faster_whisper"
+
+
+def test_cloud_requests_send_the_app_user_agent(monkeypatch):
+    """Both the JSON post and the key ping name the app, not urllib."""
+    from core import APP_USER_AGENT
+    seen = []
+
+    def fake(req, timeout=None):
+        seen.append(req.get_header("User-agent"))
+        return _FakeResp(b"{}")
+
+    monkeypatch.setattr(cs.urllib.request, "urlopen", fake)
+    backend = cs.CloudSttBackend(config={"cloud_stt_api_key": "k"})
+    backend.load()
+    backend._post_json("https://x", {}, 10)
+    backend.ping_key()
+    assert seen == [APP_USER_AGENT, APP_USER_AGENT]

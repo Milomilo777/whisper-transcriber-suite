@@ -68,6 +68,7 @@ PER_TASK_KEYS: tuple[str, ...] = (
     "llm_provider",
     "llm_remote_base_url",
     "llm_remote_model",
+    "llm_remote_max_input_tokens",
     "ai_model_path",
     # Output file naming.
     "output_filename_template",

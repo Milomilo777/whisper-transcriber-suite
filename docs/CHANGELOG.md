@@ -6,6 +6,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Changed
 
+- **Long transcripts no longer overflow a remote AI provider**: summaries, questions and translations are
+  trimmed to a token budget (`llm_remote_max_input_tokens`, default 6000, 0 = off). A trimmed result says so,
+  and a rate limit (HTTP 429) now gives a clear message after the bounded `Retry-After` waits.
 - **The README describes the whole product again**: a full FAQ (36 questions), the browser version, every
   engine, model and output format, measured accuracy and CPU speed, each tab, speaker labels, downloads, Live,
   the phone and API mode, privacy, requirements, install, update, file locations and known limits.
@@ -19,6 +22,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Remote AI calls were refused by Groq (HTTP 403, error 1010)**: every request to an AI provider, including
+  the cloud speech-to-text calls, now sends a `WhisperTranscriberSuite/<version>` User-Agent instead of
+  urllib's default.
 - **Audio-only download of an episode page that has no audio file yet**: new episodes get their MP3 weeks
   after the video, and until then the audio list stayed empty and Download kept saying "Wait for formats to
   load, then select an audio format." The app now downloads the page's 720p video, keeps only its sound in the
