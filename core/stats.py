@@ -56,6 +56,7 @@ except ImportError:  # pragma: no cover - exercised via a blocked import in test
 
 from core import __version__ as _PROGRAM_VERSION
 from .text_metrics import count_words
+from .verified_download import urlopen_https_only
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +72,11 @@ _ISO2_RE = re.compile(r"[A-Za-z]{2}")
 # Anything else -- above all a local model folder typed into Advanced, whose
 # path usually holds the account name -- is sent as LOCAL_MODEL_LABEL.
 LOCAL_MODEL_LABEL = "local-model"
+# Hub ids the Advanced settings help names as examples for nvidia_asr_model_id.
+_DOCUMENTED_MODEL_IDS = frozenset({"nvidia/nemotron-3.5-asr-streaming-0.6b"})
+_ENGINE_IDS = frozenset(
+    {"faster_whisper", "whisper_cpp", "nvidia_asr", "cloud_stt", "google_cloud_stt"}
+)
 _ENGINE_PREFIX_RE = re.compile(r"([a-z][a-z0-9_]+):(.*)", re.DOTALL)
 _PUBLIC_MODEL_RE = re.compile(
     r"[A-Za-z0-9][A-Za-z0-9._-]*(?:/[A-Za-z0-9][A-Za-z0-9._-]*)?"
@@ -247,12 +253,11 @@ def audio_duration_from_segments(segments: list[dict] | None) -> float:
 def public_model_name(value: object) -> str:
     """The ``model`` value as the stats payload may carry it: never a path.
 
-    A catalog name, an engine id or a ``owner/name`` repo id passes
-    unchanged (an ``<engine>:`` prefix is kept). A value that is a path
-    (drive, UNC, home, absolute, ``..``, more than one separator) or names
-    an existing local folder becomes :data:`LOCAL_MODEL_LABEL`, so a model
-    folder the user picked never sends its location or the account name in
-    it.
+    A model or repo id the app itself offers (catalog, language models, the
+    default NVIDIA model) or an engine id passes unchanged (an ``<engine>:``
+    prefix is kept). Anything else -- a path, a folder name, a bare custom
+    name -- becomes :data:`LOCAL_MODEL_LABEL`, so a model the user picked
+    never sends its location or the account name in it.
     """
     text = str(value or "").strip()
     if not text:
@@ -264,13 +269,32 @@ def public_model_name(value: object) -> str:
         if not text:
             return prefix
         prefix += ":"
+    known_models, engines = _known_public_models()
+    if prefix and prefix[:-1] not in engines:
+        return LOCAL_MODEL_LABEL
     if (
-        _PUBLIC_MODEL_RE.fullmatch(text)
+        (text in known_models or text in engines)
+        and _PUBLIC_MODEL_RE.fullmatch(text)
         and ".." not in text
         and not os.path.isdir(text)
     ):
         return prefix + text
     return prefix + LOCAL_MODEL_LABEL
+
+
+def _known_public_models() -> tuple[frozenset[str], frozenset[str]]:
+    """(model ids, engine ids) the app itself offers: only these are sent as
+    they are. A bare custom name or a relative path is not on the list."""
+    from core import model_manager
+    from core.backends.nvidia_asr import DEFAULT_MODEL_ID
+    from core.language_models import LANGUAGE_MODELS
+
+    models: set[str] = {DEFAULT_MODEL_ID, *_DOCUMENTED_MODEL_IDS}
+    for slug, entry in model_manager.MODEL_REGISTRY.items():
+        models.add(slug)
+        models.update(str(entry[k]) for k in ("name", "hf_repo") if entry.get(k))
+    models.update(row.model for row in LANGUAGE_MODELS.values())
+    return frozenset(models), _ENGINE_IDS
 
 
 def build_stats_payload(
@@ -330,7 +354,7 @@ def _post(url: str, payload: dict[str, str], timeout: float) -> None:
                 "User-Agent": "WhisperTranscriberSuite",
             },
         )
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        with urlopen_https_only(req, timeout=timeout) as resp:
             resp.read(1)  # drain a byte; we don't care about the body
         logger.debug("usage stats posted to %s", url)
     except (urllib.error.URLError, OSError, ValueError) as e:

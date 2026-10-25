@@ -203,7 +203,32 @@ def test_an_existing_relative_model_folder_is_a_local_model(tmp_path, monkeypatc
     assert stats.public_model_name("nvidia_asr:acme/my-model") == (
         "nvidia_asr:" + stats.LOCAL_MODEL_LABEL
     )
-    assert stats.public_model_name("acme/other-model") == "acme/other-model"
+    # An id the app does not offer is never sent, folder or not.
+    assert stats.public_model_name("acme/other-model") == stats.LOCAL_MODEL_LABEL
+
+
+@pytest.mark.parametrize("value", [
+    "my-private-model",
+    "someone/models",
+    "nvidia_asr:someone/my-checkpoint",
+    "unknownengine:large-v3",
+])
+def test_unknown_names_and_relative_paths_are_never_sent(value):
+    out = stats.public_model_name(value)
+    assert out.endswith(stats.LOCAL_MODEL_LABEL)
+    assert "someone" not in out and "private" not in out
+
+
+def test_offered_ids_still_pass():
+    from core import model_manager
+    from core.language_models import LANGUAGE_MODELS
+
+    for slug, entry in model_manager.MODEL_REGISTRY.items():
+        for value in (slug, entry["name"], entry["hf_repo"]):
+            if value:
+                assert stats.public_model_name(value) == value
+    for row in LANGUAGE_MODELS.values():
+        assert stats.public_model_name(row.model) == row.model
 
 
 def test_an_engine_prefix_with_no_model_is_the_engine():

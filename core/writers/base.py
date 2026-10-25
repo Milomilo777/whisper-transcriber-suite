@@ -72,6 +72,13 @@ def replace_lone_surrogates(text: str) -> str:
     return text.translate(_LONE_SURROGATES)
 
 
+# C0 controls that are not whitespace (NUL, BEL, ESC ...) and DEL: invisible in a
+# transcript, and a NUL in an SRT stops the app's own importer.
+_CONTROL_STRIP: dict[int, None] = dict.fromkeys(
+    [*range(0x00, 0x09), *range(0x0E, 0x1C), 0x7F]
+)
+
+
 def normalize_text(text: object) -> str:
     """Trim and collapse internal whitespace runs to a single space.
 
@@ -82,7 +89,12 @@ def normalize_text(text: object) -> str:
     (:func:`replace_lone_surrogates`), so every writer built on this can
     encode its output.
     """
-    return " ".join(replace_lone_surrogates("" if text is None else str(text)).split())
+    cleaned = replace_lone_surrogates("" if text is None else str(text))
+    return " ".join(cleaned.translate(_CONTROL_STRIP).split())
+
+
+#: Largest second count a writer accepts (~31,700 years); a bigger finite value is clamped.
+MAX_SECONDS = 1e12
 
 
 def coerce_seconds(value: object, default: float = 0.0) -> float:
@@ -102,7 +114,10 @@ def coerce_seconds(value: object, default: float = 0.0) -> float:
         out = float(value)  # type: ignore[arg-type]
     except (TypeError, ValueError, OverflowError):
         return default
-    return out if math.isfinite(out) else default
+    if not math.isfinite(out):
+        return default
+    # Finite but absurd (1e308): the time formatters overflow past ~1e305.
+    return max(-MAX_SECONDS, min(MAX_SECONDS, out))
 
 
 # Control characters that are invalid in XML 1.0 (used by DOCX) plus
