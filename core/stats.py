@@ -297,6 +297,17 @@ def _known_public_models() -> tuple[frozenset[str], frozenset[str]]:
     return frozenset(models), _ENGINE_IDS
 
 
+#: Suffix of the version column per ``platform.system()``. The stats viewer shows the version but not the
+#: platform columns, so macOS and Linux runs carry it there; Windows (most users) stays unmarked.
+_OS_VERSION_SUFFIX = {"Darwin": "-mac", "Linux": "-linux"}
+
+
+def program_version_label(version: object = None, system: str | None = None) -> str:
+    """The app version as a stats row carries it: ``2.3.0`` on Windows, ``2.3.0-mac`` / ``2.3.0-linux`` else."""
+    text = str(_PROGRAM_VERSION if version is None else version or "")
+    return text + _OS_VERSION_SUFFIX.get(platform.system() if system is None else system, "")
+
+
 def build_stats_payload(
     *,
     model: str,
@@ -327,7 +338,7 @@ def build_stats_payload(
         "transcription_time": f"{float(transcription_time or 0.0):.3f}",
         "status": str(status or ""),
         "word_count": str(int(word_count or 0)),
-        "program_version": str(_PROGRAM_VERSION or ""),
+        "program_version": program_version_label(),
         "country": region_country(),
         "platform_system": platform.system(),
         "platform_release": platform.release(),

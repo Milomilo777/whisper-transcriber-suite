@@ -90,6 +90,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Changed
 
+- **Usage statistics show the operating system in the version column**: macOS and Linux runs send `2.3.0-mac` or `2.3.0-linux` (Windows stays `2.3.0`), because the statistics page shows the version but not the platform fields.
 - CodeQL now also scans the website's JavaScript and the GitHub Actions workflows, with the security-extended
   queries, on every push and once a day (was Python only, weekly); Dependabot keeps the pinned actions current.
 - **Quick start: "Best quality" for Persian uses the Persian model** (Nemotron ASR Persian on the local

@@ -507,7 +507,7 @@ What is sent (built by `core.stats.build_stats_payload`, posted by `core.stats.p
 | `transcription_time` | seconds of wall-clock time from task start to finish |
 | `word_count` | words in the transcript |
 | `status` | `finished`, `error` or `cancelled` (the last two come with 0 words and 0 s of audio) |
-| `program_version` | app version |
+| `program_version` | app version; `-mac` or `-linux` is appended on those systems (for example `2.3.0-mac`), Windows is unmarked |
 | `country` | two-letter code from the operating system's region setting (`core.stats.region_country`: Windows "Country or region", macOS `AppleLocale`, else `LC_ALL` / `LANG`); read locally, no network lookup; empty when no region is set |
 | `platform_system`, `platform_release`, `platform_version`, `platform_machine`, `platform_processor` | OS name, release and build, CPU architecture and processor string (Python `platform` module) |
 | `cpu_count`, `mem_total` | logical CPU count and total RAM in bytes (`psutil`; `0` when it is missing) |

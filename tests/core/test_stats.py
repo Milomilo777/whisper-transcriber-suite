@@ -128,6 +128,22 @@ def test_build_stats_payload_pure():
     assert p["form_submitted"] == "1"
 
 
+@pytest.mark.parametrize("system, label", [
+    ("Windows", "2.3.0"), ("Darwin", "2.3.0-mac"), ("Linux", "2.3.0-linux"), ("FreeBSD", "2.3.0"),
+])
+def test_version_column_marks_mac_and_linux_only(system, label):
+    # the stats viewer shows the version but not the platform columns
+    assert stats.program_version_label("2.3.0", system) == label
+
+
+def test_payload_version_carries_the_os_mark(monkeypatch):
+    monkeypatch.setattr(stats.platform, "system", lambda: "Darwin")
+    p = stats.build_stats_payload(model="large-v3", language="en", audio_duration=1.0,
+                                  transcription_time=1.0, status="finished")
+    assert p["program_version"].endswith("-mac")
+    assert len(p["program_version"]) <= 32  # the server's program_version limit
+
+
 # --- no file name -----------------------------------------------------------
 
 def test_payload_builder_takes_no_file_argument():
