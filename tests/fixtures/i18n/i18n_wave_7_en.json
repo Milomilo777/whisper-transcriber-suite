@@ -149,8 +149,9 @@
    "• Network use: update check, online app settings, model downloads on first use, usage statistics — the full list is in the project's docs on GitHub (docs/CONFIG.md, Network use)",
    "• File → Work offline stops all network use; anything that needs the internet then says so (config: work_offline)",
    "Usage statistics",
-   "• Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)",
+   "• Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)",
    "• What is sent: model, language, audio length, processing time, job status, word count, app version, OS name/version, CPU and memory size, and the two-letter country of the OS region setting; the payload never includes the file's name or folder, the computer name or an IP address",
+   "• Also a random install id made by the app; turning usage statistics off deletes it",
    "• Launch ping and Sentry crash reports: only when WHISPER_TELEMETRY_URL / SENTRY_DSN are set",
    "Helpful links",
    "• Downloads & new versions (GitHub releases)",
@@ -984,11 +985,15 @@
    ],
    [
     "about.bullet",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)"
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)"
    ],
    [
     "about.bullet",
     "What is sent: model, language, audio length, processing time, job status, word count, app version, OS name/version, CPU and memory size, and the two-letter country of the OS region setting; the payload never includes the file's name or folder, the computer name or an IP address"
+   ],
+   [
+    "about.bullet",
+    "Also a random install id made by the app; turning usage statistics off deletes it"
    ],
    [
     "about.bullet",
