@@ -9,11 +9,29 @@ import http.client
 import io
 import json
 import os
+import threading
 import time
 
 import pytest
 
 from core import llm
+
+def _own_sleeps(monkeypatch) -> list[float]:
+    """Record the sleeps of the test's own thread and skip them; any other thread (a daemon left over from an
+    earlier test) sleeps for real. A plain `time.sleep` patch is process-wide: such a thread then spun without
+    sleeping and filled the list, and CI saw `[5.0, ...]` instead of `[5.0]` (2026-10-26)."""
+    sleeps: list[float] = []
+    me, real_sleep = threading.get_ident(), time.sleep
+
+    def fake(seconds: float) -> None:
+        if threading.get_ident() == me:
+            sleeps.append(seconds)
+        else:
+            real_sleep(seconds)
+
+    monkeypatch.setattr(llm.time, "sleep", fake)
+    return sleeps
+
 
 _BODY = json.dumps({"choices": [{"message": {"content": "ok"}}]}).encode()
 
@@ -90,8 +108,7 @@ def test_a_bad_key_is_not_retried(monkeypatch):
 
 
 def test_retry_after_is_honoured_exactly_up_to_the_cap(monkeypatch):
-    llm_sleeps = []
-    monkeypatch.setattr(llm.time, "sleep", llm_sleeps.append)
+    llm_sleeps = _own_sleeps(monkeypatch)
     _script(monkeypatch, [lambda r: _http_error(r, 429, retry_after=7),
                           lambda r: _http_error(r, 429, retry_after=llm._MAX_RETRY_AFTER_S),
                           _Resp()])
@@ -100,8 +117,7 @@ def test_retry_after_is_honoured_exactly_up_to_the_cap(monkeypatch):
 
 
 def test_retry_after_above_the_cap_is_fatal_at_once_without_sleeping(monkeypatch):
-    llm_sleeps = []
-    monkeypatch.setattr(llm.time, "sleep", llm_sleeps.append)
+    llm_sleeps = _own_sleeps(monkeypatch)
     calls = _script(monkeypatch, [lambda r: _http_error(r, 429, retry_after=9999), _Resp()])
     with pytest.raises(llm.RemoteLLMRateLimitError, match="429"):
         _runner()._chat([{"role": "user", "content": "hi"}])
@@ -110,7 +126,7 @@ def test_retry_after_above_the_cap_is_fatal_at_once_without_sleeping(monkeypatch
 
 def test_translate_segments_stops_calling_after_a_spent_limit(monkeypatch):
     calls = _script(monkeypatch, [_Resp(), lambda r: _http_error(r, 429, retry_after=9999), _Resp()])
-    monkeypatch.setattr(llm.time, "sleep", lambda _s: None)
+    _own_sleeps(monkeypatch)
     segs = [{"text": t} for t in ("one", "", "two", "three", "four")]
     failed: list[int] = []
     progress: list[int] = []
@@ -126,7 +142,7 @@ def test_chapter_titling_stops_after_a_spent_limit(monkeypatch):
     from core import chapters
 
     calls = _script(monkeypatch, [lambda r: _http_error(r, 429, retry_after=9999)])
-    monkeypatch.setattr(llm.time, "sleep", lambda _s: None)
+    _own_sleeps(monkeypatch)
     segs = [{"start": 0.0, "end": 5.0, "text": f"Segment text {i}."} for i in range(3)]
     bounds = [chapters.ChapterBoundary(start=float(i), end=float(i) + 1, segment_start=i, segment_end=i)
               for i in range(3)]
@@ -427,8 +443,7 @@ def test_groq_preset_is_a_complete_remote_config():
 
 
 def test_retry_after_31_waits_exactly_once_then_succeeds(monkeypatch):
-    sleeps = []
-    monkeypatch.setattr(llm.time, "sleep", sleeps.append)
+    sleeps = _own_sleeps(monkeypatch)
     calls = _script(monkeypatch, [lambda r: _http_error(r, 429, retry_after=31), _Resp()])
     assert _runner()._chat([{"role": "user", "content": "hi"}]) == "ok"
     assert sleeps == [31.0] and len(calls) == 2
@@ -437,8 +452,7 @@ def test_retry_after_31_waits_exactly_once_then_succeeds(monkeypatch):
 def test_retry_after_http_date_is_parsed(monkeypatch):
     import email.utils
     import time as _time
-    sleeps = []
-    monkeypatch.setattr(llm.time, "sleep", sleeps.append)
+    sleeps = _own_sleeps(monkeypatch)
     when = email.utils.formatdate(_time.time() + 61, usegmt=True)
     _script(monkeypatch, [lambda r: _http_error(r, 429, retry_after=when), _Resp()])
     assert _runner()._chat([{"role": "user", "content": "hi"}]) == "ok"
@@ -448,8 +462,7 @@ def test_retry_after_http_date_is_parsed(monkeypatch):
 
 
 def test_total_wait_of_one_call_is_capped(monkeypatch):
-    sleeps = []
-    monkeypatch.setattr(llm.time, "sleep", sleeps.append)
+    sleeps = _own_sleeps(monkeypatch)
     calls = _script(monkeypatch, [lambda r: _http_error(r, 429, retry_after=100)])
     with pytest.raises(llm.RemoteLLMRateLimitError):
         _runner()._chat([{"role": "user", "content": "hi"}])
@@ -463,8 +476,7 @@ def test_a_429_that_never_clears_ends_as_a_rate_limit_error(monkeypatch):
 
 
 def test_a_batch_waits_out_one_retry_after_then_stops(monkeypatch):
-    sleeps = []
-    monkeypatch.setattr(llm.time, "sleep", sleeps.append)
+    sleeps = _own_sleeps(monkeypatch)
     calls = _script(monkeypatch, [
         lambda r: _http_error(r, 429, retry_after=5), _Resp(),     # segment 0: waits once
         lambda r: _http_error(r, 429, retry_after=5), _Resp()])    # segment 1: fatal
@@ -478,8 +490,7 @@ def test_a_batch_waits_out_one_retry_after_then_stops(monkeypatch):
 
 
 def test_503_retry_after_shares_the_180s_budget_of_one_call(monkeypatch):
-    sleeps = []
-    monkeypatch.setattr(llm.time, "sleep", sleeps.append)
+    sleeps = _own_sleeps(monkeypatch)
     calls = _script(monkeypatch, [lambda r: _http_error(r, 503, retry_after=120)])
     with pytest.raises(llm.RemoteLLMError, match="503") as info:
         _runner()._chat([{"role": "user", "content": "hi"}])
@@ -488,8 +499,7 @@ def test_503_retry_after_shares_the_180s_budget_of_one_call(monkeypatch):
 
 
 def test_mixed_429_and_503_waits_never_pass_the_total(monkeypatch):
-    sleeps = []
-    monkeypatch.setattr(llm.time, "sleep", sleeps.append)
+    sleeps = _own_sleeps(monkeypatch)
     _script(monkeypatch, [lambda r: _http_error(r, 503, retry_after=100),
                           lambda r: _http_error(r, 429, retry_after=100), _Resp()])
     with pytest.raises(llm.RemoteLLMRateLimitError):
@@ -498,8 +508,7 @@ def test_mixed_429_and_503_waits_never_pass_the_total(monkeypatch):
 
 
 def test_503_waits_within_the_budget_still_succeed(monkeypatch):
-    sleeps = []
-    monkeypatch.setattr(llm.time, "sleep", sleeps.append)
+    sleeps = _own_sleeps(monkeypatch)
     _script(monkeypatch, [lambda r: _http_error(r, 503, retry_after=90),
                           lambda r: _http_error(r, 503, retry_after=60), _Resp()])
     assert _runner()._chat([{"role": "user", "content": "hi"}]) == "ok"
@@ -507,8 +516,7 @@ def test_503_waits_within_the_budget_still_succeed(monkeypatch):
 
 
 def test_a_batch_waits_out_one_503_retry_after_in_total(monkeypatch):
-    sleeps = []
-    monkeypatch.setattr(llm.time, "sleep", sleeps.append)
+    sleeps = _own_sleeps(monkeypatch)
     _script(monkeypatch, [lambda r: _http_error(r, 503, retry_after=5), _Resp(),
                           lambda r: _http_error(r, 503, retry_after=5), _Resp()])
     failed: list[int] = []
