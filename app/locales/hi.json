@@ -1012,7 +1012,7 @@
     "Send": "भेजें",
     "Send usage statistics (on by default; also in the Help menu)": "इस्तेमाल के आँकड़े भेजें (डिफ़ॉल्ट रूप से चालू; सहायता मेनू में भी)",
     "Sending…": "भेजा जा रहा है…",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "हर पूरे हुए ट्रांसक्रिप्शन के बाद भेजा जाता है; डिफ़ॉल्ट रूप से चालू। बदलें: सहायता → इस्तेमाल के आँकड़े, या उन्नत → ऐप का व्यवहार (कॉन्फ़िग: telemetry_opt_in)",
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "हर ट्रांसक्रिप्शन के बाद भेजा जाता है, असफल और रद्द किए गए ट्रांसक्रिप्शन के बाद भी; डिफ़ॉल्ट रूप से चालू। बदलें: सहायता → इस्तेमाल के आँकड़े, या उन्नत → ऐप का व्यवहार (कॉन्फ़िग: telemetry_opt_in)",
     "Sent in plain text when the URL starts with http://": "URL के http:// से शुरू होने पर सादे टेक्स्ट में भेजा जाता है",
     "Sent with: {system}": "इसके साथ भेजा गया: {system}",
     "Serbian": "सर्बियाई",

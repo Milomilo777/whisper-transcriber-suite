@@ -1,8 +1,8 @@
 {
   "_meta": {
     "code": "fi",
-    "name": "Suomi",
     "direction": "ltr",
+    "name": "Suomi",
     "plural": "one_other",
     "status": "machine"
   },
@@ -1012,7 +1012,7 @@
     "Send": "Lähetä",
     "Send usage statistics (on by default; also in the Help menu)": "Lähetä käyttötilastoja (oletuksena päällä; myös Ohje-valikossa)",
     "Sending…": "Lähetetään…",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Lähetetään jokaisen valmiin litteroinnin jälkeen; oletuksena päällä. Kytkin: Ohje → Käyttötilastot tai Lisäasetukset → Sovelluksen toiminta (asetus: telemetry_opt_in)",
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Lähetetään jokaisen litteroinnin jälkeen, myös epäonnistuneiden ja peruttujen; oletuksena päällä. Kytkin: Ohje → Käyttötilastot tai Lisäasetukset → Sovelluksen toiminta (asetus: telemetry_opt_in)",
     "Sent in plain text when the URL starts with http://": "Lähetetään salaamattomana tekstinä, kun URL alkaa tekstillä http://",
     "Sent with: {system}": "Lähetetään mukana: {system}",
     "Serbian": "Serbia",

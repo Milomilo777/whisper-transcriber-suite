@@ -1029,7 +1029,7 @@
     "Send": "Надіслати",
     "Send usage statistics (on by default; also in the Help menu)": "Надсилати статистику використання (увімкнено за замовчуванням; також у меню «Довідка»)",
     "Sending…": "Надсилання…",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Надсилається після кожної завершеної транскрипції; увімкнено за замовчуванням. Перемикач: «Довідка → Статистика використання» або «Додатково → Поведінка застосунку» (налаштування: telemetry_opt_in)",
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Надсилається після кожної транскрипції, зокрема невдалих і скасованих; увімкнено за замовчуванням. Перемикач: «Довідка → Статистика використання» або «Додатково → Поведінка застосунку» (налаштування: telemetry_opt_in)",
     "Sent in plain text when the URL starts with http://": "Надсилається відкритим текстом, якщо URL починається з http://",
     "Sent with: {system}": "Надсилається разом із: {system}",
     "Serbian": "Сербська",

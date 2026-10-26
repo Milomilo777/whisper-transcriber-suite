@@ -1029,7 +1029,7 @@
     "Send": "Пошаљи",
     "Send usage statistics (on by default; also in the Help menu)": "Шаљи статистику коришћења (подразумевано укључено; и у менију Помоћ)",
     "Sending…": "Слање…",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Шаље се после сваке завршене транскрипције; подразумевано укључено. Промена: Помоћ → Статистика коришћења, или Напредно → Понашање апликације (config: telemetry_opt_in)",
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Шаље се после сваке транскрипције, укључујући неуспешне и отказане; подразумевано укључено. Промена: Помоћ → Статистика коришћења, или Напредно → Понашање апликације (config: telemetry_opt_in)",
     "Sent in plain text when the URL starts with http://": "Шаље се као обичан текст када URL почиње са http://",
     "Sent with: {system}": "Послато уз: {system}",
     "Serbian": "Српски",

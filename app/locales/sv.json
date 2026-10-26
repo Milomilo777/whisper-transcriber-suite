@@ -1,8 +1,8 @@
 {
   "_meta": {
     "code": "sv",
-    "name": "Svenska",
     "direction": "ltr",
+    "name": "Svenska",
     "plural": "one_other",
     "status": "machine"
   },
@@ -1012,7 +1012,7 @@
     "Send": "Skicka",
     "Send usage statistics (on by default; also in the Help menu)": "Skicka användningsstatistik (på som standard; finns även i Hjälp-menyn)",
     "Sending…": "Skickar…",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Skickas efter varje slutförd transkribering; på som standard. Ändra: Hjälp → Användningsstatistik eller Avancerat → Appens beteende (config: telemetry_opt_in)",
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Skickas efter varje transkribering, även misslyckade och avbrutna; på som standard. Ändra: Hjälp → Användningsstatistik eller Avancerat → Appens beteende (config: telemetry_opt_in)",
     "Sent in plain text when the URL starts with http://": "Skickas som vanlig text när URL:en börjar med http://",
     "Sent with: {system}": "Skickas med: {system}",
     "Serbian": "Serbiska",

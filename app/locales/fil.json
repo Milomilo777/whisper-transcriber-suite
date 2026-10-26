@@ -1012,7 +1012,7 @@
     "Send": "Ipadala",
     "Send usage statistics (on by default; also in the Help menu)": "Ipadala ang usage statistics (naka-on bilang default; nasa menu na Tulong din)",
     "Sending…": "Ipinapadala…",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Ipinapadala pagkatapos ng bawat natapos na transcription; naka-on bilang default. Switch: Tulong → Usage statistics, o Advanced → Gawi ng app (config: telemetry_opt_in)",
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Ipinapadala pagkatapos ng bawat transcription, pati ang mga nabigo at kinansela; naka-on bilang default. Switch: Tulong → Usage statistics, o Advanced → Gawi ng app (config: telemetry_opt_in)",
     "Sent in plain text when the URL starts with http://": "Ipinapadala bilang plain text kapag nagsisimula ang URL sa http://",
     "Sent with: {system}": "Ipinadala kasama ng: {system}",
     "Serbian": "Serbian",

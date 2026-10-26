@@ -995,7 +995,7 @@
     "Send": "보내기",
     "Send usage statistics (on by default; also in the Help menu)": "사용 통계 보내기(기본값 켬, 도움말 메뉴에도 있음)",
     "Sending…": "보내는 중…",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "전사가 끝날 때마다 전송, 기본값 켬. 전환: 도움말 → 사용 통계 또는 고급 → 앱 동작(config: telemetry_opt_in)",
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "실패하거나 취소된 전사를 포함해 전사할 때마다 전송, 기본값 켬. 전환: 도움말 → 사용 통계 또는 고급 → 앱 동작(config: telemetry_opt_in)",
     "Sent in plain text when the URL starts with http://": "URL이 http://로 시작하면 일반 텍스트로 전송됩니다",
     "Sent with: {system}": "함께 전송: {system}",
     "Serbian": "세르비아어",

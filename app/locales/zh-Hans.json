@@ -995,7 +995,7 @@
     "Send": "发送",
     "Send usage statistics (on by default; also in the Help menu)": "发送使用统计（默认开启；也可在“帮助”菜单中设置）",
     "Sending…": "正在发送…",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "每次转录完成后发送；默认开启。开关：帮助 → 使用统计，或 高级 → 应用行为（配置项：telemetry_opt_in）",
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "每次转录后都会发送，包括失败和已取消的转录；默认开启。开关：帮助 → 使用统计，或 高级 → 应用行为（配置项：telemetry_opt_in）",
     "Sent in plain text when the URL starts with http://": "当 URL 以 http:// 开头时，以明文发送",
     "Sent with: {system}": "随附信息：{system}",
     "Serbian": "塞尔维亚语",

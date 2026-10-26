@@ -995,7 +995,7 @@
     "Send": "Gửi",
     "Send usage statistics (on by default; also in the Help menu)": "Gửi thống kê sử dụng (bật theo mặc định; cũng có trong menu Trợ giúp)",
     "Sending…": "Đang gửi…",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Gửi sau mỗi lần chép lời hoàn tất; bật theo mặc định. Bật/tắt: Trợ giúp → Thống kê sử dụng, hoặc Nâng cao → Hành vi ứng dụng (cấu hình: telemetry_opt_in)",
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Gửi sau mỗi lần chép lời, kể cả lần thất bại hoặc bị hủy; bật theo mặc định. Bật/tắt: Trợ giúp → Thống kê sử dụng, hoặc Nâng cao → Hành vi ứng dụng (cấu hình: telemetry_opt_in)",
     "Sent in plain text when the URL starts with http://": "Được gửi dưới dạng văn bản thuần khi URL bắt đầu bằng http://",
     "Sent with: {system}": "Gửi kèm: {system}",
     "Serbian": "Tiếng Serbia",

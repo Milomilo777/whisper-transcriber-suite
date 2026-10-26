@@ -995,7 +995,7 @@
     "Send": "Kirim",
     "Send usage statistics (on by default; also in the Help menu)": "Kirim statistik pemakaian (aktif secara bawaan; juga di menu Bantuan)",
     "Sending…": "Mengirim…",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Dikirim setelah setiap transkripsi selesai; aktif secara bawaan. Sakelar: Bantuan → Statistik pemakaian, atau Lanjutan → Perilaku aplikasi (config: telemetry_opt_in)",
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Dikirim setelah setiap transkripsi, termasuk yang gagal dan dibatalkan; aktif secara bawaan. Sakelar: Bantuan → Statistik pemakaian, atau Lanjutan → Perilaku aplikasi (config: telemetry_opt_in)",
     "Sent in plain text when the URL starts with http://": "Dikirim sebagai teks biasa jika URL diawali http://",
     "Sent with: {system}": "Dikirim bersama: {system}",
     "Serbian": "Serbia",

@@ -1029,7 +1029,7 @@
     "Send": "Siųsti",
     "Send usage statistics (on by default; also in the Help menu)": "Siųsti naudojimo statistiką (įjungta pagal numatymą; taip pat meniu Žinynas)",
     "Sending…": "Siunčiama…",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Siunčiama po kiekvieno baigto transkribavimo; įjungta pagal numatymą. Jungiklis: Žinynas → Naudojimo statistika arba Išplėstiniai → Programos elgsena (konfigūracija: telemetry_opt_in)",
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Siunčiama po kiekvieno transkribavimo, įskaitant nepavykusius ir atšauktus; įjungta pagal numatymą. Jungiklis: Žinynas → Naudojimo statistika arba Išplėstiniai → Programos elgsena (konfigūracija: telemetry_opt_in)",
     "Sent in plain text when the URL starts with http://": "Siunčiama paprastu tekstu, kai URL prasideda http://",
     "Sent with: {system}": "Išsiųsta su: {system}",
     "Serbian": "Serbų",

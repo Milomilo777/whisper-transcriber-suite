@@ -1012,7 +1012,7 @@
     "Send": "Invia",
     "Send usage statistics (on by default; also in the Help menu)": "Invia statistiche d'uso (attivo per impostazione predefinita; anche nel menu Aiuto)",
     "Sending…": "Invio…",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Inviate dopo ogni trascrizione completata; attivo per impostazione predefinita. Per cambiarlo: Aiuto → Statistiche d'uso, oppure Avanzate → Comportamento dell'app (config: telemetry_opt_in)",
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Inviate dopo ogni trascrizione, anche quelle non riuscite o annullate; attivo per impostazione predefinita. Per cambiarlo: Aiuto → Statistiche d'uso, oppure Avanzate → Comportamento dell'app (config: telemetry_opt_in)",
     "Sent in plain text when the URL starts with http://": "Inviato in chiaro quando l'URL inizia con http://",
     "Sent with: {system}": "Inviato con: {system}",
     "Serbian": "Serbo",

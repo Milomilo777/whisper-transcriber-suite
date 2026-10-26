@@ -896,7 +896,7 @@ def build_about_sections() -> list[AboutSection]:
                 "needs the internet then says so (config: work_offline)"),
             ]),
             (_("Usage statistics"), [
-                _("Sent after each finished transcription; on by default. "
+                _("Sent after each transcription, including failed and cancelled ones; on by default. "
                 "Switch: Help → Usage statistics, or Advanced → App "
                 "behaviour (config: telemetry_opt_in)"),
                 _("What is sent: model, language, audio length, processing "

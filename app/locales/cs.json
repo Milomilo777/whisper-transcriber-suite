@@ -1,8 +1,8 @@
 {
   "_meta": {
     "code": "cs",
-    "name": "Čeština",
     "direction": "ltr",
+    "name": "Čeština",
     "plural": "cs_sk",
     "status": "machine"
   },
@@ -1029,7 +1029,7 @@
     "Send": "Odeslat",
     "Send usage statistics (on by default; also in the Help menu)": "Odesílat statistiky používání (ve výchozím stavu zapnuto; také v nabídce Nápověda)",
     "Sending…": "Odesílá se…",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Odesílá se po každém dokončeném přepisu; ve výchozím stavu zapnuto. Přepínač: Nápověda → Statistiky používání, nebo Pokročilé → Chování aplikace (konfigurace: telemetry_opt_in)",
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Odesílá se po každém přepisu, včetně neúspěšných a zrušených; ve výchozím stavu zapnuto. Přepínač: Nápověda → Statistiky používání, nebo Pokročilé → Chování aplikace (konfigurace: telemetry_opt_in)",
     "Sent in plain text when the URL starts with http://": "Odesílá se jako prostý text, když URL začíná http://",
     "Sent with: {system}": "Odesláno s: {system}",
     "Serbian": "Srbština",

@@ -995,7 +995,7 @@
     "Send": "Hantar",
     "Send usage statistics (on by default; also in the Help menu)": "Hantar statistik penggunaan (dihidupkan secara lalai; juga dalam menu Bantuan)",
     "Sending…": "Menghantar…",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Dihantar selepas setiap transkripsi selesai; dihidupkan secara lalai. Suis: Bantuan → Statistik penggunaan, atau Lanjutan → Kelakuan aplikasi (config: telemetry_opt_in)",
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Dihantar selepas setiap transkripsi, termasuk yang gagal dan dibatalkan; dihidupkan secara lalai. Suis: Bantuan → Statistik penggunaan, atau Lanjutan → Kelakuan aplikasi (config: telemetry_opt_in)",
     "Sent in plain text when the URL starts with http://": "Dihantar sebagai teks biasa apabila URL bermula dengan http://",
     "Sent with: {system}": "Dihantar bersama: {system}",
     "Serbian": "Serbia",

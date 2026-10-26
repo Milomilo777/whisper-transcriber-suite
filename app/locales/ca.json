@@ -1,8 +1,8 @@
 {
   "_meta": {
     "code": "ca",
-    "name": "Català",
     "direction": "ltr",
+    "name": "Català",
     "plural": "one_other",
     "status": "machine"
   },
@@ -1012,7 +1012,7 @@
     "Send": "Envia",
     "Send usage statistics (on by default; also in the Help menu)": "Envia estadístiques d'ús (activat per defecte; també al menú Ajuda)",
     "Sending…": "S'està enviant…",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "S'envien després de cada transcripció acabada; activat per defecte. Per canviar-ho: Ajuda → Estadístiques d'ús, o Avançat → Comportament de l'aplicació (configuració: telemetry_opt_in)",
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "S'envien després de cada transcripció, també les fallides i cancel·lades; activat per defecte. Per canviar-ho: Ajuda → Estadístiques d'ús, o Avançat → Comportament de l'aplicació (configuració: telemetry_opt_in)",
     "Sent in plain text when the URL starts with http://": "S'envia en text pla quan l'URL comença per http://",
     "Sent with: {system}": "Enviat amb: {system}",
     "Serbian": "Serbi",

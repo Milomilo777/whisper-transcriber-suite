@@ -1,8 +1,8 @@
 {
   "_meta": {
     "code": "hu",
-    "name": "Magyar",
     "direction": "ltr",
+    "name": "Magyar",
     "plural": "one_other",
     "status": "machine"
   },
@@ -1012,7 +1012,7 @@
     "Send": "Küldés",
     "Send usage statistics (on by default; also in the Help menu)": "Használati statisztika küldése (alapértelmezés szerint bekapcsolva; a Súgó menüben is)",
     "Sending…": "Küldés…",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Minden befejezett átírás után elküldi; alapértelmezés szerint bekapcsolva. Kapcsoló: Súgó → Használati statisztika, vagy Speciális → Alkalmazás viselkedése (konfiguráció: telemetry_opt_in)",
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Minden átírás után elküldi, a sikertelenek és megszakítottak után is; alapértelmezés szerint bekapcsolva. Kapcsoló: Súgó → Használati statisztika, vagy Speciális → Alkalmazás viselkedése (konfiguráció: telemetry_opt_in)",
     "Sent in plain text when the URL starts with http://": "Egyszerű szövegként kerül elküldésre, ha az URL kezdete: http://",
     "Sent with: {system}": "Elküldve ezzel: {system}",
     "Serbian": "Szerb",
