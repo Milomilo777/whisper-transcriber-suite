@@ -14,17 +14,30 @@ import pytest
 from app import app as app_module
 
 
-def _fake(*, present: bool, answer: bool = True, download_ok: bool = True, running: bool = False) -> Any:
+def _fake(*, present: bool, answer: bool = True, download_ok: bool = True, running: bool = False,
+          model_ready: bool = False) -> Any:
     fake = types.SimpleNamespace(
-        _server_busy=False, model_setup_running=running, log=MagicMock(),
+        _server_busy=False, model_setup_running=running, log=MagicMock(), model_ready=model_ready,
         _save_server_prefs=MagicMock(), _server_is_running=lambda: False,
         _start_server_async=MagicMock(), _model_bytes_present=lambda: present,
         ask=MagicMock(return_value=answer), downloads=MagicMock(return_value=download_ok),
     )
     fake._server_model_agreed = lambda: app_module.App._server_model_agreed(fake)
     fake._ask_model_download = fake.ask
-    fake.ensure_model_with_modal = fake.downloads
+    # as in App: ensure_model_with_modal is a no-op once any model is loaded, download_model_now is not
+    fake.ensure_model_with_modal = lambda **_k: True if fake.model_ready else fake.downloads()
+    fake.download_model_now = fake.downloads
     return fake
+
+
+def test_a_loaded_other_model_does_not_skip_the_download_dialog() -> None:
+    # model_ready says SOME model was loaded; the configured one is still missing, so the server
+    # start thread would download it silently unless the dialog runs here
+    fake = _fake(present=False, model_ready=True)
+    app_module.App.toggle_server(fake)
+    fake.ask.assert_called_once()
+    fake.downloads.assert_called_once()
+    fake._start_server_async.assert_called_once()
 
 
 def test_start_with_the_model_on_disk_asks_nothing() -> None:

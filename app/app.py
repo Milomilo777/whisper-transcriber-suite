@@ -6101,7 +6101,9 @@ class App(tk.Tk):
         if not self._ask_model_download():
             self.log("The server was not started: the Whisper model is required.")
             return False
-        if not self.ensure_model_with_modal():
+        # download_model_now, not ensure_model_with_modal: that one returns at once when ANY model
+        # was loaded, and the start thread would then download the configured one silently.
+        if not self.download_model_now():
             self.log("The server was not started: the Whisper model is not ready.")
             return False
         return True
