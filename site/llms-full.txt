@@ -775,7 +775,7 @@ The app does use the network for:
 - downloading a model or an optional component the first time it is needed;
 - its online settings at startup and a daily update check on GitHub, which
   only tells you about a new version;
-- usage statistics, on by default, after each finished transcription: model,
+- usage statistics, on by default, after each transcription that ends (finished, failed or cancelled): model,
   language, durations, word count, app version, operating system, CPU and
   memory size, and region, never the file's name. Turn them off under
   **Help → Usage statistics**.
@@ -789,7 +789,7 @@ or Google Cloud Speech-to-Text) or connect a remote AI provider yourself.
 |---|---|---|
 | Online settings of the app | at startup | Work offline |
 | Update check (GitHub) | at most once a day, and on Help → Check for updates… | Advanced → App behaviour, or Work offline |
-| Usage statistics | after each finished transcription in the app | Help → Usage statistics |
+| Usage statistics | after each transcription that ends in the app (finished, failed or cancelled) | Help → Usage statistics |
 | Model and component downloads | the first time each one is needed | Work offline refuses them |
 | Video downloads, subtitles, yt-dlp updates | when you start them | Work offline |
 | Cloud engines (audio to Google) | only if you pick one | do not pick them |
@@ -1003,7 +1003,7 @@ text only if you connect a remote AI provider yourself.
 ### What does the app send over the network, then?
 
 Its online settings at startup, a daily update check on GitHub, model downloads the first time, the downloads
-you start, and usage statistics after each finished transcription. Those statistics have no audio, no file
+you start, and usage statistics after each transcription that ends (finished, failed or cancelled). Those statistics have no audio, no file
 names and no transcript text, and **Help → Usage statistics** turns them off. See
 [What leaves your computer](#what-leaves-your-computer).
 

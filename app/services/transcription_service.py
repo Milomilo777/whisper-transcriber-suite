@@ -2451,14 +2451,25 @@ class TranscriptionService:
                     logger.exception("Could not open the sample clip result")
         # P4-4 — usage stats POST (best-effort, daemon thread, swallows all
         # errors). post_stats_async checks telemetry_opt_in + stats_url.
-        # Only for a genuine successful completion: an error/cancelled task
-        # never has a real word_count/audio_duration, so posting here used to
-        # send a "0 words, 0:00" row indistinguishable from a real empty
-        # transcription — e.g. every job that failed because the configured
-        # backend had no valid key. history.finish_transcription() above
-        # still records the real status locally regardless.
+        # A finished run posts its real counts. A run that ends in a terminal
+        # "error" or "cancelled" posts a row with 0 words and 0:00 so the
+        # maintainer can see failure rates; the collector keeps the status
+        # field, so those rows are told apart from a genuinely empty
+        # transcription (status "finished"). A call that leaves the task
+        # non-terminal (a requeue) posts nothing, and one run posts at most
+        # one failure row (guard keyed on the run's start_time).
         if newly_finished:
             self._post_usage_stats(task, word_count, audio_duration, worker)
+        elif terminal_status in ("error", "cancelled"):
+            run_key = getattr(task, "start_time", None)
+            if getattr(task, "_failure_stats_posted_for", object()) != run_key:
+                try:
+                    task._failure_stats_posted_for = run_key
+                except Exception:  # noqa: BLE001 - frozen/slotted task: no guard
+                    pass
+                self._post_usage_stats(
+                    task, 0, 0.0, worker, status=terminal_status
+                )
         # If this task was auto-spawned from a download, the Download row
         # mirrored "transcribing" + live progress while it ran. It's
         # terminal now (finished / error / cancelled) — restore that row to
@@ -2594,8 +2605,12 @@ class TranscriptionService:
     def _post_usage_stats(
         self, task: Any, word_count: int, audio_duration: float,
         worker: dict[str, Any] | None = None,
+        status: str | None = None,
     ) -> None:
         """Fire the usage-stats POST (best-effort, off-thread).
+
+        ``status`` is the terminal status to report ("finished", "error" or
+        "cancelled"); it defaults to the task's own status.
 
         Gated inside ``core.stats.post_stats_async`` on
         ``telemetry_opt_in`` + a non-empty ``stats_url`` — a no-op otherwise.
@@ -2636,7 +2651,7 @@ class TranscriptionService:
                 language=_reported_language(task),
                 audio_duration=audio_duration,
                 transcription_time=ai_time,
-                status=getattr(task, "status", "") or "",
+                status=status or getattr(task, "status", "") or "",
                 word_count=word_count,
             )
             _stats.post_stats_async(app.app_config, payload)

@@ -88,6 +88,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Changed
 
+- Usage statistics include failed and cancelled transcriptions again, so failure rates are visible. Such a row carries `status` `error` or `cancelled`, 0 words and 0 s of audio, and nothing else new (no error text, no file name); a job that is only requeued sends nothing.
 - **The browser demo (/try/) uses better models**: Whisper Small is the default for every language and Large v3
   Turbo (WebGPU) the best choice; Tiny and Base, too inaccurate for most languages, are gone. A new button removes
   the downloaded models from the browser.

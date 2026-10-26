@@ -375,27 +375,91 @@ def test_post_usage_stats_never_raises_even_if_task_is_missing_fields():
 # ---------------------------------------------------------------- finish_task / stats gating
 
 
-def test_finish_task_skips_usage_stats_post_for_an_errored_task(monkeypatch):
-    """The real bug found live in the deployed stats: a task that failed
-    (e.g. the configured backend had no valid key) never produced a real
-    transcript, but finish_task used to POST usage stats for it anyway --
-    a fake "0 words, 0:00" row indistinguishable from a genuine empty
-    transcription. history.finish_transcription() still records the real
-    status locally; only the external usage-stats POST must be skipped."""
-    app = SimpleNamespace(app_config={}, update_overall_progress=lambda: None)
-    svc = TranscriptionService(app)  # type: ignore[arg-type]
-    posted: list = []
-    monkeypatch.setattr(svc, "_post_usage_stats", lambda *a, **k: posted.append(a))
-    task = SimpleNamespace(
-        status="error", cancelled=False, end_time=None, start_time=time.time(),
-        output_paths=[], file_path="clip.mp4", history_id=0, source_download=None,
+def _stats_rig(monkeypatch, *, telemetry=True):
+    """A service whose real _post_usage_stats feeds a captured post_stats_async."""
+    rows: list = []
+
+    def _fake_post(config, payload, **kwargs):
+        if not config.get("telemetry_opt_in"):
+            return False
+        rows.append(payload)
+        return True
+
+    monkeypatch.setattr(core_stats, "post_stats_async", _fake_post)
+    app = SimpleNamespace(
+        app_config={"telemetry_opt_in": telemetry, "stats_url": "https://example/stats"},
+        update_overall_progress=lambda: None,
+        show_last_result=lambda task: None,
     )
+    return TranscriptionService(app), rows  # type: ignore[arg-type]
+
+
+def _stats_task(status, *, cancelled=False):
+    return SimpleNamespace(
+        status=status, cancelled=cancelled, end_time=None, start_time=time.time(),
+        output_paths=[], file_path="secret clip.mp4", history_id=0, source_download=None,
+        error_reason="boom: C:/private/path.wav", recovery_note="boom note",
+    )
+
+
+def test_finish_task_posts_one_error_row_for_an_errored_task(monkeypatch):
+    """A failed run posts a row so failure rates are visible: status "error",
+    0 words, 0 s audio, and no error text or file name anywhere in it."""
+    svc, rows = _stats_rig(monkeypatch)
+    task = _stats_task("error")
     worker = {"task": task, "temporary": False}
 
     svc.finish_task(worker, keep_status=True)
 
-    assert posted == [], "an errored task must not post usage stats"
+    assert len(rows) == 1
+    assert rows[0]["status"] == "error"
+    assert rows[0]["word_count"] == "0"
+    assert rows[0]["audio_duration"] == "0.000"
+    assert "boom" not in repr(rows[0]) and "secret clip" not in repr(rows[0])
     assert task.status == "error", "keep_status=True must not overwrite the real status"
+    # The task is released, so a second teardown call cannot post it again.
+    svc.finish_task(worker, keep_status=True)
+    assert len(rows) == 1
+
+
+def test_finish_task_posts_the_error_row_once_even_if_finished_twice(monkeypatch):
+    """The same run ended twice (the worker slot still held it) posts one row."""
+    svc, rows = _stats_rig(monkeypatch)
+    task = _stats_task("error")
+
+    svc.finish_task({"task": task, "temporary": False}, keep_status=True)
+    svc.finish_task({"task": task, "temporary": False}, keep_status=True)
+
+    assert len(rows) == 1
+
+
+def test_finish_task_posts_no_row_for_a_requeued_task(monkeypatch):
+    """keep_status with a non-terminal status (a requeue) is not an ending."""
+    svc, rows = _stats_rig(monkeypatch)
+    for status in ("waiting", "running", "paused"):
+        svc.finish_task({"task": _stats_task(status), "temporary": False}, keep_status=True)
+
+    assert rows == []
+
+
+def test_finish_task_posts_no_failure_row_when_telemetry_is_off(monkeypatch):
+    svc, rows = _stats_rig(monkeypatch, telemetry=False)
+
+    svc.finish_task({"task": _stats_task("error"), "temporary": False}, keep_status=True)
+
+    assert rows == []
+
+
+def test_a_retried_task_posts_its_error_row_and_then_its_finished_row(monkeypatch):
+    svc, rows = _stats_rig(monkeypatch)
+    task = _stats_task("error")
+    svc.finish_task({"task": task, "temporary": False}, keep_status=True)
+    # Retry: the same object is dispatched again with a new start time.
+    task.status = "running"
+    task.start_time = time.time() + 5
+    svc.finish_task({"task": task, "temporary": False}, keep_status=False)
+
+    assert [r["status"] for r in rows] == ["error", "finished"]
 
 
 def test_finish_task_posts_usage_stats_for_a_genuine_successful_completion(monkeypatch):
@@ -611,20 +675,30 @@ def test_finish_task_persists_history_before_reporting_success(monkeypatch):
     assert order == ["history", "show_last_result"]
 
 
-def test_finish_task_skips_usage_stats_post_for_a_cancelled_task(monkeypatch):
-    app = SimpleNamespace(app_config={}, update_overall_progress=lambda: None)
-    svc = TranscriptionService(app)  # type: ignore[arg-type]
-    posted: list = []
-    monkeypatch.setattr(svc, "_post_usage_stats", lambda *a, **k: posted.append(a))
-    task = SimpleNamespace(
-        status="cancelled", cancelled=True, end_time=None, start_time=time.time(),
-        output_paths=[], file_path="clip.mp4", history_id=0, source_download=None,
-    )
-    worker = {"task": task, "temporary": False}
+def test_finish_task_posts_one_cancelled_row_for_a_cancelled_task(monkeypatch):
+    svc, rows = _stats_rig(monkeypatch)
+    task = _stats_task("cancelled", cancelled=True)
 
-    svc.finish_task(worker, keep_status=False)
+    svc.finish_task({"task": task, "temporary": False}, keep_status=False)
 
-    assert posted == [], "a user-cancelled task has no real transcript to report"
+    assert len(rows) == 1
+    assert rows[0]["status"] == "cancelled"
+    assert rows[0]["word_count"] == "0"
+    assert rows[0]["audio_duration"] == "0.000"
+
+
+def test_finish_task_still_posts_the_finished_row_unchanged(monkeypatch):
+    svc, rows = _stats_rig(monkeypatch)
+    task = _stats_task("running")
+    task.word_count = 12
+    task.audio_duration = 7.5
+
+    svc.finish_task({"task": task, "temporary": False}, keep_status=False)
+
+    assert len(rows) == 1
+    assert rows[0]["status"] == "finished"
+    assert rows[0]["word_count"] == "12"
+    assert rows[0]["audio_duration"] == "7.500"
 
 
 # ---------------------------------------------------------------- unroutable worker events
