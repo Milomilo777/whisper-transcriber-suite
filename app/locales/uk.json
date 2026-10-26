@@ -1509,8 +1509,8 @@
       "близько {n} секунд",
       "близько {n} секунд"
     ],
-    "about {size} GB": "близько {size} GB",
-    "about {size} MB": "близько {size} MB",
+    "about {size} GB": "близько {size} ГБ",
+    "about {size} MB": "близько {size} МБ",
     "about {speed}": "близько {speed}",
     "allowed (this computer)": "дозволено (цей комп'ютер)",
     "audio done": "аудіо оброблено",

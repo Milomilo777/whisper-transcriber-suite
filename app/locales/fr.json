@@ -1477,8 +1477,8 @@
       "environ {n} seconde",
       "environ {n} secondes"
     ],
-    "about {size} GB": "environ {size} GB",
-    "about {size} MB": "environ {size} MB",
+    "about {size} GB": "environ {size} Go",
+    "about {size} MB": "environ {size} Mo",
     "about {speed}": "environ {speed}",
     "allowed (this computer)": "autorisée (cet ordinateur)",
     "audio done": "audio traité",

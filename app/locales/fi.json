@@ -1477,8 +1477,8 @@
       "noin {n} sekunti",
       "noin {n} sekuntia"
     ],
-    "about {size} GB": "noin {size} GB",
-    "about {size} MB": "noin {size} MB",
+    "about {size} GB": "noin {size} Gt",
+    "about {size} MB": "noin {size} Mt",
     "about {speed}": "noin {speed}",
     "allowed (this computer)": "sallittu (tämä tietokone)",
     "audio done": "ääntä käsitelty",
