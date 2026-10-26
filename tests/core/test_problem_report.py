@@ -88,6 +88,53 @@ def test_send_posts_the_form_to_the_stats_url(monkeypatch):
     assert form["status"] == [pr.STATUS] and form["model"] == ["Crash on export"]
 
 
+def test_a_short_report_stays_one_row():
+    rows = pr.build_payloads("Crash on export")
+    assert len(rows) == 1 and rows[0]["model"] == "Crash on export"
+
+
+def test_a_long_report_is_readable_in_the_viewer_column():
+    # the stats viewer shows only "model": every piece must land there, tagged, in order
+    text = "".join(chr(ord("a") + i % 26) for i in range(300))
+    rows = pr.build_payloads(text)
+    assert len(rows) == 3
+    models = [r["model"] for r in rows]
+    assert all(len(m) <= SERVER_LIMITS["model"] for m in models)
+    assert [m[:6] for m in models] == ["[1/3] ", "[2/3] ", "[3/3] "]
+    assert "".join(m[6:] for m in models) == text
+    assert all(r["status"] == pr.STATUS for r in rows)
+    # the first row still spreads the whole text over the capped fields (database export)
+    assert rows[0]["platform_version"] and rows[1]["platform_version"] == ""
+
+
+def test_the_longest_report_fits_in_single_digit_tags():
+    rows = pr.build_payloads("x" * 2000)
+    assert len(rows) <= 9 and rows[-1]["model"].startswith(f"[{len(rows)}/{len(rows)}] ")
+
+
+def test_send_posts_every_row_in_order(monkeypatch):
+    monkeypatch.setattr(offline, "is_offline", lambda: False)
+    sent = []
+
+    class _Resp:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def read(self, n=-1):
+            return b"ok"
+
+    def fake_urlopen(req, timeout):
+        sent.append(urllib.parse.parse_qs(req.data.decode("utf-8"))["model"][0])
+        return _Resp()
+
+    monkeypatch.setattr(pr.urllib.request, "urlopen", fake_urlopen)
+    pr.send({"stats_url": "https://stats.example.invalid/t.php"}, "y" * 200)
+    assert [s[:6] for s in sent] == ["[1/2] ", "[2/2] "]
+
+
 def test_network_failure_becomes_a_plain_message(monkeypatch):
     monkeypatch.setattr(offline, "is_offline", lambda: False)
 

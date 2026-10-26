@@ -23,6 +23,7 @@ from typing import Any
 
 from core import __version__ as _APP_VERSION
 from core import offline
+from core.stats import program_version_label
 from core.verified_download import urlopen_https_only
 
 logger = logging.getLogger(__name__)
@@ -74,6 +75,34 @@ def system_summary() -> str:
     return f"Whisper Transcriber Suite {_APP_VERSION} on {os_name()} ({platform.machine()})"
 
 
+#: The stats viewer shows only the ``model`` column, so a report longer than one row's model field is ALSO sent
+#: as extra rows of ``[k/n] `` + the next piece, letting the whole text be read there (the first row keeps the
+#: full text spread over the capped fields for a database export).
+VIEWER_CHARS = 128
+
+
+def viewer_pieces(cleaned: str) -> list[str]:
+    """``cleaned`` as the model values of one or more rows: one row unchanged when it fits, else ``[k/n] ``-tagged
+    pieces of at most :data:`VIEWER_CHARS` characters each, in order."""
+    if len(cleaned) <= VIEWER_CHARS:
+        return [cleaned]
+    size = VIEWER_CHARS - len("[9/9] ")
+    chunks = [cleaned[i:i + size] for i in range(0, len(cleaned), size)]
+    return [f"[{k}/{len(chunks)}] {chunk}" for k, chunk in enumerate(chunks, 1)]
+
+
+def build_payloads(text: str) -> list[dict[str, str]]:
+    """Every row of one report, in sending order (no network I/O)."""
+    first = build_payload(text)
+    pieces = viewer_pieces(clean_text(text))
+    if len(pieces) == 1:
+        return [first]
+    rows = [dict(first, model=pieces[0])]
+    for piece in pieces[1:]:
+        rows.append(dict(first, model=piece, platform_version="", platform_processor=""))
+    return rows
+
+
 def build_payload(text: str) -> dict[str, str]:
     """The form fields for one report (no network I/O)."""
     cleaned = clean_text(text)
@@ -83,7 +112,7 @@ def build_payload(text: str) -> dict[str, str]:
         "form_submitted": "1",
         "status": STATUS,
         "language": "",
-        "program_version": str(_APP_VERSION),
+        "program_version": program_version_label(_APP_VERSION),
         "platform_system": platform.system(),
         "platform_release": os_name(),
         "platform_machine": platform.machine(),
@@ -98,11 +127,11 @@ def build_payload(text: str) -> dict[str, str]:
 
 
 def send(config: dict[str, Any], text: str, *, timeout: float = 15.0) -> None:
-    """POST one report; raises :class:`ProblemReportError` with a readable reason on failure.
+    """POST one report (its rows, in order); raises :class:`ProblemReportError` with a readable reason on failure.
 
     Blocking: call it from a worker thread.
     """
-    payload = build_payload(text)
+    payloads = build_payloads(text)
     if offline.is_offline():
         raise ProblemReportError(
             "Work offline is on, so nothing is sent. Switch it off in the File menu and try again.")
@@ -113,14 +142,15 @@ def send(config: dict[str, Any], text: str, *, timeout: float = 15.0) -> None:
         scheme = ""
     if scheme not in ("http", "https"):
         raise ProblemReportError("This copy of the app has no report address set.")
-    req = urllib.request.Request(
-        url, data=urllib.parse.urlencode(payload).encode("utf-8"), method="POST",
-        headers={"Content-Type": "application/x-www-form-urlencoded",
-                 "User-Agent": "WhisperTranscriberSuite"},
-    )
     try:
-        with urlopen_https_only(req, timeout=timeout) as resp:
-            resp.read(1)
+        for payload in payloads:
+            req = urllib.request.Request(
+                url, data=urllib.parse.urlencode(payload).encode("utf-8"), method="POST",
+                headers={"Content-Type": "application/x-www-form-urlencoded",
+                         "User-Agent": "WhisperTranscriberSuite"},
+            )
+            with urlopen_https_only(req, timeout=timeout) as resp:
+                resp.read(1)
     except urllib.error.HTTPError as e:
         logger.info("problem report refused: HTTP %s", e.code)
         raise ProblemReportError(f"The server refused the report (HTTP {e.code}).") from e
