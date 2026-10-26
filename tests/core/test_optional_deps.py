@@ -5,6 +5,8 @@ import os
 import subprocess
 import threading
 
+import pytest
+
 from core import optional_deps
 
 
@@ -259,3 +261,30 @@ def test_a_package_in_use_asks_to_reopen_the_app(monkeypatch, tmp_path):
     assert optional_deps.install("alignment", log_cb=lines.append) is False
     assert any("Close and reopen the app" in line for line in lines)
 
+
+
+def test_spec_parsing_is_linear_on_a_long_clause_list():
+    """CodeQL py/redos: the pin regex backtracked exponentially (22 spaced clauses took 2.3 s)."""
+    import time
+
+    # 24 clauses first: the old regex fails here in seconds instead of hanging on the 5000-clause string
+    for clauses in (24, 5000):
+        t0 = time.perf_counter()
+        assert optional_deps._SPEC_RE.match("a" + " >=1" * clauses + "!") is None
+        assert time.perf_counter() - t0 < 0.5, clauses
+
+
+@pytest.mark.parametrize("spec, name, clauses", [
+    ("transformers>=5.18,<=5.20.2", "transformers", ">=5.18,<=5.20.2"),
+    ("torch", "torch", ""),
+    ("a >= 1 , < 2", "a", ">= 1 , < 2"),
+    ("tokenizers>=0.23.1,<0.24", "tokenizers", ">=0.23.1,<0.24"),
+])
+def test_spec_parsing_keeps_the_name_and_clauses(spec, name, clauses):
+    match = optional_deps._SPEC_RE.match(spec)
+    assert match and (match.group(1), match.group(2).strip()) == (name, clauses)
+
+
+@pytest.mark.parametrize("spec", ["a>=", "bad spec!"])
+def test_a_malformed_spec_does_not_match(spec):
+    assert optional_deps._SPEC_RE.match(spec) is None

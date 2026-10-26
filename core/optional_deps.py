@@ -575,7 +575,10 @@ def _version_key(version: str) -> tuple[int, ...]:
     return (*parts, -1 if re.match(r"[.\-_]?(a|b|c|rc|alpha|beta|pre|preview|dev)", rest) else 0)
 
 
-_SPEC_RE = re.compile(r"^\s*([A-Za-z0-9_.\-]+)\s*((?:[<>=!]=?\s*[\w.]+\s*,?\s*)*)$")
+# Each clause owns its leading whitespace and optional comma, so no two "\s*" runs can split the same spaces:
+# the earlier form backtracked exponentially on a long clause list that does not match (CodeQL py/redos;
+# 22 clauses took 2.3 s, each extra one doubled it).
+_SPEC_RE = re.compile(r"^\s*([A-Za-z0-9_.\-]+)((?:\s*[<>=!]=?\s*[\w.]+(?:\s*,)?)*\s*)$")
 _CLAUSE_RE = re.compile(r"(>=|<=|==|!=|>|<)\s*([\w.]+)")
 
 
