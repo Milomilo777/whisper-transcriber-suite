@@ -1907,8 +1907,12 @@ class TranscriptViewer(tk.Toplevel):
             menu.grab_release()
             # A fresh Menu is built per right-click; Tk keeps every child
             # widget alive until destroyed, so without this each right-click
-            # leaked one more dead Menu for the viewer's lifetime.
-            menu.destroy()
+            # leaked one more dead Menu for the viewer's lifetime. Destroy it
+            # a moment later, not here: on Windows the chosen entry's command
+            # runs from the event queue after tk_popup returns, and an
+            # immediate destroy dropped it (Rename, Edit timestamp and Copy
+            # text did nothing).
+            menu.after(200, menu.destroy)
 
     def _open_json_folder(self) -> None:
         folder = os.path.dirname(self.json_path) or "."

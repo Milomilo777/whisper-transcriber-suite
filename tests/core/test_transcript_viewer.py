@@ -1336,11 +1336,49 @@ def test_right_click_menu_destroyed_after_popup(sample_json, monkeypatch):
                 viewer._on_segment_right_click(
                     types.SimpleNamespace(y=10, x_root=0, y_root=0)
                 )
+            # The menu is destroyed a moment after the popup closes (see the
+            # next test); let that scheduled destroy run before counting.
+            root.after(400, root.quit)
+            root.mainloop()
             leftover = [
                 child for child in viewer.winfo_children()
                 if isinstance(child, tk.Menu)
             ]
             assert leftover == []
+        finally:
+            viewer._on_close()
+    finally:
+        root.destroy()
+
+
+def test_right_click_menu_entry_runs_after_popup_returns(sample_json, monkeypatch):
+    """On Windows a chosen entry's command runs from the event queue AFTER
+    tk_popup returns. Destroying the menu right after tk_popup dropped that
+    command: Rename, Edit timestamp and Copy text did nothing."""
+    import types
+
+    from app.dialogs import transcript_viewer as tv_mod
+    from app.dialogs.transcript_viewer import TranscriptViewer
+
+    root = tk.Tk()
+    root.withdraw()
+    try:
+        viewer = TranscriptViewer(root, sample_json)
+        viewer.withdraw()
+        try:
+            copied: list[str] = []
+            monkeypatch.setattr(viewer, "_copy_to_clipboard", copied.append)
+
+            def popup_then_choose_last(self, x, y):
+                # like the Windows menu loop: the choice arrives as a queued event
+                self.after(0, lambda: self.invoke("last"))
+
+            monkeypatch.setattr(tv_mod.tk.Menu, "tk_popup", popup_then_choose_last)
+            monkeypatch.setattr(viewer.tree, "identify_row", lambda _y: "0")
+            viewer._on_segment_right_click(types.SimpleNamespace(y=10, x_root=0, y_root=0))
+            root.after(400, root.quit)
+            root.mainloop()
+            assert copied, "the Copy text entry never ran"
         finally:
             viewer._on_close()
     finally:
