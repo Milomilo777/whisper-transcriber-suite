@@ -7889,20 +7889,30 @@ class App(tk.Tk):
         damaged install never blocks launch.
         """
         if getattr(sys, "frozen", False):
-            ico = os.path.join(
-                os.path.dirname(os.path.abspath(sys.executable)),
-                "assets", "whisper.ico",
-            )
+            assets = os.path.join(
+                os.path.dirname(os.path.abspath(sys.executable)), "assets")
         else:
-            ico = os.path.join(
+            assets = os.path.join(
                 os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                "assets", "whisper.ico",
-            )
-        if not os.path.isfile(ico):
-            return
+                "assets")
         if sys.platform == "darwin":
             # iconbitmap(default=...) is not supported on macOS/Tk and
             # throws "wrong # args: should be 'wm iconbitmap window ?bitmap?'"
+            return
+        if sys.platform != "win32":
+            # X11 Tk reads a bitmap, not an .ico (``wm iconbitmap`` with the
+            # .ico fails there); a PNG goes through iconphoto instead.
+            png = os.path.join(assets, "whisper.png")
+            if not os.path.isfile(png):
+                return
+            try:
+                self._icon_photo = tk.PhotoImage(file=png)  # keep a reference
+                self.iconphoto(True, self._icon_photo)
+            except tk.TclError as exc:
+                logger.warning("Could not set window icon (%s): %s", png, exc)
+            return
+        ico = os.path.join(assets, "whisper.ico")
+        if not os.path.isfile(ico):
             return
         try:
             self.iconbitmap(default=ico)
