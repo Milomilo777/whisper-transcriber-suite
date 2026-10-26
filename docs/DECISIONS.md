@@ -864,3 +864,50 @@ PC download one of seven known models (1.5 to 3.1 GB each, once): bounded, and o
 media downloads that link jobs already allow; a password closes it. The download is not shown in the
 desktop window yet, only in the log. A switch between a general job and a language job costs one
 model load, as in ADR 0016.
+
+## 0019 — A download decides which files it owns before yt-dlp runs
+
+**Status:** Accepted
+
+**Date:** 2026-10-27
+
+**Context:** The output name of a desktop download is the video title only, so two jobs, or a job and a
+file the user kept, can name the same file. yt-dlp then printed "has already been downloaded" and the
+app took the old file as the job's result (reported it finished, transcribed it), resumed another
+URL's `.part` with `-c`, converted a user's file of the source extension in audio mode (and deleted it
+afterwards), and accepted a truncated audio file left by a stopped conversion. Two earlier attempts
+decided ownership from yt-dlp's log lines or with a per-job scratch folder; independent reviews
+found new ways to delete a user's file in both (resume granting ownership of a user file, a later
+playlist item deleting an earlier finished one, a resume racing the old run's cleanup, a refused move
+losing a finished file).
+
+**Considered options:**
+1. Keep the log-line approach and stop yt-dlp when it prints "already downloaded". Rejected: the stop is
+   asynchronous, so audio mode can convert (and delete) the file before it lands.
+2. A scratch folder per job (`-P temp:`). Rejected: orphaned folders after a restart, moves that can
+   fail after the work is done, relative-path pitfalls.
+3. Put the video id into every file name. Rejected for now: changes the name of every download.
+4. Ask yt-dlp for the planned file names first (`--print filename`, same format selection), refuse
+   before anything is written when a planned path is already taken, keep yt-dlp from deleting sources
+   (`-k` in audio mode) and track what the job itself created. Chosen.
+
+**Decision:** Option 4. Before the real run, a plan pass lists the planned source and final path per
+item. When a planned final path, source, or any `.part`, `.ytdl`, fragment or per-format stream of it
+exists and the job did not create it, the job ends with an error that names the file; nothing is
+downloaded, converted, resumed or deleted. If the plan pass itself fails, the real run goes ahead
+guarded by a snapshot of the folder taken before it starts: "already downloaded" for a file of the
+snapshot stops the run. A file counts as the job's own only when it was absent from that snapshot or
+the same job announced it in an earlier, paused run. Audio mode passes `-k`; the source is deleted
+afterwards only when it is the job's own and differs from the final file. A stopped or failed
+conversion removes only the one target it was writing, never an earlier finished item. A run holds a
+per-job lock from the plan to its own cleanup, so a resume waits for the old run to finish stopping.
+The same code covers the private-tab fallback (the YouTube copy) because it shares the runner.
+
+**What must never happen:** a finished download or transcript lost; one file owned by two jobs; a
+cancel, pause or failure deleting a file the job did not create (or one another job uses); a file of
+an older or other download reported as this job's result.
+
+**Consequences:** Downloading the same title into the same folder twice now stops with a message
+instead of silently reusing the old file. Each download starts with one extra metadata request (a few
+seconds). A playlist is planned item by item. Not covered: a file that appears in the folder after the
+plan pass, and yt-dlp's own `--no-overwrites` policies for names the plan could not predict.
