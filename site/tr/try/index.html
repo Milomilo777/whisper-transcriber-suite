@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ücretsiz Çevrimiçi Ses Transkripsiyonu, Yükleme Yok (Whisper)</title>
+<meta name="description" content="Bir transkripsiyon ve SRT/VTT için bir MP3, WAV, M4A veya MP4 (10 dakikaya kadar) bırakın. Whisper tarayıcınızda çalışır, böylece ses cihazınızdan asla ayrılmaz. Ücretsiz, kayıt yok.">
+<meta name="author" content="translation-robot">
+<meta name="theme-color" content="#f5f7fb">
+<meta name="color-scheme" content="light">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+<link rel="canonical" href="https://whisper-transcriber-suite.com/tr/try/">
+<!-- i18n:hreflang:start -->
+<link rel="alternate" hreflang="en" href="https://whisper-transcriber-suite.com/try/">
+<link rel="alternate" hreflang="de" href="https://whisper-transcriber-suite.com/de/try/">
+<link rel="alternate" hreflang="fr" href="https://whisper-transcriber-suite.com/fr/try/">
+<link rel="alternate" hreflang="es" href="https://whisper-transcriber-suite.com/es/try/">
+<link rel="alternate" hreflang="it" href="https://whisper-transcriber-suite.com/it/try/">
+<link rel="alternate" hreflang="pt-BR" href="https://whisper-transcriber-suite.com/pt-br/try/">
+<link rel="alternate" hreflang="pt" href="https://whisper-transcriber-suite.com/pt/try/">
+<link rel="alternate" hreflang="nl" href="https://whisper-transcriber-suite.com/nl/try/">
+<link rel="alternate" hreflang="pl" href="https://whisper-transcriber-suite.com/pl/try/">
+<link rel="alternate" hreflang="ru" href="https://whisper-transcriber-suite.com/ru/try/">
+<link rel="alternate" hreflang="uk" href="https://whisper-transcriber-suite.com/uk/try/">
+<link rel="alternate" hreflang="tr" href="https://whisper-transcriber-suite.com/tr/try/">
+<link rel="alternate" hreflang="cs" href="https://whisper-transcriber-suite.com/cs/try/">
+<link rel="alternate" hreflang="hu" href="https://whisper-transcriber-suite.com/hu/try/">
+<link rel="alternate" hreflang="x-default" href="https://whisper-transcriber-suite.com/try/">
+<!-- i18n:hreflang:end -->
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Ücretsiz Çevrimiçi Ses Transkripsiyonu, Yükleme Yok (Whisper)">
+<meta property="og:description" content="Bir transkripsiyon ve SRT/VTT için bir MP3, WAV, M4A veya MP4 (10 dakikaya kadar) bırakın. Whisper tarayıcınızda çalışır, böylece ses cihazınızdan asla ayrılmaz. Ücretsiz, kayıt yok.">
+<meta property="og:url" content="https://whisper-transcriber-suite.com/tr/try/">
+<meta property="og:image" content="https://whisper-transcriber-suite.com/assets/social-card-2026-09b.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Whisper Transcriber Suite — Windows, macOS ve Linux için ücretsiz, çevrimdışı ses ve video yazıya dökme.">
+<meta property="og:site_name" content="Whisper Transcriber Suite">
+<meta property="og:locale" content="tr_TR">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Ücretsiz Çevrimiçi Ses Transkripsiyonu, Yükleme Yok (Whisper)">
+<meta name="twitter:description" content="Bir transkripsiyon ve SRT/VTT için bir MP3, WAV, M4A veya MP4 (10 dakikaya kadar) bırakın. Whisper tarayıcınızda çalışır, böylece ses cihazınızdan asla ayrılmaz. Ücretsiz, kayıt yok.">
+<meta name="twitter:image" content="https://whisper-transcriber-suite.com/assets/social-card-2026-09b.png">
+
+<link rel="icon" href="/assets/logo.svg" type="image/svg+xml">
+<link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+
+<link rel="preload" href="/assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/styles.css?v=20261022a">
+<style>
+  .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
+  .guide { padding: 108px 0 64px; }
+  .guide-wrap { width: min(780px, 100% - 32px); margin-inline: auto; }
+  .crumbs { margin-bottom: 18px; font-size: 0.88rem; color: var(--muted); }
+  .crumbs a { color: var(--muted); }
+  .guide h1 { font-size: clamp(1.9rem, 5.2vw, 3rem); font-weight: 700; letter-spacing: -0.04em; line-height: 1.08; }
+  .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
+  .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
+  .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
+  .guide-body p { margin-top: 12px; color: var(--ink-2); }
+  .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
+  .guide-steps li { counter-increment: g; position: relative; padding-block: 18px; padding-inline: 70px 20px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow-sm); color: var(--ink-2); }
+  .guide-steps li::before { content: counter(g); position: absolute; inset-inline-start: 18px; top: 16px; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 11px; font-family: var(--font-display); font-weight: 700; color: #fff; background: var(--teal); }
+  .guide-steps li:nth-child(3n+2)::before { background: var(--violet); }
+  .guide-steps li:nth-child(3n)::before { background: var(--coral); }
+  .guide b { color: var(--ink); font-weight: 600; }
+  .guide-fig { margin: 28px 0 0; }
+  .guide-fig img { width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--line-2); box-shadow: var(--shadow); }
+  .guide-fig figcaption { margin-top: 10px; font-size: 0.88rem; color: var(--muted); }
+  .know { padding-inline-start: 1.2em; display: grid; gap: 10px; color: var(--ink-2); }
+  .know li::marker { color: var(--teal); }
+  .demo { margin-top: 12px; padding: 16px 18px; overflow-x: auto; border-radius: var(--r-sm); background: var(--night); color: var(--night-text); font-size: 0.86rem; line-height: 1.7; }
+  .demo code { padding: 0; background: none; color: inherit; font-size: inherit; }
+  .guide .faq-list { display: grid; gap: 12px; }
+  .guide .faq-list .qa p { margin: 0; color: var(--ink-2); }
+  .guide-cta-box { margin-top: 48px; padding: 28px; border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); }
+  .guide-cta-box h2 { margin: 0 0 10px; }
+  .guide-cta-box p { margin: 0 0 18px; color: var(--ink-2); }
+  .more-guides { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+  .more-guides a { display: block; padding: 18px 20px; border-radius: var(--r); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-sm); color: var(--ink); text-decoration: none; }
+  .more-guides a:hover { border-color: var(--teal); }
+  .more-guides strong { display: block; font-family: var(--font-display); font-size: 1.02rem; }
+  .more-guides span { display: block; margin-top: 4px; font-size: 0.92rem; color: var(--muted); }
+  .try-card { margin-top: 28px; padding: 24px; border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); display: grid; gap: 18px; }
+  .try-card > * { min-width: 0; }
+  .try-card [hidden], .try-card[hidden] { display: none !important; }
+  .try-step h2 { margin: 0 0 8px; font-size: 1.12rem; letter-spacing: -0.02em; }
+  .drop { display: grid; place-items: center; gap: 8px; min-height: 120px; padding: 18px; border: 2px dashed var(--line-2); border-radius: var(--r); text-align: center; color: var(--ink-2); cursor: pointer; }
+  .drop.over, .drop:focus-within { border-color: var(--teal); }
+  .drop input[type=file] { max-width: 100%; font-size: 1rem; }
+  .try-row { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; }
+  .try-row label { display: inline-flex; gap: 8px; align-items: center; min-height: 44px; }
+  .try-row select { min-height: 44px; font-size: 1rem; padding: 6px 10px; border-radius: 10px; border: 1px solid var(--line-2); background: #fff; }
+  .try-note { font-size: 0.92rem; color: var(--muted); }
+  .try-warn { padding: 10px 14px; border-radius: 10px; background: #fff7e6; border: 1px solid #f0c36d; color: #6b4a00; }
+  .try-err { padding: 10px 14px; border-radius: 10px; background: #fdecec; border: 1px solid #e8a3a3; color: #7a1d1d; }
+  .try-progress { display: grid; gap: 6px; }
+  .try-progress progress { width: 100%; height: 14px; }
+  .try-out { width: 100%; min-height: 220px; padding: 12px; border-radius: 10px; border: 1px solid var(--line-2); font: 0.95rem/1.6 var(--font-body, system-ui); resize: vertical; }
+  .try-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+  .try-actions .btn { min-height: 44px; }
+  @media (max-width: 760px) {
+    .guide { padding-top: 92px; }
+    .guide-steps li { padding-block: 16px; padding-inline: 62px 16px; }
+    .guide-steps li::before { inset-inline-start: 14px; }
+    .guide-cta .btn { white-space: normal; text-align: center; }
+  }
+</style>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebApplication",
+      "@id": "https://whisper-transcriber-suite.com/try/#webapp",
+      "name": "Whisper Transcriber Suite: try it in the browser",
+      "url": "https://whisper-transcriber-suite.com/try/",
+      "applicationCategory": "MultimediaApplication",
+      "operatingSystem": "Any (a current web browser)",
+      "browserRequirements": "Requires WebAssembly; the Large model requires WebGPU",
+      "description": "Yükleme yapmadan ücretsiz çevrimiçi ses transkripsiyonu: Whisper tarayıcınızın içinde çalışır ve 10 dakikaya kadar olan bir MP3, WAV, M4A veya video dosyasını metne, SRT ve VTT'ye dönüştürür. Kayıt yok. Ses asla cihazınızdan ayrılmaz.",
+      "featureList": [
+        "10 dakikaya (telefonda 5) kadar olan bir MP3, WAV, M4A, OGG veya MP4 dosyasını transkribe edin",
+        "Whisper Small (250 MB) veya Large v3 Turbo (730 MB, WebGPU) tarayıcı sekmesinde çalışır",
+        "TXT, SRT veya VTT indir",
+        "Yükleme yok: ses cihazınızdan asla ayrılmaz",
+        "Kayıt yok ve ücretsiz"
+      ],
+      "inLanguage": "tr",
+      "dateModified": "2026-10-26",
+      "isAccessibleForFree": true,
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "isRelatedTo": {
+        "@id": "https://whisper-transcriber-suite.com/#app"
+      },
+      "isPartOf": {
+        "@id": "https://whisper-transcriber-suite.com/#website"
+      },
+      "publisher": {
+        "@type": "Person",
+        "name": "translation-robot",
+        "url": "https://github.com/translation-robot"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Ana Sayfa",
+          "item": "https://whisper-transcriber-suite.com/tr/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Tarayıcıda deneyin",
+          "item": "https://whisper-transcriber-suite.com/tr/try/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Sesim yükleniyor mu?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Hayır. Dosya bu sayfa tarafından okunur ve tarayıcınızın içinde transkribe edilir. Tek indirme, ilk kullandığınızda Hugging Face'ten konuşma modelinin kendisidir."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Neden masaüstü uygulamasından daha yavaş?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Bir tarayıcı sekmesinin işlemcinize ve ekran kartınıza sınırlı erişimi vardır. Masaüstü uygulaması, herhangi bir uzunluktaki dosyalarda tam Whisper modellerini tam hızda çalıştırır."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Hangi dosyalar çalışır?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Çoğu ses dosyası (MP3, WAV, M4A, OGG) ve sesli MP4 veya WebM videoları, 10 dakikaya kadar. Bir tarayıcının neleri açabileceği değişir; masaüstü uygulaması neredeyse her formatı açar."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Model saklanıyor mu ve silebilir miyim?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Bu tarayıcıda kalır, bu yüzden sonraki dosya için indirmeye gerek yoktur. Adım 2 altındaki İndirilen modelleri kaldır onu siler; bu sitenin verilerini tarayıcıda temizlemek de öyle."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Hangi tarayıcılar?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Mevcut Chrome, Edge, Firefox ve Safari Small'u çalıştırır. Large için WebGPU gerekir: bilgisayarda mevcut Chrome veya Edge. Bir telefonda, Small ve kısa bir dosya kullanın."
+          }
+        }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-globe" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M10 2.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15zM2.5 10h15M10 2.5c2 2.1 3 4.6 3 7.5s-1 5.4-3 7.5c-2-2.1-3-4.6-3-7.5s1-5.4 3-7.5z"/></symbol>
+    <symbol id="i-download" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M10 3v10m0 0 4-4m-4 4-4-4M4 16h12"/></symbol>
+    <symbol id="i-github" viewBox="0 0 16 16"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></symbol>
+    <symbol id="i-star" viewBox="0 0 20 20"><path fill="currentColor" d="m10 1.8 2.5 5.2 5.7.8-4.1 4 1 5.6L10 14.7l-5.1 2.7 1-5.6-4.1-4 5.7-.8z"/></symbol>
+  </defs>
+</svg> <a class="skip-link" href="#main">İçeriğe atla</a>
+
+<header class="site-header" data-header>
+  <div class="wrap header-row">
+    <a class="brand" href="/tr/" aria-label="Whisper Transcriber Suite — ana sayfa">
+      <img class="brand-logo" src="/assets/logo.svg" alt="" width="32" height="32"> <span class="brand-name">Whisper Transcriber Suite</span>
+    </a>
+    <nav class="site-nav" aria-label="Birincil">
+      <a href="/tr/#showreel">Tanıtım</a> <a href="/tr/#features">Özellikler</a> <a href="/tr/#how-it-works">Nasıl çalışır</a> <a href="/tr/try/" aria-current="page">Dene</a> <a href="/tr/#download">İndir</a> <a href="/tr/#compare">Karşılaştır</a> <a href="/tr/#faq">SSS</a> <a href="/tr/#contact">İletişim</a>
+    </nav>
+    <div class="header-cta">
+      <!-- i18n:english:start --><a class="btn btn-ghost btn-sm lang-en" href="/try/?lang=en" hreflang="en" lang="en" dir="ltr" data-lang-pick="en" translate="no">English</a><!-- i18n:english:end -->
+      <details class="lang-menu" data-lang-menu>
+        <summary class="btn btn-ghost btn-sm" title="Dil" aria-label="Dil"><svg class="i" aria-hidden="true"><use href="#i-globe"/></svg><span class="lang-current" translate="no"><!-- i18n:current:start -->Türkçe<!-- i18n:current:end --></span></summary>
+        <ul class="lang-list" translate="no"><!-- i18n:menu:start -->
+<li><a href="/try/?lang=en" hreflang="en" lang="en" data-lang-pick="en">English</a></li>
+<li><a href="/de/try/" hreflang="de" lang="de" data-lang-pick="de">Deutsch</a></li>
+<li><a href="/fr/try/" hreflang="fr" lang="fr" data-lang-pick="fr">Français</a></li>
+<li><a href="/es/try/" hreflang="es" lang="es" data-lang-pick="es">Español</a></li>
+<li><a href="/it/try/" hreflang="it" lang="it" data-lang-pick="it">Italiano</a></li>
+<li><a href="/pt-br/try/" hreflang="pt-BR" lang="pt-BR" data-lang-pick="pt-BR">Português (Brasil)</a></li>
+<li><a href="/pt/try/" hreflang="pt" lang="pt" data-lang-pick="pt">Português (Portugal)</a></li>
+<li><a href="/nl/try/" hreflang="nl" lang="nl" data-lang-pick="nl">Nederlands</a></li>
+<li><a href="/pl/try/" hreflang="pl" lang="pl" data-lang-pick="pl">Polski</a></li>
+<li><a href="/ru/try/" hreflang="ru" lang="ru" data-lang-pick="ru">Русский</a></li>
+<li><a href="/uk/try/" hreflang="uk" lang="uk" data-lang-pick="uk">Українська</a></li>
+<li><a href="/tr/try/" hreflang="tr" lang="tr" data-lang-pick="tr" aria-current="true">Türkçe</a></li>
+<li><a href="/cs/try/" hreflang="cs" lang="cs" data-lang-pick="cs">Čeština</a></li>
+<li><a href="/sk/" hreflang="sk" lang="sk" data-lang-pick="sk">Slovenčina</a></li>
+<li><a href="/hu/try/" hreflang="hu" lang="hu" data-lang-pick="hu">Magyar</a></li>
+<li><a href="/ro/" hreflang="ro" lang="ro" data-lang-pick="ro">Română</a></li>
+<li><a href="/bg/" hreflang="bg" lang="bg" data-lang-pick="bg">Български</a></li>
+<li><a href="/el/" hreflang="el" lang="el" data-lang-pick="el">Ελληνικά</a></li>
+<li><a href="/sv/" hreflang="sv" lang="sv" data-lang-pick="sv">Svenska</a></li>
+<li><a href="/da/" hreflang="da" lang="da" data-lang-pick="da">Dansk</a></li>
+<li><a href="/nb/" hreflang="nb" lang="nb" data-lang-pick="nb">Norsk bokmål</a></li>
+<li><a href="/fi/" hreflang="fi" lang="fi" data-lang-pick="fi">Suomi</a></li>
+<li><a href="/hr/" hreflang="hr" lang="hr" data-lang-pick="hr">Hrvatski</a></li>
+<li><a href="/sr/" hreflang="sr" lang="sr" data-lang-pick="sr">Српски</a></li>
+<li><a href="/sl/" hreflang="sl" lang="sl" data-lang-pick="sl">Slovenščina</a></li>
+<li><a href="/lt/" hreflang="lt" lang="lt" data-lang-pick="lt">Lietuvių</a></li>
+<li><a href="/zh-cn/" hreflang="zh-CN" lang="zh-CN" data-lang-pick="zh-CN">简体中文</a></li>
+<li><a href="/zh-tw/" hreflang="zh-TW" lang="zh-TW" data-lang-pick="zh-TW">繁體中文</a></li>
+<li><a href="/ja/" hreflang="ja" lang="ja" data-lang-pick="ja">日本語</a></li>
+<li><a href="/ko/" hreflang="ko" lang="ko" data-lang-pick="ko">한국어</a></li>
+<li><a href="/vi/" hreflang="vi" lang="vi" data-lang-pick="vi">Tiếng Việt</a></li>
+<li><a href="/th/" hreflang="th" lang="th" data-lang-pick="th">ไทย</a></li>
+<li><a href="/id/" hreflang="id" lang="id" data-lang-pick="id">Bahasa Indonesia</a></li>
+<li><a href="/ms/" hreflang="ms" lang="ms" data-lang-pick="ms">Bahasa Melayu</a></li>
+<li><a href="/hi/" hreflang="hi" lang="hi" data-lang-pick="hi">हिन्दी</a></li>
+<li><a href="/ar/" hreflang="ar" lang="ar" dir="rtl" data-lang-pick="ar">العربية</a></li>
+<li><a href="/fa/" hreflang="fa" lang="fa" dir="rtl" data-lang-pick="fa">فارسی</a></li>
+<li><a href="/he/" hreflang="he" lang="he" dir="rtl" data-lang-pick="he">עברית</a></li>
+<li><a href="/lv/" hreflang="lv" lang="lv" data-lang-pick="lv">Latviešu</a></li>
+<li><a href="/ca/" hreflang="ca" lang="ca" data-lang-pick="ca">Català</a></li>
+<li><a href="/bn/" hreflang="bn" lang="bn" data-lang-pick="bn">বাংলা</a></li>
+<li><a href="/fil/" hreflang="fil" lang="fil" data-lang-pick="fil">Filipino</a></li>
+<!-- i18n:menu:end --></ul>
+      </details>
+      <a class="btn-icon gh-btn" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" title="GitHub" aria-label="Whisper Transcriber Suite&#39;e GitHub&#39;da yıldız verin"> <svg class="i" aria-hidden="true"><use href="#i-github"/></svg> </a> <a class="btn btn-primary btn-sm" href="/tr/#download">İndir</a>
+    </div>
+  </div>
+</header>
+
+<main id="main" class="guide">
+  <div class="guide-wrap">
+    <nav class="crumbs" aria-label="İçerik haritası"><a href="/tr/">Ana Sayfa</a> › Tarayıcıda deneyin</nav>
+    <article>
+      <h1>Sesi çevrimiçi, ücretsiz, yükleme yapmadan metne transkribe edin</h1>
+      <p class="guide-lede">Bir MP3'ü metne dönüştürmenin ücretsiz çevrimiçi yolu, kayıt yok ve kurulacak bir şey yok. Bir ses veya video dosyası bırakın ve Whisper konuşmayı tam burada, bu tarayıcı sekmesinde metne dönüştürsün. Gizlidir: konuşma modeli bir kez indirilir ve cihazınızda çalışır, böylece sesiniz asla cihazınızdan ayrılmaz.</p>
+      <p class="guide-sub">MP3'ten metne, WAV'dan metne, sesten veya videodan SRT ve VTT altyazılarına: tek bir sayfa, hepsi cihazınızda.</p>
+      <p class="guide-sub">Dosya başına 10 dakikaya kadar (telefonda 5). Daha uzun dosyalar, aynı anda birçok dosya, konuşmacı etiketleri ve çok daha hızlı sonuçlar için <a href="/tr/#download">ücretsiz masaüstü uygulamasını</a> kullanın.</p>
+
+      <noscript><p class="try-err">Bu sayfanın konuşma modelini tarayıcınızda çalıştırması için JavaScript'e ihtiyacı var.</p></noscript>
+
+      <div class="try-card" data-try hidden>
+        <section class="try-step" aria-labelledby="try-file-title">
+          <h2 id="try-file-title">1. Bir dosya seçin</h2>
+          <label class="drop" data-drop>
+            <span>Buraya bir ses veya video dosyası bırakın veya</span>
+            <input type="file" accept="audio/*,video/*" data-file>
+          </label>
+          <p class="try-note" data-file-info aria-live="polite"></p>
+        </section>
+
+        <section class="try-step" aria-labelledby="try-model-title">
+          <h2 id="try-model-title">2. Konuşma modelini ve dili seçin</h2>
+          <div class="try-row">
+            <label><input type="radio" name="model" value="small" checked> Small: iyi, her yerde çalışır (250 MB)</label>
+            <label><input type="radio" name="model" value="large"> Large: en iyi kalite (730 MB, WebGPU gerektirir)</label>
+          </div>
+          <p class="try-note" data-large-note hidden>Large, bu tarayıcının sunmadığı WebGPU'yu gerektirir. Bir bilgisayardaki mevcut Chrome ve Edge'de var.</p>
+          <div class="try-row">
+            <label>Dosyada konuşulan dil
+              <select data-language>
+                <option value="english">İngilizce</option>
+                <option value="arabic">Arapça</option>
+                <option value="chinese">Çince</option>
+                <option value="french">Fransızca</option>
+                <option value="german">Almanca</option>
+                <option value="hindi">Hintçe</option>
+                <option value="indonesian">Endonezce</option>
+                <option value="italian">İtalyanca</option>
+                <option value="japanese">Japonca</option>
+                <option value="korean">Korece</option>
+                <option value="persian">Farsça</option>
+                <option value="portuguese">Portekizce</option>
+                <option value="russian">Rusça</option>
+                <option value="spanish">İspanyolca</option>
+                <option value="turkish">Türkçe</option>
+                <option value="vietnamese">Vietnamca</option>
+              </select>
+            </label>
+          </div>
+          <p class="try-warn" data-lang-note hidden></p>
+          <p class="try-note" data-model-info>Model bir kez Hugging Face'ten indirilir ve ardından bu tarayıcıda tutulur.</p>
+          <p class="try-note"><button class="btn btn-ghost" type="button" data-remove-models>İndirilen modelleri kaldır</button> <span data-remove-note aria-live="polite" hidden></span></p>
+          <p class="try-warn" data-net-warn hidden>Mobil veride veya veri tasarrufu modunda görünüyorsunuz. Model indirmesi büyüktür; Wi-Fi daha iyidir.</p>
+        </section>
+
+        <section class="try-step" aria-labelledby="try-run-title">
+          <h2 id="try-run-title">3. Transkribe et</h2>
+          <div class="try-actions">
+            <button class="btn btn-primary btn-lg" type="button" data-run disabled>Yazıya dök</button>
+          </div>
+          <div class="try-progress" data-progress hidden>
+            <progress max="100" value="0" data-bar></progress>
+            <p class="try-note" data-status aria-live="polite"></p>
+            <p class="try-note" data-awake></p>
+          </div>
+          <p class="try-err" data-error role="alert" hidden></p>
+        </section>
+
+        <section class="try-step" aria-labelledby="try-result-title" data-result hidden>
+          <h2 id="try-result-title">4. Transkripsiyonunuz</h2>
+          <textarea class="try-out" data-text readonly dir="auto" aria-label="Transkripsiyon"></textarea>
+          <div class="try-actions">
+            <button class="btn btn-ghost" type="button" data-save="txt">TXT indir</button>
+            <button class="btn btn-ghost" type="button" data-save="srt">SRT indir</button>
+            <button class="btn btn-ghost" type="button" data-save="vtt">VTT indir</button>
+            <button class="btn btn-ghost" type="button" data-copy>Metni kopyala</button>
+          </div>
+        </section>
+      </div>
+
+      <div class="guide-cta-box">
+        <h2>Daha uzun dosyalar ve daha iyi doğruluk</h2>
+        <p>Ücretsiz masaüstü uygulaması büyük Whisper modellerini bilgisayarınızda çalıştırır: herhangi bir uzunlukta dosyalar, bir sıra, konuşmacı etiketleri, Word ve PDF dışa aktarımı, YouTube bağlantıları ve canlı altyazılar. Orada da hesap veya yükleme yok.</p>
+        <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Ücretsiz uygulamayı indirin</a>
+      </div>
+
+      <h2>Sorular</h2>
+      <div class="faq-list">
+        <article class="qa"><h3>Sesim yükleniyor mu?</h3><div class="faq-a"><p>Hayır. Dosya bu sayfa tarafından okunur ve tarayıcınızın içinde transkribe edilir. Tek indirme, ilk kullandığınızda Hugging Face'ten konuşma modelinin kendisidir.</p></div></article>
+        <article class="qa"><h3>Neden masaüstü uygulamasından daha yavaş?</h3><div class="faq-a"><p>Bir tarayıcı sekmesinin işlemcinize ve ekran kartınıza sınırlı erişimi vardır. Masaüstü uygulaması, herhangi bir uzunluktaki dosyalarda tam Whisper modellerini tam hızda çalıştırır.</p></div></article>
+        <article class="qa"><h3>Hangi dosyalar çalışır?</h3><div class="faq-a"><p>Çoğu ses dosyası (MP3, WAV, M4A, OGG) ve sesli MP4 veya WebM videoları, 10 dakikaya kadar. Bir tarayıcının neleri açabileceği değişir; masaüstü uygulaması neredeyse her formatı açar.</p></div></article>
+        <article class="qa"><h3>Model saklanıyor mu ve silebilir miyim?</h3><div class="faq-a"><p>Bu tarayıcıda kalır, bu yüzden sonraki dosya indirme gerektirmez. 2. adımın altındaki <strong>İndirilen modelleri kaldır</strong> onu siler; bu sitenin verilerini tarayıcıda temizlemek de öyle.</p></div></article>
+        <article class="qa"><h3>Hangi tarayıcılar?</h3><div class="faq-a"><p>Mevcut Chrome, Edge, Firefox ve Safari Small'u çalıştırır. Large için WebGPU gerekir: bilgisayarda mevcut Chrome veya Edge. Bir telefonda, Small ve kısa bir dosya kullanın.</p></div></article>
+      </div>
+    </article>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <div class="footer-brand">
+      <a class="brand" href="/tr/" aria-label="Whisper Transcriber Suite — ana sayfa"><img class="brand-logo" src="/assets/logo.svg" alt="" width="30" height="30"><span class="brand-name">Whisper Transcriber Suite</span></a>
+      <p class="muted">Tek bir bağımsız geliştirici olan <a href="https://github.com/translation-robot" rel="noopener">translation-robot</a> tarafından yürütülmektedir. Kaynak kod BSD-3-Clause ile lisanslanmıştır.</p>
+      <p class="muted"><a href="/tr/#contact">İletişim</a></p>
+      <p class="muted small mt-note">Bu sayfa İngilizceden bir makine tarafından çevrildi ve bir diğeri tarafından kontrol edildi. Yanlış görünen bir şey mi var? <a href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener">GitHub'da bize bildirin</a>.</p>
+    </div>
+    <nav class="footer-nav" aria-label="Alt bilgi">
+      <a href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener">GitHub</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md" rel="noopener">Kurulum kılavuzu</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">Değişiklik günlüğü</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">Tartışmalar</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/SECURITY.md" rel="noopener">Güvenlik</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/LICENSE" rel="noopener">Lisans</a> <a href="/llms.txt">llms.txt</a>
+    </nav>
+  </div>
+</footer>
+
+<script type="application/json" id="i18n-strings">
+{
+  "This page was in the background for {time}. A phone may pause a page in the background; the transcription goes on now. Keep this page open until it finishes.": "Bu sayfa {time} süresince arka plandaydı. Bir telefon arka plandaki bir sayfayı duraklatabilir; transkripsiyon şimdi devam ediyor. Bitene kadar bu sayfayı açık tutun.",
+  "Small makes many mistakes in {language}. Pick Large for a much better result, or use the free desktop app.": "Small {language} dilinde birçok hata yapıyor. Çok daha iyi bir sonuç için Large'ı seçin veya ücretsiz masaüstü uygulamasını kullanın.",
+  "Model files removed from this browser: {n}.": "Bu tarayıcıdan kaldırılan model dosyaları: {n}.",
+  "No downloaded model was found in this browser.": "Bu tarayıcıda indirilmiş model bulunamadı.",
+  "This file is {length} long. The browser version stops at {max} minutes; the free desktop app transcribes files of any length.": "Bu dosya {length} uzunluğunda. Tarayıcı sürümü {max} dakikada durur; ücretsiz masaüstü uygulaması her uzunluktaki dosyayı transkribe eder.",
+  "Loading the speech model from this browser: {done} of {total} MB": "Bu tarayıcıdan konuşma modeli yükleniyor: {total} MB'ın {done}'u",
+  "Downloading the speech model: {done} of {total} MB": "Konuşma modeli indiriliyor: {total} MB'ın {done}'u",
+  "Transcribing in this browser… {time} so far (it can take about as long as the audio, or longer on a phone).": "Bu tarayıcıda transkribe ediliyor… şimdiye kadar {time} (ses kadar, veya telefonda daha uzun sürebilir).",
+  "No speech was found in this file.": "Bu dosyada konuşma bulunamadı.",
+  "This browser has no WebGPU, which the Large model needs. Pick Small.": "Bu tarayıcıda Large modelinin ihtiyaç duyduğu WebGPU yok. Small'u seçin.",
+  "It did not work in this browser: {error}. The desktop app handles this file.": "Bu tarayıcıda çalışmadı: {error}. Masaüstü uygulaması bu dosyayı destekler.",
+  "The screen stays on while this runs. Keep this page open until it finishes.": "Bu çalışırken ekran açık kalır. Bitene kadar bu sayfayı açık tutun.",
+  "Keep this page open and the screen on until it finishes: a phone pauses pages in the background.": "Bitene kadar bu sayfayı açık ve ekranı açık tutun: telefon arka plandaki sayfaları duraklatır.",
+  "Reading the file…": "Dosya okunuyor…",
+  "This browser cannot read the sound of this file. Try an MP3, WAV or M4A, or the desktop app.": "Bu tarayıcı bu dosyanın sesini okuyamıyor. Bir MP3, WAV veya M4A, veya masaüstü uygulamasını deneyin.",
+  "the worker stopped": "işçi durdu",
+  "Preparing the speech model…": "Konuşma modeli hazırlanıyor…",
+  "This model is already in this browser: no download needed.": "Bu model zaten bu tarayıcıda: indirmeye gerek yok.",
+  "The model ({size}) is downloaded once from Hugging Face when you press Transcribe, then kept in this browser.": "Model ({size}) Transkribe et'e bastığınızda Hugging Face'ten bir kez indirilir, ardından bu tarayıcıda tutulur.",
+  "This browser cannot run the speech model. Try a current Chrome, Edge, Firefox or Safari, or the free desktop app.": "Bu tarayıcı konuşma modelini çalıştıramıyor. Güncel bir Chrome, Edge, Firefox veya Safari, veya ücretsiz masaüstü uygulamasını deneyin."
+}
+</script>
+<script src="/js/lang.js?v=20261020a" defer></script>
+<script type="module" src="/try/try.js?v=20261026c"></script>
+</body>
+</html>
