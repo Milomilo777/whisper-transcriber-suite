@@ -3662,7 +3662,8 @@ class App(tk.Tk):
                 # Custom entry is in it (and size it back after), so other layouts stay as they were.
                 from app.widgets.tabs import combo_width
                 if level is None:
-                    combo.configure(width=combo_width(values, floor=10, cap=32))
+                    # 44: German "Custom (current setting)" is 40 characters
+                    combo.configure(width=combo_width(values, floor=10, cap=44))
                 elif combo.cget("width") != "":
                     combo.configure(width=combo_width(values, floor=10, cap=24))
             shown = level_to_label.get(level or "", values[-1])
