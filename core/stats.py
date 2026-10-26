@@ -3,7 +3,8 @@
 Sends per-transcription usage to the maintainer's stats endpoint
 (``config['stats_url']``). PRIVACY: the payload includes the model,
 language, audio duration, AI transcription time, status, word count, the
-running app version, a two-letter country code taken from the operating
+running app version, a random per-install id (:func:`install_id_for`,
+deleted when the switch goes off), a two-letter country code taken from the operating
 system's region setting (:func:`region_country`, read locally, no network
 lookup), and coarse host/hardware facts (OS, machine, CPU count, total RAM).
 It never includes the source file's name or folder, a local model folder,
@@ -39,6 +40,7 @@ import platform
 import re
 import sys
 import threading
+import uuid
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -308,6 +310,54 @@ def program_version_label(version: object = None, system: str | None = None) -> 
     return text + _OS_VERSION_SUFFIX.get(platform.system() if system is None else system, "")
 
 
+def _valid_install_id(value: object) -> bool:
+    """True for a canonical lower-case UUID4 string."""
+    if not isinstance(value, str):
+        return False
+    try:
+        parsed = uuid.UUID(value)
+    except ValueError:
+        return False
+    return parsed.version == 4 and str(parsed) == value
+
+
+def install_id_for(config: dict[str, Any]) -> str:
+    """The random per-install id for the stats rows; "" while stats are off.
+
+    Created once (``uuid.uuid4()``: random, never derived from the hardware,
+    the user name, paths or the network) and kept in ``config['install_id']``,
+    so the maintainer can count distinct installs. Never made or returned
+    while ``telemetry_opt_in`` is off. :func:`forget_install_id` deletes it.
+    Never raises.
+    """
+    try:
+        if not bool(config.get("telemetry_opt_in", False)):
+            return ""
+        current = config.get("install_id")
+        if _valid_install_id(current):
+            return str(current)
+        config["install_id"] = str(uuid.uuid4())
+        try:
+            from core.config import save_config
+            save_config(config)
+        except Exception as e:  # noqa: BLE001 - stats never break anything
+            logger.debug("install id not saved (kept for this run): %s", e)
+        return str(config["install_id"])
+    except Exception as e:  # noqa: BLE001
+        logger.debug("install id unavailable (ignored): %s", e)
+        return ""
+
+
+def forget_install_id(config: dict[str, Any]) -> None:
+    """Delete the stored install id when usage statistics are off.
+
+    Call it right before saving a changed ``telemetry_opt_in``. Turning the
+    switch on again then makes a new, unrelated id.
+    """
+    if not bool(config.get("telemetry_opt_in", False)) and config.get("install_id"):
+        config["install_id"] = ""
+
+
 def build_stats_payload(
     *,
     model: str,
@@ -316,6 +366,7 @@ def build_stats_payload(
     transcription_time: float,
     status: str,
     word_count: int = 0,
+    install_id: str = "",
 ) -> dict[str, str]:
     """Build the form-encoded stats payload (no network I/O).
 
@@ -326,11 +377,13 @@ def build_stats_payload(
     are never included; there is deliberately no file parameter, so no
     caller can add one by accident. ``model`` passes through
     :func:`public_model_name`, so a local model folder is never sent.
+    ``install_id`` (from :func:`install_id_for`) is added only when it is a
+    UUID4 string, so a damaged value can never put anything else on the wire.
     """
     # Local alias: a module-level global is never narrowed by a None
     # check (it could be reassigned elsewhere), a local is.
     ps = psutil
-    return {
+    payload = {
         _FORM_FLAG: "1",
         "model": public_model_name(model),
         "language": str(language or ""),
@@ -350,6 +403,9 @@ def build_stats_payload(
             str(int(ps.virtual_memory().total)) if ps is not None else "0"
         ),
     }
+    if _valid_install_id(install_id):
+        payload["install_id"] = install_id
+    return payload
 
 
 def _post(url: str, payload: dict[str, str], timeout: float) -> None:

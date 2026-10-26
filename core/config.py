@@ -466,6 +466,10 @@ DEFAULT_CONFIG = {
     #     default only activates the stats_url POST.
     "minimise_to_tray": False,
     "telemetry_opt_in": True,
+    #   install_id — random UUID4 that tags usage-stats rows so distinct installs can be
+    #     counted (core.stats.install_id_for). "" until the first row is sent; deleted when
+    #     telemetry_opt_in is turned off. Local only.
+    "install_id": "",
     #   work_offline — File > Work offline / Advanced > App behaviour. While
     #     True the app makes no network connection (core.offline): automatic
     #     requests skip themselves, user actions that need the internet say
@@ -570,6 +574,7 @@ LOCAL_ONLY_KEYS: frozenset[str] = frozenset({
     "ui_language",
     "ui_language_hint_done",
     "telemetry_opt_in",
+    "install_id",
     "work_offline",
     "tts_no_text_limit",
     "subtitle_edit_path",

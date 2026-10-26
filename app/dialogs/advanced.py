@@ -29,6 +29,7 @@ from core.backends.availability import (
 )
 from core import offline, subtitle_edit, tts_plan
 from core.config import DEFAULT_CONFIG, NOISY_AUDIO_PRESET, save_config, sync_from_disk
+from core.stats import forget_install_id
 from core.model_manager import (
     DEFAULT_MODEL_SLUG,
     catalog_entry_info,
@@ -2467,6 +2468,7 @@ class AdvancedDialog(tk.Toplevel):
             value = bool(var.get())
             if at_open.get(key) != value:
                 cfg[key] = value
+        forget_install_id(cfg)  # stats off: the stored random id goes
         # Written only when the pick changed here (like the switches above); getattr for the
         # stand-in dialogs of the tests that build no picker.
         ui_language_changed = False

@@ -55,6 +55,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- **Usage statistics count installs**: each row carries a random per-install id (a UUID4 in the new
+  `install_id` setting), so one person transcribing thousands of clips is no longer counted as many
+  users. The id comes from no hardware, name, path or network fact, is not sent in problem reports, and is
+  deleted when usage statistics are turned off (turning them on again makes a new one). The stats server
+  script stores it in a new `install_id` column.
 - **A language button above the tabs**: a globe, the own name of the language the app runs in and a
   down arrow, in the top-right corner in every language. It opens a chooser with "Automatic (system:
   <language>)", English right below it, then the other languages by their own names, with a check mark

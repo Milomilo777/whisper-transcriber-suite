@@ -661,7 +661,8 @@ The app does use the network for:
   only tells you about a new version;
 - usage statistics, on by default, after each transcription that ends (finished, failed or cancelled): model,
   language, durations, word count, app version, operating system, CPU and
-  memory size, and region, never the file's name. Turn them off under
+  memory size, region and a random install id (made by the app, tied to no person or computer, deleted when
+  you turn the statistics off), never the file's name. Turn them off under
   **Help → Usage statistics**.
 
 Audio or transcript text is sent only if you choose a cloud engine (Gemini API

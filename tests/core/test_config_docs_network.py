@@ -55,6 +55,7 @@ def test_every_payload_field_is_documented(config_md: str) -> None:
     payload = stats.build_stats_payload(
         model="m", language="en", audio_duration=1.0,
         transcription_time=1.0, status="finished", word_count=1,
+        install_id="00000000-0000-4000-8000-000000000000",
     )
     missing = [k for k in payload if f"`{k}`" not in section]
     assert not missing, f"payload fields missing from docs/CONFIG.md: {missing}"
@@ -80,6 +81,7 @@ def test_no_documented_field_is_missing_from_the_payload(config_md: str) -> None
     payload = stats.build_stats_payload(
         model="m", language="en", audio_duration=1.0,
         transcription_time=1.0, status="finished", word_count=1,
+        install_id="00000000-0000-4000-8000-000000000000",
     )
     extra = sorted(documented - set(payload))
     assert not extra, f"docs/CONFIG.md lists fields the payload lacks: {extra}"
