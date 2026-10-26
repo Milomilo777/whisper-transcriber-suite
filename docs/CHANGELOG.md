@@ -119,6 +119,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- The Accuracy box is wide enough for "Custom (current setting)"; it grows only while that entry is shown.
 - Model download sizes ("about 500 MB", "about 1.5 GB") in the Quick Start, the model notes, the first-download question and the model prompts follow the interface language instead of staying English.
 - Linux: the window icon is set from the PNG (`iconphoto`); the `.ico` could not be read by X11 Tk and logged a warning at every start.
 - AI summaries are plain text: the prompt asks for no Markdown and any leftover `**`, `__`, heading hashes and `* ` bullets are removed, so a Groq summary no longer shows stray asterisks in a text output.

@@ -3654,6 +3654,13 @@ class App(tk.Tk):
                 values.append(_("Custom (current setting)"))
             if list(combo.cget("values") or ()) != values:
                 combo.configure(values=values)
+                # The box is sized for Fast/Balanced/Best; widen it only while the longer
+                # Custom entry is in it (and size it back after), so other layouts stay as they were.
+                from app.widgets.tabs import combo_width
+                if level is None:
+                    combo.configure(width=combo_width(values, floor=10, cap=32))
+                elif combo.cget("width") != "":
+                    combo.configure(width=combo_width(values, floor=10, cap=24))
             shown = level_to_label.get(level or "", values[-1])
             if var.get() != shown:
                 var.set(shown)

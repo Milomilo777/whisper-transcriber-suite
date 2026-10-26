@@ -127,6 +127,16 @@ def test_a_model_of_no_level_shows_as_custom(App, monkeypatch, slug):
     assert list(a.transcribe_accuracy_combo.cget("values")) == [*LABELS, CUSTOM]
 
 
+def test_the_box_is_widened_for_custom_and_only_then(App, monkeypatch):
+    """"Custom (current setting)" was cut off: the box was sized for Fast/Balanced/Best only."""
+    a = _bare_app(App, monkeypatch, whisper_model="medium")
+    App._refresh_accuracy_row(a)
+    assert a.transcribe_accuracy_combo.cget("width") >= len(CUSTOM)
+    b = _bare_app(App, monkeypatch, whisper_model="large-v3")
+    App._refresh_accuracy_row(b)
+    assert b.transcribe_accuracy_combo.cget("width") == ""  # untouched: the level names fit
+
+
 def test_the_note_names_the_model_and_its_download(App, monkeypatch):
     a = _bare_app(App, monkeypatch, whisper_model="large-v3-turbo")
     App._refresh_accuracy_row(a)
