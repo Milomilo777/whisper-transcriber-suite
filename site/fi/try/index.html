@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ilmainen äänen transkriptio verkossa, ei latausta (Whisper)</title>
+<meta name="description" content="Pudota MP3, WAV, M4A tai MP4 (jopa 10 min) saadaksesi transkription ja SRT/VTT. Whisper toimii selaimessasi, joten ääni ei koskaan poistu laitteeltasi. Ilmainen, ei rekisteröitymistä.">
+<meta name="author" content="translation-robot">
+<meta name="theme-color" content="#f5f7fb">
+<meta name="color-scheme" content="light">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+<link rel="canonical" href="https://whisper-transcriber-suite.com/fi/try/">
+<!-- i18n:hreflang:start -->
+<link rel="alternate" hreflang="en" href="https://whisper-transcriber-suite.com/try/">
+<link rel="alternate" hreflang="de" href="https://whisper-transcriber-suite.com/de/try/">
+<link rel="alternate" hreflang="fr" href="https://whisper-transcriber-suite.com/fr/try/">
+<link rel="alternate" hreflang="es" href="https://whisper-transcriber-suite.com/es/try/">
+<link rel="alternate" hreflang="it" href="https://whisper-transcriber-suite.com/it/try/">
+<link rel="alternate" hreflang="pt-BR" href="https://whisper-transcriber-suite.com/pt-br/try/">
+<link rel="alternate" hreflang="pt" href="https://whisper-transcriber-suite.com/pt/try/">
+<link rel="alternate" hreflang="nl" href="https://whisper-transcriber-suite.com/nl/try/">
+<link rel="alternate" hreflang="pl" href="https://whisper-transcriber-suite.com/pl/try/">
+<link rel="alternate" hreflang="ru" href="https://whisper-transcriber-suite.com/ru/try/">
+<link rel="alternate" hreflang="uk" href="https://whisper-transcriber-suite.com/uk/try/">
+<link rel="alternate" hreflang="tr" href="https://whisper-transcriber-suite.com/tr/try/">
+<link rel="alternate" hreflang="cs" href="https://whisper-transcriber-suite.com/cs/try/">
+<link rel="alternate" hreflang="sk" href="https://whisper-transcriber-suite.com/sk/try/">
+<link rel="alternate" hreflang="hu" href="https://whisper-transcriber-suite.com/hu/try/">
+<link rel="alternate" hreflang="ro" href="https://whisper-transcriber-suite.com/ro/try/">
+<link rel="alternate" hreflang="bg" href="https://whisper-transcriber-suite.com/bg/try/">
+<link rel="alternate" hreflang="el" href="https://whisper-transcriber-suite.com/el/try/">
+<link rel="alternate" hreflang="sv" href="https://whisper-transcriber-suite.com/sv/try/">
+<link rel="alternate" hreflang="nb" href="https://whisper-transcriber-suite.com/nb/try/">
+<link rel="alternate" hreflang="fi" href="https://whisper-transcriber-suite.com/fi/try/">
+<link rel="alternate" hreflang="sr" href="https://whisper-transcriber-suite.com/sr/try/">
+<link rel="alternate" hreflang="x-default" href="https://whisper-transcriber-suite.com/try/">
+<!-- i18n:hreflang:end -->
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Ilmainen äänen transkriptio verkossa, ei latausta (Whisper)">
+<meta property="og:description" content="Pudota MP3, WAV, M4A tai MP4 (jopa 10 min) saadaksesi transkription ja SRT/VTT. Whisper toimii selaimessasi, joten ääni ei koskaan poistu laitteeltasi. Ilmainen, ei rekisteröitymistä.">
+<meta property="og:url" content="https://whisper-transcriber-suite.com/fi/try/">
+<meta property="og:image" content="https://whisper-transcriber-suite.com/assets/social-card-2026-09b.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Whisper Transcriber Suite — ilmainen äänen ja videon offline-litterointi Windowsille, macOS:lle ja Linuxille.">
+<meta property="og:site_name" content="Whisper Transcriber Suite">
+<meta property="og:locale" content="fi_FI">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Ilmainen äänen transkriptio verkossa, ei latausta (Whisper)">
+<meta name="twitter:description" content="Pudota MP3, WAV, M4A tai MP4 (jopa 10 min) saadaksesi transkription ja SRT/VTT. Whisper toimii selaimessasi, joten ääni ei koskaan poistu laitteeltasi. Ilmainen, ei rekisteröitymistä.">
+<meta name="twitter:image" content="https://whisper-transcriber-suite.com/assets/social-card-2026-09b.png">
+
+<link rel="icon" href="/assets/logo.svg" type="image/svg+xml">
+<link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+
+<link rel="preload" href="/assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/styles.css?v=20261022a">
+<style>
+  .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
+  .guide { padding: 108px 0 64px; }
+  .guide-wrap { width: min(780px, 100% - 32px); margin-inline: auto; }
+  .crumbs { margin-bottom: 18px; font-size: 0.88rem; color: var(--muted); }
+  .crumbs a { color: var(--muted); }
+  .guide h1 { font-size: clamp(1.9rem, 5.2vw, 3rem); font-weight: 700; letter-spacing: -0.04em; line-height: 1.08; }
+  .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
+  .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
+  .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
+  .guide-body p { margin-top: 12px; color: var(--ink-2); }
+  .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
+  .guide-steps li { counter-increment: g; position: relative; padding-block: 18px; padding-inline: 70px 20px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow-sm); color: var(--ink-2); }
+  .guide-steps li::before { content: counter(g); position: absolute; inset-inline-start: 18px; top: 16px; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 11px; font-family: var(--font-display); font-weight: 700; color: #fff; background: var(--teal); }
+  .guide-steps li:nth-child(3n+2)::before { background: var(--violet); }
+  .guide-steps li:nth-child(3n)::before { background: var(--coral); }
+  .guide b { color: var(--ink); font-weight: 600; }
+  .guide-fig { margin: 28px 0 0; }
+  .guide-fig img { width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--line-2); box-shadow: var(--shadow); }
+  .guide-fig figcaption { margin-top: 10px; font-size: 0.88rem; color: var(--muted); }
+  .know { padding-inline-start: 1.2em; display: grid; gap: 10px; color: var(--ink-2); }
+  .know li::marker { color: var(--teal); }
+  .demo { margin-top: 12px; padding: 16px 18px; overflow-x: auto; border-radius: var(--r-sm); background: var(--night); color: var(--night-text); font-size: 0.86rem; line-height: 1.7; }
+  .demo code { padding: 0; background: none; color: inherit; font-size: inherit; }
+  .guide .faq-list { display: grid; gap: 12px; }
+  .guide .faq-list .qa p { margin: 0; color: var(--ink-2); }
+  .guide-cta-box { margin-top: 48px; padding: 28px; border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); }
+  .guide-cta-box h2 { margin: 0 0 10px; }
+  .guide-cta-box p { margin: 0 0 18px; color: var(--ink-2); }
+  .more-guides { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+  .more-guides a { display: block; padding: 18px 20px; border-radius: var(--r); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-sm); color: var(--ink); text-decoration: none; }
+  .more-guides a:hover { border-color: var(--teal); }
+  .more-guides strong { display: block; font-family: var(--font-display); font-size: 1.02rem; }
+  .more-guides span { display: block; margin-top: 4px; font-size: 0.92rem; color: var(--muted); }
+  .try-card { margin-top: 28px; padding: 24px; border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); display: grid; gap: 18px; }
+  .try-card > * { min-width: 0; }
+  .try-card [hidden], .try-card[hidden] { display: none !important; }
+  .try-step h2 { margin: 0 0 8px; font-size: 1.12rem; letter-spacing: -0.02em; }
+  .drop { display: grid; place-items: center; gap: 8px; min-height: 120px; padding: 18px; border: 2px dashed var(--line-2); border-radius: var(--r); text-align: center; color: var(--ink-2); cursor: pointer; }
+  .drop.over, .drop:focus-within { border-color: var(--teal); }
+  .drop input[type=file] { max-width: 100%; font-size: 1rem; }
+  .try-row { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; }
+  .try-row label { display: inline-flex; gap: 8px; align-items: center; min-height: 44px; }
+  .try-row select { min-height: 44px; font-size: 1rem; padding: 6px 10px; border-radius: 10px; border: 1px solid var(--line-2); background: #fff; }
+  .try-note { font-size: 0.92rem; color: var(--muted); }
+  .try-warn { padding: 10px 14px; border-radius: 10px; background: #fff7e6; border: 1px solid #f0c36d; color: #6b4a00; }
+  .try-err { padding: 10px 14px; border-radius: 10px; background: #fdecec; border: 1px solid #e8a3a3; color: #7a1d1d; }
+  .try-progress { display: grid; gap: 6px; }
+  .try-progress progress { width: 100%; height: 14px; }
+  .try-out { width: 100%; min-height: 220px; padding: 12px; border-radius: 10px; border: 1px solid var(--line-2); font: 0.95rem/1.6 var(--font-body, system-ui); resize: vertical; }
+  .try-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+  .try-actions .btn { min-height: 44px; }
+  @media (max-width: 760px) {
+    .guide { padding-top: 92px; }
+    .guide-steps li { padding-block: 16px; padding-inline: 62px 16px; }
+    .guide-steps li::before { inset-inline-start: 14px; }
+    .guide-cta .btn { white-space: normal; text-align: center; }
+  }
+</style>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebApplication",
+      "@id": "https://whisper-transcriber-suite.com/try/#webapp",
+      "name": "Whisper Transcriber Suite: try it in the browser",
+      "url": "https://whisper-transcriber-suite.com/try/",
+      "applicationCategory": "MultimediaApplication",
+      "operatingSystem": "Any (a current web browser)",
+      "browserRequirements": "Requires WebAssembly; the Large model requires WebGPU",
+      "description": "Ilmainen äänen transkriptio verkossa ilman latausta: Whisper toimii selaimessasi ja muuntaa jopa 10 minuutin pituisen MP3-, WAV-, M4A- tai videotiedoston tekstiksi, SRT:ksi ja VTT:ksi. Ei rekisteröitymistä. Ääni ei koskaan poistu laitteeltasi.",
+      "featureList": [
+        "Litteroi MP3-, WAV-, M4A-, OGG- tai MP4-tiedosto, joka on enintään 10 minuuttia pitkä (5 puhelimella)",
+        "Whisper Small (250 MB) tai Large v3 Turbo (730 MB, WebGPU) toimii selainvälilehdessä",
+        "Lataa TXT, SRT tai VTT",
+        "Ei latausta: ääni ei koskaan poistu laitteeltasi",
+        "Ei rekisteröitymistä eikä maksua"
+      ],
+      "inLanguage": "fi",
+      "dateModified": "2026-10-26",
+      "isAccessibleForFree": true,
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "isRelatedTo": {
+        "@id": "https://whisper-transcriber-suite.com/#app"
+      },
+      "isPartOf": {
+        "@id": "https://whisper-transcriber-suite.com/#website"
+      },
+      "publisher": {
+        "@type": "Person",
+        "name": "translation-robot",
+        "url": "https://github.com/translation-robot"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Etusivu",
+          "item": "https://whisper-transcriber-suite.com/fi/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Kokeile selaimessa",
+          "item": "https://whisper-transcriber-suite.com/fi/try/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Ladataanko ääneni palvelimelle?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Ei. Tämä sivu lukee tiedoston ja litteroi sen selaimessasi. Ainoa lataus on itse puhemalli, Hugging Facesta, kun käytät sitä ensimmäisen kerran."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Miksi se on hitaampi kuin työpöytäsovellus?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Selainvälilehdellä on rajallinen pääsy prosessoriin ja näytönohjaimeen. Työpöytäsovellus suorittaa täydet Whisper-mallit täydellä nopeudella kaikenpituisille tiedostoille."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Mitkä tiedostot toimivat?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Useimmat äänitiedostot (MP3, WAV, M4A, OGG) ja MP4- tai WebM-videot äänellä, jopa 10 minuuttia. Se, mitä selain voi avata, vaihtelee; työpöytäsovellus avaa melkein minkä tahansa muodon."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Säilytetäänkö malli, ja voinko poistaa sen?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Se pysyy tässä selaimessa, joten seuraavaa tiedostoa ei tarvitse ladata. Poista ladatut mallit, vaiheessa 2, poistaa sen; tämän sivuston tietojen tyhjentäminen selaimessa tekee myös niin."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Mitkä selaimet?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Nykyiset Chrome, Edge, Firefox ja Safari suorittavat Smallin. Large tarvitsee WebGPU:n: nykyinen Chrome tai Edge tietokoneella. Käytä puhelimessa Smallia ja lyhyttä tiedostoa."
+          }
+        }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-globe" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M10 2.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15zM2.5 10h15M10 2.5c2 2.1 3 4.6 3 7.5s-1 5.4-3 7.5c-2-2.1-3-4.6-3-7.5s1-5.4 3-7.5z"/></symbol>
+    <symbol id="i-download" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M10 3v10m0 0 4-4m-4 4-4-4M4 16h12"/></symbol>
+    <symbol id="i-github" viewBox="0 0 16 16"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></symbol>
+    <symbol id="i-star" viewBox="0 0 20 20"><path fill="currentColor" d="m10 1.8 2.5 5.2 5.7.8-4.1 4 1 5.6L10 14.7l-5.1 2.7 1-5.6-4.1-4 5.7-.8z"/></symbol>
+  </defs>
+</svg> <a class="skip-link" href="#main">Siirry sisältöön</a>
+
+<header class="site-header" data-header>
+  <div class="wrap header-row">
+    <a class="brand" href="/fi/" aria-label="Whisper Transcriber Suite — etusivu">
+      <img class="brand-logo" src="/assets/logo.svg" alt="" width="32" height="32"> <span class="brand-name">Whisper Transcriber Suite</span>
+    </a>
+    <nav class="site-nav" aria-label="Päävalikko">
+      <a href="/fi/#showreel">Esittely</a> <a href="/fi/#features">Ominaisuudet</a> <a href="/fi/#how-it-works">Miten se toimii</a> <a href="/fi/try/" aria-current="page">Kokeile</a> <a href="/fi/#download">Lataa</a> <a href="/fi/#compare">Vertailu</a> <a href="/fi/#faq">UKK</a> <a href="/fi/#contact">Yhteystiedot</a>
+    </nav>
+    <div class="header-cta">
+      <!-- i18n:english:start --><a class="btn btn-ghost btn-sm lang-en" href="/try/?lang=en" hreflang="en" lang="en" dir="ltr" data-lang-pick="en" translate="no">English</a><!-- i18n:english:end -->
+      <details class="lang-menu" data-lang-menu>
+        <summary class="btn btn-ghost btn-sm" title="Kieli" aria-label="Kieli"><svg class="i" aria-hidden="true"><use href="#i-globe"/></svg><span class="lang-current" translate="no"><!-- i18n:current:start -->Suomi<!-- i18n:current:end --></span></summary>
+        <ul class="lang-list" translate="no"><!-- i18n:menu:start -->
+<li><a href="/try/?lang=en" hreflang="en" lang="en" data-lang-pick="en">English</a></li>
+<li><a href="/de/try/" hreflang="de" lang="de" data-lang-pick="de">Deutsch</a></li>
+<li><a href="/fr/try/" hreflang="fr" lang="fr" data-lang-pick="fr">Français</a></li>
+<li><a href="/es/try/" hreflang="es" lang="es" data-lang-pick="es">Español</a></li>
+<li><a href="/it/try/" hreflang="it" lang="it" data-lang-pick="it">Italiano</a></li>
+<li><a href="/pt-br/try/" hreflang="pt-BR" lang="pt-BR" data-lang-pick="pt-BR">Português (Brasil)</a></li>
+<li><a href="/pt/try/" hreflang="pt" lang="pt" data-lang-pick="pt">Português (Portugal)</a></li>
+<li><a href="/nl/try/" hreflang="nl" lang="nl" data-lang-pick="nl">Nederlands</a></li>
+<li><a href="/pl/try/" hreflang="pl" lang="pl" data-lang-pick="pl">Polski</a></li>
+<li><a href="/ru/try/" hreflang="ru" lang="ru" data-lang-pick="ru">Русский</a></li>
+<li><a href="/uk/try/" hreflang="uk" lang="uk" data-lang-pick="uk">Українська</a></li>
+<li><a href="/tr/try/" hreflang="tr" lang="tr" data-lang-pick="tr">Türkçe</a></li>
+<li><a href="/cs/try/" hreflang="cs" lang="cs" data-lang-pick="cs">Čeština</a></li>
+<li><a href="/sk/try/" hreflang="sk" lang="sk" data-lang-pick="sk">Slovenčina</a></li>
+<li><a href="/hu/try/" hreflang="hu" lang="hu" data-lang-pick="hu">Magyar</a></li>
+<li><a href="/ro/try/" hreflang="ro" lang="ro" data-lang-pick="ro">Română</a></li>
+<li><a href="/bg/try/" hreflang="bg" lang="bg" data-lang-pick="bg">Български</a></li>
+<li><a href="/el/try/" hreflang="el" lang="el" data-lang-pick="el">Ελληνικά</a></li>
+<li><a href="/sv/try/" hreflang="sv" lang="sv" data-lang-pick="sv">Svenska</a></li>
+<li><a href="/da/" hreflang="da" lang="da" data-lang-pick="da">Dansk</a></li>
+<li><a href="/nb/try/" hreflang="nb" lang="nb" data-lang-pick="nb">Norsk bokmål</a></li>
+<li><a href="/fi/try/" hreflang="fi" lang="fi" data-lang-pick="fi" aria-current="true">Suomi</a></li>
+<li><a href="/hr/" hreflang="hr" lang="hr" data-lang-pick="hr">Hrvatski</a></li>
+<li><a href="/sr/try/" hreflang="sr" lang="sr" data-lang-pick="sr">Српски</a></li>
+<li><a href="/sl/" hreflang="sl" lang="sl" data-lang-pick="sl">Slovenščina</a></li>
+<li><a href="/lt/" hreflang="lt" lang="lt" data-lang-pick="lt">Lietuvių</a></li>
+<li><a href="/zh-cn/" hreflang="zh-CN" lang="zh-CN" data-lang-pick="zh-CN">简体中文</a></li>
+<li><a href="/zh-tw/" hreflang="zh-TW" lang="zh-TW" data-lang-pick="zh-TW">繁體中文</a></li>
+<li><a href="/ja/" hreflang="ja" lang="ja" data-lang-pick="ja">日本語</a></li>
+<li><a href="/ko/" hreflang="ko" lang="ko" data-lang-pick="ko">한국어</a></li>
+<li><a href="/vi/" hreflang="vi" lang="vi" data-lang-pick="vi">Tiếng Việt</a></li>
+<li><a href="/th/" hreflang="th" lang="th" data-lang-pick="th">ไทย</a></li>
+<li><a href="/id/" hreflang="id" lang="id" data-lang-pick="id">Bahasa Indonesia</a></li>
+<li><a href="/ms/" hreflang="ms" lang="ms" data-lang-pick="ms">Bahasa Melayu</a></li>
+<li><a href="/hi/" hreflang="hi" lang="hi" data-lang-pick="hi">हिन्दी</a></li>
+<li><a href="/ar/" hreflang="ar" lang="ar" dir="rtl" data-lang-pick="ar">العربية</a></li>
+<li><a href="/fa/" hreflang="fa" lang="fa" dir="rtl" data-lang-pick="fa">فارسی</a></li>
+<li><a href="/he/" hreflang="he" lang="he" dir="rtl" data-lang-pick="he">עברית</a></li>
+<li><a href="/lv/" hreflang="lv" lang="lv" data-lang-pick="lv">Latviešu</a></li>
+<li><a href="/ca/" hreflang="ca" lang="ca" data-lang-pick="ca">Català</a></li>
+<li><a href="/bn/" hreflang="bn" lang="bn" data-lang-pick="bn">বাংলা</a></li>
+<li><a href="/fil/" hreflang="fil" lang="fil" data-lang-pick="fil">Filipino</a></li>
+<!-- i18n:menu:end --></ul>
+      </details>
+      <a class="btn-icon gh-btn" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" title="GitHub" aria-label="Anna tähti Whisper Transcriber Suite -projektille GitHubissa"> <svg class="i" aria-hidden="true"><use href="#i-github"/></svg> </a> <a class="btn btn-primary btn-sm" href="/fi/#download">Lataa</a>
+    </div>
+  </div>
+</header>
+
+<main id="main" class="guide">
+  <div class="guide-wrap">
+    <nav class="crumbs" aria-label="Murupolku"><a href="/fi/">Etusivu</a> › Kokeile selaimessa</nav>
+    <article>
+      <h1>Litteroi ääni tekstiksi verkossa, ilmaiseksi, ilman latausta</h1>
+      <p class="guide-lede">Ilmainen online-tapa muuttaa MP3 tekstiksi, ilman rekisteröitymistä ja asennusta. Pudota ääni- tai videotiedosto, ja Whisper muuttaa puheen tekstiksi täällä tässä selainvälilehdessä. Se on yksityinen: puhemalli ladataan kerran ja toimii laitteellasi, joten äänesi ei koskaan poistu siitä.</p>
+      <p class="guide-sub">MP3 tekstiksi, WAV tekstiksi, ääni tai video SRT- ja VTT-tekstityksiksi: yksi sivu, kaikki laitteellasi.</p>
+      <p class="guide-sub">Jopa 10 minuuttia per tiedosto (5 puhelimella). Jos kyseessä on pidempi tiedosto, monta tiedostoa kerralla, puhujatunnisteet ja paljon nopeammat tulokset, käytä <a href="/fi/#download">ilmaista työpöytäsovellusta</a>.</p>
+
+      <noscript><p class="try-err">Tämä sivu tarvitsee JavaScriptiä puhemallin suorittamiseen selaimessasi.</p></noscript>
+
+      <div class="try-card" data-try hidden>
+        <section class="try-step" aria-labelledby="try-file-title">
+          <h2 id="try-file-title">1. Valitse tiedosto</h2>
+          <label class="drop" data-drop>
+            <span>Pudota ääni- tai videotiedosto tähän, tai</span>
+            <input type="file" accept="audio/*,video/*" data-file>
+          </label>
+          <p class="try-note" data-file-info aria-live="polite"></p>
+        </section>
+
+        <section class="try-step" aria-labelledby="try-model-title">
+          <h2 id="try-model-title">2. Valitse puhemalli ja kieli</h2>
+          <div class="try-row">
+            <label><input type="radio" name="model" value="small" checked> Small: hyvä, toimii kaikkialla (250 MB)</label>
+            <label><input type="radio" name="model" value="large"> Large: paras laatu (730 MB, tarvitsee WebGPU:n)</label>
+          </div>
+          <p class="try-note" data-large-note hidden>Large tarvitsee WebGPU:n, jota tämä selain ei tarjoa. Nykyisellä Chromella ja Edgellä tietokoneella se on.</p>
+          <div class="try-row">
+            <label>Tiedostossa puhuttu kieli
+              <select data-language>
+                <option value="english">Englanti</option>
+                <option value="arabic">Arabia</option>
+                <option value="chinese">Kiina</option>
+                <option value="french">Ranska</option>
+                <option value="german">Saksa</option>
+                <option value="hindi">Hindi</option>
+                <option value="indonesian">Indonesia</option>
+                <option value="italian">Italia</option>
+                <option value="japanese">Japani</option>
+                <option value="korean">Korea</option>
+                <option value="persian">Persia</option>
+                <option value="portuguese">Portugali</option>
+                <option value="russian">Venäjä</option>
+                <option value="spanish">Espanja</option>
+                <option value="turkish">Turkki</option>
+                <option value="vietnamese">Vietnam</option>
+              </select>
+            </label>
+          </div>
+          <p class="try-warn" data-lang-note hidden></p>
+          <p class="try-note" data-model-info>Malli ladataan kerran Hugging Facesta ja säilytetään sitten tässä selaimessa.</p>
+          <p class="try-note"><button class="btn btn-ghost" type="button" data-remove-models>Poista ladatut mallit</button> <span data-remove-note aria-live="polite" hidden></span></p>
+          <p class="try-warn" data-net-warn hidden>Näytät olevan mobiilidatassa tai tiedonsäästötilassa. Mallin lataus on suuri; Wi-Fi on parempi.</p>
+        </section>
+
+        <section class="try-step" aria-labelledby="try-run-title">
+          <h2 id="try-run-title">3. Litteroi</h2>
+          <div class="try-actions">
+            <button class="btn btn-primary btn-lg" type="button" data-run disabled>Litteroi</button>
+          </div>
+          <div class="try-progress" data-progress hidden>
+            <progress max="100" value="0" data-bar></progress>
+            <p class="try-note" data-status aria-live="polite"></p>
+            <p class="try-note" data-awake></p>
+          </div>
+          <p class="try-err" data-error role="alert" hidden></p>
+        </section>
+
+        <section class="try-step" aria-labelledby="try-result-title" data-result hidden>
+          <h2 id="try-result-title">4. Transkriptiosi</h2>
+          <textarea class="try-out" data-text readonly dir="auto" aria-label="Transkriptio"></textarea>
+          <div class="try-actions">
+            <button class="btn btn-ghost" type="button" data-save="txt">Lataa TXT</button>
+            <button class="btn btn-ghost" type="button" data-save="srt">Lataa SRT</button>
+            <button class="btn btn-ghost" type="button" data-save="vtt">Lataa VTT</button>
+            <button class="btn btn-ghost" type="button" data-copy>Kopioi teksti</button>
+          </div>
+        </section>
+      </div>
+
+      <div class="guide-cta-box">
+        <h2>Pidemmät tiedostot ja parempi tarkkuus</h2>
+        <p>Ilmainen työpöytäsovellus suorittaa suuret Whisper-mallit tietokoneellasi: kaikenpituiset tiedostot, jono, puhujatunnisteet, Word- ja PDF-vienti, YouTube-linkit ja live-tekstitys. Ei tiliä eikä latausta myöskään sinne.</p>
+        <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Lataa ilmainen sovellus</a>
+      </div>
+
+      <h2>Kysymykset</h2>
+      <div class="faq-list">
+        <article class="qa"><h3>Ladataanko ääneni palvelimelle?</h3><div class="faq-a"><p>Ei. Tämä sivu lukee tiedoston ja litteroi sen selaimessasi. Ainoa lataus on itse puhemalli, Hugging Facesta, kun käytät sitä ensimmäisen kerran.</p></div></article>
+        <article class="qa"><h3>Miksi se on hitaampi kuin työpöytäsovellus?</h3><div class="faq-a"><p>Selainvälilehdellä on rajallinen pääsy prosessoriin ja näytönohjaimeen. Työpöytäsovellus suorittaa täydet Whisper-mallit täydellä nopeudella kaikenpituisille tiedostoille.</p></div></article>
+        <article class="qa"><h3>Mitkä tiedostot toimivat?</h3><div class="faq-a"><p>Useimmat äänitiedostot (MP3, WAV, M4A, OGG) ja MP4- tai WebM-videot äänellä, jopa 10 minuuttia. Se, mitä selain voi avata, vaihtelee; työpöytäsovellus avaa melkein minkä tahansa muodon.</p></div></article>
+        <article class="qa"><h3>Säilytetäänkö malli, ja voinko poistaa sen?</h3><div class="faq-a"><p>Se pysyy tässä selaimessa, joten seuraavaa tiedostoa ei tarvitse ladata. <strong>Poista ladatut mallit</strong>, vaiheessa 2, poistaa sen; tämän sivuston tietojen tyhjentäminen selaimessa tekee myös niin.</p></div></article>
+        <article class="qa"><h3>Mitkä selaimet?</h3><div class="faq-a"><p>Nykyiset Chrome, Edge, Firefox ja Safari suorittavat Smallin. Large tarvitsee WebGPU:n: nykyinen Chrome tai Edge tietokoneella. Käytä puhelimessa Smallia ja lyhyttä tiedostoa.</p></div></article>
+      </div>
+    </article>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <div class="footer-brand">
+      <a class="brand" href="/fi/" aria-label="Whisper Transcriber Suite — etusivu"><img class="brand-logo" src="/assets/logo.svg" alt="" width="30" height="30"><span class="brand-name">Whisper Transcriber Suite</span></a>
+      <p class="muted">Yhden itsenäisen kehittäjän, <a href="https://github.com/translation-robot" rel="noopener">translation-robot</a>, ylläpitämä. Lähdekoodi on BSD-3-Clause-lisensoitu.</p>
+      <p class="muted"><a href="/fi/#contact">Ota yhteyttä</a></p>
+      <p class="muted small mt-note">Tämä sivu on käännetty englannista koneellisesti ja tarkistettu toisella koneella. Kuulostaako jokin oudolta? <a href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener">Kerro meille GitHubissa</a>.</p>
+    </div>
+    <nav class="footer-nav" aria-label="Alatunniste">
+      <a href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener">GitHub</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md" rel="noopener">Asennusopas</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">Muutosloki</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">Keskustelut</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/SECURITY.md" rel="noopener">Tietoturva</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/LICENSE" rel="noopener">Lisenssi</a> <a href="/llms.txt">llms.txt</a>
+    </nav>
+  </div>
+</footer>
+
+<script type="application/json" id="i18n-strings">
+{
+  "This page was in the background for {time}. A phone may pause a page in the background; the transcription goes on now. Keep this page open until it finishes.": "Tämä sivu oli taustalla {time}. Puhelin saattaa keskeyttää sivun taustalla; litterointi jatkuu nyt. Pidä tämä sivu auki, kunnes se on valmis.",
+  "Small makes many mistakes in {language}. Pick Large for a much better result, or use the free desktop app.": "Small tekee monia virheitä kielessä {language}. Valitse Large saadaksesi paljon paremman tuloksen tai käytä ilmaista työpöytäsovellusta.",
+  "Model files removed from this browser: {n}.": "Mallitiedostot poistettu tästä selaimesta: {n}.",
+  "No downloaded model was found in this browser.": "Tästä selaimesta ei löytynyt ladattua mallia.",
+  "This file is {length} long. The browser version stops at {max} minutes; the free desktop app transcribes files of any length.": "Tämä tiedosto on {length} pitkä. Selainversio pysähtyy {max} minuuttiin; ilmainen työpöytäsovellus litteroi kaikenpituisia tiedostoja.",
+  "Loading the speech model from this browser: {done} of {total} MB": "Ladataan puhemallia tästä selaimesta: {done} / {total} MB",
+  "Downloading the speech model: {done} of {total} MB": "Ladataan puhemallia: {done} / {total} MB",
+  "Transcribing in this browser… {time} so far (it can take about as long as the audio, or longer on a phone).": "Litteroidaan tässä selaimessa… {time} tähän mennessä (se voi kestää suunnilleen yhtä kauan kuin ääni, tai kauemmin puhelimella).",
+  "No speech was found in this file.": "Tästä tiedostosta ei löytynyt puhetta.",
+  "This browser has no WebGPU, which the Large model needs. Pick Small.": "Tässä selaimessa ei ole WebGPU:ta, jota Large-malli tarvitsee. Valitse Small.",
+  "It did not work in this browser: {error}. The desktop app handles this file.": "Se ei toiminut tässä selaimessa: {error}. Työpöytäsovellus käsittelee tämän tiedoston.",
+  "The screen stays on while this runs. Keep this page open until it finishes.": "Näyttö pysyy päällä tämän ollessa käynnissä. Pidä tämä sivu auki, kunnes se on valmis.",
+  "Keep this page open and the screen on until it finishes: a phone pauses pages in the background.": "Pidä tämä sivu auki ja näyttö päällä, kunnes se on valmis: puhelin keskeyttää sivut taustalla.",
+  "Reading the file…": "Luetaan tiedostoa…",
+  "This browser cannot read the sound of this file. Try an MP3, WAV or M4A, or the desktop app.": "Tämä selain ei voi lukea tämän tiedoston ääntä. Kokeile MP3, WAV tai M4A tai työpöytäsovellusta.",
+  "the worker stopped": "taustaprosessi pysähtyi",
+  "Preparing the speech model…": "Valmistellaan puhemallia…",
+  "This model is already in this browser: no download needed.": "Tämä malli on jo tässä selaimessa: latausta ei tarvita.",
+  "The model ({size}) is downloaded once from Hugging Face when you press Transcribe, then kept in this browser.": "Malli ({size}) ladataan kerran Hugging Facesta, kun painat Litteroi, ja säilytetään sitten tässä selaimessa.",
+  "This browser cannot run the speech model. Try a current Chrome, Edge, Firefox or Safari, or the free desktop app.": "Tämä selain ei voi suorittaa puhemallia. Kokeile nykyistä Chromea, Edgeä, Firefoxia tai Safaria tai ilmaista työpöytäsovellusta."
+}
+</script>
+<script src="/js/lang.js?v=20261020a" defer></script>
+<script type="module" src="/try/try.js?v=20261026c"></script>
+</body>
+</html>
