@@ -389,7 +389,7 @@
       <img class="brand-logo" src="/assets/logo.svg" alt="" width="32" height="32"> <span class="brand-name">Whisper Transcriber Suite</span>
     </a>
     <nav class="site-nav" aria-label="主导航">
-      <a href="#showreel">导览</a> <a href="#features">功能特性</a> <a href="#how-it-works">工作原理</a> <a href="/try/">试用</a> <a href="#download">下载</a> <a href="#compare">对比</a> <a href="#faq">常见问题</a> <a href="#contact">联系</a>
+      <a href="#showreel">导览</a> <a href="#features">功能特性</a> <a href="#how-it-works">工作原理</a> <a href="/zh-cn/try/">试用</a> <a href="#download">下载</a> <a href="#compare">对比</a> <a href="#faq">常见问题</a> <a href="#contact">联系</a>
     </nav>
     <div class="header-cta">
       <!-- i18n:english:start --><a class="btn btn-ghost btn-sm lang-en" href="/?lang=en" hreflang="en" lang="en" dir="ltr" data-lang-pick="en" translate="no">English</a><!-- i18n:english:end -->
@@ -520,7 +520,7 @@
           <h2 id="try-strip-title">在浏览器中试用</h2>
           <p>放入最长 10 分钟的音频或视频文件，即可得到转录文本。免费，无需上传，无需注册：Whisper 就在你的浏览器标签页里运行。更长的文件请使用<a href="#download">桌面应用</a>。</p>
         </div>
-        <a class="btn btn-primary btn-lg" href="/try/">立即试用<svg class="i i-trail" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+        <a class="btn btn-primary btn-lg" href="/zh-cn/try/">立即试用<svg class="i i-trail" aria-hidden="true"><use href="#i-arrow"/></svg></a>
       </div>
     </div>
   </section>
@@ -611,7 +611,7 @@
         <article class="new-card sr">
           <p class="new-tag">2.2 · 网站</p>
           <h3>在浏览器中试用</h3>
-          <p>无需安装：短文件（最长 10 分钟，手机上 5 分钟）由一个小型 Whisper 模型在你的浏览器标签页里转录，你可以保存为 TXT、SRT 或 VTT。你的音频不会离开你的设备。<a href="/try/">立即试用</a>。</p>
+          <p>无需安装：短文件（最长 10 分钟，手机上 5 分钟）由一个小型 Whisper 模型在你的浏览器标签页里转录，你可以保存为 TXT、SRT 或 VTT。你的音频不会离开你的设备。<a href="/zh-cn/try/">立即试用</a>。</p>
         </article>
         <article class="new-card sr">
           <p class="new-tag">2.2 · 所有平台</p>
@@ -881,7 +881,7 @@ python gui.py</code></pre>
         </div>
         <p class="mac-note">想用常规方式？打开 <code>.dmg</code> 并将应用拖入“应用程序”；首次启动需要右键点击 → <b>打开</b>（macOS 14 及更早版本）或系统设置 → 隐私与安全性 → <b>仍要打开</b>（macOS 15+）。</p>
       </div>
-      <p class="dl-note sr">还没想好安装？先<a href="/try/">在浏览器里试试短文件</a>。每个版本及其说明都在 <a href="https://github.com/Milomilo777/whisper-transcriber-suite/releases" rel="noopener">GitHub Releases</a>。<a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md" rel="noopener">安装指南</a>。</p>
+      <p class="dl-note sr">还没想好安装？先<a href="/zh-cn/try/">在浏览器里试试短文件</a>。每个版本及其说明都在 <a href="https://github.com/Milomilo777/whisper-transcriber-suite/releases" rel="noopener">GitHub Releases</a>。<a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md" rel="noopener">安装指南</a>。</p>
     </div>
   </section>
 
@@ -932,7 +932,7 @@ python gui.py</code></pre>
         <article class="qa"><h3>它可以克隆声音并让它说出新文本吗？</h3><div class="faq-a"><p>是，通过可选的“克隆你的声音”选项卡，完全在你的机器上使用 OmniVoice (Apache-2.0)。默认关闭；在安装时选择启用，并且你必须确认已获得克隆参考声音的许可。</p></div></article>
         <article class="qa"><h3>这与直接调用 Whisper API 有什么不同？</h3><div class="faq-a"><p>它默认通过 faster-whisper 在本地运行模型，因此没有按分钟计费的 API 成本，音频也不会离开你的设备 —— 除非你明确选择启用两个云端后端之一。</p></div></article>
         <article class="qa"><h3>同一网络上的几个人能否在不将其安装到每台机器上的情况下使用它？</h3><div class="faq-a"><p>是 —— Web/局域网访问模式可将此设备变为一个转录页面，供网络上的其他设备使用。</p></div></article>
-        <article class="qa"><h3>2.2 版有什么新内容？</h3><div class="faq-a"><p>转录标签页里的引擎和模型选择器被“准确度等级”取代：选择快速、均衡或最佳，应用会挑选适合你的语言和电脑的模型，全新安装默认使用 Large v3 Turbo。不常用的选项收在<em>更多选项</em>里。波斯语、中文、日语、德语、泰语、瑞典语和希伯来语有专门针对该语言训练的模型；网页 / 局域网访问标签页会显示 QR 码，可以用同一 Wi-Fi 下的手机发送录音；Windows 为波斯语、阿拉伯语和希伯来语镜像整个窗口；双语音频作为实验性选项提供；下载表单也更紧凑。全部 42 种界面语言已完整，并修复了 35 个错误。网站上还有一个<a href="/try/">可以在浏览器里转录短文件的页面</a>。2.1 版带来了 42 种界面语言、可靠的说话人标签和更安全的保存；2.0 版带来了队列的速度和剩余时间、通过链接获得带字幕的视频、保存为单个离线网页的转录文本、可检查的“离线工作”模式，以及翻译成英语。参见<a href="#whats-new">2.2 新功能</a>和<a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">更新日志</a>。</p></div></article>
+        <article class="qa"><h3>2.2 版有什么新内容？</h3><div class="faq-a"><p>转录标签页里的引擎和模型选择器被“准确度等级”取代：选择快速、均衡或最佳，应用会挑选适合你的语言和电脑的模型，全新安装默认使用 Large v3 Turbo。不常用的选项收在<em>更多选项</em>里。波斯语、中文、日语、德语、泰语、瑞典语和希伯来语有专门针对该语言训练的模型；网页 / 局域网访问标签页会显示 QR 码，可以用同一 Wi-Fi 下的手机发送录音；Windows 为波斯语、阿拉伯语和希伯来语镜像整个窗口；双语音频作为实验性选项提供；下载表单也更紧凑。全部 42 种界面语言已完整，并修复了 35 个错误。网站上还有一个<a href="/zh-cn/try/">可以在浏览器里转录短文件的页面</a>。2.1 版带来了 42 种界面语言、可靠的说话人标签和更安全的保存；2.0 版带来了队列的速度和剩余时间、通过链接获得带字幕的视频、保存为单个离线网页的转录文本、可检查的“离线工作”模式，以及翻译成英语。参见<a href="#whats-new">2.2 新功能</a>和<a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">更新日志</a>。</p></div></article>
         <article class="qa"><h3>它可以把视频链接变成带字幕的视频吗？</h3><div class="faq-a"><p>是。在“下载视频”选项卡上，勾选 <b>生成字幕视频</b>：应用下载视频，使用 Whisper 进行转录，并用 ffmpeg 将字幕烧录进去，生成一个以视频命名的文件，扩展名为 <code>-subbed.mp4</code>。下载的文件和转录文本会被保留，且永远不会替换已有的 <code>-subbed.mp4</code>。</p></div></article>
         <article class="qa"><h3>我可以让应用完全断开网络吗？</h3><div class="faq-a"><p>是。<b>文件 → 离线工作</b> 会停止更新检查、使用情况统计、模型下载和远程 AI 提供商。开启此功能时，窗口底部会显示当前是否建立了连接，而 <em>立即验证离线状态</em> 会显示测试连接被拒绝的情况。关闭此功能时，应用仅在启动时获取在线设置、进行每日更新检查、收集使用情况统计（可在“帮助” → “使用情况统计”下关闭）以及你主动发起下载时连接网络。</p></div></article>
         <article class="qa"><h3>我该如何联系该项目？</h3><div class="faq-a"><p>Bug 和功能请求请提交至 <a href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener">GitHub Issues</a>，问题请发至 <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">Discussions</a>，其他事宜请通过电子邮件联系（地址可在 <a href="#contact">联系部分</a> 中按需查看）。安全报告请通过 GitHub 的私有漏洞报告渠道提交。</p></div></article>
