@@ -674,7 +674,9 @@ def build_live_tab(app: Any, parent: Any) -> None:
     out.columnconfigure(0, weight=1)
     out.rowconfigure(0, weight=1)
 
-    app.live_text = tk.Text(out, wrap="word", height=14)
+    # A small requested height: the box grows with the window (row 3 has the weight), and a
+    # tall request pushed the Save / Copy / Clear row below the fold at the default size.
+    app.live_text = tk.Text(out, wrap="word", height=5)
     script_fonts.use_text_font(app.live_text)
     _make_readonly_but_selectable(app.live_text)
     app.live_text.grid(row=0, column=0, sticky="nsew", padx=(8, 0), pady=8)
