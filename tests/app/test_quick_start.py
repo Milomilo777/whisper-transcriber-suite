@@ -573,6 +573,27 @@ def test_the_window_names_the_persian_model_and_turns_off_the_english_sample(tk_
     assert button.instate(["disabled"])
     dialog.mode_var.set("fast")
     assert not button.instate(["disabled"])
+    # "Best quality" first, then the language: the button follows the language too
+    dialog.mode_var.set("best")
+    for label, disabled in (("English", False), ("Persian", True)):
+        dialog.language_var.set(label)
+        dialog.language_combo.event_generate("<<ComboboxSelected>>")
+        tk_root.update()
+        assert button.instate(["disabled"]) is disabled
+    dialog.skip()
+
+
+def test_persian_best_below_8_gb_keeps_whisper_and_the_sample(tk_root, tmp_path):
+    dialog = qs.QuickStartDialog(tk_root, {"download_folder": str(tmp_path)}, on_done=lambda c: None,
+                                 probe=lambda: (_CPU, 4, 7.2), on_try_sample=lambda: None)
+    _pump(tk_root, lambda: dialog._hardware is not None)
+    dialog.language_var.set("Persian")
+    dialog.language_combo.event_generate("<<ComboboxSelected>>")
+    dialog.mode_var.set("best")
+    tk_root.update()
+    assert dialog.mode_detail_vars["best"].get().startswith("Large v3 ·")
+    assert dialog._try_button is not None and not dialog._try_button.instate(["disabled"])
+    assert dialog.choice().language_model is None
     dialog.skip()
 
 

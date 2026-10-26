@@ -462,6 +462,21 @@ def test_a_retried_task_posts_its_error_row_and_then_its_finished_row(monkeypatc
     assert [r["status"] for r in rows] == ["error", "finished"]
 
 
+def test_a_retried_task_that_fails_again_posts_a_second_error_row_once(monkeypatch):
+    """Each failed attempt is one row: the guard must not hide a later attempt's failure, and a
+    double teardown of that attempt still posts only once (review, 2026-10-26)."""
+    svc, rows = _stats_rig(monkeypatch)
+    task = _stats_task("error")
+    for _ in range(2):
+        svc.finish_task({"task": task, "temporary": False}, keep_status=True)
+    task.status = "error"
+    task.start_time = time.time() + 5  # the retry's own start
+    for _ in range(2):
+        svc.finish_task({"task": task, "temporary": False}, keep_status=True)
+
+    assert [r["status"] for r in rows] == ["error", "error"]
+
+
 def test_finish_task_posts_usage_stats_for_a_genuine_successful_completion(monkeypatch):
     app = SimpleNamespace(
         app_config={},
