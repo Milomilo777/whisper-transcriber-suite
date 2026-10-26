@@ -360,6 +360,7 @@ a = Analysis(
         'app.crash_report',
         'app.i18n',
         'app.rtl_layout',
+        'app.rtl_shaping',
         'app.theme.script_fonts',
         'app.theme.theme_colours',
         'app.theme.mac_appearance',

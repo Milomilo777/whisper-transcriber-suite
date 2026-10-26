@@ -21,6 +21,8 @@ from __future__ import annotations
 import sys
 import unicodedata
 
+from app import rtl_shaping
+
 LRM = chr(0x200E)  # LEFT-TO-RIGHT MARK: a strong left-to-right character of zero width
 
 
@@ -32,10 +34,15 @@ def is_aqua() -> bool:
 def ltr_base(text: str) -> str:
     """*text* for a label or a Treeview cell: left-to-right base direction on macOS.
 
-    Returns *text* unchanged off macOS and when its first strong character is not right to left
+    On Linux it is display-shaped instead (:mod:`app.rtl_shaping`). Returns *text* unchanged on
+    Windows and when its first strong character is not right to left
     (a string that already starts with the mark counts as left to right, so the result is stable
     when applied twice).
     """
+    if rtl_shaping.applies():
+        # Linux: Tk draws the string unjoined and unordered; shape it for display with a
+        # left-to-right base (a name inside an English line). Shaped text is left alone.
+        return rtl_shaping.visual(text, base="L")
     if not is_aqua():
         return text
     for ch in text:

@@ -39,6 +39,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, NamedTuple
 
+from app import rtl_shaping
+
 logger = logging.getLogger(__name__)
 
 SOURCE_LANGUAGE = "en"
@@ -56,8 +58,13 @@ _AUTO_STATUSES = frozenset({"reviewed", "machine"})
 #: RIGHT-TO-LEFT EMBEDDING ... POP DIRECTIONAL FORMATTING pair (:func:`embed_rtl`), checked on
 #: real screens: Windows, and macOS (CoreText joins and orders Arabic script; Persian checked on
 #: 10.15 with real clicks, 2026-10-26). Linux is not listed: Tk 8.6 on X11 neither joins nor
-#: orders Arabic script (Tk ticket 1b81ff43a2, fixed only in Tk 9.1 with HarfBuzz).
+#: orders Arabic script (Tk ticket 1b81ff43a2, fixed only in Tk 9.1 with HarfBuzz); it is in
+#: :data:`SHAPED_PLATFORMS` instead.
 RTL_PLATFORMS: frozenset[str] = frozenset({"win32", "darwin"})
+#: Platforms where Tk cannot draw right-to-left text itself: a right-to-left catalog is offered
+#: there only when arabic-reshaper and python-bidi are installed, and ``_()`` then returns
+#: display-shaped text (:mod:`app.rtl_shaping`), without embedding marks.
+SHAPED_PLATFORMS: frozenset[str] = rtl_shaping.SHAPED_PLATFORMS
 #: None: right-to-left catalogs are offered on :data:`RTL_PLATFORMS` (see
 #: :func:`rtl_layout_ready`). True or False forces the answer (tests).
 RTL_LAYOUT_READY: bool | None = None
@@ -79,7 +86,9 @@ def rtl_layout_ready() -> bool:
     """
     if RTL_LAYOUT_READY is not None:
         return RTL_LAYOUT_READY
-    return sys.platform in RTL_PLATFORMS
+    if sys.platform in RTL_PLATFORMS:
+        return True
+    return sys.platform in SHAPED_PLATFORMS and rtl_shaping.available()
 
 
 class SupportedLanguage(NamedTuple):
@@ -304,6 +313,8 @@ class _Catalog:
     english: bool = False
     #: Translated lines get RLE ... PDF (a right-to-left catalog on an RTL_PLATFORMS system).
     rtl_marks: bool = False
+    #: Translated lines are reshaped and put in visual order (Linux, :mod:`app.rtl_shaping`).
+    shaped: bool = False
 
 
 def _english_catalog() -> _Catalog:
@@ -639,8 +650,10 @@ def set_language(code: str) -> str:
                                "Catalog %s says plural rule %r; using the built-in %r",
                                canonical, meta_rule, lang.plural)
                 nforms, rule = PLURAL_RULES[lang.plural]
+                is_rtl = lang.direction == "rtl"
                 new = _Catalog(canonical, dict(doc["messages"]), nforms, rule, lang.direction,
-                               rtl_marks=lang.direction == "rtl" and sys.platform in RTL_PLATFORMS)
+                               rtl_marks=is_rtl and sys.platform in RTL_PLATFORMS,
+                               shaped=is_rtl and rtl_shaping.applies())
     with _LOCK:
         _STATE = new
     return new.code
@@ -658,6 +671,12 @@ def current_direction() -> str:
 def rtl_marks() -> bool:
     """True when translated texts carry the RLE ... PDF marks of :func:`embed_rtl`."""
     return _STATE.rtl_marks
+
+
+def rtl_shaped() -> bool:
+    """True when translated texts are display-shaped (Linux, right-to-left catalog): the layout
+    is mirrored as with the marks, but the texts hold presentation forms in visual order."""
+    return _STATE.shaped
 
 
 def _has_rtl_letter(text: str) -> bool:
@@ -707,9 +726,10 @@ def embed_rtl(text: str) -> str:
 def plain(text: str) -> str:
     """``text`` without the embedding marks (U+202A..U+202E) :func:`embed_rtl` adds.
 
-    For a translated text that leaves the screen: the log file, the clipboard, a file.
+    For a translated text that leaves the screen: the log file, the clipboard, a file. On Linux it
+    also gives a display-shaped text back in logical order (:func:`app.rtl_shaping.logical`).
     """
-    return _EMBEDDING_MARKS.sub("", text)
+    return rtl_shaping.logical(_EMBEDDING_MARKS.sub("", text))
 
 
 # The OS language once detected in this process: (it,) or empty. It does not change while the app
@@ -775,18 +795,33 @@ def _finish(english: str, translated: str | None, kwargs: Mapping[str, Any], sta
     if not kwargs:
         if not translated:
             return english
-        return embed_rtl(translated) if state.rtl_marks else translated
+        return _decorate(translated, state)
     fallback = english.format(**kwargs)  # a wrong call raises here, in every language
     if not translated:
         return fallback
     try:
-        done = translated.format(**kwargs)
+        # A value that is itself a shaped text goes in as its logical text: shaping the whole
+        # line once puts the inner words in the right place; shaped twice they would flip back.
+        done = translated.format(**(_logical_values(kwargs) if state.shaped else kwargs))
     except _FORMAT_ERRORS as e:
         _warn_once(("format", state.code, key),
                    "Translation of %r in %s does not fit its placeholders (%s: %s); using English",
                    key, state.code, type(e).__name__, e)
         return fallback
-    return embed_rtl(done) if state.rtl_marks else done
+    return _decorate(done, state)
+
+
+def _decorate(text: str, state: _Catalog) -> str:
+    """A finished translation with what the platform needs to draw it right to left."""
+    if state.rtl_marks:
+        return embed_rtl(text)
+    if state.shaped:
+        return rtl_shaping.visual(text)
+    return text
+
+
+def _logical_values(kwargs: Mapping[str, Any]) -> dict[str, Any]:
+    return {k: rtl_shaping.logical(v) if isinstance(v, str) else v for k, v in kwargs.items()}
 
 
 def _lookup(state: _Catalog, key: str) -> str | None:

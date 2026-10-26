@@ -167,9 +167,13 @@ left-to-right places.
   Keep the line breaks (`\n`) of the English text: each line gets its own pair of marks.
 - The language picker offers right-to-left catalogs on Windows and macOS (`i18n.rtl_layout_ready()`;
   the platforms are `i18n.RTL_PLATFORMS`; macOS was checked on 10.15), and `"auto"` chooses one only
-  there. Linux is left out: Tk 8.6 on X11 neither joins Arabic-script letters nor orders them (Tk
-  ticket 1b81ff43a2; Tk 9.1 adds HarfBuzz shaping). There `WTS_UI_LANGUAGE` or an explicit
-  `ui_language` code still loads one, without the marks, and the letters show unjoined.
+  there. Tk 8.6 on X11 neither joins Arabic-script letters nor orders them (Tk ticket 1b81ff43a2;
+  Tk 9.1 adds HarfBuzz shaping), so on Linux (`i18n.SHAPED_PLATFORMS`) `_()` returns display-only
+  text instead of marks: letters joined with arabic-reshaper and lines put in visual order with
+  python-bidi (`app/rtl_shaping.py`), and the catalogs are offered only while both packages are
+  installed. Without them an explicit `ui_language` code still loads one, and the letters show
+  unjoined. `i18n.plain()` turns such a text back into logical order. The one known limit: a
+  label long enough to wrap shows its lines in the wrong order.
 - In code, a translated text that leaves the screen (the log file, the clipboard, a file) goes
   through `i18n.plain()`, which removes the marks. `App.log` does this for the log file.
 
