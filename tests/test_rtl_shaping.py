@@ -15,8 +15,11 @@ from typing import Any
 
 import pytest
 
-from app import i18n, rtl_shaping
-from app.theme import bidi_display
+pytest.importorskip("arabic_reshaper")
+pytest.importorskip("bidi")
+
+from app import i18n, rtl_shaping  # noqa: E402 - after the importorskip lines
+from app.theme import bidi_display  # noqa: E402
 
 RLE = chr(0x202B)
 PDF = chr(0x202C)
@@ -44,6 +47,7 @@ def _fresh(monkeypatch: pytest.MonkeyPatch):
     i18n.set_language("en")
     yield
     i18n.set_language("en")
+    rtl_shaping.uninstall_title_hook()
 
 
 @pytest.fixture
@@ -259,3 +263,236 @@ def test_layout_is_mirrored_on_linux_when_shaped(fa_linux: None, monkeypatch: py
     assert rtl_layout.active() is False
     i18n.set_language("fa")
     assert rtl_layout.active() is True
+
+
+# --- round 2: composed texts, window titles, statuses (review findings D1-D5, E1-E3) ----------------
+
+FA2 = {**FA, "Open the page": "صفحه را باز کنید", "Failed.": "ناموفق.",
+       "{progress} — “{words}”": "{progress} — «{words}»",
+       "{percent}% done": "{percent}% انجام شد",
+       "{name}: {percent}% done": "{name}: {percent}% انجام شد",
+       "Transcribing {name}…": "در حال رونویسی {name}…"}
+
+
+@pytest.fixture
+def fa2_linux(locales: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    write_catalog(locales, "fa", FA2)
+    on(monkeypatch, "linux")
+    i18n.set_language("fa")
+
+
+def test_plain_recovers_shaped_segments_inside_composed_text(fa2_linux: None) -> None:
+    save, page = i18n._("Save"), i18n._("Open the page")
+    assert save != "ذخیره"
+    assert i18n.plain("  " + save) == "  ذخیره"
+    assert i18n.plain(save + " " + page) == "ذخیره صفحه را باز کنید"
+    assert i18n.plain(f"{save}: y") == "ذخیره: y"
+    assert i18n.plain(save + "\n\n" + page + "\r\n") == "ذخیره\n\nصفحه را باز کنید\r\n"
+
+
+def _shaped_name(text: str) -> str:
+    return rtl_shaping.visual(text, base="L")
+
+
+def test_a_shaped_name_inside_a_persian_sentence_is_shaped_with_it() -> None:
+    line = "فایل " + _shaped_name("گزارش.txt") + " ذخیره شد"
+    out = rtl_shaping.visual(line)
+    assert out != line
+    assert out == rtl_shaping.visual("فایل گزارش.txt ذخیره شد")
+    assert rtl_shaping.logical(out) == "فایل گزارش.txt ذخیره شد"
+
+
+def test_a_hebrew_composed_line_is_not_reversed_twice() -> None:
+    inner = rtl_shaping.visual("דוח שנתי")
+    line = "הקובץ " + inner + " נשמר"
+    assert rtl_shaping.visual(line) == rtl_shaping.visual("הקובץ דוח שנתי נשמר")
+
+
+def test_a_short_hebrew_word_is_not_taken_for_a_shaped_segment() -> None:
+    rtl_shaping.visual("אב")  # remembers the visual "בא" for the logical "אב"
+    sentence = "הוא בא הביתה"
+    assert rtl_shaping.logical(rtl_shaping.visual(sentence)) == sentence
+
+
+def test_a_short_hebrew_text_equal_to_an_earlier_result_is_still_shaped() -> None:
+    assert rtl_shaping.visual("המר") == "רמה"
+    assert rtl_shaping.visual("רמה") == "המר"  # logical "רמה" is not the earlier result
+    assert rtl_shaping.logical("רמה") == "רמה"
+
+
+def test_a_translation_equal_to_an_earlier_long_hebrew_result_is_shaped(
+        locales: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    long_logical = "אבגדהוזחט"
+    earlier = rtl_shaping.visual(long_logical)
+    assert earlier == long_logical[::-1]
+    assert rtl_shaping.visual(earlier) == earlier  # sniffed as a result: not reversed back
+    write_catalog(locales, "he", {"Save": earlier})  # a catalog text is logical for sure
+    on(monkeypatch, "linux")
+    i18n.set_language("he")
+    assert i18n._("Save") == long_logical
+
+
+def test_the_rial_sign_and_a_bom_are_not_presentation_forms() -> None:
+    for sign in (chr(0xFDFC), chr(0xFD3E), chr(0xFD3F), chr(0xFEFF)):
+        assert not rtl_shaping._is_shaped(sign), hex(ord(sign))
+    line = "قیمت 100 " + chr(0xFDFC) + " است"
+    out = rtl_shaping.visual(line)
+    assert out != line and rtl_shaping.logical(out) == line
+    assert rtl_shaping._is_shaped(chr(0xFEAB)) and rtl_shaping._is_shaped(chr(0xFB56))
+
+
+def test_unknown_presentation_forms_are_left_alone() -> None:
+    raw = chr(0xFEAB) + chr(0xFEE9)  # not made by visual(): nothing to recover, nothing to reshape
+    assert rtl_shaping.visual(raw) == raw
+
+
+def test_a_line_of_only_a_direction_mark_does_not_poison_logical() -> None:
+    rtl_shaping.visual(chr(0x200F))
+    assert rtl_shaping.logical("a\n\nb") == "a\n\nb"
+    assert rtl_shaping.logical("\n") == "\n"
+    assert "" not in rtl_shaping._VISUAL_TO_LOGICAL
+
+
+def test_window_titles_get_logical_text(fa2_linux: None) -> None:
+    class Wm:
+        def __init__(self) -> None:
+            self.titles: list[Any] = []
+
+        def wm_title(self, string: Any = None) -> str:
+            self.titles.append(string)
+            return "ok"
+
+        title = wm_title
+
+    class Dialog:
+        def __init__(self, **options: Any) -> None:
+            self.options = options
+            self.seen: dict[str, Any] = {}
+
+        def show(self, **options: Any) -> str:
+            self.options.update(options)
+            self.seen = dict(self.options)
+            return "shown"
+
+    restore = rtl_shaping.install_title_hook(wm=Wm, dialog=Dialog)
+    try:
+        wm = Wm()
+        assert wm.title(i18n._("Save")) == "ok" and wm.wm_title(i18n._("Open the page") + " 1") == "ok"
+        assert wm.title() == "ok"
+        assert wm.titles == ["ذخیره", "صفحه را باز کنید 1", None]
+        dlg = Dialog(title=i18n._("Save"), message=i18n._("Save"))
+        assert dlg.show(title=i18n._("Open the page")) == "shown"
+        assert dlg.seen["title"] == "صفحه را باز کنید"
+        assert dlg.seen["message"] == i18n._("Save")  # the body is drawn by Tk: stays shaped
+        first = Dialog(title=i18n._("Save"))
+        first.show()
+        assert first.seen["title"] == "ذخیره"
+        again = rtl_shaping.install_title_hook(wm=Wm, dialog=Dialog)  # twice is harmless
+        wm2 = Wm()
+        wm2.title(i18n._("Save"))
+        assert wm2.titles == ["ذخیره"]
+        again()
+    finally:
+        restore()
+
+
+def test_status_line_clips_the_logical_text_then_shapes(fa2_linux: None) -> None:
+    from app.domain import status_line as sl
+
+    words = "کلمه " * 60
+    message = "[file=a.wav] [ 5%] 00:00.000 --> 00:01.000 | " + words
+    out = sl.status_line(message)
+    assert out is not None
+    back = rtl_shaping.logical(out)
+    assert back.startswith("a.wav: 5% انجام شد — «کلمه")  # the logical beginning survives
+    assert back.endswith("…»")
+    assert len(back) <= sl.MAX_CHARS
+    assert out == rtl_shaping.visual(back)
+
+
+def test_status_line_clip_keeps_the_logical_beginning_of_a_long_shaped_line(fa2_linux: None) -> None:
+    from app.domain import status_line as sl
+
+    name = "x" * 150 + ".wav"
+    out = sl.status_line("Processing: C:/media/" + name)
+    assert out is not None
+    back = rtl_shaping.logical(out)
+    assert back.startswith("در حال رونویسی x") and back.endswith("…")  # the Persian words come first
+    assert len(back) <= sl.MAX_CHARS
+    assert out == rtl_shaping.visual(back)
+
+
+def test_display_shapes_a_composed_text_once(fa2_linux: None) -> None:
+    a, b = i18n._("Save"), i18n._("Open the page")
+    joined = i18n.display(a + " " + b)
+    assert joined == rtl_shaping.visual("ذخیره صفحه را باز کنید")
+    assert i18n.display(joined) == joined
+    assert i18n.display("plain English") == "plain English"
+
+
+def test_display_is_the_identity_off_linux(locales: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    write_catalog(locales, "fa", FA2)
+    for platform in ("win32", "darwin"):
+        on(monkeypatch, platform)
+        i18n.set_language("fa")
+        text = i18n._("Save") + " " + i18n._("Open the page")
+        assert i18n.display(text) is text
+
+
+@pytest.mark.parametrize("platform", ["win32", "darwin"])
+def test_windows_and_macos_output_is_exactly_the_marked_catalog_text(
+        monkeypatch: pytest.MonkeyPatch, platform: str) -> None:
+    """The real catalogs: every message is the catalog text with RLE ... PDF per line, no shaping."""
+    on(monkeypatch, platform)
+    root = Path(__file__).resolve().parents[1] / "app" / "locales"
+    checked = 0
+    for code in ("fa", "ar", "he"):
+        doc = json.loads((root / f"{code}.json").read_text(encoding="utf-8"))
+        assert i18n.set_language(code) == code
+        assert i18n.rtl_shaped() is False and i18n.rtl_marks() is True
+        for key, value in doc["messages"].items():
+            if not isinstance(value, str) or not value or "{" in value or "\x04" in key:
+                continue
+            assert i18n._(key) == i18n.embed_rtl(value), (code, key)
+            assert not any(0xFB50 <= ord(ch) <= 0xFEFC for ch in i18n._(key)), (code, key)
+            checked += 1
+    assert checked > 500
+
+
+# --- mutants the first round did not catch -------------------------------------------------------------
+
+def test_zero_width_non_joiners_never_reach_the_output() -> None:
+    out = rtl_shaping.visual("می" + chr(0x200C) + "کند")
+    assert chr(0x200C) not in out and out != "می" + chr(0x200C) + "کند"
+
+
+def test_zero_width_non_joiners_are_removed_even_when_the_engine_keeps_them(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    from core.writers.pdf_bidi import Engine
+
+    keep = Engine(reshape=lambda t: t, reorder=lambda t, _base: t[::-1])
+    monkeypatch.setattr(rtl_shaping, "_engine", lambda: keep)
+    monkeypatch.setattr(rtl_shaping, "_CACHE", {})
+    out = rtl_shaping.visual("ب" + chr(0x200C) + "ت")
+    assert chr(0x200C) not in out and out == "تب"
+
+
+def test_ltr_base_keeps_a_latin_start_in_front_on_linux(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(bidi_display, "is_aqua", lambda: False)
+    on(monkeypatch, "linux")
+    out = bidi_display.ltr_base("Use فارسی")
+    assert out.startswith("Use ")
+    assert out != rtl_shaping.visual("Use فارسی", base="R")
+
+
+def test_a_carriage_return_stays_at_the_end_of_its_line_also_from_the_cache() -> None:
+    first = rtl_shaping.visual("ب\r")
+    second = rtl_shaping.visual("ب\r")  # served from the cache
+    assert first == second and second.endswith("\r") and second.count("\r") == 1
+    multi = rtl_shaping.visual("ب\r\nب\r\n")
+    assert multi.count("\r") == 2 and multi.endswith("\r\n")
+
+
+def test_logical_keeps_the_carriage_returns() -> None:
+    text = "ذخیره شد\r\nپایان\r"
+    assert rtl_shaping.logical(rtl_shaping.visual(text)) == text

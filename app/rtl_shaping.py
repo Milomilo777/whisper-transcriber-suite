@@ -25,7 +25,8 @@ import sys
 import threading
 import unicodedata
 from collections import OrderedDict
-from typing import TYPE_CHECKING
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from core.writers.pdf_bidi import Engine
@@ -33,13 +34,21 @@ if TYPE_CHECKING:
 #: Platforms whose Tk cannot shape or order right-to-left text itself.
 SHAPED_PLATFORMS: frozenset[str] = frozenset({"linux"})
 
-# Arabic Presentation Forms-A and -B: what arabic-reshaper writes. A line holding one is already
-# shaped (the catalogs and the transcripts never contain them).
-_PRESENTATION_FORMS = (range(0xFB50, 0xFE00), range(0xFE70, 0xFF00))
+# The letters of Arabic Presentation Forms-A and -B: what arabic-reshaper writes. A line holding
+# one that visual() did not make is left alone (the catalogs and transcripts never contain them).
+# Not included: the ornate parentheses U+FD3E/FD3F, the noncharacters U+FDD0..FDEF, the rial sign
+# U+FDFC (a currency symbol real text uses) and the byte order mark U+FEFF.
+_PRESENTATION_FORMS = (range(0xFB50, 0xFD3E), range(0xFD40, 0xFDD0), range(0xFDF0, 0xFDFC),
+                       range(0xFE70, 0xFEFD))
 _REMEMBERED = 20000  # results kept for logical(); far more than the interface has texts
+# Hebrew is only reversed, so a reversed text can equal a real text (the reversal of "המר" is "רמה").
+# A Hebrew result shorter than this is never taken for an already shaped one; Arabic results are
+# unmistakable (presentation forms) and count at any length.
+_MIN_HEBREW_SEGMENT = 5
 
 _LOCK = threading.Lock()
 _VISUAL_TO_LOGICAL: OrderedDict[str, str] = OrderedDict()
+_KEYS_BY_LENGTH: list[str] | None = None  # the keys above, longest first (None: rebuild)
 _CACHE: dict[tuple[str, str], str] = {}
 
 
@@ -68,21 +77,72 @@ def _is_shaped(line: str) -> bool:
 
 
 def _remember(shaped: str, logical: str) -> None:
+    global _KEYS_BY_LENGTH
+    if not shaped or shaped == logical:  # an empty key would match everywhere
+        return
     with _LOCK:
         _VISUAL_TO_LOGICAL[shaped] = logical
         _VISUAL_TO_LOGICAL.move_to_end(shaped)
         while len(_VISUAL_TO_LOGICAL) > _REMEMBERED:
             _VISUAL_TO_LOGICAL.popitem(last=False)
+        _KEYS_BY_LENGTH = None
         if len(_CACHE) > _REMEMBERED:
             _CACHE.clear()
 
 
+def _recover(text: str) -> str:
+    """*text* with every shaped segment that :func:`visual` made swapped back to its logical text.
+
+    Longest segment first. An Arabic segment is unmistakable (presentation forms); a Hebrew one
+    (only reversed) must be at least three letters and stand between non-letters, so that a
+    short real word that equals some reversed word is not taken for one.
+    """
+    global _KEYS_BY_LENGTH
+    with _LOCK:
+        if _KEYS_BY_LENGTH is None:
+            _KEYS_BY_LENGTH = sorted(_VISUAL_TO_LOGICAL, key=len, reverse=True)
+        keys = _KEYS_BY_LENGTH
+        table = _VISUAL_TO_LOGICAL
+        hits = [k for k in keys if len(k) <= len(text) and k in text]
+        if not hits:
+            return text
+        pieces: list[tuple[str, bool]] = [(text, False)]  # (text, already logical)
+        for key in hits:
+            arabic = _is_shaped(key)
+            if not arabic and len(key) < _MIN_HEBREW_SEGMENT:
+                continue
+            nxt: list[tuple[str, bool]] = []
+            for part, done in pieces:
+                if done or key not in part:
+                    nxt.append((part, done))
+                    continue
+                emitted = scan = 0
+                while True:
+                    i = part.find(key, scan)
+                    if i < 0:
+                        break
+                    j = i + len(key)
+                    if not arabic and ((i > 0 and part[i - 1].isalpha())
+                                       or (j < len(part) and part[j].isalpha())):
+                        scan = i + 1
+                        continue
+                    if i > emitted:
+                        nxt.append((part[emitted:i], False))
+                    nxt.append((table[key], True))
+                    emitted = scan = j
+                if emitted < len(part):
+                    nxt.append((part[emitted:], False))
+            pieces = nxt
+    return "".join(p for p, _done in pieces)
+
+
 # Bracket pairs (Bidi_Paired_Bracket) for the pair fix below: the three ASCII pairs and some more,
-# so a line can hold up to twelve pairs.
-_OPENERS = "([{⟦⟨⟪⦃⦅⦇⦉⦋"
-_CLOSERS = ")]}⟧⟩⟫⦄⦆⦈⦊⦌"
-_LRM, _RLM = "‎", "‏"
-_ZWNJ = "‌"
+# so a line can hold up to twelve pairs. Built from code points: invisible or look-alike characters
+# never sit in this source.
+_OPENERS = "([{" + "".join(chr(c) for c in (0x27E6, 0x27E8, 0x27EA, 0x2983, 0x2985, 0x2987, 0x2989, 0x298B))
+_CLOSERS = ")]}" + "".join(chr(c) for c in (0x27E7, 0x27E9, 0x27EB, 0x2984, 0x2986, 0x2988, 0x298A, 0x298C))
+_LRM, _RLM = chr(0x200E), chr(0x200F)
+_ZWNJ = chr(0x200C)
 
 
 def _bracket_pairs(line: str) -> tuple[list[tuple[int, int]], set[int]]:
@@ -152,53 +212,162 @@ def _order(engine: "Engine", shaped: str, base: str) -> str:
     return out.replace(_LRM, "").replace(_RLM, "").replace(_ZWNJ, "")
 
 
-def _shape_line(line: str, base: str) -> str:
-    # A trailing carriage return (CRLF text) stays at the end of its line.
-    body, tail = (line[:-1], "\r") if line.endswith("\r") else (line, "")
-    if not body or not _has_rtl_letter(body) or _is_shaped(body):
+def _split_cr(line: str) -> tuple[str, str]:
+    """A line and its trailing carriage return (CRLF text keeps it at the end of the line)."""
+    return (line[:-1], "\r") if line.endswith("\r") else (line, "")
+
+
+def _is_result(body: str) -> bool:
+    """True when *body* is a whole line that :func:`visual` made (and can be told from real text)."""
+    with _LOCK:
+        known = body in _VISUAL_TO_LOGICAL
+    return known and (len(body) >= _MIN_HEBREW_SEGMENT or _is_shaped(body))
+
+
+def _shape_line(line: str, base: str, logical_input: bool = False) -> str:
+    body, tail = _split_cr(line)
+    if not body or not _has_rtl_letter(body):
         return line
     engine = _engine()
     if engine is None:
         return line
+    if not logical_input and _is_result(body):  # a line visual() made: never shaped twice
+        return line
     with _LOCK:
-        if body in _VISUAL_TO_LOGICAL:
-            return line
         cached = _CACHE.get((body, base))
     if cached is not None:
         return cached + tail
-    out = _order(engine, engine.reshape(body), base)
-    if out != body:
-        _remember(out, body)
+    # Shaped segments inside the line (a name from ltr_base, a sentence of _()) go back to their
+    # logical text, so the whole line is shaped once, in one reading order.
+    source = body if logical_input else _recover(body)
+    if _is_shaped(source):  # presentation forms visual() did not make: cannot be put right
+        return line
+    out = _order(engine, engine.reshape(source), base)
+    _remember(out, source)
     with _LOCK:
         _CACHE[(body, base)] = out
     return out + tail
 
 
-def visual(text: str, base: str = "R") -> str:
+def visual(text: str, base: str = "R", logical_input: bool = False) -> str:
     """*text* in the form a Tk label needs on Linux: joined letters, visual order, per line.
 
     *base* is the paragraph direction, "R" (an interface text of a right-to-left language) or
-    "L" (a name inside an English sentence). Lines without a right-to-left letter, lines already
-    shaped and everything when the engine is missing are returned as they are.
+    "L" (a name inside an English sentence). Lines without a right-to-left letter, a line that is
+    already a result of this function, and everything when the engine is missing are returned as
+    they are. A line that holds results inside other text (``"  " + _("x")``) is shaped again as
+    a whole, from the logical text of its parts. ``logical_input=True`` says the caller knows
+    *text* is logical (a catalog translation): nothing in it is taken for an earlier result.
     """
     if not text or not _has_rtl_letter(text):
         return text
     if "\n" not in text:
-        return _shape_line(text, base)
-    return "\n".join(_shape_line(line, base) for line in text.split("\n"))
+        return _shape_line(text, base, logical_input)
+    return "\n".join(_shape_line(line, base, logical_input) for line in text.split("\n"))
+
+
+def _logical_line(line: str) -> str:
+    body, tail = _split_cr(line)
+    if _is_result(body):
+        with _LOCK:
+            return _VISUAL_TO_LOGICAL[body] + tail
+    if not body or not _has_rtl_letter(body):
+        return line
+    return _recover(body) + tail
 
 
 def logical(text: str) -> str:
-    """The text *text* was shaped from; *text* itself when :func:`visual` did not make it."""
+    """The logical text of *text*: every segment :func:`visual` made, whole or inside a larger
+    string, is swapped back; everything else is kept as it is."""
     if not text:
         return text
-    with _LOCK:
-        known = _VISUAL_TO_LOGICAL
-        if "\n" not in text:
-            body, tail = (text[:-1], "\r") if text.endswith("\r") else (text, "")
-            return known.get(body, body) + tail
-        out = []
-        for line in text.split("\n"):
-            body, tail = (line[:-1], "\r") if line.endswith("\r") else (line, "")
-            out.append(known.get(body, body) + tail)
-    return "\n".join(out)
+    if "\n" not in text:
+        return _logical_line(text)
+    return "\n".join(_logical_line(line) for line in text.split("\n"))
+
+
+# --- window titles ------------------------------------------------------------------------------------
+
+_RESTORE: list[Callable[[], None]] = []
+
+
+def install_title_hook(wm: Any = None, dialog: Any = None) -> Callable[[], None]:
+    """Make window titles take logical text; returns a function that undoes the hook.
+
+    The window manager draws a title itself, with its own joining and bidi algorithm, so a
+    shaped title would be reordered a second time. ``wm`` (default ``tkinter.Wm``) gets a
+    ``wm_title`` / ``title`` that turns a shaped text into logical text; ``dialog`` (default
+    ``tkinter.commondialog.Dialog``, the base of the message and file dialogs) does the same for
+    its ``title`` option. Asking for the title (no argument) is unchanged. Installing twice is a
+    no-op. The text inside a dialog is drawn by Tk and stays shaped.
+    """
+    import tkinter as tk
+    from tkinter import commondialog
+
+    wm = wm or tk.Wm
+    dialog = dialog or commondialog.Dialog
+    undo: list[Callable[[], None]] = []
+    if not wm.__dict__.get("_wts_logical_title"):
+        orig_title, orig_wm_title = wm.__dict__.get("title"), wm.__dict__.get("wm_title")
+        base_title = wm.wm_title
+
+        def wm_title(self: Any, string: Any = None) -> Any:
+            return base_title(self, logical(string) if isinstance(string, str) else string)
+
+        wm.wm_title = wm.title = wm_title
+        wm._wts_logical_title = True
+
+        def undo_wm() -> None:
+            for name, old in (("title", orig_title), ("wm_title", orig_wm_title)):
+                if old is None:
+                    delattr(wm, name)
+                else:
+                    setattr(wm, name, old)
+            del wm._wts_logical_title
+
+        undo.append(undo_wm)
+    if not dialog.__dict__.get("_wts_logical_title"):
+        orig_show = dialog.__dict__.get("show")
+        base_show = dialog.show
+
+        def show(self: Any, **options: Any) -> Any:
+            if isinstance(options.get("title"), str):
+                options["title"] = logical(options["title"])
+            held = getattr(self, "options", None)
+            if isinstance(held, dict) and isinstance(held.get("title"), str):
+                held["title"] = logical(held["title"])
+            return base_show(self, **options)
+
+        dialog.show = show
+        dialog._wts_logical_title = True
+
+        def undo_dialog() -> None:
+            if orig_show is None:
+                del dialog.show
+            else:
+                dialog.show = orig_show
+            del dialog._wts_logical_title
+
+        undo.append(undo_dialog)
+
+    def restore() -> None:
+        while undo:
+            undo.pop()()
+
+    return restore
+
+
+def install_title_hook_once() -> None:
+    """:func:`install_title_hook` on the real Tk classes, once per process."""
+    if _RESTORE:
+        return
+    try:
+        _RESTORE.append(install_title_hook())
+    except ImportError:  # no tkinter: no window titles either
+        return
+
+
+def uninstall_title_hook() -> None:
+    """Undo :func:`install_title_hook_once` (tests)."""
+    while _RESTORE:
+        _RESTORE.pop()()

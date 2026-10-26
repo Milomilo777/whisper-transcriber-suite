@@ -656,6 +656,8 @@ def set_language(code: str) -> str:
                                shaped=is_rtl and rtl_shaping.applies())
     with _LOCK:
         _STATE = new
+    if new.shaped:
+        rtl_shaping.install_title_hook_once()  # the window manager shapes titles itself
     return new.code
 
 
@@ -677,6 +679,17 @@ def rtl_shaped() -> bool:
     """True when translated texts are display-shaped (Linux, right-to-left catalog): the layout
     is mirrored as with the marks, but the texts hold presentation forms in visual order."""
     return _STATE.shaped
+
+
+def display(text: str) -> str:
+    """A UI text composed of translated parts (``a + " " + b``, an f-string around ``_()``),
+    finished for the screen.
+
+    Each part is shaped on its own (Linux), so the joined line would read in the wrong order;
+    this shapes the whole line once, from the logical text of its parts. The identity wherever
+    texts are not shaped (Windows, macOS, English), and for text that is already one shaped line.
+    """
+    return rtl_shaping.visual(text) if _STATE.shaped else text
 
 
 def _has_rtl_letter(text: str) -> bool:
@@ -816,7 +829,7 @@ def _decorate(text: str, state: _Catalog) -> str:
     if state.rtl_marks:
         return embed_rtl(text)
     if state.shaped:
-        return rtl_shaping.visual(text)
+        return rtl_shaping.visual(text, logical_input=True)  # a catalog text: logical for sure
     return text
 
 
@@ -914,6 +927,7 @@ __all__ = [
     "catalog_status", "catalog_statuses", "current_direction", "current_language",
     "detect_os_language", "embed_rtl", "init_language", "lazy", "locales_dir", "text_in", "ngettext",
     "parse_apple_languages", "pgettext", "plain", "plural_index", "pseudo_translate",
-    "resolve_language", "rtl_layout_ready", "rtl_marks", "set_language", "setting_language",
+    "SHAPED_PLATFORMS", "display", "resolve_language", "rtl_layout_ready", "rtl_marks", "rtl_shaped",
+    "set_language", "setting_language",
     "translate",
 ]

@@ -172,8 +172,12 @@ left-to-right places.
   text instead of marks: letters joined with arabic-reshaper and lines put in visual order with
   python-bidi (`app/rtl_shaping.py`), and the catalogs are offered only while both packages are
   installed. Without them an explicit `ui_language` code still loads one, and the letters show
-  unjoined. `i18n.plain()` turns such a text back into logical order. The one known limit: a
-  label long enough to wrap shows its lines in the wrong order.
+  unjoined. `i18n.plain()` turns such a text, also one composed of several translated parts, back
+  into logical order. Code that joins translated parts into one line (`_("a") + " " + _("b")`)
+  wraps the result in `i18n.display()`, which shapes the whole line once; window titles and the
+  tray go through `rtl_shaping.logical`, since the desktop shapes those itself. Known limits: a
+  label long enough to wrap shows its lines in the wrong order, and a "%" or "$" next to a
+  number inside brackets can sit on the wrong side.
 - In code, a translated text that leaves the screen (the log file, the clipboard, a file) goes
   through `i18n.plain()`, which removes the marks. `App.log` does this for the log file.
 

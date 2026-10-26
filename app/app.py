@@ -27,7 +27,7 @@ from app.dialogs.quick_start import (
 )
 from app.dialogs import language_suggestion, share_page, ui_language
 from app import desktop_alert, mac_native, rtl_layout, shortcuts
-from app.i18n import N_, _, ngettext, pgettext, plain, translate
+from app.i18n import N_, _, display, ngettext, pgettext, plain, translate
 from app.dialogs.transcript_viewer import confirm_unsaved_before_exit as confirm_unsaved_viewers_before_exit
 from app.dialogs.transcript_viewer import dirty_viewers as _dirty_viewers_now
 from app.dialogs.transcript_viewer import open_viewer as _open_transcript_viewer
@@ -3905,7 +3905,8 @@ class App(tk.Tk):
                     "It runs on the local transformers engine, which installs once the first "
                     "time (about 1 GB more), gives no word-level timestamps and ignores the "
                     "Whisper options (hot words, prompt).")
-            if not messagebox.askyesno(_("Model for {language}", language=language), text, parent=self):
+            if not messagebox.askyesno(_("Model for {language}", language=language), display(text),
+                                       parent=self):
                 return
         if not self._confirm_backend_switch(kind=BACKEND_SWITCH_MODEL):
             return
@@ -4886,7 +4887,7 @@ class App(tk.Tk):
             task.languages = pair
         else:
             if why_not:
-                self.log(why_not + " " + _("This file uses one language."))
+                self.log(display(why_not + " " + _("This file uses one language.")))
             if code:
                 task.language = code
         # "English translation" option: Whisper's own translate task, only
@@ -6243,7 +6244,7 @@ class App(tk.Tk):
         if token:
             steps += " " + _("The code and the copied link include your access password: show "
                              "them only to people who may use this page.")
-        self.server_qr_note_var.set(steps)
+        self.server_qr_note_var.set(display(steps))
         frame.pack(**rtl_layout.pack_kw(frame, anchor="w", pady=(0, 12), after=self.server_url_label))
 
     def _hide_phone_link(self) -> None:

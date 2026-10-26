@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING, Any
 
 from app import shortcuts
 from app.i18n import _, pgettext
+from app.rtl_shaping import logical
 
 if TYPE_CHECKING:
     from app.app import App
@@ -184,11 +185,14 @@ class TrayController:
             return
         try:
             menu = self._pystray.Menu(
-                self._pystray.MenuItem(pgettext("tray menu", "Show"), lambda _i, _e: self._post(self._show_window),
-                                       default=True),
-                self._pystray.MenuItem(pgettext("tray menu", "Hide"), lambda _i, _e: self._post(self._hide_window)),
+                # The desktop draws the tray menu itself: logical text, not Tk's shaped text.
+                self._pystray.MenuItem(logical(pgettext("tray menu", "Show")),
+                                       lambda _i, _e: self._post(self._show_window), default=True),
+                self._pystray.MenuItem(logical(pgettext("tray menu", "Hide")),
+                                       lambda _i, _e: self._post(self._hide_window)),
                 self._pystray.Menu.SEPARATOR,
-                self._pystray.MenuItem(shortcuts.quit_label(), lambda _i, _e: self._post(self._exit_app)),
+                self._pystray.MenuItem(logical(shortcuts.quit_label()),
+                                       lambda _i, _e: self._post(self._exit_app)),
             )
             self._icon = self._pystray.Icon(
                 "WhisperTranscriberSuite",
@@ -314,7 +318,7 @@ class TrayController:
         if not callable(notify_fn):
             return
         try:
-            notify_fn(body, title=title)
+            notify_fn(logical(body), title=logical(title))  # drawn by the desktop, not by Tk
         except Exception as e:  # noqa: BLE001
             logger.info("Tray notify failed: %s", e)
 
