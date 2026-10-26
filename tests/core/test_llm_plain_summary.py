@@ -10,8 +10,15 @@ from core import llm
     ("- **Budget**: approved", "- Budget: approved"),
     ("**Key points**\n* one\n* two", "Key points\n- one\n- two"),
     ("## Summary\n- a", "Summary\n- a"),
-    ("__bold__ and text", "bold and text"),
+    ("__two words__ and text", "two words and text"),
     ("2 * 3 = 6 and a_b_c", "2 * 3 = 6 and a_b_c"),   # arithmetic and identifiers stay
+    # markers inside words or code are not bold: powers, kwargs, dunder and snake names stay
+    ("2**3 = 8 and 4**2", "2**3 = 8 and 4**2"),
+    ("Use a**b**c", "Use a**b**c"),
+    ("g(**kw)", "g(**kw)"),
+    ("__init__ and __main__", "__init__ and __main__"),
+    ("snake__case__name", "snake__case__name"),
+    ("**مهم**: بله", "مهم: بله"),
     ("no markers here", "no markers here"),
     ("", ""),
 ])

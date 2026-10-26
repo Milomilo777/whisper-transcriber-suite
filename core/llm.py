@@ -274,7 +274,12 @@ def _summarise_prompt(text: str, max_bullets: int) -> str:
     )
 
 
-_MD_BOLD_RE = re.compile(r"(\*\*|__)(?=\S)(.+?)(?<=\S)\1")
+# Bold only as a separate run: a marker glued to a letter, digit or another marker on its outer
+# side (2**3, a**b**c, snake__case) is not bold. "__x__" needs a space inside, so dunder names
+# such as __init__ stay.
+_MD_BOLD_RE = re.compile(
+    r"(?<![\w*])\*\*(?=[^\s*])(.+?)(?<=[^\s*])\*\*(?![\w*])"
+    r"|(?<![\w_])__(?=[^\s_])((?:(?!__)[^\n])*?\s(?:(?!__)[^\n])*?)(?<=[^\s_])__(?![\w_])")
 _MD_HEADING_RE = re.compile(r"^[ \t]*#{1,6}[ \t]+", re.MULTILINE)
 _MD_STAR_BULLET_RE = re.compile(r"^([ \t]*)\*[ \t]+", re.MULTILINE)
 
@@ -285,7 +290,7 @@ def plain_summary_text(text: str) -> str:
     Bold (``**x**``, ``__x__``) loses its markers, heading hashes at a line start go, and a
     ``* `` bullet becomes ``- ``. A lone ``*`` inside a sentence (arithmetic) stays.
     """
-    text = _MD_BOLD_RE.sub(lambda m: m.group(2), text)
+    text = _MD_BOLD_RE.sub(lambda m: m.group(1) or m.group(2), text)
     text = _MD_HEADING_RE.sub("", text)
     return _MD_STAR_BULLET_RE.sub(r"\1- ", text)
 
