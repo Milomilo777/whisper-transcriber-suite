@@ -6,6 +6,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Security
 
+- The phone-spike experiment (not part of the app) pins `datasets` 5.0.1, which fixes a path-traversal advisory in 2.20.0; its FLEURS download script now reads the stored audio instead of relying on the removed dataset-script loader.
 - **Server link jobs download through a guarded local proxy**: every request yt-dlp makes (and every
   redirect) is resolved and checked by the app at connect time on ports 80 and 443; loopback, link-local,
   metadata and private-network addresses (and IPv6 addresses that embed them, decoded by their RFC 6052 layout) are refused, so DNS

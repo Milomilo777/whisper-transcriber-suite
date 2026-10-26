@@ -38,13 +38,31 @@ def build_long_form(paths, output, silence_s=.5):
 
 
 def _write_pcm(path, samples):
-    # Audio(sampling_rate=16000, mono=True) supplies floating point mono samples.
+    # Floating point mono samples in [-1, 1] -> PCM16.
     pcm = array("h", (max(-32768, min(32767, round(float(x) * 32768))) for x in samples))
     if sys.byteorder != "little":
         pcm.byteswap()
     with wave.open(str(path), "wb") as target:
         target.setparams((1, 2, 16000, 0, "NONE", "not compressed"))
         target.writeframes(pcm.tobytes())
+
+
+def _write_clip(path, data):
+    """Write the stored FLEURS clip (WAV bytes) as 16 kHz mono PCM16.
+
+    datasets 4+ decodes audio through torchcodec into an AudioDecoder object; asking for
+    ``Audio(decode=False)`` gives the stored bytes instead, which soundfile (a pinned
+    dependency) reads. The stored files are 32-bit float WAVs, which the stdlib ``wave``
+    module cannot open. Anything that is not 16 kHz mono stops the run: nothing is resampled.
+    """
+    import soundfile
+    try:
+        samples, rate = soundfile.read(io.BytesIO(data), dtype="float32", always_2d=True)
+    except soundfile.LibsndfileError as error:
+        raise ValueError(f"FLEURS clip is not readable audio: {error}") from error
+    if rate != 16000 or samples.shape[1] != 1:
+        raise ValueError(f"FLEURS clip is not 16 kHz mono: {samples.shape[1]} channel(s), {rate} Hz")
+    _write_pcm(path, samples[:, 0])
 
 
 def download_data(data_dir):
@@ -55,19 +73,20 @@ def download_data(data_dir):
     try:
         from datasets import Audio, load_dataset
         # Non-streaming metadata is memory-mapped; sample uniformly over the WHOLE split,
-        # not the first shuffle buffer. Decode only selected rows, one at a time.
-        dataset = load_dataset("google/fleurs", "fa_ir", split="test", trust_remote_code=True)
-        dataset = dataset.cast_column("audio", Audio(sampling_rate=16000, mono=True))
+        # not the first shuffle buffer. Read only selected rows, one at a time. The FLEURS
+        # repository is parquet-based, so no trust_remote_code (removed in datasets 4).
+        dataset = load_dataset("google/fleurs", "fa_ir", split="test")
+        dataset = dataset.cast_column("audio", Audio(decode=False))
         indices = sampled_indices(len(dataset))
         refs, source_ids = [], []
         for position, index in enumerate(indices):
             item = dataset[index]
             audio = item["audio"]
-            if audio["sampling_rate"] != 16000:
-                raise ValueError("FLEURS decoder did not produce 16 kHz audio")
+            if not audio.get("bytes"):
+                raise ValueError("FLEURS row carries no audio bytes")
             key = f"{position:04d}"
             path = data_dir / (key + ".wav")
-            _write_pcm(path, audio["array"])
+            _write_clip(path, audio["bytes"])
             refs.append((key, audio_duration(path), item["raw_transcription"]))
             source_ids.append(str(item.get("id", index)))
         long_paths = [data_dir / (row[0] + ".wav") for row in refs[:25]]

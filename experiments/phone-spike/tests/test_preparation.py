@@ -1,5 +1,6 @@
 import hashlib
 import importlib.util
+import io
 import json
 from pathlib import Path
 import struct
@@ -64,8 +65,18 @@ def test_download_failure_preserves_readme_and_records_error(monkeypatch, tmp_pa
 
 def test_data_pipeline_with_fake_dataset_is_offline_and_preserves_source_ids(monkeypatch, tmp_path):
     calls = {}
-    rows = [{"id": "source-a", "raw_transcription": "سلام", "audio": {"sampling_rate": 16000, "array": [.25] * 1600}},
-            {"id": "source-b", "raw_transcription": "خوب", "audio": {"sampling_rate": 16000, "array": [-.5] * 3200}}]
+    soundfile = pytest.importorskip("soundfile")
+    def wav_bytes(value, frames, rate=16000):
+        # The FLEURS parquet stores 32-bit float WAVs (stdlib wave cannot open those).
+        buffer = io.BytesIO()
+        soundfile.write(buffer, [value] * frames, rate, format="WAV", subtype="FLOAT")
+        return buffer.getvalue()
+    # datasets 4+ returns an AudioDecoder (needs torchcodec) for decoded audio; the script asks
+    # for the stored bytes instead (decode=False) and reads them with soundfile.
+    rows = [{"id": "source-a", "raw_transcription": "سلام",
+             "audio": {"path": "a.wav", "bytes": wav_bytes(.25, 1600)}},
+            {"id": "source-b", "raw_transcription": "خوب",
+             "audio": {"path": "b.wav", "bytes": wav_bytes(-.5, 3200)}}]
     class Dataset:
         def __len__(self):
             return 2
@@ -73,7 +84,7 @@ def test_data_pipeline_with_fake_dataset_is_offline_and_preserves_source_ids(mon
             return rows[index]
         def cast_column(self, name, audio):
             assert name == "audio"
-            assert audio == {"sampling_rate": 16000, "mono": True}
+            assert audio == {"decode": False}
             return self
     def load(*args, **kwargs):
         calls.update(args=args, kwargs=kwargs)
@@ -84,6 +95,9 @@ def test_data_pipeline_with_fake_dataset_is_offline_and_preserves_source_ids(mon
     manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
     assert calls["args"] == ("google/fleurs", "fa_ir")
     assert calls["kwargs"]["split"] == "test"
+    assert "trust_remote_code" not in calls["kwargs"]  # removed in datasets 4; FLEURS is parquet now
+    with wave.open(str(output / "0000.wav"), "rb") as written:  # source-b: -0.5 -> -16384
+        assert struct.unpack("<h", written.readframes(1)) == (-16384,)
     assert manifest["seed"] == 1234
     assert manifest["sample_size"] == 2
     assert manifest["source_indices"] == [1, 0]
@@ -94,6 +108,17 @@ def test_data_pipeline_with_fake_dataset_is_offline_and_preserves_source_ids(mon
     refs = (output / "refs.tsv").read_text(encoding="utf-8")
     assert refs.splitlines()[0] == "id\tduration_s\treference"
     assert refs.splitlines()[-1] == "long_form\t0.800000\tخوب سلام"
+
+
+def test_fleurs_clip_that_is_not_16khz_mono_is_refused_not_resampled(tmp_path):
+    soundfile = pytest.importorskip("soundfile")
+    buffer = io.BytesIO()
+    soundfile.write(buffer, [[0.0, 0.0]] * 8, 44100, format="WAV", subtype="FLOAT")
+    with pytest.raises(ValueError, match="16 kHz mono"):
+        download_data._write_clip(tmp_path / "x.wav", buffer.getvalue())
+    with pytest.raises(ValueError, match="not readable audio"):
+        download_data._write_clip(tmp_path / "y.wav", b"not audio at all")
+    assert not list(tmp_path.glob("*.wav"))
 
 
 def test_setup_hashes_are_real_and_exclude_archive_and_manifest(tmp_path):

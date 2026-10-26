@@ -110,7 +110,8 @@ are the optimal quants. Model size counts the files actually used by the adapter
 
 `download_data.py` samples 300 distinct indices uniformly from the entire FLEURS
 `google/fleurs`, `fa_ir`, test split using seed 1234 (all utterances if fewer).
-It decodes selected rows one at a time to 16 kHz mono PCM16 WAVs, writes UTF-8
+It writes selected rows one at a time as the stored 16 kHz mono PCM16 WAVs (any other
+format stops the run; nothing is resampled), writes UTF-8
 `refs.tsv`, and records source indices/IDs in `manifest.json`. It concatenates
 the first 25 selected clips with exactly 0.5 seconds of silence **between** clips
 into `long_form.wav` and concatenates their references. Actual duration is recorded;
