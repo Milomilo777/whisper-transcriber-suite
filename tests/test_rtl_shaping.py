@@ -44,6 +44,8 @@ def _fresh(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(i18n, "_WARNED", set())
     monkeypatch.setattr(i18n, "_DOC_CACHE", {})
     monkeypatch.delenv(i18n.ENV_LANGUAGE, raising=False)
+    for memory in (rtl_shaping._VISUAL_TO_LOGICAL, rtl_shaping._BY_FIRST_CHAR, rtl_shaping._CACHE):
+        memory.clear()  # results remembered by an earlier test must not change this one
     i18n.set_language("en")
     yield
     i18n.set_language("en")
@@ -317,7 +319,8 @@ def test_a_short_hebrew_word_is_not_taken_for_a_shaped_segment() -> None:
 def test_a_short_hebrew_text_equal_to_an_earlier_result_is_still_shaped() -> None:
     assert rtl_shaping.visual("המר") == "רמה"
     assert rtl_shaping.visual("רמה") == "המר"  # logical "רמה" is not the earlier result
-    assert rtl_shaping.logical("רמה") == "רמה"
+    # logical() is for shaped UI text, so it accepts any exact earlier result, even a short one.
+    assert rtl_shaping.logical("המר") == "רמה"
 
 
 def test_a_translation_equal_to_an_earlier_long_hebrew_result_is_shaped(
@@ -496,3 +499,156 @@ def test_a_carriage_return_stays_at_the_end_of_its_line_also_from_the_cache() ->
 def test_logical_keeps_the_carriage_returns() -> None:
     text = "ذخیره شد\r\nپایان\r"
     assert rtl_shaping.logical(rtl_shaping.visual(text)) == text
+
+
+# --- round 3: short Hebrew results, speed (review findings D-HE, SPEED) ---------------------------------
+
+HE3 = {
+    "Show": "הצג", "Hide": "הסתר", "Exit": "צא", "tray menu\x04Show": "הצג",
+    "'{needle}' not found.": "'{needle}' לא נמצא.",
+    "Transcribing {name}…": "מתמלל {name}…",
+}
+
+
+@pytest.fixture
+def he3_linux(locales: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    write_catalog(locales, "he", HE3)
+    on(monkeypatch, "linux")
+    i18n.set_language("he")
+
+
+def test_every_hebrew_catalog_text_round_trips_through_plain_and_display(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    """The real he.json on Linux: plain(_(k)) is the catalog text and display(_(k)) is _(k)."""
+    on(monkeypatch, "linux")
+    root = Path(__file__).resolve().parents[1] / "app" / "locales"
+    doc = json.loads((root / "he.json").read_text(encoding="utf-8"))
+    assert i18n.set_language("he") == "he" and i18n.rtl_shaped() is True
+    bad_plain: list[str] = []
+    bad_display: list[str] = []
+    checked = 0
+    for key, value in doc["messages"].items():
+        if not isinstance(value, str) or not value or "{" in value:
+            continue
+        shown = i18n._(key)
+        checked += 1
+        if i18n.plain(shown) != value:
+            bad_plain.append(key)
+        if i18n.display(shown) != shown:
+            bad_display.append(key)
+    assert checked > 1000
+    assert bad_plain == [] and bad_display == []
+
+
+def test_short_hebrew_results_reach_the_tray_and_titles_logical(he3_linux: None) -> None:
+    assert i18n._("Show") != "הצג"  # reversed for the screen
+    assert rtl_shaping.logical(i18n.pgettext("tray menu", "Show")) == "הצג"
+    assert rtl_shaping.logical(i18n._("Exit")) == "צא"
+    assert i18n.plain(i18n._("Exit")) == "צא"
+
+
+def test_display_of_short_hebrew_parts_joins_them_once(he3_linux: None) -> None:
+    joined = i18n.display(i18n._("Show") + " " + i18n._("Hide"))
+    assert joined == rtl_shaping.visual("הצג הסתר", logical_input=True)
+    assert i18n.display(i18n._("Exit")) == i18n._("Exit")
+
+
+def test_a_short_hebrew_placeholder_is_not_reversed_twice(he3_linux: None) -> None:
+    out = i18n._("'{needle}' not found.", needle=i18n._("Show"))
+    assert out == rtl_shaping.visual("'הצג' לא נמצא.", logical_input=True)
+
+
+def test_status_clip_keeps_a_short_hebrew_message(he3_linux: None) -> None:
+    from app.domain import status_line as sl
+
+    assert sl._clip(i18n._("Exit")) == i18n._("Exit")
+    assert sl._clip(i18n._("Show") + "  " + i18n._("Hide")) == i18n.display(
+        i18n._("Show") + " " + i18n._("Hide"))
+
+
+def test_status_clip_shapes_its_logical_result_even_if_that_equals_an_earlier_result(
+        he3_linux: None, empty_memory: None) -> None:
+    from app.domain import status_line as sl
+
+    a = "אבגדהוזחט"
+    x = rtl_shaping.visual(a)  # the reversed text
+    assert rtl_shaping.visual(x, logical_input=True) == a  # and now "a" is a remembered result too
+    assert sl._clip(x) == x  # logical(x) is a; shaping a (logical for sure) gives x again
+
+
+def test_the_title_hook_passes_short_hebrew_logical(he3_linux: None) -> None:
+    class Wm:
+        def __init__(self) -> None:
+            self.titles: list[Any] = []
+
+        def wm_title(self, string: Any = None) -> None:
+            self.titles.append(string)
+
+        title = wm_title
+
+    class Dialog:
+        def show(self, **options: Any) -> None:
+            return None
+
+    restore = rtl_shaping.install_title_hook(wm=Wm, dialog=Dialog)
+    try:
+        wm = Wm()
+        wm.title(i18n._("Exit"))
+        assert wm.titles == ["צא"]
+    finally:
+        restore()
+
+
+def test_leaving_a_shaped_language_removes_the_title_hook(locales: Path,
+                                                          monkeypatch: pytest.MonkeyPatch) -> None:
+    import tkinter as tk
+
+    write_catalog(locales, "he", HE3)
+    write_catalog(locales, "de", {"Show": "Zeigen"})
+    on(monkeypatch, "linux")
+    i18n.set_language("he")
+    assert tk.Wm.__dict__.get("_wts_logical_title") is True
+    i18n.set_language("de")
+    assert "_wts_logical_title" not in tk.Wm.__dict__
+
+
+@pytest.fixture
+def empty_memory(monkeypatch: pytest.MonkeyPatch) -> None:
+    from collections import OrderedDict
+    monkeypatch.setattr(rtl_shaping, "_VISUAL_TO_LOGICAL", OrderedDict())
+    monkeypatch.setattr(rtl_shaping, "_BY_FIRST_CHAR", {})
+    monkeypatch.setattr(rtl_shaping, "_CACHE", {})
+
+
+def test_a_thousand_bracket_free_file_names_are_shaped_quickly(empty_memory: None) -> None:
+    import time
+
+    names = [f"گزارش جلسه شماره {i} - نسخه نهایی.txt" for i in range(1000)]
+    start = time.perf_counter()
+    for name in names:
+        rtl_shaping.visual(name, base="L")
+    elapsed = time.perf_counter() - start
+    print(f"\n1000 visual() calls on bracket-free Persian names: {elapsed:.3f} s")
+    assert elapsed < 2.0
+
+
+def test_recovery_over_many_remembered_keys_is_fast(empty_memory: None) -> None:
+    import time
+
+    for i in range(rtl_shaping._REMEMBERED):
+        rtl_shaping._remember(f"{chr(0xFE8D + i % 40)}ﺏ{i}", f"ب{i}")
+    # Worst case: the text holds the first character of every key (about 23k characters).
+    text = ("".join(chr(0xFE8D + i) for i in range(40)) + " ") * 550
+    start = time.perf_counter()
+    rtl_shaping.logical(text)
+    elapsed = time.perf_counter() - start
+    print(f"\nlogical() on {len(text)} chars with {len(rtl_shaping._VISUAL_TO_LOGICAL)} keys: {elapsed:.3f} s")
+    assert elapsed < 1.0
+
+
+def test_the_index_follows_eviction(empty_memory: None, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(rtl_shaping, "_REMEMBERED", 3)
+    for i in range(6):
+        rtl_shaping._remember(f"ﺏ{i}", f"ب{i}")
+    assert len(rtl_shaping._VISUAL_TO_LOGICAL) == 3
+    assert sum(len(v) for v in rtl_shaping._BY_FIRST_CHAR.values()) == 3

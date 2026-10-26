@@ -658,6 +658,8 @@ def set_language(code: str) -> str:
         _STATE = new
     if new.shaped:
         rtl_shaping.install_title_hook_once()  # the window manager shapes titles itself
+    else:
+        rtl_shaping.uninstall_title_hook()
     return new.code
 
 
@@ -681,7 +683,7 @@ def rtl_shaped() -> bool:
     return _STATE.shaped
 
 
-def display(text: str) -> str:
+def display(text: str, logical: bool = False) -> str:
     """A UI text composed of translated parts (``a + " " + b``, an f-string around ``_()``),
     finished for the screen.
 
@@ -689,7 +691,10 @@ def display(text: str) -> str:
     this shapes the whole line once, from the logical text of its parts. The identity wherever
     texts are not shaped (Windows, macOS, English), and for text that is already one shaped line.
     """
-    return rtl_shaping.visual(text) if _STATE.shaped else text
+    if not _STATE.shaped:
+        return text
+    # logical=True: the caller cut or built *text* from logical parts, nothing in it is a result.
+    return rtl_shaping.visual(text, logical_input=True) if logical else rtl_shaping.visual(text, trusted=True)
 
 
 def _has_rtl_letter(text: str) -> bool:

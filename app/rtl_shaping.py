@@ -41,15 +41,18 @@ SHAPED_PLATFORMS: frozenset[str] = frozenset({"linux"})
 _PRESENTATION_FORMS = (range(0xFB50, 0xFD3E), range(0xFD40, 0xFDD0), range(0xFDF0, 0xFDFC),
                        range(0xFE70, 0xFEFD))
 _REMEMBERED = 20000  # results kept for logical(); far more than the interface has texts
-# Hebrew is only reversed, so a reversed text can equal a real text (the reversal of "המר" is "רמה").
-# A Hebrew result shorter than this is never taken for an already shaped one; Arabic results are
-# unmistakable (presentation forms) and count at any length.
+# Hebrew is only reversed, so a reversed text can equal a real text (the reversal of "HMR" is "RMH").
+# When the caller does not know that a text is an earlier result, a Hebrew result shorter than this
+# is never taken for one; Arabic results are unmistakable (presentation forms) and count at any
+# length. A caller that knows (plain(), the tray, display(), status clipping) accepts any exact
+# whole-string match and, for segments inside a larger string, ones of at least _TRUSTED_SEGMENT.
 _MIN_HEBREW_SEGMENT = 5
+_TRUSTED_SEGMENT = 3
 
 _LOCK = threading.Lock()
 _VISUAL_TO_LOGICAL: OrderedDict[str, str] = OrderedDict()
-_KEYS_BY_LENGTH: list[str] | None = None  # the keys above, longest first (None: rebuild)
-_CACHE: dict[tuple[str, str], str] = {}
+_BY_FIRST_CHAR: dict[str, set[str]] = {}  # the keys above by their first character
+_CACHE: dict[tuple[str, str, bool, bool], str] = {}
 
 
 def _engine() -> "Engine | None":
@@ -77,62 +80,64 @@ def _is_shaped(line: str) -> bool:
 
 
 def _remember(shaped: str, logical: str) -> None:
-    global _KEYS_BY_LENGTH
     if not shaped or shaped == logical:  # an empty key would match everywhere
         return
     with _LOCK:
         _VISUAL_TO_LOGICAL[shaped] = logical
         _VISUAL_TO_LOGICAL.move_to_end(shaped)
+        _BY_FIRST_CHAR.setdefault(shaped[0], set()).add(shaped)
         while len(_VISUAL_TO_LOGICAL) > _REMEMBERED:
-            _VISUAL_TO_LOGICAL.popitem(last=False)
-        _KEYS_BY_LENGTH = None
+            old, _ = _VISUAL_TO_LOGICAL.popitem(last=False)
+            keys = _BY_FIRST_CHAR.get(old[0])
+            if keys is not None:
+                keys.discard(old)
+                if not keys:
+                    del _BY_FIRST_CHAR[old[0]]
         if len(_CACHE) > _REMEMBERED:
             _CACHE.clear()
 
 
-def _recover(text: str) -> str:
+def _recover(text: str, min_hebrew: int = _MIN_HEBREW_SEGMENT) -> str:
     """*text* with every shaped segment that :func:`visual` made swapped back to its logical text.
 
     Longest segment first. An Arabic segment is unmistakable (presentation forms); a Hebrew one
-    (only reversed) must be at least three letters and stand between non-letters, so that a
-    short real word that equals some reversed word is not taken for one.
+    (only reversed) must have at least *min_hebrew* characters and stand between non-letters, so
+    that a short real word that equals some reversed word is not taken for one.
     """
-    global _KEYS_BY_LENGTH
-    with _LOCK:
-        if _KEYS_BY_LENGTH is None:
-            _KEYS_BY_LENGTH = sorted(_VISUAL_TO_LOGICAL, key=len, reverse=True)
-        keys = _KEYS_BY_LENGTH
-        table = _VISUAL_TO_LOGICAL
-        hits = [k for k in keys if len(k) <= len(text) and k in text]
-        if not hits:
-            return text
-        pieces: list[tuple[str, bool]] = [(text, False)]  # (text, already logical)
-        for key in hits:
-            arabic = _is_shaped(key)
-            if not arabic and len(key) < _MIN_HEBREW_SEGMENT:
+    chars = set(text)
+    with _LOCK:  # a snapshot of the candidates: the keys that start with a character of the text
+        found = [(k, _VISUAL_TO_LOGICAL[k]) for c in chars for k in _BY_FIRST_CHAR.get(c, ())
+                 if len(k) <= len(text)]
+    hits = sorted((kv for kv in found if kv[0] in text), key=lambda kv: len(kv[0]), reverse=True)
+    if not hits:
+        return text
+    pieces: list[tuple[str, bool]] = [(text, False)]  # (text, already logical)
+    for key, logical_text in hits:
+        arabic = _is_shaped(key)
+        if not arabic and len(key) < min_hebrew:
+            continue
+        nxt: list[tuple[str, bool]] = []
+        for part, done in pieces:
+            if done or key not in part:
+                nxt.append((part, done))
                 continue
-            nxt: list[tuple[str, bool]] = []
-            for part, done in pieces:
-                if done or key not in part:
-                    nxt.append((part, done))
+            emitted = scan = 0
+            while True:
+                i = part.find(key, scan)
+                if i < 0:
+                    break
+                j = i + len(key)
+                if not arabic and ((i > 0 and part[i - 1].isalpha())
+                                   or (j < len(part) and part[j].isalpha())):
+                    scan = i + 1
                     continue
-                emitted = scan = 0
-                while True:
-                    i = part.find(key, scan)
-                    if i < 0:
-                        break
-                    j = i + len(key)
-                    if not arabic and ((i > 0 and part[i - 1].isalpha())
-                                       or (j < len(part) and part[j].isalpha())):
-                        scan = i + 1
-                        continue
-                    if i > emitted:
-                        nxt.append((part[emitted:i], False))
-                    nxt.append((table[key], True))
-                    emitted = scan = j
-                if emitted < len(part):
-                    nxt.append((part[emitted:], False))
-            pieces = nxt
+                if i > emitted:
+                    nxt.append((part[emitted:i], False))
+                nxt.append((logical_text, True))
+                emitted = scan = j
+            if emitted < len(part):
+                nxt.append((part[emitted:], False))
+        pieces = nxt
     return "".join(p for p, _done in pieces)
 
 
@@ -166,6 +171,20 @@ def _bracket_pairs(line: str) -> tuple[list[tuple[int, int]], set[int]]:
     return pairs, loose
 
 
+_RUST: list[Any] = []  # [function or None], filled on first use
+
+
+def _rust_display() -> Any:
+    """python-bidi's Rust ``get_display`` (None when it cannot be imported), imported once."""
+    if not _RUST:
+        try:
+            from bidi import get_display  # type: ignore[import-not-found]
+        except (ImportError, OSError):
+            get_display = None
+        _RUST.append(get_display)
+    return _RUST[0]
+
+
 def _pair_directions(shaped: str, pairs: list[tuple[int, int]], loose: set[int]) -> list[bool] | None:
     """For each pair, True when the Unicode bidi algorithm (UAX #9 rule N0) makes it left to right.
 
@@ -176,9 +195,8 @@ def _pair_directions(shaped: str, pairs: list[tuple[int, int]], loose: set[int])
     """
     if not pairs or len(pairs) > len(_OPENERS):
         return None
-    try:
-        from bidi import get_display as rust_display  # type: ignore[import-not-found]
-    except (ImportError, OSError):
+    rust_display = _rust_display()
+    if rust_display is None:
         return None
     probe = list(shaped)
     for i in loose:
@@ -217,39 +235,41 @@ def _split_cr(line: str) -> tuple[str, str]:
     return (line[:-1], "\r") if line.endswith("\r") else (line, "")
 
 
-def _is_result(body: str) -> bool:
-    """True when *body* is a whole line that :func:`visual` made (and can be told from real text)."""
+def _is_result(body: str, any_length: bool = False) -> bool:
+    """True when *body* is a whole line that :func:`visual` made. Unless *any_length* (the caller
+    knows it is shaped text), a short Hebrew line is not taken for one: it may be real text."""
     with _LOCK:
         known = body in _VISUAL_TO_LOGICAL
-    return known and (len(body) >= _MIN_HEBREW_SEGMENT or _is_shaped(body))
+    return known and (any_length or len(body) >= _MIN_HEBREW_SEGMENT or _is_shaped(body))
 
 
-def _shape_line(line: str, base: str, logical_input: bool = False) -> str:
+def _shape_line(line: str, base: str, logical_input: bool = False, trusted: bool = False) -> str:
     body, tail = _split_cr(line)
     if not body or not _has_rtl_letter(body):
         return line
     engine = _engine()
     if engine is None:
         return line
-    if not logical_input and _is_result(body):  # a line visual() made: never shaped twice
+    if not logical_input and _is_result(body, trusted):  # a line visual() made: never shaped twice
         return line
+    key = (body, base, logical_input, trusted)
     with _LOCK:
-        cached = _CACHE.get((body, base))
+        cached = _CACHE.get(key)
     if cached is not None:
         return cached + tail
     # Shaped segments inside the line (a name from ltr_base, a sentence of _()) go back to their
     # logical text, so the whole line is shaped once, in one reading order.
-    source = body if logical_input else _recover(body)
+    source = body if logical_input else _recover(body, _TRUSTED_SEGMENT if trusted else _MIN_HEBREW_SEGMENT)
     if _is_shaped(source):  # presentation forms visual() did not make: cannot be put right
         return line
     out = _order(engine, engine.reshape(source), base)
     _remember(out, source)
     with _LOCK:
-        _CACHE[(body, base)] = out
+        _CACHE[key] = out
     return out + tail
 
 
-def visual(text: str, base: str = "R", logical_input: bool = False) -> str:
+def visual(text: str, base: str = "R", logical_input: bool = False, trusted: bool = False) -> str:
     """*text* in the form a Tk label needs on Linux: joined letters, visual order, per line.
 
     *base* is the paragraph direction, "R" (an interface text of a right-to-left language) or
@@ -258,32 +278,38 @@ def visual(text: str, base: str = "R", logical_input: bool = False) -> str:
     they are. A line that holds results inside other text (``"  " + _("x")``) is shaped again as
     a whole, from the logical text of its parts. ``logical_input=True`` says the caller knows
     *text* is logical (a catalog translation): nothing in it is taken for an earlier result.
+    ``trusted=True`` says *text* is made of earlier results (UI text joined from translated
+    parts): any exact result, and shorter Hebrew segments, are taken for results.
     """
     if not text or not _has_rtl_letter(text):
         return text
     if "\n" not in text:
-        return _shape_line(text, base, logical_input)
-    return "\n".join(_shape_line(line, base, logical_input) for line in text.split("\n"))
+        return _shape_line(text, base, logical_input, trusted)
+    return "\n".join(_shape_line(line, base, logical_input, trusted) for line in text.split("\n"))
 
 
-def _logical_line(line: str) -> str:
+def _logical_line(line: str, trusted: bool = False) -> str:
     body, tail = _split_cr(line)
-    if _is_result(body):
+    if _is_result(body, any_length=True):  # the caller passes shaped UI text
         with _LOCK:
             return _VISUAL_TO_LOGICAL[body] + tail
     if not body or not _has_rtl_letter(body):
         return line
-    return _recover(body) + tail
+    return _recover(body, _TRUSTED_SEGMENT if trusted else _MIN_HEBREW_SEGMENT) + tail
 
 
-def logical(text: str) -> str:
+def logical(text: str, trusted: bool = False) -> str:
     """The logical text of *text*: every segment :func:`visual` made, whole or inside a larger
-    string, is swapped back; everything else is kept as it is."""
+    string, is swapped back; everything else is kept as it is.
+
+    A whole line that is an earlier result is swapped back at any length. Inside a larger line
+    a Hebrew segment needs five characters, or three with ``trusted=True`` (the caller knows the
+    line is UI text made of earlier results)."""
     if not text:
         return text
     if "\n" not in text:
-        return _logical_line(text)
-    return "\n".join(_logical_line(line) for line in text.split("\n"))
+        return _logical_line(text, trusted)
+    return "\n".join(_logical_line(line, trusted) for line in text.split("\n"))
 
 
 # --- window titles ------------------------------------------------------------------------------------

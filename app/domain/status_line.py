@@ -32,10 +32,10 @@ _LOG_ONLY = (
 def _clip(text: str) -> str:
     # A shaped text (Linux, right to left) is cut as logical text and shaped again: cutting the
     # visual string would drop the logical beginning and put the ellipsis at the wrong end.
-    text = " ".join(rtl_shaping.logical(text).split())
+    text = " ".join(rtl_shaping.logical(text, trusted=True).split())
     if len(text) > MAX_CHARS:
         text = text[: MAX_CHARS - 1].rstrip() + "…"
-    return display(text)
+    return display(text, logical=True)
 
 
 def status_line(message: str) -> str | None:
