@@ -119,6 +119,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- The interface-language list widens to fit its longest name (some endonyms were cut off on Windows); with short names it keeps its old width.
 - Live tab: the Save transcript / Copy all / Clear row is no longer pushed below the visible area at the default window size; the transcript box asks for less height and still grows with the window.
 - The Accuracy box is wide enough for "Custom (current setting)"; it grows only while that entry is shown.
 - Model download sizes ("about 500 MB", "about 1.5 GB") in the Quick Start, the model notes, the first-download question and the model prompts follow the interface language instead of staying English.
