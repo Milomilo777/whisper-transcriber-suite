@@ -124,11 +124,15 @@ def _quit_paths(app: App) -> list[tuple[str, Callable[[], None]]]:
 
     def _cmd_q() -> None:
         # What macOS does for Cmd+Q: install the command, then Tk runs it.
+        timers: list[Callable[[], None]] = []
         proxy = types.SimpleNamespace(
-            tk=_Tk(), createcommand=app.createcommand, _force_exit=app._force_exit,
+            tk=_Tk(), createcommand=app.createcommand,
+            after=lambda _ms, fn: timers.append(fn), _force_exit=app._force_exit,
         )
         App._install_quit_handler(proxy)  # type: ignore[arg-type]
         app.tk.call("::tk::mac::Quit")
+        for fn in timers:  # the deferred exit question (see App._install_quit_handler)
+            fn()
 
     def _close_button() -> None:
         app._exit_from_tray = False

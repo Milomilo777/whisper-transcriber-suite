@@ -107,6 +107,9 @@ _ABOUT_MENU_LABEL = N_("About")
 _WORK_OFFLINE_LABEL = N_("Work offline")
 # core.star_invite's two lines, marked here: the app shows them, and core/ is not translated.
 # tests/app/test_i18n_app_walk.py keeps them equal to core's English.
+#: How long macOS's Quit command (app menu, Cmd+Q, Dock) waits before the exit question opens;
+#: see App._install_quit_handler.
+_MAC_QUIT_DELAY_MS = 200
 _STAR_ABOUT_LINE = N_("Like the app? A star on its GitHub page helps other people find it.")
 _STAR_BAR_TEXT = N_("Enjoying it? A star on GitHub helps other people find it.")
 # An app left open keeps checking about once a day (the date throttle in
@@ -2623,7 +2626,14 @@ class App(tk.Tk):
             logger.debug("Could not query the windowing system", exc_info=True)
             return
         if aqua:
-            self.createcommand("::tk::mac::Quit", self._force_exit)
+            # Deferred: the app-menu Quit item runs this command inside a Core Animation
+            # transaction, and opening the "running tasks" alert there made AppKit kill the app
+            # ("-[NSAlert runModal] may not be invoked inside of transaction begin/commit pair",
+            # SIGILL), leaving the worker running. Cmd+Q from the keyboard was not affected.
+            # after_idle still ran inside that transaction (macOS 10.15, 2026-10-26); a short
+            # timer runs after it.
+            self.createcommand(
+                "::tk::mac::Quit", lambda: self.after(_MAC_QUIT_DELAY_MS, self._force_exit))
 
     def _force_exit(self) -> None:
         """Bypass the minimise-to-tray redirect and exit immediately.

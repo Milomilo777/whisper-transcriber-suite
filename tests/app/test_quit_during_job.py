@@ -9,6 +9,7 @@
 """
 from __future__ import annotations
 
+import time
 import tkinter as tk
 import types
 from pathlib import Path
@@ -34,15 +35,23 @@ def _bare_app() -> App:
 
 def test_aqua_registers_the_mac_quit_command_on_the_force_exit_path() -> None:
     created: dict[str, Any] = {}
+    timers: list[tuple[int, Any]] = []
     fake = types.SimpleNamespace(
         tk=types.SimpleNamespace(call=lambda *a: "aqua"),
         createcommand=lambda name, fn: created.__setitem__(name, fn),
+        after=lambda ms, fn: timers.append((ms, fn)),
+        after_idle=lambda fn: pytest.fail("after_idle still runs inside the menu transaction"),
         _force_exit=lambda: created.setdefault("exit_calls", []).append(1),
     )
     App._install_quit_handler(fake)  # type: ignore[arg-type]
 
     assert "::tk::mac::Quit" in created
     created["::tk::mac::Quit"]()
+    # Not asked from inside the app-menu action: AppKit killed the app when the alert opened
+    # there, even from after_idle (macOS 10.15, 2026-10-26). A short timer runs after it.
+    assert "exit_calls" not in created
+    assert len(timers) == 1 and timers[0][0] >= 100
+    timers[0][1]()
     assert created["exit_calls"] == [1]
 
 
@@ -90,10 +99,16 @@ def test_the_tcl_quit_command_reaches_force_exit_on_a_real_root(
                 return real_call(*args)
 
         proxy = types.SimpleNamespace(
-            tk=_Tk(), createcommand=root.createcommand, _force_exit=root._force_exit,
+            tk=_Tk(), createcommand=root.createcommand, after=root.after,
+            _force_exit=root._force_exit,
         )
         App._install_quit_handler(proxy)  # type: ignore[arg-type]
         root.tk.call("::tk::mac::Quit")  # what Cmd+Q makes Tk run
+        assert calls == []  # deferred out of the app-menu action (see _install_quit_handler)
+        deadline = time.monotonic() + 5
+        while not calls and time.monotonic() < deadline:
+            root.update()
+            time.sleep(0.02)
         assert calls == ["exit"]
     finally:
         root.destroy()

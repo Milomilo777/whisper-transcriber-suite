@@ -185,6 +185,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   items detected". Groq's gpt-oss models are now asked for low reasoning effort, translations get room for
   scripts that need more tokens per word, and an answer cut off before it starts is asked again once with more
   room, then reported as an error instead of a blank.
+- **The macOS app-menu Quit no longer crashes the app during a transcription**: choosing Quit from the app menu
+  while a job ran opened the "running tasks" question inside AppKit's menu transaction, and macOS killed the app
+  (the worker was left running). The question now opens a moment later; Cmd+Q already asked correctly.
 - **Search status showed 0 segments after a full index**: Help > Search transcripts counted only the segments
   added in that pass. It now reports the total number of segments indexed.
 - **Voice tab named the wrong number of Kokoro voices**: the text said 53 while the list has 54. The count
