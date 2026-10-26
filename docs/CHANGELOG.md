@@ -50,6 +50,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   deadline and connections without a complete header get only a small time budget, so drippers cannot lock
   out other clients. When every slot is taken, a new connection evicts the oldest one that still has no
   complete header, and the number of living handlers stays bounded.
+- **The phone and LAN page escapes every server value**: output-format names, job ids and the job status
+  now pass through the page's HTML escaping too, like the file names and errors before them.
 
 ### Added
 

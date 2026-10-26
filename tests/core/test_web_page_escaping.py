@@ -63,3 +63,21 @@ def test_known_untrusted_job_fields_are_escaped():
         ".map(escapeHtml)",                 # per-job formats list
     ):
         assert sentinel in text, f"missing escaping sink: {sentinel}"
+
+
+def test_server_option_and_job_id_sinks_are_escaped():
+    text = _page_text()
+    # The output-format names (GET /api/options), job ids (data-id attributes)
+    # and the result's status come from the server too; they reach innerHTML
+    # only through escapeHtml().
+    for raw in (
+        "value=\"' + f + '\"",                  # format checkbox value
+        "> \" + f;",                             # format checkbox label
+        "data-id=\"' + jobId + '\"",            # Pause/Resume/Cancel buttons
+        "data-id=\"' + j.job_id + '\"",         # Result link
+        "\"<p>Status: <b>\" + j.status +",      # result status line
+    ):
+        assert raw not in text, f"unescaped server value reaches innerHTML: {raw}"
+    for sentinel in ("escapeHtml(f)", "escapeHtml(jobId)", "escapeHtml(j.job_id)",
+                     "escapeHtml(j.status)"):
+        assert sentinel in text, f"missing escaping sink: {sentinel}"

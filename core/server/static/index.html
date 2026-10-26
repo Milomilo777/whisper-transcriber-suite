@@ -444,8 +444,8 @@
         fmtBox.innerHTML = "";
         formats.forEach(function (f) {
           var lab = document.createElement("label");
-          lab.innerHTML = '<input type="checkbox" value="' + f + '"' +
-            (defaults[f] ? " checked" : "") + "> " + f;
+          lab.innerHTML = '<input type="checkbox" value="' + escapeHtml(f) + '"' +
+            (defaults[f] ? " checked" : "") + "> " + escapeHtml(f);
           fmtBox.appendChild(lab);
         });
         var langs = d.languages || [""];
@@ -641,7 +641,7 @@
   }
 
   function renderSubmit(jobId, j) {
-    var html = "<p>Status: <b>" + j.status + "</b>" + (j.paused ? " (paused)" : "") + "</p>";
+    var html = "<p>Status: <b>" + escapeHtml(j.status) + "</b>" + (j.paused ? " (paused)" : "") + "</p>";
     html += '<div class="bar"><span style="width:' + (Number(j.progress) || 0) + '%"></span></div>';
     // j.error routinely embeds the submitted URL / filename — untrusted.
     if (j.status === "error") { html += '<p class="err">' + escapeHtml(j.error || "failed") + "</p>"; }
@@ -682,7 +682,7 @@
 
   function ctrlBtn(label, jobId, action, cls) {
     return '<button class="mini ' + (cls || "ghost") + '" data-act="' + action +
-      '" data-id="' + jobId + '">' + label + "</button>";
+      '" data-id="' + escapeHtml(jobId) + '">' + label + "</button>";
   }
 
   function renderJobs(jobs) {
@@ -696,7 +696,7 @@
                           : ctrlBtn("Pause", j.job_id, "pause");
         ctrls += ctrlBtn("Cancel", j.job_id, "cancel");
       } else {
-        ctrls += '<a class="openjob" data-id="' + j.job_id + '" style="color:#6cf;cursor:pointer">Result</a>';
+        ctrls += '<a class="openjob" data-id="' + escapeHtml(j.job_id) + '" style="color:#6cf;cursor:pointer">Result</a>';
       }
       var statusTxt = j.status + (j.paused ? " (paused)" : "");
       return "<tr><td class=\"src\" title=\"" + escapeHtml(j.source) + "\">" + escapeHtml(j.source) +
@@ -767,7 +767,7 @@
   }
 
   function renderResult(jobId, j) {
-    var html = "<p>Status: <b>" + j.status + "</b></p>";
+    var html = "<p>Status: <b>" + escapeHtml(j.status) + "</b></p>";
     if (j.outputs && j.outputs.length) {
       html += '<div class="links">';
       j.outputs.forEach(function (o) { html += downloadLink(jobId, o.fmt, o.name); });
