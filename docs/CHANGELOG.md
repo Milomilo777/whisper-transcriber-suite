@@ -119,6 +119,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- AI summaries are plain text: the prompt asks for no Markdown and any leftover `**`, `__`, heading hashes and `* ` bullets are removed, so a Groq summary no longer shows stray asterisks in a text output.
 - The usage-statistics note in the privacy overview now says failed and cancelled runs are sent too (it still said "after each finished transcription"); all 41 catalogs updated.
 - Starting the web / LAN server on a machine without the Whisper model no longer downloads the default model (about 3 GB) silently: it asks first, like a transcription does, and the download window checks the free disk space before it starts.
 - The first-run language suggestion no longer opens over the "Whisper model required" question or the model download window; it waits until they are closed.
