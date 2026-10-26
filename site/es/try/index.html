@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Transcripción de audio online gratuita, sin subidas (Whisper)</title>
+<meta name="description" content="Arrastre un MP3, WAV, M4A o MP4 (hasta 10 min) para una transcripción y SRT/VTT. Whisper se ejecuta en su navegador, por lo que el audio nunca sale de su dispositivo. Gratis, sin registro.">
+<meta name="author" content="translation-robot">
+<meta name="theme-color" content="#f5f7fb">
+<meta name="color-scheme" content="light">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+<link rel="canonical" href="https://whisper-transcriber-suite.com/es/try/">
+<!-- i18n:hreflang:start -->
+<link rel="alternate" hreflang="en" href="https://whisper-transcriber-suite.com/try/">
+<link rel="alternate" hreflang="de" href="https://whisper-transcriber-suite.com/de/try/">
+<link rel="alternate" hreflang="fr" href="https://whisper-transcriber-suite.com/fr/try/">
+<link rel="alternate" hreflang="es" href="https://whisper-transcriber-suite.com/es/try/">
+<link rel="alternate" hreflang="it" href="https://whisper-transcriber-suite.com/it/try/">
+<link rel="alternate" hreflang="pt-BR" href="https://whisper-transcriber-suite.com/pt-br/try/">
+<link rel="alternate" hreflang="pt" href="https://whisper-transcriber-suite.com/pt/try/">
+<link rel="alternate" hreflang="pl" href="https://whisper-transcriber-suite.com/pl/try/">
+<link rel="alternate" hreflang="x-default" href="https://whisper-transcriber-suite.com/try/">
+<!-- i18n:hreflang:end -->
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Transcripción de audio online gratuita, sin subidas (Whisper)">
+<meta property="og:description" content="Arrastre un MP3, WAV, M4A o MP4 (hasta 10 min) para una transcripción y SRT/VTT. Whisper se ejecuta en su navegador, por lo que el audio nunca sale de su dispositivo. Gratis, sin registro.">
+<meta property="og:url" content="https://whisper-transcriber-suite.com/es/try/">
+<meta property="og:image" content="https://whisper-transcriber-suite.com/assets/social-card-2026-09b.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Whisper Transcriber Suite — transcripción de audio y vídeo gratuita y sin conexión para Windows, macOS y Linux.">
+<meta property="og:site_name" content="Whisper Transcriber Suite">
+<meta property="og:locale" content="es_ES">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Transcripción de audio online gratuita, sin subidas (Whisper)">
+<meta name="twitter:description" content="Arrastre un MP3, WAV, M4A o MP4 (hasta 10 min) para una transcripción y SRT/VTT. Whisper se ejecuta en su navegador, por lo que el audio nunca sale de su dispositivo. Gratis, sin registro.">
+<meta name="twitter:image" content="https://whisper-transcriber-suite.com/assets/social-card-2026-09b.png">
+
+<link rel="icon" href="/assets/logo.svg" type="image/svg+xml">
+<link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+
+<link rel="preload" href="/assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/styles.css?v=20261022a">
+<style>
+  .site-header { background: rgb(245 247 251 / 0.92); box-shadow: 0 1px 0 var(--line); backdrop-filter: saturate(1.6) blur(14px); padding-block: 10px; }
+  .guide { padding: 108px 0 64px; }
+  .guide-wrap { width: min(780px, 100% - 32px); margin-inline: auto; }
+  .crumbs { margin-bottom: 18px; font-size: 0.88rem; color: var(--muted); }
+  .crumbs a { color: var(--muted); }
+  .guide h1 { font-size: clamp(1.9rem, 5.2vw, 3rem); font-weight: 700; letter-spacing: -0.04em; line-height: 1.08; }
+  .guide-lede { margin-top: 20px; font-size: 1.12rem; color: var(--ink-2); }
+  .guide-sub { margin-top: 12px; font-size: 0.98rem; color: var(--muted); }
+  .guide-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .guide h2 { margin: 48px 0 16px; font-size: clamp(1.35rem, 3.2vw, 1.8rem); font-weight: 700; letter-spacing: -0.03em; }
+  .guide-body p { margin-top: 12px; color: var(--ink-2); }
+  .guide-steps { list-style: none; padding: 0; counter-reset: g; display: grid; gap: 14px; }
+  .guide-steps li { counter-increment: g; position: relative; padding-block: 18px; padding-inline: 70px 20px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow-sm); color: var(--ink-2); }
+  .guide-steps li::before { content: counter(g); position: absolute; inset-inline-start: 18px; top: 16px; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 11px; font-family: var(--font-display); font-weight: 700; color: #fff; background: var(--teal); }
+  .guide-steps li:nth-child(3n+2)::before { background: var(--violet); }
+  .guide-steps li:nth-child(3n)::before { background: var(--coral); }
+  .guide b { color: var(--ink); font-weight: 600; }
+  .guide-fig { margin: 28px 0 0; }
+  .guide-fig img { width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--line-2); box-shadow: var(--shadow); }
+  .guide-fig figcaption { margin-top: 10px; font-size: 0.88rem; color: var(--muted); }
+  .know { padding-inline-start: 1.2em; display: grid; gap: 10px; color: var(--ink-2); }
+  .know li::marker { color: var(--teal); }
+  .demo { margin-top: 12px; padding: 16px 18px; overflow-x: auto; border-radius: var(--r-sm); background: var(--night); color: var(--night-text); font-size: 0.86rem; line-height: 1.7; }
+  .demo code { padding: 0; background: none; color: inherit; font-size: inherit; }
+  .guide .faq-list { display: grid; gap: 12px; }
+  .guide .faq-list .qa p { margin: 0; color: var(--ink-2); }
+  .guide-cta-box { margin-top: 48px; padding: 28px; border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); }
+  .guide-cta-box h2 { margin: 0 0 10px; }
+  .guide-cta-box p { margin: 0 0 18px; color: var(--ink-2); }
+  .more-guides { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+  .more-guides a { display: block; padding: 18px 20px; border-radius: var(--r); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-sm); color: var(--ink); text-decoration: none; }
+  .more-guides a:hover { border-color: var(--teal); }
+  .more-guides strong { display: block; font-family: var(--font-display); font-size: 1.02rem; }
+  .more-guides span { display: block; margin-top: 4px; font-size: 0.92rem; color: var(--muted); }
+  .try-card { margin-top: 28px; padding: 24px; border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); display: grid; gap: 18px; }
+  .try-card > * { min-width: 0; }
+  .try-card [hidden], .try-card[hidden] { display: none !important; }
+  .try-step h2 { margin: 0 0 8px; font-size: 1.12rem; letter-spacing: -0.02em; }
+  .drop { display: grid; place-items: center; gap: 8px; min-height: 120px; padding: 18px; border: 2px dashed var(--line-2); border-radius: var(--r); text-align: center; color: var(--ink-2); cursor: pointer; }
+  .drop.over, .drop:focus-within { border-color: var(--teal); }
+  .drop input[type=file] { max-width: 100%; font-size: 1rem; }
+  .try-row { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; }
+  .try-row label { display: inline-flex; gap: 8px; align-items: center; min-height: 44px; }
+  .try-row select { min-height: 44px; font-size: 1rem; padding: 6px 10px; border-radius: 10px; border: 1px solid var(--line-2); background: #fff; }
+  .try-note { font-size: 0.92rem; color: var(--muted); }
+  .try-warn { padding: 10px 14px; border-radius: 10px; background: #fff7e6; border: 1px solid #f0c36d; color: #6b4a00; }
+  .try-err { padding: 10px 14px; border-radius: 10px; background: #fdecec; border: 1px solid #e8a3a3; color: #7a1d1d; }
+  .try-progress { display: grid; gap: 6px; }
+  .try-progress progress { width: 100%; height: 14px; }
+  .try-out { width: 100%; min-height: 220px; padding: 12px; border-radius: 10px; border: 1px solid var(--line-2); font: 0.95rem/1.6 var(--font-body, system-ui); resize: vertical; }
+  .try-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+  .try-actions .btn { min-height: 44px; }
+  @media (max-width: 760px) {
+    .guide { padding-top: 92px; }
+    .guide-steps li { padding-block: 16px; padding-inline: 62px 16px; }
+    .guide-steps li::before { inset-inline-start: 14px; }
+    .guide-cta .btn { white-space: normal; text-align: center; }
+  }
+</style>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebApplication",
+      "@id": "https://whisper-transcriber-suite.com/try/#webapp",
+      "name": "Whisper Transcriber Suite: try it in the browser",
+      "url": "https://whisper-transcriber-suite.com/try/",
+      "applicationCategory": "MultimediaApplication",
+      "operatingSystem": "Any (a current web browser)",
+      "browserRequirements": "Requires WebAssembly; the Large model requires WebGPU",
+      "description": "Transcripción de audio online gratuita sin subidas: Whisper se ejecuta dentro de su navegador y convierte un archivo MP3, WAV, M4A o de vídeo de hasta 10 minutos en texto, SRT y VTT. Sin registro. El audio nunca sale de su dispositivo.",
+      "featureList": [
+        "Transcriba un archivo MP3, WAV, M4A, OGG o MP4 de hasta 10 minutos (5 en un teléfono)",
+        "Whisper Small (250 MB) o Large v3 Turbo (730 MB, WebGPU) se ejecuta en la pestaña del navegador",
+        "Descargar TXT, SRT o VTT",
+        "Sin subidas: el audio nunca sale de su dispositivo",
+        "Sin registro y sin coste"
+      ],
+      "inLanguage": "es",
+      "dateModified": "2026-10-26",
+      "isAccessibleForFree": true,
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "isRelatedTo": {
+        "@id": "https://whisper-transcriber-suite.com/#app"
+      },
+      "isPartOf": {
+        "@id": "https://whisper-transcriber-suite.com/#website"
+      },
+      "publisher": {
+        "@type": "Person",
+        "name": "translation-robot",
+        "url": "https://github.com/translation-robot"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Inicio",
+          "item": "https://whisper-transcriber-suite.com/es/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Probar en el navegador",
+          "item": "https://whisper-transcriber-suite.com/es/try/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "¿Se sube mi audio?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. El archivo es leído por esta página y transcrito dentro de su navegador. La única descarga es el propio modelo de voz, desde Hugging Face, la primera vez que lo usa."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "¿Por qué es más lento que la aplicación de escritorio?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Una pestaña de navegador tiene acceso limitado a su procesador y tarjeta gráfica. La aplicación de escritorio ejecuta los modelos completos de Whisper a toda velocidad, en archivos de cualquier duración."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "¿Qué archivos funcionan?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "La mayoría de los archivos de audio (MP3, WAV, M4A, OGG) y vídeos MP4 o WebM con sonido, de hasta 10 minutos. Lo que un navegador puede abrir varía; la aplicación de escritorio abre casi cualquier formato."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "¿Se guarda el modelo y puedo eliminarlo?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Se queda en este navegador, por lo que el siguiente archivo no necesita descarga. Quitar modelos descargados, bajo el paso 2, lo elimina; borrar los datos de este sitio en el navegador también lo hace."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "¿Qué navegadores?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Los Chrome, Edge, Firefox y Safari actuales ejecutan Small. Large necesita WebGPU: Chrome o Edge actuales en un ordenador. En un teléfono, use Small y un archivo corto."
+          }
+        }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-globe" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M10 2.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15zM2.5 10h15M10 2.5c2 2.1 3 4.6 3 7.5s-1 5.4-3 7.5c-2-2.1-3-4.6-3-7.5s1-5.4 3-7.5z"/></symbol>
+    <symbol id="i-download" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M10 3v10m0 0 4-4m-4 4-4-4M4 16h12"/></symbol>
+    <symbol id="i-github" viewBox="0 0 16 16"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></symbol>
+    <symbol id="i-star" viewBox="0 0 20 20"><path fill="currentColor" d="m10 1.8 2.5 5.2 5.7.8-4.1 4 1 5.6L10 14.7l-5.1 2.7 1-5.6-4.1-4 5.7-.8z"/></symbol>
+  </defs>
+</svg> <a class="skip-link" href="#main">Saltar al contenido</a>
+
+<header class="site-header" data-header>
+  <div class="wrap header-row">
+    <a class="brand" href="/es/" aria-label="Whisper Transcriber Suite — Inicio">
+      <img class="brand-logo" src="/assets/logo.svg" alt="" width="32" height="32"> <span class="brand-name">Whisper Transcriber Suite</span>
+    </a>
+    <nav class="site-nav" aria-label="Principal">
+      <a href="/es/#showreel">Recorrido</a> <a href="/es/#features">Características</a> <a href="/es/#how-it-works">Cómo funciona</a> <a href="/es/try/" aria-current="page">Probar</a> <a href="/es/#download">Descargar</a> <a href="/es/#compare">Comparativa</a> <a href="/es/#faq">Preguntas frecuentes</a> <a href="/es/#contact">Contacto</a>
+    </nav>
+    <div class="header-cta">
+      <!-- i18n:english:start --><a class="btn btn-ghost btn-sm lang-en" href="/try/?lang=en" hreflang="en" lang="en" dir="ltr" data-lang-pick="en" translate="no">English</a><!-- i18n:english:end -->
+      <details class="lang-menu" data-lang-menu>
+        <summary class="btn btn-ghost btn-sm" title="Idioma" aria-label="Idioma"><svg class="i" aria-hidden="true"><use href="#i-globe"/></svg><span class="lang-current" translate="no"><!-- i18n:current:start -->Español<!-- i18n:current:end --></span></summary>
+        <ul class="lang-list" translate="no"><!-- i18n:menu:start -->
+<li><a href="/try/?lang=en" hreflang="en" lang="en" data-lang-pick="en">English</a></li>
+<li><a href="/de/try/" hreflang="de" lang="de" data-lang-pick="de">Deutsch</a></li>
+<li><a href="/fr/try/" hreflang="fr" lang="fr" data-lang-pick="fr">Français</a></li>
+<li><a href="/es/try/" hreflang="es" lang="es" data-lang-pick="es" aria-current="true">Español</a></li>
+<li><a href="/it/try/" hreflang="it" lang="it" data-lang-pick="it">Italiano</a></li>
+<li><a href="/pt-br/try/" hreflang="pt-BR" lang="pt-BR" data-lang-pick="pt-BR">Português (Brasil)</a></li>
+<li><a href="/pt/try/" hreflang="pt" lang="pt" data-lang-pick="pt">Português (Portugal)</a></li>
+<li><a href="/nl/" hreflang="nl" lang="nl" data-lang-pick="nl">Nederlands</a></li>
+<li><a href="/pl/try/" hreflang="pl" lang="pl" data-lang-pick="pl">Polski</a></li>
+<li><a href="/ru/" hreflang="ru" lang="ru" data-lang-pick="ru">Русский</a></li>
+<li><a href="/uk/" hreflang="uk" lang="uk" data-lang-pick="uk">Українська</a></li>
+<li><a href="/tr/" hreflang="tr" lang="tr" data-lang-pick="tr">Türkçe</a></li>
+<li><a href="/cs/" hreflang="cs" lang="cs" data-lang-pick="cs">Čeština</a></li>
+<li><a href="/sk/" hreflang="sk" lang="sk" data-lang-pick="sk">Slovenčina</a></li>
+<li><a href="/hu/" hreflang="hu" lang="hu" data-lang-pick="hu">Magyar</a></li>
+<li><a href="/ro/" hreflang="ro" lang="ro" data-lang-pick="ro">Română</a></li>
+<li><a href="/bg/" hreflang="bg" lang="bg" data-lang-pick="bg">Български</a></li>
+<li><a href="/el/" hreflang="el" lang="el" data-lang-pick="el">Ελληνικά</a></li>
+<li><a href="/sv/" hreflang="sv" lang="sv" data-lang-pick="sv">Svenska</a></li>
+<li><a href="/da/" hreflang="da" lang="da" data-lang-pick="da">Dansk</a></li>
+<li><a href="/nb/" hreflang="nb" lang="nb" data-lang-pick="nb">Norsk bokmål</a></li>
+<li><a href="/fi/" hreflang="fi" lang="fi" data-lang-pick="fi">Suomi</a></li>
+<li><a href="/hr/" hreflang="hr" lang="hr" data-lang-pick="hr">Hrvatski</a></li>
+<li><a href="/sr/" hreflang="sr" lang="sr" data-lang-pick="sr">Српски</a></li>
+<li><a href="/sl/" hreflang="sl" lang="sl" data-lang-pick="sl">Slovenščina</a></li>
+<li><a href="/lt/" hreflang="lt" lang="lt" data-lang-pick="lt">Lietuvių</a></li>
+<li><a href="/zh-cn/" hreflang="zh-CN" lang="zh-CN" data-lang-pick="zh-CN">简体中文</a></li>
+<li><a href="/zh-tw/" hreflang="zh-TW" lang="zh-TW" data-lang-pick="zh-TW">繁體中文</a></li>
+<li><a href="/ja/" hreflang="ja" lang="ja" data-lang-pick="ja">日本語</a></li>
+<li><a href="/ko/" hreflang="ko" lang="ko" data-lang-pick="ko">한국어</a></li>
+<li><a href="/vi/" hreflang="vi" lang="vi" data-lang-pick="vi">Tiếng Việt</a></li>
+<li><a href="/th/" hreflang="th" lang="th" data-lang-pick="th">ไทย</a></li>
+<li><a href="/id/" hreflang="id" lang="id" data-lang-pick="id">Bahasa Indonesia</a></li>
+<li><a href="/ms/" hreflang="ms" lang="ms" data-lang-pick="ms">Bahasa Melayu</a></li>
+<li><a href="/hi/" hreflang="hi" lang="hi" data-lang-pick="hi">हिन्दी</a></li>
+<li><a href="/ar/" hreflang="ar" lang="ar" dir="rtl" data-lang-pick="ar">العربية</a></li>
+<li><a href="/fa/" hreflang="fa" lang="fa" dir="rtl" data-lang-pick="fa">فارسی</a></li>
+<li><a href="/he/" hreflang="he" lang="he" dir="rtl" data-lang-pick="he">עברית</a></li>
+<li><a href="/lv/" hreflang="lv" lang="lv" data-lang-pick="lv">Latviešu</a></li>
+<li><a href="/ca/" hreflang="ca" lang="ca" data-lang-pick="ca">Català</a></li>
+<li><a href="/bn/" hreflang="bn" lang="bn" data-lang-pick="bn">বাংলা</a></li>
+<li><a href="/fil/" hreflang="fil" lang="fil" data-lang-pick="fil">Filipino</a></li>
+<!-- i18n:menu:end --></ul>
+      </details>
+      <a class="btn-icon gh-btn" href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener" title="GitHub" aria-label="Dar una estrella a Whisper Transcriber Suite en GitHub"> <svg class="i" aria-hidden="true"><use href="#i-github"/></svg> </a> <a class="btn btn-primary btn-sm" href="/es/#download">Descargar</a>
+    </div>
+  </div>
+</header>
+
+<main id="main" class="guide">
+  <div class="guide-wrap">
+    <nav class="crumbs" aria-label="Migas de pan"><a href="/es/">Inicio</a> › Probar en el navegador</nav>
+    <article>
+      <h1>Transcribir audio a texto online, gratis, sin subidas</h1>
+      <p class="guide-lede">Una forma gratuita y online de convertir un MP3 en texto, sin registro y sin nada que instalar. Arrastre un archivo de audio o vídeo y Whisper convierte la voz en texto aquí mismo en esta pestaña del navegador. Es privado: el modelo de voz se descarga una vez y se ejecuta en su dispositivo, por lo que su audio nunca sale de él.</p>
+      <p class="guide-sub">MP3 to text, WAV to text, audio or video to SRT and VTT subtitles: one page, all on your device.</p>
+      <p class="guide-sub">Hasta 10 minutos por archivo (5 en un teléfono). Para archivos más largos, muchos archivos a la vez, etiquetas de hablantes y resultados mucho más rápidos, use la <a href="/es/#download">aplicación de escritorio gratuita</a>.</p>
+
+      <noscript><p class="try-err">Esta página necesita JavaScript para ejecutar el modelo de voz en su navegador.</p></noscript>
+
+      <div class="try-card" data-try hidden>
+        <section class="try-step" aria-labelledby="try-file-title">
+          <h2 id="try-file-title">1. Elegir un archivo</h2>
+          <label class="drop" data-drop>
+            <span>Arrastre un archivo de audio o vídeo aquí, o</span>
+            <input type="file" accept="audio/*,video/*" data-file>
+          </label>
+          <p class="try-note" data-file-info aria-live="polite"></p>
+        </section>
+
+        <section class="try-step" aria-labelledby="try-model-title">
+          <h2 id="try-model-title">2. Elegir el modelo de voz y el idioma</h2>
+          <div class="try-row">
+            <label><input type="radio" name="model" value="small" checked> Small: bueno, funciona en todas partes (250 MB)</label>
+            <label><input type="radio" name="model" value="large"> Large: mejor calidad (730 MB, necesita WebGPU)</label>
+          </div>
+          <p class="try-note" data-large-note hidden>Large necesita WebGPU, que este navegador no ofrece. Chrome y Edge actuales en un ordenador lo tienen.</p>
+          <div class="try-row">
+            <label>Idioma hablado en el archivo
+              <select data-language>
+                <option value="english">Inglés</option>
+                <option value="arabic">Árabe</option>
+                <option value="chinese">Chino</option>
+                <option value="french">Francés</option>
+                <option value="german">Alemán</option>
+                <option value="hindi">Hindi</option>
+                <option value="indonesian">Indonesio</option>
+                <option value="italian">Italiano</option>
+                <option value="japanese">Japonés</option>
+                <option value="korean">Coreano</option>
+                <option value="persian">Persa</option>
+                <option value="portuguese">Portugués</option>
+                <option value="russian">Ruso</option>
+                <option value="spanish">Español</option>
+                <option value="turkish">Turco</option>
+                <option value="vietnamese">Vietnamita</option>
+              </select>
+            </label>
+          </div>
+          <p class="try-warn" data-lang-note hidden></p>
+          <p class="try-note" data-model-info>El modelo se descarga una vez desde Hugging Face y luego se guarda en este navegador.</p>
+          <p class="try-note"><button class="btn btn-ghost" type="button" data-remove-models>Quitar modelos descargados</button> <span data-remove-note aria-live="polite" hidden></span></p>
+          <p class="try-warn" data-net-warn hidden>Parece estar usando datos móviles o en modo de ahorro de datos. La descarga del modelo es grande; el Wi-Fi es mejor.</p>
+        </section>
+
+        <section class="try-step" aria-labelledby="try-run-title">
+          <h2 id="try-run-title">3. Transcribir</h2>
+          <div class="try-actions">
+            <button class="btn btn-primary btn-lg" type="button" data-run disabled>Transcribir</button>
+          </div>
+          <div class="try-progress" data-progress hidden>
+            <progress max="100" value="0" data-bar></progress>
+            <p class="try-note" data-status aria-live="polite"></p>
+            <p class="try-note" data-awake></p>
+          </div>
+          <p class="try-err" data-error role="alert" hidden></p>
+        </section>
+
+        <section class="try-step" aria-labelledby="try-result-title" data-result hidden>
+          <h2 id="try-result-title">4. Su transcripción</h2>
+          <textarea class="try-out" data-text readonly dir="auto" aria-label="Transcripción"></textarea>
+          <div class="try-actions">
+            <button class="btn btn-ghost" type="button" data-save="txt">Descargar TXT</button>
+            <button class="btn btn-ghost" type="button" data-save="srt">Descargar SRT</button>
+            <button class="btn btn-ghost" type="button" data-save="vtt">Descargar VTT</button>
+            <button class="btn btn-ghost" type="button" data-copy>Copiar texto</button>
+          </div>
+        </section>
+      </div>
+
+      <div class="guide-cta-box">
+        <h2>Archivos más largos y mayor precisión</h2>
+        <p>La aplicación de escritorio gratuita ejecuta los modelos grandes de Whisper en su ordenador: archivos de cualquier longitud, una cola, etiquetas de orador, exportación a Word y PDF, enlaces de YouTube y subtítulos en directo. Tampoco hay cuenta ni subida allí.</p>
+        <a class="btn btn-primary btn-lg" href="https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Descargar la aplicación gratuita</a>
+      </div>
+
+      <h2>Preguntas frecuentes</h2>
+      <div class="faq-list">
+        <article class="qa"><h3>¿Se sube mi audio?</h3><div class="faq-a"><p>No. El archivo es leído por esta página y transcrito dentro de su navegador. La única descarga es el propio modelo de voz, desde Hugging Face, la primera vez que lo usa.</p></div></article>
+        <article class="qa"><h3>¿Por qué es más lento que la aplicación de escritorio?</h3><div class="faq-a"><p>Una pestaña de navegador tiene acceso limitado a su procesador y tarjeta gráfica. La aplicación de escritorio ejecuta los modelos completos de Whisper a toda velocidad, en archivos de cualquier duración.</p></div></article>
+        <article class="qa"><h3>¿Qué archivos funcionan?</h3><div class="faq-a"><p>La mayoría de los archivos de audio (MP3, WAV, M4A, OGG) y vídeos MP4 o WebM con sonido, de hasta 10 minutos. Lo que un navegador puede abrir varía; la aplicación de escritorio abre casi cualquier formato.</p></div></article>
+        <article class="qa"><h3>¿Se guarda el modelo y puedo eliminarlo?</h3><div class="faq-a"><p>Se queda en este navegador, por lo que el siguiente archivo no necesita descarga. <strong>Quitar modelos descargados</strong>, bajo el paso 2, lo elimina; borrar los datos de este sitio en el navegador también lo hace.</p></div></article>
+        <article class="qa"><h3>¿Qué navegadores?</h3><div class="faq-a"><p>Los Chrome, Edge, Firefox y Safari actuales ejecutan Small. Large necesita WebGPU: Chrome o Edge actuales en un ordenador. En un teléfono, use Small y un archivo corto.</p></div></article>
+      </div>
+    </article>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <div class="footer-brand">
+      <a class="brand" href="/es/" aria-label="Whisper Transcriber Suite — Inicio"><img class="brand-logo" src="/assets/logo.svg" alt="" width="30" height="30"><span class="brand-name">Whisper Transcriber Suite</span></a>
+      <p class="muted">Mantenida por un desarrollador independiente, <a href="https://github.com/translation-robot" rel="noopener">translation-robot</a>. Código fuente bajo licencia BSD-3-Clause.</p>
+      <p class="muted"><a href="/es/#contact">Contacto</a></p>
+      <p class="muted small mt-note">Esta página ha sido traducida del inglés por una máquina y revisada por una segunda. ¿Algo no suena bien? <a href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener">Dínoslo en GitHub</a>.</p>
+    </div>
+    <nav class="footer-nav" aria-label="Pie de página">
+      <a href="https://github.com/Milomilo777/whisper-transcriber-suite" rel="noopener">GitHub</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/INSTALL.md" rel="noopener">Guía de instalación</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">Registro de cambios</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">Debates</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/SECURITY.md" rel="noopener">Seguridad</a> <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/LICENSE" rel="noopener">Licencia</a> <a href="/llms.txt">llms.txt</a>
+    </nav>
+  </div>
+</footer>
+
+<script type="application/json" id="i18n-strings">
+{
+  "This page was in the background for {time}. A phone may pause a page in the background; the transcription goes on now. Keep this page open until it finishes.": "Esta página estuvo en segundo plano durante {time}. Un teléfono puede pausar una página en segundo plano; la transcripción continúa ahora. Mantenga esta página abierta hasta que termine.",
+  "Small makes many mistakes in {language}. Pick Large for a much better result, or use the free desktop app.": "Small comete muchos errores en {language}. Elija Large para obtener un resultado mucho mejor, o use la aplicación de escritorio gratuita.",
+  "Model files removed from this browser: {n}.": "Archivos de modelos eliminados de este navegador: {n}.",
+  "No downloaded model was found in this browser.": "No se encontró ningún modelo descargado en este navegador.",
+  "This file is {length} long. The browser version stops at {max} minutes; the free desktop app transcribes files of any length.": "Este archivo tiene una duración de {length}. La versión del navegador se detiene a los {max} minutos; la aplicación de escritorio gratuita transcribe archivos de cualquier duración.",
+  "Loading the speech model from this browser: {done} of {total} MB": "Cargando el modelo de voz desde este navegador: {done} de {total} MB",
+  "Downloading the speech model: {done} of {total} MB": "Descargando el modelo de voz: {done} de {total} MB",
+  "Transcribing in this browser… {time} so far (it can take about as long as the audio, or longer on a phone).": "Transcribiendo en este navegador… {time} por ahora (puede tardar más o menos lo mismo que el audio, o más en un teléfono).",
+  "No speech was found in this file.": "No se encontró voz en este archivo.",
+  "This browser has no WebGPU, which the Large model needs. Pick Small.": "Este navegador no tiene WebGPU, que necesita el modelo Large. Elija Small.",
+  "It did not work in this browser: {error}. The desktop app handles this file.": "No funcionó en este navegador: {error}. La aplicación de escritorio maneja este archivo.",
+  "The screen stays on while this runs. Keep this page open until it finishes.": "La pantalla se mantiene encendida mientras esto se ejecuta. Mantenga esta página abierta hasta que termine.",
+  "Keep this page open and the screen on until it finishes: a phone pauses pages in the background.": "Mantenga esta página abierta y la pantalla encendida hasta que termine: un teléfono pausa las páginas en segundo plano.",
+  "Reading the file…": "Leyendo el archivo…",
+  "This browser cannot read the sound of this file. Try an MP3, WAV or M4A, or the desktop app.": "Este navegador no puede leer el sonido de este archivo. Pruebe con un MP3, WAV o M4A, o la aplicación de escritorio.",
+  "the worker stopped": "el trabajador se detuvo",
+  "Preparing the speech model…": "Preparando el modelo de voz…",
+  "This model is already in this browser: no download needed.": "Este modelo ya está en este navegador: no es necesaria la descarga.",
+  "The model ({size}) is downloaded once from Hugging Face when you press Transcribe, then kept in this browser.": "El modelo ({size}) se descarga una vez desde Hugging Face al pulsar Transcribir, luego se guarda en este navegador.",
+  "This browser cannot run the speech model. Try a current Chrome, Edge, Firefox or Safari, or the free desktop app.": "Este navegador no puede ejecutar el modelo de voz. Pruebe un Chrome, Edge, Firefox o Safari actual, o la aplicación de escritorio gratuita."
+}
+</script>
+<script src="/js/lang.js?v=20261020a" defer></script>
+<script type="module" src="/try/try.js?v=20261026c"></script>
+</body>
+</html>
