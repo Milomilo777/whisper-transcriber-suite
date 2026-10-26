@@ -23,8 +23,8 @@
  *   - platform_system/_release/_version/_machine/_processor
  *   - cpu_count / mem_total (CPU count / total RAM in bytes)
  *   - install_id           random per-install id (UUID4) the app creates; lets
- *                          the maintainer count distinct installs. Not linked
- *                          to a person or machine; absent in older app versions
+ *                          the maintainer count distinct installs. Not derived
+ *                          from a name, machine or file; absent in older app versions
  *
  * Not stored, not looked up, not forwarded: the network address of the
  * connection. This script reads nothing from the request but the POST body

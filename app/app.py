@@ -906,6 +906,8 @@ def build_about_sections() -> list[AboutSection]:
                 "CPU and memory size, and the two-letter country of the OS "
                 "region setting; the payload never includes the file's name "
                 "or folder, the computer name or an IP address"),
+                _("Also a random install id made by the app; turning usage "
+                "statistics off deletes it"),
                 _("Launch ping and Sentry crash reports: only when "
                 "WHISPER_TELEMETRY_URL / SENTRY_DSN are set"),
             ]),
