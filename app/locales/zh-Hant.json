@@ -1444,6 +1444,8 @@
     "about {n} seconds": [
       "約 {n} 秒"
     ],
+    "about {size} GB": "約 {size} GB",
+    "about {size} MB": "約 {size} MB",
     "about {speed}": "約 {speed}",
     "allowed (this computer)": "已允許（本機）",
     "audio done": "音訊已完成",

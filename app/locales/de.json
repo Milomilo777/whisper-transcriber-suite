@@ -1476,6 +1476,8 @@
       "etwa {n} Sekunde",
       "etwa {n} Sekunden"
     ],
+    "about {size} GB": "ca. {size} GB",
+    "about {size} MB": "ca. {size} MB",
     "about {speed}": "etwa {speed}",
     "allowed (this computer)": "erlaubt (dieser Computer)",
     "audio done": "Audio fertig",

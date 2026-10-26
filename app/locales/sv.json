@@ -1476,6 +1476,8 @@
       "ungefär {n} sekund",
       "ungefär {n} sekunder"
     ],
+    "about {size} GB": "ca {size} GB",
+    "about {size} MB": "ca {size} MB",
     "about {speed}": "cirka {speed}",
     "allowed (this computer)": "tillåten (den här datorn)",
     "audio done": "ljud klart",

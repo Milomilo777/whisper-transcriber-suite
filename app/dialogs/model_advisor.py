@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING, Any
 
 from app.dpi import place_over, px
 from app.i18n import N_, _, pgettext, translate
+from app.model_text import localize_size_text
 from app.theme import tokens
 from core import hardware as _hw
 from core import offline
@@ -183,7 +184,7 @@ class ModelAdvisorDialog(tk.Toplevel):
                     "to download this model."
                 )
             else:
-                size = approx_download_size_text(cfg, pick.slug)
+                size = localize_size_text(approx_download_size_text(cfg, pick.slug))
                 note = (_("Downloads once on first use ({size}).", size=size) if size
                         else _("Downloads once on first use."))
             ttk.Label(card, text=note, foreground=tokens.themed(tokens.TEXT_MUTED)).pack(anchor="w")

@@ -1508,6 +1508,8 @@
       "כשתי שניות",
       "כ-{n} שניות"
     ],
+    "about {size} GB": "כ-{size} GB",
+    "about {size} MB": "כ-{size} MB",
     "about {speed}": "כ-{speed}",
     "allowed (this computer)": "מותר (מחשב זה)",
     "audio done": "השמע הושלם",

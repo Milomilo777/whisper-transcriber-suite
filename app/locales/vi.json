@@ -1444,6 +1444,8 @@
     "about {n} seconds": [
       "khoảng {n} giây"
     ],
+    "about {size} GB": "khoảng {size} GB",
+    "about {size} MB": "khoảng {size} MB",
     "about {speed}": "khoảng {speed}",
     "allowed (this computer)": "được phép (máy tính này)",
     "audio done": "âm thanh đã xong",

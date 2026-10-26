@@ -1508,6 +1508,8 @@
       "około {n} sekund",
       "około {n} sekund"
     ],
+    "about {size} GB": "około {size} GB",
+    "about {size} MB": "około {size} MB",
     "about {speed}": "około {speed}",
     "allowed (this computer)": "dozwolone (ten komputer)",
     "audio done": "przetworzonego dźwięku",

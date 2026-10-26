@@ -1476,6 +1476,8 @@
    "about {n} seconds",
    "about {n} seconds"
   ],
+  "about {size} GB": "about {size} GB",
+  "about {size} MB": "about {size} MB",
   "about {speed}": "about {speed}",
   "allowed (this computer)": "allowed (this computer)",
   "audio done": "audio done",

@@ -1476,6 +1476,8 @@
       "लगभग {n} सेकंड",
       "लगभग {n} सेकंड"
     ],
+    "about {size} GB": "लगभग {size} GB",
+    "about {size} MB": "लगभग {size} MB",
     "about {speed}": "लगभग {speed}",
     "allowed (this computer)": "अनुमत (यह कंप्यूटर)",
     "audio done": "ऑडियो पूर्ण",

@@ -1476,6 +1476,8 @@
       "ongeveer {n} seconde",
       "ongeveer {n} seconden"
     ],
+    "about {size} GB": "ongeveer {size} GB",
+    "about {size} MB": "ongeveer {size} MB",
     "about {speed}": "ongeveer {speed}",
     "allowed (this computer)": "toegestaan (deze computer)",
     "audio done": "audio voltooid",

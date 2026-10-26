@@ -1444,6 +1444,8 @@
     "about {n} seconds": [
       "sekitar {n} detik"
     ],
+    "about {size} GB": "sekitar {size} GB",
+    "about {size} MB": "sekitar {size} MB",
     "about {speed}": "sekitar {speed}",
     "allowed (this computer)": "diizinkan (komputer ini)",
     "audio done": "audio selesai",

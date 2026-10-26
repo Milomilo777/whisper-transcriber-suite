@@ -1444,6 +1444,8 @@
     "about {n} seconds": [
       "ประมาณ {n} วินาที"
     ],
+    "about {size} GB": "ประมาณ {size} GB",
+    "about {size} MB": "ประมาณ {size} MB",
     "about {speed}": "ประมาณ {speed}",
     "allowed (this computer)": "อนุญาต (คอมพิวเตอร์นี้)",
     "audio done": "ประมวลผลเสียงเสร็จแล้ว",

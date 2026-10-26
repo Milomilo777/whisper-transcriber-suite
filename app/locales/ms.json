@@ -1444,6 +1444,8 @@
     "about {n} seconds": [
       "kira-kira {n} saat"
     ],
+    "about {size} GB": "kira-kira {size} GB",
+    "about {size} MB": "kira-kira {size} MB",
     "about {speed}": "kira-kira {speed}",
     "allowed (this computer)": "dibenarkan (komputer ini)",
     "audio done": "audio selesai",

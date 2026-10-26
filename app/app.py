@@ -28,6 +28,7 @@ from app.dialogs.quick_start import (
 from app.dialogs import language_suggestion, share_page, ui_language
 from app import desktop_alert, mac_native, rtl_layout, shortcuts
 from app.i18n import N_, _, ngettext, pgettext, plain, translate
+from app.model_text import localize_size_text
 from app.dialogs.transcript_viewer import confirm_unsaved_before_exit as confirm_unsaved_viewers_before_exit
 from app.dialogs.transcript_viewer import dirty_viewers as _dirty_viewers_now
 from app.dialogs.transcript_viewer import open_viewer as _open_transcript_viewer
@@ -3657,7 +3658,7 @@ class App(tk.Tk):
             if var.get() != shown:
                 var.set(shown)
             model = short_model_name(self.app_config, slug)
-            size = approx_download_size_text(self.app_config, slug)
+            size = localize_size_text(approx_download_size_text(self.app_config, slug))
             if model_downloaded(self.app_config, slug):
                 note = _("{model} model: already downloaded", model=model)
             elif size:
@@ -4709,7 +4710,7 @@ class App(tk.Tk):
                 approx_download_size_text,
             )
             slug = str(self.app_config.get("whisper_model") or DEFAULT_MODEL_SLUG)
-            text = approx_download_size_text(self.app_config, slug)
+            text = localize_size_text(approx_download_size_text(self.app_config, slug))
         except Exception:  # noqa: BLE001 -- a size hint must never block the prompt
             text = ""
         return f"{text}, " if text else ""
@@ -4819,7 +4820,7 @@ class App(tk.Tk):
             reason=(_("About the same size and speed, and it understands {language}.",
                       language=name) if name
                     else _("About the same size and speed, and it understands other languages.")),
-            size_text=approx_download_size_text(self.app_config, alt),
+            size_text=localize_size_text(approx_download_size_text(self.app_config, alt)),
             downloaded=model_downloaded(self.app_config, alt),
         )
         self.__dict__["_english_only_asking"] = True

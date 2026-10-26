@@ -1476,6 +1476,8 @@
       "kb. {n} másodperc",
       "kb. {n} másodperc"
     ],
+    "about {size} GB": "kb. {size} GB",
+    "about {size} MB": "kb. {size} MB",
     "about {speed}": "kb. {speed}",
     "allowed (this computer)": "engedélyezve (ez a gép)",
     "audio done": "hanganyag kész",

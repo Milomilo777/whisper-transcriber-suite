@@ -1476,6 +1476,8 @@
       "около {n} секунда",
       "около {n} секунди"
     ],
+    "about {size} GB": "около {size} GB",
+    "about {size} MB": "около {size} MB",
     "about {speed}": "около {speed}",
     "allowed (this computer)": "разрешено (този компютър)",
     "audio done": "обработено аудио",

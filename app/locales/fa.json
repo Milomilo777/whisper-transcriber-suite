@@ -1476,6 +1476,8 @@
       "حدود {n} ثانیه",
       "حدود {n} ثانیه"
     ],
+    "about {size} GB": "حدود {size} GB",
+    "about {size} MB": "حدود {size} MB",
     "about {speed}": "حدود {speed}",
     "allowed (this computer)": "مجاز (این کامپیوتر)",
     "audio done": "پردازش صدا تمام شد",

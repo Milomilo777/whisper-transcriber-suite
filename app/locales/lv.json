@@ -1508,6 +1508,8 @@
       "aptuveni {n} sekunde",
       "aptuveni {n} sekundes"
     ],
+    "about {size} GB": "apmēram {size} GB",
+    "about {size} MB": "apmēram {size} MB",
     "about {speed}": "aptuveni {speed}",
     "allowed (this computer)": "atļauts (šis dators)",
     "audio done": "audio apstrādāts",

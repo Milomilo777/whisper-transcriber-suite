@@ -1604,6 +1604,8 @@
       "نحو {n} ثانية",
       "نحو {n} ثانية"
     ],
+    "about {size} GB": "حوالي {size} GB",
+    "about {size} MB": "حوالي {size} MB",
     "about {speed}": "حوالي {speed}",
     "allowed (this computer)": "مسموح به (هذا الحاسوب)",
     "audio done": "من الصوت مكتمل",

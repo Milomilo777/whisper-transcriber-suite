@@ -1508,6 +1508,8 @@
       "apie {n} sekundes",
       "apie {n} sekundžių"
     ],
+    "about {size} GB": "apie {size} GB",
+    "about {size} MB": "apie {size} MB",
     "about {speed}": "apie {speed}",
     "allowed (this computer)": "leista (šis kompiuteris)",
     "audio done": "garso apdorota",

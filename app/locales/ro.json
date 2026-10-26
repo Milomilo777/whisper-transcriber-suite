@@ -1508,6 +1508,8 @@
       "aproximativ {n} secunde",
       "aproximativ {n} de secunde"
     ],
+    "about {size} GB": "aproximativ {size} GB",
+    "about {size} MB": "aproximativ {size} MB",
     "about {speed}": "aproximativ {speed}",
     "allowed (this computer)": "permis (acest computer)",
     "audio done": "audio finalizat",

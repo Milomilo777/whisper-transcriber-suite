@@ -1476,6 +1476,8 @@
       "ca. {n} sekund",
       "ca. {n} sekunder"
     ],
+    "about {size} GB": "ca. {size} GB",
+    "about {size} MB": "ca. {size} MB",
     "about {speed}": "ca. {speed}",
     "allowed (this computer)": "tilladt (denne computer)",
     "audio done": "lyd færdig",

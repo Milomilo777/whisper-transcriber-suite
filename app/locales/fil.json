@@ -1476,6 +1476,8 @@
       "mga {n} segundo",
       "mga {n} segundo"
     ],
+    "about {size} GB": "humigit-kumulang {size} GB",
+    "about {size} MB": "humigit-kumulang {size} MB",
     "about {speed}": "humigit-kumulang {speed}",
     "allowed (this computer)": "pinayagan (computer na ito)",
     "audio done": "tapos na ang audio",

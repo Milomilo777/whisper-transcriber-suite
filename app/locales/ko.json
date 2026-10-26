@@ -1444,6 +1444,8 @@
     "about {n} seconds": [
       "약 {n}초"
     ],
+    "about {size} GB": "약 {size} GB",
+    "about {size} MB": "약 {size} MB",
     "about {speed}": "약 {speed}",
     "allowed (this computer)": "허용됨(이 컴퓨터)",
     "audio done": "오디오 완료",

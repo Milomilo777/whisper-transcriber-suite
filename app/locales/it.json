@@ -1476,6 +1476,8 @@
       "circa {n} secondo",
       "circa {n} secondi"
     ],
+    "about {size} GB": "circa {size} GB",
+    "about {size} MB": "circa {size} MB",
     "about {speed}": "circa {speed}",
     "allowed (this computer)": "consentita (questo computer)",
     "audio done": "audio completato",

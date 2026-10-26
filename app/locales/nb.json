@@ -1476,6 +1476,8 @@
       "omtrent {n} sekund",
       "omtrent {n} sekunder"
     ],
+    "about {size} GB": "ca. {size} GB",
+    "about {size} MB": "ca. {size} MB",
     "about {speed}": "omtrent {speed}",
     "allowed (this computer)": "tillatt (denne datamaskinen)",
     "audio done": "lyd fullført",

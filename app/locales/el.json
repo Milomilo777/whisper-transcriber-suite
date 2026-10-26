@@ -1476,6 +1476,8 @@
       "περίπου {n} δευτερόλεπτο",
       "περίπου {n} δευτερόλεπτα"
     ],
+    "about {size} GB": "περίπου {size} GB",
+    "about {size} MB": "περίπου {size} MB",
     "about {speed}": "περίπου {speed}",
     "allowed (this computer)": "επιτράπηκε (αυτός ο υπολογιστής)",
     "audio done": "ήχος ολοκληρώθηκε",

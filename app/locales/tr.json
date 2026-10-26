@@ -1476,6 +1476,8 @@
       "yaklaşık {n} saniye",
       "yaklaşık {n} saniye"
     ],
+    "about {size} GB": "yaklaşık {size} GB",
+    "about {size} MB": "yaklaşık {size} MB",
     "about {speed}": "yaklaşık {speed}",
     "allowed (this computer)": "izin verildi (bu bilgisayar)",
     "audio done": "ses tamamlandı",

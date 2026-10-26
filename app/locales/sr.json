@@ -1508,6 +1508,8 @@
       "око {n} секунде",
       "око {n} секунди"
     ],
+    "about {size} GB": "око {size} GB",
+    "about {size} MB": "око {size} MB",
     "about {speed}": "око {speed}",
     "allowed (this computer)": "дозвољено (овај рачунар)",
     "audio done": "звука завршено",

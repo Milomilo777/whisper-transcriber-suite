@@ -1476,6 +1476,8 @@
       "uns {n} segon",
       "uns {n} segons"
     ],
+    "about {size} GB": "uns {size} GB",
+    "about {size} MB": "uns {size} MB",
     "about {speed}": "aproximadament {speed}",
     "allowed (this computer)": "permès (aquest ordinador)",
     "audio done": "àudio completat",

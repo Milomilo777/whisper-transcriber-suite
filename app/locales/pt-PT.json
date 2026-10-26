@@ -1476,6 +1476,8 @@
       "cerca de {n} segundo",
       "cerca de {n} segundos"
     ],
+    "about {size} GB": "cerca de {size} GB",
+    "about {size} MB": "cerca de {size} MB",
     "about {speed}": "cerca de {speed}",
     "allowed (this computer)": "permitida (este computador)",
     "audio done": "áudio concluído",

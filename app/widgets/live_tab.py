@@ -28,6 +28,7 @@ from typing import Any, Callable
 
 from app.dpi import scaled
 from app.i18n import N_, _, ngettext, pgettext, translate
+from app.model_text import localize_size_text
 from app.theme import script_fonts, tokens
 from app.widgets.error_dialog import show_error
 from app.widgets.tabs import translated_choice_var
@@ -423,7 +424,7 @@ def _english_only_prompt(
                   _("About the same size and speed, and it understands other languages."))
     return EnglishOnlyPrompt(
         model=slug, language=language, alternative=alt_slug, reason=reason,
-        size_text=approx_download_size_text(app.app_config, alt_slug),
+        size_text=localize_size_text(approx_download_size_text(app.app_config, alt_slug)),
         downloaded=_slug_downloaded(app, alt_slug),
     )
 

@@ -1540,6 +1540,8 @@
       "približno {n} sekunde",
       "približno {n} sekund"
     ],
+    "about {size} GB": "približno {size} GB",
+    "about {size} MB": "približno {size} MB",
     "about {speed}": "približno {speed}",
     "allowed (this computer)": "dovoljeno (ta računalnik)",
     "audio done": "zvoka obdelano",
