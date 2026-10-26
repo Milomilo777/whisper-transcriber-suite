@@ -52,11 +52,12 @@ STATUSES = ("source", "machine", "reviewed")
 # translated interface reaches people at all; drop "machine" here to make "auto" reviewed-only.
 _AUTO_STATUSES = frozenset({"reviewed", "machine"})
 #: Platforms where a right-to-left catalog reads correctly. Tk keeps a left-to-right base
-#: direction on every platform; on Windows each translated line therefore gets a
+#: direction on every platform; there each translated line therefore gets a
 #: RIGHT-TO-LEFT EMBEDDING ... POP DIRECTIONAL FORMATTING pair (:func:`embed_rtl`), checked on
-#: real screens. The layout itself is not mirrored. macOS (CoreText) and Linux (X11) are added
-#: once a right-to-left catalog has been checked there.
-RTL_PLATFORMS: frozenset[str] = frozenset({"win32"})
+#: real screens: Windows, and macOS (CoreText joins and orders Arabic script; Persian checked on
+#: 10.15 with real clicks, 2026-10-26). Linux is not listed: Tk 8.6 on X11 neither joins nor
+#: orders Arabic script (Tk ticket 1b81ff43a2, fixed only in Tk 9.1 with HarfBuzz).
+RTL_PLATFORMS: frozenset[str] = frozenset({"win32", "darwin"})
 #: None: right-to-left catalogs are offered on :data:`RTL_PLATFORMS` (see
 #: :func:`rtl_layout_ready`). True or False forces the answer (tests).
 RTL_LAYOUT_READY: bool | None = None

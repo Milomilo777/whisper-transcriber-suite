@@ -353,12 +353,12 @@ def test_available_offers_rtl_catalogs_only_once_the_layout_is_mirrored(
     assert i18n.resolve_language("he", os_language=None, available=i18n.catalog_statuses()) == "he"
 
 
-def test_rtl_is_offered_on_windows_only_in_this_release(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_rtl_is_offered_on_windows_and_macos_only(monkeypatch: pytest.MonkeyPatch) -> None:
     # Adding a platform offers Arabic, Persian and Hebrew there; do it only after checking how a
-    # right-to-left catalog looks on that platform.
+    # right-to-left catalog looks on that platform. Linux (Tk 8.6 on X11) cannot join the letters.
     assert i18n.RTL_LAYOUT_READY is None
-    assert i18n.RTL_PLATFORMS == frozenset({"win32"})
-    monkeypatch.setattr(sys, "platform", "darwin")
+    assert i18n.RTL_PLATFORMS == frozenset({"win32", "darwin"})
+    monkeypatch.setattr(sys, "platform", "linux")
     assert i18n.rtl_layout_ready() is False
 
 

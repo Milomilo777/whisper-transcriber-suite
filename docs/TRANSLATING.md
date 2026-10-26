@@ -107,8 +107,8 @@ and expects an empty list, plus a test that its English texts did not change.
   (system language)" and every catalog in `app/locales`, each language by its own name. Pick
   one, click Save and start the app again (a notice in the main window says so when the
   language will change). A catalog with status `"machine"` is listed as "<name> (machine
-  translation)"; `"auto"` may choose it too. Right-to-left catalogs are listed on Windows only
-  (see the note at the end of the next section); elsewhere load them with `WTS_UI_LANGUAGE`.
+  translation)"; `"auto"` may choose it too. Right-to-left catalogs are listed on Windows and
+  macOS (see the note at the end of the next section); on Linux load them with `WTS_UI_LANGUAGE`.
 - **For one run**, without touching the setting: set `WTS_UI_LANGUAGE` to the code, then start
   from source. It wins over the saved setting; while it is set, the picker's notice says so.
 
@@ -155,7 +155,7 @@ Files are UTF-8 with LF line endings; `.gitattributes` keeps them LF on Windows 
 
 Right-to-left languages (Arabic, Persian, Hebrew): Tk draws every text with a left-to-right base
 direction, so a Persian line with a Latin word or a number in it, or ending in `:` or `)`, would
-come out in the wrong order. On Windows the layer therefore wraps each line of a right-to-left
+come out in the wrong order. On Windows and macOS the layer therefore wraps each line of a right-to-left
 translation in two invisible direction marks (RIGHT-TO-LEFT EMBEDDING U+202B and POP DIRECTIONAL
 FORMATTING U+202C), so the line reads right to left. The English fallback of a missing
 translation gets no marks. The layout itself is not mirrored: labels and buttons keep their
@@ -165,14 +165,15 @@ left-to-right places.
   translation yourself: the layer adds the ones Tk needs, and Tk on Windows draws the isolates
   U+2066 to U+2069 as boxes. `tests/test_i18n_catalogs.py` fails on a catalog that has them.
   Keep the line breaks (`\n`) of the English text: each line gets its own pair of marks.
-- The language picker offers right-to-left catalogs on Windows only (`i18n.rtl_layout_ready()`;
-  the platforms are `i18n.RTL_PLATFORMS`), and `"auto"` chooses one only there. macOS and Linux
-  get them once someone has checked how they look there; until then `WTS_UI_LANGUAGE` or an
-  explicit `ui_language` code still loads one, without the marks.
+- The language picker offers right-to-left catalogs on Windows and macOS (`i18n.rtl_layout_ready()`;
+  the platforms are `i18n.RTL_PLATFORMS`; macOS was checked on 10.15), and `"auto"` chooses one only
+  there. Linux is left out: Tk 8.6 on X11 neither joins Arabic-script letters nor orders them (Tk
+  ticket 1b81ff43a2; Tk 9.1 adds HarfBuzz shaping). There `WTS_UI_LANGUAGE` or an explicit
+  `ui_language` code still loads one, without the marks, and the letters show unjoined.
 - In code, a translated text that leaves the screen (the log file, the clipboard, a file) goes
   through `i18n.plain()`, which removes the marks. `App.log` does this for the log file.
 
-Check how an `rtl` catalog looks on Windows before setting `"reviewed"`.
+Check how an `rtl` catalog looks on Windows and macOS before setting `"reviewed"`.
 
 ### Mirroring the layout (`app/rtl_layout.py`)
 
@@ -185,7 +186,7 @@ and its cell and heading anchors mirrored; a `ttk.Checkbutton` / `ttk.Radiobutto
 switched to an `Rtl.` twin style whose layout puts the indicator at the right of the text
 (`rtl_style`; `theme_colours.apply` defines the twins again after a theme switch, since ttk
 layouts live per theme). It does nothing in a left-to-right interface
-(`rtl_layout.active()` follows `i18n.rtl_marks()`, so only on Windows today; `WTS_RTL_LAYOUT=1`
+(`rtl_layout.active()` follows `i18n.rtl_marks()`, so on Windows and macOS; `WTS_RTL_LAYOUT=1`
 or `0` overrides it for a manual try). Each flip is an involution: a second pass restores the
 original, so a tree is mirrored exactly once. The insides of Entry, Combobox, Spinbox, Text and
 Listbox widgets are left as they are (a path, a URL, a time or a log line still reads left to

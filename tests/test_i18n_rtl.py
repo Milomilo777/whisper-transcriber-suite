@@ -160,16 +160,26 @@ def test_pseudo_locale_gets_no_marks(monkeypatch: pytest.MonkeyPatch) -> None:
     assert RLE not in out and PDF not in out and out.startswith("[")
 
 
-@pytest.mark.parametrize("platform", ["darwin", "linux"])
+@pytest.mark.parametrize("platform", ["linux"])
 def test_no_marks_where_rtl_is_not_offered(locales: Path, monkeypatch: pytest.MonkeyPatch,
                                            platform: str) -> None:
-    """macOS and Linux: an explicit fa still loads (translators), without the Windows marks."""
+    """Linux: an explicit fa still loads (translators), without the marks."""
     write_catalog(locales, "fa", FA)
     on(monkeypatch, platform)
     assert i18n.set_language("fa") == "fa"
     assert i18n.current_direction() == "rtl"
     assert i18n.rtl_marks() is False
     assert i18n._("Save") == "ذخیره"
+
+
+def test_macos_gets_the_marks_like_windows(locales: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # Checked with real clicks on macOS 10.15 (2026-10-26): CoreText joins the letters and the
+    # embedding marks give each line its right-to-left base, as on Windows.
+    write_catalog(locales, "fa", FA)
+    on(monkeypatch, "darwin")
+    assert i18n.set_language("fa") == "fa"
+    assert i18n.rtl_marks() is True
+    assert i18n._("Save") == RLE + "ذخیره" + PDF
 
 
 def test_the_isolates_are_never_emitted(fa_windows: None) -> None:
@@ -204,26 +214,27 @@ def test_a_line_of_two_wrapped_values_with_text_between_is_wrapped_as_a_whole() 
 
 # --- R2 the platform gate ----------------------------------------------------------------------------
 
-def test_rtl_is_ready_on_windows_only_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_rtl_is_ready_on_windows_and_macos_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
     assert i18n.RTL_LAYOUT_READY is None  # decided by the platform, not forced
-    assert i18n.RTL_PLATFORMS == frozenset({"win32"})
-    for platform, ready in (("win32", True), ("darwin", False), ("linux", False)):
+    assert i18n.RTL_PLATFORMS == frozenset({"win32", "darwin"})
+    for platform, ready in (("win32", True), ("darwin", True), ("linux", False)):
         on(monkeypatch, platform)
         assert i18n.rtl_layout_ready() is ready, platform
 
 
 @pytest.mark.parametrize("platform,listed", [
-    ("win32", ["en", "de", "ar", "fa", "he"]), ("darwin", ["en", "de"]), ("linux", ["en", "de"]),
+    ("win32", ["en", "de", "ar", "fa", "he"]), ("darwin", ["en", "de", "ar", "fa", "he"]),
+    ("linux", ["en", "de"]),
 ])
-def test_picker_offers_rtl_catalogs_on_windows_only(locales: Path, monkeypatch: pytest.MonkeyPatch,
-                                                    platform: str, listed: list[str]) -> None:
+def test_picker_offers_rtl_catalogs_on_windows_and_macos(locales: Path, monkeypatch: pytest.MonkeyPatch,
+                                                         platform: str, listed: list[str]) -> None:
     for code in ("de", "ar", "fa", "he"):
         write_catalog(locales, code, {}, status="machine")
     on(monkeypatch, platform)
     assert [lang.code for lang in i18n.available_languages()] == listed
 
 
-@pytest.mark.parametrize("platform,chosen", [("win32", "fa"), ("darwin", "en"), ("linux", "en")])
+@pytest.mark.parametrize("platform,chosen", [("win32", "fa"), ("darwin", "fa"), ("linux", "en")])
 def test_auto_takes_a_reviewed_rtl_catalog_only_where_it_is_offered(
         locales: Path, monkeypatch: pytest.MonkeyPatch, platform: str, chosen: str) -> None:
     write_catalog(locales, "fa", FA, status="reviewed")

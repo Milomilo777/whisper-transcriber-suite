@@ -92,7 +92,7 @@ def test_machine_catalogs_are_marked_and_rtl_ones_wait_for_the_mirrored_layout(
     write_catalog(locales, "ja", "machine")
     write_catalog(locales, "ar", "reviewed")
     write_catalog(locales, "he", "machine")
-    monkeypatch.setattr(sys, "platform", "darwin")  # right to left is offered on Windows only
+    monkeypatch.setattr(sys, "platform", "linux")  # right to left is offered on Windows and macOS
     assert i18n.rtl_layout_ready() is False
     assert _adv()._ui_language_choices() == [
         (AUTO_LABEL, "auto"),

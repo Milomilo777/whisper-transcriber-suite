@@ -59,6 +59,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   on the current one. View > Interface language... opens the same chooser. After a change the app asks
   "Restart now" or "Later" (on Windows; while a transcription or download is active only "Later" is
   offered). Advanced settings keeps its picker and shares the same setting.
+- **Persian, Arabic and Hebrew on macOS too**: the right-to-left interface languages, so far listed on
+  Windows only, are now offered on macOS as well, with the same mirrored layout (checked on macOS 10.15).
+  Linux still leaves them out: its Tk cannot join the letters yet.
 - **A first-run language suggestion (Windows)**: when the app runs in English but the regional format
   (dates, numbers) names a language the app speaks and an installed keyboard layout is a layout of the same
   language, a small window asks once, in that language and in English, "Use <language>?" with "Use
