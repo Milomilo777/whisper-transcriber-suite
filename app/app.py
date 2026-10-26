@@ -4670,18 +4670,7 @@ class App(tk.Tk):
             if self.model_setup_running:
                 self.log("Model download already in progress — please wait.")
                 return False
-            # The first-run language suggestion waits on this flag (see
-            # app.dialogs.language_suggestion), so it never opens over the question.
-            self._model_question_open = True
-            try:
-                wanted = messagebox.askyesno(
-                    _("Whisper model required"),
-                    self._model_download_question(),
-                    parent=self,
-                )
-            finally:
-                self._model_question_open = False
-            if not wanted:
+            if not self._ask_model_download():
                 self.log("Transcription cancelled: the Whisper model is required.")
                 return False
             if not self.ensure_model_with_modal():
@@ -4697,6 +4686,20 @@ class App(tk.Tk):
             self.log("Transcription cancelled: model load was cancelled")
             return False
         return True
+
+    def _ask_model_download(self) -> bool:
+        """Show the "Whisper model required" question; True when the user agrees to download."""
+        # The first-run language suggestion waits on this flag (see
+        # app.dialogs.language_suggestion), so it never opens over the question.
+        self._model_question_open = True
+        try:
+            return bool(messagebox.askyesno(
+                _("Whisper model required"),
+                self._model_download_question(),
+                parent=self,
+            ))
+        finally:
+            self._model_question_open = False
 
     def _model_download_size_hint(self) -> str:
         """Return e.g. "about 500 MB, " for the configured model ("" if unknown)."""
@@ -6067,8 +6070,28 @@ class App(tk.Tk):
         self._save_server_prefs()
         if self._server_is_running():
             self._stop_server_async()
-        else:
+        elif self._server_model_agreed():
             self._start_server_async()
+
+    def _server_model_agreed(self) -> bool:
+        """True when the server may start: the model is on disk, or the user agreed to download it.
+
+        The server loads the model on its start thread and would otherwise download the default
+        model (about 3 GB) silently. Here the same question and download dialog as for a
+        transcription run first; the dialog checks the free disk space before it downloads.
+        """
+        if self._model_bytes_present():
+            return True
+        if self.model_setup_running:
+            self.log("Model download already in progress — please wait.")
+            return False
+        if not self._ask_model_download():
+            self.log("The server was not started: the Whisper model is required.")
+            return False
+        if not self.ensure_model_with_modal():
+            self.log("The server was not started: the Whisper model is not ready.")
+            return False
+        return True
 
     def _start_server_async(self) -> None:
         import threading as _t

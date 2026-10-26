@@ -163,6 +163,7 @@ def test_model_question_raises_the_flag_while_it_is_open(monkeypatch: pytest.Mon
         seen.append(fake._model_question_open)
         return False
 
+    fake._ask_model_download = lambda: app_module.App._ask_model_download(fake)  # type: ignore[arg-type]
     monkeypatch.setattr(app_module.messagebox, "askyesno", _ask)
     assert app_module.App._ensure_transcribe_ready(fake) is False  # type: ignore[arg-type]
     assert seen == [True] and fake._model_question_open is False
