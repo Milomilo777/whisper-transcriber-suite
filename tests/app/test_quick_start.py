@@ -137,6 +137,34 @@ def test_finish_saves_the_chosen_model_and_folder(isolated_config, tmp_path, lan
     assert not qs.should_show(saved)
 
 
+def test_best_quality_for_persian_switches_to_the_persian_model(isolated_config, tmp_path):
+    """"Best quality" + Persian runs the Persian model on the transformers engine; "Switch back" (the
+    Transcribe tab) returns to the Whisper pick the window made, not to the install default."""
+    from core import language_models as lm
+
+    config = _load()
+    qs.apply_choice(config, qs.QuickStartChoice("fa", "best", str(tmp_path / "out")))
+    cfg.save_config(config)
+    saved = _load()
+    row = lm.LANGUAGE_MODELS["fa"]
+    assert saved["transcribe_backend"] == lm.ENGINE_TRANSFORMERS and saved["nvidia_asr_model_id"] == row.model
+    assert lm.active(saved) == row
+    assert saved[lm.PREVIOUS_KEY]["whisper_model"] == "large-v3"
+    back = lm.restore_previous(dict(saved))
+    assert (back["transcribe_backend"], back["whisper_model"]) == (lm.ENGINE_WHISPER, "large-v3")
+
+
+@pytest.mark.parametrize("language, mode, ram_gb", [("fa", "fast", 0.0), ("fa", "best", 7.9),
+                                                     ("ar", "best", 0.0), ("", "best", 0.0)])
+def test_other_picks_stay_on_whisper(tmp_path, language, mode, ram_gb):
+    config = {"hub_folder": str(tmp_path / "hub")}
+    choice = qs.QuickStartChoice(language, mode, str(tmp_path), ram_gb=ram_gb)
+    assert choice.language_model is None
+    qs.apply_choice(config, choice)
+    assert config.get("transcribe_backend", "faster_whisper") == "faster_whisper"
+    assert "nvidia_asr_model_id" not in config
+
+
 def test_finish_keeps_a_model_folder_that_is_already_set(tmp_path):
     config = {"hub_folder": str(tmp_path / "hub"), "whisper_model": "large-v3"}
     qs.apply_choice(config, qs.QuickStartChoice("fa", "fast", str(tmp_path)))
@@ -441,7 +469,7 @@ def _fake_app(monkeypatch, tmp_path):
                     "download_folder": ""},
         _quick_start_open=True, _ensure_hub_folder=MagicMock(),
         _refresh_model_selector=MagicMock(), _refresh_engine_selector=MagicMock(),
-        log=MagicMock(),
+        _refresh_language_model_hint=MagicMock(), log=MagicMock(),
         download_folder_var=MagicMock(),
     )
     return app_mod, fake, saved
@@ -484,6 +512,16 @@ def test_app_finish_refreshes_the_engine_status_line(monkeypatch, tmp_path):
     assert order == ["save", "model", "engine"]
 
 
+def test_app_finish_with_the_persian_model_refreshes_the_language_model_line(monkeypatch, tmp_path):
+    app_mod, fake, saved = _fake_app(monkeypatch, tmp_path)
+    app_mod.App._on_quick_start_done(  # type: ignore[arg-type]
+        fake, qs.QuickStartChoice("fa", "best", str(tmp_path)),
+    )
+    assert saved[-1]["transcribe_backend"] == "nvidia_asr"
+    fake._refresh_language_model_hint.assert_called_once()
+    assert "Nemotron ASR Persian" in fake.log.call_args[0][0]
+
+
 def test_app_skip_does_not_touch_the_engine_status_line(monkeypatch, tmp_path):
     app_mod, fake, _saved = _fake_app(monkeypatch, tmp_path)
     app_mod.App._on_quick_start_done(fake, None)  # type: ignore[arg-type]
@@ -516,6 +554,26 @@ def test_best_quality_is_sized_for_a_4_gb_computer(tk_root, tmp_path):
     dialog.mode_var.set("best")
     dialog.finish()
     assert _results[0].model_slug == "small"
+
+
+def test_the_window_names_the_persian_model_and_turns_off_the_english_sample(tk_root, tmp_path):
+    results: list = []
+    dialog = qs.QuickStartDialog(tk_root, {"download_folder": str(tmp_path)}, on_done=results.append,
+                                 probe=lambda: (_CPU, 4, 16.0), on_try_sample=lambda: None)
+    _pump(tk_root, lambda: dialog._hardware is not None)
+    button = dialog._try_button
+    assert button is not None and not button.instate(["disabled"])
+    dialog.language_var.set("Persian")
+    dialog.language_combo.event_generate("<<ComboboxSelected>>")
+    tk_root.update()
+    assert dialog.mode_detail_vars["best"].get() == "Nemotron ASR Persian · about 3.5 GB download"
+    assert dialog.mode_detail_vars["fast"].get().startswith("Small ·")
+    assert not button.instate(["disabled"])  # still "Fast"
+    dialog.mode_var.set("best")
+    assert button.instate(["disabled"])
+    dialog.mode_var.set("fast")
+    assert not button.instate(["disabled"])
+    dialog.skip()
 
 
 def test_best_quality_keeps_large_v3_on_an_8_gb_laptop(tk_root, tmp_path):

@@ -719,6 +719,15 @@ way back never returns to another language-only model.
   suggestion says so.
 - French (CTranslate2 files in a subfolder) and Arabic (gated) wait for download support.
 
+**Amendment (2026-10-26): the quick start's "Best quality" for Persian.** The usage statistics showed no run on
+the Persian model while it was only offered on the Transcribe tab, and ADR 0016 measured it on a real Persian call
+(10.6 s on a CPU against 383 s for Whisper Large v3, which lost most of the speech). Picking Persian and "Best
+quality" in the quick start now switches to it (`core.language_models.QUICK_START_BEST`): that pick is the click.
+The window names the model and its download (model plus the one-time engine install); the Whisper pick is saved
+first, so the Transcribe tab's "Switch back" returns to Large v3. A computer with less than 8 GB of memory keeps
+Whisper, and "Finish and try it now" is off for this pick, because the bundled sample is English and the model
+writes Persian only. Other languages keep Whisper in the quick start until their model is measured the same way.
+
 ## 0016 — Web / LAN jobs use an installed language model for their language; one model at a time
 
 **Status:** Accepted; extended by 0018 (Whisper-engine rows, and the page may ask for a download)

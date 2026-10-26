@@ -114,6 +114,26 @@ LANGUAGE_MODELS: dict[str, LanguageModel] = {
 }
 
 
+#: Languages whose row is the quick start's "Best quality" pick (ADR 0015, amended 2026-10-26). Persian: a
+#: 73-second phone call took 10.6 s on a CPU with this model against 383 s for Whisper Large v3, which lost most of
+#: the speech (ADR 0016); and in the usage statistics no run used the model while it was only offered on the
+#: Transcribe tab. Picking the language and "Best quality" in the quick start is the click that switches.
+QUICK_START_BEST = frozenset({"fa"})
+#: Below this much memory the quick start keeps Whisper (the transformers engine plus the model's weights).
+QUICK_START_MIN_RAM_GB = 8.0
+#: The local transformers engine's one-time install ("about 1 GB more", the Transcribe tab's "Use it" prompt).
+TRANSFORMERS_ENGINE_GB = 1.0
+
+
+def quick_start_best(language: str | None, ram_gb: float = 0.0) -> LanguageModel | None:
+    """The language model the quick start's "Best quality" uses for ``language``, or None (Whisper). ``ram_gb`` 0
+    means unknown: the model is kept, as for Whisper sizes (core.hardware.fit_model_to_ram)."""
+    code = normalize(language)
+    if code not in QUICK_START_BEST or (0 < ram_gb < QUICK_START_MIN_RAM_GB):
+        return None
+    return LANGUAGE_MODELS.get(code)
+
+
 _ALIASES = {"iw": "he", "jw": "jv"}  # legacy codes in the app's language list
 
 

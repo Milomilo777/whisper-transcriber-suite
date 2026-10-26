@@ -78,7 +78,8 @@ On the first launch a **Quick start** window asks three things: the main
 language you will transcribe, **Fast** or **Best quality**, and the folder
 for downloaded videos and audio (transcripts are always saved next to the
 file they come from). Each choice shows the model it picks, its download
-size and a rough time per minute of audio on your computer.
+size and a rough time per minute of audio on your computer. For Persian,
+**Best quality** picks a model trained for Persian (Nemotron ASR Persian).
 Click **Finish**, or **Skip** to keep the defaults (the Large v3 model,
 about 3 GB). Either way the window does not appear again; every choice can
 be changed later (the model on the Transcribe tab, the folder on the

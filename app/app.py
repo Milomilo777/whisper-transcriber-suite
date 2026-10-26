@@ -1685,8 +1685,14 @@ class App(tk.Tk):
         # The engine row was probed at start-up, before the model folder existed;
         # re-probe it (and drop the cached verdicts) so it agrees with the model row.
         self._refresh_engine_selector()
+        # "Best quality" for Persian switched to the Persian model: the Transcribe tab's
+        # language-model line must stop offering it (and offer the way back for other languages).
+        self._refresh_language_model_hint()
+        row = choice.language_model
+        model = (f"{row.name} ({row.model}, engine {row.engine})" if row is not None
+                 else self.app_config.get('whisper_model'))
         self.log(
-            f"Quick start: model {self.app_config.get('whisper_model')}, downloads go to "
+            f"Quick start: model {model}, downloads go to "
             f"{self.app_config.get('download_folder')}. The model downloads on the first "
             "transcription."
         )

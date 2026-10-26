@@ -88,6 +88,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Changed
 
+- **Quick start: "Best quality" for Persian uses the Persian model** (Nemotron ASR Persian on the local
+  transformers engine, about 3.5 GB with the engine) instead of Whisper Large v3; "Switch back" on the Transcribe tab
+  returns to Large v3. Computers with less than 8 GB of memory keep Whisper.
 - Usage statistics include failed and cancelled transcriptions again, so failure rates are visible. Such a row carries `status` `error` or `cancelled`, 0 words and 0 s of audio, and nothing else new (no error text, no file name); a job that is only requeued sends nothing.
 - **The browser demo (/try/) uses better models**: Whisper Small is the default for every language and Large v3
   Turbo (WebGPU) the best choice; Tiny and Base, too inaccurate for most languages, are gone. A new button removes

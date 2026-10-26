@@ -29,6 +29,7 @@ from app.i18n import N_, _, ngettext, translate
 from app.theme import tokens
 from core import hardware as _hw
 from core import hub as _hub
+from core import language_models as _lm
 from core.language_defaults import recommended_model
 
 logger = logging.getLogger(__name__)
@@ -122,6 +123,11 @@ class QuickStartChoice:
         """The language's measured pick, one size down when the memory is too small."""
         return _hw.fit_model_to_ram(recommended_model(self.language, self.mode), self.ram_gb)
 
+    @property
+    def language_model(self) -> _lm.LanguageModel | None:
+        """The one-language model "Best quality" switches to (Persian: Nemotron ASR), else None."""
+        return _lm.quick_start_best(self.language, self.ram_gb) if self.mode == "best" else None
+
 
 def apply_choice(config: dict[str, Any], choice: QuickStartChoice | None) -> None:
     """Write the outcome into ``config``; the caller saves it.
@@ -142,6 +148,10 @@ def apply_choice(config: dict[str, Any], choice: QuickStartChoice | None) -> Non
         config["whisper_model"] = choice.model_slug
         config["model"] = entry
         config["model_path"] = ""
+    row = choice.language_model
+    if row is not None:
+        # After the Whisper pick above, so the Transcribe tab's "Switch back" returns to it.
+        _lm.apply_language_model(config, row)
     config["download_folder"] = choice.output_folder
     if not _hub.is_hub_configured(config):
         config["hub_folder"] = _hub.normalise_hub_path(str(_hub.default_hub_folder()))
@@ -206,6 +216,7 @@ class QuickStartDialog(tk.Toplevel):
         self.mode_detail_vars = {m: tk.StringVar(master=self) for m, _label in MODES}
         self.hardware_var = tk.StringVar(master=self, value=_("Checking this computer…"))
         self._build()
+        self.mode_var.trace_add("write", lambda *_a: self._refresh_try_button())
         self._refresh_details()
 
         self.update_idletasks()
@@ -278,10 +289,12 @@ class QuickStartDialog(tk.Toplevel):
         ttk.Button(
             actions, text=_("Finish"), command=self.finish, style="Accent.TButton",
         ).pack(side="right")
+        self._try_button: ttk.Button | None = None
         if self._on_try_sample is not None:
-            ttk.Button(
+            self._try_button = ttk.Button(
                 actions, text=_("Finish and try it now"), command=self.finish_and_try_sample,
-            ).pack(side="right", padx=(0, 8))
+            )
+            self._try_button.pack(side="right", padx=(0, 8))
         ttk.Button(actions, text=_("Skip"), command=self.skip).pack(side="right", padx=(0, 8))
 
     def _center_on(self, master: "tk.Misc") -> None:
@@ -317,6 +330,13 @@ class QuickStartDialog(tk.Toplevel):
 
         language = self.language_code()
         for mode, _title in MODES:
+            row = _lm.quick_start_best(language, self._ram_gb) if mode == "best" else None
+            if row is not None:
+                # No time estimate: the benchmark speeds are Whisper's.
+                size = row.size_gb + (_lm.TRANSFORMERS_ENGINE_GB if row.engine == _lm.ENGINE_TRANSFORMERS else 0.0)
+                self.mode_detail_vars[mode].set(" · ".join(
+                    [row.name, _("{size} download", size=f"about {size:g} GB")]))
+                continue
             wanted = recommended_model(language, mode)
             slug = _hw.fit_model_to_ram(wanted, self._ram_gb)
             parts = [short_model_name(self._config, slug)]
@@ -335,6 +355,18 @@ class QuickStartDialog(tk.Toplevel):
                 parts.append(_("sized for this computer's {ram} GB of memory",
                                ram=f"{self._ram_gb:.0f}"))
             self.mode_detail_vars[mode].set(" · ".join(parts))
+        self._refresh_try_button()
+
+    def _refresh_try_button(self) -> None:
+        """"Finish and try it now" transcribes the bundled English sample: off while the pick is a model that
+        writes another language only (the Persian model would turn it into Persian text)."""
+        button = getattr(self, "_try_button", None)
+        if button is None:
+            return
+        from core.sample_clip import SAMPLE_CLIP_LANGUAGE
+
+        row = self.choice().language_model
+        button.state(["disabled"] if row is not None and row.language != SAMPLE_CLIP_LANGUAGE else ["!disabled"])
 
     def _hardware_text(self, status: _hw.CudaStatus, cores: int) -> str:
         # {where} is one of two whole phrases, set into the sentences below.

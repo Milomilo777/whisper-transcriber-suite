@@ -93,7 +93,8 @@ Version 2.1 added the interface in 42 languages, reliable speaker labels and saf
    [docs/INSTALL.md](docs/INSTALL.md) shows what to click.
 2. **Quick start window:** on the first launch, pick your main language, Fast or Best quality and a download
    folder. Each choice shows the model, its download size and a rough time per minute of audio on your
-   computer. **Skip** keeps the defaults.
+   computer. **Skip** keeps the defaults. For Persian, Best quality picks a model trained for Persian
+   (Nemotron ASR Persian).
 3. **Drop a file** (or paste a video link) on the Transcribe tab and press **Transcribe**. The first time, the
    speech model downloads once (about 0.5 to 3 GB, depending on the model).
 4. **Open the result:** the transcript files are written next to your file. The **Last result** card opens
