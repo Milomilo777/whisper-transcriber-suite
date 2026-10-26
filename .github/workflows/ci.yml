@@ -37,10 +37,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     # Backstop for a hung test slipping past pytest-timeout below (e.g. a
     # hang in the install step, or in pytest's own startup/collection
-    # before the per-test timeout plugin is active). Normal runs finish
-    # in about 15-22 minutes; 30 replaces GitHub's 360-minute default so a
-    # wedge fails fast instead of burning hours of Actions time.
-    timeout-minutes: 30
+    # before the per-test timeout plugin is active). The Windows suite
+    # alone takes about 28 minutes (12,000+ tests, October 2026) and
+    # hit the old 30-minute limit; 45 still replaces GitHub's 360-minute
+    # default so a wedge fails fast instead of burning hours of Actions time.
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
