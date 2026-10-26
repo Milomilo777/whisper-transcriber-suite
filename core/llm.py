@@ -632,6 +632,38 @@ _MAX_RESPONSE_BYTES = 16 * 1024 * 1024
 #: unless the user sets llm_remote_max_input_tokens.
 GROQ_REQUEST_TOKEN_BUDGET = 6000
 _GROQ_HOST = "api.groq.com"
+#: A reasoning model spends part of max_tokens on hidden reasoning. When that leaves no room for
+#: the answer (finish_reason "length", empty content) the request is sent once more with this many
+#: extra answer tokens (or double, whichever is more), then it fails with a clear error.
+_EMPTY_ANSWER_EXTRA_TOKENS = 1024
+
+
+def _empty_answer_message(limit: int, *, budget_full: bool = False) -> str:
+    text = (f"The AI model used its whole answer limit ({limit} tokens) before it wrote an answer, "
+            "most likely on its hidden reasoning.")
+    if budget_full:
+        text += (" The request budget (Groq's default, or llm_remote_max_input_tokens) leaves no more "
+                 "room for the answer.")
+    return text + " Try a shorter text, or a model that does not reason."
+
+
+def _host(base_url: str) -> str:
+    try:
+        return (urllib.parse.urlsplit(base_url.strip()).hostname or "").lower()
+    except ValueError:
+        return ""
+
+
+def _reasoning_effort(base_url: str, model: str) -> str | None:
+    """The ``reasoning_effort`` to send, or None to send none.
+
+    Groq's gpt-oss models reason before they answer; at their default effort a short Persian
+    translation used 179 of its tokens on reasoning, at "low" 5 (measured 2026-10-26). Only Groq
+    and only gpt-oss: other providers and models may refuse an unknown parameter.
+    """
+    if _host(base_url) == _GROQ_HOST and model.strip().lower().startswith("openai/gpt-oss"):
+        return "low"
+    return None
 
 
 def effective_token_budget(base_url: str, configured: int) -> int:
@@ -642,11 +674,7 @@ def effective_token_budget(base_url: str, configured: int) -> int:
     """
     if configured > 0:
         return configured
-    try:
-        host = (urllib.parse.urlsplit(base_url.strip()).hostname or "").lower()
-    except ValueError:
-        return 0
-    return GROQ_REQUEST_TOKEN_BUDGET if host == _GROQ_HOST else 0
+    return GROQ_REQUEST_TOKEN_BUDGET if _host(base_url) == _GROQ_HOST else 0
 
 
 def _retry_after_raw(headers: Any) -> float:
@@ -746,6 +774,53 @@ class RemoteLLMRunner:
         max_tokens: int = 512,
         temperature: float = 0.3,
     ) -> str:
+        # Seconds slept on retries; shared by both requests below, so one call never waits longer
+        # than _MAX_TOTAL_WAIT_S in all.
+        waited = [0.0]
+        sent, room = self._fit(messages, max_tokens)
+        content, finish = self._chat_once(sent, max_tokens=room, temperature=temperature, waited=waited)
+        if content or finish != "length":
+            return content
+        # Every answer token went to the model's hidden reasoning: ask once more with room to spare,
+        # unless the request budget (Groq's, or the user's) leaves no more; then say so, not a blank.
+        sent, more = self._fit(messages, max(room * 2, room + _EMPTY_ANSWER_EXTRA_TOKENS))
+        if more <= room:
+            raise RemoteLLMError(_empty_answer_message(room, budget_full=True))
+        logger.info("remote LLM: empty answer at the %d-token limit; asking again with %d", room, more)
+        content, finish = self._chat_once(sent, max_tokens=more, temperature=temperature, waited=waited)
+        if content or finish != "length":
+            return content
+        raise RemoteLLMError(_empty_answer_message(more))
+
+    def _fit(self, messages: list[dict[str, str]], max_tokens: int) -> tuple[list[dict[str, str]], int]:
+        """The messages and answer limit to send: trimmed to the request budget when there is one."""
+        self.last_trimmed = False
+        base = self.cfg.base_url.strip().rstrip("/")
+        budget = effective_token_budget(base, self.cfg.max_input_tokens)
+        if budget <= 0:
+            return messages, max_tokens
+        before = sum(len(str(m.get("content") or "")) for m in messages)
+        fitted, max_tokens = _fit_messages_to_context(messages, max_tokens, budget, _token_counter(None))
+        after = sum(len(str(m.get("content") or "")) for m in fitted)
+        self.last_trimmed = after < before
+        if self.last_trimmed:
+            logger.warning(
+                "remote LLM: input trimmed to the %d-token budget "
+                "(setting llm_remote_max_input_tokens).",
+                budget,
+            )
+        return fitted, max_tokens
+
+    def _chat_once(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        max_tokens: int,
+        temperature: float,
+        waited: list[float],
+    ) -> tuple[str, str]:
+        """One request as given (with its retries): the answer text and the provider's finish_reason.
+        ``waited`` holds the seconds already slept on retries by this call and is updated."""
         if offline.is_offline() and not offline.url_stays_local(self.cfg.base_url):
             # Same error type as every other failed call, so callers show it.
             # A server on this computer (Ollama, LM Studio) is not the network.
@@ -763,28 +838,15 @@ class RemoteLLMRunner:
                 "the AI provider address must start with http:// or https://"
             )
         url = f"{base}/chat/completions"
-        self.last_trimmed = False
-        budget = effective_token_budget(base, self.cfg.max_input_tokens)
-        if budget > 0:
-            before = sum(len(str(m.get("content") or "")) for m in messages)
-            messages, max_tokens = _fit_messages_to_context(
-                messages, max_tokens, budget,
-                _token_counter(None),
-            )
-            after = sum(len(str(m.get("content") or "")) for m in messages)
-            self.last_trimmed = after < before
-            if self.last_trimmed:
-                logger.warning(
-                    "remote LLM: input trimmed to the %d-token budget "
-                    "(setting llm_remote_max_input_tokens).",
-                    budget,
-                )
         payload = {
             "model": self.cfg.model,
             "messages": messages,
             "max_tokens": max_tokens,
             "temperature": temperature,
         }
+        effort = _reasoning_effort(base, self.cfg.model)
+        if effort:
+            payload["reasoning_effort"] = effort
         headers = {
             "Content-Type": "application/json",
             # urllib's default agent is refused by Groq (HTTP 403, error 1010).
@@ -799,7 +861,6 @@ class RemoteLLMRunner:
             method="POST",
         )
         raw = b""
-        waited = 0.0
         for attempt in range(len(_RETRY_DELAYS_S) + 1):
             try:
                 raw = self._post_once(url, req)
@@ -812,7 +873,7 @@ class RemoteLLMRunner:
                 delay = e.retry_after or _RETRY_DELAYS_S[attempt]
                 # One wait budget for every status: a server-given wait (Retry-After) counts
                 # once per batch pass, and no call sleeps more than _MAX_TOTAL_WAIT_S in all.
-                over_budget = waited + delay > _MAX_TOTAL_WAIT_S
+                over_budget = waited[0] + delay > _MAX_TOTAL_WAIT_S
                 if e.retry_after and self._batch_waits is not None:
                     over_budget = over_budget or self._batch_waits <= 0
                     self._batch_waits -= 1
@@ -820,17 +881,20 @@ class RemoteLLMRunner:
                     if e.rate_limited:
                         raise RemoteLLMRateLimitError(str(e)) from e
                     raise
-                waited += delay
+                waited[0] += delay
                 logger.info("remote LLM: %s; retrying in %.0f s", e, delay)
                 time.sleep(delay)
         try:
             data = json.loads(raw.decode("utf-8"))
-            return str(data["choices"][0]["message"]["content"] or "").strip()
+            choice = data["choices"][0]
+            content = str(choice["message"]["content"] or "").strip()
+            finish = str(choice.get("finish_reason") or "")
         except (json.JSONDecodeError, KeyError, IndexError, TypeError,
-                UnicodeDecodeError) as e:
+                AttributeError, UnicodeDecodeError) as e:
             raise RemoteLLMError(
                 f"{url} returned an unexpected response shape: {e}"
             ) from e
+        return content, finish
 
     def _post_once(self, url: str, req: urllib.request.Request) -> bytes:
         """One HTTP attempt: the body, or a (maybe retryable) RemoteLLMError."""
@@ -911,9 +975,11 @@ class RemoteLLMRunner:
         )
 
     def translate(self, text: str, *, target_language: str = "English") -> str:
+        # Persian, Arabic, Hindi or CJK output takes several tokens per source word; 1.5 per word
+        # (the local model's figure) cut such translations short.
         return _strip_wrapped_quotes(self._chat(
             [{"role": "user", "content": _translate_prompt(text, target_language)}],
-            max_tokens=max(256, int(count_words(text) * 1.5)),
+            max_tokens=max(512, int(count_words(text) * 4)),
         ))
 
 

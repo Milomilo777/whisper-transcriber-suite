@@ -180,6 +180,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **Remote AI calls were refused by Groq (HTTP 403, error 1010)**: every request to an AI provider, including
   the cloud speech-to-text calls, now sends a `WhisperTranscriberSuite/<version>` User-Agent instead of
   urllib's default.
+- **Translate and Action items came back empty with the Groq preset**: `openai/gpt-oss-120b` spent the whole
+  small answer limit on its hidden reasoning, so Translate showed a blank result and Action items said "no action
+  items detected". Groq's gpt-oss models are now asked for low reasoning effort, translations get room for
+  scripts that need more tokens per word, and an answer cut off before it starts is asked again once with more
+  room, then reported as an error instead of a blank.
 - **Search status showed 0 segments after a full index**: Help > Search transcripts counted only the segments
   added in that pass. It now reports the total number of segments indexed.
 - **Voice tab named the wrong number of Kokoro voices**: the text said 53 while the list has 54. The count
