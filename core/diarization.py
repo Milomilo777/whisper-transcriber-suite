@@ -413,7 +413,11 @@ def _diarize_impl(
         min_duration_on=0.3,
         min_duration_off=0.5,
     )
-    if not config.validate():
+    # sherpa-onnx 1.13 checks the paths with a narrow-char file test on Windows, so a model
+    # folder with non-ASCII letters (a Portable copy under a Turkish user name) "does not exist"
+    # although the files load fine. availability_reason() has already checked them in Python;
+    # only an ASCII path still trusts validate().
+    if not config.validate() and (seg_path + emb_path).isascii():
         raise DiarizationUnavailable(
             "sherpa-onnx diarization config rejected the model paths"
         )

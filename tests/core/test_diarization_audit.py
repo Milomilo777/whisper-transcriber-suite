@@ -55,3 +55,55 @@ def test_diarize_maps_sherpa_items_to_labelled_segments(monkeypatch, tmp_path):
     assert res[0].speaker == "Speaker 01"
     assert res[1].start == 0.0
     assert res[1].speaker == "Speaker 00"
+
+
+def _fake_sherpa_rejecting_paths(monkeypatch, folder):
+    """sherpa-onnx whose config.validate() says False (as 1.13 does on Windows for a model path
+    with non-ASCII letters, though the files exist and load), models under ``folder``."""
+    import sys, types
+    import numpy as np
+
+    sherpa = types.ModuleType("sherpa_onnx")
+
+    class FakeConfig:
+        def validate(self): return False
+
+    class FakeDiarization:
+        def __init__(self, config): pass
+        def process(self, samples, callback):
+            class Item:
+                start, end, speaker = 0.0, 1.0, 0
+            class Result:
+                def sort_by_start_time(self): return [Item()]
+            return Result()
+
+    sherpa.OfflineSpeakerDiarizationConfig = lambda **k: FakeConfig()
+    sherpa.OfflineSpeakerSegmentationModelConfig = lambda **k: None
+    sherpa.OfflineSpeakerSegmentationPyannoteModelConfig = lambda **k: None
+    sherpa.SpeakerEmbeddingExtractorConfig = lambda **k: None
+    sherpa.FastClusteringConfig = lambda **k: None
+    sherpa.OfflineSpeakerDiarization = FakeDiarization
+    monkeypatch.setitem(sys.modules, "sherpa_onnx", sherpa)
+    monkeypatch.setattr(diar, "availability_reason", lambda: "")
+    monkeypatch.setattr(diar, "_model_path", lambda f: str(folder / f))
+    monkeypatch.setattr(diar, "_prepare_audio_16k_mono",
+                        lambda p: (np.zeros(16000, dtype=np.float32), 16000))
+
+
+def test_a_non_ascii_install_folder_still_identifies_speakers(monkeypatch, tmp_path):
+    # A Portable copy unpacked under C:\Users\Şükrü\...: the files exist (availability_reason
+    # checked them), so the narrow-char check of sherpa-onnx must not turn speakers off.
+    folder = tmp_path / "\u015e\u00fckr\u00fc_\u0130\u011fd\u0131r" / "diarization"
+    _fake_sherpa_rejecting_paths(monkeypatch, folder)
+    res = diar._diarize_impl(str(tmp_path / "audio.wav"))
+    assert [s.speaker for s in res] == ["Speaker 00"]
+
+
+def test_an_ascii_folder_rejected_by_sherpa_still_reports_why(monkeypatch, tmp_path):
+    import pytest
+    folder = tmp_path / "plain" / "diarization"
+    if not str(folder).isascii():
+        pytest.skip("temp folder itself is not ASCII")
+    _fake_sherpa_rejecting_paths(monkeypatch, folder)
+    with pytest.raises(diar.DiarizationUnavailable, match="rejected the model paths"):
+        diar._diarize_impl(str(tmp_path / "audio.wav"))

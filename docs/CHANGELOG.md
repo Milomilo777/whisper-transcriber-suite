@@ -121,6 +121,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Identify speakers works again on Windows when the app sits in a folder whose name has non-English letters (for example a Portable copy under a Turkish user name); the speaker models were wrongly reported as missing and the transcript came out without speaker labels.
 - The transcript viewer's right-click menu works again on Windows: Rename speaker, Edit timestamp and Copy text did nothing, because the menu was destroyed before Windows delivered the chosen entry.
 - If the transcription engine reports a late error after all output files were already written, the finished transcript is now kept and shown instead of being marked as failed.
 - A transcription whose Cancel button was pressed just after its files were written is now recorded as finished and shows its result, instead of as cancelled with no result.
