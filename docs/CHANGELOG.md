@@ -88,6 +88,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Changed
 
+- **The browser demo (/try/) uses better models**: Whisper Small is the default for every language and Large v3
+  Turbo (WebGPU) the best choice; Tiny and Base, too inaccurate for most languages, are gone. A new button removes
+  the downloaded models from the browser.
 - **Long transcripts no longer overflow Groq's small per-minute cap**: requests to api.groq.com are trimmed to
   a 6000-token budget, counted from the text's UTF-8 size so Chinese, Japanese and other scripts fit too, and
   the summary or answer says so. Other providers are never trimmed unless
