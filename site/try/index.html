@@ -105,17 +105,17 @@
       "url": "https://whisper-transcriber-suite.com/try/",
       "applicationCategory": "MultimediaApplication",
       "operatingSystem": "Any (a current web browser)",
-      "browserRequirements": "Requires WebAssembly",
+      "browserRequirements": "Requires WebAssembly; the Large model requires WebGPU",
       "description": "Free online audio transcription with no upload: Whisper runs inside your browser and turns an MP3, WAV, M4A or video file of up to 10 minutes into text, SRT and VTT. No sign-up. The audio never leaves your device.",
       "featureList": [
         "Transcribe an MP3, WAV, M4A, OGG or MP4 file of up to 10 minutes (5 on a phone)",
-        "Whisper Tiny (41 MB) or Base (77 MB) runs in the browser tab",
+        "Whisper Small (250 MB) or Large v3 Turbo (730 MB, WebGPU) runs in the browser tab",
         "Download TXT, SRT or VTT",
         "No upload: the audio never leaves your device",
         "No sign-up and no cost"
       ],
       "inLanguage": "en",
-      "dateModified": "2026-10-22",
+      "dateModified": "2026-10-26",
       "isAccessibleForFree": true,
       "offers": {
         "@type": "Offer",
@@ -167,7 +167,7 @@
           "name": "Why is it slower than the desktop app?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "A browser tab runs small models with limited access to your processor. The desktop app uses the full Whisper models and your graphics card when there is one."
+            "text": "A browser tab has limited access to your processor and graphics card. The desktop app runs the full Whisper models at full speed, on files of any length."
           }
         },
         {
@@ -180,10 +180,18 @@
         },
         {
           "@type": "Question",
+          "name": "Is the model kept, and can I delete it?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It stays in this browser, so the next file needs no download. Remove downloaded models, under step 2, deletes it; clearing this site's data in the browser does too."
+          }
+        },
+        {
+          "@type": "Question",
           "name": "Which browsers?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Current Chrome, Edge, Firefox and Safari. On a phone it works best with Tiny and a short file."
+            "text": "Current Chrome, Edge, Firefox and Safari run Small. Large needs WebGPU: current Chrome or Edge on a computer. On a phone, use Small and a short file."
           }
         }
       ]
@@ -301,9 +309,10 @@
         <section class="try-step" aria-labelledby="try-model-title">
           <h2 id="try-model-title">2. Choose the speech model and language</h2>
           <div class="try-row">
-            <label><input type="radio" name="model" value="base" checked> Base: better (<span data-base-size>77 MB</span>)</label>
-            <label><input type="radio" name="model" value="tiny"> Tiny: faster (41 MB)</label>
+            <label><input type="radio" name="model" value="small" checked> Small: good, works everywhere (250 MB)</label>
+            <label><input type="radio" name="model" value="large"> Large: best quality (730 MB, needs WebGPU)</label>
           </div>
+          <p class="try-note" data-large-note hidden>Large needs WebGPU, which this browser does not offer. Current Chrome and Edge on a computer have it.</p>
           <div class="try-row">
             <label>Language spoken in the file
               <select data-language>
@@ -328,6 +337,7 @@
           </div>
           <p class="try-warn" data-lang-note hidden></p>
           <p class="try-note" data-model-info>The model is downloaded once from Hugging Face and then kept in this browser.</p>
+          <p class="try-note"><button class="btn btn-ghost" type="button" data-remove-models>Remove downloaded models</button> <span data-remove-note aria-live="polite" hidden></span></p>
           <p class="try-warn" data-net-warn hidden>You seem to be on mobile data or in data-saver mode. The model download is large; Wi-Fi is better.</p>
         </section>
 
@@ -365,9 +375,10 @@
       <h2>Questions</h2>
       <div class="faq-list">
         <article class="qa"><h3>Is my audio uploaded?</h3><div class="faq-a"><p>No. The file is read by this page and transcribed inside your browser. The only download is the speech model itself, from Hugging Face, the first time you use it.</p></div></article>
-        <article class="qa"><h3>Why is it slower than the desktop app?</h3><div class="faq-a"><p>A browser tab runs small models with limited access to your processor. The desktop app uses the full Whisper models and your graphics card when there is one.</p></div></article>
+        <article class="qa"><h3>Why is it slower than the desktop app?</h3><div class="faq-a"><p>A browser tab has limited access to your processor and graphics card. The desktop app runs the full Whisper models at full speed, on files of any length.</p></div></article>
         <article class="qa"><h3>Which files work?</h3><div class="faq-a"><p>Most audio files (MP3, WAV, M4A, OGG) and MP4 or WebM videos with sound, up to 10 minutes. What a browser can open varies; the desktop app opens nearly any format.</p></div></article>
-        <article class="qa"><h3>Which browsers?</h3><div class="faq-a"><p>Current Chrome, Edge, Firefox and Safari. On a phone it works best with Tiny and a short file.</p></div></article>
+        <article class="qa"><h3>Is the model kept, and can I delete it?</h3><div class="faq-a"><p>It stays in this browser, so the next file needs no download. <strong>Remove downloaded models</strong>, under step 2, deletes it; clearing this site's data in the browser does too.</p></div></article>
+        <article class="qa"><h3>Which browsers?</h3><div class="faq-a"><p>Current Chrome, Edge, Firefox and Safari run Small. Large needs WebGPU: current Chrome or Edge on a computer. On a phone, use Small and a short file.</p></div></article>
       </div>
     </article>
   </div>
@@ -394,6 +405,6 @@
 </footer>
 
 <script src="../js/lang.js?v=20261020a" defer></script>
-<script type="module" src="try.js?v=20261020b"></script>
+<script type="module" src="try.js?v=20261026b"></script>
 </body>
 </html>

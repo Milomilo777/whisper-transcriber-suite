@@ -1,4 +1,4 @@
-// Runs Whisper inside the browser (transformers.js, ONNX Runtime WebAssembly) for /try/.
+// Runs Whisper inside the browser (transformers.js, ONNX Runtime WebAssembly or WebGPU) for /try/.
 // transformers.js is loaded at an exact version from jsDelivr (npm releases there never change); a copy in
 // the repository was refused by GitHub's secret scanning (a model class name looks like an API key).
 // The audio arrives as samples from try.js and never leaves this worker: the only network traffic is the
@@ -16,33 +16,23 @@ async function library() {
   return lib;
 }
 
-// 'base-persian': Whisper Base fine-tuned for Persian (C1Tech/whisper_base_persian, Apache-2.0; its card reports
-// it beats Whisper large-v3 on Persian), in the ONNX export made for Transformers.js. try.js picks it for Persian.
+// Small runs everywhere (WebAssembly). Large v3 Turbo runs on the graphics card (WebGPU), close to the desktop app's
+// quality: on FLEURS the Whisper paper's large models make about half the word errors of Small in most languages.
+// Tiny and Base were dropped (2026-10-26): too many mistakes in most languages (Base: 86 % WER in Persian).
 const MODELS = {
-  tiny: 'onnx-community/whisper-tiny',
-  base: 'onnx-community/whisper-base',
-  'base-persian': 'armantee/whisper-base-persian-onnx',
+  small: 'onnx-community/whisper-small',
+  large: 'onnx-community/whisper-large-v3-turbo_timestamped',
 };
-// The Persian fine-tune lost Whisper's timestamp tokens: asked for timestamps it returns no text at all.
-// It runs window by window instead, and each window becomes one timed chunk.
-const NO_TIMESTAMPS = new Set(['base-persian']);
-const SR = 16000;
-const WINDOW = 30 * SR;
-// Small models fall into loops on hard audio (one word repeated 150 times on a phone call):
+// Large: a 4-bit encoder and decoder (about 730 MB) on every graphics card. The fp16 encoder needs shader-f16, which
+// many laptop GPUs lack, and Transformers.js v4 loses most of the transcript with it (issue 1590); the fp32 encoder
+// (2.5 GB) never finished loading on an integrated GPU (2026-10-26 test).
+const OPTIONS = {
+  small: { device: 'wasm', dtype: 'q8' },
+  large: { device: 'webgpu', dtype: { encoder_model: 'q4', decoder_model_merged: 'q4' } },
+};
+// Whisper can fall into loops on hard audio (one word repeated 150 times on a phone call):
 // never repeat the same 4 tokens inside one 30-second window.
 const NO_REPEAT = 4;
-
-async function byWindow(audio, language) {
-  const chunks = [];
-  for (let i = 0; i < audio.length; i += WINDOW) {
-    const piece = audio.subarray(i, i + WINDOW);
-    if (piece.length < SR / 2) continue;  // a last scrap under half a second
-    const out = await asr(piece, { language, task: 'transcribe', no_repeat_ngram_size: NO_REPEAT });
-    const text = (out.text || '').trim();
-    if (text) chunks.push({ timestamp: [i / SR, (i + piece.length) / SR], text });
-  }
-  return { text: chunks.map((c) => c.text).join(' '), chunks };
-}
 let asr = null;
 let loaded = '';
 
@@ -55,9 +45,11 @@ self.onmessage = async (event) => {
     if (!asr || loaded !== id) {
       asr = null;
       const { pipeline } = await library();
+      if (OPTIONS[msg.model].device === 'webgpu' && !(self.navigator.gpu && await self.navigator.gpu.requestAdapter())) {
+        throw new Error('this browser has no WebGPU, which the Large model needs. Pick Small');
+      }
       asr = await pipeline('automatic-speech-recognition', id, {
-        device: 'wasm',
-        dtype: 'q8',
+        ...OPTIONS[msg.model],
         progress_callback: (p) => {
           if (p && p.status === 'progress' && typeof p.loaded === 'number' && typeof p.total === 'number') {
             self.postMessage({ type: 'download', file: p.file, loaded: p.loaded, total: p.total });
@@ -67,7 +59,7 @@ self.onmessage = async (event) => {
       loaded = id;
     }
     self.postMessage({ type: 'transcribing' });
-    const out = NO_TIMESTAMPS.has(msg.model) ? await byWindow(msg.audio, msg.language || null) : await asr(msg.audio, {
+    const out = await asr(msg.audio, {
       language: msg.language || null,
       task: 'transcribe',
       chunk_length_s: 30,

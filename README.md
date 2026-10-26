@@ -174,8 +174,8 @@ the page decodes and transcribes the file on your device.
 | | |
 |---|---|
 | **What it does** | Pick or drop a file, press Transcribe, then save TXT, SRT or VTT, or copy the text. |
-| **Models** | Whisper **Tiny** (faster, 41 MB download) or **Base** (better, 77 MB). With Persian picked, Base is replaced by a Whisper Base fine-tuned for Persian (105 MB). |
-| **How it runs** | [Transformers.js](https://github.com/huggingface/transformers.js) with ONNX Runtime WebAssembly and 8-bit weights, in a Web Worker. |
+| **Models** | Whisper **Small** (the default, 250 MB download, works in every current browser) or **Large v3 Turbo** (best quality, 730 MB, needs WebGPU: current Chrome or Edge on a computer). The model stays in the browser for the next file; **Remove downloaded models** deletes it. |
+| **How it runs** | [Transformers.js](https://github.com/huggingface/transformers.js) in a Web Worker: Small on ONNX Runtime WebAssembly with 8-bit weights, Large on WebGPU with 4-bit weights. |
 | **Length** | Up to 10 minutes per file (5 minutes on a phone). One file at a time. |
 | **Files** | Most audio files (MP3, WAV, M4A, OGG) and MP4 or WebM videos with sound; what a browser can open varies. |
 | **Languages** | You pick one of 16 (English, Arabic, Chinese, French, German, Hindi, Indonesian, Italian, Japanese, Korean, Persian, Portuguese, Russian, Spanish, Turkish, Vietnamese); the page starts from your browser's language. |
@@ -996,7 +996,7 @@ The 10-minute limit is only for the browser version.
 ### Is there a version that runs in the browser?
 
 Yes: [whisper-transcriber-suite.com/try/](https://whisper-transcriber-suite.com/try/). It transcribes files of up
-to 10 minutes (5 on a phone) inside the browser tab with Whisper Tiny or Base, and saves TXT, SRT or VTT. The audio
+to 10 minutes (5 on a phone) inside the browser tab with Whisper Small or Large v3 Turbo, and saves TXT, SRT or VTT. The audio
 never leaves your device. The desktop app is far more accurate and has every other feature.
 
 ### Can I use it from my phone?

@@ -18,17 +18,22 @@ const netWarn = document.querySelector('[data-net-warn]');
 const modelInfo = document.querySelector('[data-model-info]');
 const langNote = document.querySelector('[data-lang-note]');
 const awakeNote = document.querySelector('[data-awake]');
-const baseSize = document.querySelector('[data-base-size]');
+const largeRadio = document.querySelector('input[name="model"][value="large"]');
+const largeNote = document.querySelector('[data-large-note]');
+const removeBtn = document.querySelector('[data-remove-models]');
+const removeNote = document.querySelector('[data-remove-note]');
 
-const SIZES = { tiny: '41 MB', base: '77 MB', 'base-persian': '105 MB' };
+const SIZES = { small: '250 MB', large: '730 MB' };
 const MODEL_IDS = {
-  tiny: 'onnx-community/whisper-tiny',
-  base: 'onnx-community/whisper-base',
-  'base-persian': 'armantee/whisper-base-persian-onnx',
+  small: 'onnx-community/whisper-small',
+  large: 'onnx-community/whisper-large-v3-turbo_timestamped',
 };
-// Languages the small browser models get badly wrong: say so, and point to the desktop app.
+// Every model this page ever downloaded, so "Remove downloaded models" also clears the ones it no longer offers.
+const ALL_MODEL_IDS = [...Object.values(MODEL_IDS), 'onnx-community/whisper-tiny', 'onnx-community/whisper-base',
+  'armantee/whisper-base-persian-onnx'];
+// Languages Small gets badly wrong: say so, and point to Large and the desktop app.
 const WEAK = { persian: 'Persian', arabic: 'Arabic', hindi: 'Hindi', korean: 'Korean', turkish: 'Turkish',
-  vietnamese: 'Vietnamese' };
+  vietnamese: 'Vietnamese', chinese: 'Chinese' };
 const PHONE = window.matchMedia('(pointer: coarse)').matches;
 const MAX_SECONDS = (PHONE ? 5 : 10) * 60;
 
@@ -45,9 +50,7 @@ let hiddenAt = 0;
 function show(el, on) { el.hidden = !on; }
 function setError(text) { errorBox.textContent = text; show(errorBox, Boolean(text)); }
 function model() {
-  // Persian gets the Persian-trained Base model; Tiny stays the generic one.
-  const m = document.querySelector('input[name="model"]:checked').value;
-  return m === 'base' && langSel.value === 'persian' ? 'base-persian' : m;
+  return document.querySelector('input[name="model"]:checked').value;
 }
 
 // Phones pause a page whose screen turns off, and the transcription with it: keep the screen on while it runs.
@@ -80,20 +83,35 @@ function onVisibility() {
 
 function languageNote() {
   const name = WEAK[langSel.value];
-  const persian = model() === 'base-persian';
-  baseSize.textContent = persian ? SIZES['base-persian'] : SIZES.base;
-  let text = '';
-  if (persian) {
-    text = 'Persian uses a Base model trained for Persian (Apache-2.0, by C1Tech). Phone calls and noisy audio are still '
-      + 'hard for a small model in the browser; the free desktop app is far more accurate.';
-  } else if (langSel.value === 'persian') {
-    text = 'Tiny is the general model and gets Persian badly wrong. Pick Base: for Persian it is a model trained for Persian.';
-  } else if (name) {
-    text = `The small models that fit in a browser make many mistakes in ${name}. For real work, use the free desktop `
-      + 'app with a large model.';
-  }
+  const text = name && model() === 'small'
+    ? `Small makes many mistakes in ${name}. Pick Large for a much better result, or use the free desktop app.`
+    : '';
   langNote.textContent = text;
   show(langNote, Boolean(text));
+}
+
+// Large needs WebGPU: without it the option stays visible but cannot be picked, and says why.
+async function checkLarge() {
+  let ok = false;
+  try {
+    ok = Boolean(navigator.gpu && await navigator.gpu.requestAdapter());
+  } catch (e) { /* no adapter */ }
+  largeRadio.disabled = !ok;
+  show(largeNote, !ok);
+  if (!ok && largeRadio.checked) document.querySelector('input[name="model"][value="small"]').checked = true;
+}
+
+async function removeModels() {
+  let n = 0;
+  try {
+    const cache = await caches.open('transformers-cache');
+    for (const r of await cache.keys()) {
+      if (ALL_MODEL_IDS.some((id) => r.url.includes(id)) && await cache.delete(r)) n += 1;
+    }
+  } catch (e) { /* no Cache API */ }
+  removeNote.textContent = n ? `Removed ${n} model files from this browser.` : 'No downloaded model was found in this browser.';
+  show(removeNote, true);
+  cacheNote();
 }
 function minutes(sec) { return `${Math.floor(sec / 60)}:${String(Math.round(sec % 60)).padStart(2, '0')}`; }
 
@@ -161,9 +179,11 @@ function finish() {
   letSleep();
   clearInterval(tick);
   runBtn.disabled = !file;
+  cacheNote();
 }
 
-const files = new Map();  // model file -> [loaded, total]: the download progress over all files
+const files = new Map();  // model file -> [loaded, total]: the download progress of this run's model
+let inBrowser = false;  // the model of this run was already in this browser's cache
 
 function onMessage(event) {
   const m = event.data || {};
@@ -174,7 +194,8 @@ function onMessage(event) {
     files.forEach(([l, t]) => { loaded += l; total += t; });
     bar.max = total;
     bar.value = loaded;
-    statusLine.textContent = `Downloading the speech model: ${Math.round(loaded / 1048576)} of ${Math.round(total / 1048576)} MB`;
+    const verb = inBrowser ? 'Loading the speech model from this browser' : 'Downloading the speech model';
+    statusLine.textContent = `${verb}: ${Math.round(loaded / 1048576)} of ${Math.round(total / 1048576)} MB`;
   } else if (m.type === 'transcribing') {
     bar.removeAttribute('value');
     started = Date.now();
@@ -202,6 +223,8 @@ async function run() {
   if (!file || busy) return;
   busy = true;
   runBtn.disabled = true;
+  removeBtn.disabled = true;
+  show(removeNote, false);
   setError('');
   show(resultBox, false);
   show(progressBox, true);
@@ -221,24 +244,30 @@ async function run() {
     return;
   }
   if (!worker) {
-    worker = new Worker(new URL('./try-worker.js?v=20261020b', import.meta.url), { type: 'module' });
+    worker = new Worker(new URL('./try-worker.js?v=20261026a', import.meta.url), { type: 'module' });
     worker.onmessage = onMessage;
     worker.onerror = (e) => onMessage({ data: { type: 'error', message: e.message || 'the worker stopped' } });
   }
   statusLine.textContent = 'Preparing the speech model…';
+  files.clear();
+  inBrowser = await modelCached(model());
   worker.postMessage({ type: 'run', model: model(), language: langSel.value, audio }, [audio.buffer]);
+}
+
+async function modelCached(m) {
+  try {
+    const cache = await caches.open('transformers-cache');
+    return (await cache.keys()).some((r) => r.url.includes(MODEL_IDS[m]));
+  } catch (e) { return false; /* no Cache API: say nothing about the cache */ }
 }
 
 async function cacheNote() {
   const m = model();
-  let cached = false;
-  try {
-    const cache = await caches.open('transformers-cache');
-    cached = (await cache.keys()).some((r) => r.url.includes(MODEL_IDS[m]));
-  } catch (e) { /* no Cache API: say nothing about the cache */ }
+  const cached = await modelCached(m);
   modelInfo.textContent = cached
     ? 'This model is already in this browser: no download needed.'
     : `The model (${SIZES[m]}) is downloaded once from Hugging Face when you press Transcribe, then kept in this browser.`;
+  removeBtn.disabled = busy;
 }
 
 function init() {
@@ -276,6 +305,8 @@ function init() {
   runBtn.addEventListener('click', run);
   document.querySelectorAll('[data-save]').forEach((b) => b.addEventListener('click', () => save(b.dataset.save)));
   document.querySelector('[data-copy]').addEventListener('click', () => navigator.clipboard && navigator.clipboard.writeText(textOut.value));
+  removeBtn.addEventListener('click', () => { if (!busy) removeModels(); });
+  checkLarge().then(() => { languageNote(); cacheNote(); });
   cacheNote();
 }
 
