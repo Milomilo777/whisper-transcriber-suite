@@ -175,7 +175,10 @@ left-to-right places.
   unjoined. `i18n.plain()` turns such a text, also one composed of several translated parts, back
   into logical order. Code that joins translated parts into one line (`_("a") + " " + _("b")`)
   wraps the result in `i18n.display()`, which shapes the whole line once; window titles and the
-  tray go through `rtl_shaping.logical`, since the desktop shapes those itself. Known limits: a
+  tray go through `rtl_shaping.logical`, since the desktop shapes those itself. A shaped text is
+  an `rtl_shaping.Shaped` (a `str` that carries its logical text); `+` keeps track of it, but an
+  f-string, `str.join` or `%` around a Hebrew `_()` result does not, so join with `+` or let `_()`
+  place the parts. Raw data (a speaker or file name) is always taken for logical text. Known limits: a
   label long enough to wrap shows its lines in the wrong order, and a "%" or "$" next to a
   number inside brackets can sit on the wrong side.
 - In code, a translated text that leaves the screen (the log file, the clipboard, a file) goes

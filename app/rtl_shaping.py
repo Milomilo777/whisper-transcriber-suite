@@ -12,10 +12,17 @@ never given to an Entry, Combobox or Text the user types in, and never stored, c
 or saved: those keep the logical order. ``app.i18n`` calls it once, at the single place where
 a translated text is finished, and ``app.theme.bidi_display.ltr_base`` for names shown in lists.
 
-A text is never shaped twice. Reordering twice would put the letters back, so every result is
-remembered; :func:`visual` returns a remembered result (or a line that already holds Arabic
-presentation forms) unchanged, and :func:`logical` gives back the text a result came from (for
-``plain()``, the log file and the clipboard, and for a shaped value inside another text).
+A text is never shaped twice, and never taken for shaped by its look. Reordering twice would put
+the letters back, and Hebrew is only reversed, so a reversed word can equal a real word (the raw
+name of a speaker or a file). What :func:`visual` returns is therefore a :class:`Shaped`: a ``str``
+that carries its logical text. :func:`logical` reads it back from the object, ``+`` between a
+Shaped and any text keeps track of both parts, and :func:`visual` of a joined text shapes the
+logical whole once. Plain ``str`` (raw data) is always taken for logical text. Arabic results,
+which are unmistakable (presentation forms), are also remembered by text, so an f-string or
+``join`` around one can still be recovered; Hebrew results are not. Texts joined by anything but
+``+`` (f-strings, ``str.join``, ``%``) lose a Hebrew part's identity: build them with ``+`` or
+let ``_()`` place the parts.
+
 Wrapped labels are the known limit: Tk breaks a long visual line at its width from the left, so
 a label long enough to wrap shows its lines in the wrong order.
 """
@@ -40,19 +47,44 @@ SHAPED_PLATFORMS: frozenset[str] = frozenset({"linux"})
 # U+FDFC (a currency symbol real text uses) and the byte order mark U+FEFF.
 _PRESENTATION_FORMS = (range(0xFB50, 0xFD3E), range(0xFD40, 0xFDD0), range(0xFDF0, 0xFDFC),
                        range(0xFE70, 0xFEFD))
-_REMEMBERED = 20000  # results kept for logical(); far more than the interface has texts
-# Hebrew is only reversed, so a reversed text can equal a real text (the reversal of "HMR" is "RMH").
-# When the caller does not know that a text is an earlier result, a Hebrew result shorter than this
-# is never taken for one; Arabic results are unmistakable (presentation forms) and count at any
-# length. A caller that knows (plain(), the tray, display(), status clipping) accepts any exact
-# whole-string match and, for segments inside a larger string, ones of at least _TRUSTED_SEGMENT.
-_MIN_HEBREW_SEGMENT = 5
-_TRUSTED_SEGMENT = 3
+_REMEMBERED = 20000  # Arabic results kept by text for logical(); far more than the interface has
 
 _LOCK = threading.Lock()
 _VISUAL_TO_LOGICAL: OrderedDict[str, str] = OrderedDict()
 _BY_FIRST_CHAR: dict[str, set[str]] = {}  # the keys above by their first character
-_CACHE: dict[tuple[str, str, bool, bool], str] = {}
+_CACHE: dict[tuple[str, str, bool], tuple[str, str]] = {}  # (line, base, logical_input) -> (shown, logical)
+
+
+class Shaped(str):
+    """A display-shaped text that knows the logical text it came from.
+
+    It is a ``str`` (Tk, ``==``, hashing and slicing work as usual); ``logical`` is the text a
+    user would type or copy. ``+`` with another text gives a Shaped with ``composed`` set, whose
+    string is the plain concatenation (wrong reading order) and whose logical text is the
+    concatenation of the logical parts: :func:`visual` and ``i18n.display`` shape it again, once.
+    """
+
+    logical: str
+    composed: bool
+
+    def __new__(cls, shown: str, logical: str, composed: bool = False) -> "Shaped":
+        obj = super().__new__(cls, shown)
+        obj.logical = logical
+        obj.composed = composed
+        return obj
+
+    def __getnewargs__(self) -> tuple[str, str, bool]:  # copy and pickle
+        return (str(self), self.logical, self.composed)
+
+    def __add__(self, other: str) -> "Shaped":  # type: ignore[override]
+        if not isinstance(other, str):
+            return NotImplemented
+        return Shaped(str.__add__(self, other), self.logical + logical(other), True)
+
+    def __radd__(self, other: str) -> "Shaped":
+        if not isinstance(other, str):
+            return NotImplemented
+        return Shaped(str.__add__(other, self), logical(other) + self.logical, True)
 
 
 def _engine() -> "Engine | None":
@@ -79,11 +111,13 @@ def _is_shaped(line: str) -> bool:
     return any(ord(ch) in r for ch in line for r in _PRESENTATION_FORMS)
 
 
-def _remember(shaped: str, logical: str) -> None:
-    if not shaped or shaped == logical:  # an empty key would match everywhere
+def _remember(shaped: str, logical_text: str) -> None:
+    """Remember an Arabic result by its text (a key holds presentation forms, so it cannot be
+    real text)."""
+    if not shaped or shaped == logical_text or not _is_shaped(shaped):
         return
     with _LOCK:
-        _VISUAL_TO_LOGICAL[shaped] = logical
+        _VISUAL_TO_LOGICAL[shaped] = logical_text
         _VISUAL_TO_LOGICAL.move_to_end(shaped)
         _BY_FIRST_CHAR.setdefault(shaped[0], set()).add(shaped)
         while len(_VISUAL_TO_LOGICAL) > _REMEMBERED:
@@ -97,46 +131,39 @@ def _remember(shaped: str, logical: str) -> None:
             _CACHE.clear()
 
 
-def _recover(text: str, min_hebrew: int = _MIN_HEBREW_SEGMENT) -> str:
-    """*text* with every shaped segment that :func:`visual` made swapped back to its logical text.
+def _lookup_result(body: str) -> str | None:
+    """The logical text of *body* when it is an Arabic result remembered by text (one lock, one
+    ``get``: another thread may evict it at any time)."""
+    with _LOCK:
+        return _VISUAL_TO_LOGICAL.get(body)
 
-    Longest segment first. An Arabic segment is unmistakable (presentation forms); a Hebrew one
-    (only reversed) must have at least *min_hebrew* characters and stand between non-letters, so
-    that a short real word that equals some reversed word is not taken for one.
+
+def _recover(text: str) -> str:
+    """*text* with every remembered Arabic result inside it swapped back to its logical text.
+
+    Longest result first. Only results made of presentation forms are remembered, so nothing
+    that is real text can match.
     """
     chars = set(text)
     with _LOCK:  # a snapshot of the candidates: the keys that start with a character of the text
-        found = [(k, _VISUAL_TO_LOGICAL[k]) for c in chars for k in _BY_FIRST_CHAR.get(c, ())
-                 if len(k) <= len(text)]
+        found = [(k, v) for c in chars for k in _BY_FIRST_CHAR.get(c, ())
+                 if len(k) <= len(text) and (v := _VISUAL_TO_LOGICAL.get(k)) is not None]
     hits = sorted((kv for kv in found if kv[0] in text), key=lambda kv: len(kv[0]), reverse=True)
     if not hits:
         return text
     pieces: list[tuple[str, bool]] = [(text, False)]  # (text, already logical)
     for key, logical_text in hits:
-        arabic = _is_shaped(key)
-        if not arabic and len(key) < min_hebrew:
-            continue
         nxt: list[tuple[str, bool]] = []
         for part, done in pieces:
             if done or key not in part:
                 nxt.append((part, done))
                 continue
-            emitted = scan = 0
-            while True:
-                i = part.find(key, scan)
-                if i < 0:
-                    break
-                j = i + len(key)
-                if not arabic and ((i > 0 and part[i - 1].isalpha())
-                                   or (j < len(part) and part[j].isalpha())):
-                    scan = i + 1
-                    continue
-                if i > emitted:
-                    nxt.append((part[emitted:i], False))
-                nxt.append((logical_text, True))
-                emitted = scan = j
-            if emitted < len(part):
-                nxt.append((part[emitted:], False))
+            chunks = part.split(key)
+            for n, chunk in enumerate(chunks):
+                if n:
+                    nxt.append((logical_text, True))
+                if chunk:
+                    nxt.append((chunk, False))
         pieces = nxt
     return "".join(p for p, _done in pieces)
 
@@ -235,81 +262,77 @@ def _split_cr(line: str) -> tuple[str, str]:
     return (line[:-1], "\r") if line.endswith("\r") else (line, "")
 
 
-def _is_result(body: str, any_length: bool = False) -> bool:
-    """True when *body* is a whole line that :func:`visual` made. Unless *any_length* (the caller
-    knows it is shaped text), a short Hebrew line is not taken for one: it may be real text."""
-    with _LOCK:
-        known = body in _VISUAL_TO_LOGICAL
-    return known and (any_length or len(body) >= _MIN_HEBREW_SEGMENT or _is_shaped(body))
-
-
-def _shape_line(line: str, base: str, logical_input: bool = False, trusted: bool = False) -> str:
+def _shape_line(line: str, base: str, logical_input: bool) -> tuple[str, str]:
+    """(shown, logical) of one line."""
     body, tail = _split_cr(line)
     if not body or not _has_rtl_letter(body):
-        return line
+        return line, line
     engine = _engine()
     if engine is None:
-        return line
-    if not logical_input and _is_result(body, trusted):  # a line visual() made: never shaped twice
-        return line
-    key = (body, base, logical_input, trusted)
+        return line, line
+    if not logical_input:
+        known = _lookup_result(body)  # an Arabic result by its text: never shaped twice
+        if known is not None:
+            return line, known + tail
+    key = (body, base, logical_input)
     with _LOCK:
         cached = _CACHE.get(key)
     if cached is not None:
-        return cached + tail
-    # Shaped segments inside the line (a name from ltr_base, a sentence of _()) go back to their
-    # logical text, so the whole line is shaped once, in one reading order.
-    source = body if logical_input else _recover(body, _TRUSTED_SEGMENT if trusted else _MIN_HEBREW_SEGMENT)
+        return cached[0] + tail, cached[1] + tail
+    # Arabic results inside the line (a name from ltr_base, a sentence of _() in an f-string) go
+    # back to their logical text, so the whole line is shaped once, in one reading order.
+    source = body if logical_input else _recover(body)
     if _is_shaped(source):  # presentation forms visual() did not make: cannot be put right
-        return line
+        return line, line
     out = _order(engine, engine.reshape(source), base)
     _remember(out, source)
     with _LOCK:
-        _CACHE[key] = out
-    return out + tail
+        _CACHE[key] = (out, source)
+    return out + tail, source + tail
 
 
-def visual(text: str, base: str = "R", logical_input: bool = False, trusted: bool = False) -> str:
+def visual(text: str, base: str = "R", logical_input: bool = False) -> str:
     """*text* in the form a Tk label needs on Linux: joined letters, visual order, per line.
 
-    *base* is the paragraph direction, "R" (an interface text of a right-to-left language) or
-    "L" (a name inside an English sentence). Lines without a right-to-left letter, a line that is
-    already a result of this function, and everything when the engine is missing are returned as
-    they are. A line that holds results inside other text (``"  " + _("x")``) is shaped again as
-    a whole, from the logical text of its parts. ``logical_input=True`` says the caller knows
-    *text* is logical (a catalog translation): nothing in it is taken for an earlier result.
-    ``trusted=True`` says *text* is made of earlier results (UI text joined from translated
-    parts): any exact result, and shorter Hebrew segments, are taken for results.
+    Returns a :class:`Shaped` when it changed anything, else *text* itself. *base* is the
+    paragraph direction, "R" (an interface text of a right-to-left language) or "L" (a name
+    inside an English sentence). A Shaped that is not composed is already shaped and returned as
+    it is; a composed one (``"  " + _("x")``) is shaped again as a whole from its logical text.
+    Plain text is taken for logical text. Lines without a right-to-left letter and everything
+    when the engine is missing are returned as they are. ``logical_input=True`` says *text* is
+    logical for sure (a catalog translation): no remembered Arabic result is looked for in it.
     """
+    if isinstance(text, Shaped):
+        if not text.composed:
+            return text
+        text, logical_input = text.logical, True
     if not text or not _has_rtl_letter(text):
         return text
-    if "\n" not in text:
-        return _shape_line(text, base, logical_input, trusted)
-    return "\n".join(_shape_line(line, base, logical_input, trusted) for line in text.split("\n"))
+    pairs = [_shape_line(line, base, logical_input) for line in text.split("\n")]
+    shown = "\n".join(p[0] for p in pairs)
+    if shown == text:
+        return text
+    return Shaped(shown, "\n".join(p[1] for p in pairs))
 
 
-def _logical_line(line: str, trusted: bool = False) -> str:
-    body, tail = _split_cr(line)
-    if _is_result(body, any_length=True):  # the caller passes shaped UI text
-        with _LOCK:
-            return _VISUAL_TO_LOGICAL[body] + tail
-    if not body or not _has_rtl_letter(body):
-        return line
-    return _recover(body, _TRUSTED_SEGMENT if trusted else _MIN_HEBREW_SEGMENT) + tail
-
-
-def logical(text: str, trusted: bool = False) -> str:
-    """The logical text of *text*: every segment :func:`visual` made, whole or inside a larger
-    string, is swapped back; everything else is kept as it is.
-
-    A whole line that is an earlier result is swapped back at any length. Inside a larger line
-    a Hebrew segment needs five characters, or three with ``trusted=True`` (the caller knows the
-    line is UI text made of earlier results)."""
+def logical(text: str) -> str:
+    """The logical text of *text*: a Shaped gives its own; in plain text every remembered Arabic
+    result, whole or inside the text, is swapped back; everything else is kept as it is."""
+    if isinstance(text, Shaped):
+        return text.logical
     if not text:
         return text
-    if "\n" not in text:
-        return _logical_line(text, trusted)
-    return "\n".join(_logical_line(line, trusted) for line in text.split("\n"))
+    out = []
+    for line in text.split("\n"):
+        body, tail = _split_cr(line)
+        known = _lookup_result(body) if body else None
+        if known is not None:
+            out.append(known + tail)
+        elif body and _has_rtl_letter(body):
+            out.append(_recover(body) + tail)
+        else:
+            out.append(line)
+    return "\n".join(out)
 
 
 # --- window titles ------------------------------------------------------------------------------------

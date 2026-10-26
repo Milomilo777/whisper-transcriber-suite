@@ -694,7 +694,7 @@ def display(text: str, logical: bool = False) -> str:
     if not _STATE.shaped:
         return text
     # logical=True: the caller cut or built *text* from logical parts, nothing in it is a result.
-    return rtl_shaping.visual(text, logical_input=True) if logical else rtl_shaping.visual(text, trusted=True)
+    return rtl_shaping.visual(text, logical_input=logical)
 
 
 def _has_rtl_letter(text: str) -> bool:
@@ -747,6 +747,8 @@ def plain(text: str) -> str:
     For a translated text that leaves the screen: the log file, the clipboard, a file. On Linux it
     also gives a display-shaped text back in logical order (:func:`app.rtl_shaping.logical`).
     """
+    if isinstance(text, rtl_shaping.Shaped):  # Linux: a shaped text knows its logical text
+        return text.logical
     return rtl_shaping.logical(_EMBEDDING_MARKS.sub("", text))
 
 

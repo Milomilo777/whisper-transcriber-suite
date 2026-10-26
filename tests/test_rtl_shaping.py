@@ -319,8 +319,10 @@ def test_a_short_hebrew_word_is_not_taken_for_a_shaped_segment() -> None:
 def test_a_short_hebrew_text_equal_to_an_earlier_result_is_still_shaped() -> None:
     assert rtl_shaping.visual("המר") == "רמה"
     assert rtl_shaping.visual("רמה") == "המר"  # logical "רמה" is not the earlier result
-    # logical() is for shaped UI text, so it accepts any exact earlier result, even a short one.
-    assert rtl_shaping.logical("המר") == "רמה"
+    # Hebrew results are known by identity (a Shaped), never by their text: plain text is logical.
+    assert rtl_shaping.logical(rtl_shaping.visual("המר")) == "המר"
+    assert rtl_shaping.logical("רמה") == "רמה"
+    assert rtl_shaping.logical("המר") == "המר"
 
 
 def test_a_translation_equal_to_an_earlier_long_hebrew_result_is_shaped(
@@ -566,14 +568,20 @@ def test_status_clip_keeps_a_short_hebrew_message(he3_linux: None) -> None:
         i18n._("Show") + " " + i18n._("Hide"))
 
 
-def test_status_clip_shapes_its_logical_result_even_if_that_equals_an_earlier_result(
-        he3_linux: None, empty_memory: None) -> None:
-    from app.domain import status_line as sl
+def test_a_shaped_text_survives_copy_pickle_and_addition_on_either_side() -> None:
+    import copy
+    import pickle
 
-    a = "אבגדהוזחט"
-    x = rtl_shaping.visual(a)  # the reversed text
-    assert rtl_shaping.visual(x, logical_input=True) == a  # and now "a" is a remembered result too
-    assert sl._clip(x) == x  # logical(x) is a; shaping a (logical for sure) gives x again
+    s = rtl_shaping.visual("ذخیره شد")
+    assert isinstance(s, rtl_shaping.Shaped) and s.logical == "ذخیره شد" and not s.composed
+    for clone in (copy.copy(s), copy.deepcopy(s), pickle.loads(pickle.dumps(s))):
+        assert clone == s and clone.logical == s.logical
+    left, right = "x " + s, s + " y"
+    assert left.composed and right.composed
+    assert left.logical == "x ذخیره شد" and right.logical == "ذخیره شد y"
+    assert (s + s).logical == "ذخیره شدذخیره شد"
+    assert rtl_shaping.logical(left) == "x ذخیره شد"
+    assert s.upper() == str(s).upper() and type(s[1:]) is str  # slicing and methods give plain str
 
 
 def test_the_title_hook_passes_short_hebrew_logical(he3_linux: None) -> None:
@@ -652,3 +660,82 @@ def test_the_index_follows_eviction(empty_memory: None, monkeypatch: pytest.Monk
         rtl_shaping._remember(f"ﺏ{i}", f"ب{i}")
     assert len(rtl_shaping._VISUAL_TO_LOGICAL) == 3
     assert sum(len(v) for v in rtl_shaping._BY_FIRST_CHAR.values()) == 3
+
+
+# --- round 4: the eviction race and raw user text equal to an earlier result ---------------------------
+
+def test_logical_never_raises_while_other_threads_evict_results(
+        empty_memory: None, monkeypatch: pytest.MonkeyPatch) -> None:
+    import threading
+
+    monkeypatch.setattr(rtl_shaping, "_REMEMBERED", 30)
+    errors: list[BaseException] = []
+    odd: list[tuple[str, str]] = []
+
+    def worker(seed: int) -> None:
+        try:
+            for n in range(700):
+                logical_text = f"گزارش {seed} {n} نهایی"
+                shown = rtl_shaping.visual(logical_text)
+                back = rtl_shaping.logical(shown)
+                # A Shaped carries its logical text: eviction of the remembered copy changes nothing.
+                if back != logical_text:
+                    odd.append((logical_text, back))
+                composed = rtl_shaping.logical("x " + shown + " y")
+                if composed != "x " + logical_text + " y":
+                    odd.append((logical_text, composed))
+                rtl_shaping.logical(str(shown))  # plain text: may find the copy, or not, never raise
+        except BaseException as e:  # noqa: BLE001 - reported below
+            errors.append(e)
+
+    threads = [threading.Thread(target=worker, args=(i,)) for i in range(8)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert errors == [] and odd == []
+
+
+def test_a_result_evicted_between_two_lookups_does_not_raise(
+        empty_memory: None, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The old check-then-index pair: 'in' said yes, another thread evicted, '[]' raised KeyError."""
+    from collections import OrderedDict
+
+    class Evicting(OrderedDict):  # type: ignore[type-arg]
+        def __contains__(self, key: object) -> bool:
+            return True
+
+        def __getitem__(self, key: object) -> str:
+            raise KeyError(key)
+
+    shown = rtl_shaping.visual("گزارش نهایی")
+    plain_text = str(shown)
+    monkeypatch.setattr(rtl_shaping, "_VISUAL_TO_LOGICAL", Evicting(rtl_shaping._VISUAL_TO_LOGICAL))
+    # Found by .get or evicted: the logical text or the text itself, but no exception.
+    assert rtl_shaping.logical(plain_text) in ("گزارش نهایی", plain_text)
+    assert rtl_shaping.visual(plain_text) is not None
+    assert rtl_shaping.logical(shown) == "گزارش نهایی"
+
+
+def test_a_raw_user_value_equal_to_an_earlier_result_is_not_reversed(
+        locales: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    write_catalog(locales, "he", {"Convert": "המר", "Speaker ({name})": "דובר ({name})"})
+    on(monkeypatch, "linux")
+    i18n.set_language("he")
+    assert i18n._("Convert") == "רמה"  # the reversed word for the screen
+    out = i18n._("Speaker ({name})", name="רמה")  # a speaker called "Tier": raw data
+    assert i18n.plain(out) == "דובר (רמה)"
+    assert out == rtl_shaping.visual("דובר (רמה)", logical_input=True)
+
+
+def test_display_and_clip_leave_a_short_raw_hebrew_word_alone(he3_linux: None) -> None:
+    from app.domain import status_line as sl
+
+    assert i18n._("Show") != "הצג"
+    rtl_shaping.visual("המר")  # "רמה" is now an earlier result
+    raw = "נשמר: רמה.mp4"
+    expected = rtl_shaping.visual(raw, logical_input=True)
+    assert i18n.display(raw) == expected
+    assert sl._clip(raw) == expected
+    assert i18n.plain(raw) == raw
+    assert i18n.display(i18n._("Show") + " רמה") == rtl_shaping.visual("הצג רמה", logical_input=True)
