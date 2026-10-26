@@ -1540,6 +1540,8 @@ class App(tk.Tk):
         self._last_callback_error = ""
         # True while the quick start window is open (see _on_start).
         self._quick_start_open = False
+        # True while the "Whisper model required" question is on screen.
+        self._model_question_open = False
         self._watched_after_ids: dict[str, str] = {}
         # Watched files waiting for the model to load before they are queued,
         # so a second event for the same file meanwhile does not queue it twice.
@@ -4350,9 +4352,13 @@ class App(tk.Tk):
         if self.model_setup_running:
             return False
         self.model_setup_running = True
-        dialog = ModelDownloadDialog(self)
-        self.wait_window(dialog)
-        self.model_setup_running = False
+        self._model_question_open = True  # the download window is modal too
+        try:
+            dialog = ModelDownloadDialog(self)
+            self.wait_window(dialog)
+        finally:
+            self._model_question_open = False
+            self.model_setup_running = False
         if dialog.success:
             # v1.0.3 — lazy model load.
             # Used to call ``transcription_service.start_standby()``
@@ -4664,11 +4670,18 @@ class App(tk.Tk):
             if self.model_setup_running:
                 self.log("Model download already in progress — please wait.")
                 return False
-            if not messagebox.askyesno(
-                _("Whisper model required"),
-                self._model_download_question(),
-                parent=self,
-            ):
+            # The first-run language suggestion waits on this flag (see
+            # app.dialogs.language_suggestion), so it never opens over the question.
+            self._model_question_open = True
+            try:
+                wanted = messagebox.askyesno(
+                    _("Whisper model required"),
+                    self._model_download_question(),
+                    parent=self,
+                )
+            finally:
+                self._model_question_open = False
+            if not wanted:
                 self.log("Transcription cancelled: the Whisper model is required.")
                 return False
             if not self.ensure_model_with_modal():

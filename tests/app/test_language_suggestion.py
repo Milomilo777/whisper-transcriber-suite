@@ -127,7 +127,7 @@ def test_tk_maybe_suggest_shows_only_for_a_clear_hint(app: Any, monkeypatch: pyt
     assert shown == ["de"]
 
 
-@pytest.mark.parametrize("flag", ["_quick_start_open", "_hub_setup_open"])
+@pytest.mark.parametrize("flag", ["_quick_start_open", "_hub_setup_open", "_model_question_open"])
 def test_suggestion_waits_while_a_modal_setup_window_is_open(flag: str, monkeypatch: pytest.MonkeyPatch) -> None:
     import types
 
@@ -136,7 +136,7 @@ def test_suggestion_waits_while_a_modal_setup_window_is_open(flag: str, monkeypa
     monkeypatch.setattr(sug, "show_suggestion", lambda _app, code: shown.append(code))
     monkeypatch.setattr(ui_language_hint, "suggestion_for_this_machine", lambda _cfg: "de")
     fake = types.SimpleNamespace(app_config={}, _closing=False, _quick_start_open=False,
-                                 _hub_setup_open=False,
+                                 _hub_setup_open=False, _model_question_open=False,
                                  after=lambda ms, fn: rearmed.append(ms))
     setattr(fake, flag, True)
     sug.maybe_suggest(fake)
@@ -144,3 +144,25 @@ def test_suggestion_waits_while_a_modal_setup_window_is_open(flag: str, monkeypa
     setattr(fake, flag, False)
     sug.maybe_suggest(fake)
     assert shown == ["de"] and rearmed == [sug.RETRY_MS]
+
+
+def test_model_question_raises_the_flag_while_it_is_open(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The suggestion waits on this flag, so it must be up exactly while the question is shown."""
+    import types
+    from unittest.mock import MagicMock
+
+    from app import app as app_module
+
+    seen: list[bool] = []
+    fake = types.SimpleNamespace(
+        _model_question_open=False, model_setup_running=False, log=MagicMock(),
+        _model_bytes_present=lambda: False, _model_download_question=lambda: "q",
+    )
+
+    def _ask(*_a: Any, **_k: Any) -> bool:
+        seen.append(fake._model_question_open)
+        return False
+
+    monkeypatch.setattr(app_module.messagebox, "askyesno", _ask)
+    assert app_module.App._ensure_transcribe_ready(fake) is False  # type: ignore[arg-type]
+    assert seen == [True] and fake._model_question_open is False
