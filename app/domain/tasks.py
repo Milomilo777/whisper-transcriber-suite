@@ -83,6 +83,13 @@ class VideoDownloadTask:
         # the merge target). A cancel removes their leftovers (.part, .ytdl,
         # unmerged streams); a pause keeps them so a resume can continue.
         self.partial_paths: list[str] = []
+        # Files this job created (ADR 0019): what a pause keeps for the resume and what
+        # Cancel may delete. A file that is not listed here, or that was in the folder
+        # before the run started (``_start_listing``), is never resumed, converted or
+        # deleted. ``pending_sources`` are the downloaded audio sources not converted yet.
+        self.created_paths: list[str] = []
+        self.pending_sources: list[str] = []
+        self._start_listing: frozenset[str] = frozenset()
         # When auto-transcribe-after-download is on, the spawned
         # TranscriptionTask is linked here so the Download row can show
         # "transcribing" + the live transcription progress (instead of

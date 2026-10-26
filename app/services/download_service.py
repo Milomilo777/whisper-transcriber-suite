@@ -16,12 +16,14 @@ import os
 import re
 import shutil
 import subprocess
+import threading
 import time
 import urllib.error
 import urllib.request
 
-from core import offline
+from core import download_guard, offline
 from core._proc import kill_download_tree, new_session_kwargs
+from core.download_guard import DownloadRefused
 from core.js_runtime import (
     mentions_missing_js_runtime,
     missing_js_runtime_hint,
@@ -566,7 +568,7 @@ def build_download_command(
 
     if fmt.get("mode") == "Audio":
         audio_selector = "ba/bestaudio" if audio["kind"] == "best_audio" else audio["format_id"]
-        command.extend(["-f", audio_selector, "-x", "--audio-format", output_format])
+        command.extend(["-f", audio_selector, "-x", "--audio-format", output_format, "-k"])
     else:
         
         if video["kind"] == "best_video":
@@ -758,6 +760,95 @@ def partial_download_files(dest: str, announced: "Iterable[str]" = ()) -> list[s
                 candidates.append(dest)
                 break
     return [c for c in candidates if os.path.isfile(c)]
+
+
+# File ownership of a media download (ADR 0019) -------------------------------------
+
+# Seconds a run waits for the earlier run of the same job to finish stopping (a pause
+# followed by a quick resume), and the longest a plan pass may take.
+_STOP_WAIT = 60.0
+_PLAN_TIMEOUT = 120.0
+_LOCKS_GUARD = threading.Lock()
+
+
+def _media_lock(task: Any) -> "threading.Lock":
+    """The lock a run of *task* holds from its plan pass to its own cleanup, so a resumed run
+    never starts while the run it replaces still deletes its unfinished files."""
+    lock = getattr(task, "_media_lock", None)
+    if lock is None:
+        with _LOCKS_GUARD:
+            lock = getattr(task, "_media_lock", None)
+            if lock is None:
+                lock = threading.Lock()
+                try:
+                    task._media_lock = lock
+                except AttributeError:
+                    pass
+    return lock
+
+
+def _listing(folder: str) -> "frozenset[str]":
+    """The files in *folder* (comparison keys), taken before a run starts."""
+    try:
+        return frozenset(download_guard.norm(os.path.join(folder, n)) for n in os.listdir(folder))
+    except OSError:
+        return frozenset()
+
+
+def _taken_message(path: str) -> str:
+    return _(
+        "{name} is already in the download folder, so nothing was downloaded: that file must not "
+        "be replaced or mixed up with this download. Move or rename it, or choose another folder, "
+        "and try again.",
+        name=os.path.basename(path),
+    )
+
+
+def _stop_requested(task: Any, generation: int | None) -> bool:
+    """Cancel, pause, or a newer run of the same task (a pause followed by a resume)."""
+    if getattr(task, "cancelled", False) or getattr(task, "paused", False):
+        return True
+    return generation is not None and getattr(task, "_run_generation", generation) != generation
+
+
+def _announcement(line: str) -> tuple[str, str] | None:
+    """``(kind, path)`` for the yt-dlp lines that name a file: ``dest`` (a download target),
+    ``already`` (found on disk), ``merge`` (the merged file), ``extract`` (the audio file)."""
+    s = line.strip()
+    for kind, pattern in (("dest", _DEST_RE), ("already", _ALREADY_RE),
+                          ("merge", _MERGE_RE), ("extract", _EXTRACT_RE)):
+        m = pattern.match(s)
+        if m:
+            return kind, m.group(1).strip()
+    return None
+
+
+def _add_path(paths: list[str], path: str) -> None:
+    if not any(download_guard.norm(p) == download_guard.norm(path) for p in paths):
+        paths.append(path)
+
+
+def _drop_path(paths: list[str], path: str) -> None:
+    key = download_guard.norm(path)
+    paths[:] = [p for p in paths if download_guard.norm(p) != key]
+
+
+def _remove_job_file(app: Any, task: Any, path: str, what: str) -> bool:
+    """Delete a file the job created. Retries briefly (ffmpeg may still hold the handle) and
+    reports in the task log; False when the file is still there."""
+    for attempt in range(5):
+        try:
+            os.unlink(path)
+            break
+        except FileNotFoundError:
+            return True
+        except OSError as e:
+            if attempt == 4:
+                app.download_events.put(("log", task, f"Could not remove the {what} {path}: {e}"))
+                return False
+            time.sleep(0.2)
+    app.download_events.put(("log", task, f"Removed the {what}: {path}"))
+    return True
 
 
 # Service class wired into the App ------------------------------------------------
@@ -2493,8 +2584,112 @@ class DownloadService:
         pulled out of ``_media_phase`` so a cookie-extraction failure can
         retry the same download once, without cookies, using this same
         parsing logic.
+
+        ADR 0019: the run holds the job's lock from the plan pass to its own
+        cleanup (a resume waits for the run it replaces to finish stopping),
+        refuses to start when a file it would use belongs to someone else
+        (``DownloadRefused``), and removes only what the job created.
+        """
+        generation = getattr(task, "_run_generation", None)
+        lock = _media_lock(task)
+        if not lock.acquire(timeout=_STOP_WAIT):
+            raise DownloadRefused(_(
+                "The earlier run of this download is still stopping. Wait a moment and try again."
+            ))
+        try:
+            return self._run_media_locked(task, command, generation)
+        finally:
+            lock.release()
+
+    def _plan_pass(
+        self, task: "VideoDownloadTask", command: list[str]
+    ) -> "list[download_guard.PlannedItem] | None":
+        """Ask yt-dlp which files the download will write (nothing is downloaded).
+
+        None when the plan could not be made (no network, a site yt-dlp cannot
+        list ahead, a stop): the run then relies on the checks that need no plan.
         """
         app = self.app
+
+        def note(reason: str) -> None:
+            # Not shown to the user: the real run reports its own errors, and the plan is an
+            # extra check, not a requirement.
+            logger.info("download plan pass skipped: %s", reason)
+
+        try:
+            proc = subprocess.Popen(
+                download_guard.plan_command(command),
+                cwd=os.path.dirname(os.path.abspath(app.entry_file)),
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                env=_utf8_subprocess_env(),
+                **new_session_kwargs(),
+            )
+        except OSError as e:
+            note(str(e))
+            return None
+        # Registered so Cancel and Pause can end the plan pass like any download.
+        task.process = proc
+        try:
+            out, err = proc.communicate(timeout=_PLAN_TIMEOUT)
+        except subprocess.TimeoutExpired:
+            kill_download_tree(proc, children_first=True)
+            try:
+                proc.communicate(timeout=5)
+            except Exception:  # noqa: BLE001
+                pass
+            note("it took too long")
+            return None
+        except Exception as e:  # noqa: BLE001 - a plan pass must never break the download itself
+            note(str(e))
+            return None
+        finally:
+            if task.process is proc:
+                task.process = None
+        if proc.returncode:
+            if not _stop_requested(task, None):
+                last = (err or out or "").strip().splitlines()
+                note(last[-1] if last else f"yt-dlp exit code {proc.returncode}")
+            return None
+        return download_guard.parse_plan(out or "", command) or None
+
+    def _run_media_locked(
+        self, task: "VideoDownloadTask", command: list[str], generation: int | None
+    ) -> tuple[int, str, str, str | None, bool]:
+        app = self.app
+        folder = str(getattr(task, "folder", "") or "")
+        created = getattr(task, "created_paths", None)
+        if not isinstance(created, list):
+            created = []
+            try:
+                task.created_paths = created
+            except AttributeError:
+                pass
+        # What was in the folder before this run: a file of this list that the job
+        # did not create is not the job's to resume, convert or delete.
+        before = _listing(folder)
+        try:
+            task._start_listing = before
+        except AttributeError:
+            pass
+
+        def foreign(path: str) -> bool:
+            return download_guard.norm(path) in before and not download_guard.is_own(path, created)
+
+        command = download_guard.with_keep_source(command)
+        audio = download_guard.command_audio_format(command) is not None
+        items = self._plan_pass(task, command)
+        if _stop_requested(task, generation):
+            return 1, "", "", None, False
+        if items:
+            clash = download_guard.find_clash(items, created)
+            if clash:
+                raise DownloadRefused(_taken_message(clash))
+
         proc = subprocess.Popen(
             command,
             cwd=os.path.dirname(os.path.abspath(app.entry_file)),
@@ -2515,6 +2710,11 @@ class DownloadService:
         saved_is_final = False
         last_error_line = ""
         last_line = ""
+        refused: str | None = None
+        last_source: str | None = None
+        convert_open: str | None = None        # audio file being written, not yet complete
+        pairs: list[tuple[str, str]] = []      # (source, audio file) per extracted item
+        sources: list[str] = []                # sources this run downloaded in audio mode
         # Iterate THIS run's stdout/wait, never the shared task.process
         # attribute: a pause+resume can assign a newer run's Popen to
         # task.process while this loop is still draining, and
@@ -2533,6 +2733,36 @@ class DownloadService:
                 # silently missed the real reason on the latter.
                 if "error" in line.lower():
                     last_error_line = line
+                kind = _announcement(line)
+                if kind is not None:
+                    path = kind[1]
+                    taken = ""
+                    if kind[0] in ("dest", "already", "extract"):
+                        if foreign(path):
+                            taken = path
+                        elif kind[0] == "dest" and foreign(path + ".part"):
+                            taken = path + ".part"
+                    if taken:
+                        # Not the job's file: stop before yt-dlp resumes, converts or
+                        # reports it (the plan pass normally refuses this earlier).
+                        refused = taken
+                        kill_download_tree(proc)
+                        break
+                    if kind[0] == "dest":
+                        convert_open = None
+                        last_source = path
+                        _add_path(created, path)
+                        if audio:
+                            sources.append(path)
+                    elif kind[0] == "already":
+                        convert_open = None
+                        last_source = path
+                    elif kind[0] == "merge":
+                        _add_path(created, path)
+                    elif kind[0] == "extract":
+                        convert_open = path
+                        _add_path(created, path)
+                        pairs.append((last_source or "", path))
                 dest = parse_destination_line(line)
                 if dest is not None:
                     path, is_final = dest
@@ -2546,6 +2776,40 @@ class DownloadService:
                 app.download_events.put(("log", task, line))
 
         return_code = proc.wait()
+        stopped = bool(return_code) or task.cancelled or bool(getattr(task, "paused", False))
+        if refused is None:
+            if convert_open and stopped:
+                # A stopped or failed conversion leaves a truncated audio file; the next run
+                # would take it for the finished result. Only the one being written goes.
+                _remove_job_file(app, task, convert_open, "unfinished audio file")
+                _drop_path(created, convert_open)
+                pairs = [p for p in pairs if p[1] != convert_open]
+            # The source of a converted item is the job's own copy (yt-dlp was told to keep
+            # it): remove it once the audio file is complete, never a file the job did not create.
+            for source, audio_file in pairs:
+                if (source and download_guard.norm(source) != download_guard.norm(audio_file)
+                        and download_guard.is_own(source, created)):
+                    _remove_job_file(app, task, source, "converted source")
+                    _drop_path(created, source)
+                    if source in sources:
+                        sources.remove(source)
+            earlier: list[str] = list(getattr(task, "pending_sources", None) or [])
+            pending: list[str] = [*earlier, *(s for s in sources if s not in earlier)]
+            task.pending_sources = [
+                s for s in pending
+                if os.path.exists(s) and not any(
+                    download_guard.norm(s) == download_guard.norm(src) for src, _a in pairs
+                )
+            ]
+            if not stopped:
+                task.pending_sources = []
+                created.clear()
+                try:
+                    task._start_listing = frozenset()
+                except AttributeError:
+                    pass
+        if refused is not None:
+            raise DownloadRefused(_taken_message(refused))
         return return_code, last_error_line, last_line, saved_path, saved_is_final
 
     def _media_phase(self, task: "VideoDownloadTask", run_generation: int | None = None) -> None:
@@ -2878,8 +3142,14 @@ class DownloadService:
         so a resume continues. Returns the removed paths."""
         removed: list[str] = []
         paths = list(getattr(task, "partial_paths", None) or [])
+        created = list(getattr(task, "created_paths", None) or [])
+        listing = getattr(task, "_start_listing", None) or frozenset()
         for dest in paths:
             for leftover in partial_download_files(dest, paths):
+                # A file that was in the folder before the run and that the job did not
+                # create is somebody else's, even when its name matches an announced one.
+                if download_guard.norm(leftover) in listing and not download_guard.is_own(leftover, created):
+                    continue
                 try:
                     os.unlink(leftover)
                     removed.append(leftover)
@@ -2887,8 +3157,20 @@ class DownloadService:
                     self.app.download_events.put(
                         ("log", task, f"Could not remove the partial file {leftover}: {e}")
                     )
+        # The audio sources a cancelled audio download had fetched but not converted.
+        for source in list(getattr(task, "pending_sources", None) or []):
+            if download_guard.is_own(source, created) and os.path.isfile(source):
+                try:
+                    os.unlink(source)
+                    removed.append(source)
+                except OSError as e:
+                    self.app.download_events.put(
+                        ("log", task, f"Could not remove the partial file {source}: {e}")
+                    )
         try:
             task.partial_paths = []
+            task.pending_sources = []
+            task.created_paths = []
         except AttributeError:
             pass
         for leftover in removed:
