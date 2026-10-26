@@ -123,6 +123,15 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 ### Fixed
 
 - Identify speakers works again on Windows when the app sits in a folder whose name has non-English letters (for example a Portable copy under a Turkish user name); the speaker models were wrongly reported as missing and the transcript came out without speaker labels.
+- The interface-language list widens to fit its longest name (some endonyms were cut off on Windows); with short names it keeps its old width.
+- Live tab: the Save transcript / Copy all / Clear row is no longer pushed below the visible area at the default window size; the transcript box asks for less height and still grows with the window.
+- The Accuracy box is wide enough for "Custom (current setting)"; it grows only while that entry is shown.
+- Model download sizes ("about 500 MB", "about 1.5 GB") in the Quick Start, the model notes, the first-download question and the model prompts follow the interface language instead of staying English.
+- Linux: the window icon is set from the PNG (`iconphoto`); the `.ico` could not be read by X11 Tk and logged a warning at every start.
+- AI summaries are plain text: the prompt asks for no Markdown and any leftover `**`, `__`, heading hashes and `* ` bullets are removed, so a Groq summary no longer shows stray asterisks in a text output.
+- The usage-statistics note in the privacy overview now says failed and cancelled runs are sent too (it still said "after each finished transcription"); all 41 catalogs updated.
+- Starting the web / LAN server on a machine without the Whisper model no longer downloads the default model (about 3 GB) silently: it asks first, like a transcription does, and the download window checks the free disk space before it starts.
+- The first-run language suggestion no longer opens over the "Whisper model required" question or the model download window; it waits until they are closed.
 - The transcript viewer's right-click menu works again on Windows: Rename speaker, Edit timestamp and Copy text did nothing, because the menu was destroyed before Windows delivered the chosen entry.
 - If the transcription engine reports a late error after all output files were already written, the finished transcript is now kept and shown instead of being marked as failed.
 - A transcription whose Cancel button was pressed just after its files were written is now recorded as finished and shows its result, instead of as cancelled with no result.

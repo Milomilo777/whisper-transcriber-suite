@@ -1012,7 +1012,7 @@
     "Send": "পাঠান",
     "Send usage statistics (on by default; also in the Help menu)": "ব্যবহারের পরিসংখ্যান পাঠান (ডিফল্টভাবে চালু; সাহায্য মেনুতেও আছে)",
     "Sending…": "পাঠানো হচ্ছে…",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "প্রতিটি ট্রান্সক্রিপশন শেষ হওয়ার পর পাঠানো হয়; ডিফল্টভাবে চালু। সুইচ: সাহায্য → ব্যবহারের পরিসংখ্যান, অথবা উন্নত → অ্যাপের আচরণ (config: telemetry_opt_in)",
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "ব্যর্থ ও বাতিল হওয়া সহ প্রতিটি ট্রান্সক্রিপশনের পর পাঠানো হয়; ডিফল্টভাবে চালু। সুইচ: সাহায্য → ব্যবহারের পরিসংখ্যান, অথবা উন্নত → অ্যাপের আচরণ (config: telemetry_opt_in)",
     "Sent in plain text when the URL starts with http://": "URL http:// দিয়ে শুরু হলে সাধারণ টেক্সট হিসেবে পাঠানো হয়",
     "Sent with: {system}": "সঙ্গে পাঠানো হয়: {system}",
     "Serbian": "সার্বীয়",
@@ -1476,6 +1476,8 @@
       "প্রায় {n} সেকেন্ড",
       "প্রায় {n} সেকেন্ড"
     ],
+    "about {size} GB": "প্রায় {size} GB",
+    "about {size} MB": "প্রায় {size} MB",
     "about {speed}": "প্রায় {speed}",
     "allowed (this computer)": "অনুমোদিত (এই কম্পিউটার)",
     "audio done": "অডিও সম্পন্ন",

@@ -1012,7 +1012,7 @@
     "Send": "Verzenden",
     "Send usage statistics (on by default; also in the Help menu)": "Gebruiksstatistieken verzenden (standaard aan; ook in het menu Help)",
     "Sending…": "Verzenden…",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Verzonden na elke voltooide transcriptie; standaard aan. Schakelen: Help → Gebruiksstatistieken, of Geavanceerd → Gedrag van de app (config: telemetry_opt_in)",
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Verzonden na elke transcriptie, ook mislukte en geannuleerde; standaard aan. Schakelen: Help → Gebruiksstatistieken, of Geavanceerd → Gedrag van de app (config: telemetry_opt_in)",
     "Sent in plain text when the URL starts with http://": "Wordt als platte tekst verzonden als de URL met http:// begint",
     "Sent with: {system}": "Verzonden met: {system}",
     "Serbian": "Servisch",
@@ -1476,6 +1476,8 @@
       "ongeveer {n} seconde",
       "ongeveer {n} seconden"
     ],
+    "about {size} GB": "ongeveer {size} GB",
+    "about {size} MB": "ongeveer {size} MB",
     "about {speed}": "ongeveer {speed}",
     "allowed (this computer)": "toegestaan (deze computer)",
     "audio done": "audio voltooid",

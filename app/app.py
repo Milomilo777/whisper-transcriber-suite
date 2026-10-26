@@ -28,6 +28,7 @@ from app.dialogs.quick_start import (
 from app.dialogs import language_suggestion, share_page, ui_language
 from app import desktop_alert, mac_native, rtl_layout, shortcuts
 from app.i18n import N_, _, ngettext, pgettext, plain, translate
+from app.model_text import localize_size_text
 from app.dialogs.transcript_viewer import confirm_unsaved_before_exit as confirm_unsaved_viewers_before_exit
 from app.dialogs.transcript_viewer import dirty_viewers as _dirty_viewers_now
 from app.dialogs.transcript_viewer import open_viewer as _open_transcript_viewer
@@ -896,7 +897,7 @@ def build_about_sections() -> list[AboutSection]:
                 "needs the internet then says so (config: work_offline)"),
             ]),
             (_("Usage statistics"), [
-                _("Sent after each finished transcription; on by default. "
+                _("Sent after each transcription, including failed and cancelled ones; on by default. "
                 "Switch: Help → Usage statistics, or Advanced → App "
                 "behaviour (config: telemetry_opt_in)"),
                 _("What is sent: model, language, audio length, processing "
@@ -1540,6 +1541,8 @@ class App(tk.Tk):
         self._last_callback_error = ""
         # True while the quick start window is open (see _on_start).
         self._quick_start_open = False
+        # True while the "Whisper model required" question is on screen.
+        self._model_question_open = False
         self._watched_after_ids: dict[str, str] = {}
         # Watched files waiting for the model to load before they are queued,
         # so a second event for the same file meanwhile does not queue it twice.
@@ -3651,11 +3654,18 @@ class App(tk.Tk):
                 values.append(_("Custom (current setting)"))
             if list(combo.cget("values") or ()) != values:
                 combo.configure(values=values)
+                # The box is sized for Fast/Balanced/Best; widen it only while the longer
+                # Custom entry is in it (and size it back after), so other layouts stay as they were.
+                from app.widgets.tabs import combo_width
+                if level is None:
+                    combo.configure(width=combo_width(values, floor=10, cap=32))
+                elif combo.cget("width") != "":
+                    combo.configure(width=combo_width(values, floor=10, cap=24))
             shown = level_to_label.get(level or "", values[-1])
             if var.get() != shown:
                 var.set(shown)
             model = short_model_name(self.app_config, slug)
-            size = approx_download_size_text(self.app_config, slug)
+            size = localize_size_text(approx_download_size_text(self.app_config, slug))
             if model_downloaded(self.app_config, slug):
                 note = _("{model} model: already downloaded", model=model)
             elif size:
@@ -4350,9 +4360,13 @@ class App(tk.Tk):
         if self.model_setup_running:
             return False
         self.model_setup_running = True
-        dialog = ModelDownloadDialog(self)
-        self.wait_window(dialog)
-        self.model_setup_running = False
+        self._model_question_open = True  # the download window is modal too
+        try:
+            dialog = ModelDownloadDialog(self)
+            self.wait_window(dialog)
+        finally:
+            self._model_question_open = False
+            self.model_setup_running = False
         if dialog.success:
             # v1.0.3 — lazy model load.
             # Used to call ``transcription_service.start_standby()``
@@ -4664,11 +4678,7 @@ class App(tk.Tk):
             if self.model_setup_running:
                 self.log("Model download already in progress — please wait.")
                 return False
-            if not messagebox.askyesno(
-                _("Whisper model required"),
-                self._model_download_question(),
-                parent=self,
-            ):
+            if not self._ask_model_download():
                 self.log("Transcription cancelled: the Whisper model is required.")
                 return False
             if not self.ensure_model_with_modal():
@@ -4685,6 +4695,20 @@ class App(tk.Tk):
             return False
         return True
 
+    def _ask_model_download(self) -> bool:
+        """Show the "Whisper model required" question; True when the user agrees to download."""
+        # The first-run language suggestion waits on this flag (see
+        # app.dialogs.language_suggestion), so it never opens over the question.
+        self._model_question_open = True
+        try:
+            return bool(messagebox.askyesno(
+                _("Whisper model required"),
+                self._model_download_question(),
+                parent=self,
+            ))
+        finally:
+            self._model_question_open = False
+
     def _model_download_size_hint(self) -> str:
         """Return e.g. "about 500 MB, " for the configured model ("" if unknown)."""
         try:
@@ -4693,7 +4717,7 @@ class App(tk.Tk):
                 approx_download_size_text,
             )
             slug = str(self.app_config.get("whisper_model") or DEFAULT_MODEL_SLUG)
-            text = approx_download_size_text(self.app_config, slug)
+            text = localize_size_text(approx_download_size_text(self.app_config, slug))
         except Exception:  # noqa: BLE001 -- a size hint must never block the prompt
             text = ""
         return f"{text}, " if text else ""
@@ -4803,7 +4827,7 @@ class App(tk.Tk):
             reason=(_("About the same size and speed, and it understands {language}.",
                       language=name) if name
                     else _("About the same size and speed, and it understands other languages.")),
-            size_text=approx_download_size_text(self.app_config, alt),
+            size_text=localize_size_text(approx_download_size_text(self.app_config, alt)),
             downloaded=model_downloaded(self.app_config, alt),
         )
         self.__dict__["_english_only_asking"] = True
@@ -6054,8 +6078,28 @@ class App(tk.Tk):
         self._save_server_prefs()
         if self._server_is_running():
             self._stop_server_async()
-        else:
+        elif self._server_model_agreed():
             self._start_server_async()
+
+    def _server_model_agreed(self) -> bool:
+        """True when the server may start: the model is on disk, or the user agreed to download it.
+
+        The server loads the model on its start thread and would otherwise download the default
+        model (about 3 GB) silently. Here the same question and download dialog as for a
+        transcription run first; the dialog checks the free disk space before it downloads.
+        """
+        if self._model_bytes_present():
+            return True
+        if self.model_setup_running:
+            self.log("Model download already in progress — please wait.")
+            return False
+        if not self._ask_model_download():
+            self.log("The server was not started: the Whisper model is required.")
+            return False
+        if not self.ensure_model_with_modal():
+            self.log("The server was not started: the Whisper model is not ready.")
+            return False
+        return True
 
     def _start_server_async(self) -> None:
         import threading as _t
@@ -7853,20 +7897,30 @@ class App(tk.Tk):
         damaged install never blocks launch.
         """
         if getattr(sys, "frozen", False):
-            ico = os.path.join(
-                os.path.dirname(os.path.abspath(sys.executable)),
-                "assets", "whisper.ico",
-            )
+            assets = os.path.join(
+                os.path.dirname(os.path.abspath(sys.executable)), "assets")
         else:
-            ico = os.path.join(
+            assets = os.path.join(
                 os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                "assets", "whisper.ico",
-            )
-        if not os.path.isfile(ico):
-            return
+                "assets")
         if sys.platform == "darwin":
             # iconbitmap(default=...) is not supported on macOS/Tk and
             # throws "wrong # args: should be 'wm iconbitmap window ?bitmap?'"
+            return
+        if sys.platform != "win32":
+            # X11 Tk reads a bitmap, not an .ico (``wm iconbitmap`` with the
+            # .ico fails there); a PNG goes through iconphoto instead.
+            png = os.path.join(assets, "whisper.png")
+            if not os.path.isfile(png):
+                return
+            try:
+                self._icon_photo = tk.PhotoImage(file=png)  # keep a reference
+                self.iconphoto(True, self._icon_photo)
+            except tk.TclError as exc:
+                logger.warning("Could not set window icon (%s): %s", png, exc)
+            return
+        ico = os.path.join(assets, "whisper.ico")
+        if not os.path.isfile(ico):
             return
         try:
             self.iconbitmap(default=ico)

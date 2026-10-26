@@ -1046,7 +1046,7 @@
     "Send": "Pošlji",
     "Send usage statistics (on by default; also in the Help menu)": "Pošiljaj statistiko uporabe (privzeto vklopljeno; tudi v meniju Pomoč)",
     "Sending…": "Pošiljanje …",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Pošlje se po vsakem končanem prepisu; privzeto vklopljeno. Stikalo: Pomoč → Statistika uporabe ali Napredno → Delovanje aplikacije (konfiguracija: telemetry_opt_in)",
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Pošlje se po vsakem prepisu, tudi neuspešnem in preklicanem; privzeto vklopljeno. Stikalo: Pomoč → Statistika uporabe ali Napredno → Delovanje aplikacije (konfiguracija: telemetry_opt_in)",
     "Sent in plain text when the URL starts with http://": "Pošlje se kot navadno besedilo, ko se URL začne s http://",
     "Sent with: {system}": "Poslano z: {system}",
     "Serbian": "Srbščina",
@@ -1540,6 +1540,8 @@
       "približno {n} sekunde",
       "približno {n} sekund"
     ],
+    "about {size} GB": "približno {size} GB",
+    "about {size} MB": "približno {size} MB",
     "about {speed}": "približno {speed}",
     "allowed (this computer)": "dovoljeno (ta računalnik)",
     "audio done": "zvoka obdelano",

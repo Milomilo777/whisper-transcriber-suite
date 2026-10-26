@@ -1,8 +1,8 @@
 {
   "_meta": {
     "code": "sk",
-    "name": "Slovenčina",
     "direction": "ltr",
+    "name": "Slovenčina",
     "plural": "cs_sk",
     "status": "machine"
   },
@@ -1029,7 +1029,7 @@
     "Send": "Odoslať",
     "Send usage statistics (on by default; also in the Help menu)": "Odosielať štatistiky používania (predvolene zapnuté; aj v ponuke Pomocník)",
     "Sending…": "Odosiela sa…",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Odosiela sa po každom dokončenom prepise; predvolene zapnuté. Prepínač: Pomocník → Štatistiky používania, alebo Rozšírené → Správanie aplikácie (konfigurácia: telemetry_opt_in)",
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Odosiela sa po každom prepise, aj neúspešnom a zrušenom; predvolene zapnuté. Prepínač: Pomocník → Štatistiky používania, alebo Rozšírené → Správanie aplikácie (konfigurácia: telemetry_opt_in)",
     "Sent in plain text when the URL starts with http://": "Odosiela sa ako obyčajný text, keď URL začína http://",
     "Sent with: {system}": "Odoslané s: {system}",
     "Serbian": "Srbčina",
@@ -1508,6 +1508,8 @@
       "asi {n} sekundy",
       "asi {n} sekúnd"
     ],
+    "about {size} GB": "približne {size} GB",
+    "about {size} MB": "približne {size} MB",
     "about {speed}": "približne {speed}",
     "allowed (this computer)": "povolené (tento počítač)",
     "audio done": "spracovaný zvuk",

@@ -995,7 +995,7 @@
     "Send": "ส่ง",
     "Send usage statistics (on by default; also in the Help menu)": "ส่งสถิติการใช้งาน (เปิดเป็นค่าเริ่มต้น และอยู่ในเมนูวิธีใช้ด้วย)",
     "Sending…": "กำลังส่ง…",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "ส่งหลังการถอดเสียงแต่ละครั้งเสร็จ เปิดเป็นค่าเริ่มต้น สวิตช์: วิธีใช้ → สถิติการใช้งาน หรือ ขั้นสูง → ลักษณะการทำงานของแอป (config: telemetry_opt_in)",
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "ส่งหลังการถอดเสียงแต่ละครั้ง รวมถึงครั้งที่ล้มเหลวและถูกยกเลิก เปิดเป็นค่าเริ่มต้น สวิตช์: วิธีใช้ → สถิติการใช้งาน หรือ ขั้นสูง → ลักษณะการทำงานของแอป (config: telemetry_opt_in)",
     "Sent in plain text when the URL starts with http://": "ส่งเป็นข้อความธรรมดาเมื่อ URL ขึ้นต้นด้วย http://",
     "Sent with: {system}": "ส่งพร้อมกับ: {system}",
     "Serbian": "เซอร์เบีย",
@@ -1444,6 +1444,8 @@
     "about {n} seconds": [
       "ประมาณ {n} วินาที"
     ],
+    "about {size} GB": "ประมาณ {size} GB",
+    "about {size} MB": "ประมาณ {size} MB",
     "about {speed}": "ประมาณ {speed}",
     "allowed (this computer)": "อนุญาต (คอมพิวเตอร์นี้)",
     "audio done": "ประมวลผลเสียงเสร็จแล้ว",

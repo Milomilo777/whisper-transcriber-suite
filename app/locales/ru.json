@@ -1029,7 +1029,7 @@
     "Send": "Отправить",
     "Send usage statistics (on by default; also in the Help menu)": "Отправлять статистику использования (включено по умолчанию; также в меню «Справка»)",
     "Sending…": "Отправка…",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Отправляется после каждой завершённой транскрипции; включено по умолчанию. Переключатель: «Справка → Статистика использования» или «Дополнительно → Поведение приложения» (настройка: telemetry_opt_in)",
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Отправляется после каждой транскрипции, включая неудачные и отменённые; включено по умолчанию. Переключатель: «Справка → Статистика использования» или «Дополнительно → Поведение приложения» (настройка: telemetry_opt_in)",
     "Sent in plain text when the URL starts with http://": "Отправляется открытым текстом, если URL начинается с http://",
     "Sent with: {system}": "Отправляется вместе с: {system}",
     "Serbian": "Сербский",
@@ -1508,6 +1508,8 @@
       "около {n} секунд",
       "около {n} секунд"
     ],
+    "about {size} GB": "около {size} GB",
+    "about {size} MB": "около {size} MB",
     "about {speed}": "около {speed}",
     "allowed (this computer)": "разрешено (этот компьютер)",
     "audio done": "аудио обработано",

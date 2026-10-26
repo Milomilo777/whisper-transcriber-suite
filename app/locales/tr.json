@@ -1012,7 +1012,7 @@
     "Send": "Gönder",
     "Send usage statistics (on by default; also in the Help menu)": "Kullanım istatistiklerini gönder (varsayılan olarak açık; Yardım menüsünde de)",
     "Sending…": "Gönderiliyor…",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Biten her yazıya dökmeden sonra gönderilir; varsayılan olarak açık. Değiştirmek için: Yardım → Kullanım istatistikleri veya Gelişmiş → Uygulama davranışı (config: telemetry_opt_in)",
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Başarısız ve iptal edilenler dahil her yazıya dökmeden sonra gönderilir; varsayılan olarak açık. Değiştirmek için: Yardım → Kullanım istatistikleri veya Gelişmiş → Uygulama davranışı (config: telemetry_opt_in)",
     "Sent in plain text when the URL starts with http://": "URL http:// ile başlıyorsa düz metin olarak gönderilir",
     "Sent with: {system}": "Şununla gönderildi: {system}",
     "Serbian": "Sırpça",
@@ -1476,6 +1476,8 @@
       "yaklaşık {n} saniye",
       "yaklaşık {n} saniye"
     ],
+    "about {size} GB": "yaklaşık {size} GB",
+    "about {size} MB": "yaklaşık {size} MB",
     "about {speed}": "yaklaşık {speed}",
     "allowed (this computer)": "izin verildi (bu bilgisayar)",
     "audio done": "ses tamamlandı",

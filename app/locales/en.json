@@ -1012,7 +1012,7 @@
   "Send": "Send",
   "Send usage statistics (on by default; also in the Help menu)": "Send usage statistics (on by default; also in the Help menu)",
   "Sending…": "Sending…",
-  "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)",
+  "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)",
   "Sent in plain text when the URL starts with http://": "Sent in plain text when the URL starts with http://",
   "Sent with: {system}": "Sent with: {system}",
   "Serbian": "Serbian",
@@ -1476,6 +1476,8 @@
    "about {n} seconds",
    "about {n} seconds"
   ],
+  "about {size} GB": "about {size} GB",
+  "about {size} MB": "about {size} MB",
   "about {speed}": "about {speed}",
   "allowed (this computer)": "allowed (this computer)",
   "audio done": "audio done",

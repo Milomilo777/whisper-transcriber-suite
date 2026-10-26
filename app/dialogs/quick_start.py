@@ -26,6 +26,7 @@ from typing import Any, Callable
 
 from app.dpi import px
 from app.i18n import N_, _, ngettext, translate
+from app.model_text import localize_size_text
 from app.theme import tokens
 from core import hardware as _hw
 from core import hub as _hub
@@ -340,7 +341,7 @@ class QuickStartDialog(tk.Toplevel):
             wanted = recommended_model(language, mode)
             slug = _hw.fit_model_to_ram(wanted, self._ram_gb)
             parts = [short_model_name(self._config, slug)]
-            size = approx_download_size_text(self._config, slug)
+            size = localize_size_text(approx_download_size_text(self._config, slug))
             # Each part is a whole phrase; " · " lists them.
             if size:
                 parts.append(_("{size} download", size=size))

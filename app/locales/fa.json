@@ -1012,7 +1012,7 @@
     "Send": "ارسال",
     "Send usage statistics (on by default; also in the Help menu)": "ارسال آمار استفاده (به‌طور پیش‌فرض روشن؛ در منوی «راهنما» هم هست)",
     "Sending…": "در حال ارسال…",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "پس از هر رونویسی تمام‌شده ارسال می‌شود؛ به‌طور پیش‌فرض روشن. تغییر: راهنما ← آمار استفاده، یا پیشرفته ← رفتار برنامه (تنظیم: telemetry_opt_in)",
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "پس از هر رونویسی، از جمله رونویسی‌های ناموفق و لغوشده، ارسال می‌شود؛ به‌طور پیش‌فرض روشن. تغییر: راهنما ← آمار استفاده، یا پیشرفته ← رفتار برنامه (تنظیم: telemetry_opt_in)",
     "Sent in plain text when the URL starts with http://": "وقتی نشانی با http:// شروع شود، به‌صورت متن ساده ارسال می‌شود",
     "Sent with: {system}": "ارسال‌شده همراه با: {system}",
     "Serbian": "صربی",
@@ -1476,6 +1476,8 @@
       "حدود {n} ثانیه",
       "حدود {n} ثانیه"
     ],
+    "about {size} GB": "حدود {size} GB",
+    "about {size} MB": "حدود {size} MB",
     "about {speed}": "حدود {speed}",
     "allowed (this computer)": "مجاز (این کامپیوتر)",
     "audio done": "پردازش صدا تمام شد",

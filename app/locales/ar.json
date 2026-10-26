@@ -1,8 +1,8 @@
 {
   "_meta": {
     "code": "ar",
-    "name": "العربية",
     "direction": "rtl",
+    "name": "العربية",
     "plural": "ar",
     "status": "machine"
   },
@@ -1080,7 +1080,7 @@
     "Send": "إرسال",
     "Send usage statistics (on by default; also in the Help menu)": "إرسال إحصاءات الاستخدام (مفعَّل افتراضيًا؛ وأيضًا في قائمة «تعليمات»)",
     "Sending…": "جارٍ الإرسال…",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "تُرسَل بعد كل تفريغ منتهٍ؛ مفعَّلة افتراضيًا. التبديل: «تعليمات» ← «إحصاءات الاستخدام»، أو «متقدم» ← «سلوك التطبيق» (الإعداد: telemetry_opt_in)",
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "تُرسَل بعد كل تفريغ، بما في ذلك الفاشل والملغى؛ مفعَّلة افتراضيًا. التبديل: «تعليمات» ← «إحصاءات الاستخدام»، أو «متقدم» ← «سلوك التطبيق» (الإعداد: telemetry_opt_in)",
     "Sent in plain text when the URL starts with http://": "يُرسَل كنص عادي عندما يبدأ الرابط بـ http://",
     "Sent with: {system}": "أُرسل مع: {system}",
     "Serbian": "الصربية",
@@ -1604,6 +1604,8 @@
       "نحو {n} ثانية",
       "نحو {n} ثانية"
     ],
+    "about {size} GB": "حوالي {size} GB",
+    "about {size} MB": "حوالي {size} MB",
     "about {speed}": "حوالي {speed}",
     "allowed (this computer)": "مسموح به (هذا الحاسوب)",
     "audio done": "من الصوت مكتمل",

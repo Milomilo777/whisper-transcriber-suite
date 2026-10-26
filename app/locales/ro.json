@@ -1,8 +1,8 @@
 {
   "_meta": {
     "code": "ro",
-    "name": "Română",
     "direction": "ltr",
+    "name": "Română",
     "plural": "ro",
     "status": "machine"
   },
@@ -1029,7 +1029,7 @@
     "Send": "Trimiteți",
     "Send usage statistics (on by default; also in the Help menu)": "Trimite statistici de utilizare (activat implicit; și în meniul Ajutor)",
     "Sending…": "Se trimite…",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Trimise după fiecare transcriere terminată; activat implicit. Comutare: Ajutor → Statistici de utilizare sau Avansat → Comportamentul aplicației (config: telemetry_opt_in)",
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Trimise după fiecare transcriere, inclusiv cele eșuate și anulate; activat implicit. Comutare: Ajutor → Statistici de utilizare sau Avansat → Comportamentul aplicației (config: telemetry_opt_in)",
     "Sent in plain text when the URL starts with http://": "Se trimite ca text simplu când URL-ul începe cu http://",
     "Sent with: {system}": "Trimis cu: {system}",
     "Serbian": "Sârbă",
@@ -1508,6 +1508,8 @@
       "aproximativ {n} secunde",
       "aproximativ {n} de secunde"
     ],
+    "about {size} GB": "aproximativ {size} GB",
+    "about {size} MB": "aproximativ {size} MB",
     "about {speed}": "aproximativ {speed}",
     "allowed (this computer)": "permis (acest computer)",
     "audio done": "audio finalizat",

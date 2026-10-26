@@ -1,8 +1,8 @@
 {
   "_meta": {
     "code": "da",
-    "name": "Dansk",
     "direction": "ltr",
+    "name": "Dansk",
     "plural": "one_other",
     "status": "machine"
   },
@@ -1012,7 +1012,7 @@
     "Send": "Send",
     "Send usage statistics (on by default; also in the Help menu)": "Send brugsstatistik (slået til som standard; også i menuen Hjælp)",
     "Sending…": "Sender…",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Sendes efter hver færdig transskribering; slået til som standard. Skift: Hjælp → Brugsstatistik eller Avanceret → Appens adfærd (config: telemetry_opt_in)",
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Sendes efter hver transskribering, også mislykkede og annullerede; slået til som standard. Skift: Hjælp → Brugsstatistik eller Avanceret → Appens adfærd (config: telemetry_opt_in)",
     "Sent in plain text when the URL starts with http://": "Sendes som almindelig tekst, når URL'en starter med http://",
     "Sent with: {system}": "Sendes med: {system}",
     "Serbian": "Serbisk",
@@ -1476,6 +1476,8 @@
       "ca. {n} sekund",
       "ca. {n} sekunder"
     ],
+    "about {size} GB": "ca. {size} GB",
+    "about {size} MB": "ca. {size} MB",
     "about {speed}": "ca. {speed}",
     "allowed (this computer)": "tilladt (denne computer)",
     "audio done": "lyd færdig",

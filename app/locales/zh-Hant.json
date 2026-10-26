@@ -995,7 +995,7 @@
     "Send": "傳送",
     "Send usage statistics (on by default; also in the Help menu)": "傳送使用統計（預設開啟；也可在「說明」選單中設定）",
     "Sending…": "正在傳送…",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "每次轉錄完成後傳送；預設開啟。開關：說明 → 使用統計，或 進階 → 應用程式行為（設定項：telemetry_opt_in）",
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "每次轉錄後都會傳送，包括失敗和已取消的轉錄；預設開啟。開關：說明 → 使用統計，或 進階 → 應用程式行為（設定項：telemetry_opt_in）",
     "Sent in plain text when the URL starts with http://": "當 URL 以 http:// 開頭時，以純文字傳送",
     "Sent with: {system}": "隨附資訊：{system}",
     "Serbian": "塞爾維亞語",
@@ -1444,6 +1444,8 @@
     "about {n} seconds": [
       "約 {n} 秒"
     ],
+    "about {size} GB": "約 {size} GB",
+    "about {size} MB": "約 {size} MB",
     "about {speed}": "約 {speed}",
     "allowed (this computer)": "已允許（本機）",
     "audio done": "音訊已完成",

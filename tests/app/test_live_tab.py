@@ -69,6 +69,19 @@ def test_tab_builds_and_starts_idle(built):
     assert "Idle" in built.live_status_var.get()
 
 
+def test_tab_asks_for_less_height_than_the_smallest_window(built):
+    """The Save / Copy / Clear row sat below the fold at the default window size: the tab
+    asked for more height than fit, so it scrolled. The transcript box grows with the window
+    (row weight), so it only needs a small requested height."""
+    from app.dpi import scaled_size
+
+    tab = built.live_text
+    while tab.master is not tab.winfo_toplevel():
+        tab = tab.master
+    # 640 = the window's minimum height (App.minsize); the tab shares it with the tab strip.
+    assert tab.winfo_reqheight() <= scaled_size(tab, 960, 640)[1]
+
+
 def test_microphone_is_always_offered(built):
     assert "Microphone" in list(built.live_source_combo.cget("values"))
 

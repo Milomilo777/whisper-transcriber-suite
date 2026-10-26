@@ -1,8 +1,8 @@
 {
   "_meta": {
     "code": "hr",
-    "name": "Hrvatski",
     "direction": "ltr",
+    "name": "Hrvatski",
     "plural": "east_slavic",
     "status": "machine"
   },
@@ -1029,7 +1029,7 @@
     "Send": "Pošalji",
     "Send usage statistics (on by default; also in the Help menu)": "Šalji statistiku korištenja (zadano uključeno; i u izborniku Pomoć)",
     "Sending…": "Slanje…",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Šalje se nakon svake dovršene transkripcije; zadano uključeno. Prekidač: Pomoć → Statistika korištenja ili Napredno → Ponašanje aplikacije (konfiguracija: telemetry_opt_in)",
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Šalje se nakon svake transkripcije, uključujući neuspjele i otkazane; zadano uključeno. Prekidač: Pomoć → Statistika korištenja ili Napredno → Ponašanje aplikacije (konfiguracija: telemetry_opt_in)",
     "Sent in plain text when the URL starts with http://": "Šalje se kao običan tekst kad URL počinje s http://",
     "Sent with: {system}": "Šalje se uz: {system}",
     "Serbian": "Srpski",
@@ -1508,6 +1508,8 @@
       "oko {n} sekunde",
       "oko {n} sekundi"
     ],
+    "about {size} GB": "oko {size} GB",
+    "about {size} MB": "oko {size} MB",
     "about {speed}": "oko {speed}",
     "allowed (this computer)": "dopušteno (ovo računalo)",
     "audio done": "zvuk dovršen",

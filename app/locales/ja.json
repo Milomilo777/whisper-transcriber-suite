@@ -995,7 +995,7 @@
     "Send": "送信",
     "Send usage statistics (on by default; also in the Help menu)": "使用統計を送信（既定でオン。「ヘルプ」メニューにもあります）",
     "Sending…": "送信しています…",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "文字起こしが完了するたびに送信されます。既定でオンです。切り替え: 「ヘルプ」→「使用統計」、または「詳細」→「アプリの動作」（設定: telemetry_opt_in）",
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "失敗やキャンセルを含め、文字起こしのたびに送信されます。既定でオンです。切り替え: 「ヘルプ」→「使用統計」、または「詳細」→「アプリの動作」（設定: telemetry_opt_in）",
     "Sent in plain text when the URL starts with http://": "URL が http:// で始まる場合は平文で送信されます",
     "Sent with: {system}": "送信される情報: {system}",
     "Serbian": "セルビア語",
@@ -1444,6 +1444,8 @@
     "about {n} seconds": [
       "約 {n} 秒"
     ],
+    "about {size} GB": "約 {size} GB",
+    "about {size} MB": "約 {size} MB",
     "about {speed}": "約 {speed}",
     "allowed (this computer)": "許可（このコンピューター）",
     "audio done": "音声完了",

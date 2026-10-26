@@ -1012,7 +1012,7 @@
     "Send": "Αποστολή",
     "Send usage statistics (on by default; also in the Help menu)": "Αποστολή στατιστικών χρήσης (ενεργό από προεπιλογή· επίσης στο μενού Βοήθεια)",
     "Sending…": "Αποστολή…",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Στέλνονται μετά από κάθε ολοκληρωμένη μεταγραφή· ενεργό από προεπιλογή. Διακόπτης: Βοήθεια → Στατιστικά χρήσης ή Για προχωρημένους → Συμπεριφορά εφαρμογής (ρύθμιση: telemetry_opt_in)",
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Στέλνονται μετά από κάθε μεταγραφή, και τις αποτυχημένες ή ακυρωμένες· ενεργό από προεπιλογή. Διακόπτης: Βοήθεια → Στατιστικά χρήσης ή Για προχωρημένους → Συμπεριφορά εφαρμογής (ρύθμιση: telemetry_opt_in)",
     "Sent in plain text when the URL starts with http://": "Αποστέλλεται ως απλό κείμενο όταν το URL ξεκινά με http://",
     "Sent with: {system}": "Αποστέλλεται με: {system}",
     "Serbian": "Σερβικά",
@@ -1476,6 +1476,8 @@
       "περίπου {n} δευτερόλεπτο",
       "περίπου {n} δευτερόλεπτα"
     ],
+    "about {size} GB": "περίπου {size} GB",
+    "about {size} MB": "περίπου {size} MB",
     "about {speed}": "περίπου {speed}",
     "allowed (this computer)": "επιτράπηκε (αυτός ο υπολογιστής)",
     "audio done": "ήχος ολοκληρώθηκε",
