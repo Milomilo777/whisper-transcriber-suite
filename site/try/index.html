@@ -10,6 +10,10 @@
 <meta name="color-scheme" content="light">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
 <link rel="canonical" href="https://whisper-transcriber-suite.com/try/">
+<!-- i18n:hreflang:start -->
+<link rel="alternate" hreflang="en" href="https://whisper-transcriber-suite.com/try/">
+<link rel="alternate" hreflang="x-default" href="https://whisper-transcriber-suite.com/try/">
+<!-- i18n:hreflang:end -->
 
 <meta property="og:type" content="website">
 <meta property="og:title" content="Free Online Audio Transcription, No Upload (Whisper)">
@@ -234,7 +238,7 @@
       <details class="lang-menu" data-lang-menu>
         <summary class="btn btn-ghost btn-sm" title="Language" aria-label="Language"><svg class="i" aria-hidden="true"><use href="#i-globe"/></svg><span class="lang-current" translate="no"><!-- i18n:current:start -->English<!-- i18n:current:end --></span></summary>
         <ul class="lang-list" translate="no"><!-- i18n:menu:start -->
-<li><a href="/?lang=en" hreflang="en" lang="en" data-lang-pick="en" aria-current="true">English</a></li>
+<li><a href="/try/?lang=en" hreflang="en" lang="en" data-lang-pick="en" aria-current="true">English</a></li>
 <li><a href="/de/" hreflang="de" lang="de" data-lang-pick="de">Deutsch</a></li>
 <li><a href="/fr/" hreflang="fr" lang="fr" data-lang-pick="fr">Français</a></li>
 <li><a href="/es/" hreflang="es" lang="es" data-lang-pick="es">Español</a></li>
@@ -356,7 +360,7 @@
 
         <section class="try-step" aria-labelledby="try-result-title" data-result hidden>
           <h2 id="try-result-title">4. Your transcript</h2>
-          <textarea class="try-out" data-text readonly aria-label="Transcript"></textarea>
+          <textarea class="try-out" data-text readonly dir="auto" aria-label="Transcript"></textarea>
           <div class="try-actions">
             <button class="btn btn-ghost" type="button" data-save="txt">Download TXT</button>
             <button class="btn btn-ghost" type="button" data-save="srt">Download SRT</button>
@@ -404,7 +408,31 @@
   </div>
 </footer>
 
+<script type="application/json" id="i18n-strings">
+{
+ "This page was in the background for {time}. A phone may pause a page in the background; the transcription goes on now. Keep this page open until it finishes.": "This page was in the background for {time}. A phone may pause a page in the background; the transcription goes on now. Keep this page open until it finishes.",
+ "Small makes many mistakes in {language}. Pick Large for a much better result, or use the free desktop app.": "Small makes many mistakes in {language}. Pick Large for a much better result, or use the free desktop app.",
+ "Model files removed from this browser: {n}.": "Model files removed from this browser: {n}.",
+ "No downloaded model was found in this browser.": "No downloaded model was found in this browser.",
+ "This file is {length} long. The browser version stops at {max} minutes; the free desktop app transcribes files of any length.": "This file is {length} long. The browser version stops at {max} minutes; the free desktop app transcribes files of any length.",
+ "Loading the speech model from this browser: {done} of {total} MB": "Loading the speech model from this browser: {done} of {total} MB",
+ "Downloading the speech model: {done} of {total} MB": "Downloading the speech model: {done} of {total} MB",
+ "Transcribing in this browser… {time} so far (it can take about as long as the audio, or longer on a phone).": "Transcribing in this browser… {time} so far (it can take about as long as the audio, or longer on a phone).",
+ "No speech was found in this file.": "No speech was found in this file.",
+ "This browser has no WebGPU, which the Large model needs. Pick Small.": "This browser has no WebGPU, which the Large model needs. Pick Small.",
+ "It did not work in this browser: {error}. The desktop app handles this file.": "It did not work in this browser: {error}. The desktop app handles this file.",
+ "The screen stays on while this runs. Keep this page open until it finishes.": "The screen stays on while this runs. Keep this page open until it finishes.",
+ "Keep this page open and the screen on until it finishes: a phone pauses pages in the background.": "Keep this page open and the screen on until it finishes: a phone pauses pages in the background.",
+ "Reading the file…": "Reading the file…",
+ "This browser cannot read the sound of this file. Try an MP3, WAV or M4A, or the desktop app.": "This browser cannot read the sound of this file. Try an MP3, WAV or M4A, or the desktop app.",
+ "the worker stopped": "the worker stopped",
+ "Preparing the speech model…": "Preparing the speech model…",
+ "This model is already in this browser: no download needed.": "This model is already in this browser: no download needed.",
+ "The model ({size}) is downloaded once from Hugging Face when you press Transcribe, then kept in this browser.": "The model ({size}) is downloaded once from Hugging Face when you press Transcribe, then kept in this browser.",
+ "This browser cannot run the speech model. Try a current Chrome, Edge, Firefox or Safari, or the free desktop app.": "This browser cannot run the speech model. Try a current Chrome, Edge, Firefox or Safari, or the free desktop app."
+}
+</script>
 <script src="../js/lang.js?v=20261020a" defer></script>
-<script type="module" src="try.js?v=20261026b"></script>
+<script type="module" src="try.js?v=20261026c"></script>
 </body>
 </html>

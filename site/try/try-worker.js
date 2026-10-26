@@ -46,7 +46,9 @@ self.onmessage = async (event) => {
       asr = null;
       const { pipeline } = await library();
       if (OPTIONS[msg.model].device === 'webgpu' && !(self.navigator.gpu && await self.navigator.gpu.requestAdapter())) {
-        throw new Error('this browser has no WebGPU, which the Large model needs. Pick Small');
+        // the code lets the page show this in its own language
+        throw Object.assign(new Error('this browser has no WebGPU, which the Large model needs. Pick Small'),
+          { code: 'no-webgpu' });
       }
       asr = await pipeline('automatic-speech-recognition', id, {
         ...OPTIONS[msg.model],
@@ -69,6 +71,6 @@ self.onmessage = async (event) => {
     });
     self.postMessage({ type: 'done', text: out.text || '', chunks: out.chunks || [] });
   } catch (err) {
-    self.postMessage({ type: 'error', message: String((err && err.message) || err) });
+    self.postMessage({ type: 'error', code: (err && err.code) || '', message: String((err && err.message) || err) });
   }
 };
