@@ -87,7 +87,16 @@ def viewer_pieces(cleaned: str) -> list[str]:
     if len(cleaned) <= VIEWER_CHARS:
         return [cleaned]
     size = VIEWER_CHARS - len("[9/9] ")
-    chunks = [cleaned[i:i + size] for i in range(0, len(cleaned), size)]
+    chunks, start = [], 0
+    while start < len(cleaned):
+        cut = min(start + size, len(cleaned))
+        # The page trims every cell, so a space at either side of a cut would be lost and glue two words
+        # together: move the cut back until both sides are non-space (inside a word).
+        while (start + 1 < cut < len(cleaned)
+               and (cleaned[cut - 1] == " " or cleaned[cut] == " ")):
+            cut -= 1
+        chunks.append(cleaned[start:cut])
+        start = cut
     return [f"[{k}/{len(chunks)}] {chunk}" for k, chunk in enumerate(chunks, 1)]
 
 

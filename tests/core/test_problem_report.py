@@ -107,6 +107,16 @@ def test_a_long_report_is_readable_in_the_viewer_column():
     assert rows[0]["platform_version"] and rows[1]["platform_version"] == ""
 
 
+def test_pieces_never_start_or_end_with_a_space():
+    # the statistics page trims every cell: a space at a cut would be lost and glue two words together
+    words = ("speaker labels stop working on Turkish recordings after the first minute " * 6).strip()
+    pieces = [p[6:] for p in pr.viewer_pieces(pr.clean_text(words))]
+    assert len(pieces) > 1
+    assert all(p == p.strip() for p in pieces)
+    # every boundary sits inside a word, so plain concatenation of the trimmed cells restores the text
+    assert "".join(pieces) == words
+
+
 def test_the_longest_report_fits_in_single_digit_tags():
     rows = pr.build_payloads("x" * 2000)
     assert len(rows) <= 9 and rows[-1]["model"].startswith(f"[{len(rows)}/{len(rows)}] ")
