@@ -88,6 +88,7 @@ from core.config import (
     webhook_secret_valid,
 )
 from core.history import EXIT_REASON, HistoryDB
+from core.stats import forget_install_id
 from core.task import apply_run_options
 from core.hub import voice_clone_tab_enabled
 from core.logging_setup import get_ui_logger, open_log_folder, setup_logging
@@ -2152,6 +2153,7 @@ class App(tk.Tk):
         """Help → Usage statistics: store the choice like the Advanced checkbox does."""
         on = bool(self.telemetry_opt_in_var.get())
         self.app_config["telemetry_opt_in"] = on
+        forget_install_id(self.app_config)
         try:
             save_config(self.app_config)
         except Exception as e:

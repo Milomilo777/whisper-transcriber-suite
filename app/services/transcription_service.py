@@ -2653,6 +2653,7 @@ class TranscriptionService:
                 transcription_time=ai_time,
                 status=status or getattr(task, "status", "") or "",
                 word_count=word_count,
+                install_id=_stats.install_id_for(app.app_config),
             )
             _stats.post_stats_async(app.app_config, payload)
         except Exception as e:  # noqa: BLE001

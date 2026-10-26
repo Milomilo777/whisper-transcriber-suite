@@ -495,6 +495,7 @@ It binds **loopback (`127.0.0.1`) by default** — no Windows firewall prompt
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `telemetry_opt_in` | bool | `true` | The usage-statistics switch: **Help → Usage statistics**, or the same checkbox under **Advanced → App behaviour** (both show the same value). Turning it off is saved in `config.json` and survives restarts and upgrades; the untouched default is not written to the file. Local-only: the online config can never set it (`core.config.LOCAL_ONLY_KEYS`). The same flag also gates the launch ping and Sentry crash reports below, which in addition need environment variables. |
+| `install_id` | string | `""` | A random UUID4 that tags the usage-statistics rows so the maintainer can count distinct installs (one person transcribing thousands of clips is one install, not many users). Created the first time a row is sent, stored here, never derived from the hardware, the user name, paths or the network. Turning `telemetry_opt_in` off deletes it; turning it on again makes a new, unrelated id. Not sent in problem reports. Local-only (`core.config.LOCAL_ONLY_KEYS`). |
 
 What is sent (built by `core.stats.build_stats_payload`, posted by `core.stats.post_stats_async` on a daemon thread with a 5 s timeout; every error is swallowed, so stats never block or crash a transcription):
 
@@ -511,6 +512,7 @@ What is sent (built by `core.stats.build_stats_payload`, posted by `core.stats.p
 | `country` | two-letter code from the operating system's region setting (`core.stats.region_country`: Windows "Country or region", macOS `AppleLocale`, else `LC_ALL` / `LANG`); read locally, no network lookup; empty when no region is set |
 | `platform_system`, `platform_release`, `platform_version`, `platform_machine`, `platform_processor` | OS name, release and build, CPU architecture and processor string (Python `platform` module) |
 | `cpu_count`, `mem_total` | logical CPU count and total RAM in bytes (`psutil`; `0` when it is missing) |
+| `install_id` | the random per-install id described above (`core.stats.install_id_for`); left out when the switch is off |
 
 Never sent: audio, transcript text, the source file's name or folder path, a local model folder's path, the computer name, the user name, serial numbers or an IP address field. (App versions up to 1.9.3 also sent `file_name`, the source file's name without its folder.) The server still sees the connection's IP address, as every web server does; what it stores is decided by the server script.
 
