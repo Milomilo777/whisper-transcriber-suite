@@ -30,6 +30,14 @@ key under **Advanced > Backend**
 ([docs/CLOUD_STT_GOOGLE.md](docs/CLOUD_STT_GOOGLE.md)). Nothing else is
 affected — offline transcription never used the key.
 
+## Automated scanning
+
+GitHub CodeQL (security-extended queries) scans the Python app, the website's JavaScript and the GitHub
+Actions workflows on every push and pull request to `master` and once a day
+([.github/workflows/codeql.yml](.github/workflows/codeql.yml)). Secret scanning with push protection,
+Dependabot alerts and security updates are on; Dependabot also keeps the pinned workflow actions current
+([.github/dependabot.yml](.github/dependabot.yml)).
+
 ## Threat model in one paragraph
 
 This is a desktop app that reads local media files, shells out to `ffmpeg`,

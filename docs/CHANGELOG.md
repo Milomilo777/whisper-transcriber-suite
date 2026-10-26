@@ -88,6 +88,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Changed
 
+- CodeQL now also scans the website's JavaScript and the GitHub Actions workflows, with the security-extended
+  queries, on every push and once a day (was Python only, weekly); Dependabot keeps the pinned actions current.
 - **Quick start: "Best quality" for Persian uses the Persian model** (Nemotron ASR Persian on the local
   transformers engine, about 3.5 GB with the engine) instead of Whisper Large v3; "Switch back" on the Transcribe tab
   returns to Large v3. Computers with less than 8 GB of memory keep Whisper.

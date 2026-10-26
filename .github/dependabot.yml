@@ -1,0 +1,14 @@
+# Dependabot version updates. Security updates for Python packages are switched on in the repository
+# settings and need no entry here. This file keeps the pinned GitHub Actions (pinned by commit, with the
+# version in a comment) current: one grouped pull request a month, reviewed and merged by hand.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: "CI"

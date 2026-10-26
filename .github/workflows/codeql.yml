@@ -1,8 +1,12 @@
 name: CodeQL
 
 # Free static-analysis security scanning for public repos (GitHub's own
-# scanner). Runs on every push/PR to master plus a weekly schedule so drift
-# in dependencies/queries still gets caught between pushes.
+# scanner). Runs on every push/PR to master plus a daily schedule, so new
+# queries and newly published weaknesses are caught between pushes.
+# Three languages: the Python app, the website's JavaScript (the in-browser
+# demo under site/try/) and the GitHub Actions workflows themselves
+# (injection from untrusted event data, over-broad tokens). The
+# security-extended suite adds the lower-precision security queries.
 
 on:
   push:
@@ -10,19 +14,23 @@ on:
   pull_request:
     branches: [master]
   schedule:
-    - cron: "17 3 * * 1"
+    - cron: "17 3 * * *"
 
 permissions:
   contents: read
 
 jobs:
   analyze:
-    name: Analyze (python)
+    name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
       security-events: write
       contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [python, javascript-typescript, actions]
 
     steps:
       - name: Check out repository
@@ -31,9 +39,11 @@ jobs:
       - name: Initialize CodeQL
         uses: github/codeql-action/init@1190a975f95ce23525efb6a3fc21ea29567c1b52 # v3.38.2
         with:
-          languages: python
+          languages: ${{ matrix.language }}
+          build-mode: none
+          queries: security-extended
 
       - name: Perform CodeQL analysis
         uses: github/codeql-action/analyze@1190a975f95ce23525efb6a3fc21ea29567c1b52 # v3.38.2
         with:
-          category: "/language:python"
+          category: "/language:${{ matrix.language }}"
