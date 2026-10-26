@@ -122,6 +122,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- If a download run fails with an unexpected error, the cleanup now stops yt-dlp's helper processes first, like Cancel, Pause and closing the app do, so the 24 MB temporary unpack folder of yt-dlp.exe is no longer left behind.
 - Identify speakers works again on Windows when the app sits in a folder whose name has non-English letters (for example a Portable copy under a Turkish user name); the speaker models were wrongly reported as missing and the transcript came out without speaker labels.
 - The transcript viewer's right-click menu works again on Windows: Rename speaker, Edit timestamp and Copy text did nothing, because the menu was destroyed before Windows delivered the chosen entry.
 - If the transcription engine reports a late error after all output files were already written, the finished transcript is now kept and shown instead of being marked as failed.

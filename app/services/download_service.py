@@ -21,7 +21,7 @@ import urllib.error
 import urllib.request
 
 from core import offline
-from core._proc import kill_process_tree, new_session_kwargs
+from core._proc import kill_download_tree, new_session_kwargs
 from core.js_runtime import (
     mentions_missing_js_runtime,
     missing_js_runtime_hint,
@@ -78,7 +78,7 @@ def _reap_process(proc: "subprocess.Popen | None") -> None:
         pass
     try:
         if proc.poll() is None:
-            kill_process_tree(proc, force=True)
+            kill_download_tree(proc, children_first=True)
         proc.wait(timeout=2)
     except Exception:  # noqa: BLE001
         pass
