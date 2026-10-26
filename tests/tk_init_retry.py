@@ -69,16 +69,49 @@ def is_sv_ttk_read_error(exc: BaseException) -> bool:
             and "/sv_ttk/" in quoted[1] and quoted[1].endswith(".tcl"))
 
 
+def _resume_sv_ttk_load(style: Any) -> None:
+    """Finish a half-done ``sv.tcl`` load without creating anything twice.
+
+    ``sv.tcl`` sources ``theme/light.tcl`` and then ``theme/dark.tcl``; each creates its ttk theme,
+    and Tk cannot delete or re-create one ("Theme sun-valley-light already exists"). When the read
+    fault hits ``dark.tcl``, the light theme is already there, so sourcing ``sv.tcl`` again fails
+    for a new reason (CI, Windows 3.11). This evaluates ``sv.tcl`` minus the ``source`` lines of
+    the themes that already exist.
+    """
+    import re
+
+    import sv_ttk
+
+    path = str(sv_ttk.TCL_THEME_FILE_PATH)
+    with open(path, encoding="utf-8") as f:
+        text = f.read()
+    existing = set(style.theme_names())
+    for name in ("light", "dark"):
+        if f"sun-valley-{name}" in existing:
+            text = re.sub(rf"^source .*theme {name}\.tcl\]\s*$", "", text, flags=re.M)
+    previous = style.tk.call("info", "script")
+    style.tk.call("info", "script", path)  # sv.tcl locates its theme folder through [info script]
+    try:
+        style.tk.eval(text)
+    finally:
+        style.tk.call("info", "script", previous)
+    style.master._sv_ttk_loaded = True
+
+
 def wrap_sv_ttk_load(original: Callable[..., Any]) -> Callable[..., Any]:
     """Return an ``sv_ttk._load_theme`` replacement that retries the sv.tcl read fault.
 
     Seen on the Windows CI runners ("couldn't read file .../sv_ttk/sv.tcl: No error"), the same
-    fault as the init.tcl one above; counted and reported the same way.
+    fault as the init.tcl one above; counted and reported the same way. A retry after a
+    partial load resumes instead of sourcing ``sv.tcl`` again (see ``_resume_sv_ttk_load``).
     """
     def wrapper(style: Any) -> Any:
         saw_read_fault = False
         for attempt in range(1, MAX_TRIES + 1):
             try:
+                names = style.theme_names() if attempt > 1 and hasattr(style, "theme_names") else ()
+                if any(n.startswith("sun-valley-") for n in names):
+                    return _resume_sv_ttk_load(style)
                 return original(style)
             except Exception as exc:  # noqa: BLE001 - re-raised unless it is the known fault
                 # After the read fault, the next attempt on a Windows runner has raised a
