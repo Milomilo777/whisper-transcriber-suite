@@ -749,7 +749,7 @@ def plain(text: str) -> str:
     """
     if isinstance(text, rtl_shaping.Shaped):  # Linux: a shaped text knows its logical text
         return text.logical
-    return rtl_shaping.logical(_EMBEDDING_MARKS.sub("", text))
+    return rtl_shaping.to_logical(_EMBEDDING_MARKS.sub("", text))
 
 
 # The OS language once detected in this process: (it,) or empty. It does not change while the app

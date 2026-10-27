@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING, Any
 
 from app import shortcuts
 from app.i18n import _, pgettext
-from app.rtl_shaping import logical
+from app.rtl_shaping import to_logical as logical
 
 if TYPE_CHECKING:
     from app.app import App

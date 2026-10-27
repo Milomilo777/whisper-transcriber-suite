@@ -177,8 +177,11 @@ left-to-right places.
   wraps the result in `i18n.display()`, which shapes the whole line once; window titles and the
   tray go through `rtl_shaping.logical`, since the desktop shapes those itself. A shaped text is
   an `rtl_shaping.Shaped` (a `str` that carries its logical text); `+` keeps track of it, but an
-  f-string, `str.join` or `%` around a Hebrew `_()` result does not, so join with `+` or let `_()`
-  place the parts. Raw data (a speaker or file name) is always taken for logical text. Known limits: a
+  f-string, `str.join` or `%` around a Hebrew `_()` result does not, so join with `+`,
+  `rtl_shaping.join` or let `_()` place the parts. Text that leaves the screen (`i18n.plain()`,
+  window titles, the tray) also recognises a whole earlier result line by its text, spaces
+  around it ignored, because it has often passed through `str()` or a Tk widget; a line that
+  mixes a shaped Hebrew word with other text after such a trip cannot be recovered. Raw data (a speaker or file name) is always taken for logical text. Known limits: a
   label long enough to wrap shows its lines in the wrong order, and a "%" or "$" next to a
   number inside brackets can sit on the wrong side.
 - In code, a translated text that leaves the screen (the log file, the clipboard, a file) goes

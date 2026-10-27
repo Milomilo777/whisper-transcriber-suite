@@ -32,7 +32,7 @@ import sys
 import threading
 import unicodedata
 from collections import OrderedDict
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -52,6 +52,9 @@ _REMEMBERED = 20000  # Arabic results kept by text for logical(); far more than 
 _LOCK = threading.Lock()
 _VISUAL_TO_LOGICAL: OrderedDict[str, str] = OrderedDict()
 _BY_FIRST_CHAR: dict[str, set[str]] = {}  # the keys above by their first character
+# Whole shaped Hebrew lines (they only look reversed, so they can equal real text) -> logical line.
+# Read only by to_logical(), for text that leaves the screen; never for placeholders or display().
+_HEBREW_TO_LOGICAL: OrderedDict[str, str] = OrderedDict()
 _CACHE: dict[tuple[str, str, bool], tuple[str, str]] = {}  # (line, base, logical_input) -> (shown, logical)
 
 
@@ -129,6 +132,17 @@ def _remember(shaped: str, logical_text: str) -> None:
                     del _BY_FIRST_CHAR[old[0]]
         if len(_CACHE) > _REMEMBERED:
             _CACHE.clear()
+
+
+def _remember_hebrew(shaped: str, logical_text: str) -> None:
+    """Remember a whole Hebrew result line by its text, for :func:`to_logical` only."""
+    if not shaped or shaped == logical_text:
+        return
+    with _LOCK:
+        _HEBREW_TO_LOGICAL[shaped] = logical_text
+        _HEBREW_TO_LOGICAL.move_to_end(shaped)
+        while len(_HEBREW_TO_LOGICAL) > _REMEMBERED:
+            _HEBREW_TO_LOGICAL.popitem(last=False)
 
 
 def _lookup_result(body: str) -> str | None:
@@ -286,6 +300,8 @@ def _shape_line(line: str, base: str, logical_input: bool) -> tuple[str, str]:
         return line, line
     out = _order(engine, engine.reshape(source), base)
     _remember(out, source)
+    if not _is_shaped(out):
+        _remember_hebrew(out, source)
     with _LOCK:
         _CACHE[key] = (out, source)
     return out + tail, source + tail
@@ -335,6 +351,45 @@ def logical(text: str) -> str:
     return "\n".join(out)
 
 
+def _leaving_line(line: str) -> str:
+    body, tail = _split_cr(line)
+    core = body.strip()
+    if not core:
+        return line
+    with _LOCK:
+        known = _VISUAL_TO_LOGICAL.get(core)
+        if known is None:
+            known = _HEBREW_TO_LOGICAL.get(core)
+    if known is not None:
+        lead = len(body) - len(body.lstrip())
+        return body[:lead] + known + body[lead + len(core):] + tail
+    if _has_rtl_letter(core):
+        return _recover(body) + tail
+    return line
+
+
+def to_logical(text: str) -> str:
+    """The logical text of *text* for text that LEAVES the screen: clipboard, log file, window
+    title, tray. Like :func:`logical`, and in addition a whole line (ignoring spaces around it)
+    that :func:`visual` made is recognised by its text, Hebrew too, because such text has often
+    lost its Shaped identity on the way (a slice, ``str()``, ``"\\n".join``, a round trip
+    through a Tk widget). Never use it for a placeholder value or for display: a raw name can
+    equal an earlier Hebrew result."""
+    if isinstance(text, Shaped):
+        return text.logical
+    if not text:
+        return text
+    return "\n".join(_leaving_line(line) for line in text.split("\n"))
+
+
+def join(sep: str, parts: Iterable[str]) -> str:
+    """``sep.join(parts)`` that keeps track of Shaped parts (the plain result when none is Shaped)."""
+    items = list(parts)
+    if not any(isinstance(x, Shaped) for x in (sep, *items)):
+        return sep.join(items)
+    return Shaped(str.join(sep, items), logical(sep).join(logical(p) for p in items), True)
+
+
 # --- window titles ------------------------------------------------------------------------------------
 
 _RESTORE: list[Callable[[], None]] = []
@@ -361,7 +416,7 @@ def install_title_hook(wm: Any = None, dialog: Any = None) -> Callable[[], None]
         base_title = wm.wm_title
 
         def wm_title(self: Any, string: Any = None) -> Any:
-            return base_title(self, logical(string) if isinstance(string, str) else string)
+            return base_title(self, to_logical(string) if isinstance(string, str) else string)
 
         wm.wm_title = wm.title = wm_title
         wm._wts_logical_title = True
@@ -381,10 +436,10 @@ def install_title_hook(wm: Any = None, dialog: Any = None) -> Callable[[], None]
 
         def show(self: Any, **options: Any) -> Any:
             if isinstance(options.get("title"), str):
-                options["title"] = logical(options["title"])
+                options["title"] = to_logical(options["title"])
             held = getattr(self, "options", None)
             if isinstance(held, dict) and isinstance(held.get("title"), str):
-                held["title"] = logical(held["title"])
+                held["title"] = to_logical(held["title"])
             return base_show(self, **options)
 
         dialog.show = show

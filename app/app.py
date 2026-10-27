@@ -103,6 +103,14 @@ logger = logging.getLogger(__name__)
 # each item, so no lookup ever goes by the (translated) label.
 _HELP_MENU_LABEL = N_("Help")
 _CHECK_FOR_UPDATES_LABEL = N_("Check for updates...")
+
+
+def _help_label_with_dot() -> str:
+    """The Help menu label with the update dot; the dot ends a right-to-left label, so the whole
+    label is shaped once (Linux) instead of gluing the dot to a shaped word."""
+    return display(translate(_HELP_MENU_LABEL) + " " + chr(0x25CF))
+
+
 _ABOUT_MENU_LABEL = N_("About")
 _WORK_OFFLINE_LABEL = N_("Work offline")
 # core.star_invite's two lines, marked here: the app shows them, and core/ is not translated.
@@ -7462,7 +7470,7 @@ class App(tk.Tk):
         try:
             version = _updates.passive_sign_version(self.app_config, _APP_VERSION)
             if version:
-                help_label = f"{translate(_HELP_MENU_LABEL)} ●"
+                help_label = _help_label_with_dot()
                 item_label = _("Check for updates...  ● {version} available", version=version)
             else:
                 help_label = translate(_HELP_MENU_LABEL)
