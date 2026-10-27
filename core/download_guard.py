@@ -21,7 +21,8 @@ _AUDIO_EXT = {"aac": "m4a", "alac": "m4a", "vorbis": "ogg"}
 
 # Pieces an unfinished download leaves next to a file.
 _PIECES = (".part", ".ytdl")
-_PIECE_SUFFIX = re.compile(r"\.(?:part(?:-frag\d+)?|ytdl)")
+# yt-dlp names fragments "<file>.part-Frag<N>" (downloader/fragment.py); norm() keeps case off Windows.
+_PIECE_SUFFIX = re.compile(r"\.(?:part(?:-frag\d+)?|ytdl)", re.IGNORECASE)
 
 
 class DownloadRefused(Exception):

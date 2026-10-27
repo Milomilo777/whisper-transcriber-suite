@@ -122,3 +122,12 @@ def test_is_own_matches_the_unfinished_pieces_exactly():
     assert not g.is_own("/d/T.webm.partial", own)         # a user's file that only starts like a piece
     assert not g.is_own("/d/T.webm.ytdl.bak", own)
     assert not g.is_own("/d/T.webm.part-Fragment", own)
+
+
+def test_is_own_takes_yt_dlps_mixed_case_fragment_name_where_paths_keep_their_case(monkeypatch):
+    # macOS and Linux do not fold case in norm(); yt-dlp writes "<file>.part-Frag3" (downloader/fragment.py).
+    monkeypatch.setattr(g, "norm", lambda p: p)
+    own = ["/d/T.webm"]
+    assert g.is_own("/d/T.webm.part-Frag3", own)
+    assert g.is_own("/d/T.webm.part", own) and g.is_own("/d/T.webm.ytdl", own)
+    assert not g.is_own("/d/T.webm.partial", own)
