@@ -248,6 +248,11 @@ def _parse_timecode(raw: str | None) -> float | None:
     parts = s.split(":")
     if len(parts) > 3:
         return None
+    # A strict shape check, not just float(): float() also accepts
+    # digit-group separators ("1_000" -> 1000.0) and an explicit "+"
+    # sign, which are garbled input here, not a timecode.
+    if not all(re.fullmatch(r"\d+(?:\.\d+)?", p.strip()) for p in parts):
+        return None
     try:
         nums = [float(p) for p in parts]
     except ValueError:
