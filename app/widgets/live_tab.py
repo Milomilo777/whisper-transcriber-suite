@@ -26,6 +26,8 @@ import tkinter as tk
 from tkinter import filedialog, ttk
 from typing import Any, Callable
 
+from app import mac_permissions
+from app.dialogs.mac_permission import show_mic_notice
 from app.dpi import scaled
 from app.i18n import N_, _, ngettext, pgettext, translate
 from app.model_text import localize_size_text
@@ -779,6 +781,42 @@ def _set_running(app: Any, running: bool) -> None:
         logger.debug("Could not update live controls", exc_info=True)
 
 
+#: config.json key: the macOS "will ask for the microphone" notice was shown once already.
+_MAC_NOTICE_KEY = "mac_mic_notice_seen"
+
+
+def _remember_mac_notice(app: Any) -> None:
+    app.app_config[_MAC_NOTICE_KEY] = True
+    from core.config import save_config
+
+    try:
+        save_config(app.app_config)
+    except Exception:  # noqa: BLE001
+        logger.exception("Could not save that the microphone notice was shown")
+
+
+def _mac_mic_gate(app: Any, mode: str) -> bool:
+    """macOS only: explain the microphone permission before listening. False = do not start.
+
+    Before macOS asks (first use) the notice explains and listening goes on; when the microphone
+    is denied or restricted, listening would only record silence, so the notice replaces the start.
+    """
+    if mode != "mic" or not mac_permissions.is_macos():
+        return True
+    status = mac_permissions.microphone_status()
+    reason = mac_permissions.notice_reason(
+        status, seen=bool(app.app_config.get(_MAC_NOTICE_KEY)))
+    if reason is None:
+        return True
+    if reason == mac_permissions.REASON_FIRST_USE:
+        _remember_mac_notice(app)
+        show_mic_notice(app, reason)
+        return True
+    app.log(f"Live: microphone permission is {status}; not starting.")
+    show_mic_notice(app, reason)
+    return False
+
+
 def _start(app: Any) -> None:
     from core import live as _live
 
@@ -790,6 +828,8 @@ def _start(app: Any) -> None:
             detail=_live.availability_reason(mode),
         )
         return
+    if not _mac_mic_gate(app, mode):
+        return
     if not _confirm_model_language(app, on_start=True):
         return
 
@@ -797,6 +837,7 @@ def _start(app: Any) -> None:
     app._live_cancel_pending = False
     app._live_stop_reason = ""
     app._live_signal_hint = False
+    app._live_mac_notice_shown = False
     _set_running(app, True)
     worker_log = _live_log(app)
 
@@ -1369,6 +1410,12 @@ def _check_health(app: Any) -> None:
     if state in ("no_audio", "silent"):
         app._live_signal_hint = True
         app.live_status_var.set(translate(_NO_AUDIO_HINT if state == "no_audio" else _SILENT_HINT))
+        if (state == "silent" and mac_permissions.is_macos()
+                and not getattr(app, "_live_mac_notice_shown", False)):
+            # Once per session, and after the poll returns: a modal dialog inside the poll
+            # would hold the transcript updates until it is closed.
+            app._live_mac_notice_shown = True
+            app.after(0, lambda: show_mic_notice(app, mac_permissions.REASON_BLOCKED))
     elif getattr(app, "_live_signal_hint", False):
         app._live_signal_hint = False
         app.live_status_var.set(_("Listening…"))

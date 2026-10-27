@@ -655,6 +655,7 @@
   "Media: (none found next to JSON)": "Media: (none found next to JSON)",
   "Media: {name}": "Media: {name}",
   "Microphone": "Microphone",
+  "Microphone access": "Microphone access",
   "Microphone off — transcribing what was already said…": "Microphone off — transcribing what was already said…",
   "Microphone off — transcribing {n} remaining part… (Discard rest to skip)": [
    "Microphone off — transcribing {n} remaining part… (Discard rest to skip)",
@@ -792,6 +793,7 @@
   "Open Log Folder in Finder": "Open Log Folder in Finder",
   "Open Model Folder in Finder": "Open Model Folder in Finder",
   "Open Output Folder in Finder": "Open Output Folder in Finder",
+  "Open System Settings": "Open System Settings",
   "Open TCP connections to other computers (checked {time}, {n} process of this app):": [
    "Open TCP connections to other computers (checked {time}, {n} process of this app):",
    "Open TCP connections to other computers (checked {time}, {n} processes of this app):"
@@ -1557,6 +1559,8 @@
   "language choice\u0004Auto": "Auto",
   "list separator\u0004, ": ", ",
   "log menu\u0004Clear": "Clear",
+  "macOS is not giving this app the microphone, or the microphone is muted. Allow it in System Settings, Privacy & Security, Microphone.": "macOS is not giving this app the microphone, or the microphone is muted. Allow it in System Settings, Privacy & Security, Microphone.",
+  "macOS will ask whether this app may use the microphone. Choose Allow, so that live listening can hear you.": "macOS will ask whether this app may use the microphone. Choose Allow, so that live listening can hear you.",
   "measuring speed...": "measuring speed...",
   "menu\u0004File": "File",
   "menu\u0004View": "View",
