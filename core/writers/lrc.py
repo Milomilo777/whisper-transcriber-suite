@@ -10,6 +10,11 @@ def write(segments: list[dict], audio_path: str = "") -> str:
     lines: list[str] = []
     if audio_path:
         title = os.path.splitext(os.path.basename(audio_path))[0]
+        # LRC has no escape for "]" inside a tag: a bracket in the name
+        # would end the ti tag there and push the rest into the body as a
+        # stray lyric line, so drop the brackets (the md heading does the
+        # same for its markup).
+        title = title.replace("[", "").replace("]", "")
         lines.append(f"[ti:{replace_lone_surrogates(title)}]")
     for seg in segments:
         # coerce_seconds: clamp a malformed start (None / non-numeric /
