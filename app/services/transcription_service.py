@@ -1123,6 +1123,20 @@ class TranscriptionService:
         if not self._are_outputs_complete(failed):
             failed.output_paths = previous
             return False
+        # A partial set (an error during the export steps) is not a delivered
+        # result: only when every format this run was dispatched to write is
+        # among the files may it be reported finished — the same rule the
+        # Cancel path applies (test_cancel_with_only_some_formats_written_
+        # stays_cancelled). A no-speech run writes empty files on purpose, and
+        # a task without a stamped format list (an older dispatcher) keeps the
+        # existence-only check above.
+        if (
+            not getattr(failed, "no_speech", False)
+            and getattr(failed, "output_formats", None) is not None
+            and not self._written_outputs_cover_formats(failed)
+        ):
+            failed.output_paths = previous
+            return False
         failed.status = "finished"
         failed.recovery_note = (
             f"Worker reported an error after writing all outputs: {_short_message(message)}"

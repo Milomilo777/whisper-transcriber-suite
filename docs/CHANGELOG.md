@@ -153,6 +153,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- A worker error after only some of the requested output formats were written is no longer reported as a finished transcription.
 - Resume checkpoints of a transformers language-model run are now stamped with that model and engine instead of the general model.
 - The auto-chapters sidecar now follows the output filename template, so it sits next to the templated JSON file.
 - Answering No to "Resume interrupted transcriptions?" no longer deletes the partial transcript: the checkpoint is kept aside in the data folder with a readable text copy, and the log says where. The offer also finds an interrupted job when more than 200 newer history rows exist.
