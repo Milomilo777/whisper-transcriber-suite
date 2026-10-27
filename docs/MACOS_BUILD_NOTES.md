@@ -108,7 +108,7 @@ What v1.9.0 and v1.9.3 did, in order; repeat it for the next version.
 
 ## Apple-silicon engine (MLX) in the arm64 build
 
-ADR 0019. The engine is `core/backends/mlx_whisper_be.py`; its packages are only for the arm64 build:
+ADR 0020. The engine is `core/backends/mlx_whisper_be.py`; its packages are only for the arm64 build:
 
 ```bash
 python -m pip install -r platform/macos/pyinstaller/requirements-apple-silicon.txt

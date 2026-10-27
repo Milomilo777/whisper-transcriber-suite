@@ -71,7 +71,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   (`mlx-whisper`) and is chosen automatically on an Apple-silicon Mac when the model has an MLX version;
   picking Faster-Whisper in the Engine list switches it off. Models download after the usual question;
   other systems and Intel Macs are untouched. Checked on GitHub's arm64 runners, not yet on a physical Mac
-  (ADR 0019, `docs/MACOS_BUILD_NOTES.md`).
+  (ADR 0020, `docs/MACOS_BUILD_NOTES.md`).
 - **Usage statistics count installs**: each row carries a random per-install id (a UUID4 in the new
   `install_id` setting), so one person transcribing thousands of clips is no longer counted as many
   users. The id comes from no hardware, name, path or network fact, is not sent in problem reports, and is

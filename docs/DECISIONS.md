@@ -865,7 +865,7 @@ media downloads that link jobs already allow; a password closes it. The download
 desktop window yet, only in the log. A switch between a general job and a language job costs one
 model load, as in ADR 0016.
 
-## 0019 — Apple-silicon engine: mlx-whisper, chosen automatically on M-series Macs
+## 0020 — Apple-silicon engine: mlx-whisper, chosen automatically on M-series Macs
 
 **Status:** Accepted
 
