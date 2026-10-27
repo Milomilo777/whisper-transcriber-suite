@@ -243,7 +243,7 @@ _TS_LINE = re.compile(
     \s*-->\s*
     (?P<end>\d{1,2}:\d{2}:\d{2}(?:[.,]\d{1,3})?|\d{1,2}:\d{2}(?:[.,]\d{1,3})?)
     \s*\]?\s*
-    (?P<text>.*\S)\s*$
+    (?P<text>.*\S)?\s*$
     """,
     re.VERBOSE,
 )
@@ -350,6 +350,12 @@ def parse_transcript_to_segments(text: str) -> list[dict[str, Any]]:
             continue
         m = _TS_LINE.match(line)
         if m:
+            raw_text = (m.group("text") or "").strip()
+            if not raw_text:
+                # A timestamp line with no utterance after it (an empty
+                # cue): not a segment and not continuation text — the
+                # text group must never swallow the closing bracket.
+                continue
             try:
                 start = _parse_ts(m.group("start"))
                 end = _parse_ts(m.group("end"))
