@@ -644,9 +644,10 @@ def find_kept_references(engine: str, text: str, voice: "dict[str, object]", spe
     base = Path(root if root is not None else tts_plan.output_root())
     for refs_dir in sorted(base.glob(f"job-*/{REFERENCES_DIR}")):
         folder = refs_dir.parent
+        # A folder that kept clips but finished no piece yet (cancelled or
+        # killed before the first piece) still counts: the copies are the
+        # only thing that identifies that job's voice.
         finished = (folder / FINISHED_FILE).is_file()
-        if not (finished or is_unfinished_job_dir(folder)):
-            continue
         clips = []
         for p in refs_dir.glob("ref-*"):
             try:
