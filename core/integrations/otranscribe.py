@@ -243,6 +243,12 @@ class _OtrParser(HTMLParser):
         self._buffer = []
         self._untimed = False
 
+    def _body_break(self) -> None:
+        # A Shift+Enter line break (<br>) inside a paragraph: the words on
+        # either side must stay separated in the exported cue body.
+        if self._current_start is not None and not self._in_timestamp:
+            self._buffer.append(" ")
+
     def handle_starttag(self, tag, attrs):
         if tag == "span":
             attrs_dict = dict(attrs)
@@ -254,6 +260,8 @@ class _OtrParser(HTMLParser):
                 # crashed the SRT formatter on.
                 self._current_start = _safe_seconds(ts_raw)
                 self._in_timestamp = True
+        elif tag == "br":
+            self._body_break()
         # Any other tag inside body keeps adding text via handle_data.
 
     def handle_endtag(self, tag):
@@ -263,8 +271,9 @@ class _OtrParser(HTMLParser):
             self._flush()
 
     def handle_startendtag(self, tag, attrs):
-        # Self-closing tags inside the body — ignore.
-        pass
+        # Self-closing <br/> inside the body still separates the words.
+        if tag == "br":
+            self._body_break()
 
     def handle_data(self, data):
         if self._in_timestamp:
