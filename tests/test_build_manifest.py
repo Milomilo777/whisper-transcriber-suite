@@ -57,3 +57,20 @@ def test_strict_prefix_does_not_match_a_sibling_that_shares_the_text():
     b = _manifest("B", {"app/y.py": (1, "a"), "app2/x.py": (2, "b")})
     _lines, failures = build_manifest.compare(a, b, ["app"], 10.0)
     assert failures == []
+
+
+def test_compare_of_two_empty_trees_reports_no_size_change():
+    """Two trees without relevant files differ by 0 bytes, which is within any tolerance."""
+    lines, failures = build_manifest.compare(
+        {"tree": "A", "files": {}}, {"tree": "B", "files": {}}, [], 0.10)
+    assert failures == []
+    assert "total bytes 0 -> 0 (+0.00%, tolerance 10%)" in lines
+
+
+def test_compare_of_empty_against_non_empty_tree_still_fails():
+    """0 -> N bytes is an unbounded relative change and must stay a failure."""
+    _lines, failures = build_manifest.compare(
+        {"tree": "A", "files": {}},
+        {"tree": "B", "files": {"x.txt": {"size": 5, "sha256": "aa"}}},
+        [], 0.10)
+    assert failures == ["total size changed by +inf%, more than 10%"]

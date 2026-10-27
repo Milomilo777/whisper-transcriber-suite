@@ -95,7 +95,8 @@ def compare(a: dict[str, Any], b: dict[str, Any], strict: list[str],
             failures.append(f"strict path differs: {rel}")
     total_a = sum(v["size"] for v in fa.values())
     total_b = sum(v["size"] for v in fb.values())
-    change = (total_b - total_a) / total_a if total_a else float("inf")
+    # No reference bytes: 0 -> 0 is no change (within every tolerance); 0 -> N is unbounded.
+    change = (total_b - total_a) / total_a if total_a else (0.0 if total_b == 0 else float("inf"))
     lines.append(f"total bytes {total_a} -> {total_b} ({change:+.2%}, tolerance {tolerance:.0%})")
     if abs(change) > tolerance:
         failures.append(f"total size changed by {change:+.2%}, more than {tolerance:.0%}")
