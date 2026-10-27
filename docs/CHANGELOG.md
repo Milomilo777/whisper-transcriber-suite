@@ -153,6 +153,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- The auto-chapters sidecar now follows the output filename template, so it sits next to the templated JSON file.
 - Answering No to "Resume interrupted transcriptions?" no longer deletes the partial transcript: the checkpoint is kept aside in the data folder with a readable text copy, and the log says where. The offer also finds an interrupted job when more than 200 newer history rows exist.
 - Identify speakers works again on Windows when the app sits in a folder whose name has non-English letters (for example a Portable copy under a Turkish user name); the speaker models were wrongly reported as missing and the transcript came out without speaker labels.
 - The interface-language list widens to fit its longest name (some endonyms were cut off on Windows); with short names it keeps its old width.

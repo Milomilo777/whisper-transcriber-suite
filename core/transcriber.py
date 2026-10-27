@@ -1336,7 +1336,12 @@ def _write_outputs(
     while True:
         candidates = [_final_path(f, p, index) for f, p in indexed_planned]
         if want_sidecar:
-            candidates.append(_indexed_sidecar_path(base, index))
+            candidates.append(
+                _indexed_sidecar_path(
+                    base, index, template=template, lang=lang,
+                    speaker_count=speaker_count,
+                )
+            )
         taken = False
         for cand in candidates:
             if not _claim(cand):
@@ -1436,14 +1441,18 @@ def _write_outputs(
         # non-fatal (chapters are an optional extra, never worth failing the
         # transcript over) — _write_chapter_sidecar returns None on error.
         if want_sidecar:
-            sidecar_path = _write_chapter_sidecar(
-                _indexed_sidecar_path(base, index), chapters or []
+            sidecar_path = _indexed_sidecar_path(
+                base, index, template=template, lang=lang,
+                speaker_count=speaker_count,
             )
-            if sidecar_path:
-                claimed.discard(sidecar_path)
-                written.append(sidecar_path)
+            written_sidecar = _write_chapter_sidecar(
+                sidecar_path, chapters or []
+            )
+            if written_sidecar:
+                claimed.discard(written_sidecar)
+                written.append(written_sidecar)
             else:
-                _release(_indexed_sidecar_path(base, index))
+                _release(sidecar_path)
         return written
     finally:
         # Every claim that was not published (all writers failed, an
@@ -1941,7 +1950,14 @@ def _maybe_get_llm_runner() -> Any | None:
         return None
 
 
-def _indexed_sidecar_path(base: str, index: int) -> str:
+def _indexed_sidecar_path(
+    base: str,
+    index: int,
+    *,
+    template: str = "{base}.{ext}",
+    lang: str = "",
+    speaker_count: int = 0,
+) -> str:
     """Path for a ``<base>.chapters.json`` sidecar at the shared index.
 
     Built by appending ``" (N)"`` to the base — NOT by feeding the full
@@ -1949,9 +1965,25 @@ def _indexed_sidecar_path(base: str, index: int) -> str:
     splits on the last dot and would produce ``.chapters (1).json``
     instead of ``(1).chapters.json``. ``index <= 0`` is the first,
     unsuffixed write.
+
+    The sidecar is rendered through the same ``output_filename_template``
+    as the transcript outputs (with ``ext="chapters.json"``) so it lands
+    next to the templated JSON. The transcript viewer derives the sidecar
+    path from the JSON it opened, so without this a ```{lang}```` /
+    ``{speaker_count}`` template wrote the chapters to the raw
+    ``<base>.chapters.json`` while the viewer looked for
+    ``<base>.{lang}.chapters.json`` — and found nothing.
     """
+    rendered = _render_filename_template(
+        template, base=base, ext="chapters.json", lang=lang,
+        speaker_count=speaker_count,
+    )
+    stem = (
+        rendered[: -len(".chapters.json")]
+        if rendered.endswith(".chapters.json") else rendered
+    )
     suffix = f" ({index})" if index > 0 else ""
-    return f"{base}{suffix}.chapters.json"
+    return f"{stem}{suffix}.chapters.json"
 
 
 def _write_chapter_sidecar(path: str, chapters: list[dict[str, Any]]) -> str | None:
