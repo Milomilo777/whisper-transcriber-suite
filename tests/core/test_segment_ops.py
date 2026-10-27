@@ -336,6 +336,28 @@ def test_merge_start_end():
     assert res[0]["start"] == 1.0
     assert res[0]["end"] == 4.0
 
+def test_merge_boundary_whitespace_makes_one_space():
+    # faster-whisper segment texts carry a leading space, and set_text keeps
+    # a leading space by design. Merging must join on exactly one space, not
+    # stack the boundary whitespace into a double or triple space.
+    segments = [
+        {"start": 0.0, "end": 1.0, "text": "hello "},
+        {"start": 1.0, "end": 2.0, "text": " world"},
+    ]
+    res = merge_with_next(segments, 0)
+    assert res[0]["text"] == "hello world"
+
+def test_merge_cjk_boundary_whitespace_still_joins_without_space():
+    # The CJK no-space rule looked at the raw edge chars, so a leading space
+    # on the right segment (the usual whisper shape) hid the Han character
+    # and the merge produced "你好  世界" instead of "你好世界".
+    segments = [
+        {"start": 0.0, "end": 1.0, "text": "你好"},
+        {"start": 1.0, "end": 2.0, "text": " 世界"},
+    ]
+    res = merge_with_next(segments, 0)
+    assert res[0]["text"] == "你好世界"
+
 def test_split_bounds():
     segments = [{"start": 0.0, "end": 1.0, "text": "ab"}]
     with pytest.raises(SegmentOpError):

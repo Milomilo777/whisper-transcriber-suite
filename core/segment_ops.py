@@ -115,16 +115,22 @@ def merge_with_next(segments: list[dict], index: int) -> list[dict]:
     l_text = left.get("text", "") or ""
     r_text = right.get("text", "") or ""
 
+    # Join on the whitespace-stripped edges: whisper texts carry a leading
+    # space, and stacking it on the joiner made "hello " + " world" come out
+    # with three spaces (and hid the Han char from the CJK rule below).
+    l_join = l_text.rstrip()
+    r_join = r_text.lstrip()
+
     # check CJK
     no_space = False
-    if l_text and r_text:
-        if _is_cjk(l_text[-1]) and _is_cjk(r_text[0]):
+    if l_join and r_join:
+        if _is_cjk(l_join[-1]) and _is_cjk(r_join[0]):
             no_space = True
 
-    if no_space:
-        new_seg["text"] = l_text + r_text
+    if no_space or not (l_join and r_join):
+        new_seg["text"] = l_join + r_join
     else:
-        new_seg["text"] = l_text + (" " if l_text and r_text else "") + r_text
+        new_seg["text"] = l_join + " " + r_join
 
     if "words" in left or "words" in right:
         new_seg["words"] = copy.deepcopy(left.get("words", [])) + copy.deepcopy(right.get("words", []))
