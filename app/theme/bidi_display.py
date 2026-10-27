@@ -39,11 +39,11 @@ def ltr_base(text: str) -> str:
     (a string that already starts with the mark counts as left to right, so the result is stable
     when applied twice).
     """
-    if rtl_shaping.applies():
-        # Linux: Tk draws the string unjoined and unordered; shape it for display with a
-        # left-to-right base (a name inside an English line). Shaped text is left alone.
-        return rtl_shaping.visual(text, base="L")
     if not is_aqua():
+        if rtl_shaping.applies():
+            # Linux: Tk draws the string unjoined and unordered; shape it for display with a
+            # left-to-right base (a name inside an English line). Shaped text is left alone.
+            return rtl_shaping.visual(text, base="L")
         return text
     for ch in text:
         kind = unicodedata.bidirectional(ch)

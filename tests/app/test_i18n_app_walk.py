@@ -32,7 +32,7 @@ from unittest.mock import patch
 
 import pytest
 
-from app import i18n
+from app import i18n, rtl_shaping
 
 # Texts the app shows that do not go through the translation layer, with the reason.
 ALLOWED: dict[str, str] = {
@@ -82,6 +82,8 @@ def _dynamic_allowed() -> set[str]:
     texts.add(updates.bar_text(UPDATE_INFO.latest_tag, _APP_VERSION, UPDATE_INFO.headline))
     texts.add(CORE_USAGE)
     texts |= {lang.endonym for lang in i18n.SUPPORTED_LANGUAGES}
+    # Linux with arabic-reshaper and python-bidi: the same names, display-shaped (ltr_base).
+    texts |= {rtl_shaping.visual(lang.endonym, base="L") for lang in i18n.SUPPORTED_LANGUAGES}
     texts.add(ui_language.button_text())  # the language button: the running language's own name
     texts |= set(cookie_browser_choices("")[1:])
     texts |= {name.upper() for name in supported_formats() if name not in adv._FORMAT_LABELS}
@@ -488,6 +490,7 @@ def test_tk_persian_catalog_marks_every_translated_line(
     from app.dialogs import ui_language
 
     names = {lang.endonym for lang in i18n.SUPPORTED_LANGUAGES} | {ui_language.button_text()}
+    names |= {rtl_shaping.visual(lang.endonym, base="L") for lang in i18n.SUPPORTED_LANGUAGES}
     bad = sorted({f"{state} | {path} | {text!r}: {', '.join(p)}" for state, path, text in rows
                   if text not in names and not _video_site(app, path)
                   for p in [_unembedded(text)] if p})

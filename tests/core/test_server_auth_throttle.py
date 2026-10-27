@@ -315,7 +315,8 @@ def test_many_concurrent_http_guesses_compare_at_most_limit_plus_one(
         httpd.token_ok = counting
         try:
             statuses: list[int] = []
-            aborted: list[int] = []
+            aborted: list[int] = []  # aborts the OS added on its own (seen on Windows)
+            forced: list[int] = []  # the one abort this test injects
             barrier = threading.Barrier(30)
             real_request = http.client.HTTPConnection.request
             pending_abort = {"guess7"} if abort_one else set()
@@ -324,6 +325,7 @@ def test_many_concurrent_http_guesses_compare_at_most_limit_plus_one(
                 tok = (kw.get("headers") or {}).get("X-Auth-Token")
                 if tok in pending_abort:
                     pending_abort.discard(tok)
+                    forced.append(int(tok[5:]))
                     raise ConnectionAbortedError(10053, "aborted by test")
                 return real_request(self, method, url, *a, **kw)
 
@@ -349,7 +351,7 @@ def test_many_concurrent_http_guesses_compare_at_most_limit_plus_one(
         finally:
             httpd.token_ok = real
     if abort_one:
-        assert aborted == [7]
+        assert forced == [7]  # the injected abort happened, and its guess was answered by a retry
     assert len(statuses) == 30  # every request was finally answered
     assert set(statuses) <= {401, 429}
     assert len(compared) <= 6

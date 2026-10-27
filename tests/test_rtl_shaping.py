@@ -802,3 +802,12 @@ def test_the_english_fallback_line_is_unchanged_on_windows_and_macos(
     assert i18n._("Saved {name}", name="ذخیره.txt") == "Saved ذخیره.txt"
     assert i18n._("Saved {name}", name=value) == "Saved " + value
     assert i18n._("Broken {name}", name="گزارش") == "Broken گزارش"
+
+
+def test_a_simulated_macos_path_wins_over_the_linux_shaping(monkeypatch: pytest.MonkeyPatch) -> None:
+    """ltr_base asks is_aqua() first: macOS never gets Linux shaping, whatever the packages say."""
+    monkeypatch.setattr(rtl_shaping, "applies", lambda: True)
+    monkeypatch.setattr(bidi_display, "is_aqua", lambda: True)
+    assert bidi_display.ltr_base("فارسی") == bidi_display.LRM + "فارسی"
+    monkeypatch.setattr(bidi_display, "is_aqua", lambda: False)
+    assert bidi_display.ltr_base("فارسی") == rtl_shaping.visual("فارسی", base="L")

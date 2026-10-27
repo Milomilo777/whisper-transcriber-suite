@@ -38,6 +38,14 @@ AUTO_LABEL = "Automatic (system language)"
 
 
 @pytest.fixture(autouse=True)
+def _not_linux_shaping(monkeypatch: pytest.MonkeyPatch) -> None:
+    """These tests describe Windows and macOS labels. On a Linux runner with arabic-reshaper and
+    python-bidi installed the names would be display-shaped (and Hebrew is not offered there);
+    that behaviour is tested in tests/test_rtl_shaping.py."""
+    monkeypatch.setattr(rtl_shaping, "applies", lambda: False)
+
+
+@pytest.fixture(autouse=True)
 def _fresh_i18n(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(i18n, "_WARNED", set())
     monkeypatch.setattr(i18n, "_DOC_CACHE", {})

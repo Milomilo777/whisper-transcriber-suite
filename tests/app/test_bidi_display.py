@@ -19,6 +19,7 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from app import app as appmod
+from app import rtl_shaping
 from app.domain.tasks import TranscriptionTask, VideoDownloadTask
 from app.theme import bidi_display
 from app.theme.bidi_display import LRM, ltr_base
@@ -26,6 +27,14 @@ from app.theme.bidi_display import LRM, ltr_base
 PERSIAN_NAME = "نمونه صدا.wav"
 ARABIC_NAME = "عربي.docx"
 BULLET_LINE = "• " + ARABIC_NAME + "  (36.0 KB)"
+
+
+@pytest.fixture(autouse=True)
+def _not_linux_shaping(monkeypatch: pytest.MonkeyPatch) -> None:
+    """This file describes macOS and Windows. On a Linux runner with arabic-reshaper and
+    python-bidi installed the display shaping would apply; the Linux behaviour is tested in
+    tests/test_rtl_shaping.py."""
+    monkeypatch.setattr(rtl_shaping, "applies", lambda: False)
 
 
 @pytest.fixture
