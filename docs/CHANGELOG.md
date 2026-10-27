@@ -252,7 +252,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Identify speakers no longer looks frozen during the first part of a long file: the progress bar keeps moving while the speaker model is still segmenting the audio.
 - Offline summaries no longer show stray asterisks around ***bold italic*** words.
 - Download clip times such as 1_0 or +5 are rejected as invalid instead of being read as numbers.
-- Output writers: Express Scribe and InqScribe no longer leave a lone speaker label on an empty segment, and the LRC title tag drops square brackets from the media name, and the JSON writer always writes a word label as text.
+- Output writers: Express Scribe and InqScribe no longer leave a lone speaker label on an empty segment, and the LRC title tag drops square brackets from the media name, and the JSON writer always writes a word label as text, and a line break inside a speaker label no longer splits the Markdown, ASS and Word output.
 
 ## [2.2.0] — 2026-10-22
 
