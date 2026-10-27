@@ -110,3 +110,59 @@ def test_cloud_unknown_plan_coverage_does_not_shrink_with_small_windows(cs):
     windows = cs.plan_chunks(0.0, 60.0, chunk_when_unknown=True)
     expected_coverage = cs.MAX_UNKNOWN_DURATION_CHUNKS * 480.0
     assert windows[-1][1] >= expected_coverage - 60.0
+
+
+# ---------------------------------------------------------------- bug 4
+
+
+def test_plan_chunks_nonfinite_duration_is_unknown_duration(cs):
+    """A non-finite duration must be treated as unknown (nvidia_asr and
+    whisper.cpp already guard this; the cloud engines were missed). NaN
+    used to leak a (0.0, nan) whole-file window straight into ffmpeg."""
+    assert cs.plan_chunks(float("nan"), 480.0) == [(0.0, 0.0)]
+    unknown = cs.plan_chunks(float("nan"), 480.0, chunk_when_unknown=True)
+    assert unknown[0] == (0.0, 480.0)
+    assert all(math.isfinite(s) and math.isfinite(e) for s, e in unknown)
+
+
+def test_gcs_plan_chunks_nonfinite_duration_is_unknown_duration(gcs):
+    """google's plan_chunks chunks by default (chunk_when_unknown=True):
+    a NaN duration must give the bounded window plan, not (0.0, nan)."""
+    windows = gcs.plan_chunks(float("nan"), 55.0)
+    assert windows[0] == (0.0, 55.0)
+    assert all(math.isfinite(s) and math.isfinite(e) for s, e in windows)
+
+
+def test_plan_chunks_infinite_duration_terminates(cs, gcs):
+    """``duration=inf`` looped forever appending windows (``start < inf``
+    never fails). Run it in a subprocess with a deadline: before the fix
+    the call never returns; after it, a bounded unknown-duration plan."""
+    import os
+    import subprocess
+
+    root = os.path.dirname(
+        os.path.dirname(os.path.dirname(os.path.abspath(cs.__file__)))
+    )
+    code = (
+        "import math, sys, types\n"
+        "m = types.ModuleType('faster_whisper');"
+        " m.WhisperModel = object; sys.modules['faster_whisper'] = m\n"
+        "from core.backends import cloud_stt, google_cloud_stt as gcs\n"
+        "a = cloud_stt.plan_chunks(float('inf'), 480.0,"
+        " chunk_when_unknown=True)\n"
+        "b = gcs.plan_chunks(float('inf'), 55.0)\n"
+        "assert len(a) == 120 and a[0] == (0.0, 480.0), a[:2]\n"
+        "assert len(b) == 1200 and b[0] == (0.0, 55.0), b[:2]\n"
+        "print('bounded:', len(a), len(b))\n"
+    )
+    try:
+        proc = subprocess.run(
+            [sys.executable, "-c", code],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            cwd=root,
+        )
+    except subprocess.TimeoutExpired:
+        pytest.fail("plan_chunks(inf) never returned (unbounded loop)")
+    assert proc.returncode == 0, proc.stderr

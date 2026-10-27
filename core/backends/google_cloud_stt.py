@@ -315,7 +315,9 @@ def plan_chunks(
     """
     if not chunk_seconds > 0:  # catches 0, negative AND NaN (NaN > 0 is False)
         chunk_seconds = DEFAULT_CHUNK_SECONDS
-    if duration <= 0:
+    if duration <= 0 or not math.isfinite(duration):
+        # A non-finite duration is an UNKNOWN duration: inf would loop
+        # forever below and NaN would leak a (0.0, nan) window into ffmpeg.
         if not chunk_when_unknown:
             return [(0.0, 0.0)]
         # Size the plan by TIME, not a fixed window count: MAX_UNKNOWN_
@@ -1330,11 +1332,13 @@ class GoogleCloudSttBackend(Backend):
         # that still fails do we fall back to the bounded unknown-length
         # chunk plan (and stop early once we slice past EOF).
         effective_duration = duration
-        if effective_duration <= 0:
+        if effective_duration <= 0 or not math.isfinite(effective_duration):
             try:
                 from ..transcriber import get_duration
                 effective_duration = float(get_duration(audio_path) or 0.0)
             except Exception:  # noqa: BLE001 - probe failure is non-fatal
+                effective_duration = 0.0
+            if not math.isfinite(effective_duration):
                 effective_duration = 0.0
             if log_cb and effective_duration > 0:
                 log_cb(

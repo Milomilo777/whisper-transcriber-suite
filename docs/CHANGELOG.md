@@ -274,6 +274,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Cloud transcription (Gemini): an empty utterance line no longer adds a junk "]" subtitle cue.
 - Cloud transcription: a chunk length set to "nan" in a hand-edited config falls back to the default window instead of producing an empty transcript.
 - Cloud transcription of a file whose length could not be read no longer stops early when a short chunk length is configured; the planned coverage is now the same many hours whatever the window size.
+- Cloud transcription no longer hangs or sends a broken time range to ffmpeg when the probed file length is infinite or not a number; it is treated as an unknown length.
 
 ## [2.2.0] — 2026-10-22
 

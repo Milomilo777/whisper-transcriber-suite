@@ -440,7 +440,10 @@ def plan_chunks(
     """
     if not chunk_seconds > 0:  # catches 0, negative AND NaN (NaN > 0 is False)
         chunk_seconds = 480.0
-    if duration <= 0:
+    if duration <= 0 or not math.isfinite(duration):
+        # A non-finite duration (corrupt header, bad caller arg) is an
+        # UNKNOWN duration: inf would loop forever below and NaN would
+        # leak a (0.0, nan) window into ffmpeg.
         if not chunk_when_unknown:
             return [(0.0, 0.0)]  # 0.0 end = "to end of file" for the slicer
         # The cap must mean a TIME SPAN, not a window count: a count sized
@@ -670,11 +673,13 @@ class CloudSttBackend(Backend):
         # bounded unknown-length chunk plan (and stop early once we slice past
         # EOF). Mirrors google_cloud_stt._run_standard.
         effective_duration = duration
-        if effective_duration <= 0:
+        if effective_duration <= 0 or not math.isfinite(effective_duration):
             try:
                 from ..transcriber import get_duration
                 effective_duration = float(get_duration(audio_path) or 0.0)
             except Exception:  # noqa: BLE001 - probe failure is non-fatal
+                effective_duration = 0.0
+            if not math.isfinite(effective_duration):
                 effective_duration = 0.0
             if log_cb and effective_duration > 0:
                 log_cb(
