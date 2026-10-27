@@ -37,6 +37,18 @@ __all__ = [
 NBSP = " "
 
 
+# A hand-edited .otr / transcription .json can carry a lone surrogate half as a
+# JSON \ud83d escape. str.encode("utf-8") refuses it, so an unconverted one
+# would fail the whole output write; mirror core.writers.base and replace every
+# half with U+FFFD (core.integrations must stay stdlib-only: core.writers.otr
+# imports this module, so core.writers.base cannot be imported from here).
+_LONE_SURROGATES = {c: "\ufffd" for c in range(0xD800, 0xE000)}
+
+
+def _no_lone_surrogates(text: str) -> str:
+    return text if text.isascii() else text.translate(_LONE_SURROGATES)
+
+
 def _safe_seconds(value: object, default: float = 0.0) -> float:
     """Coerce a possibly-malformed timestamp to a finite float.
 
@@ -191,7 +203,9 @@ def whisper_json_to_otr(json_path: str, media_filename: str = "") -> str:
         start = _safe_seconds(entry.get("start", 0.0))
         end = _safe_seconds(entry.get("end"), start)
         raw_text = entry.get("text")
-        body = ("" if raw_text is None else str(raw_text)).strip()
+        # A hand-edited JSON can hold a lone surrogate half as a \ud800-style
+        # escape; the returned .otr text must stay UTF-8 encodable.
+        body = _no_lone_surrogates("" if raw_text is None else str(raw_text)).strip()
         if body:
             segments.append((start, end, body))
     return _segments_to_otr_string(segments, media_filename)
@@ -325,6 +339,7 @@ def otr_to_srt(otr_path: str) -> str:
         if end <= start:
             end = start + 5.0
         out_lines.append(
-            f"{i + 1}\n{_fmt_srt_time(start)} --> {_fmt_srt_time(end)}\n{body}\n"
+            f"{i + 1}\n{_fmt_srt_time(start)} --> {_fmt_srt_time(end)}\n"
+            f"{_no_lone_surrogates(body)}\n"
         )
     return "\n".join(out_lines)

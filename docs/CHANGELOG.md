@@ -277,6 +277,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Cloud transcription no longer hangs or sends a broken time range to ffmpeg when the probed file length is infinite or not a number; it is treated as an unknown length.
 - The local web / LAN server answers a request with a malformed address (unbalanced brackets) with a 404 instead of dropping the connection without a reply.
 - A time-range (clip) download whose saved file name could not be read from the downloader output is now found again by its planned name, so it is recorded and auto-transcribed instead of ending as "could not be told apart".
+- Importing a hand-edited .otr file (or exporting a transcript JSON to .otr) that holds half of an emoji or other broken character no longer makes the file write fail; the broken character is replaced like in every other output format.
 
 ## [2.2.0] — 2026-10-22
 
