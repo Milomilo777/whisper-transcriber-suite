@@ -275,6 +275,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Cloud transcription: a chunk length set to "nan" in a hand-edited config falls back to the default window instead of producing an empty transcript.
 - Cloud transcription of a file whose length could not be read no longer stops early when a short chunk length is configured; the planned coverage is now the same many hours whatever the window size.
 - Cloud transcription no longer hangs or sends a broken time range to ffmpeg when the probed file length is infinite or not a number; it is treated as an unknown length.
+- The local web / LAN server answers a request with a malformed address (unbalanced brackets) with a 404 instead of dropping the connection without a reply.
 
 ## [2.2.0] — 2026-10-22
 
