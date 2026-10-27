@@ -2400,10 +2400,18 @@ class TranscriptionService:
                     base = os.path.splitext(task.file_path)[0]
                     if getattr(task, "whisper_task", "") == "translate":
                         base += TRANSLATED_SUFFIX
-                    paths = [
-                        f"{base}.{ext}"
-                        for ext in (app.app_config.get("output_formats") or ["srt", "json"])
-                    ]
+                    # What THIS run was dispatched to write (the snapshot
+                    # stamped at dispatch, incl. the subbed-video srt), not
+                    # the live config — which can have changed since, and
+                    # whose keys are not the on-disk extensions ("elan"
+                    # writes .eaf). Same derivation as
+                    # _outputs_complete_unchecked, re-run "(N)" set included.
+                    formats = getattr(task, "output_formats", None)
+                    if formats is None:
+                        formats = app.app_config.get("output_formats") or ["srt", "json"]
+                    from core.writers import extension_for
+                    paths = [f"{base}.{extension_for(str(fmt))}" for fmt in formats]
+                    paths = _newest_output_set(paths, task.file_path)
                 persisted = _retry_on_lock(lambda: history.finish_transcription(
                     task.history_id,
                     status=terminal_status,
