@@ -1987,9 +1987,8 @@ class AdvancedDialog(tk.Toplevel):
         ttk.Button(row, text=_("Browse…"), command=self._browse_obsidian_vault).pack(side="left")
         help_icon(
             row,
-            _("Leave empty to turn this off. When a job finishes, a Markdown note with "
-              "the transcript and its timestamps is added to this folder. An existing "
-              "note is never replaced."),
+            _("Leave empty to turn off. Each finished job adds a Markdown note here; "
+              "existing notes are never replaced."),
         ).pack(side="left", padx=(4, 0))
         hook = ttk.Frame(parent)
         hook.pack(anchor="w", fill="x", padx=8, pady=4)
@@ -1999,9 +1998,9 @@ class AdvancedDialog(tk.Toplevel):
         )
         help_icon(
             hook,
-            _("Leave empty to turn this off. When a job finishes, a short message (name, "
-              "language, length and the saved files) is sent to this address. Only https "
-              "addresses, or http on this computer. Work offline stops it."),
+            _("Leave empty to turn off. Sends the job's name, language, length and saved "
+              "files when it finishes. https only (or http on this computer); "
+              "Work offline stops it."),
         ).pack(side="left", padx=(4, 0))
         secret = ttk.Frame(parent)
         secret.pack(anchor="w", fill="x", padx=24, pady=(0, 4))
