@@ -235,6 +235,14 @@ class VoiceCloneWorker:
         sent = time.monotonic()
         deadline = sent + max(GENERATE_TIMEOUT_S, timeout_s)
         while not done.wait(timeout=self.WAIT_POLL_S):
+            if self._dead.is_set():
+                # The session died (stop() or a worker exit) after this
+                # call's entry check and before its slot was answered -- no
+                # reader will ever answer it now. Fail at once instead of
+                # blocking for the whole silence window.
+                with self._lock:
+                    self._pending.pop(req_id, None)
+                raise VoiceCloneWorkerError("The voice-clone worker is not running.")
             now = time.monotonic()
             # The reason is shown to the person (interface language); the log says why in
             # English.

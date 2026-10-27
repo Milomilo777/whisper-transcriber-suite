@@ -590,6 +590,19 @@ class HistoryDB:
             )
             return [_row_to_dict(r, ("output_paths", "run_options")) for r in cur.fetchall()]
 
+    def list_interrupted_transcriptions(self, limit: int = 1000) -> list[dict[str, Any]]:
+        """Every ``interrupted`` row, newest first, however old.
+
+        The resume offer must not miss an interrupted job just because 200
+        newer rows were added since (``list_transcriptions`` pages by recency).
+        """
+        with self._write_lock:
+            cur = self._conn.execute(
+                "SELECT * FROM transcriptions WHERE status='interrupted' "
+                "ORDER BY id DESC LIMIT ?", (limit,)
+            )
+            return [_row_to_dict(r, ("output_paths", "run_options")) for r in cur.fetchall()]
+
     # ----- maintenance -------------------------------------------------
 
     def mark_interrupted(self) -> int:

@@ -227,19 +227,24 @@ def consume_wait_for_pid(
     ``argv`` without the option, so nothing later sees it and a restart never repeats it."""
     if WAIT_FOR_PID_ARG not in argv:
         return argv
-    at = argv.index(WAIT_FOR_PID_ARG)
-    rest = argv[:at] + argv[at + 2:]
-    try:
-        pid = int(argv[at + 1])
-    except (IndexError, ValueError):
-        logger.warning("Ignoring %s without a process id", WAIT_FOR_PID_ARG)
-        return argv[:at] + argv[at + 1:]
-    deadline = clock() + timeout
-    while alive(pid):
-        if clock() >= deadline:
-            logger.warning("Process %s is still running after %.0f s; starting anyway", pid, timeout)
-            break
-        sleep(0.1)
+    # Every occurrence must be consumed: the option must never reach the rest of the
+    # program, however many times a stale shortcut or a relaunch chain appended it.
+    rest = list(argv)
+    while WAIT_FOR_PID_ARG in rest:
+        at = rest.index(WAIT_FOR_PID_ARG)
+        try:
+            pid = int(rest[at + 1])
+        except (IndexError, ValueError):
+            logger.warning("Ignoring %s without a process id", WAIT_FOR_PID_ARG)
+            rest = rest[:at] + rest[at + 1:]
+            continue
+        deadline = clock() + timeout
+        while alive(pid):
+            if clock() >= deadline:
+                logger.warning("Process %s is still running after %.0f s; starting anyway", pid, timeout)
+                break
+            sleep(0.1)
+        rest = rest[:at] + rest[at + 2:]
     return rest
 
 

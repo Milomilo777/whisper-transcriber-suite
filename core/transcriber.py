@@ -879,9 +879,15 @@ def _current_backend_and_model() -> tuple[str, str]:
     )
     lm_slot = getattr(_LM_RUNNER, "slot", None)
     if lm_slot is not None:
-        # A web job on a Whisper language model (ADR 0018): a checkpoint from it must not
-        # pass as one of the general model.
-        return backend, str(lm_slot.model_id)
+        # A web job on a language model (ADR 0018 / ADR 0016): a checkpoint from it must not
+        # pass as one of the general model. A Whisper-engine language model only carries the
+        # id (its engine is faster_whisper, matching ``backend``); a transformers-engine
+        # language model runs on ``nvidia_asr``, so it also carries the engine it actually
+        # used, or a desktop resume would match a general-model checkpoint of its own config.
+        return (
+            str(getattr(lm_slot, "backend", "") or backend),
+            str(getattr(lm_slot, "model_id", "") or ""),
+        )
     model_info = config.get("model") or {}
     model_name = ""
     if isinstance(model_info, dict):
@@ -1336,7 +1342,12 @@ def _write_outputs(
     while True:
         candidates = [_final_path(f, p, index) for f, p in indexed_planned]
         if want_sidecar:
-            candidates.append(_indexed_sidecar_path(base, index))
+            candidates.append(
+                _indexed_sidecar_path(
+                    base, index, template=template, lang=lang,
+                    speaker_count=speaker_count,
+                )
+            )
         taken = False
         for cand in candidates:
             if not _claim(cand):
@@ -1436,14 +1447,18 @@ def _write_outputs(
         # non-fatal (chapters are an optional extra, never worth failing the
         # transcript over) — _write_chapter_sidecar returns None on error.
         if want_sidecar:
-            sidecar_path = _write_chapter_sidecar(
-                _indexed_sidecar_path(base, index), chapters or []
+            sidecar_path = _indexed_sidecar_path(
+                base, index, template=template, lang=lang,
+                speaker_count=speaker_count,
             )
-            if sidecar_path:
-                claimed.discard(sidecar_path)
-                written.append(sidecar_path)
+            written_sidecar = _write_chapter_sidecar(
+                sidecar_path, chapters or []
+            )
+            if written_sidecar:
+                claimed.discard(written_sidecar)
+                written.append(written_sidecar)
             else:
-                _release(_indexed_sidecar_path(base, index))
+                _release(sidecar_path)
         return written
     finally:
         # Every claim that was not published (all writers failed, an
@@ -1674,6 +1689,21 @@ class _WhisperLanguageModel:
 _LM_RUNNER = threading.local()
 
 
+class _LmSlot:
+    """The language model a web/LAN job's checkpoints are stamped with.
+
+    ``backend`` / ``model_id`` are what :func:`_current_backend_and_model` records. A
+    Whisper-engine language model (a :class:`_WhisperLanguageModel`) sits in ``_LM_RUNNER.slot``
+    itself and only exposes ``model_id``; this lightweight shape is used for the transformers
+    engine so its ``nvidia_asr`` backend is recorded too.
+    """
+    __slots__ = ("backend", "model_id")
+
+    def __init__(self, backend: str, model_id: str) -> None:
+        self.backend = backend
+        self.model_id = model_id
+
+
 def _language_model_backend(model_id: str, status_cb: Callable[[str], None] | None = None) -> Any:
     """The loaded language model for ``model_id`` (the slot keeps one): a transformers backend,
     or a :class:`_WhisperLanguageModel` for a Whisper-engine row (ADR 0018).
@@ -1737,11 +1767,20 @@ def transcribe_with_language_model(
         return
     release_default_model()
     backend = _language_model_backend(model_id, log_cb)
-    _protect_existing_checkpoint(task, log_cb)
-    _note_run_identity(task)
-    with _runtime_overrides_scope(task):
-        logger.info("transcribe_backend=nvidia_asr language_model=%s file=%s", model_id, task.file_path)
-        _transcribe_via_alt_backend("nvidia_asr", task, progress_cb, log_cb, language_cb, backend=backend)
+    # Stamp this run's checkpoints with the language model it actually runs on
+    # (engine + id), exactly as the Whisper-engine path does. Without it, the
+    # transformers engine dispatched from _transcribe_via_alt_backend still
+    # reported the desktop's general model via _current_backend_and_model, and a
+    # later resume could splice general-model segments onto this transcript.
+    _LM_RUNNER.slot = _LmSlot(backend="nvidia_asr", model_id=model_id)
+    try:
+        _protect_existing_checkpoint(task, log_cb)
+        _note_run_identity(task)
+        with _runtime_overrides_scope(task):
+            logger.info("transcribe_backend=nvidia_asr language_model=%s file=%s", model_id, task.file_path)
+            _transcribe_via_alt_backend("nvidia_asr", task, progress_cb, log_cb, language_cb, backend=backend)
+    finally:
+        _LM_RUNNER.slot = None
 
 
 def _run_post_pipeline(
@@ -1790,6 +1829,9 @@ def _run_post_pipeline(
             else:
                 log(f"Diarisation skipped: {_diar.availability_reason()}", log_cb)
         except Exception as e:  # noqa: BLE001
+            # Marked on the task so the UI can show one short notice (the
+            # console log alone left the job looking cleanly "done").
+            task.speaker_labels_failed = True
             log(f"Speaker detection failed: {e}; the transcript is saved without speaker labels", log_cb)
 
     # Word-level alignment refinement via stable-ts (opt-in). Skipped for a
@@ -1801,6 +1843,11 @@ def _run_post_pipeline(
     )
     if translating and config.get("alignment", "none") == "stable_ts":
         log("Word alignment skipped: the text is a translation.", log_cb)
+    elif task.cancelled and config.get("alignment", "none") == "stable_ts":
+        # Same guard as diarisation/chapters: a cancelled task's outputs are
+        # dropped by the caller, so the whole-file stable-ts pass would be
+        # minutes of CPU for a result nobody writes.
+        log("Word alignment skipped: the task was cancelled.", log_cb)
     elif config.get("alignment", "none") == "stable_ts":
         try:
             from . import alignment as _align
@@ -1933,7 +1980,14 @@ def _maybe_get_llm_runner() -> Any | None:
         return None
 
 
-def _indexed_sidecar_path(base: str, index: int) -> str:
+def _indexed_sidecar_path(
+    base: str,
+    index: int,
+    *,
+    template: str = "{base}.{ext}",
+    lang: str = "",
+    speaker_count: int = 0,
+) -> str:
     """Path for a ``<base>.chapters.json`` sidecar at the shared index.
 
     Built by appending ``" (N)"`` to the base — NOT by feeding the full
@@ -1941,9 +1995,25 @@ def _indexed_sidecar_path(base: str, index: int) -> str:
     splits on the last dot and would produce ``.chapters (1).json``
     instead of ``(1).chapters.json``. ``index <= 0`` is the first,
     unsuffixed write.
+
+    The sidecar is rendered through the same ``output_filename_template``
+    as the transcript outputs (with ``ext="chapters.json"``) so it lands
+    next to the templated JSON. The transcript viewer derives the sidecar
+    path from the JSON it opened, so without this a ```{lang}```` /
+    ``{speaker_count}`` template wrote the chapters to the raw
+    ``<base>.chapters.json`` while the viewer looked for
+    ``<base>.{lang}.chapters.json`` — and found nothing.
     """
+    rendered = _render_filename_template(
+        template, base=base, ext="chapters.json", lang=lang,
+        speaker_count=speaker_count,
+    )
+    stem = (
+        rendered[: -len(".chapters.json")]
+        if rendered.endswith(".chapters.json") else rendered
+    )
     suffix = f" ({index})" if index > 0 else ""
-    return f"{base}{suffix}.chapters.json"
+    return f"{stem}{suffix}.chapters.json"
 
 
 def _write_chapter_sidecar(path: str, chapters: list[dict[str, Any]]) -> str | None:
@@ -3415,8 +3485,11 @@ def _recover_resume_cursor(data: dict[str, Any]) -> float | None:
         return f if math.isfinite(f) and f >= 0.0 else None
 
     raw = data.get("last_end_time")
-    if raw is None or raw == "":
+    if (raw is None or raw == "") and not data.get("segments"):
         return 0.0
+    # A missing/empty cursor with segments saved falls through to the
+    # segment recovery below: resuming from 0 would decode the captured
+    # stretch again and concatenate every saved line a second time.
     cursor = _num(raw)
     if cursor is not None:
         return cursor

@@ -212,6 +212,11 @@ DEFAULT_CONFIG = {
     # opt-in; a user's saved choice always wins via the local-config merge
     # layer.
     "transcribe_backend": _default_transcribe_backend(),
+    # Apple-silicon Macs only: use the MLX engine instead of faster-whisper when it is
+    # usable and no cloud/whisper.cpp engine is picked. Picking Faster-Whisper in the
+    # Engine list sets this to False (core.backends.mlx_whisper_be.resolve_engine_choice).
+    # No effect on any other system.
+    "apple_silicon_engine": True,
     # OPTIONAL cloud Speech-to-Text backend (Google Gemini API). Off
     # unless the user selects transcribe_backend="cloud_stt". The API
     # key is stored in CLEARTEXT here, consistent with how cookies and
@@ -485,6 +490,21 @@ DEFAULT_CONFIG = {
     #     (Windows only, core.subtitle_edit). "" = look for an installed copy.
     #     Local only: it is a program the app starts.
     "subtitle_edit_path": "",
+    #   obsidian_vault_dir — Advanced > App behaviour, "Copy the transcript to
+    #     an Obsidian vault folder". An existing folder; after a job finishes a
+    #     Markdown note is written there (core.finish_hooks), never overwriting
+    #     one. "" = off. Local only.
+    "obsidian_vault_dir": "",
+    #   finish_webhook_url / finish_webhook_secret / finish_webhook_include_text
+    #     — Advanced > App behaviour, "Notify a web address when a job
+    #     finishes". A POST of a small JSON (core.finish_hooks); https, or http
+    #     to this computer only. The secret is sent as the same header as the
+    #     server's webhook, stored in CLEARTEXT, never logged. The transcript
+    #     text is added only when include_text is on. Blocked by Work offline.
+    #     Local only.
+    "finish_webhook_url": "",
+    "finish_webhook_secret": "",
+    "finish_webhook_include_text": False,
     # --- Three-level config: ONLINE layer (P4-1) -------------------------
     # URL of an app-level JSON config the maintainer hosts, fetched on
     # startup so APP-LEVEL settings (model catalog, stats endpoint, latest
@@ -578,6 +598,10 @@ LOCAL_ONLY_KEYS: frozenset[str] = frozenset({
     "work_offline",
     "tts_no_text_limit",
     "subtitle_edit_path",
+    "obsidian_vault_dir",
+    "finish_webhook_url",
+    "finish_webhook_secret",
+    "finish_webhook_include_text",
     "update_check_enabled",
     "last_update_check",
     "update_latest_seen",
@@ -2036,6 +2060,9 @@ def load_config(*, fetch_online: bool = True) -> dict[str, Any]:
                 k, type(merged[k]).__name__, type(default).__name__, default,
             )
             merged[k] = json.loads(json.dumps(default))
+    from .backends import mlx_whisper_be as _mlx
+
+    _mlx.resolve_engine_choice(merged, baseline)
     result = _apply_runtime_fallbacks(merged)
     # The derived model_path and an unmounted download_folder cleared for
     # this session are not changes to save (see the _persistable_* helpers).
@@ -2375,7 +2402,8 @@ def webhook_secret_valid(secret: str) -> bool:
         secret.encode("latin-1")
     except UnicodeEncodeError:
         return False
-    return all(32 <= ord(c) != 127 for c in secret)
+    # Latin-1 printable: ASCII 32..126 and 160..255 (not DEL, not the C1 block).
+    return all(32 <= ord(c) < 127 or ord(c) >= 160 for c in secret)
 
 
 def webhook_secret_from_input(raw: str | None) -> str:

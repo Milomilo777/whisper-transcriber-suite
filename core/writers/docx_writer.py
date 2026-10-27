@@ -133,10 +133,14 @@ def write_bytes(segments: list[dict], audio_path: str = "") -> bytes:
         # Coerce speaker to str (a hand-edited JSON could put a
         # number here) and run it through sanitize_for_xml so a
         # control character in the label doesn't crash python-docx
-        # with the XML-illegal-character ValueError.
+        # with the XML-illegal-character ValueError. The embedded
+        # whitespace is collapsed too: python-docx turns a newline
+        # in run text into a <w:br/> (and a tab into <w:tab/>),
+        # which would break the label across two lines — every other
+        # writer collapses the label the same way.
         raw_speaker = seg.get("speaker")
         speaker = (
-            sanitize_for_xml(str(raw_speaker).strip())
+            sanitize_for_xml(" ".join(str(raw_speaker).split()))
             if raw_speaker not in (None, "")
             else ""
         )

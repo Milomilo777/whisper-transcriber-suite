@@ -213,3 +213,27 @@ def test_an_unidentifiable_plain_download_is_not_transcribed(tmp_path):
     assert task.status == "error"
     assert rows == [(6, "error", [], rows[0][3])] and "no subtitled video" not in rows[0][3]
     assert not any("Downloaded" in m for m in logs)
+
+
+def test_recovers_a_clip_download_by_its_planned_clip_suffix(tmp_path):
+    # A time-range download's queue title is decorated "…  -  trim 0:51 -> 1:25"
+    # while the file build_download_command asks yt-dlp for is named
+    # "<title> (clip 0.00.51-0.01.25).<ext>". When the path parsed from stdout
+    # is unusable, the self-heal must still tell the clip apart from another
+    # fresh media file in the same folder by deriving that planned name --
+    # the decorated title alone can never match it, so the download used to
+    # end as "the file could not be told apart" with no output recorded.
+    started = time.time()
+    clip = tmp_path / "My Video (clip 0.00.51-0.01.25).mp4"
+    clip.write_bytes(b"c")
+    other = tmp_path / "Someone Elses Video.mp4"
+    other.write_bytes(b"o")
+    os.utime(clip, (started, started))
+    os.utime(other, (started + 3, started + 3))
+    task = types.SimpleNamespace(
+        folder=str(tmp_path), start_time=started - 1,
+        title="My Video  -  trim 0:51 -> 1:25",
+        section_start=51.0, section_end=85.0,
+    )
+    got, ambiguous = _svc()._find_recovered_path(task, None)
+    assert (got, ambiguous) == (str(clip), False)

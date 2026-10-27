@@ -3227,6 +3227,12 @@ class App(tk.Tk):
                 self._refresh_engine_picker_labels()
                 return
             self.app_config["transcribe_backend"] = value
+            from core.backends import mlx_whisper_be
+
+            if mlx_whisper_be.is_apple_silicon():
+                # Picking Faster-Whisper (or any other engine) here is the opt-out from the
+                # automatic Apple-silicon engine; picking the Apple-silicon entry opts back in.
+                self.app_config["apple_silicon_engine"] = value == "mlx_whisper"
             try:
                 save_config(self.app_config)
             except Exception as e:  # noqa: BLE001
@@ -3736,7 +3742,7 @@ class App(tk.Tk):
 
     def _engine_uses_whisper_model(self) -> bool:
         """True while the picked engine actually uses the Whisper-model
-        catalog (Faster-Whisper only)."""
+        catalog (Faster-Whisper, and the Apple-silicon engine, which maps the same slugs)."""
         from core.backends import availability as _eng
 
         evar = _inst_attr(self, "transcribe_engine_var")
@@ -3744,7 +3750,7 @@ class App(tk.Tk):
         value = _eng.engine_value_for_label(label)
         if value is None:
             value = _eng.normalise_engine(self.app_config.get("transcribe_backend"))
-        return value == "faster_whisper"
+        return value in ("faster_whisper", "mlx_whisper")
 
     def _model_picker_disabled_reason(self) -> str:
         """Hover text while the model picker is greyed out; "" when active.
@@ -5003,6 +5009,11 @@ class App(tk.Tk):
         killed download, which the worker then fails to load. Deeper
         corruption still surfaces via the worker's ``startup_error``.
         """
+        if str(self.app_config.get("transcribe_backend") or "").strip().lower() == "mlx_whisper":
+            # The Apple-silicon engine keeps its own copy of the model.
+            from core.backends import mlx_whisper_be
+
+            return mlx_whisper_be.model_present(self.app_config)
         try:
             from core.hub import (
                 default_hub_folder,
@@ -6746,6 +6757,12 @@ class App(tk.Tk):
                        "another language, choose that language and transcribe it again."),
                 foreground=tokens.themed(tokens.WARNING_TEXT),
             ).pack(anchor="w")
+        if getattr(task, "speaker_labels_failed", False):
+            ttk.Label(
+                self.last_result_body,
+                text=_("Speaker detection failed — the transcript was saved without speaker labels."),
+                foreground=tokens.themed(tokens.WARNING_TEXT),
+            ).pack(anchor="w", pady=(2, 0))
         if existing:
             ttk.Label(
                 self.last_result_body,
@@ -7698,7 +7715,7 @@ class App(tk.Tk):
         if history is None or getattr(self, "_history_owner", True) is False:
             return
         try:
-            rows = history.list_transcriptions(limit=200) or []
+            rows = history.list_interrupted_transcriptions() or []
         except Exception:  # noqa: BLE001
             return
         interrupted = [
@@ -7730,16 +7747,28 @@ class App(tk.Tk):
                 )
             except Exception:  # noqa: BLE001
                 logger.debug("Failed to dismiss interrupted rows", exc_info=True)
-            # Also drop the on-disk partial checkpoints for the declined
-            # files: declining means "don't resume", so the JSON (which can
-            # be MBs of captured segments) is now dead weight. Without this
-            # it lingered until the age-based startup sweep.
+            # Declining means "don't resume", not "throw the text away": set
+            # each partial checkpoint aside in the data folder (with a readable
+            # .txt copy) instead of deleting it. The kept files are not swept
+            # by the age-based startup sweep; the user removes them by hand.
             try:
                 from core import _checkpoint
-                for r in unique:
-                    _checkpoint.delete_checkpoint(r["file_path"])
             except Exception:  # noqa: BLE001
-                logger.debug("Failed to delete declined checkpoints", exc_info=True)
+                logger.debug("Checkpoint module unavailable", exc_info=True)
+                return
+            for r in unique:
+                try:
+                    if not _checkpoint.has_checkpoint(r["file_path"]):
+                        continue
+                    kept = _checkpoint.quarantine_checkpoint(
+                        r["file_path"], "resume declined by the user"
+                    )
+                    if kept is not None:
+                        self.log(f"Resume declined: partial transcript kept at {kept}")
+                except Exception:  # noqa: BLE001
+                    # Includes a checkpoint held by another process (a copy was
+                    # kept); never delete in that case.
+                    logger.warning("Could not set the declined checkpoint aside", exc_info=True)
             return
         # Crash-resume: if a partial checkpoint exists for any of
         # these interrupted files, flag the new task as a resume so

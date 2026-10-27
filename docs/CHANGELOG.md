@@ -56,6 +56,22 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- **Obsidian note and finish webhook** (**Advanced → App behaviour**, `core.finish_hooks`): when a job
+  finishes and its files are saved, the transcript can also be written as a Markdown note (front matter plus
+  timestamped lines) into an Obsidian vault folder, never replacing an existing note, and a small JSON can be
+  POSTed to a web address (https, or http on this computer; optional secret header; the transcript text only
+  if ticked). Failures are only logged; Work offline blocks the webhook. Keys in [docs/CONFIG.md](CONFIG.md).
+- **macOS: a clear microphone notice in the Live tab**: the first time Live listens, a short note says
+  macOS is about to ask for the microphone. When the permission is denied, Live no longer starts and
+  records silence: a notice with an "Open System Settings" button opens Privacy & Security >
+  Microphone, and the same notice appears once if the microphone delivers only silence. The state is
+  read through the Objective-C runtime with `ctypes` (no new dependency); nothing changes on Windows
+  and Linux. `tools/mac_mic_permission_probe.py` checks it on a Mac.
+- **Apple-silicon engine for M-series Macs**: Whisper runs on the Mac's GPU through Apple's MLX
+  (`mlx-whisper`) and is chosen automatically on an Apple-silicon Mac when the model has an MLX version;
+  picking Faster-Whisper in the Engine list switches it off. Models download after the usual question;
+  other systems and Intel Macs are untouched. Checked on GitHub's arm64 runners, not yet on a physical Mac
+  (ADR 0020, `docs/MACOS_BUILD_NOTES.md`).
 - **Usage statistics count installs**: each row carries a random per-install id (a UUID4 in the new
   `install_id` setting), so one person transcribing thousands of clips is no longer counted as many
   users. The id comes from no hardware, name, path or network fact, is not sent in problem reports, and is
@@ -137,6 +153,14 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Two model downloads for the same model folder no longer run at once; the second waits for the first, and Cancel still works while it waits.
+- A blank compute type in the settings now falls back to int8 instead of being passed to the engine.
+- A task whose worker fails to start while a model download or setup is already running is now marked as failed instead of staying stuck on running and blocking the queue.
+- History rows for a finished task whose worker sent no output list now name the files that task was set to write, with their real extensions, even if the format settings changed meanwhile.
+- A worker error after only some of the requested output formats were written is no longer reported as a finished transcription.
+- Resume checkpoints of a transformers language-model run are now stamped with that model and engine instead of the general model.
+- The auto-chapters sidecar now follows the output filename template, so it sits next to the templated JSON file.
+- Answering No to "Resume interrupted transcriptions?" no longer deletes the partial transcript: the checkpoint is kept aside in the data folder with a readable text copy, and the log says where. The offer also finds an interrupted job when more than 200 newer history rows exist.
 - Identify speakers works again on Windows when the app sits in a folder whose name has non-English letters (for example a Portable copy under a Turkish user name); the speaker models were wrongly reported as missing and the transcript came out without speaker labels.
 - The interface-language list widens to fit its longest name (some endonyms were cut off on Windows); with short names it keeps its old width.
 - Live tab: the Save transcript / Copy all / Clear row is no longer pushed below the visible area at the default window size; the transcript box asks for less height and still grows with the window.
@@ -248,6 +272,39 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   load, then select an audio format." The app now downloads the page's 720p video, keeps only its sound in the
   chosen audio format (MP3, M4A, AAC, Opus, FLAC or WAV) and deletes the video; parts of a series work the same
   way. Pages that have the MP3 still download it directly.
+- When speaker detection fails, the result card now says the transcript was saved without speaker labels (before, only the log showed it).
+- Identify speakers no longer looks frozen during the first part of a long file: the progress bar keeps moving while the speaker model is still segmenting the audio.
+- Offline summaries no longer show stray asterisks around ***bold italic*** words.
+- Download clip times such as 1_0 or +5 are rejected as invalid instead of being read as numbers.
+- Output writers: Express Scribe and InqScribe no longer leave a lone speaker label on an empty segment, and the LRC title tag drops square brackets from the media name, and the JSON writer always writes a word label as text, and a line break inside a speaker label no longer splits the Markdown, ASS and Word output.
+- Hallucination checks no longer crash on a malformed speech interval from the voice-activity detector; the bad entry is skipped; known phantom phrases are also matched when wrapped in invisible text-direction marks.
+- A restart that carries the --wait-for-pid option more than once now strips every copy, so none of them reaches the next start.
+- Importing an oTranscribe file (.otr) keeps the words apart where the editor had a line break inside a paragraph; the exported subtitle no longer reads "line oneline two".
+- Remove fillers in the transcript viewer also tidies a dash pair that framed the filler when the dashes touch the words ("hello—um—world" becomes "hello—world" instead of keeping a doubled dash).
+- Converting a compact SRT (no blank line between cues) that holds one cue with an unreadable timing line no longer drops every cue after it; only the damaged cue is skipped and counted in the log.
+- A webhook secret that contains a hidden control character such as U+0085 (next line) is now rejected, so it can no longer split the request header.
+- Resuming an interrupted transcription from a checkpoint whose saved position is missing or empty no longer repeats the part already transcribed; the position is recovered from the saved segments.
+- Pressing Cancel while speakers are being identified no longer starts the whole-file word alignment afterwards; the cancelled run stops without that wasted pass.
+- Voice Clone: a request whose worker session died at the wrong moment now fails at once instead of blocking for the full 300-second silence window.
+- A file size just under a megabyte (or a gigabyte) is shown as "1.0 MB" instead of "1024.0 KB" in the output file list of a finished transcription.
+- A video with 999,500 to 999,999 views is shown as "1.0M views" instead of "1000K views".
+- Converting a subtitle file no longer lets a line holding only invisible marks (for example the right-to-left mark some editors leave) leak into the cue text of every output format.
+- Merging two segments no longer leaves a double or triple space at the join, and a Chinese/Japanese merge joins with no space even when the right segment starts with a space.
+- Converting an ASS file whose Format line ends with a stray comma no longer reports "no subtitle cues"; the empty field is ignored.
+- Live captions keep working on a PC where numpy is installed but broken (for example a missing DLL); the live engine falls back to its built-in audio code instead of silently producing no text.
+- Live tab: the times of the captions now count the silence the engine skipped, so after a long pause they match the time in the saved session audio instead of running seconds early.
+- Voice Clone: a job cancelled before its first piece was finished can offer its kept reference clips again after a restart, so it continues with the same voice.
+- Voice Clone: when a long text with no spaces is cut into pieces, a flag emoji is no longer split in half across two pieces.
+- Cloud transcription (Gemini): an empty utterance line no longer adds a junk "]" subtitle cue.
+- Cloud transcription: a chunk length set to "nan" in a hand-edited config falls back to the default window instead of producing an empty transcript.
+- Cloud transcription of a file whose length could not be read no longer stops early when a short chunk length is configured; the planned coverage is now the same many hours whatever the window size.
+- Cloud transcription no longer hangs or sends a broken time range to ffmpeg when the probed file length is infinite or not a number; it is treated as an unknown length.
+- The local web / LAN server answers a request with a malformed address (unbalanced brackets) with a 404 instead of dropping the connection without a reply.
+- A time-range (clip) download whose saved file name could not be read from the downloader output is now found again by its planned name, so it is recorded and auto-transcribed instead of ending as "could not be told apart".
+- Importing a hand-edited .otr file (or exporting a transcript JSON to .otr) that holds half of an emoji or other broken character no longer makes the file write fail; the broken character is replaced like in every other output format.
+- A book cover served with a capitalised content type (for example Image/JPEG) is now shown instead of the placeholder.
+- A book cover that was already saved is kept when a refresh gets a bad reply (a login page from a Wi-Fi portal, or a file that is too large) instead of being thrown away.
+- Download tab: when an episode page offers an original-quality (max, sometimes 4K) video file, it is now listed as "Original (max)" after the other qualities; a page whose only video file is that one no longer shows an empty video list.
 
 ## [2.2.0] — 2026-10-22
 

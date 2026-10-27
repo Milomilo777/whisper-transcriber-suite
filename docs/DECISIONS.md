@@ -864,3 +864,74 @@ PC download one of seven known models (1.5 to 3.1 GB each, once): bounded, and o
 media downloads that link jobs already allow; a password closes it. The download is not shown in the
 desktop window yet, only in the log. A switch between a general job and a language job costs one
 model load, as in ADR 0016.
+
+## 0020 — Apple-silicon engine: mlx-whisper, chosen automatically on M-series Macs
+
+**Status:** Accepted
+
+**Date:** 2026-10-27
+
+**Context:** On a Mac the only offline engine that runs well is faster-whisper on the CPU (int8);
+the GPU and Neural Engine of an M-series chip sit idle, while other Mac transcription apps run
+Whisper on them several times faster. We have no Apple-silicon Mac to test on (both Mac VMs are
+Intel). The macOS build already ships an arm64 `.dmg` (CI-built, with a disclaimer), so an engine
+for it can reach users without a Mac in the house. Needs: a pip wheel for macOS arm64 and Python 3.12
+(the Python of the macOS build), the Whisper models we already offer, word timestamps (the writers
+need segments and words), a licence we can ship, and a chance to bundle it with PyInstaller.
+Facts read on 2026-10-27 (PyPI, Hugging Face, the package sources):
+
+| Candidate | Result |
+|---|---|
+| `mlx-whisper` 0.4.3 (Apple, MIT) | One `py3-none-any` wheel; needs `mlx` (cp312 `macosx_14_0_arm64` wheel). Word timestamps (`word_timestamps=True`, DTW in `timing.py` with numba). Models are `mlx-community` Hub repos holding `config.json` plus one weights file: tiny 74 MB, base 144 MB, small 481 MB, medium 1.5 GB, large-v3 3.1 GB, large-v3-turbo 1.6 GB; same Whisper weights, so same languages and accuracy class as our faster-whisper models. Last release 2025-08-29 (about 14 months old), MLX itself is current (0.32.4, 2026-10-14). Metadata asks for `torch`, but only `torch_whisper.py` (a conversion helper, never imported by `transcribe`) uses it. Calls `ffmpeg` only when given a file path; given a decoded array it needs none. |
+| `lightning-whisper-mlx` 0.0.10 | Last release 2024-04-02, pins `tiktoken==0.3.3`, no licence in its metadata. Rejected: unmaintained, pin conflicts with every current wheel. |
+| `parakeet-mlx` 0.5.3 (2026-10-01) | Maintained, but needs `numpy>=2.2.5` and `librosa` (the macOS build pins numpy 1.26.4), and Parakeet is not Whisper: fewer languages (the multilingual v3 covers 25 European ones), so it does not keep parity with the models and languages the app offers. Kept as a later, separate engine. |
+| whisper.cpp with Core ML / Metal (`pywhispercpp`) | The macOS build deliberately leaves `pywhispercpp` out (source build); Metal needs a source build, Core ML needs separately generated encoder files; our wrapper (`whisper_cpp.py`) exposes no word timestamps. Most work, least certain on a machine we cannot touch. |
+
+**Options considered:**
+1. Do nothing until a tester with an M-series Mac exists. Mac users keep the CPU path.
+2. whisper.cpp with Core ML / Metal. See the table.
+3. parakeet-mlx. See the table.
+4. `mlx-whisper` as a new `mlx_whisper` backend, used automatically on Apple silicon. Chosen.
+
+**Decision:** Option 4. `core/backends/mlx_whisper_be.py` implements the `Backend` interface:
+available only on `Darwin` + `arm64` (not Intel, not Python under Rosetta) with the package on
+disk; listed in the Engine pickers only there. `core.config.load_config` turns the Faster-Whisper
+default into `mlx_whisper` on such a machine when the chosen Whisper model has an MLX twin
+(`MODEL_REPOS`: tiny, base, small, medium, large-v2, large-v3, large-v3-turbo, their `.en` forms,
+two distil models) and the new key `apple_silicon_engine` (default `true`) is not switched off. A
+cloud or whisper.cpp pick is never replaced; the automatic pick is not saved as a user choice.
+Picking Faster-Whisper in the Engine list sets `apple_silicon_engine` to `false` (the opt-out);
+picking the Apple-silicon entry sets it back to `true`. Everything else falls back to faster-whisper
+with no message: another OS or CPU, the package missing or not importable, a model without an MLX
+twin (language fine-tunes, `large-v1`), or a `config.json` copied from a Mac.
+
+Models are never fetched silently. The app's "Whisper model required" question and download
+window run as before; `ensure_model` hands an `mlx_whisper` config to `ensure_mlx_model`, which
+downloads the model repo into `<model folder>/mlx-whisper/<slug>` (config and weights only, free
+space checked, offline mode and cancel honoured). `MlxWhisperBackend.load` only loads what is on disk.
+Audio is decoded with PyAV (bundled with faster-whisper) and passed to MLX as an array, so no ffmpeg
+is needed on PATH. Segments and words have the shape of every other backend.
+
+The package comes from `platform/macos/pyinstaller/requirements-apple-silicon.txt` plus
+`pip install --no-deps mlx-whisper`, so torch stays out of the bundle; the Windows and Linux
+requirements are untouched. The mac spec collects MLX (with its Metal library), numba, llvmlite,
+scipy and tiktoken when they are installed in the build environment.
+
+Exception to the "run a new capability on real hardware first" rule of `AGENTS.md`, accepted with
+the risk: it ships without a physical Apple-silicon Mac. The substitute is the workflow
+`.github/workflows/apple-silicon-engine.yml` (a test job, not a build) on a GitHub `macos-14`
+runner, which is a real M-series chip: it installs the engine twice (the release pins and the
+latest packages), downloads the `tiny` model through the app's own code, transcribes a sentence
+spoken by `say`, checks text, segment times and word times, checks that torch is never imported,
+and prints the time next to faster-whisper. The packaged app is still to be checked when the
+arm64 release build runs.
+
+**Consequences:** Mac users on M-series chips get the GPU path by default and can opt out in the
+Engine list. The arm64 app's minimum macOS is 14 (the MLX wheel tag), and the bundle grows by MLX,
+numba and llvmlite (size not measured yet). A call into `mlx_whisper.transcribe` cannot be
+interrupted and reports no progress inside the call: Stop takes effect when it returns, and a
+long file shows only a heartbeat. Not applied on this engine: the VAD options, `hotwords`, mixed
+-language audio, the collapse rescue of ADR 0017, and the server's language-model routing (all
+guarded to faster-whisper). The package's last release is old; if it breaks with a new MLX the pin
+in the requirements file holds the working pair. A reported problem on real Macs is expected and
+the opt-out is the first answer.

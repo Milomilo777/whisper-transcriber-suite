@@ -248,6 +248,11 @@ def _parse_timecode(raw: str | None) -> float | None:
     parts = s.split(":")
     if len(parts) > 3:
         return None
+    # A strict shape check, not just float(): float() also accepts
+    # digit-group separators ("1_000" -> 1000.0) and an explicit "+"
+    # sign, which are garbled input here, not a timecode.
+    if not all(re.fullmatch(r"\d+(?:\.\d+)?", p.strip()) for p in parts):
+        return None
     try:
         nums = [float(p) for p in parts]
     except ValueError:
@@ -2972,6 +2977,23 @@ class DownloadService:
                 _name_key(str(getattr(task, "title", "") or "")),
             ) if key
         }
+        # A time-range task's title carries the queue decoration
+        # "…  -  trim 0:51 -> 1:25" while the file on disk is named
+        # "<title> (clip 0.00.51-0.01.25).<ext>" (build_download_command),
+        # so the decorated title's key can never equal the file's. Offer
+        # the stem the plan actually built (the decoration is rebuilt from
+        # the same stored bounds, so the strip is exact, never a guess).
+        sections_arg = _download_sections_arg(
+            getattr(task, "section_start", None), getattr(task, "section_end", None)
+        )
+        if sections_arg is not None:
+            title = str(getattr(task, "title", "") or "")
+            tail = f"  -  trim {_time_range_badge(getattr(task, 'section_start', None), getattr(task, 'section_end', None))}"
+            if tail and title.endswith(tail):
+                title = title[: -len(tail)]
+            clip_key = _name_key(title + _section_name_suffix(sections_arg))
+            if clip_key:
+                wanted.add(clip_key)
         matching = [
             item for item in found
             if _name_key(os.path.splitext(os.path.basename(item[1]))[0]) in wanted

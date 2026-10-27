@@ -168,3 +168,41 @@ def test_annotate_segments_skips_non_string_text():
 
 def test_normalize_collapses_whitespace_and_case():
     assert h._normalize("  HELLO   WORLD  ") == "hello world"
+
+
+def test_vad_disagreement_skips_malformed_intervals():
+    """One malformed entry in ``vad_segments`` (a None, a non-numeric pair, a
+    wrong-length tuple from a broken backend payload) must be skipped, not
+    crash detection -- the same rule the segment side already follows."""
+    seg = {"start": 5.0, "end": 6.0}
+    vad = [None, ("a", "b"), (0.0, 10.0, 99.0), (0.0, 4.0)]
+    assert h.detect_vad_disagreement(seg, vad) is True
+
+
+def test_annotate_segments_survives_malformed_vad_intervals():
+    """A malformed VAD interval must not abort annotation of the transcript."""
+    segs = [{"start": 5.0, "end": 6.0, "text": "hello world"}]
+    n = h.annotate_segments(segs, vad_segments=[None, (0.0, 4.0)])
+    assert n == 1
+    assert segs[0]["suspect_reason"] == "vad-disagreement"
+
+
+def test_detect_boh_ignores_invisible_bidi_marks():
+    """Zero-width and bidi control marks must not hide a hallucination
+    phrase: the app wraps RTL subtitle lines in RLM (core/burn_subs.py)
+    and transcript text carries BOM/ZWSP (core/convert.py strips them).
+    """
+    assert h.detect_boh("\u200fThanks for watching!\u200f") is True
+    assert h.detect_boh("\u200b...\u200b") is True
+    assert h.detect_boh("\ufeffSubtitles by\u200e") is True
+
+
+def test_detect_boh_marks_alone_still_not_flagged():
+    """A segment holding only invisible marks normalizes to "" and must
+    not match anything in the bag."""
+    assert h.detect_boh("\u200f\u200b\ufeff") is False
+
+
+def test_detect_boh_marks_do_not_create_a_match():
+    """Stripping marks must not merge unrelated words into a phrase."""
+    assert h.detect_boh("thanks for\u200fwatching the video tonight") is False

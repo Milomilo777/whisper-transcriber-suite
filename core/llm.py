@@ -280,6 +280,9 @@ def _summarise_prompt(text: str, max_bullets: int) -> str:
 _MD_BOLD_RE = re.compile(
     r"(?<![\w*])\*\*(?=[^\s*])(.+?)(?<=[^\s*])\*\*(?![\w*])"
     r"|(?<![\w_])__(?=[^\s_])((?:(?!__)[^\n])*?\s(?:(?!__)[^\n])*?)(?<=[^\s_])__(?![\w_])")
+# Bold italic as a separate run: three markers on each side of whole words, same rule
+# as bold — a run glued to a letter, digit or another marker (2***3, a***b***c) is not emphasis.
+_MD_BOLD_ITALIC_RE = re.compile(r"(?<![\w*])\*\*\*(?=[^\s*])(.+?)(?<=[^\s*])\*\*\*(?![\w*])")
 _MD_HEADING_RE = re.compile(r"^[ \t]*#{1,6}[ \t]+", re.MULTILINE)
 _MD_STAR_BULLET_RE = re.compile(r"^([ \t]*)\*[ \t]+", re.MULTILINE)
 
@@ -290,6 +293,7 @@ def plain_summary_text(text: str) -> str:
     Bold (``**x**``, ``__x__``) loses its markers, heading hashes at a line start go, and a
     ``* `` bullet becomes ``- ``. A lone ``*`` inside a sentence (arithmetic) stays.
     """
+    text = _MD_BOLD_ITALIC_RE.sub(r"\1", text)
     text = _MD_BOLD_RE.sub(lambda m: m.group(1) or m.group(2), text)
     text = _MD_HEADING_RE.sub("", text)
     return _MD_STAR_BULLET_RE.sub(r"\1- ", text)

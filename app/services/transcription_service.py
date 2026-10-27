@@ -1123,6 +1123,20 @@ class TranscriptionService:
         if not self._are_outputs_complete(failed):
             failed.output_paths = previous
             return False
+        # A partial set (an error during the export steps) is not a delivered
+        # result: only when every format this run was dispatched to write is
+        # among the files may it be reported finished — the same rule the
+        # Cancel path applies (test_cancel_with_only_some_formats_written_
+        # stays_cancelled). A no-speech run writes empty files on purpose, and
+        # a task without a stamped format list (an older dispatcher) keeps the
+        # existence-only check above.
+        if (
+            not getattr(failed, "no_speech", False)
+            and getattr(failed, "output_formats", None) is not None
+            and not self._written_outputs_cover_formats(failed)
+        ):
+            failed.output_paths = previous
+            return False
         failed.status = "finished"
         failed.recovery_note = (
             f"Worker reported an error after writing all outputs: {_short_message(message)}"
@@ -1695,13 +1709,20 @@ class TranscriptionService:
                                 pass
                     elif kept_healthy:
                         app.log("A worker failed to load the model; the other workers keep running.")
-                    elif not app.model_setup_running:
-                        app.log("Existing model failed to load. Starting required download.")
+                    else:
+                        # No healthy worker is left. Tear down even while a
+                        # model setup already runs: the setup supplies the
+                        # model for the NEXT attempt, but leaving the failed
+                        # worker wedged its task at 'running' forever (history
+                        # row open, queue blocked by the active-but-dead
+                        # worker). Only the second download modal is gated.
                         self._fail_tasks_and_clear_workers_on_startup_error()
-                        # Defer so the loading modal is fully torn down (its
-                        # cancel() runs on the next main-thread drain) before the
-                        # download modal opens — no stacked modals.
-                        app.after(0, lambda: app.ensure_model_with_modal(mandatory=True))
+                        if not app.model_setup_running:
+                            app.log("Existing model failed to load. Starting required download.")
+                            # Defer so the loading modal is fully torn down (its
+                            # cancel() runs on the next main-thread drain) before the
+                            # download modal opens — no stacked modals.
+                            app.after(0, lambda: app.ensure_model_with_modal(mandatory=True))
                 elif event_type == "started":
                     pass
                 elif event_type == "progress":
@@ -1767,6 +1788,9 @@ class TranscriptionService:
                             except (TypeError, ValueError):
                                 pass
                             worker["task"].no_speech = bool(event.get("no_speech"))
+                            worker["task"].speaker_labels_failed = bool(
+                                event.get("speaker_labels_failed")
+                            )
                             apply_final_speed(worker["task"], event)
                             self.finish_task(worker)
                     else:
@@ -2383,10 +2407,18 @@ class TranscriptionService:
                     base = os.path.splitext(task.file_path)[0]
                     if getattr(task, "whisper_task", "") == "translate":
                         base += TRANSLATED_SUFFIX
-                    paths = [
-                        f"{base}.{ext}"
-                        for ext in (app.app_config.get("output_formats") or ["srt", "json"])
-                    ]
+                    # What THIS run was dispatched to write (the snapshot
+                    # stamped at dispatch, incl. the subbed-video srt), not
+                    # the live config — which can have changed since, and
+                    # whose keys are not the on-disk extensions ("elan"
+                    # writes .eaf). Same derivation as
+                    # _outputs_complete_unchecked, re-run "(N)" set included.
+                    formats = getattr(task, "output_formats", None)
+                    if formats is None:
+                        formats = app.app_config.get("output_formats") or ["srt", "json"]
+                    from core.writers import extension_for
+                    paths = [f"{base}.{extension_for(str(fmt))}" for fmt in formats]
+                    paths = _newest_output_set(paths, task.file_path)
                 persisted = _retry_on_lock(lambda: history.finish_transcription(
                     task.history_id,
                     status=terminal_status,
@@ -2449,6 +2481,9 @@ class TranscriptionService:
                     self.app.open_sample_result(task)
                 except Exception:  # noqa: BLE001
                     logger.exception("Could not open the sample clip result")
+            else:
+                # Saved and reported: now the optional Obsidian note / webhook.
+                self._run_finish_hooks(task, audio_duration)
         # P4-4 — usage stats POST (best-effort, daemon thread, swallows all
         # errors). post_stats_async checks telemetry_opt_in + stats_url.
         # A finished run posts its real counts. A run that ends in a terminal
@@ -2508,6 +2543,34 @@ class TranscriptionService:
         app.update_overall_progress()
         if worker.get("temporary") and not any(t.status == "waiting" for t in app.queue):
             self.retire_worker(worker)
+
+    def _run_finish_hooks(self, task: Any, audio_duration: float) -> None:
+        """Hand a finished, saved job to the optional Obsidian note / webhook.
+
+        Runs on a daemon thread inside ``core.finish_hooks``; nothing here may
+        raise into the task-done handler.
+        """
+        try:
+            cfg = self.app.app_config
+            if not (cfg.get("obsidian_vault_dir") or cfg.get("finish_webhook_url")):
+                return
+            import time as _time
+            from core import finish_hooks
+            link = str(getattr(getattr(task, "source_download", None), "url", "") or "")
+            job = finish_hooks.FinishedJob(
+                job_id=task_correlation_id(task),
+                title=os.path.splitext(os.path.basename(task.file_path))[0],
+                source=link or str(task.file_path),
+                status="finished",
+                language=_reported_language(task),
+                model=str(getattr(task, "speed_model", "") or cfg.get("model_name") or ""),
+                duration=float(audio_duration or 0.0),
+                output_paths=[str(p) for p in (getattr(task, "output_paths", None) or [])],
+                finished_at=_time.time(),
+            )
+            finish_hooks.deliver_async(cfg, job)
+        except Exception:  # noqa: BLE001 - the transcript is saved already
+            logger.exception("Could not start the finish hand-offs")
 
     def _written_outputs_cover_formats(self, task: Any) -> bool:
         """True when the worker-reported output files exist, are non-empty and

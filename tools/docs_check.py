@@ -45,8 +45,11 @@ REQUIRED = ("type", "status", "created")
 HISTORY_PARTS = {"archive", "notes"}
 SKIP_PARTS = {".git", ".venv", "venv", "node_modules", "__pycache__", ".pytest_cache", "site-packages",
               ".mypy_cache", ".ruff_cache", "dist", "build", "templates", "evidence"}
-LINK_RE = re.compile(r"(?<!!)\[[^\]]*\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
-IMG_RE = re.compile(r"!\[[^\]]*\]\(([^)\s]+)\)")
+# Link target: no whitespace or ')', except ')' inside balanced parentheses (one
+# level, like CommonMark allows), so [x](a_(b).md) keeps its full file name.
+_TARGET = r"((?:[^()\s]|\([^)\s]*\))*)"
+LINK_RE = re.compile(r"(?<!!)\[[^\]]*\]\(" + _TARGET + r"(?:\s+\"[^\"]*\")?\)")
+IMG_RE = re.compile(r"!\[[^\]]*\]\(" + _TARGET + r"\)")
 FENCE_RE = re.compile(r"^(```|~~~)")
 ARABIC_RE = re.compile("[\u0600-\u06ff\u0750-\u077f\ufb50-\ufdff\ufe70-\ufeff]")
 # U+FFFD = a decoding accident. Zero-width joiners are NOT flagged in Markdown: ZWNJ (U+200C)

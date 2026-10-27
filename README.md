@@ -134,6 +134,9 @@ No file at hand? **Try it now (sample clip)** transcribes an 18-second public-do
 - **Live:** transcribe a microphone, or the system audio on Windows, as it
   happens ([docs/LIVE.md](docs/LIVE.md)).
 - **Batch queue and watched folder** for many files.
+- **Hand-offs when a job finishes** (optional, in Advanced): a Markdown note copied into an Obsidian vault
+  folder, and a webhook to tools such as n8n, with an optional secret
+  ([docs/CONFIG.md](docs/CONFIG.md)).
 - **Local-network mode:** a transcription page and an OpenAI-compatible API for
   the other devices on your network ([docs/SERVER.md](docs/SERVER.md)).
 - **Optional, off by default:** AI tools for a finished transcript (summary,

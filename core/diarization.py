@@ -158,6 +158,11 @@ def _prepare_audio_16k_mono(audio_path: str) -> tuple[Any, int]:
 WORKER_STALL_TIMEOUT_S = 300.0  # no event from the worker for this long -> hung
 WORKER_MIN_TIMEOUT_S = 600.0  # overall limit floor
 WORKER_TIMEOUT_PER_AUDIO_S = 4.0  # overall limit: this many seconds per audio second
+# sherpa-onnx reports nothing during its segmentation pass, so until the
+# first real progress event a periodic 0.0 heartbeat goes out through
+# progress_cb (the transcriber maps it to the 90 percent slot) to keep the
+# UI bar moving and the parent's liveness watchdog fed.
+SEGMENTATION_HEARTBEAT_S = 15.0
 _CANCEL_POLL_S = 0.1
 
 
@@ -313,6 +318,17 @@ def diarize(
                 _stop(force=False)
                 return []
             now = time.monotonic()
+            if (
+                not progressed
+                and progress_cb is not None
+                and now - last_event >= SEGMENTATION_HEARTBEAT_S
+            ):
+                # The segmentation pass prints nothing for minutes; this
+                # keeps progress_cb (and the events it feeds) alive until
+                # the worker's own progress starts. 0.0 maps to the 90
+                # percent slot in the transcriber's wrapper.
+                progress_cb(0.0)
+                last_event = now
             if now - start > overall_timeout_s:
                 _stop(force=True)
                 raise DiarizationUnavailable(

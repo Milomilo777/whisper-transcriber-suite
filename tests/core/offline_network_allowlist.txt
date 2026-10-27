@@ -36,3 +36,4 @@ core/server/dlproxy.py::_connect_through  only used by the download proxy of ser
 core/tts_kokoro.py::_fetch_archive  only reached after require_online("downloading the Kokoro voice model")
 core/local_llm_server.py::LocalLLMServer._health  connects only to 127.0.0.1 (LOOPBACK), the app's own llama-server child
 core/local_llm_server.py::LocalLLMServer.open_chat  connects only to 127.0.0.1 (LOOPBACK), the app's own llama-server child
+core/finish_hooks.py::_default_opener  only reached from send_webhook, which refuses while offline (offline.is_offline()) before it builds the request

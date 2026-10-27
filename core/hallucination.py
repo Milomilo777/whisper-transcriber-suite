@@ -30,9 +30,21 @@ from typing import Any, Iterable
 logger = logging.getLogger(__name__)
 
 
+# Zero-width spaces/joiners, LRM/RLM, bidi embeddings and overrides, word joiner, BOM:
+# deleted before the bag match, the same marks core/completeness.py deletes before its
+# blank-text test -- the app wraps RTL subtitle lines in RLM (core/burn_subs.py), so a
+# hallucination phrase can arrive wrapped in marks that carry no words.
+_INVISIBLE = dict.fromkeys([*range(0x200B, 0x2010), *range(0x202A, 0x202F), 0x2060, 0xFEFF])
+
+
 def _normalize(text: str) -> str:
-    """Lower-case + collapse internal whitespace + strip ends."""
-    return re.sub(r"\s+", " ", text or "").strip().lower()
+    """Lower-case + collapse internal whitespace + strip ends.
+
+    Invisible zero-width and bidi control marks are deleted first so a
+    phrase wrapped in them still matches; a segment holding only marks
+    normalizes to "" and matches nothing.
+    """
+    return re.sub(r"\s+", " ", (text or "").translate(_INVISIBLE)).strip().lower()
 
 
 _BAG_OF_HALLUCINATIONS: tuple[str, ...] = (
@@ -162,7 +174,18 @@ def detect_vad_disagreement(
         # turn a garbage timestamp into a "disagreement"; only a finite
         # interval can establish one.
         return False
-    for vs, ve in vad_segments:
+    for interval in vad_segments:
+        try:
+            vs, ve = interval
+            vs = float(vs)
+            ve = float(ve)
+        except (TypeError, ValueError, OverflowError):
+            # A malformed interval (None, a non-numeric pair, a
+            # wrong-length tuple) carries no evidence of speech; skip it
+            # so one bad entry cannot abort annotation of the others.
+            continue
+        if not (math.isfinite(vs) and math.isfinite(ve)):
+            continue
         if e >= vs and s <= ve:
             return False
     return True
