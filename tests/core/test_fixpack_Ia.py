@@ -331,11 +331,11 @@ def test_run_task_finally_skips_process_owned_by_a_newer_run(monkeypatch):
     process. The old run's finally must NOT reap/kill that new process."""
     killed = {"n": 0}
 
-    def _kill(proc, force=False):  # noqa: ANN001
+    def _kill(proc, **_kw):  # noqa: ANN001
         killed["n"] += 1
         proc.killed = True
 
-    monkeypatch.setattr("app.services.download_service.kill_process_tree", _kill)
+    monkeypatch.setattr("app.services.download_service.kill_download_tree", _kill)
 
     app = _run_task_app()
     svc = _run_task_svc(app)
@@ -371,7 +371,7 @@ def test_run_task_finally_skips_process_owned_by_a_newer_run(monkeypatch):
 def test_run_task_finally_reaps_its_own_process(monkeypatch):
     """No newer run: the finally still reaps + nulls its own process — the
     normal path is preserved."""
-    monkeypatch.setattr("app.services.download_service.kill_process_tree",
+    monkeypatch.setattr("app.services.download_service.kill_download_tree",
                         lambda *a, **k: None)
     app = _run_task_app()
     svc = _run_task_svc(app)
@@ -406,7 +406,7 @@ def test_run_task_superseded_skips_media_and_subtitle(monkeypatch):
     concurrently with the fresh run."""
     phases_entered: list[str] = []
     events: list[tuple] = []
-    monkeypatch.setattr("app.services.download_service.kill_process_tree",
+    monkeypatch.setattr("app.services.download_service.kill_download_tree",
                         lambda *a, **k: None)
 
     app = _run_task_app()
@@ -448,7 +448,7 @@ def test_run_task_superseded_after_subtitle_skips_media(monkeypatch):
     """If _run_generation is bumped during _subtitle_phase, the old run
     must not enter _media_phase afterward."""
     phases_entered: list[str] = []
-    monkeypatch.setattr("app.services.download_service.kill_process_tree",
+    monkeypatch.setattr("app.services.download_service.kill_download_tree",
                         lambda *a, **k: None)
 
     app = _run_task_app()
@@ -483,7 +483,7 @@ def test_superseded_caption_only_run_suppresses_error(monkeypatch):
     must not post an error event — doing so would flip the fresh run's
     row to error and release its download slot."""
     events: list[tuple] = []
-    monkeypatch.setattr("app.services.download_service.kill_process_tree",
+    monkeypatch.setattr("app.services.download_service.kill_download_tree",
                         lambda *a, **k: None)
 
     app = _run_task_app()
@@ -521,7 +521,7 @@ def test_caption_only_pause_before_start_is_not_silently_ignored(monkeypatch):
     spawned yt-dlp), so pause_download only sets the flag and frees the
     slot -- the run then launched its own yt-dlp anyway, writing caption
     files for a task the user paused."""
-    monkeypatch.setattr("app.services.download_service.kill_process_tree",
+    monkeypatch.setattr("app.services.download_service.kill_download_tree",
                         lambda *a, **k: None)
 
     app = _run_task_app()

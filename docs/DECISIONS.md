@@ -865,6 +865,72 @@ media downloads that link jobs already allow; a password closes it. The download
 desktop window yet, only in the log. A switch between a general job and a language job costs one
 model load, as in ADR 0016.
 
+## 0019 — A download decides which files it owns before yt-dlp runs
+
+**Status:** Accepted
+
+**Date:** 2026-10-27
+
+**Context:** The output name of a desktop download is the video title only, so two jobs, or a job and a
+file the user kept, can name the same file. yt-dlp then printed "has already been downloaded" and the
+app took the old file as the job's result (reported it finished, transcribed it), resumed another
+URL's `.part` with `-c`, converted a user's file of the source extension in audio mode (and deleted it
+afterwards), and accepted a truncated audio file left by a stopped conversion. Two earlier attempts
+decided ownership from yt-dlp's log lines or with a per-job scratch folder; independent reviews
+found new ways to delete a user's file in both (resume granting ownership of a user file, a later
+playlist item deleting an earlier finished one, a resume racing the old run's cleanup, a refused move
+losing a finished file).
+
+**Considered options:**
+1. Keep the log-line approach and stop yt-dlp when it prints "already downloaded". Rejected: the stop is
+   asynchronous, so audio mode can convert (and delete) the file before it lands.
+2. A scratch folder per job (`-P temp:`). Rejected: orphaned folders after a restart, moves that can
+   fail after the work is done, relative-path pitfalls.
+3. Put the video id into every file name. Rejected for now: changes the name of every download.
+4. Ask yt-dlp for the planned file names first (`--print filename`, same format selection), keep yt-dlp from
+   deleting sources (`-k` in audio mode) and track what the job itself created; when a planned name is
+   taken by a file that is not the job's, refuse before anything is written. Chosen first, then changed
+   (below): refusing made the user move files by hand.
+5. The same plan, but write to the first free numbered name, browser style (`Title (1).mp4`). Chosen.
+
+**Decision:** Option 5. Before the real run, a plan pass lists the planned source and final path per item.
+When a planned final path, source, or any `.part`, `.ytdl`, fragment or per-format stream of it exists and
+the job did not create it (or another running job holds the name), the download goes to the first free
+`Title (N)`: free means no file or sidecar of that name exists (final, partial, stream, subtitle, any
+`Title (N).*`) and no other running job holds it. The existing file is never touched, and a one-line log
+entry names the new file. A name counts as the job's own when an earlier run of the same task claimed it, or
+when the claims file (`download_claims.json` in the user data folder) holds it for the same download (link,
+format choice and time range) from before an app restart; then the partial is resumed under its own name
+(possibly numbered). Each claim records its task, the app run, its time and the files the stopped run left.
+Only that task continues it while the task is running, paused or queued; a claim is honoured only while an
+unfinished piece of it is still on disk and it is under 14 days old, so a file the user saves later under
+the same name is never taken for the job's own. Cancel never deletes a partial whose claim another task
+holds. Names held by running jobs are kept in a registry checked under one lock with the file
+system, so two jobs with one title never choose the same name. If the plan pass itself fails, the real run
+goes ahead guarded by a snapshot of the folder taken after the name was chosen: "already downloaded",
+`Destination` or the audio target naming a file that is not the job's stops the run with a message (no
+rename is possible without a plan). Audio mode passes `-k`; the source is deleted afterwards only when it is
+the job's own and differs from the final file. A stopped or failed conversion removes only the one audio file
+it was writing, never an earlier finished item. A run holds a per-job lock from the plan to its own cleanup,
+so a resume waits for the run it replaces. A finished run keeps its names, so a resume that races a pause
+landing as yt-dlp exits finds its own complete file. The same code covers the private-tab fallback (the
+YouTube copy) because it shares the runner.
+
+**What must never happen:** a finished download or transcript lost; one file owned by two jobs; a cancel,
+pause or failure deleting a file the job did not create (or one another job uses); a file of an older or
+other download reported as this job's result.
+
+**Consequences:** Downloading the same title into the same folder twice gives `Title (1).mp4` instead of
+silently reusing the old file. Each download starts with one extra metadata request (a few seconds). Every
+download passes `--no-playlist`, so a video link inside a playlist is one item; a link that is a playlist
+page can still list several items, which are planned and guarded one by one (all get the same number). The
+subtitle phase runs the plan and chooses the number first, so the captions and their extras (`.txt`, `.otr`,
+`.docx`) carry the video's `Title (N)` name; the plan is asked for twice when subtitles are on. Not covered: a
+file that appears after the name was chosen is only caught when yt-dlp announces it; a second running copy of
+the app cannot tell that the first holds a claim. Claims written by a pre-release build (a plain
+name-to-key map) are ignored. A retry row takes over the failed row's files, and the failed row then has
+none left to delete.
+
 ## 0020 — Apple-silicon engine: mlx-whisper, chosen automatically on M-series Macs
 
 **Status:** Accepted

@@ -417,23 +417,26 @@ def test_cancel_removes_the_partial_files_and_keeps_the_rest(tmp_path, monkeypat
     video = tmp_path / f"{title}.f137.mp4"
     audio = tmp_path / f"{title}.f140.m4a"
     leftovers = [
-        _touch(video),  # finished video stream, never merged
-        _touch(Path(str(audio) + ".part")),
-        _touch(Path(str(audio) + ".ytdl")),
-        _touch(Path(str(audio) + ".part-Frag3")),
+        video,  # finished video stream, never merged
+        Path(str(audio) + ".part"),
+        Path(str(audio) + ".ytdl"),
+        Path(str(audio) + ".part-Frag3"),
     ]
     keep = [_touch(tmp_path / "other.mp4"), _touch(tmp_path / f"{title}.mp4.bak")]
-    lines = [
-        f"[download] Destination: {video}",
-        "[download] 100% of 1.00MiB",
-        f"[download] Destination: {audio}",
-    ]
+
+    def lines():
+        # The run writes these files (ADR 0019: a file that was already there is not the job's).
+        for path in leftovers:
+            _touch(path)
+        yield f"[download] Destination: {video}"
+        yield "[download] 100% of 1.00MiB"
+        yield f"[download] Destination: {audio}"
     app = _app()
     svc = DownloadService(app)
     task = _task(str(tmp_path))
 
     class _Proc:
-        stdout = iter(lines)
+        stdout = lines()
 
         def wait(self):
             task.cancelled = True
@@ -448,13 +451,17 @@ def test_cancel_removes_the_partial_files_and_keeps_the_rest(tmp_path, monkeypat
 
 
 def test_pause_keeps_the_partial_files(tmp_path, monkeypatch):
-    part = _touch(tmp_path / "v.mp4.part")
+    part = tmp_path / "v.mp4.part"
     app = _app()
     svc = DownloadService(app)
     task = _task(str(tmp_path))
 
+    def lines():
+        _touch(part)  # the run writes it (ADR 0019: a file that was already there is not the job's)
+        yield f"[download] Destination: {tmp_path / 'v.mp4'}"
+
     class _Proc:
-        stdout = iter([f"[download] Destination: {tmp_path / 'v.mp4'}"])
+        stdout = lines()
 
         def wait(self):
             task.paused = True

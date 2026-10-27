@@ -110,6 +110,16 @@ class _FakeProcess:
         return self._returncode
 
 
+class _NoPlan:
+    """The plan pass (``--print`` of the planned file names, ADR 0019) of a stand-in yt-dlp that
+    cannot list ahead: it fails, so the run continues with its other safety checks."""
+
+    returncode = 1
+
+    def communicate(self, timeout=None):  # noqa: ANN001
+        return "", "ERROR: no plan"
+
+
 def _fake_popen_factory(monkeypatch, responses: list[tuple[list[str], int]]):
     """Patch subprocess.Popen for one _media_phase run.
 
@@ -121,6 +131,8 @@ def _fake_popen_factory(monkeypatch, responses: list[tuple[list[str], int]]):
     remaining = list(responses)
 
     def _popen(command, **_):  # noqa: ANN001, ANN003
+        if "--print" in command:
+            return _NoPlan()
         calls.append(command)
         lines, rc = remaining.pop(0)
         return _FakeProcess(lines, rc)

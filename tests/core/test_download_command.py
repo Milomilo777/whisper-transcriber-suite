@@ -606,3 +606,11 @@ def test_time_range_badge_inf():
     # time_range_badge takes start, end
     assert _time_range_badge(float('inf'), float('nan')) == "start -> end"
 
+
+
+def test_build_subtitle_command_output_carries_the_video_number():
+    task = _task()
+    plain = build_subtitle_command(task, "en", yt_dlp_path="y", bin_path="")
+    numbered = build_subtitle_command(task, "en", yt_dlp_path="y", bin_path="", number=2)
+    assert plain[plain.index("-o") + 1].endswith("%(title)s.%(ext)s")
+    assert numbered[numbered.index("-o") + 1].endswith("%(title)s (2).%(ext)s")
