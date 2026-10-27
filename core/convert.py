@@ -277,8 +277,13 @@ def _parse_cue_format(text: str, path: str, *, vtt: bool = False) -> list[dict]:
         if not m:
             if "-->" in lines[i]:
                 skipped += 1
-                while i < n and lines[i].strip() != "":
+                i += 1
+                # The payload of the unplaceable cue runs to a blank line or
+                # to the next readable timing line (compact SRT has no blank
+                # line between cues), never past it.
+                while i < n and lines[i].strip() != "" and not _timing(lines[i]):
                     i += 1
+                continue
             i += 1
             continue
         g = m.groups()
