@@ -362,6 +362,38 @@ def test_compact_srt_keeps_a_unicode_digit_final_text_line():
     assert segments[0]["text"] == "\u06f2\u06f4"
 
 
+def test_invisible_only_payload_line_is_not_cue_text():
+    """A payload line made solely of invisible marks is noise, not text.
+
+    RTL subtitle editors leave a bare RLM (U+200F) line inside a cue and
+    editors drop a zero-width space (U+200B) the same way — the very marks
+    ``_timing`` already strips from timing lines. Treating them as text
+    leaked the invisible character into every converted format.
+    """
+    rlm_only = (
+        "1\n"
+        "00:00:01,000 --> 00:00:02,000\n"
+        "hello\n"
+        "\u200f\n"
+        "2\n"
+        "00:00:02,000 --> 00:00:03,000\n"
+        "world\n"
+    )
+    segments = convert._parse_cue_format(rlm_only, "rtl.srt")
+    assert [s["text"] for s in segments] == ["hello", "world"]
+
+    zwsp_before_text = (
+        "1\n"
+        "00:00:01,000 --> 00:00:02,000\n"
+        "\u200b\n"
+        "hello\n"
+        "00:00:02,000 --> 00:00:03,000\n"
+        "world\n"
+    )
+    segments = convert._parse_cue_format(zwsp_before_text, "zwsp.srt")
+    assert [s["text"] for s in segments] == ["hello", "world"]
+
+
 def test_replace_atomically_reports_the_replace_error_not_the_cleanup_one(monkeypatch, tmp_path):
     """When the replace fails (target locked) and the temp file cannot be
     removed either, the caller must see the REPLACE error; the unlink error

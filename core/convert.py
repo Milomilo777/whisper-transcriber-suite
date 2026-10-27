@@ -303,6 +303,15 @@ def _parse_cue_format(text: str, path: str, *, vtt: bool = False) -> list[dict]:
                 break
             body_lines.append(lines[i])
             i += 1
+        # A payload line holding only invisible marks (RLM / ZWSP / a
+        # mid-file BOM — the set _timing strips from timing lines) is
+        # editor noise once the cue has visible text; a cue whose whole
+        # payload is invisible marks keeps them, because they are content
+        # the writers round-trip (see the format round-trip property
+        # tests, whose text pool includes the RTL marks).
+        visible = [ln for ln in body_lines if ln.strip().strip(_LEADING_INVISIBLE)]
+        if visible:
+            body_lines = visible
         body = _BR_TAG.sub(" ", " ".join(ln.strip() for ln in body_lines))
         body = " ".join(tag_re.sub("", body).split())
         if vtt:
