@@ -27,7 +27,7 @@ from app.dialogs.quick_start import (
 )
 from app.dialogs import language_suggestion, share_page, ui_language
 from app import desktop_alert, mac_native, rtl_layout, shortcuts
-from app.i18n import N_, _, ngettext, pgettext, plain, translate
+from app.i18n import N_, _, display, ngettext, pgettext, plain, translate
 from app.model_text import localize_size_text
 from app.dialogs.transcript_viewer import confirm_unsaved_before_exit as confirm_unsaved_viewers_before_exit
 from app.dialogs.transcript_viewer import dirty_viewers as _dirty_viewers_now
@@ -105,6 +105,14 @@ logger = logging.getLogger(__name__)
 # each item, so no lookup ever goes by the (translated) label.
 _HELP_MENU_LABEL = N_("Help")
 _CHECK_FOR_UPDATES_LABEL = N_("Check for updates...")
+
+
+def _help_label_with_dot() -> str:
+    """The Help menu label with the update dot; the dot ends a right-to-left label, so the whole
+    label is shaped once (Linux) instead of gluing the dot to a shaped word."""
+    return display(translate(_HELP_MENU_LABEL) + " " + chr(0x25CF))
+
+
 _ABOUT_MENU_LABEL = N_("About")
 _WORK_OFFLINE_LABEL = N_("Work offline")
 # core.star_invite's two lines, marked here: the app shows them, and core/ is not translated.
@@ -3920,7 +3928,8 @@ class App(tk.Tk):
                     "It runs on the local transformers engine, which installs once the first "
                     "time (about 1 GB more), gives no word-level timestamps and ignores the "
                     "Whisper options (hot words, prompt).")
-            if not messagebox.askyesno(_("Model for {language}", language=language), text, parent=self):
+            if not messagebox.askyesno(_("Model for {language}", language=language), display(text),
+                                       parent=self):
                 return
         if not self._confirm_backend_switch(kind=BACKEND_SWITCH_MODEL):
             return
@@ -4915,7 +4924,7 @@ class App(tk.Tk):
             task.languages = pair
         else:
             if why_not:
-                self.log(why_not + " " + _("This file uses one language."))
+                self.log(display(why_not + " " + _("This file uses one language.")))
             if code:
                 task.language = code
         # "English translation" option: Whisper's own translate task, only
@@ -6294,7 +6303,7 @@ class App(tk.Tk):
         if token:
             steps += " " + _("The code and the copied link include your access password: show "
                              "them only to people who may use this page.")
-        self.server_qr_note_var.set(steps)
+        self.server_qr_note_var.set(display(steps))
         frame.pack(**rtl_layout.pack_kw(frame, anchor="w", pady=(0, 12), after=self.server_url_label))
 
     def _hide_phone_link(self) -> None:
@@ -7512,7 +7521,7 @@ class App(tk.Tk):
         try:
             version = _updates.passive_sign_version(self.app_config, _APP_VERSION)
             if version:
-                help_label = f"{translate(_HELP_MENU_LABEL)} ●"
+                help_label = _help_label_with_dot()
                 item_label = _("Check for updates...  ● {version} available", version=version)
             else:
                 help_label = translate(_HELP_MENU_LABEL)

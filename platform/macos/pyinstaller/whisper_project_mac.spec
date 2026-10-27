@@ -361,6 +361,7 @@ a = Analysis(
         'app.i18n',
         'app.model_text',
         'app.rtl_layout',
+        'app.rtl_shaping',
         'app.theme.script_fonts',
         'app.theme.theme_colours',
         'app.theme.mac_appearance',

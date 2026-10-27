@@ -322,11 +322,16 @@ def test_tk_rtl_catalog_reaches_the_widgets_unchanged(build_app: Any, monkeypatc
     assert i18n.current_direction() == "rtl"
     app = build_app()
     # The catalog's text, character for character; on Windows each line inside one RLE ... PDF
-    # pair (U+202B ... U+202C), elsewhere unchanged. Tk does not reorder, and no LRM is added
-    # off macOS.
+    # pair (U+202B ... U+202C), on Linux with the display shaping (app.rtl_shaping) in visual
+    # order, elsewhere unchanged. Tk does not reorder, and no LRM is added off macOS.
     marks = (chr(0x202B), chr(0x202C)) if sys.platform == "win32" else ("", "")
+
+    def shown(text: str) -> str:
+        from app import rtl_shaping
+        return rtl_shaping.visual(text) if i18n.rtl_shaped() else marks[0] + text + marks[1]
+
     tabs = {str(app.nb.tab(t, "text")) for t in app.nb.tabs()}
-    expected = {marks[0] + messages[key] + marks[1] for key in (
+    expected = {shown(messages[key]) for key in (
         "Transcription Queue", "Download Videos", "Web / LAN access",
         "tab" + i18n.CONTEXT_SEPARATOR + "Live")}
     assert expected <= tabs, tabs

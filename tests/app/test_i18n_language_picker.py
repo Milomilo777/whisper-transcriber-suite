@@ -19,7 +19,7 @@ from typing import Any
 
 import pytest
 
-from app import i18n
+from app import i18n, rtl_shaping
 
 # The order the picker must show when every catalog ships (right-to-left ones included): Latin
 # names alphabetically with accents ignored, then Cyrillic, Greek, Hebrew/Arabic, Indic, Thai and
@@ -92,7 +92,10 @@ def test_machine_catalogs_show_the_name_alone_and_rtl_ones_wait_for_the_mirrored
     write_catalog(locales, "ja", "machine")
     write_catalog(locales, "ar", "reviewed")
     write_catalog(locales, "he", "machine")
-    monkeypatch.setattr(sys, "platform", "linux")  # right to left is offered on Windows and macOS
+    # Right to left is offered on Windows and macOS, and on Linux only with the display shaping
+    # (arabic-reshaper and python-bidi; here: not installed).
+    monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.setattr(rtl_shaping, "available", lambda: False)
     assert i18n.rtl_layout_ready() is False
     assert _adv()._ui_language_choices() == [
         (AUTO_LABEL, "auto"),

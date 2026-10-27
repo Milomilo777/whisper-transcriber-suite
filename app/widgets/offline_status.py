@@ -24,6 +24,7 @@ import tkinter as tk
 from collections.abc import Callable, Sequence
 from tkinter import ttk
 
+from app import rtl_shaping
 from app.i18n import N_, _, ngettext, pgettext, plain, translate
 from app.theme import tokens
 from core import offline
@@ -176,9 +177,9 @@ def log_text(
         target = f" -> {ev.host}" if ev.host else ""
         word = _KIND_WORDS.get(ev.kind)
         kind = translate(word) if word is not None else ev.kind
-        lines.append(f"  {_clock(ev.when)}  {kind}  {ev.feature}{target}")
+        lines.append("  " + _clock(ev.when) + "  " + kind + "  " + ev.feature + target)  # + keeps `kind`'s identity
     lines += ["", *(translate(line) for line in LIMITS)]
-    return "\n".join(lines)
+    return rtl_shaping.join("\n", lines)  # keeps the shaped lines' logical text for the copy
 
 
 class NetworkLogWindow(tk.Toplevel):

@@ -20,7 +20,7 @@ from typing import Any
 
 import pytest
 
-from app import i18n
+from app import i18n, rtl_shaping
 
 RLE = chr(0x202B)
 PDF = chr(0x202C)
@@ -72,6 +72,9 @@ def write_catalog(folder: Path, code: str, messages: dict[str, Any], status: str
 
 def on(monkeypatch: pytest.MonkeyPatch, platform: str) -> None:
     monkeypatch.setattr(sys, "platform", platform)
+    # "linux" here means Linux WITHOUT arabic-reshaper / python-bidi (the display shaping of
+    # tests/test_rtl_shaping.py is off), the situation these tests describe.
+    monkeypatch.setattr(rtl_shaping, "available", lambda: False)
 
 
 @pytest.fixture

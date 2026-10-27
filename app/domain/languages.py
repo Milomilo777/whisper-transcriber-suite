@@ -4,6 +4,7 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable
 
+from app import rtl_shaping
 from app.i18n import N_, _, ngettext, pgettext, translate
 
 # Display name → comma-separated yt-dlp subtitle language codes.
@@ -267,11 +268,13 @@ def caption_availability_text(
     wanted = [caption_language_name(code) for code in prefer if code]
     entries.sort(key=lambda e: wanted.index(e[0]) if e[0] in wanted else len(wanted))
     shown = entries[:CAPTION_BAR_MAX_LANGUAGES]
-    text = pgettext("list separator", ", ").join(
+    # rtl_shaping.join, not str.join: the parts are shaped on Linux and the whole is shaped again
+    # inside the next _(); the plain result everywhere else.
+    text = rtl_shaping.join(pgettext("list separator", ", "), (
         _("{language} (made by the uploader)", language=subtitle_language_label(name))
         if by_uploader else _("{language} (automatic)", language=subtitle_language_label(name))
         for name, by_uploader in shown
-    )
+    ))
     extra = len(entries) - len(shown)
     if extra > 0:
         text = ngettext("{languages} and {n} more", "{languages} and {n} more", extra,

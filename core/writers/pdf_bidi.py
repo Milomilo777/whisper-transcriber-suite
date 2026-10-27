@@ -86,8 +86,9 @@ def _load() -> Engine | None:
         from bidi.algorithm import get_display  # type: ignore[import-not-found]
     except (ImportError, OSError) as e:  # OSError: a native library that fails to load
         log.warning(
-            "PDF: Arabic-script and Hebrew text is drawn unjoined and left "
-            "to right because %s; install arabic-reshaper and python-bidi",
+            "Arabic-script and Hebrew text is drawn unjoined and left to right "
+            "(PDF files, and the interface on Linux) because %s; install "
+            "arabic-reshaper and python-bidi",
             e,
         )
         return None
