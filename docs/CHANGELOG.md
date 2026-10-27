@@ -56,6 +56,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- **Obsidian note and finish webhook** (**Advanced → App behaviour**, `core.finish_hooks`): when a job
+  finishes and its files are saved, the transcript can also be written as a Markdown note (front matter plus
+  timestamped lines) into an Obsidian vault folder, never replacing an existing note, and a small JSON can be
+  POSTed to a web address (https, or http on this computer; optional secret header; the transcript text only
+  if ticked). Failures are only logged; Work offline blocks the webhook. Keys in [docs/CONFIG.md](CONFIG.md).
 - **Usage statistics count installs**: each row carries a random per-install id (a UUID4 in the new
   `install_id` setting), so one person transcribing thousands of clips is no longer counted as many
   users. The id comes from no hardware, name, path or network fact, is not sent in problem reports, and is

@@ -485,6 +485,21 @@ DEFAULT_CONFIG = {
     #     (Windows only, core.subtitle_edit). "" = look for an installed copy.
     #     Local only: it is a program the app starts.
     "subtitle_edit_path": "",
+    #   obsidian_vault_dir — Advanced > App behaviour, "Copy the transcript to
+    #     an Obsidian vault folder". An existing folder; after a job finishes a
+    #     Markdown note is written there (core.finish_hooks), never overwriting
+    #     one. "" = off. Local only.
+    "obsidian_vault_dir": "",
+    #   finish_webhook_url / finish_webhook_secret / finish_webhook_include_text
+    #     — Advanced > App behaviour, "Notify a web address when a job
+    #     finishes". A POST of a small JSON (core.finish_hooks); https, or http
+    #     to this computer only. The secret is sent as the same header as the
+    #     server's webhook, stored in CLEARTEXT, never logged. The transcript
+    #     text is added only when include_text is on. Blocked by Work offline.
+    #     Local only.
+    "finish_webhook_url": "",
+    "finish_webhook_secret": "",
+    "finish_webhook_include_text": False,
     # --- Three-level config: ONLINE layer (P4-1) -------------------------
     # URL of an app-level JSON config the maintainer hosts, fetched on
     # startup so APP-LEVEL settings (model catalog, stats endpoint, latest
@@ -578,6 +593,10 @@ LOCAL_ONLY_KEYS: frozenset[str] = frozenset({
     "work_offline",
     "tts_no_text_limit",
     "subtitle_edit_path",
+    "obsidian_vault_dir",
+    "finish_webhook_url",
+    "finish_webhook_secret",
+    "finish_webhook_include_text",
     "update_check_enabled",
     "last_update_check",
     "update_latest_seen",

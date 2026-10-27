@@ -2452,6 +2452,9 @@ class TranscriptionService:
                     self.app.open_sample_result(task)
                 except Exception:  # noqa: BLE001
                     logger.exception("Could not open the sample clip result")
+            else:
+                # Saved and reported: now the optional Obsidian note / webhook.
+                self._run_finish_hooks(task, audio_duration)
         # P4-4 — usage stats POST (best-effort, daemon thread, swallows all
         # errors). post_stats_async checks telemetry_opt_in + stats_url.
         # A finished run posts its real counts. A run that ends in a terminal
@@ -2511,6 +2514,34 @@ class TranscriptionService:
         app.update_overall_progress()
         if worker.get("temporary") and not any(t.status == "waiting" for t in app.queue):
             self.retire_worker(worker)
+
+    def _run_finish_hooks(self, task: Any, audio_duration: float) -> None:
+        """Hand a finished, saved job to the optional Obsidian note / webhook.
+
+        Runs on a daemon thread inside ``core.finish_hooks``; nothing here may
+        raise into the task-done handler.
+        """
+        try:
+            cfg = self.app.app_config
+            if not (cfg.get("obsidian_vault_dir") or cfg.get("finish_webhook_url")):
+                return
+            import time as _time
+            from core import finish_hooks
+            link = str(getattr(getattr(task, "source_download", None), "url", "") or "")
+            job = finish_hooks.FinishedJob(
+                job_id=task_correlation_id(task),
+                title=os.path.splitext(os.path.basename(task.file_path))[0],
+                source=link or str(task.file_path),
+                status="finished",
+                language=_reported_language(task),
+                model=str(getattr(task, "speed_model", "") or cfg.get("model_name") or ""),
+                duration=float(audio_duration or 0.0),
+                output_paths=[str(p) for p in (getattr(task, "output_paths", None) or [])],
+                finished_at=_time.time(),
+            )
+            finish_hooks.deliver_async(cfg, job)
+        except Exception:  # noqa: BLE001 - the transcript is saved already
+            logger.exception("Could not start the finish hand-offs")
 
     def _written_outputs_cover_formats(self, task: Any) -> bool:
         """True when the worker-reported output files exist, are non-empty and

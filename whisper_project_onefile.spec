@@ -337,6 +337,7 @@ a = Analysis(
         'core.model_manager',
         'core.offline',
         'core.subtitle_edit',
+        'core.finish_hooks',
         'core.paths',
         'core.process_exit',
         'core.speed_meter',
