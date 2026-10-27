@@ -32,7 +32,9 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setattr(ds, "yt_dlp_js_args", lambda *_a, **_k: [])
     log = tmp_path / "runs.log"
     monkeypatch.setenv("FAKE_YTDLP_LOG", str(log))
-    for var in ("FAKE_YTDLP_PLAN_FAIL", "FAKE_YTDLP_FAIL_CONVERT", "FAKE_YTDLP_SLOW"):
+    monkeypatch.setattr(ds, "_claims_path", lambda: tmp_path / "claims.json")
+    for var in ("FAKE_YTDLP_PLAN_FAIL", "FAKE_YTDLP_FAIL_CONVERT", "FAKE_YTDLP_SLOW", "FAKE_YTDLP_DIE_PART",
+                "FAKE_YTDLP_HANG_CONVERT"):
         monkeypatch.delenv(var, raising=False)
     folder = tmp_path / "dl"
     folder.mkdir()
@@ -58,38 +60,114 @@ def _runs(log: Path) -> list[str]:
     return [line.split()[0] for line in log.read_text(encoding="utf-8").splitlines()] if log.exists() else []
 
 
+def _events(svc: ds.DownloadService) -> list:
+    out = []
+    while not svc.app.download_events.empty():     # type: ignore[attr-defined]
+        out.append(svc.app.download_events.get_nowait())  # type: ignore[attr-defined]
+    return out
+
+
 def _names(folder: Path) -> list[str]:
     return sorted(p.name for p in folder.iterdir())
 
 
-def test_older_video_file_is_never_the_result(env):
+def test_older_video_file_is_never_the_result_the_new_download_gets_a_number(env):
     svc, folder, log = env
     old = folder / "Title A.mp4"
     old.write_bytes(b"the user's older download")
-    task = _task(folder, mode="Audio and video", output="mp4")
-    with pytest.raises(DownloadRefused, match="Title A.mp4"):
-        _run(svc, task)
-    assert old.read_bytes() == b"the user's older download"
-    assert "real" not in _runs(log)               # yt-dlp never started the real download
+    rc, _e, _l, saved, _f = _run(svc, _task(folder, mode="Audio and video", output="mp4"))
+    assert rc == 0 and saved == str(folder / "Title A (1).mp4")
+    assert old.read_bytes() == b"the user's older download"          # never touched
+    assert (folder / "Title A (1).mp4").read_bytes().startswith(b"video:")
+    assert any("Title A (1).mp4" in str(e[2]) for e in _events(svc) if e[0] == "log")
 
 
 def test_older_source_file_is_not_converted_or_deleted_in_audio_mode(env):
-    svc, folder, log = env
+    svc, folder, _ = env
     old = folder / "Title A.webm"                 # a video the user kept; audio mode would use it
     old.write_bytes(b"the user's webm")
-    with pytest.raises(DownloadRefused, match="Title A.webm"):
-        _run(svc, _task(folder))
-    assert _names(folder) == ["Title A.webm"] and old.read_bytes() == b"the user's webm"
-    assert "real" not in _runs(log)
+    rc, _e, _l, saved, _f = _run(svc, _task(folder))
+    assert rc == 0 and saved == str(folder / "Title A (1).mp3")
+    assert _names(folder) == ["Title A (1).mp3", "Title A.webm"]
+    assert old.read_bytes() == b"the user's webm"
 
 
 def test_another_urls_partial_is_not_resumed(env):
-    svc, folder, log = env
+    svc, folder, _ = env
     part = folder / "Title A.mp4.part"
     part.write_bytes(b"bytes of another video")
-    with pytest.raises(DownloadRefused, match="Title A.mp4.part"):
-        _run(svc, _task(folder, mode="Audio and video", output="mp4"))
-    assert part.read_bytes() == b"bytes of another video" and _names(folder) == ["Title A.mp4.part"]
+    rc, _e, _l, saved, _f = _run(svc, _task(folder, mode="Audio and video", output="mp4"))
+    assert rc == 0 and saved == str(folder / "Title A (1).mp4")
+    assert part.read_bytes() == b"bytes of another video"
+    assert (folder / "Title A (1).mp4").read_bytes() == b"video:" + URL_A.encode()   # no foreign bytes
+
+
+def test_the_number_is_the_first_free_one_across_partials_and_sidecars(env):
+    svc, folder, _ = env
+    for name in ("Title A.mp4", "Title A (1).mp4.part", "Title A (2).fr.srt"):
+        (folder / name).write_bytes(b"x")
+    rc, _e, _l, saved, _f = _run(svc, _task(folder, mode="Audio and video", output="mp4"))
+    assert rc == 0 and saved == str(folder / "Title A (3).mp4")
+
+
+def test_the_jobs_own_subtitle_files_do_not_make_the_video_name_taken(env):
+    svc, folder, _ = env
+    for name in ("Title A.fa.vtt", "Title A.fr.srt", "Title A.fi.srt", "Title A.fil.srt"):
+        (folder / name).write_bytes(b"x")         # written by the subtitle phase before the video
+    rc, _e, _l, saved, _f = _run(svc, _task(folder, mode="Audio and video", output="mp4"))
+    assert rc == 0 and saved == str(folder / "Title A.mp4")
+
+
+def test_two_jobs_with_one_title_never_share_a_name(env, monkeypatch):
+    svc, folder, _ = env
+    monkeypatch.setenv("FAKE_YTDLP_SLOW", "1.5")
+    tasks = [_task(folder, mode="Audio and video", output="mp4") for _ in range(2)]
+    results: list = []
+
+    def go(t):
+        results.append(_run(svc, t)[3])
+
+    threads = [threading.Thread(target=go, args=(t,)) for t in tasks]
+    for th in threads:
+        th.start()
+    for th in threads:
+        th.join(60)
+    assert sorted(results) == sorted([str(folder / "Title A.mp4"), str(folder / "Title A (1).mp4")])
+
+
+def test_after_a_restart_the_same_download_resumes_its_own_partial(env, monkeypatch):
+    svc, folder, _ = env
+    monkeypatch.setenv("FAKE_YTDLP_DIE_PART", "1")
+    first = _task(folder, mode="Audio and video", output="mp4")
+    rc, *_ = _run(svc, first)
+    assert rc == 1 and (folder / "Title A.mp4.part").read_bytes() == b"first half"
+    monkeypatch.delenv("FAKE_YTDLP_DIE_PART")
+    # The app was restarted: a new task object for the same link and format.
+    again = _task(folder, mode="Audio and video", output="mp4")
+    rc, _e, _l, saved, _f = _run(svc, again)
+    assert rc == 0 and saved == str(folder / "Title A.mp4")
+    assert (folder / "Title A.mp4").read_bytes().startswith(b"first half|video:")
+
+
+def test_after_a_restart_another_link_with_the_same_title_does_not_take_the_partial(env, monkeypatch):
+    svc, folder, _ = env
+    monkeypatch.setenv("FAKE_YTDLP_DIE_PART", "1")
+    _run(svc, _task(folder, mode="Audio and video", output="mp4"))
+    monkeypatch.delenv("FAKE_YTDLP_DIE_PART")
+    other = _task(folder, url="https://x.test/other/Title%20A", mode="Audio and video", output="mp4")
+    rc, _e, _l, saved, _f = _run(svc, other)
+    assert rc == 0 and saved == str(folder / "Title A (1).mp4")
+    assert (folder / "Title A.mp4.part").read_bytes() == b"first half"
+
+
+def test_a_finished_run_stays_the_jobs_own_for_a_quick_resume(env):
+    svc, folder, _ = env
+    task = _task(folder, mode="Audio and video", output="mp4")
+    rc, _e, _l, saved, _f = _run(svc, task)       # a pause landed just as yt-dlp exited 0 ...
+    assert rc == 0 and saved == str(folder / "Title A.mp4")
+    rc, _e, _l, saved, _f = _run(svc, task)       # ... and the quick resume runs the task again
+    assert rc == 0 and saved == str(folder / "Title A.mp4")
+    assert _names(folder) == ["Title A.mp4"]       # no second copy
 
 
 def test_audio_command_keeps_the_source_so_yt_dlp_deletes_nothing(env):
@@ -247,7 +325,7 @@ def test_a_run_waits_until_the_previous_run_has_finished_stopping(env):
     assert result[0][0] == 0
 
 
-def test_the_youtube_copy_of_a_site_download_refuses_an_older_file_too(env):
+def test_the_youtube_copy_of_a_site_download_keeps_an_older_file_and_gets_a_number(env):
     svc, folder, _ = env
     from core.integrations import smtv as smtv_mod
 
@@ -273,12 +351,10 @@ def test_the_youtube_copy_of_a_site_download_refuses_an_older_file_too(env):
     svc._run_smtv_task = site_down                 # type: ignore[method-assign]
     svc._run_smtv_with_fallback(task, 1, object())
     assert old.read_bytes() == b"the user's older audio"
-    events = []
-    while not svc.app.download_events.empty():     # type: ignore[attr-defined]
-        events.append(svc.app.download_events.get_nowait())  # type: ignore[attr-defined]
-    kinds = [e[0] for e in events]
-    assert "error" in kinds and "done_full" not in kinds
-    assert any("watch.mp3" in str(e[2]) for e in events if e[0] == "error")
+    events = _events(svc)
+    done = [e for e in events if e[0] == "done_full"]
+    assert done and done[0][2]["saved_path"] == str(folder / "watch (1).mp3")
+    assert "error" not in [e[0] for e in events]
 
 
 def test_rerun_of_a_failed_download_continues_its_own_partial(env):

@@ -887,27 +887,40 @@ losing a finished file).
 2. A scratch folder per job (`-P temp:`). Rejected: orphaned folders after a restart, moves that can
    fail after the work is done, relative-path pitfalls.
 3. Put the video id into every file name. Rejected for now: changes the name of every download.
-4. Ask yt-dlp for the planned file names first (`--print filename`, same format selection), refuse
-   before anything is written when a planned path is already taken, keep yt-dlp from deleting sources
-   (`-k` in audio mode) and track what the job itself created. Chosen.
+4. Ask yt-dlp for the planned file names first (`--print filename`, same format selection), keep yt-dlp from
+   deleting sources (`-k` in audio mode) and track what the job itself created; when a planned name is
+   taken by a file that is not the job's, refuse before anything is written. Chosen first, then changed
+   (below): refusing made the user move files by hand.
+5. The same plan, but write to the first free numbered name, browser style (`Title (1).mp4`). Chosen.
 
-**Decision:** Option 4. Before the real run, a plan pass lists the planned source and final path per
-item. When a planned final path, source, or any `.part`, `.ytdl`, fragment or per-format stream of it
-exists and the job did not create it, the job ends with an error that names the file; nothing is
-downloaded, converted, resumed or deleted. If the plan pass itself fails, the real run goes ahead
-guarded by a snapshot of the folder taken before it starts: "already downloaded" for a file of the
-snapshot stops the run. A file counts as the job's own only when it was absent from that snapshot or
-the same job announced it in an earlier, paused run. Audio mode passes `-k`; the source is deleted
-afterwards only when it is the job's own and differs from the final file. A stopped or failed
-conversion removes only the one target it was writing, never an earlier finished item. A run holds a
-per-job lock from the plan to its own cleanup, so a resume waits for the old run to finish stopping.
-The same code covers the private-tab fallback (the YouTube copy) because it shares the runner.
+**Decision:** Option 5. Before the real run, a plan pass lists the planned source and final path per item.
+When a planned final path, source, or any `.part`, `.ytdl`, fragment or per-format stream of it exists and
+the job did not create it (or another running job holds the name), the download goes to the first free
+`Title (N)`: free means no file or sidecar of that name exists (final, partial, stream, subtitle, any
+`Title (N).*`) and no other running job holds it. The existing file is never touched, and a one-line log
+entry names the new file. A name counts as the job's own when an earlier run of the same task claimed it, or
+when the claims file (`download_claims.json` in the user data folder) holds it for the same download (link,
+format choice and time range) from before an app restart; then the partial is resumed under its own name
+(possibly numbered). Names held by running jobs are kept in a registry checked under one lock with the file
+system, so two jobs with one title never choose the same name. If the plan pass itself fails, the real run
+goes ahead guarded by a snapshot of the folder taken after the name was chosen: "already downloaded",
+`Destination` or the audio target naming a file that is not the job's stops the run with a message (no
+rename is possible without a plan). Audio mode passes `-k`; the source is deleted afterwards only when it is
+the job's own and differs from the final file. A stopped or failed conversion removes only the one audio file
+it was writing, never an earlier finished item. A run holds a per-job lock from the plan to its own cleanup,
+so a resume waits for the run it replaces. A finished run keeps its names, so a resume that races a pause
+landing as yt-dlp exits finds its own complete file. The same code covers the private-tab fallback (the
+YouTube copy) because it shares the runner.
 
-**What must never happen:** a finished download or transcript lost; one file owned by two jobs; a
-cancel, pause or failure deleting a file the job did not create (or one another job uses); a file of
-an older or other download reported as this job's result.
+**What must never happen:** a finished download or transcript lost; one file owned by two jobs; a cancel,
+pause or failure deleting a file the job did not create (or one another job uses); a file of an older or
+other download reported as this job's result.
 
-**Consequences:** Downloading the same title into the same folder twice now stops with a message
-instead of silently reusing the old file. Each download starts with one extra metadata request (a few
-seconds). A playlist is planned item by item. Not covered: a file that appears in the folder after the
-plan pass, and yt-dlp's own `--no-overwrites` policies for names the plan could not predict.
+**Consequences:** Downloading the same title into the same folder twice gives `Title (1).mp4` instead of
+silently reusing the old file. Each download starts with one extra metadata request (a few seconds). Every
+download passes `--no-playlist`, so a video link inside a playlist is one item; a link that is a playlist
+page can still list several items, which are planned and guarded one by one (all get the same number). The
+subtitle phase writes its files before the plan and under the plain name, so a numbered video can sit beside
+subtitles of the plain name. Not covered: a file that appears after the name was chosen is only caught when
+yt-dlp announces it; the extras the subtitle phase writes (`.txt`, `.otr`, `.docx`) still overwrite files of
+the same name.

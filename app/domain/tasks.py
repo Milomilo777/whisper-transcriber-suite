@@ -89,6 +89,9 @@ class VideoDownloadTask:
         # deleted. ``pending_sources`` are the downloaded audio sources not converted yet.
         self.created_paths: list[str] = []
         self.pending_sources: list[str] = []
+        # Names (without extension) this job claimed for its output, kept across a pause and
+        # recorded in the claims file so the same download resumes its partial after a restart.
+        self.claimed_stems: list[str] = []
         self._start_listing: frozenset[str] = frozenset()
         # When auto-transcribe-after-download is on, the spawned
         # TranscriptionTask is linked here so the Download row can show

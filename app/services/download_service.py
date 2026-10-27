@@ -553,6 +553,8 @@ def build_download_command(
     command += ["--newline", *_YT_DLP_UTF8_ARGS, "-c", "-o", output]
     # One video per task, like the format lookup: a link copied from inside
     # a playlist (watch?v=X&list=Y) would otherwise download the whole list.
+    # (A link that is itself a playlist page still lists several items; the file-ownership
+    # code in ``_run_media_locked`` handles each item, ADR 0019.)
     command.append("--no-playlist")
     # Deno for YouTube's JS challenges (core.js_runtime); [] when absent.
     command.extend(js_runtime_args or [])
@@ -785,6 +787,68 @@ def _media_lock(task: Any) -> "threading.Lock":
                 except AttributeError:
                     pass
     return lock
+
+
+# Names (without extension) claimed by the downloads running right now, so two jobs with one
+# title never pick the same file name; and the claims file that lets the same download (same link,
+# format and range) resume its own partial after a restart of the app.
+_CLAIMS_LOCK = threading.Lock()
+_RUN_CLAIMS: dict[str, int] = {}
+
+
+def _claims_path() -> Any:
+    from core.config import user_data_dir
+
+    return user_data_dir() / "download_claims.json"
+
+
+def _load_claims() -> dict[str, str]:
+    try:
+        with open(_claims_path(), encoding="utf-8") as fh:
+            data = json.load(fh)
+    except (OSError, ValueError):
+        return {}
+    return {str(k): str(v) for k, v in data.items()} if isinstance(data, dict) else {}
+
+
+def _save_claims(claims: dict[str, str]) -> None:
+    path = _claims_path()
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        tmp = f"{path}.{os.getpid()}.tmp"
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump(dict(list(claims.items())[-200:]), fh)
+        os.replace(tmp, path)
+    except OSError:
+        logger.info("could not write the download claims file", exc_info=True)
+
+
+def _job_key(task: Any) -> str:
+    """Identity of a download: the same link, format choice and time range."""
+    import hashlib
+
+    raw = json.dumps(
+        [getattr(task, "url", ""), getattr(task, "format_info", None),
+         getattr(task, "section_start", None), getattr(task, "section_end", None)],
+        sort_keys=True, default=str,
+    )
+    return hashlib.sha1(raw.encode("utf-8", "replace")).hexdigest()
+
+
+def _forget_claims(task: Any, *, release_names: bool = True) -> None:
+    """Drop the claims file entries of *task* (its download finished or was cancelled)."""
+    stems = list(getattr(task, "claimed_stems", None) or [])
+    if not stems:
+        return
+    with _CLAIMS_LOCK:
+        claims = _load_claims()
+        if any(claims.pop(s, None) is not None for s in stems):
+            _save_claims(claims)
+    if release_names:
+        try:
+            task.claimed_stems = []
+        except AttributeError:
+            pass
 
 
 def _listing(folder: str) -> "frozenset[str]":
@@ -2599,6 +2663,9 @@ class DownloadService:
         try:
             return self._run_media_locked(task, command, generation)
         finally:
+            with _CLAIMS_LOCK:
+                for stem in [s for s, t in _RUN_CLAIMS.items() if t == id(task)]:
+                    del _RUN_CLAIMS[stem]
             lock.release()
 
     def _plan_pass(
@@ -2669,6 +2736,42 @@ class DownloadService:
                 task.created_paths = created
             except AttributeError:
                 pass
+        command = download_guard.with_keep_source(command)
+        audio = download_guard.command_audio_format(command) is not None
+        items = self._plan_pass(task, command)
+        if _stop_requested(task, generation):
+            return 1, "", "", None, False
+        key = _job_key(task)
+        token = id(task)
+        with _CLAIMS_LOCK:
+            claims = _load_claims()
+            # Names this job owns: claimed by an earlier run of it, or by the same download
+            # (link, format, range) before the app was restarted.
+            owned = set(getattr(task, "claimed_stems", None) or []) | {s for s, k in claims.items() if k == key}
+            if items:
+                held = {s for s, t in _RUN_CLAIMS.items() if t != token}
+                keys = [download_guard.stem_key(i) for i in items]
+                if any(k in held for k in keys) or download_guard.find_clash(items, created, owned):
+                    # The name is taken by a file that is not this job's (an earlier download, the
+                    # same title from another link): write to the first free "Title (N)", never
+                    # touching the existing file.
+                    number = download_guard.choose_number(items, owned, held)
+                    plain = os.path.basename(items[0].final)
+                    command = download_guard.numbered_command(command, number)
+                    items = [download_guard.numbered(i, number) for i in items]
+                    app.download_events.put((
+                        "log", task,
+                        f"--- {plain} is already in the folder; saving this download as "
+                        f"{os.path.basename(items[0].final)} ---",
+                    ))
+                for item in items:
+                    k = download_guard.stem_key(item)
+                    _RUN_CLAIMS[k] = token
+                    claims[k] = key
+                    if k not in owned and hasattr(task, "claimed_stems"):
+                        task.claimed_stems.append(k)
+                    owned.add(k)
+                _save_claims(claims)
         # What was in the folder before this run: a file of this list that the job
         # did not create is not the job's to resume, convert or delete.
         before = _listing(folder)
@@ -2678,17 +2781,11 @@ class DownloadService:
             pass
 
         def foreign(path: str) -> bool:
-            return download_guard.norm(path) in before and not download_guard.is_own(path, created)
-
-        command = download_guard.with_keep_source(command)
-        audio = download_guard.command_audio_format(command) is not None
-        items = self._plan_pass(task, command)
-        if _stop_requested(task, generation):
-            return 1, "", "", None, False
-        if items:
-            clash = download_guard.find_clash(items, created)
-            if clash:
-                raise DownloadRefused(_taken_message(clash))
+            return (
+                download_guard.norm(path) in before
+                and not download_guard.is_own(path, created)
+                and download_guard.path_stem(path) not in owned
+            )
 
         proc = subprocess.Popen(
             command,
@@ -2804,6 +2901,7 @@ class DownloadService:
             if not stopped:
                 task.pending_sources = []
                 created.clear()
+                _forget_claims(task, release_names=False)
                 try:
                     task._start_listing = frozenset()
                 except AttributeError:
@@ -3173,6 +3271,7 @@ class DownloadService:
             task.created_paths = []
         except AttributeError:
             pass
+        _forget_claims(task)
         for leftover in removed:
             self.app.download_events.put(("log", task, f"Removed partial file: {leftover}"))
         return removed

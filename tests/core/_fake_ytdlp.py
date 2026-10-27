@@ -15,6 +15,7 @@ format``) and mimics the yt-dlp behaviours the tests depend on:
 * environment: ``FAKE_YTDLP_LOG`` (file that gets one line per run: plan or real),
   ``FAKE_YTDLP_PLAN_FAIL=1`` (the plan pass fails), ``FAKE_YTDLP_FAIL_CONVERT=<title>`` (writes a
   truncated target for that title, then dies with exit code 1, like a killed conversion),
+  ``FAKE_YTDLP_DIE_PART=1`` (writes ``<file>.part`` and dies),
   ``FAKE_YTDLP_HANG_CONVERT=<title>`` (writes a truncated target, then waits to be killed),
   ``FAKE_YTDLP_SLOW=<seconds>`` (pause after announcing a file, so a test can stop the run first).
 """
@@ -84,6 +85,10 @@ def main(argv: list[str]) -> int:
             time.sleep(float(os.environ.get("FAKE_YTDLP_SLOW", "0")))
         else:
             print(f"[download] Destination: {src}", flush=True)
+            if os.environ.get("FAKE_YTDLP_DIE_PART"):
+                with open(src + ".part", "wb") as fh:
+                    fh.write(b"first half")
+                os._exit(1)                        # the connection dropped, or the app was closed
             time.sleep(float(os.environ.get("FAKE_YTDLP_SLOW", "0")))
             old = b""
             if os.path.exists(src + ".part"):

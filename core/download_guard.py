@@ -134,8 +134,10 @@ def _paths_in_use(item: PlannedItem) -> list[str]:
     folder = os.path.dirname(item.final) or "."
     stems = {os.path.splitext(os.path.basename(p))[0] for p in (item.source, item.final)}
     names_in = {os.path.basename(p) for p in (item.source, item.final)}
+    # ``Title.f137.mp4``, ``Title.fhls-720.mp4``: "f" plus a format id (digits, or hls-/dash-/http-
+    # prefixed). Not ``Title.fa.vtt`` / ``Title.fr.srt``: those are subtitle files (language codes).
     streams = re.compile(
-        r"^(?:%s)\.f[^.]+\.[^.]+(?:\.part|\.ytdl|\.part-Frag\d+)?$"
+        r"^(?:%s)\.f(?:\d|hls-|dash-|http-)[^.]*\.[^.]+(?:\.part|\.ytdl|\.part-Frag\d+)?$"
         % "|".join(re.escape(s) for s in stems)
     )
     frags = re.compile(r"^(?:%s)\.part-Frag\d+$" % "|".join(re.escape(n) for n in names_in))
@@ -147,11 +149,95 @@ def _paths_in_use(item: PlannedItem) -> list[str]:
     return sorted(p for p in found if os.path.lexists(p))
 
 
-def find_clash(items: Iterable[PlannedItem], own: Iterable[str]) -> str | None:
-    """The first existing file that a planned item would use and that the job did not create, or None."""
+def stem_key(item: PlannedItem) -> str:
+    """Comparison key of the name (without extension) a planned item is written under."""
+    return norm(os.path.splitext(item.final)[0])
+
+
+def find_clash(
+    items: Iterable[PlannedItem], own: Iterable[str], owned_stems: Iterable[str] = ()
+) -> str | None:
+    """The first existing file that a planned item would use and that the job did not create, or None.
+
+    *owned_stems* are the names the job claimed in an earlier run (also in an earlier session of
+    the app): everything planned under such a name is the job's to resume."""
     own = list(own)
+    owned = set(owned_stems)
     for item in items:
+        if stem_key(item) in owned:
+            continue
         for path in _paths_in_use(item):
             if not is_own(path, own):
                 return path
     return None
+
+
+def _with_number(path: str, number: int) -> str:
+    root, ext = os.path.splitext(path)
+    return f"{root} ({number}){ext}"
+
+
+def numbered(item: PlannedItem, number: int) -> PlannedItem:
+    """The item under the next name, browser style: ``Title.mp4`` -> ``Title (1).mp4``."""
+    return PlannedItem(_with_number(item.source, number), _with_number(item.final, number))
+
+
+def numbered_command(command: Sequence[str], number: int) -> list[str]:
+    """*command* with its output template changed to write ``... (<number>).<ext>``."""
+    cmd = list(command)
+    for i, arg in enumerate(cmd):
+        if arg == "--":
+            break
+        if arg == "-o" and i + 1 < len(cmd):
+            template = cmd[i + 1]
+            suffix = ".%(ext)s"
+            if template.endswith(suffix):
+                cmd[i + 1] = template[: -len(suffix)] + f" ({number})" + suffix
+            break
+    return cmd
+
+
+def _stem_in_use(item: PlannedItem) -> bool:
+    """True when anything in the folder carries the item's name: the final file, a partial, a
+    stream, a subtitle or any other sidecar (``Title (1).<anything>``)."""
+    folder = os.path.dirname(item.final) or "."
+    stem = os.path.basename(os.path.splitext(item.final)[0]).casefold()
+    try:
+        names = os.listdir(folder)
+    except OSError:
+        return False
+    return any(n.casefold() == stem or n.casefold().startswith(stem + ".") for n in names)
+
+
+def choose_number(
+    items: Sequence[PlannedItem], owned_stems: Iterable[str], claimed: Iterable[str],
+    limit: int = 9999,
+) -> int:
+    """The first number whose names are free for every item: no file or sidecar of the new stem
+    exists and no other running job holds it. A stem the job owns (an earlier run of the same
+    download left its partial there) is taken as is, so the download resumes."""
+    owned = set(owned_stems)
+    held = set(claimed)
+    for n in range(1, limit + 1):
+        candidates = [numbered(i, n) for i in items]
+        keys = [stem_key(c) for c in candidates]
+        if any(k in held for k in keys):
+            continue
+        if all(k in owned for k in keys):
+            return n
+        if any(_stem_in_use(c) for c in candidates):
+            continue
+        return n
+    raise DownloadRefused("No free file name was found in the download folder.")
+
+
+_STREAM_SUFFIX = re.compile(r"\.f(?:\d|hls-|dash-|http-)[^.]*$")
+
+
+def path_stem(path: str) -> str:
+    """The name a file belongs to, as :func:`stem_key` writes it: ``Title.f137.mp4.part`` and
+    ``Title.mp4`` are both ``Title``."""
+    p = re.sub(r"\.(?:part-Frag\d+|part|ytdl)$", "", path)
+    root = os.path.splitext(p)[0]
+    root = re.sub(r"\.temp$", "", _STREAM_SUFFIX.sub("", root))
+    return norm(root)
