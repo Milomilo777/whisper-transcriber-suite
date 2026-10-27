@@ -280,6 +280,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Importing a hand-edited .otr file (or exporting a transcript JSON to .otr) that holds half of an emoji or other broken character no longer makes the file write fail; the broken character is replaced like in every other output format.
 - A book cover served with a capitalised content type (for example Image/JPEG) is now shown instead of the placeholder.
 - A book cover that was already saved is kept when a refresh gets a bad reply (a login page from a Wi-Fi portal, or a file that is too large) instead of being thrown away.
+- Download tab: when an episode page offers an original-quality (max, sometimes 4K) video file, it is now listed as "Original (max)" after the other qualities; a page whose only video file is that one no longer shows an empty video list.
 
 ## [2.2.0] — 2026-10-22
 
