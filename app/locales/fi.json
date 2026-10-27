@@ -1560,7 +1560,7 @@
     "language choice\u0004Auto": "Automaattinen",
     "list separator\u0004, ": ", ",
     "log menu\u0004Clear": "Tyhjennä",
-    "macOS is not giving this app the microphone, or the microphone is muted. Allow it in System Settings, Privacy & Security, Microphone.": "macOS ei anna tälle sovellukselle mikrofonia tai mikrofoni on mykistetty. Salli se kohdassa Järjestelmäasetukset, Tietosuoja ja turvallisuus, Mikrofoni.",
+    "macOS is not giving this app the microphone, or the microphone is muted. Allow it in System Settings, Privacy & Security, Microphone.": "macOS ei anna tälle sovellukselle mikrofonia tai mikrofoni on mykistetty. Salli se kohdassa Järjestelmäasetukset, Tietosuoja ja suojaus, Mikrofoni.",
     "macOS will ask whether this app may use the microphone. Choose Allow, so that live listening can hear you.": "macOS kysyy, saako tämä sovellus käyttää mikrofonia. Valitse Salli, jotta live-kuuntelu kuulee sinut.",
     "measuring speed...": "mitataan nopeutta...",
     "menu\u0004File": "Tiedosto",

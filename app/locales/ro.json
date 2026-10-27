@@ -804,7 +804,7 @@
     "Open Log Folder in Finder": "Deschideți dosarul jurnalelor în Finder",
     "Open Model Folder in Finder": "Deschideți dosarul modelelor în Finder",
     "Open Output Folder in Finder": "Deschideți dosarul de ieșire în Finder",
-    "Open System Settings": "Deschideți Setări de sistem",
+    "Open System Settings": "Deschideți Configurări sistem",
     "Open TCP connections to other computers (checked {time}, {n} process of this app):": [
       "Conexiuni TCP deschise către alte computere (verificat la {time}, {n} proces al acestei aplicații):",
       "Conexiuni TCP deschise către alte computere (verificat la {time}, {n} procese ale acestei aplicații):",
@@ -1593,7 +1593,7 @@
     "language choice\u0004Auto": "Automat",
     "list separator\u0004, ": ", ",
     "log menu\u0004Clear": "Goliți",
-    "macOS is not giving this app the microphone, or the microphone is muted. Allow it in System Settings, Privacy & Security, Microphone.": "macOS nu oferă acestei aplicații acces la microfon sau microfonul este dezactivat. Permiteți accesul în Setări de sistem, Confidențialitate și securitate, Microfon.",
+    "macOS is not giving this app the microphone, or the microphone is muted. Allow it in System Settings, Privacy & Security, Microphone.": "macOS nu oferă acestei aplicații acces la microfon sau microfonul este dezactivat. Permiteți accesul în Configurări sistem, Intimitate și securitate, Microfon.",
     "macOS will ask whether this app may use the microphone. Choose Allow, so that live listening can hear you.": "macOS va întreba dacă această aplicație poate folosi microfonul. Alegeți Permite, pentru ca ascultarea live să vă poată auzi.",
     "measuring speed...": "se măsoară viteza...",
     "menu\u0004File": "Fișier",
