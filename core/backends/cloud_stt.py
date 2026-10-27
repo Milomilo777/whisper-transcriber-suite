@@ -55,6 +55,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 import re
 import http.client
@@ -419,7 +420,7 @@ def plan_chunks(
     chunk_seconds: float,
     *,
     chunk_when_unknown: bool = False,
-    max_unknown_chunks: int = MAX_UNKNOWN_DURATION_CHUNKS,
+    max_unknown_chunks: int | None = None,
 ) -> list[tuple[float, float]]:
     """Split ``[0, duration]`` into (start, end) windows of ``chunk_seconds``.
 
@@ -442,11 +443,19 @@ def plan_chunks(
     if duration <= 0:
         if not chunk_when_unknown:
             return [(0.0, 0.0)]  # 0.0 end = "to end of file" for the slicer
-        # The cap is a WINDOW COUNT, so it only means "16 h" for this
-        # module's own 480 s chunks. A caller with shorter windows (local
-        # nvidia_asr uses 30 s) must pass a count sized for them via
-        # *max_unknown_chunks*, or its coverage silently shrinks with the
-        # window length (120 * 30 s = one hour).
+        # The cap must mean a TIME SPAN, not a window count: a count sized
+        # for this module's own 480 s chunks silently shrinks coverage when
+        # the caller uses shorter windows (cloud_stt_chunk_seconds is
+        # user-configurable). Derive the count from the window length so the
+        # default 16 h coverage holds whatever window is in play, unless the
+        # caller (e.g. nvidia_asr's unknown_duration_plan) passes its own.
+        if max_unknown_chunks is None:
+            max_unknown_chunks = max(
+                1,
+                math.ceil(
+                    MAX_UNKNOWN_DURATION_CHUNKS * 480.0 / chunk_seconds
+                ),
+            )
         unknown_chunks: list[tuple[float, float]] = []
         start = 0.0
         for _ in range(max(1, int(max_unknown_chunks))):

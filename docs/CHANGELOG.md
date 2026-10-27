@@ -273,6 +273,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Voice Clone: when a long text with no spaces is cut into pieces, a flag emoji is no longer split in half across two pieces.
 - Cloud transcription (Gemini): an empty utterance line no longer adds a junk "]" subtitle cue.
 - Cloud transcription: a chunk length set to "nan" in a hand-edited config falls back to the default window instead of producing an empty transcript.
+- Cloud transcription of a file whose length could not be read no longer stops early when a short chunk length is configured; the planned coverage is now the same many hours whatever the window size.
 
 ## [2.2.0] — 2026-10-22
 

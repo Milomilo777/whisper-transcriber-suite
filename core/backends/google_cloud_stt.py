@@ -63,6 +63,7 @@ from __future__ import annotations
 import datetime as _dt
 import json
 import logging
+import math
 import os
 import re
 import subprocess
@@ -317,9 +318,21 @@ def plan_chunks(
     if duration <= 0:
         if not chunk_when_unknown:
             return [(0.0, 0.0)]
+        # Size the plan by TIME, not a fixed window count: MAX_UNKNOWN_
+        # DURATION_CHUNKS only covers ~18 h at the default window length; a
+        # smaller configured chunk (gcloud_stt_chunk_seconds) would silently
+        # shrink coverage (1200 * 5 s = 100 min) and truncate any longer
+        # unknown-length file (mirrors nvidia_asr's fix).
+        count = max(
+            1,
+            math.ceil(
+                MAX_UNKNOWN_DURATION_CHUNKS * DEFAULT_CHUNK_SECONDS
+                / chunk_seconds
+            ),
+        )
         chunks: list[tuple[float, float]] = []
         start = 0.0
-        for _ in range(MAX_UNKNOWN_DURATION_CHUNKS):
+        for _ in range(count):
             chunks.append((start, start + chunk_seconds))
             start += chunk_seconds
         return chunks

@@ -83,3 +83,30 @@ def test_gcs_plan_chunks_nan_window_falls_back_to_default(gcs):
     """Same guard in google_cloud_stt.plan_chunks (own copy of the logic)."""
     windows = gcs.plan_chunks(110.0, float("nan"))
     assert windows == [(0.0, 55.0), (55.0, 110.0)]
+
+
+# ---------------------------------------------------------------- bug 3
+
+
+def test_gcs_unknown_plan_coverage_does_not_shrink_with_small_windows(gcs):
+    """A smaller configured chunk_seconds (e.g. 5 s to stay under the inline
+    byte cap) must not shrink the unknown-duration plan's COVERAGE: the
+    fixed 1200-window cap silently truncated any file longer than
+    1200 * 5 s = 100 min whenever ffprobe could not read its duration
+    (progress still reached 100%). Same defect class nvidia_asr's
+    UNKNOWN_PLAN_COVERAGE_SECONDS comment documents."""
+    windows = gcs.plan_chunks(0.0, 5.0)
+    expected_coverage = (
+        gcs.MAX_UNKNOWN_DURATION_CHUNKS * gcs.DEFAULT_CHUNK_SECONDS
+    )
+    assert windows[-1][1] >= expected_coverage - 5.0
+
+
+def test_cloud_unknown_plan_coverage_does_not_shrink_with_small_windows(cs):
+    """cloud_stt's own caller (transcribe_to_segments) never passes
+    max_unknown_chunks, so its documented trap applies to itself: with
+    cloud_stt_chunk_seconds=60 the unknown-length plan covered only
+    120 * 60 s = 2 h instead of the default 16 h."""
+    windows = cs.plan_chunks(0.0, 60.0, chunk_when_unknown=True)
+    expected_coverage = cs.MAX_UNKNOWN_DURATION_CHUNKS * 480.0
+    assert windows[-1][1] >= expected_coverage - 60.0
