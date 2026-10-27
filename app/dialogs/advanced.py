@@ -2542,7 +2542,17 @@ class AdvancedDialog(tk.Toplevel):
             cfg["minimise_to_tray"] = bool(self._minimise_to_tray.get())
         cfg[tts_plan.NO_LIMIT_KEY] = bool(self._tts_no_text_limit.get())
         cfg[subtitle_edit.CONFIG_KEY] = (self._subtitle_edit_path.get() or "").strip()
-        cfg["obsidian_vault_dir"] = (self._obsidian_vault_dir.get() or "").strip()
+        from core import finish_hooks
+        vault = finish_hooks.strip_path_quotes(self._obsidian_vault_dir.get())
+        cfg["obsidian_vault_dir"] = vault
+        resolved = finish_hooks.resolve_vault_dir(vault) if vault else ""
+        if vault and not (resolved and os.path.isdir(resolved)):
+            from tkinter import messagebox
+            messagebox.showwarning(
+                _("Obsidian folder"),
+                _("This folder was not found. No note is written until it exists."),
+                parent=self,
+            )
         cfg["finish_webhook_url"] = (self._finish_webhook_url.get() or "").strip()
         cfg["finish_webhook_secret"] = webhook_secret_from_input(
             self._finish_webhook_secret.get())

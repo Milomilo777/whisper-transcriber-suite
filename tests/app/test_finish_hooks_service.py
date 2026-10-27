@@ -101,6 +101,8 @@ def test_the_save_in_advanced_writes_the_settings(monkeypatch) -> None:
     from tests.core.test_advanced_simplified import _base_cfg, _fake_app, _fake_dialog, _V
 
     cfg = _base_cfg()
+    from tkinter import messagebox
+    monkeypatch.setattr(messagebox, "showwarning", lambda *a, **k: None)
     monkeypatch.setattr(adv, "save_config", lambda _c: None)
     adv.AdvancedDialog._save_and_close(  # type: ignore[arg-type]
         _fake_dialog(

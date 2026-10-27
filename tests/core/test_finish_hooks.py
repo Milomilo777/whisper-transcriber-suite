@@ -97,7 +97,7 @@ def test_safe_note_stem(raw: str, expected: str) -> None:
 
 
 def test_safe_note_stem_is_length_limited() -> None:
-    assert len(fh.safe_note_stem("x" * 500)) <= 100
+    assert len(fh.safe_note_stem("x" * 500).encode("utf-8")) <= 200
 
 
 def test_unique_note_path_numbers_collisions(tmp_path: Path) -> None:
@@ -201,7 +201,8 @@ def test_webhook_posts_small_json_without_text(tmp_path: Path, receiver) -> None
     assert body["job_id"] == "h7" and body["title"] == "My talk"
     assert body["status"] == "finished" and body["language"] == "en"
     assert body["duration_seconds"] == 70.0
-    assert body["outputs"] == [str(tmp_path / "talk.srt")]
+    assert body["outputs"] == ["talk.srt"]
+    assert str(tmp_path) not in json.dumps(body)
     assert "transcript" not in body
     assert "Hello there" not in json.dumps(body)
     assert fh.WEBHOOK_HEADER not in req["headers"]

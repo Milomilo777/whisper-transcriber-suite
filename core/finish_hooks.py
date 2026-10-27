@@ -23,6 +23,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import threading
 import time
 import urllib.error
@@ -32,7 +33,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
-from urllib.parse import urlsplit
+from urllib.parse import unquote, urlsplit, urlunsplit
 
 from core import offline
 from core.config import webhook_secret_valid
@@ -46,13 +47,24 @@ WEBHOOK_HEADER = "X-Whisper-Webhook-Secret"
 WEBHOOK_TIMEOUT_S = 10.0
 WEBHOOK_RETRY_DELAY_S = 2.0
 _MAX_RESPONSE_BYTES = 64 * 1024
-_MAX_STEM = 100
+# A name is limited in BYTES (Linux allows 255 per name; " (999).md" is added after).
+_MAX_STEM_BYTES = 200
 _LOCAL_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
 _WINDOWS_RESERVED = frozenset(
-    {"CON", "PRN", "AUX", "NUL"}
+    {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$"}
     | {f"COM{i}" for i in range(1, 10)}
     | {f"LPT{i}" for i in range(1, 10)}
 )
+# Windows also treats COM¹ COM² COM³ (and LPT) as devices.
+_SUPERSCRIPT_DIGITS = str.maketrans("¹²³", "123")
+# Query parameters that carry a signature, token or password: never copied into a note.
+_SECRET_QUERY_NAMES = frozenset({
+    "token", "access_token", "id_token", "refresh_token", "auth", "authorization",
+    "signature", "sig", "key", "apikey", "api_key", "expires", "expire", "policy",
+    "hmac", "secret", "password", "pass", "session", "sessionid", "jwt", "code",
+    "se", "sp", "sv", "sr", "st", "skoid", "sktid", "sks", "skv", "spr",
+})
+_SECRET_QUERY_PREFIXES = ("x-amz-", "x-goog-")
 _ILLEGAL = set('<>:"/\\|?*')
 
 
@@ -91,10 +103,14 @@ def safe_note_stem(title: str) -> str:
         else:
             out.append(ch)
     stem = "".join(out).strip(" .")
-    stem = stem[:_MAX_STEM].strip(" .")
+    # Whole characters only, and bytes not characters: 100 Persian or Japanese
+    # characters are ~300 bytes, over what Linux allows for one name.
+    stem = stem.encode("utf-8", "ignore")[:_MAX_STEM_BYTES].decode("utf-8", "ignore")
+    stem = stem.strip(" .")
     if not stem:
         return "Transcript"
-    if stem.split(".", 1)[0].upper() in _WINDOWS_RESERVED:
+    device = stem.split(".", 1)[0].rstrip(" ").translate(_SUPERSCRIPT_DIGITS).upper()
+    if device in _WINDOWS_RESERVED:
         stem = "_" + stem
     return stem
 
@@ -111,10 +127,14 @@ def unique_note_path(folder: str, stem: str) -> str:
 
 # --- the Obsidian note -------------------------------------------------------
 
+# DEL, NEL, LINE SEPARATOR, PARAGRAPH SEPARATOR: line breaks YAML would honour.
+_LINE_BREAKS = frozenset(chr(c) for c in (0x7F, 0x85, 0x2028, 0x2029))
+
+
 def _one_line(value: Any) -> str:
     """Text for a YAML double-quoted scalar: no line breaks, JSON-escaped quotes."""
     text = "".join(
-        " " if (ord(c) < 32 or c in "\x7f  \x85") else c
+        " " if (ord(c) < 32 or c in _LINE_BREAKS) else c
         for c in str(value or "")
     )
     return json.dumps(text, ensure_ascii=False)
@@ -124,9 +144,52 @@ def _is_web(source: str) -> bool:
     return source.lower().startswith(("http://", "https://"))
 
 
+def clean_source_url(url: str) -> str:
+    """The link to show in a note: no password, no fragment, no signed parameters.
+
+    A download link often carries a signature or token in its query (a CDN or
+    cloud-storage URL); the note is a file that gets synced and shared, so those
+    parameters are dropped. Plain ones (``?v=<video id>``) stay.
+    """
+    try:
+        parts = urlsplit(url.strip())
+        host = parts.hostname or ""
+        port = parts.port
+    except ValueError:
+        return ""
+    if ":" in host:
+        host = f"[{host}]"
+    netloc = f"{host}:{port}" if port else host
+    kept = []
+    for item in parts.query.split("&"):
+        name = unquote(item.split("=", 1)[0]).lower()
+        if not item or name in _SECRET_QUERY_NAMES or name.startswith(_SECRET_QUERY_PREFIXES):
+            continue
+        kept.append(item)
+    return urlunsplit((parts.scheme, netloc, parts.path, "&".join(kept), ""))
+
+
+def _md_link(url: str) -> str:
+    """``[text](target)`` that a ``)`` or space inside the address cannot break."""
+    target = url
+    for char, code in ((" ", "%20"), ("(", "%28"), (")", "%29"), ("<", "%3C"), (">", "%3E")):
+        target = target.replace(char, code)
+    label = url.replace("[", "").replace("]", "")
+    return f"[{label}]({target})"
+
+
+def _untimed(segments: list[dict]) -> bool:
+    return not any(s.get("start") is not None for s in segments)
+
+
 def build_note(segments: list[dict], job: FinishedJob) -> str:
-    """The note text: YAML front matter, then the Markdown writer's output."""
-    source = job.source if _is_web(job.source) else os.path.basename(job.source)
+    """The note text: YAML front matter, then the Markdown writer's output.
+
+    Segments without a start time (a ``.txt`` or ``.docx`` was the only file
+    written) become plain paragraphs: no invented timestamps.
+    """
+    web = _is_web(job.source)
+    source = clean_source_url(job.source) if web else os.path.basename(job.source)
     when = datetime.fromtimestamp(job.finished_at or time.time())
     front = [
         "---",
@@ -140,11 +203,45 @@ def build_note(segments: list[dict], job: FinishedJob) -> str:
         "---",
         "",
     ]
-    body = md_writer.write(segments, audio_path=safe_note_stem(job.title))
-    if _is_web(job.source):
+    if _untimed(segments):
+        heading = md_writer._escape_md_heading(safe_note_stem(job.title))
+        paragraphs = [str(s.get("text", "")).strip() for s in segments]
+        body = f"# {heading}\n\n" + "\n\n".join(p for p in paragraphs if p) + "\n"
+    else:
+        body = md_writer.write(segments, audio_path=safe_note_stem(job.title))
+    if web and source:
         head, _sep, rest = body.partition("\n\n")
-        body = f"{head}\n\n[{job.source}]({job.source})\n\n{rest}"
+        body = f"{head}\n\n{_md_link(source)}\n\n{rest}"
     return "\n".join(front) + body
+
+
+_QUOTES = "\"'\u201c\u201d\u2018\u2019"
+
+
+def strip_path_quotes(raw: str | None) -> str:
+    """The text of a pasted folder path without spaces or surrounding quotes."""
+    text = (raw or "").strip()
+    while len(text) >= 2 and text[0] in _QUOTES and text[-1] in _QUOTES:
+        text = text[1:-1].strip()
+    return text
+
+
+def resolve_vault_dir(raw: str | None) -> str | None:
+    """The absolute vault folder to use for a typed or pasted value, else None.
+
+    Surrounding quotes (Explorer's "Copy as path") are removed and ``~`` is
+    expanded. A relative path is refused with a log line: it would depend on
+    whatever folder the app happened to start in.
+    """
+    text = strip_path_quotes(raw)
+    if not text:
+        return None
+    path = os.path.expanduser(text)
+    if not os.path.isabs(path):
+        logger.warning("Obsidian note not written: the vault folder must be an "
+                       "absolute path (for example C:\\Notes or ~/Notes)")
+        return None
+    return os.path.normpath(path)
 
 
 def write_obsidian_note(
@@ -237,7 +334,8 @@ def webhook_payload(
         "status": job.status,
         "language": job.language,
         "duration_seconds": job.duration,
-        "outputs": list(job.output_paths),
+        # File names only: a full path would carry the user's Windows account name.
+        "outputs": [re.split(r"[\\/]", str(p))[-1] for p in job.output_paths],
         "finished_at": job.finished_at,
     }
     if include_text:
@@ -290,33 +388,49 @@ def send_webhook(
                                              headers=headers)
             send(request, timeout)
             return True
+        except urllib.error.HTTPError as exc:
+            if 300 <= exc.code < 400:
+                # The receiver got the POST; following a redirect would send it
+                # again (and could leave the host we were told to use).
+                logger.info("finish webhook to %s answered with a redirect (%d); "
+                            "counted as delivered, not followed", _origin(url), exc.code)
+                return True
+            logger.warning("finish webhook to %s was answered with HTTP %d",
+                           _origin(url), exc.code)
+            if exc.code < 500:
+                return False  # the receiver refused it: a second try changes nothing
         except Exception as exc:  # noqa: BLE001 - a hand-off never breaks the job
             logger.warning("finish webhook to %s failed (try %d of 2): %s",
                            _origin(url), attempt, type(exc).__name__)
-            if attempt == 1:
-                sleep(WEBHOOK_RETRY_DELAY_S)
+        if attempt == 1:
+            sleep(WEBHOOK_RETRY_DELAY_S)
     return False
 
 
 # --- entry points ------------------------------------------------------------
 
 def load_segments(output_paths: list[str]) -> list[dict]:
-    """The segments of the written transcript: the JSON, else any readable format."""
-    from core import convert
+    """The segments of the written transcript, read back from the output files.
 
-    paths = [p for p in output_paths if isinstance(p, str) and os.path.isfile(p)]
-
-    def _rank(p: str) -> int:
-        low = p.lower()
-        if low.endswith(".chapters.json"):
-            return 9
-        return 0 if low.endswith(".json") else 1
-
-    for path in sorted(paths, key=_rank):
-        if _rank(path) == 9:
+    The transcription runs in a worker process and its "done" message carries no
+    text, so the files are the source. The JSON first, then any other format
+    ``core.convert`` reads (SRT, VTT, TSV ...), then this app's own Markdown and
+    LRC files (timestamps kept), then plain ``.txt`` and ``.docx`` (no times: the
+    segments have no ``start``). A PDF or HTML file is not read.
+    """
+    order = {ext: i for i, ext in enumerate(_READ_ORDER)}
+    candidates = []
+    for path in output_paths:
+        if not isinstance(path, str) or not os.path.isfile(path):
             continue
+        low = path.lower()
+        ext = os.path.splitext(low)[1]
+        if low.endswith(".chapters.json") or ext not in order:
+            continue
+        candidates.append((order[ext], path))
+    for _rank, path in sorted(candidates):
         try:
-            segments = convert.parse_to_segments(path)
+            segments = _read_segments(path)
         except Exception:  # noqa: BLE001 - try the next written format
             continue
         if segments:
@@ -324,15 +438,60 @@ def load_segments(output_paths: list[str]) -> list[dict]:
     return []
 
 
+_READ_ORDER = (".json", ".srt", ".vtt", ".tsv", ".ass", ".ssa", ".eaf", ".inqscr",
+               ".otr", ".md", ".lrc", ".txt", ".docx")
+_MD_LINE = re.compile(r"^\*\*(\d+):(\d\d):(\d\d)\*\*\s+(?:_(.+?):_\s+)?(.*\S)\s*$")
+_LRC_LINE = re.compile(r"^\[(\d+):(\d+(?:\.\d+)?)\]\s*(.*\S)\s*$")
+
+
+def _read_segments(path: str) -> list[dict]:
+    ext = os.path.splitext(path.lower())[1]
+    if ext == ".md":
+        out = []
+        for line in _read_lines(path):
+            m = _MD_LINE.match(line)
+            if m:
+                h, mi, s, speaker, text = m.groups()
+                seg = {"start": int(h) * 3600 + int(mi) * 60 + int(s), "text": text}
+                if speaker:
+                    seg["speaker"] = speaker
+                out.append(seg)
+        return out
+    if ext == ".lrc":
+        out = []
+        for line in _read_lines(path):
+            m = _LRC_LINE.match(line)
+            if m:
+                out.append({"start": int(m.group(1)) * 60 + float(m.group(2)),
+                            "text": m.group(3)})
+        return out
+    if ext == ".txt":
+        return [{"text": ln.strip()} for ln in _read_lines(path) if ln.strip()]
+    if ext == ".docx":
+        import docx  # python-docx: the same package the DOCX writer uses
+
+        return [{"text": p.text.strip()} for p in docx.Document(path).paragraphs
+                if p.text.strip()]
+    from core import convert
+
+    return convert.parse_to_segments(path)
+
+
+def _read_lines(path: str) -> list[str]:
+    with open(path, encoding="utf-8-sig", errors="replace") as handle:
+        return handle.read().splitlines()
+
+
 def deliver(config: Mapping[str, Any], job: FinishedJob) -> None:
     """Run the configured hand-offs for a FINISHED job. Never raises."""
     try:
         if job.status != "finished":
             return
-        vault = str(config.get("obsidian_vault_dir") or "").strip()
+        raw_vault = strip_path_quotes(str(config.get("obsidian_vault_dir") or ""))
         url = str(config.get("finish_webhook_url") or "").strip()
-        if not vault and not url:
+        if not raw_vault and not url:
             return
+        vault = resolve_vault_dir(raw_vault) if raw_vault else None
         include_text = bool(config.get("finish_webhook_include_text"))
         segments: list[dict] = []
         if vault or (url and include_text):
@@ -347,7 +506,10 @@ def deliver(config: Mapping[str, Any], job: FinishedJob) -> None:
                     if path:
                         logger.info("Obsidian note written: %s", path)
                 else:
-                    logger.info("Obsidian note skipped: the transcript has no text")
+                    kinds = sorted({os.path.splitext(str(p))[1].lower() or "?"
+                                    for p in job.output_paths})
+                    logger.info("Obsidian note skipped: no readable transcript among "
+                                "the written files (%s)", ", ".join(kinds) or "none")
             except Exception:  # noqa: BLE001
                 logger.exception("Obsidian note failed")
         if url:
