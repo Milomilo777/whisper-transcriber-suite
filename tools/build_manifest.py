@@ -91,7 +91,7 @@ def compare(a: dict[str, Any], b: dict[str, Any], strict: list[str],
             if len(paths) > 5:
                 lines.append(f"    {label}: ... {len(paths) - 5} more")
     for rel in sorted(set(fa) | set(fb)):
-        if any(rel.startswith(p) for p in strict) and fa.get(rel) != fb.get(rel):
+        if any(rel == p or rel.startswith(p + "/") for p in strict) and fa.get(rel) != fb.get(rel):
             failures.append(f"strict path differs: {rel}")
     total_a = sum(v["size"] for v in fa.values())
     total_b = sum(v["size"] for v in fb.values())
