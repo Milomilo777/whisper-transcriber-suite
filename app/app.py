@@ -7704,7 +7704,7 @@ class App(tk.Tk):
         if history is None or getattr(self, "_history_owner", True) is False:
             return
         try:
-            rows = history.list_transcriptions(limit=200) or []
+            rows = history.list_interrupted_transcriptions() or []
         except Exception:  # noqa: BLE001
             return
         interrupted = [
@@ -7736,16 +7736,28 @@ class App(tk.Tk):
                 )
             except Exception:  # noqa: BLE001
                 logger.debug("Failed to dismiss interrupted rows", exc_info=True)
-            # Also drop the on-disk partial checkpoints for the declined
-            # files: declining means "don't resume", so the JSON (which can
-            # be MBs of captured segments) is now dead weight. Without this
-            # it lingered until the age-based startup sweep.
+            # Declining means "don't resume", not "throw the text away": set
+            # each partial checkpoint aside in the data folder (with a readable
+            # .txt copy) instead of deleting it. The kept files are not swept
+            # by the age-based startup sweep; the user removes them by hand.
             try:
                 from core import _checkpoint
-                for r in unique:
-                    _checkpoint.delete_checkpoint(r["file_path"])
             except Exception:  # noqa: BLE001
-                logger.debug("Failed to delete declined checkpoints", exc_info=True)
+                logger.debug("Checkpoint module unavailable", exc_info=True)
+                return
+            for r in unique:
+                try:
+                    if not _checkpoint.has_checkpoint(r["file_path"]):
+                        continue
+                    kept = _checkpoint.quarantine_checkpoint(
+                        r["file_path"], "resume declined by the user"
+                    )
+                    if kept is not None:
+                        self.log(f"Resume declined: partial transcript kept at {kept}")
+                except Exception:  # noqa: BLE001
+                    # Includes a checkpoint held by another process (a copy was
+                    # kept); never delete in that case.
+                    logger.warning("Could not set the declined checkpoint aside", exc_info=True)
             return
         # Crash-resume: if a partial checkpoint exists for any of
         # these interrupted files, flag the new task as a resume so
