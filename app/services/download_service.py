@@ -869,15 +869,17 @@ def _load_claims() -> dict[str, dict[str, Any]]:
         if (isinstance(rec, dict) and isinstance(rec.get("key"), str)
                 and isinstance(rec.get("task"), str) and isinstance(rec.get("session"), str)):
             created = rec.get("created")
-            rec["created"] = float(created) if isinstance(created, (int, float)) else 0.0
+            rec["created"] = min(float(created), time.time()) if isinstance(created, (int, float)) else 0.0
             files = rec.get("files")
             rec["files"] = [f for f in files if isinstance(f, str)] if isinstance(files, list) else []
             out[str(stem)] = rec
     return out
 
 
-def _new_claim(key: str, task: Any) -> dict[str, Any]:
-    return {"key": key, "task": _task_token(task), "session": _SESSION, "created": time.time(), "files": []}
+def _new_claim(key: str, task: Any, reserved: bool = False) -> dict[str, Any]:
+    """*reserved*: made by the caption phase for a name no media run has used yet."""
+    return {"key": key, "task": _task_token(task), "session": _SESSION, "created": time.time(), "files": [],
+            "reserved": reserved}
 
 
 def _claim_usable(stem: str, rec: dict[str, Any], task: Any, app: Any) -> bool:
@@ -886,6 +888,8 @@ def _claim_usable(stem: str, rec: dict[str, Any], task: Any, app: Any) -> bool:
     partial is gone proves nothing about a file of that name that appeared later."""
     if _held_by_another(rec, task, app) or time.time() - rec["created"] > _CLAIM_MAX_AGE:
         return False
+    if rec.get("reserved") is True and rec["task"] == _task_token(task):
+        return True         # the caption phase wrote sidecars under this name; no partial exists yet
     return download_guard.has_partial(stem) or any(os.path.lexists(f) for f in rec["files"])
 
 
@@ -2491,7 +2495,7 @@ class DownloadService:
                 return
             created = getattr(task, "created_paths", None)
             _cmd, _items, _owned, number = self._claim_names(
-                task, command, items, created if isinstance(created, list) else []
+                task, command, items, created if isinstance(created, list) else [], reserve=True
             )
             task.name_number = number
         except Exception:  # noqa: BLE001 - the captions then keep the plain name
@@ -2868,6 +2872,7 @@ class DownloadService:
     def _claim_names(
         self, task: "VideoDownloadTask", command: list[str],
         items: "list[download_guard.PlannedItem] | None", created: list[str], preferred: int = 0,
+        reserve: bool = False,
     ) -> "tuple[list[str], list[download_guard.PlannedItem] | None, set[str], int]":
         """Choose the names a run writes (the plain title, or the first free 'Title (N)') and
         claim them for *task*.
@@ -2926,7 +2931,7 @@ class DownloadService:
                     k = download_guard.stem_key(item)
                     _RUN_CLAIMS[k] = token
                     claims.pop(k, None)                 # re-insert: the newest claims sit last, the trim keeps them
-                    claims[k] = _new_claim(key, task)
+                    claims[k] = _new_claim(key, task, reserve)
                     if hasattr(task, "claimed_stems") and k not in task.claimed_stems:
                         task.claimed_stems.append(k)
                     owned.add(k)

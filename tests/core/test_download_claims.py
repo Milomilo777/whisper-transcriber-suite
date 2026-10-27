@@ -188,3 +188,27 @@ def test_a_failed_write_of_the_claims_file_leaves_no_temp_file(env, monkeypatch)
     ds._save_claims({"x": {"key": "k", "task": "t", "session": "s", "created": 1e12, "files": []}})
     assert not path.exists()
     assert [p.name for p in path.parent.iterdir() if p.name.endswith(".tmp")] == []
+
+
+def test_a_repeated_caption_phase_keeps_one_consistent_number(env, monkeypatch):   # noqa: F811
+    svc, folder, _ = env
+    _fake_yt_dlp_for_every_phase(monkeypatch)
+    (folder / "Title A.mp4").write_bytes(b"an older download")
+    task = _video(folder)
+    task.subtitles_enabled, task.subtitle_lang = True, "fr"
+    svc._subtitle_phase(task)                  # reserves "Title A (1)" and writes its captions
+    svc._subtitle_phase(task)                  # a pause and resume (or a retry) before any .part exists
+    assert task.name_number == 1
+    rc, _e, _l, saved, _f = _run(svc, task)
+    assert rc == 0 and saved == str(folder / "Title A (1).mp4")
+    names = sorted(p.name for p in folder.iterdir() if p.suffix in (".mp4", ".vtt"))
+    assert names == ["Title A (1).fr.vtt", "Title A (1).mp4", "Title A.mp4"]
+
+
+def test_a_claim_dated_in_the_future_does_not_live_longer(env):   # noqa: F811
+    import time
+
+    ds._claims_path().write_text(json.dumps({"x": {
+        "key": "k", "task": "t", "session": "s", "created": time.time() + 10 * 365 * 86400, "files": []}}),
+        encoding="utf-8")
+    assert ds._load_claims()["x"]["created"] <= time.time()
