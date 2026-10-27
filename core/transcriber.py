@@ -1804,6 +1804,11 @@ def _run_post_pipeline(
     )
     if translating and config.get("alignment", "none") == "stable_ts":
         log("Word alignment skipped: the text is a translation.", log_cb)
+    elif task.cancelled and config.get("alignment", "none") == "stable_ts":
+        # Same guard as diarisation/chapters: a cancelled task's outputs are
+        # dropped by the caller, so the whole-file stable-ts pass would be
+        # minutes of CPU for a result nobody writes.
+        log("Word alignment skipped: the task was cancelled.", log_cb)
     elif config.get("alignment", "none") == "stable_ts":
         try:
             from . import alignment as _align

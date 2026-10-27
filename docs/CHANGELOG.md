@@ -260,6 +260,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Converting a compact SRT (no blank line between cues) that holds one cue with an unreadable timing line no longer drops every cue after it; only the damaged cue is skipped and counted in the log.
 - A webhook secret that contains a hidden control character such as U+0085 (next line) is now rejected, so it can no longer split the request header.
 - Resuming an interrupted transcription from a checkpoint whose saved position is missing or empty no longer repeats the part already transcribed; the position is recovered from the saved segments.
+- Pressing Cancel while speakers are being identified no longer starts the whole-file word alignment afterwards; the cancelled run stops without that wasted pass.
 
 ## [2.2.0] — 2026-10-22
 
