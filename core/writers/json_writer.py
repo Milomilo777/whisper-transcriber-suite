@@ -70,7 +70,11 @@ def write(segments: list[dict], audio_path: str = "") -> str:
                                          item["start"]),
                     "end": _safe_float(w.get("end", item["end"]),
                                        item["end"]),
-                    "word": w.get("word", ""),
+                    # str-coerce like text / speaker / suspect_reason: a
+                    # hand-edited JSON can put a number or null in the
+                    # label, and downstream karaoke tools expect a string.
+                    "word": ("" if w.get("word") is None
+                             else str(w["word"])),
                     "probability": _safe_float(w.get("probability", 0.0)),
                 }
                 for w in words
