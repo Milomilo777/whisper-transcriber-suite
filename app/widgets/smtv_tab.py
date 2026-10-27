@@ -78,7 +78,10 @@ def format_views(n: int | None) -> str:
     if n >= 1_000_000:
         return f"{n / 1_000_000:.1f}M views"
     if n >= 10_000:
-        return f"{n / 1000:.0f}K views"
+        k = round(n / 1000)
+        if k >= 1000:  # rounded up to a million: a K figure nobody writes
+            return f"{n / 1_000_000:.1f}M views"
+        return f"{k}K views"
     if n >= 1000:
         return f"{n / 1000:.1f}K views"
     return f"{n} views"

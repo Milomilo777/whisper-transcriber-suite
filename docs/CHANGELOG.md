@@ -263,6 +263,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Pressing Cancel while speakers are being identified no longer starts the whole-file word alignment afterwards; the cancelled run stops without that wasted pass.
 - Voice Clone: a request whose worker session died at the wrong moment now fails at once instead of blocking for the full 300-second silence window.
 - A file size just under a megabyte (or a gigabyte) is shown as "1.0 MB" instead of "1024.0 KB" in the output file list of a finished transcription.
+- A video with 999,500 to 999,999 views is shown as "1.0M views" instead of "1000K views".
 
 ## [2.2.0] — 2026-10-22
 
