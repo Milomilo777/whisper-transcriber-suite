@@ -832,6 +832,7 @@
   "Optional — the full Google Cloud Speech-to-Text service, signed in with a downloaded service-account JSON file (not the simple API key the separate Gemini engine uses). The only engine in this app that natively combines real word-level timestamps, speaker diarization, AND a cheap Batch mode for long files (~$0.004/minute, usually ready within 24 hours). New accounts get 60 free minutes/month plus a $300/90-day credit. Uploads your audio to Google — not offline.": "Optional — the full Google Cloud Speech-to-Text service, signed in with a downloaded service-account JSON file (not the simple API key the separate Gemini engine uses). The only engine in this app that natively combines real word-level timestamps, speaker diarization, AND a cheap Batch mode for long files (~$0.004/minute, usually ready within 24 hours). New accounts get 60 free minutes/month plus a $300/90-day credit. Uploads your audio to Google — not offline.",
   "Options": "Options",
   "Options for video downloads (Download Videos tab): which SponsorBlock segments get cut, browser cookies for login-walled sites, and how the video downloader stays up to date.": "Options for video downloads (Download Videos tab): which SponsorBlock segments get cut, browser cookies for login-walled sites, and how the video downloader stays up to date.",
+  "Original (max)": "Original (max)",
   "Other…": "Other…",
   "Output formats": "Output formats",
   "Output: English translation": "Output: English translation",
