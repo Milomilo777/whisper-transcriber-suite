@@ -254,6 +254,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Download clip times such as 1_0 or +5 are rejected as invalid instead of being read as numbers.
 - Output writers: Express Scribe and InqScribe no longer leave a lone speaker label on an empty segment, and the LRC title tag drops square brackets from the media name, and the JSON writer always writes a word label as text, and a line break inside a speaker label no longer splits the Markdown, ASS and Word output.
 - Hallucination checks no longer crash on a malformed speech interval from the voice-activity detector; the bad entry is skipped; known phantom phrases are also matched when wrapped in invisible text-direction marks.
+- A restart that carries the --wait-for-pid option more than once now strips every copy, so none of them reaches the next start.
 
 ## [2.2.0] — 2026-10-22
 
