@@ -115,7 +115,7 @@ def open_microphone_settings(*, platform: Optional[str] = None,
     try:
         done = (run or subprocess.run)(
             ["open", MICROPHONE_SETTINGS_URL], check=False, timeout=10,
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except (OSError, subprocess.SubprocessError):
         logger.warning("Could not open the microphone settings page", exc_info=True)
         return False
