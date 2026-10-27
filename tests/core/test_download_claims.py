@@ -52,3 +52,49 @@ def test_cancel_never_deletes_a_partial_another_task_owns(env, monkeypatch):   #
     assert any(rec["task"] == ds._task_token(adopter) for rec in claims.values())
     svc.remove_partial_files(adopter)                         # its own cancel does clean up
     assert not part.exists()
+
+
+def test_a_claim_without_its_partial_does_not_make_a_later_file_the_jobs_own(env, monkeypatch):   # noqa: F811
+    svc, folder, _ = env
+    monkeypatch.setenv("FAKE_YTDLP_DIE_PART", "1")
+    failed = _video(folder)
+    _run(svc, failed)
+    failed.status = "error"
+    (folder / "Title A.mp4.part").unlink()                    # the partial is gone ...
+    mine = folder / "Title A.mp4"
+    mine.write_bytes(b"the user's own copy")                  # ... and the user saved a file of that name
+    monkeypatch.delenv("FAKE_YTDLP_DIE_PART")
+    rc, _e, _l, saved, _f = _run(svc, _video(folder))
+    assert rc == 0 and saved == str(folder / "Title A (1).mp4")
+    assert mine.read_bytes() == b"the user's own copy"
+
+
+def test_a_claim_older_than_two_weeks_is_not_honoured(env, monkeypatch):   # noqa: F811
+    svc, folder, _ = env
+    monkeypatch.setenv("FAKE_YTDLP_DIE_PART", "1")
+    _run(svc, _video(folder))
+    monkeypatch.delenv("FAKE_YTDLP_DIE_PART")
+    path = ds._claims_path()
+    claims = json.loads(path.read_text(encoding="utf-8"))
+    for rec in claims.values():
+        rec["created"] = rec.get("created", 0) - 15 * 86400 if rec.get("created") else 1.0
+        rec["session"] = "an-earlier-run"                     # an earlier run of the app wrote it
+    path.write_text(json.dumps(claims), encoding="utf-8")
+    rc, _e, _l, saved, _f = _run(svc, _video(folder))
+    assert rc == 0 and saved == str(folder / "Title A (1).mp4")
+    assert (folder / "Title A.mp4.part").read_bytes() == b"first half"
+
+
+def test_a_fresh_claim_of_an_earlier_app_run_still_resumes(env, monkeypatch):   # noqa: F811
+    svc, folder, _ = env
+    monkeypatch.setenv("FAKE_YTDLP_DIE_PART", "1")
+    _run(svc, _video(folder))
+    monkeypatch.delenv("FAKE_YTDLP_DIE_PART")
+    path = ds._claims_path()
+    claims = json.loads(path.read_text(encoding="utf-8"))
+    for rec in claims.values():
+        rec["session"] = "an-earlier-run"
+    path.write_text(json.dumps(claims), encoding="utf-8")
+    rc, _e, _l, saved, _f = _run(svc, _video(folder))
+    assert rc == 0 and saved == str(folder / "Title A.mp4")
+    assert (folder / "Title A.mp4").read_bytes().startswith(b"first half|video:")

@@ -100,3 +100,17 @@ def test_is_own_covers_the_file_and_its_unfinished_pieces():
     assert g.is_own("/d/T.webm.ytdl", own)
     assert not g.is_own("/d/T.webm.bak", own)
     assert not g.is_own("/d/T2.webm", own)
+
+
+def test_has_partial_sees_unfinished_pieces_only(tmp_path):
+    stem = g.norm(str(tmp_path / "Title"))
+    assert not g.has_partial(stem)
+    for name in ("Title.mp4", "Title.fr.srt", "Title (1).mp4.part", "Title2.mp4.part"):
+        (tmp_path / name).write_bytes(b"x")                   # finished file, sidecar, other names
+    assert not g.has_partial(stem)
+    (tmp_path / "Title.f137.mp4").write_bytes(b"x")           # one stream of an unfinished merge
+    assert g.has_partial(stem)
+    (tmp_path / "Title.f137.mp4").unlink()
+    (tmp_path / "Title.mp4.part").write_bytes(b"x")
+    assert g.has_partial(stem)
+    assert not g.has_partial(g.norm(str(tmp_path / "gone" / "Title")))   # missing folder

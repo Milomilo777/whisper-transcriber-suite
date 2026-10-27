@@ -803,6 +803,8 @@ _CLAIMS_LOCK = threading.Lock()
 _RUN_CLAIMS: dict[str, int] = {}
 # One id per app run: a claim written by an earlier run of the app has no live owner.
 _SESSION = uuid.uuid4().hex
+# A claim older than this is not honoured (the same limit as the resume checkpoints).
+_CLAIM_MAX_AGE = 14 * 24 * 3600.0
 # Task token -> task, to tell whether the task that holds a claim is still alive and active.
 _CLAIM_OWNERS: "weakref.WeakValueDictionary[str, Any]" = weakref.WeakValueDictionary()
 
@@ -849,8 +851,9 @@ def _claims_path() -> Any:
 
 
 def _load_claims() -> dict[str, dict[str, Any]]:
-    """name -> ``{"key", "task", "session"}``: the download (link, format, range), the task and
-    the app run that claimed it. Entries of any other shape are ignored."""
+    """name -> ``{"key", "task", "session", "created", "files"}``: the download (link, format,
+    range), the task and the app run that claimed it, when, and the files it left behind when it
+    stopped. Entries of any other shape are ignored."""
     try:
         with open(_claims_path(), encoding="utf-8") as fh:
             data = json.load(fh)
@@ -862,12 +865,25 @@ def _load_claims() -> dict[str, dict[str, Any]]:
     for stem, rec in data.items():
         if (isinstance(rec, dict) and isinstance(rec.get("key"), str)
                 and isinstance(rec.get("task"), str) and isinstance(rec.get("session"), str)):
+            created = rec.get("created")
+            rec["created"] = float(created) if isinstance(created, (int, float)) else 0.0
+            files = rec.get("files")
+            rec["files"] = [f for f in files if isinstance(f, str)] if isinstance(files, list) else []
             out[str(stem)] = rec
     return out
 
 
 def _new_claim(key: str, task: Any) -> dict[str, Any]:
-    return {"key": key, "task": _task_token(task), "session": _SESSION}
+    return {"key": key, "task": _task_token(task), "session": _SESSION, "created": time.time(), "files": []}
+
+
+def _claim_usable(stem: str, rec: dict[str, Any], task: Any, app: Any) -> bool:
+    """True when *task* may resume the files under *stem*: no other active task holds the claim, it
+    is not older than the limit, and the partial it stands for is still on disk. A claim whose
+    partial is gone proves nothing about a file of that name that appeared later."""
+    if _held_by_another(rec, task, app) or time.time() - rec["created"] > _CLAIM_MAX_AGE:
+        return False
+    return download_guard.has_partial(stem) or any(os.path.lexists(f) for f in rec["files"])
 
 
 def _save_claims(claims: dict[str, dict[str, Any]]) -> None:
@@ -875,8 +891,10 @@ def _save_claims(claims: dict[str, dict[str, Any]]) -> None:
     try:
         os.makedirs(os.path.dirname(path), exist_ok=True)
         tmp = f"{path}.{os.getpid()}.tmp"
+        now = time.time()
+        live = [(s, r) for s, r in claims.items() if now - r["created"] <= _CLAIM_MAX_AGE]
         with open(tmp, "w", encoding="utf-8") as fh:
-            json.dump(dict(list(claims.items())[-200:]), fh)
+            json.dump(dict(live[-200:]), fh)
         os.replace(tmp, path)
     except OSError:
         logger.info("could not write the download claims file", exc_info=True)
@@ -913,6 +931,22 @@ def _forget_claims(task: Any, *, release_names: bool = True) -> None:
             task.claimed_stems = []
         except AttributeError:
             pass
+
+
+def _note_claim_files(task: Any, files: list[str]) -> None:
+    """Record on the claims of *task* the files its stopped run left (a complete audio source
+    waiting for its conversion has no ``.part`` that would show the claim is still needed)."""
+    token = _task_token(task)
+    with _CLAIMS_LOCK:
+        claims = _load_claims()
+        mine = [rec for s in (getattr(task, "claimed_stems", None) or [])
+                if (rec := claims.get(s)) is not None and rec["task"] == token]
+        if not mine:
+            return
+        existing = [f for f in files if os.path.lexists(f)]
+        for rec in mine:
+            rec["files"] = existing
+        _save_claims(claims)
 
 
 def _listing(folder: str) -> "frozenset[str]":
@@ -2811,13 +2845,18 @@ class DownloadService:
             claims = _load_claims()
             # Names this job owns: claimed by an earlier run of it, or by the same download
             # (link, format, range) before the app was restarted.
+            # A stem this task claimed in this run of the app and finished has no entry left: it
+            # stays the task's for a quick resume.
             owned = {
                 s for s in (getattr(task, "claimed_stems", None) or [])
-                if s not in claims or not _held_by_another(claims[s], task, app)
+                if s not in claims or _claim_usable(s, claims[s], task, app)
             } | {
                 s for s, rec in claims.items()
-                if rec["key"] == key and not _held_by_another(rec, task, app)
+                if rec["key"] == key and _claim_usable(s, rec, task, app)
             }
+            for s in [s for s, rec in claims.items()
+                      if rec["key"] == key and s not in owned and not _held_by_another(rec, task, app)]:
+                del claims[s]                       # stale: its partial is gone or it is too old
             if items:
                 held = {s for s, t in _RUN_CLAIMS.items() if t != token}
                 held |= {s for s, rec in claims.items() if _held_by_another(rec, task, app)}
@@ -2977,6 +3016,8 @@ class DownloadService:
                     task._start_listing = frozenset()
                 except AttributeError:
                     pass
+            else:
+                _note_claim_files(task, [*created, *task.pending_sources])
         if refused is not None:
             raise DownloadRefused(_taken_message(refused))
         return return_code, last_error_line, last_line, saved_path, saved_is_final

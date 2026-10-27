@@ -241,3 +241,23 @@ def path_stem(path: str) -> str:
     root = os.path.splitext(p)[0]
     root = re.sub(r"\.temp$", "", _STREAM_SUFFIX.sub("", root))
     return norm(root)
+
+
+_PIECE_NAME = re.compile(r"\.(?:part(?:-Frag\d+)?|ytdl)$")
+
+
+def has_partial(stem: str) -> bool:
+    """True when an unfinished piece of the download written under *stem* (a :func:`stem_key`
+    value) is in the folder: ``.part``, ``.ytdl``, ``.part-Frag3`` or one stream of a merge. The
+    finished file does not count, and neither does a subtitle or another sidecar."""
+    folder, _base = os.path.split(stem)
+    try:
+        names = os.listdir(folder or ".")
+    except OSError:
+        return False
+    for name in names:
+        if path_stem(os.path.join(folder, name)) != stem:
+            continue
+        if _PIECE_NAME.search(name) or _STREAM_SUFFIX.search(os.path.splitext(name)[0]):
+            return True
+    return False
