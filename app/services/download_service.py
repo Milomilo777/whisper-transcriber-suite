@@ -399,8 +399,11 @@ def build_subtitle_command(
     bin_path: str,
     cookies_from_browser: str | None = None,
     js_runtime_args: list[str] | None = None,
+    number: int = 0,
 ) -> list[str]:
-    output = os.path.join(task.folder, "%(title)s.%(ext)s")
+    # ``number``: the video is saved as "Title (N)" (ADR 0019), so its captions carry that name.
+    stem = f"%(title)s ({number})" if number > 0 else "%(title)s"
+    output = os.path.join(task.folder, stem + ".%(ext)s")
     sub_langs = subtitle_lang_patterns(lang)
     command = [yt_dlp_path]
     if bin_path:
@@ -921,7 +924,7 @@ def _forget_claims(task: Any, *, release_names: bool = True) -> None:
     token = _task_token(task)
     with _CLAIMS_LOCK:
         claims = _load_claims()
-        mine = [s for s in stems if s in claims and claims[s]["task"] == token]
+        mine = {s for s in stems if s in claims and claims[s]["task"] == token}
         for s in mine:
             del claims[s]
         if mine:
@@ -931,6 +934,13 @@ def _forget_claims(task: Any, *, release_names: bool = True) -> None:
             task.claimed_stems = []
         except AttributeError:
             pass
+
+
+def _release_run_claims(task: Any) -> None:
+    """End the in-process hold of *task* on the names it claimed for the run that just ended."""
+    with _CLAIMS_LOCK:
+        for stem in [s for s, t in _RUN_CLAIMS.items() if t == id(task)]:
+            del _RUN_CLAIMS[stem]
 
 
 def _note_claim_files(task: Any, files: list[str]) -> None:
@@ -1027,6 +1037,7 @@ class DownloadService:
     def build_subtitle_command(
         self, task: "VideoDownloadTask", lang: str, *, force_no_cookies: bool = False
     ) -> list[str]:
+        name_number = getattr(task, "name_number", 0)
         return build_subtitle_command(
             task, lang,
             yt_dlp_path=self.app.yt_dlp_path(),
@@ -1035,6 +1046,7 @@ class DownloadService:
                 None if force_no_cookies else self.app.app_config.get("cookies_from_browser", "")
             ),
             js_runtime_args=yt_dlp_js_args(self.app.yt_dlp_path()),
+            number=name_number if isinstance(name_number, int) else 0,
         )
 
     def build_download_command(
@@ -2456,6 +2468,31 @@ class DownloadService:
             )
         return wrote_files, no_subs_warning, sub_rc
 
+    def _reserve_name(self, task: "VideoDownloadTask", run_generation: int | None) -> None:
+        """Choose the video's file name before the caption phase, so the captions are written
+        under the same ``Title (N)`` as the video and never reuse an older download's caption file
+        (the media phase picks that number again, see :meth:`_claim_names`). A plan that cannot
+        be made leaves the plain name."""
+        task.name_number = 0
+        lock = _media_lock(task)
+        if not lock.acquire(timeout=_STOP_WAIT):
+            return
+        try:
+            command = download_guard.with_keep_source(self.build_download_command(task))
+            items = self._plan_pass(task, command)
+            if not items or _stop_requested(task, run_generation):
+                return
+            created = getattr(task, "created_paths", None)
+            _cmd, _items, _owned, number = self._claim_names(
+                task, command, items, created if isinstance(created, list) else []
+            )
+            task.name_number = number
+        except Exception:  # noqa: BLE001 - the captions then keep the plain name
+            logger.warning("could not choose the file name before the captions", exc_info=True)
+        finally:
+            _release_run_claims(task)
+            lock.release()
+
     def _subtitle_phase(self, task: "VideoDownloadTask", run_generation: int | None = None) -> bool:
         """Fetch subtitles before the media download.
 
@@ -2473,6 +2510,7 @@ class DownloadService:
         app.download_events.put(
             ("subtitle_status", task, _("fetching subtitles ({language})...", language=sub_lang)))
         app.download_events.put(("log", task, f"--- Subtitle phase: requesting {sub_lang} ---"))
+        self._reserve_name(task, run_generation)
         wrote_files, no_subs_warning, sub_rc = self._fetch_subtitles(
             task, sub_lang, run_generation
         )
@@ -2761,9 +2799,7 @@ class DownloadService:
         try:
             return self._run_media_locked(task, command, generation)
         finally:
-            with _CLAIMS_LOCK:
-                for stem in [s for s, t in _RUN_CLAIMS.items() if t == id(task)]:
-                    del _RUN_CLAIMS[stem]
+            _release_run_claims(task)
             lock.release()
 
     def _plan_pass(
@@ -2822,23 +2858,19 @@ class DownloadService:
             return None
         return download_guard.parse_plan(out or "", command) or None
 
-    def _run_media_locked(
-        self, task: "VideoDownloadTask", command: list[str], generation: int | None
-    ) -> tuple[int, str, str, str | None, bool]:
+    def _claim_names(
+        self, task: "VideoDownloadTask", command: list[str],
+        items: "list[download_guard.PlannedItem] | None", created: list[str], preferred: int = 0,
+    ) -> "tuple[list[str], list[download_guard.PlannedItem] | None, set[str], int]":
+        """Choose the names a run writes (the plain title, or the first free 'Title (N)') and
+        claim them for *task*.
+
+        Returns ``(command, items, owned, number)``; *number* is 0 for the plain name. *preferred*
+        is the number the caption phase already wrote its files under: it is used again while it
+        is still free for this job, so the captions and the video share one name.
+        """
         app = self.app
-        folder = str(getattr(task, "folder", "") or "")
-        created = getattr(task, "created_paths", None)
-        if not isinstance(created, list):
-            created = []
-            try:
-                task.created_paths = created
-            except AttributeError:
-                pass
-        command = download_guard.with_keep_source(command)
-        audio = download_guard.command_audio_format(command) is not None
-        items = self._plan_pass(task, command)
-        if _stop_requested(task, generation):
-            return 1, "", "", None, False
+        number = 0
         key = _job_key(task)
         token = id(task)
         with _CLAIMS_LOCK:
@@ -2861,7 +2893,16 @@ class DownloadService:
                 held = {s for s, t in _RUN_CLAIMS.items() if t != token}
                 held |= {s for s, rec in claims.items() if _held_by_another(rec, task, app)}
                 keys = [download_guard.stem_key(i) for i in items]
-                if any(k in held for k in keys) or download_guard.find_clash(items, created, owned):
+                fixed = [download_guard.numbered(i, preferred) for i in items] if preferred > 0 else []
+                if fixed and not (
+                    any(download_guard.stem_key(c) in held for c in fixed)
+                    or download_guard.find_clash(fixed, created, owned)
+                ):
+                    # The caption phase already wrote its files under this number.
+                    number = preferred
+                    command = download_guard.numbered_command(command, number)
+                    items = fixed
+                elif any(k in held for k in keys) or download_guard.find_clash(items, created, owned):
                     # The name is taken by a file that is not this job's (an earlier download, the
                     # same title from another link): write to the first free "Title (N)", never
                     # touching the existing file.
@@ -2879,10 +2920,33 @@ class DownloadService:
                     _RUN_CLAIMS[k] = token
                     claims.pop(k, None)                 # re-insert: the newest claims sit last, the trim keeps them
                     claims[k] = _new_claim(key, task)
-                    if k not in owned and hasattr(task, "claimed_stems"):
+                    if hasattr(task, "claimed_stems") and k not in task.claimed_stems:
                         task.claimed_stems.append(k)
                     owned.add(k)
                 _save_claims(claims)
+        return command, items, owned, number
+
+    def _run_media_locked(
+        self, task: "VideoDownloadTask", command: list[str], generation: int | None
+    ) -> tuple[int, str, str, str | None, bool]:
+        app = self.app
+        folder = str(getattr(task, "folder", "") or "")
+        created = getattr(task, "created_paths", None)
+        if not isinstance(created, list):
+            created = []
+            try:
+                task.created_paths = created
+            except AttributeError:
+                pass
+        command = download_guard.with_keep_source(command)
+        audio = download_guard.command_audio_format(command) is not None
+        items = self._plan_pass(task, command)
+        if _stop_requested(task, generation):
+            return 1, "", "", None, False
+        preferred = getattr(task, "name_number", 0)
+        command, items, owned, _number = self._claim_names(
+            task, command, items, created, preferred if isinstance(preferred, int) else 0
+        )
         # What was in the folder before this run: a file of this list that the job
         # did not create is not the job's to resume, convert or delete.
         before = _listing(folder)

@@ -17,11 +17,14 @@ format``) and mimics the yt-dlp behaviours the tests depend on:
   truncated target for that title, then dies with exit code 1, like a killed conversion),
   ``FAKE_YTDLP_DIE_PART=1`` (writes ``<file>.part`` and dies),
   ``FAKE_YTDLP_HANG_CONVERT=<title>`` (writes a truncated target, then waits to be killed),
-  ``FAKE_YTDLP_SLOW=<seconds>`` (pause after announcing a file, so a test can stop the run first).
+  ``FAKE_YTDLP_SLOW=<seconds>`` (pause after announcing a file, so a test can stop the run first);
+* ``--skip-download`` is the caption phase: ``<title>.<leading letters of --sub-langs>.vtt`` is written for
+  each item and announced with ``Writing video subtitles to:``.
 """
 from __future__ import annotations
 
 import os
+import re
 import sys
 import time
 import urllib.parse
@@ -34,6 +37,8 @@ def main(argv: list[str]) -> int:
     keep = False
     plan = False
     merge = "mp4"
+    captions = False
+    sub_lang = "en"
     i = 0
     url = ""
     while i < len(argv):
@@ -57,6 +62,11 @@ def main(argv: list[str]) -> int:
         elif a == "--merge-output-format":
             merge = argv[i + 1]
             i += 1
+        elif a == "--skip-download":
+            captions = True
+        elif a == "--sub-langs":
+            sub_lang = (re.match(r"[A-Za-z]+", argv[i + 1]) or re.match(r"(en)", "en")).group(0)
+            i += 1
         elif a in ("-f", "--ffmpeg-location", "--encoding", "--progress-template",
                    "--sponsorblock-remove", "--download-sections"):
             i += 1
@@ -71,6 +81,13 @@ def main(argv: list[str]) -> int:
     else:
         titles = [urllib.parse.unquote(path.rsplit("/", 1)[-1])]
     src_ext = "webm" if audio else merge
+    if captions and not plan:                      # the caption phase: one .vtt per item, no media
+        for t in titles:
+            sub = template.replace("%(title)s", t).replace("%(ext)s", sub_lang + ".vtt")
+            with open(sub, "w", encoding="utf-8") as fh:
+                fh.write("WEBVTT\n\n00:00:01.000 --> 00:00:02.000\ntext\n")
+            print(f"[info] Writing video subtitles to: {sub}", flush=True)
+        return 0
     if plan:
         if os.environ.get("FAKE_YTDLP_PLAN_FAIL"):
             print("ERROR: plan pass failed", file=sys.stderr)

@@ -94,6 +94,9 @@ class VideoDownloadTask:
         self.claimed_stems: list[str] = []
         # Id this task writes into its name claims, so only it resumes its own partial.
         self.claim_token: str = ""
+        # The "Title (N)" number the output was given (0 = the plain title), chosen before the
+        # caption phase so the captions carry the same name as the video.
+        self.name_number: int = 0
         self._start_listing: frozenset[str] = frozenset()
         # When auto-transcribe-after-download is on, the spawned
         # TranscriptionTask is linked here so the Download row can show

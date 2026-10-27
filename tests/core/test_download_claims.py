@@ -117,3 +117,59 @@ def test_a_claim_that_was_just_updated_survives_the_trim(env, monkeypatch):   # 
     kept = json.loads(path.read_text(encoding="utf-8"))
     assert stem in kept and len(kept) == 200
     assert "filler-0" not in kept                                      # the oldest unrelated entry went instead
+
+
+def _fake_yt_dlp_for_every_phase(monkeypatch):
+    """The caption and plan phases start ``yt-dlp`` by name: run the stand-in instead."""
+    import subprocess
+    import sys
+
+    from tests.core.test_downloads_keep_user_files import FAKE
+
+    real = subprocess.Popen
+
+    def popen(cmd, *args, **kwargs):
+        if cmd and cmd[0] == "yt-dlp":
+            cmd = [sys.executable, str(FAKE), *cmd[1:]]
+        return real(cmd, *args, **kwargs)
+
+    monkeypatch.setattr(subprocess, "Popen", popen)
+
+
+def test_captions_of_a_numbered_video_carry_its_number(env, monkeypatch):   # noqa: F811
+    svc, folder, _ = env
+    _fake_yt_dlp_for_every_phase(monkeypatch)
+    (folder / "Title A.mp4").write_bytes(b"an older download")
+    (folder / "Title A.fr.vtt").write_bytes(b"the older download's captions")
+    task = _video(folder)
+    task.subtitles_enabled, task.subtitle_lang = True, "fr"
+    assert svc._subtitle_phase(task) is False
+    rc, _e, _l, saved, _f = _run(svc, task)
+    assert rc == 0 and saved == str(folder / "Title A (1).mp4")
+    assert (folder / "Title A (1).fr.vtt").read_text(encoding="utf-8").startswith("WEBVTT")
+    assert (folder / "Title A.fr.vtt").read_bytes() == b"the older download's captions"   # not reused
+
+
+def test_the_caption_number_skips_names_an_older_caption_file_uses(env, monkeypatch):   # noqa: F811
+    svc, folder, _ = env
+    _fake_yt_dlp_for_every_phase(monkeypatch)
+    (folder / "Title A.mp4").write_bytes(b"an older download")
+    (folder / "Title A (1).fr.vtt").write_bytes(b"captions of a deleted video")
+    task = _video(folder)
+    task.subtitles_enabled, task.subtitle_lang = True, "fr"
+    svc._subtitle_phase(task)
+    rc, _e, _l, saved, _f = _run(svc, task)
+    assert rc == 0 and saved == str(folder / "Title A (2).mp4")
+    assert (folder / "Title A (2).fr.vtt").exists()
+    assert (folder / "Title A (1).fr.vtt").read_bytes() == b"captions of a deleted video"
+
+
+def test_captions_of_a_free_name_stay_plain(env, monkeypatch):   # noqa: F811
+    svc, folder, _ = env
+    _fake_yt_dlp_for_every_phase(monkeypatch)
+    task = _video(folder)
+    task.subtitles_enabled, task.subtitle_lang = True, "fr"
+    svc._subtitle_phase(task)
+    rc, _e, _l, saved, _f = _run(svc, task)
+    assert rc == 0 and saved == str(folder / "Title A.mp4")
+    assert (folder / "Title A.fr.vtt").exists()
