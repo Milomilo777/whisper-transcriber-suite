@@ -1790,6 +1790,9 @@ def _run_post_pipeline(
             else:
                 log(f"Diarisation skipped: {_diar.availability_reason()}", log_cb)
         except Exception as e:  # noqa: BLE001
+            # Marked on the task so the UI can show one short notice (the
+            # console log alone left the job looking cleanly "done").
+            task.speaker_labels_failed = True
             log(f"Speaker detection failed: {e}; the transcript is saved without speaker labels", log_cb)
 
     # Word-level alignment refinement via stable-ts (opt-in). Skipped for a

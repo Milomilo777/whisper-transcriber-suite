@@ -6746,6 +6746,12 @@ class App(tk.Tk):
                        "another language, choose that language and transcribe it again."),
                 foreground=tokens.themed(tokens.WARNING_TEXT),
             ).pack(anchor="w")
+        if getattr(task, "speaker_labels_failed", False):
+            ttk.Label(
+                self.last_result_body,
+                text=_("Speaker detection failed — the transcript was saved without speaker labels."),
+                foreground=tokens.themed(tokens.WARNING_TEXT),
+            ).pack(anchor="w", pady=(2, 0))
         if existing:
             ttk.Label(
                 self.last_result_body,

@@ -1767,6 +1767,9 @@ class TranscriptionService:
                             except (TypeError, ValueError):
                                 pass
                             worker["task"].no_speech = bool(event.get("no_speech"))
+                            worker["task"].speaker_labels_failed = bool(
+                                event.get("speaker_labels_failed")
+                            )
                             apply_final_speed(worker["task"], event)
                             self.finish_task(worker)
                     else:

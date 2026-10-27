@@ -1121,6 +1121,9 @@ def _main() -> int:
                     getattr(task, "audio_duration", 0.0) or 0.0
                 ),
                 no_speech=bool(getattr(task, "no_speech", False)),
+                speaker_labels_failed=bool(
+                    getattr(task, "speaker_labels_failed", False)
+                ),
                 **_speed_fields(task),
             )
         except Exception as e:  # noqa: BLE001

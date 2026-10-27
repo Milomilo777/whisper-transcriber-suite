@@ -1042,6 +1042,7 @@
   "Source: {name}": "Source: {name}",
   "Sources": "Sources",
   "Spanish": "Spanish",
+  "Speaker detection failed — the transcript was saved without speaker labels.": "Speaker detection failed — the transcript was saved without speaker labels.",
   "Speaker diarisation (sherpa-onnx, no HF token)": "Speaker diarisation (sherpa-onnx, no HF token)",
   "Speaker rename — rewrites every same-labelled segment": "Speaker rename — rewrites every same-labelled segment",
   "Speakers:": "Speakers:",
