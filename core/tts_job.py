@@ -136,7 +136,20 @@ def _hard_cut(rest: str, lead: int, limit: int) -> int:
     """
     def clean(i: int) -> bool:
         return (not _continues_cluster(rest[i]) and rest[i] not in _FOLLOWING_VOWELS
-                and not _joins_next(rest[i - 1]))
+                and not _joins_next(rest[i - 1]) and not _flag_second_half[i - lead])
+
+    # Two regional indicators form one emoji flag: the second half of a pair
+    # (an odd offset into a run of them) never starts a piece.
+    _flag_second_half = [False] * (limit - lead + 1)
+    run = 0
+    if 0x1F1E6 <= ord(rest[lead]) <= 0x1F1FF:
+        j = lead
+        while j > 0 and 0x1F1E6 <= ord(rest[j - 1]) <= 0x1F1FF:
+            j -= 1
+        run = lead - j  # indicators before the window, still pairing up
+    for k in range(lead, limit + 1):
+        run = run + 1 if 0x1F1E6 <= ord(rest[k]) <= 0x1F1FF else 0
+        _flag_second_half[k - lead] = run > 0 and run % 2 == 0
 
     for i in range(limit, max(lead, limit - (limit - lead) // 2), -1):
         if rest[i] in _LEADING_VOWELS and clean(i):
@@ -145,7 +158,7 @@ def _hard_cut(rest: str, lead: int, limit: int) -> int:
         if clean(i):
             return i
     for i in range(limit, lead, -1):
-        if not _continues_cluster(rest[i]):
+        if not _continues_cluster(rest[i]) and not _flag_second_half[i - lead]:
             return i
     return limit
 

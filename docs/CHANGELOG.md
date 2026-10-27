@@ -270,6 +270,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Live captions keep working on a PC where numpy is installed but broken (for example a missing DLL); the live engine falls back to its built-in audio code instead of silently producing no text.
 - Live tab: the times of the captions now count the silence the engine skipped, so after a long pause they match the time in the saved session audio instead of running seconds early.
 - Voice Clone: a job cancelled before its first piece was finished can offer its kept reference clips again after a restart, so it continues with the same voice.
+- Voice Clone: when a long text with no spaces is cut into pieces, a flag emoji is no longer split in half across two pieces.
 
 ## [2.2.0] — 2026-10-22
 

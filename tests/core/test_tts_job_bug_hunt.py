@@ -48,3 +48,23 @@ def test_kept_clips_are_found_before_the_first_piece_is_done(tmp_path):
     assert [Path(p).name for p in clips] == ["ref-1.wav", "ref-2.wav"]
     assert [Path(p).read_bytes() for p in clips] == [clip_a.read_bytes(),
                                                      clip_b.read_bytes()]
+
+
+def test_hard_cut_keeps_emoji_flags_whole():
+    """Two regional indicators form one emoji flag; a cut between them makes
+    each piece start (or end) with a half flag. The hard cut (no space, no
+    clause punctuation in a run of flags) must cut between pairs."""
+    flag = "\U0001F1FA\U0001F1F8"  # US flag: two regional indicators
+    text = "abc " + flag * 40 + " xyz"  # no spaces inside the flag run
+    for max_chars in range(2, 10):
+        pieces = tts_job.split_text(text, max_chars)
+        assert "".join(pieces) == text
+        offset = 0
+        for n, piece in enumerate(pieces):
+            if n:  # a cut at `offset` must sit between two flags
+                j = offset
+                while j > 0 and 0x1F1E6 <= ord(text[j - 1]) <= 0x1F1FF:
+                    j -= 1  # start of the regional-indicator run before it
+                assert (offset - j) % 2 == 0, (max_chars, offset, piece)
+            offset += len(piece)
+
