@@ -173,3 +173,18 @@ def test_captions_of_a_free_name_stay_plain(env, monkeypatch):   # noqa: F811
     rc, _e, _l, saved, _f = _run(svc, task)
     assert rc == 0 and saved == str(folder / "Title A.mp4")
     assert (folder / "Title A.fr.vtt").exists()
+
+
+def test_a_failed_write_of_the_claims_file_leaves_no_temp_file(env, monkeypatch):   # noqa: F811
+    import os
+
+    _svc, folder, _ = env
+    path = ds._claims_path()
+
+    def refuse(*_a, **_k):
+        raise OSError("replace refused")
+
+    monkeypatch.setattr(os, "replace", refuse)
+    ds._save_claims({"x": {"key": "k", "task": "t", "session": "s", "created": 1e12, "files": []}})
+    assert not path.exists()
+    assert [p.name for p in path.parent.iterdir() if p.name.endswith(".tmp")] == []

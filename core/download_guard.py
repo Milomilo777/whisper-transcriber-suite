@@ -21,6 +21,7 @@ _AUDIO_EXT = {"aac": "m4a", "alac": "m4a", "vorbis": "ogg"}
 
 # Pieces an unfinished download leaves next to a file.
 _PIECES = (".part", ".ytdl")
+_PIECE_SUFFIX = re.compile(r"\.(?:part(?:-frag\d+)?|ytdl)")
 
 
 class DownloadRefused(Exception):
@@ -120,7 +121,7 @@ def is_own(path: str, own: Iterable[str]) -> bool:
         b = norm(base)
         if key == b:
             return True
-        if key.startswith(b) and key[len(b):].startswith(_PIECES + (".part-frag",)):
+        if key.startswith(b) and _PIECE_SUFFIX.fullmatch(key[len(b):]):
             return True
     return False
 

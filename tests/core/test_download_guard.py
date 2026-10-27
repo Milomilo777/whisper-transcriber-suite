@@ -114,3 +114,11 @@ def test_has_partial_sees_unfinished_pieces_only(tmp_path):
     (tmp_path / "Title.mp4.part").write_bytes(b"x")
     assert g.has_partial(stem)
     assert not g.has_partial(g.norm(str(tmp_path / "gone" / "Title")))   # missing folder
+
+
+def test_is_own_matches_the_unfinished_pieces_exactly():
+    own = ["/d/T.webm"]
+    assert g.is_own("/d/T.webm.part", own) and g.is_own("/d/T.webm.part-Frag12", own)
+    assert not g.is_own("/d/T.webm.partial", own)         # a user's file that only starts like a piece
+    assert not g.is_own("/d/T.webm.ytdl.bak", own)
+    assert not g.is_own("/d/T.webm.part-Fragment", own)

@@ -896,9 +896,16 @@ def _save_claims(claims: dict[str, dict[str, Any]]) -> None:
         tmp = f"{path}.{os.getpid()}.tmp"
         now = time.time()
         live = [(s, r) for s, r in claims.items() if now - r["created"] <= _CLAIM_MAX_AGE]
-        with open(tmp, "w", encoding="utf-8") as fh:
-            json.dump(dict(live[-200:]), fh)
-        os.replace(tmp, path)
+        try:
+            with open(tmp, "w", encoding="utf-8") as fh:
+                json.dump(dict(live[-200:]), fh)
+            os.replace(tmp, path)
+        except OSError:
+            try:
+                os.unlink(tmp)                      # no temp file is left behind by a failed write
+            except OSError:
+                pass
+            raise
     except OSError:
         logger.info("could not write the download claims file", exc_info=True)
 
