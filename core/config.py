@@ -2375,7 +2375,8 @@ def webhook_secret_valid(secret: str) -> bool:
         secret.encode("latin-1")
     except UnicodeEncodeError:
         return False
-    return all(32 <= ord(c) != 127 for c in secret)
+    # Latin-1 printable: ASCII 32..126 and 160..255 (not DEL, not the C1 block).
+    return all(32 <= ord(c) < 127 or ord(c) >= 160 for c in secret)
 
 
 def webhook_secret_from_input(raw: str | None) -> str:

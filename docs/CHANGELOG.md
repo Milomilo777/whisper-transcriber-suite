@@ -258,6 +258,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Importing an oTranscribe file (.otr) keeps the words apart where the editor had a line break inside a paragraph; the exported subtitle no longer reads "line oneline two".
 - Remove fillers in the transcript viewer also tidies a dash pair that framed the filler when the dashes touch the words ("hello—um—world" becomes "hello—world" instead of keeping a doubled dash).
 - Converting a compact SRT (no blank line between cues) that holds one cue with an unreadable timing line no longer drops every cue after it; only the damaged cue is skipped and counted in the log.
+- A webhook secret that contains a hidden control character such as U+0085 (next line) is now rejected, so it can no longer split the request header.
 
 ## [2.2.0] — 2026-10-22
 
