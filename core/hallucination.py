@@ -30,9 +30,21 @@ from typing import Any, Iterable
 logger = logging.getLogger(__name__)
 
 
+# Zero-width spaces/joiners, LRM/RLM, bidi embeddings and overrides, word joiner, BOM:
+# deleted before the bag match, the same marks core/completeness.py deletes before its
+# blank-text test -- the app wraps RTL subtitle lines in RLM (core/burn_subs.py), so a
+# hallucination phrase can arrive wrapped in marks that carry no words.
+_INVISIBLE = dict.fromkeys([*range(0x200B, 0x2010), *range(0x202A, 0x202F), 0x2060, 0xFEFF])
+
+
 def _normalize(text: str) -> str:
-    """Lower-case + collapse internal whitespace + strip ends."""
-    return re.sub(r"\s+", " ", text or "").strip().lower()
+    """Lower-case + collapse internal whitespace + strip ends.
+
+    Invisible zero-width and bidi control marks are deleted first so a
+    phrase wrapped in them still matches; a segment holding only marks
+    normalizes to "" and matches nothing.
+    """
+    return re.sub(r"\s+", " ", (text or "").translate(_INVISIBLE)).strip().lower()
 
 
 _BAG_OF_HALLUCINATIONS: tuple[str, ...] = (
