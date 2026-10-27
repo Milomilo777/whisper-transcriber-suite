@@ -1027,7 +1027,7 @@ class AdvancedDialog(tk.Toplevel):
             combo.configure(
                 state=(
                     "readonly"
-                    if self._selected_backend() == "faster_whisper"
+                    if self._selected_backend() in ("faster_whisper", "mlx_whisper")
                     else "disabled"
                 )
             )
@@ -2472,6 +2472,12 @@ class AdvancedDialog(tk.Toplevel):
             engine_value_for_label(self._backend_display.get()) or "faster_whisper"
         )
         _backend_changed = cfg["transcribe_backend"] != _old_backend
+        if _backend_changed:
+            from core.backends import mlx_whisper_be
+
+            if mlx_whisper_be.is_apple_silicon():
+                # The opt-out from (or back into) the automatic Apple-silicon engine.
+                cfg["apple_silicon_engine"] = cfg["transcribe_backend"] == "mlx_whisper"
         cfg["cloud_stt_api_key"] = self._cloud_api_key.get().strip()
         cfg["cloud_stt_model"] = (
             self._cloud_model.get().strip() or "gemini-3.5-flash"

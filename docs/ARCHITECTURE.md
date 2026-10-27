@@ -68,7 +68,7 @@ core/
 ├── task_settings.py        per-task options snapshot sent to the worker
 ├── worker.py               worker subprocess entry point, JSON stdio protocol
 ├── transcriber.py          transcription pipeline, model lifecycle, output writing
-├── backends/               ASR engines (faster-whisper, whisper.cpp, NVIDIA, cloud)
+├── backends/               ASR engines (faster-whisper, Apple-silicon MLX, whisper.cpp, NVIDIA, cloud)
 ├── writers/                one module per output format
 ├── model_manager.py, hub.py   model catalog, Hub download, model folders
 ├── history.py              SQLite history of downloads and transcriptions

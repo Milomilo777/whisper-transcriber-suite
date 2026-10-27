@@ -212,6 +212,11 @@ DEFAULT_CONFIG = {
     # opt-in; a user's saved choice always wins via the local-config merge
     # layer.
     "transcribe_backend": _default_transcribe_backend(),
+    # Apple-silicon Macs only: use the MLX engine instead of faster-whisper when it is
+    # usable and no cloud/whisper.cpp engine is picked. Picking Faster-Whisper in the
+    # Engine list sets this to False (core.backends.mlx_whisper_be.resolve_engine_choice).
+    # No effect on any other system.
+    "apple_silicon_engine": True,
     # OPTIONAL cloud Speech-to-Text backend (Google Gemini API). Off
     # unless the user selects transcribe_backend="cloud_stt". The API
     # key is stored in CLEARTEXT here, consistent with how cookies and
@@ -2055,6 +2060,9 @@ def load_config(*, fetch_online: bool = True) -> dict[str, Any]:
                 k, type(merged[k]).__name__, type(default).__name__, default,
             )
             merged[k] = json.loads(json.dumps(default))
+    from .backends import mlx_whisper_be as _mlx
+
+    _mlx.resolve_engine_choice(merged, baseline)
     result = _apply_runtime_fallbacks(merged)
     # The derived model_path and an unmounted download_folder cleared for
     # this session are not changes to save (see the _persistable_* helpers).

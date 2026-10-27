@@ -714,6 +714,10 @@ def model_downloaded(config: dict[str, Any] | None, slug: str) -> bool:
     ``AdvancedDialog``-private method) specifically so a second UI surface
     could reuse it without duplicating the hub-folder lookup.
     """
+    if str((config or {}).get("transcribe_backend") or "").strip().lower() == "mlx_whisper":
+        from .backends import mlx_whisper_be
+
+        return mlx_whisper_be.model_present({**(config or {}), "whisper_model": slug})
     entry = catalog_resolve_entry(config, slug)
     if not entry:
         return False
@@ -1084,6 +1088,11 @@ def ensure_model(
     download is resumed in place, and an installed model whose resume
     attempt fails is used as it is.
     """
+    if str(config.get("transcribe_backend") or "").strip().lower() == "mlx_whisper":
+        # The Apple-silicon engine keeps its own copy of the model (MLX weights).
+        from .backends.mlx_whisper_be import ensure_mlx_model
+
+        return ensure_mlx_model(config, status_cb, progress_cb, cancel_event)
     model=config["model"]
     model_path=Path(config["model_path"])
     hf_repo=_hf_repo_for(config, model)

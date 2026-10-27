@@ -3227,6 +3227,12 @@ class App(tk.Tk):
                 self._refresh_engine_picker_labels()
                 return
             self.app_config["transcribe_backend"] = value
+            from core.backends import mlx_whisper_be
+
+            if mlx_whisper_be.is_apple_silicon():
+                # Picking Faster-Whisper (or any other engine) here is the opt-out from the
+                # automatic Apple-silicon engine; picking the Apple-silicon entry opts back in.
+                self.app_config["apple_silicon_engine"] = value == "mlx_whisper"
             try:
                 save_config(self.app_config)
             except Exception as e:  # noqa: BLE001
@@ -3736,7 +3742,7 @@ class App(tk.Tk):
 
     def _engine_uses_whisper_model(self) -> bool:
         """True while the picked engine actually uses the Whisper-model
-        catalog (Faster-Whisper only)."""
+        catalog (Faster-Whisper, and the Apple-silicon engine, which maps the same slugs)."""
         from core.backends import availability as _eng
 
         evar = _inst_attr(self, "transcribe_engine_var")
@@ -3744,7 +3750,7 @@ class App(tk.Tk):
         value = _eng.engine_value_for_label(label)
         if value is None:
             value = _eng.normalise_engine(self.app_config.get("transcribe_backend"))
-        return value == "faster_whisper"
+        return value in ("faster_whisper", "mlx_whisper")
 
     def _model_picker_disabled_reason(self) -> str:
         """Hover text while the model picker is greyed out; "" when active.
@@ -5003,6 +5009,11 @@ class App(tk.Tk):
         killed download, which the worker then fails to load. Deeper
         corruption still surfaces via the worker's ``startup_error``.
         """
+        if str(self.app_config.get("transcribe_backend") or "").strip().lower() == "mlx_whisper":
+            # The Apple-silicon engine keeps its own copy of the model.
+            from core.backends import mlx_whisper_be
+
+            return mlx_whisper_be.model_present(self.app_config)
         try:
             from core.hub import (
                 default_hub_folder,

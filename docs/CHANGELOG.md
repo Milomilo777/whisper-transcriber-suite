@@ -67,6 +67,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   Microphone, and the same notice appears once if the microphone delivers only silence. The state is
   read through the Objective-C runtime with `ctypes` (no new dependency); nothing changes on Windows
   and Linux. `tools/mac_mic_permission_probe.py` checks it on a Mac.
+- **Apple-silicon engine for M-series Macs**: Whisper runs on the Mac's GPU through Apple's MLX
+  (`mlx-whisper`) and is chosen automatically on an Apple-silicon Mac when the model has an MLX version;
+  picking Faster-Whisper in the Engine list switches it off. Models download after the usual question;
+  other systems and Intel Macs are untouched. Checked on GitHub's arm64 runners, not yet on a physical Mac
+  (ADR 0019, `docs/MACOS_BUILD_NOTES.md`).
 - **Usage statistics count installs**: each row carries a random per-install id (a UUID4 in the new
   `install_id` setting), so one person transcribing thousands of clips is no longer counted as many
   users. The id comes from no hardware, name, path or network fact, is not sent in problem reports, and is

@@ -106,6 +106,32 @@ What v1.9.0 and v1.9.3 did, in order; repeat it for the next version.
    (`Milomilo777 <117558067+Milomilo777@users.noreply.github.com>`). Don't commit machine user names,
    home paths (`/Users/<name>`), or screenshots that show them.
 
+## Apple-silicon engine (MLX) in the arm64 build
+
+ADR 0019. The engine is `core/backends/mlx_whisper_be.py`; its packages are only for the arm64 build:
+
+```bash
+python -m pip install -r platform/macos/pyinstaller/requirements-apple-silicon.txt
+python -m pip install --no-deps mlx-whisper==0.4.3     # --no-deps keeps torch out of the bundle
+```
+
+`macos-app.yml` and `build_mac.sh` do not install these yet: add the two lines to the arm64 leg
+before the next release build. Without the
+packages the app is built as before and uses faster-whisper. When they are installed,
+`whisper_project_mac.spec` collects MLX (dylibs and `mlx.metallib`), numba, llvmlite, scipy and tiktoken;
+an Intel build skips the block.
+
+Tested without a physical Mac: `.github/workflows/apple-silicon-engine.yml` ("Apple-silicon engine
+check", manual or a push to `apple-silicon-*`) runs on a `macos-14` arm64 runner, installs the engine
+with the release pins and with the latest packages, and runs `tools/apple_silicon_engine_check.py`.
+Check these when the release build runs, on the frozen app:
+
+- the engine still imports (`mlx.metallib` and the dylibs inside the bundle, numba's JIT cache folder);
+- `[mac-spec] highest bundled minos` is 14.0 or newer and the one-liner still routes older Macs to x64;
+- a transcription with the `tiny` model works in the frozen app with the engine selected, and with
+  Faster-Whisper picked in the Engine list;
+- the dmg size grew by about how much (MLX, numba and llvmlite are the new weight).
+
 ## Why earlier Mac builds "didn't work for users"
 
 Each of these was reproduced on a real Mac. Any one of them is enough to ship a broken app.

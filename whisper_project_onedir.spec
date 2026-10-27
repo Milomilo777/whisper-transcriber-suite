@@ -276,6 +276,7 @@ a = Analysis(
         'core.backends.cloud_stt',
         'core.backends.google_cloud_stt',
         'core.backends.nvidia_asr',
+        'core.backends.mlx_whisper_be',
         'core.backends.availability',
         'core.chapters',
         'core.llm',
