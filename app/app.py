@@ -5516,6 +5516,11 @@ class App(tk.Tk):
         copy.created_paths = list(getattr(task, "created_paths", None) or [])
         copy.partial_paths = list(getattr(task, "partial_paths", None) or [])
         copy.pending_sources = list(getattr(task, "pending_sources", None) or [])
+        # The files now belong to the new row: Cancel on the old failed row must not delete the
+        # partial the new row is about to continue.
+        task.partial_paths = []
+        task.created_paths = []
+        task.pending_sources = []
         self.download_queue.append(copy)
         self.refresh_download_queue()
         self.download_service.process_queue()

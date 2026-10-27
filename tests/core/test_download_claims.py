@@ -212,3 +212,49 @@ def test_a_claim_dated_in_the_future_does_not_live_longer(env):   # noqa: F811
         "key": "k", "task": "t", "session": "s", "created": time.time() + 10 * 365 * 86400, "files": []}}),
         encoding="utf-8")
     assert ds._load_claims()["x"]["created"] <= time.time()
+
+
+def test_cancel_removes_a_partial_whose_claim_owner_is_no_longer_active(env, monkeypatch):   # noqa: F811
+    svc, folder, _ = env
+    monkeypatch.setenv("FAKE_YTDLP_DIE_PART", "1")
+    failed = _video(folder)
+    _run(svc, failed)
+    failed.status = "error"                                   # nobody continues it
+    copy = _video(folder)                                     # a retry row that carries the same files
+    copy.partial_paths = list(failed.partial_paths)
+    copy.created_paths = list(failed.created_paths)
+    part = folder / "Title A.mp4.part"
+    assert part.exists()
+    svc.remove_partial_files(copy)                            # Cancel on the retry row
+    assert not part.exists()                                  # the dead claim does not keep it forever
+
+
+def test_a_rerun_hands_the_failed_rows_files_over_to_the_new_row(env, monkeypatch):   # noqa: F811
+    import sys
+    import types
+
+    if "faster_whisper" not in sys.modules:
+        _fw = types.ModuleType("faster_whisper")
+        _fw.WhisperModel = object  # type: ignore[attr-defined]
+        sys.modules["faster_whisper"] = _fw
+    from app.app import App
+
+    svc, folder, _ = env
+    monkeypatch.setenv("FAKE_YTDLP_DIE_PART", "1")
+    failed = _video(folder)
+    _run(svc, failed)
+    failed.status = "error"
+    app = types.SimpleNamespace(
+        download_queue=[failed], refresh_download_queue=lambda: None,
+        download_service=types.SimpleNamespace(process_queue=lambda: None),
+    )
+    App._rerun_download(app, failed)                          # type: ignore[arg-type]
+    copy = app.download_queue[-1]
+    assert copy is not failed and copy.partial_paths
+    part = folder / "Title A.mp4.part"
+    svc.remove_partial_files(failed)                          # Cancel on the old row
+    assert part.exists()                                      # the retry row still has its partial
+    monkeypatch.delenv("FAKE_YTDLP_DIE_PART")
+    rc, _e, _l, saved, _f = _run(svc, copy)
+    assert rc == 0 and saved == str(folder / "Title A.mp4")
+    assert (folder / "Title A.mp4").read_bytes().startswith(b"first half|video:")

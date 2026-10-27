@@ -927,7 +927,9 @@ page can still list several items, which are planned and guarded one by one (all
 subtitle phase runs the plan and chooses the number first, so the captions and their extras (`.txt`, `.otr`,
 `.docx`) carry the video's `Title (N)` name; the plan is asked for twice when subtitles are on. Not covered: a
 file that appears after the name was chosen is only caught when yt-dlp announces it; a second running copy of
-the app cannot tell that the first holds a claim.
+the app cannot tell that the first holds a claim. Claims written by a pre-release build (a plain
+name-to-key map) are ignored. A retry row takes over the failed row's files, and the failed row then has
+none left to delete.
 
 ## 0020 — Apple-silicon engine: mlx-whisper, chosen automatically on M-series Macs
 

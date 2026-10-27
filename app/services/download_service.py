@@ -3431,15 +3431,15 @@ class DownloadService:
         paths = list(getattr(task, "partial_paths", None) or [])
         created = list(getattr(task, "created_paths", None) or [])
         listing = getattr(task, "_start_listing", None) or frozenset()
-        token = _task_token(task)
         with _CLAIMS_LOCK:
             claims = _load_claims()
         for dest in paths:
             for leftover in partial_download_files(dest, paths):
-                # A partial that another task has taken over (its claim is written under that
-                # task) is not this task's to delete, whatever name this task once announced.
+                # A partial that another task holds (its claim is written under that task, which is
+                # running, paused or queued) is not this task's to delete, whatever name this task
+                # once announced. The claim of a task that is done with it protects nothing.
                 other = claims.get(download_guard.path_stem(leftover))
-                if other is not None and other["task"] != token:
+                if other is not None and _held_by_another(other, task, self.app):
                     continue
                 # A file that was in the folder before the run and that the job did not
                 # create is somebody else's, even when its name matches an announced one.
@@ -3455,7 +3455,7 @@ class DownloadService:
         # The audio sources a cancelled audio download had fetched but not converted.
         for source in list(getattr(task, "pending_sources", None) or []):
             other = claims.get(download_guard.path_stem(source))
-            if other is not None and other["task"] != token:
+            if other is not None and _held_by_another(other, task, self.app):
                 continue
             if download_guard.is_own(source, created) and os.path.isfile(source):
                 try:
