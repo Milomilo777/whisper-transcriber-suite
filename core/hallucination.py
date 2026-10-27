@@ -162,7 +162,18 @@ def detect_vad_disagreement(
         # turn a garbage timestamp into a "disagreement"; only a finite
         # interval can establish one.
         return False
-    for vs, ve in vad_segments:
+    for interval in vad_segments:
+        try:
+            vs, ve = interval
+            vs = float(vs)
+            ve = float(ve)
+        except (TypeError, ValueError, OverflowError):
+            # A malformed interval (None, a non-numeric pair, a
+            # wrong-length tuple) carries no evidence of speech; skip it
+            # so one bad entry cannot abort annotation of the others.
+            continue
+        if not (math.isfinite(vs) and math.isfinite(ve)):
+            continue
         if e >= vs and s <= ve:
             return False
     return True

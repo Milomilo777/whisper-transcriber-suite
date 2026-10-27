@@ -168,3 +168,20 @@ def test_annotate_segments_skips_non_string_text():
 
 def test_normalize_collapses_whitespace_and_case():
     assert h._normalize("  HELLO   WORLD  ") == "hello world"
+
+
+def test_vad_disagreement_skips_malformed_intervals():
+    """One malformed entry in ``vad_segments`` (a None, a non-numeric pair, a
+    wrong-length tuple from a broken backend payload) must be skipped, not
+    crash detection -- the same rule the segment side already follows."""
+    seg = {"start": 5.0, "end": 6.0}
+    vad = [None, ("a", "b"), (0.0, 10.0, 99.0), (0.0, 4.0)]
+    assert h.detect_vad_disagreement(seg, vad) is True
+
+
+def test_annotate_segments_survives_malformed_vad_intervals():
+    """A malformed VAD interval must not abort annotation of the transcript."""
+    segs = [{"start": 5.0, "end": 6.0, "text": "hello world"}]
+    n = h.annotate_segments(segs, vad_segments=[None, (0.0, 4.0)])
+    assert n == 1
+    assert segs[0]["suspect_reason"] == "vad-disagreement"
