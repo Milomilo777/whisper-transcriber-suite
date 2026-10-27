@@ -611,7 +611,10 @@ def _parse_ass(text: str, path: str) -> list[dict]:
         if not in_events:
             continue
         if line.lower().startswith("format:"):
-            declared = [p.strip() for p in line.split(":", 1)[1].split(",")]
+            # Drop empty entries: a trailing comma on the Format line (a
+            # common hand-edit typo) made the declared list one field too
+            # long, so every Dialogue row fell short in the comma split.
+            declared = [p.strip() for p in line.split(":", 1)[1].split(",") if p.strip()]
             if declared:
                 fields = declared
             continue
