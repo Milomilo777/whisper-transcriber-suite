@@ -196,10 +196,17 @@ def fetch_cover(book: Book, *, timeout: float = 15.0, limit: int = 2_000_000) ->
         if cached:
             return cached[0]
         raise
+    # A reply the network did allow but that is not a usable cover (a captive
+    # portal's HTML, an oversized file) keeps the stale cached cover, like the
+    # OSError branch above: "kept when it does not [allow a refresh]".
     if len(data) > limit:
+        if cached:
+            return cached[0]
         raise BookCoverError("The cover picture is too large")
     # RFC 9110: media types are case-insensitive ("Image/JPEG" is legal).
     if not ctype.lower().startswith("image/") or not data.startswith(_IMAGE_MAGIC):
+        if cached:
+            return cached[0]
         raise BookCoverError("The cover reply is not a picture")
     _write_cache(path, data)
     return data

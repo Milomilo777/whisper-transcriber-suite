@@ -279,6 +279,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - A time-range (clip) download whose saved file name could not be read from the downloader output is now found again by its planned name, so it is recorded and auto-transcribed instead of ending as "could not be told apart".
 - Importing a hand-edited .otr file (or exporting a transcript JSON to .otr) that holds half of an emoji or other broken character no longer makes the file write fail; the broken character is replaced like in every other output format.
 - A book cover served with a capitalised content type (for example Image/JPEG) is now shown instead of the placeholder.
+- A book cover that was already saved is kept when a refresh gets a bad reply (a login page from a Wi-Fi portal, or a file that is too large) instead of being thrown away.
 
 ## [2.2.0] — 2026-10-22
 
