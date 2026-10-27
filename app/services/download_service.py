@@ -18,6 +18,8 @@ import shutil
 import subprocess
 import threading
 import time
+import uuid
+import weakref
 import urllib.error
 import urllib.request
 
@@ -799,6 +801,45 @@ def _media_lock(task: Any) -> "threading.Lock":
 # format and range) resume its own partial after a restart of the app.
 _CLAIMS_LOCK = threading.Lock()
 _RUN_CLAIMS: dict[str, int] = {}
+# One id per app run: a claim written by an earlier run of the app has no live owner.
+_SESSION = uuid.uuid4().hex
+# Task token -> task, to tell whether the task that holds a claim is still alive and active.
+_CLAIM_OWNERS: "weakref.WeakValueDictionary[str, Any]" = weakref.WeakValueDictionary()
+
+
+def _task_token(task: Any) -> str:
+    """The id a task writes into its claims (made once, kept on the task)."""
+    token = getattr(task, "claim_token", None)
+    if not isinstance(token, str) or not token:
+        token = uuid.uuid4().hex
+        try:
+            task.claim_token = token
+        except AttributeError:
+            pass
+    try:
+        _CLAIM_OWNERS[token] = task
+    except TypeError:
+        pass
+    return token
+
+
+def _task_active(owner: Any, app: Any) -> bool:
+    """True while *owner* may still continue its partial: running, paused, or queued to run."""
+    status = getattr(owner, "status", "")
+    if getattr(owner, "paused", False) or status in ("running", "paused", "transcribing"):
+        return True
+    if status == "waiting":
+        queue = getattr(app, "download_queue", None)
+        return queue is not None and any(q is owner for q in queue)
+    return False
+
+
+def _held_by_another(rec: dict[str, Any], task: Any, app: Any) -> bool:
+    """True when *rec* belongs to another task of this app run that is still active."""
+    if rec["task"] == _task_token(task) or rec["session"] != _SESSION:
+        return False
+    owner = _CLAIM_OWNERS.get(rec["task"])
+    return owner is not None and _task_active(owner, app)
 
 
 def _claims_path() -> Any:
@@ -807,16 +848,29 @@ def _claims_path() -> Any:
     return user_data_dir() / "download_claims.json"
 
 
-def _load_claims() -> dict[str, str]:
+def _load_claims() -> dict[str, dict[str, Any]]:
+    """name -> ``{"key", "task", "session"}``: the download (link, format, range), the task and
+    the app run that claimed it. Entries of any other shape are ignored."""
     try:
         with open(_claims_path(), encoding="utf-8") as fh:
             data = json.load(fh)
     except (OSError, ValueError):
         return {}
-    return {str(k): str(v) for k, v in data.items()} if isinstance(data, dict) else {}
+    if not isinstance(data, dict):
+        return {}
+    out: dict[str, dict[str, Any]] = {}
+    for stem, rec in data.items():
+        if (isinstance(rec, dict) and isinstance(rec.get("key"), str)
+                and isinstance(rec.get("task"), str) and isinstance(rec.get("session"), str)):
+            out[str(stem)] = rec
+    return out
 
 
-def _save_claims(claims: dict[str, str]) -> None:
+def _new_claim(key: str, task: Any) -> dict[str, Any]:
+    return {"key": key, "task": _task_token(task), "session": _SESSION}
+
+
+def _save_claims(claims: dict[str, dict[str, Any]]) -> None:
     path = _claims_path()
     try:
         os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -841,13 +895,18 @@ def _job_key(task: Any) -> str:
 
 
 def _forget_claims(task: Any, *, release_names: bool = True) -> None:
-    """Drop the claims file entries of *task* (its download finished or was cancelled)."""
+    """Drop the claims file entries of *task* (its download finished or was cancelled). An entry
+    that another task has taken over since is that task's and stays."""
     stems = list(getattr(task, "claimed_stems", None) or [])
     if not stems:
         return
+    token = _task_token(task)
     with _CLAIMS_LOCK:
         claims = _load_claims()
-        if any(claims.pop(s, None) is not None for s in stems):
+        mine = [s for s in stems if s in claims and claims[s]["task"] == token]
+        for s in mine:
+            del claims[s]
+        if mine:
             _save_claims(claims)
     if release_names:
         try:
@@ -2752,9 +2811,16 @@ class DownloadService:
             claims = _load_claims()
             # Names this job owns: claimed by an earlier run of it, or by the same download
             # (link, format, range) before the app was restarted.
-            owned = set(getattr(task, "claimed_stems", None) or []) | {s for s, k in claims.items() if k == key}
+            owned = {
+                s for s in (getattr(task, "claimed_stems", None) or [])
+                if s not in claims or not _held_by_another(claims[s], task, app)
+            } | {
+                s for s, rec in claims.items()
+                if rec["key"] == key and not _held_by_another(rec, task, app)
+            }
             if items:
                 held = {s for s, t in _RUN_CLAIMS.items() if t != token}
+                held |= {s for s, rec in claims.items() if _held_by_another(rec, task, app)}
                 keys = [download_guard.stem_key(i) for i in items]
                 if any(k in held for k in keys) or download_guard.find_clash(items, created, owned):
                     # The name is taken by a file that is not this job's (an earlier download, the
@@ -2772,7 +2838,7 @@ class DownloadService:
                 for item in items:
                     k = download_guard.stem_key(item)
                     _RUN_CLAIMS[k] = token
-                    claims[k] = key
+                    claims[k] = _new_claim(key, task)
                     if k not in owned and hasattr(task, "claimed_stems"):
                         task.claimed_stems.append(k)
                     owned.add(k)
@@ -3247,8 +3313,16 @@ class DownloadService:
         paths = list(getattr(task, "partial_paths", None) or [])
         created = list(getattr(task, "created_paths", None) or [])
         listing = getattr(task, "_start_listing", None) or frozenset()
+        token = _task_token(task)
+        with _CLAIMS_LOCK:
+            claims = _load_claims()
         for dest in paths:
             for leftover in partial_download_files(dest, paths):
+                # A partial that another task has taken over (its claim is written under that
+                # task) is not this task's to delete, whatever name this task once announced.
+                other = claims.get(download_guard.path_stem(leftover))
+                if other is not None and other["task"] != token:
+                    continue
                 # A file that was in the folder before the run and that the job did not
                 # create is somebody else's, even when its name matches an announced one.
                 if download_guard.norm(leftover) in listing and not download_guard.is_own(leftover, created):
@@ -3262,6 +3336,9 @@ class DownloadService:
                     )
         # The audio sources a cancelled audio download had fetched but not converted.
         for source in list(getattr(task, "pending_sources", None) or []):
+            other = claims.get(download_guard.path_stem(source))
+            if other is not None and other["task"] != token:
+                continue
             if download_guard.is_own(source, created) and os.path.isfile(source):
                 try:
                     os.unlink(source)

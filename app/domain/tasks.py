@@ -92,6 +92,8 @@ class VideoDownloadTask:
         # Names (without extension) this job claimed for its output, kept across a pause and
         # recorded in the claims file so the same download resumes its partial after a restart.
         self.claimed_stems: list[str] = []
+        # Id this task writes into its name claims, so only it resumes its own partial.
+        self.claim_token: str = ""
         self._start_listing: frozenset[str] = frozenset()
         # When auto-transcribe-after-download is on, the spawned
         # TranscriptionTask is linked here so the Download row can show
