@@ -675,8 +675,9 @@ def _strip_fillers(text: str, pattern: re.Pattern[str]) -> str:
     cleaned = re.sub(r"([,;:])(?:\s*[,;:])+", r"\1", cleaned)
     cleaned = re.sub(r"[,;:]\s*([.!?…])", r"\1", cleaned)
     cleaned = re.sub(r"([.!?…])\s*[,;:]", r"\1", cleaned)
-    # A dash pair that framed the filler: "so - um - then" -> "so - then".
-    cleaned = re.sub(r"([-–—])(?:\s+[-–—])+(?=\s)", r"\1", cleaned)
+    # A dash pair that framed the filler: "so - um - then" -> "so - then",
+    # "hello—um—world" -> "hello—world" (the dashes may touch the words).
+    cleaned = re.sub(r"([-–—])(?:\s*[-–—])+", r"\1", cleaned)
     # A quote or bracket that opened on the filler: '"Um, hello"' -> '"hello"'.
     cleaned = re.sub(r"(^|\s)([\"“«(\[])\s*[,;:]\s*", r"\1\2", cleaned)
     cleaned = re.sub(r"\s{2,}", " ", cleaned).strip()

@@ -256,6 +256,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Hallucination checks no longer crash on a malformed speech interval from the voice-activity detector; the bad entry is skipped; known phantom phrases are also matched when wrapped in invisible text-direction marks.
 - A restart that carries the --wait-for-pid option more than once now strips every copy, so none of them reaches the next start.
 - Importing an oTranscribe file (.otr) keeps the words apart where the editor had a line break inside a paragraph; the exported subtitle no longer reads "line oneline two".
+- Remove fillers in the transcript viewer also tidies a dash pair that framed the filler when the dashes touch the words ("hello—um—world" becomes "hello—world" instead of keeping a doubled dash).
 
 ## [2.2.0] — 2026-10-22
 
