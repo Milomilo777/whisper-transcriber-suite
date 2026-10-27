@@ -304,9 +304,12 @@ def _save(h: Any, dlg: Any) -> dict[str, Any]:
 def test_tk_picker_sits_in_app_behaviour_and_lists_the_catalogs(harness: Any, locales: Path) -> None:
     write_catalog(locales, "de", "reviewed")
     write_catalog(locales, "fr", "machine")
-    write_catalog(locales, "ar", "reviewed")  # right to left: offered on Windows only
+    write_catalog(locales, "ar", "reviewed")  # right to left: offered where rtl_language_offered()
     dlg = harness.make()
-    rtl = ["العربية"] if sys.platform == "win32" else []
+    from app.theme import bidi_display
+    # Windows, macOS and Linux with arabic-reshaper and python-bidi offer Arabic (Linux shapes it;
+    # that is pinned off here and tested in tests/test_rtl_shaping.py); elsewhere it is not listed.
+    rtl = [bidi_display.ltr_base("العربية")] if i18n.rtl_language_offered("ar") else []
     assert _values(dlg) == [AUTO_LABEL, "Deutsch", "English", "Français", *rtl]
     assert dlg._ui_language_display.get() == AUTO_LABEL
     assert str(dlg._ui_language_combo.cget("state")) == "readonly"
