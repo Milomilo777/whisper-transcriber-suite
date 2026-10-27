@@ -437,7 +437,7 @@ def plan_chunks(
         transcript. Windows past the real end of file produce empty slices,
         which the caller detects (and stops on).
     """
-    if chunk_seconds <= 0:
+    if not chunk_seconds > 0:  # catches 0, negative AND NaN (NaN > 0 is False)
         chunk_seconds = 480.0
     if duration <= 0:
         if not chunk_when_unknown:

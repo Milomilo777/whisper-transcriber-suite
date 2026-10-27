@@ -272,6 +272,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Voice Clone: a job cancelled before its first piece was finished can offer its kept reference clips again after a restart, so it continues with the same voice.
 - Voice Clone: when a long text with no spaces is cut into pieces, a flag emoji is no longer split in half across two pieces.
 - Cloud transcription (Gemini): an empty utterance line no longer adds a junk "]" subtitle cue.
+- Cloud transcription: a chunk length set to "nan" in a hand-edited config falls back to the default window instead of producing an empty transcript.
 
 ## [2.2.0] — 2026-10-22
 

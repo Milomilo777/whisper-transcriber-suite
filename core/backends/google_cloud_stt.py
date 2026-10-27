@@ -312,7 +312,7 @@ def plan_chunks(
     ``chunk_when_unknown=False`` to keep the single whole-file ``(0.0, 0.0)``
     request (its ``-ss/-t``-free slice means "to end of file").
     """
-    if chunk_seconds <= 0:
+    if not chunk_seconds > 0:  # catches 0, negative AND NaN (NaN > 0 is False)
         chunk_seconds = DEFAULT_CHUNK_SECONDS
     if duration <= 0:
         if not chunk_when_unknown:
