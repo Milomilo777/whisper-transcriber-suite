@@ -901,7 +901,11 @@ the job did not create it (or another running job holds the name), the download 
 entry names the new file. A name counts as the job's own when an earlier run of the same task claimed it, or
 when the claims file (`download_claims.json` in the user data folder) holds it for the same download (link,
 format choice and time range) from before an app restart; then the partial is resumed under its own name
-(possibly numbered). Names held by running jobs are kept in a registry checked under one lock with the file
+(possibly numbered). Each claim records its task, the app run, its time and the files the stopped run left.
+Only that task continues it while the task is running, paused or queued; a claim is honoured only while an
+unfinished piece of it is still on disk and it is under 14 days old, so a file the user saves later under
+the same name is never taken for the job's own. Cancel never deletes a partial whose claim another task
+holds. Names held by running jobs are kept in a registry checked under one lock with the file
 system, so two jobs with one title never choose the same name. If the plan pass itself fails, the real run
 goes ahead guarded by a snapshot of the folder taken after the name was chosen: "already downloaded",
 `Destination` or the audio target naming a file that is not the job's stops the run with a message (no
@@ -920,10 +924,10 @@ other download reported as this job's result.
 silently reusing the old file. Each download starts with one extra metadata request (a few seconds). Every
 download passes `--no-playlist`, so a video link inside a playlist is one item; a link that is a playlist
 page can still list several items, which are planned and guarded one by one (all get the same number). The
-subtitle phase writes its files before the plan and under the plain name, so a numbered video can sit beside
-subtitles of the plain name. Not covered: a file that appears after the name was chosen is only caught when
-yt-dlp announces it; the extras the subtitle phase writes (`.txt`, `.otr`, `.docx`) still overwrite files of
-the same name.
+subtitle phase runs the plan and chooses the number first, so the captions and their extras (`.txt`, `.otr`,
+`.docx`) carry the video's `Title (N)` name; the plan is asked for twice when subtitles are on. Not covered: a
+file that appears after the name was chosen is only caught when yt-dlp announces it; a second running copy of
+the app cannot tell that the first holds a claim.
 
 ## 0020 — Apple-silicon engine: mlx-whisper, chosen automatically on M-series Macs
 
