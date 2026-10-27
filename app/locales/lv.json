@@ -1070,7 +1070,7 @@
     "Source: {name}": "Avots: {name}",
     "Sources": "Avoti",
     "Spanish": "Spāņu",
-    "Speaker detection failed — the transcript was saved without speaker labels.": "Runātāju noteikšana neizdevās — transkripts saglabāts bez runātāju atzīmēm.",
+    "Speaker detection failed — the transcript was saved without speaker labels.": "Runātāju identificēšana neizdevās — transkripts saglabāts bez runātāju atzīmēm.",
     "Speaker diarisation (sherpa-onnx, no HF token)": "Runātāju diarizācija (sherpa-onnx, bez HF žetona)",
     "Speaker rename — rewrites every same-labelled segment": "Runātāja pārdēvēšana — pārraksta visus segmentus ar to pašu etiķeti",
     "Speakers:": "Runātāji:",
