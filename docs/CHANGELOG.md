@@ -249,6 +249,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   chosen audio format (MP3, M4A, AAC, Opus, FLAC or WAV) and deletes the video; parts of a series work the same
   way. Pages that have the MP3 still download it directly.
 - When speaker detection fails, the result card now says the transcript was saved without speaker labels (before, only the log showed it).
+- Identify speakers no longer looks frozen during the first part of a long file: the progress bar keeps moving while the speaker model is still segmenting the audio.
 
 ## [2.2.0] — 2026-10-22
 
