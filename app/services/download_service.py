@@ -2877,6 +2877,7 @@ class DownloadService:
                 for item in items:
                     k = download_guard.stem_key(item)
                     _RUN_CLAIMS[k] = token
+                    claims.pop(k, None)                 # re-insert: the newest claims sit last, the trim keeps them
                     claims[k] = _new_claim(key, task)
                     if k not in owned and hasattr(task, "claimed_stems"):
                         task.claimed_stems.append(k)

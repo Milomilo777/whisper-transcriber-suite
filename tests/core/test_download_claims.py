@@ -98,3 +98,22 @@ def test_a_fresh_claim_of_an_earlier_app_run_still_resumes(env, monkeypatch):   
     rc, _e, _l, saved, _f = _run(svc, _video(folder))
     assert rc == 0 and saved == str(folder / "Title A.mp4")
     assert (folder / "Title A.mp4").read_bytes().startswith(b"first half|video:")
+
+
+def test_a_claim_that_was_just_updated_survives_the_trim(env, monkeypatch):   # noqa: F811
+    import time
+
+    svc, folder, _ = env
+    monkeypatch.setenv("FAKE_YTDLP_DIE_PART", "1")
+    task = _video(folder)
+    _run(svc, task)
+    path = ds._claims_path()
+    claims = json.loads(path.read_text(encoding="utf-8"))
+    (stem,) = claims
+    filler = {"key": "other", "task": "t", "session": "s", "created": time.time(), "files": []}
+    claims.update({f"filler-{i}": dict(filler) for i in range(200)})   # the real entry is the oldest
+    path.write_text(json.dumps(claims), encoding="utf-8")
+    _run(svc, task)                                                    # the paused task is resumed (and dies again)
+    kept = json.loads(path.read_text(encoding="utf-8"))
+    assert stem in kept and len(kept) == 200
+    assert "filler-0" not in kept                                      # the oldest unrelated entry went instead
