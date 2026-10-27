@@ -19,13 +19,28 @@ from dataclasses import dataclass
 from typing import Any, Callable, Mapping
 
 from .._gc_import_guard import gc_disabled_import
+from . import mlx_whisper_be as _mlx
 
 # (friendly label, transcribe_backend value) — also the display order. Offline
 # engines stay first; the two cloud options spell out their auth model so a
 # non-technical user can tell them apart (a pasted key vs a downloaded file).
 # Local engines first; the two optional cloud engines (they upload audio and
 # almost nobody uses them) sit at the bottom of both pickers.
-ENGINE_CHOICES: list[tuple[str, str]] = [
+_APPLE_SILICON_CHOICE = (
+    "Apple silicon (MLX) — offline, fast on M-series Macs",
+    "mlx_whisper",
+)
+
+
+def engine_choices(apple_silicon: bool) -> list[tuple[str, str]]:
+    """The picker entries; the MLX engine is listed only on an Apple-silicon Mac."""
+    choices = list(_BASE_CHOICES)
+    if apple_silicon:
+        choices.insert(1, _APPLE_SILICON_CHOICE)
+    return choices
+
+
+_BASE_CHOICES: list[tuple[str, str]] = [
     ("Faster-Whisper — offline, default", "faster_whisper"),
     ("whisper.cpp — offline, low-end CPUs", "whisper_cpp"),
     (
@@ -38,6 +53,7 @@ ENGINE_CHOICES: list[tuple[str, str]] = [
         "google_cloud_stt",
     ),
 ]
+ENGINE_CHOICES: list[tuple[str, str]] = engine_choices(_mlx.is_apple_silicon())
 LABEL_TO_VALUE: dict[str, str] = {label: value for label, value in ENGINE_CHOICES}
 VALUE_TO_LABEL: dict[str, str] = {value: label for label, value in ENGINE_CHOICES}
 KNOWN_ENGINES: frozenset[str] = frozenset(value for _label, value in ENGINE_CHOICES)
@@ -98,6 +114,10 @@ def default_engine(cfg: Mapping[str, Any] | None = None) -> str:
     explicit = str((cfg or {}).get("gcloud_stt_credentials_json") or "").strip()
     if explicit and os.path.isfile(explicit):
         return "google_cloud_stt"
+    if cfg is not None and _mlx.auto_selected(cfg):
+        # An M-series Mac with the Apple-silicon engine usable (core.config applies the
+        # same rule to a loaded config); everywhere else this stays faster-whisper.
+        return "mlx_whisper"
     return FALLBACK_ENGINE
 
 
@@ -190,6 +210,39 @@ def _faster_whisper_status_deep(cfg: Mapping[str, Any]) -> EngineStatus:
     if not _faster_whisper_model_present(cfg):
         return EngineStatus("faster_whisper", False, "Model not downloaded yet")
     return EngineStatus("faster_whisper", True, "")
+
+
+def _mlx_status_light(cfg: Mapping[str, Any]) -> EngineStatus:
+    """Cheap status: the package is on disk and the model has an MLX twin (no import)."""
+    if not _mlx.is_apple_silicon():
+        return EngineStatus("mlx_whisper", False, _mlx.availability_reason(), blocked=True)
+    if not _mlx.package_installed():
+        return EngineStatus("mlx_whisper", False, "mlx-whisper Python package not installed",
+                            blocked=True)
+    if not _mlx.supports_model(cfg):
+        return EngineStatus("mlx_whisper", False,
+                            "this Whisper model has no Apple-silicon version", blocked=True)
+    if _mlx.model_present(cfg):
+        return EngineStatus("mlx_whisper", True, "")
+    size = ""
+    try:
+        from core.model_manager import _fmt_bytes
+
+        size = f" (about {_fmt_bytes(_mlx.approx_bytes_for(cfg))})"
+    except Exception:  # noqa: BLE001 -- a size hint must never break the probe
+        size = ""
+    return EngineStatus("mlx_whisper", True, f"model downloads on first run{size}")
+
+
+def _mlx_status_deep(cfg: Mapping[str, Any]) -> EngineStatus:
+    """Honest readiness: the package must actually import."""
+    st = _mlx_status_light(cfg)
+    if st.blocked:
+        return st
+    if not _mlx.package_importable():
+        return EngineStatus("mlx_whisper", False, "mlx-whisper could not be loaded",
+                            blocked=True)
+    return st
 
 
 def _whisper_cpp_status(cfg: Mapping[str, Any]) -> EngineStatus:
@@ -316,6 +369,7 @@ def _google_cloud_stt_status(cfg: Mapping[str, Any]) -> EngineStatus:
 
 _PROBES: dict[str, Callable[[Mapping[str, Any]], EngineStatus]] = {
     "faster_whisper": _faster_whisper_status_deep,
+    "mlx_whisper": _mlx_status_deep,
     "whisper_cpp": _whisper_cpp_status,
     "cloud_stt": _cloud_stt_status,
     "google_cloud_stt": _google_cloud_stt_status,
@@ -350,6 +404,8 @@ def engine_status(value: Any, cfg: Mapping[str, Any], *, deep: bool = True) -> E
             return _faster_whisper_status(cfg)
         if engine == "nvidia_asr":
             return _nvidia_asr_light_status()
+        if engine == "mlx_whisper":
+            return _mlx_status_light(cfg)
         return EngineStatus(engine, True, "")
     probe = _PROBES.get(engine)
     return probe(cfg) if probe else EngineStatus(engine, True, "")

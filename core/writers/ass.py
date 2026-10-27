@@ -114,11 +114,16 @@ def escape_ass_text(text: str) -> str:
 
 
 def _speaker_name(seg: dict) -> str:
-    """The ASS *Name* field — commas would shift every later field."""
+    """The ASS *Name* field — commas would shift every later field.
+
+    Embedded whitespace is collapsed too: a newline inside a hand-edited
+    label would split the Dialogue (one event per physical line) into a
+    broken event plus a garbage line.
+    """
     raw = seg.get("speaker") if isinstance(seg, dict) else None
     if raw in (None, ""):
         return ""
-    return replace_lone_surrogates(str(raw).strip()).replace(",", ";")
+    return " ".join(replace_lone_surrogates(str(raw)).split()).replace(",", ";")
 
 
 def _karaoke_payload(seg: dict) -> str:

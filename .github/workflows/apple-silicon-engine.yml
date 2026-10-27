@@ -1,0 +1,83 @@
+name: Apple-silicon engine check
+
+# TEST job, not a build: no .app, no .dmg, nothing is uploaded or published.
+# Runs the MLX transcription engine (core/backends/mlx_whisper_be.py) on a REAL M-series chip,
+# the only Apple silicon we have access to (macos-14 is an arm64 runner). It installs the engine
+# like the arm64 macOS build would, downloads the smallest model through the app's own download
+# code, transcribes a spoken sentence made with the Mac's `say`, and checks the transcript, the
+# segment times and the word times. The wall time is printed next to faster-whisper (CPU, int8)
+# on the same file in the job summary. See tools/apple_silicon_engine_check.py.
+#
+# Manual dispatch, or a push to a branch named apple-silicon-*. Never runs on master.
+on:
+  workflow_dispatch:
+  push:
+    branches: ["apple-silicon-*"]
+
+permissions:
+  contents: read
+
+jobs:
+  engine:
+    name: MLX engine on Apple silicon (${{ matrix.label }})
+    runs-on: macos-14
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Same pins as the shipped macOS build (constraints-macos.txt): shows whether the
+          # MLX packages fit next to numpy 1.26.4 / onnxruntime 1.19.2 / av<19.
+          - label: release pins
+            constrained: "yes"
+          # Latest releases of everything: shows whether the engine itself works.
+          - label: latest packages
+            constrained: "no"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Machine
+        run: |
+          uname -m
+          sw_vers
+          python -c "import platform; print(platform.machine(), platform.python_version())"
+
+      # App dependencies as the slim macOS build installs them, then the arm64-only extras.
+      # mlx-whisper goes in with --no-deps: its metadata asks for torch, which it never imports
+      # for transcription (the script fails if torch shows up in sys.modules).
+      - name: Install the app and the engine
+        run: |
+          python -m pip install --upgrade pip
+          grep -viE '^\s*(pywhispercpp|stable-ts)' requirements.txt > requirements.slim.txt
+          if [ "${{ matrix.constrained }}" = "yes" ]; then
+            pip install --prefer-binary -c platform/macos/pyinstaller/constraints-macos.txt \
+              -r requirements.slim.txt
+            pip install --prefer-binary -c platform/macos/pyinstaller/constraints-macos.txt \
+              -r platform/macos/pyinstaller/requirements-apple-silicon.txt
+          else
+            pip install --prefer-binary -r requirements.slim.txt
+            pip install --prefer-binary -r platform/macos/pyinstaller/requirements-apple-silicon.txt
+          fi
+          pip install --no-deps mlx-whisper==0.4.3
+          pip check || true
+          pip freeze | grep -iE '^(mlx|numpy|numba|llvmlite|scipy|tiktoken|torch|av|faster|ctranslate2|onnxruntime|huggingface)'
+
+      # A public-domain test clip: one sentence spoken by the Mac's own voice, 16 kHz mono WAV.
+      - name: Make the test clip with say
+        run: |
+          say -o "$RUNNER_TEMP/clip.aiff" "The quick brown fox jumps over the lazy dog. Apple silicon runs this transcription engine."
+          afconvert -f WAVE -d LEI16@16000 -c 1 "$RUNNER_TEMP/clip.aiff" "$RUNNER_TEMP/clip.wav"
+          ls -l "$RUNNER_TEMP/clip.wav"
+
+      - name: Unit tests of the engine (fakes)
+        run: |
+          pip install pytest pytest-timeout responses
+          python -m pytest tests/core/test_mlx_whisper_backend.py -q -p no:cacheprovider
+
+      - name: Transcribe on the Apple GPU and compare with faster-whisper
+        run: python -u tools/apple_silicon_engine_check.py "$RUNNER_TEMP/clip.wav" --model tiny

@@ -39,7 +39,7 @@ from typing import Any
 
 from app import rtl_layout
 from app.dpi import px
-from app.i18n import N_, _, ngettext, pgettext, translate
+from app.i18n import N_, _, display, ngettext, pgettext, translate
 from app.theme import script_fonts
 from app.widgets.error_dialog import show_error
 from app.widgets.platform import open_async
@@ -539,7 +539,7 @@ def _samples_changed_status(app: Any, untick: bool) -> str:
     status = ngettext("{n} reference sample(s).", "{n} reference sample(s).", count)
     if untick:
         status += " " + _("The clips changed: tick the permission box again.")
-    return status
+    return display(status)  # joined sentences: shaped once as one line (Linux right to left)
 
 
 def _save_prefs(app: Any) -> None:
@@ -1751,7 +1751,7 @@ def _generate_done(app: Any, result: dict[str, Any], play: bool = False) -> None
     warning = result.get("warning") or ""
     if warning:
         status += " " + _("Warning: the consent record was not saved (see the log).")
-    app.vc_status_var.set(status)
+    app.vc_status_var.set(display(status))
     app.log(f"Text to voice finished: {app.vc_last_output}")
     if warning:
         app.log(warning)
@@ -1783,10 +1783,10 @@ def _generate_failed(app: Any, message: str,
         app.vc_status_var.set(_("Not started: {error}", error=message))
         show_error(app, _("Running in another window"), message)
         return
-    app.vc_status_var.set(_("Failed.") + _kept_text(kept))
+    app.vc_status_var.set(display(_("Failed.") + _kept_text(kept)))
     show_error(
         app, _("Generation failed"), message,
-        detail=(
+        detail=display(
             _("If this looks like a network or download problem, check your "
               "internet connection, then click Generate again to retry.")
             + (" " + _("The finished pieces are kept; the same text and voice "
@@ -1798,7 +1798,7 @@ def _generate_failed(app: Any, message: str,
 def _generate_cancelled(app: Any, kept: "tuple[int, int] | None" = None) -> None:
     _finish(app)
     app.vc_plan = None
-    app.vc_status_var.set(_("Cancelled.") + _kept_text(kept))
+    app.vc_status_var.set(display(_("Cancelled.") + _kept_text(kept)))
 
 
 def _cancel_generate(app: Any) -> None:

@@ -112,7 +112,7 @@ No file at hand? **Try it now (sample clip)** transcribes an 18-second public-do
   (default), whisper.cpp and NVIDIA Parakeet, for the many languages Whisper
   recognises. Uses an NVIDIA GPU through CUDA when it can, otherwise the CPU.
 - **The app in your language:** menus, buttons and messages in 42 languages
-  (machine-translated, marked as such; corrections welcome). It follows your
+  (machine-translated; corrections welcome). It follows your
   system language, or you pick one in Advanced settings. Persian, Arabic and
   Hebrew are offered on Windows for now.
 - **14 output formats:** SRT, VTT, ASS, TSV, TXT, JSON, LRC, Markdown, DOCX and
@@ -134,6 +134,9 @@ No file at hand? **Try it now (sample clip)** transcribes an 18-second public-do
 - **Live:** transcribe a microphone, or the system audio on Windows, as it
   happens ([docs/LIVE.md](docs/LIVE.md)).
 - **Batch queue and watched folder** for many files.
+- **Hand-offs when a job finishes** (optional, in Advanced): a Markdown note copied into an Obsidian vault
+  folder, and a webhook to tools such as n8n, with an optional secret
+  ([docs/CONFIG.md](docs/CONFIG.md)).
 - **Local-network mode:** a transcription page and an OpenAI-compatible API for
   the other devices on your network ([docs/SERVER.md](docs/SERVER.md)).
 - **Optional, off by default:** AI tools for a finished transcript (summary,
@@ -341,8 +344,8 @@ Slovenčina, Magyar, Română, Български, Ελληνικά, Svenska, Da
 Slovenščina, Lietuvių, 简体中文, 繁體中文, 日本語, 한국어, Tiếng Việt, ไทย, Bahasa Indonesia, Bahasa Melayu,
 हिन्दी, العربية, فارسی, עברית, Latviešu, Català, বাংলা and Filipino.
 
-- Hindi was reviewed by a native speaker; the other 40 translations are machine-made and marked as such in
-  the picker. Corrections are welcome: [docs/TRANSLATING.md](docs/TRANSLATING.md).
+- Hindi was reviewed by a native speaker; the other 40 translations are machine-made.
+  Corrections are welcome: [docs/TRANSLATING.md](docs/TRANSLATING.md).
 - The app follows your system's display language, or you pick one in **Advanced settings → App behaviour**.
 - Persian, Arabic and Hebrew are offered on Windows, where the whole window mirrors right to left: tabs, lists,
   scroll bars, dialogs, tick boxes and the viewer's panes. Paths, links, times and numbers stay left to right.
@@ -661,7 +664,8 @@ The app does use the network for:
   only tells you about a new version;
 - usage statistics, on by default, after each transcription that ends (finished, failed or cancelled): model,
   language, durations, word count, app version, operating system, CPU and
-  memory size, and region, never the file's name. Turn them off under
+  memory size, region and a random install id (made by the app, not derived from your name, computer or
+  files, deleted when you turn the statistics off), never the file's name. Turn them off under
   **Help → Usage statistics**.
 
 Audio or transcript text is sent only if you choose a cloud engine (Gemini API

@@ -11,7 +11,7 @@ from typing import Any
 
 import pytest
 
-from app import i18n
+from app import i18n, rtl_shaping
 
 
 @pytest.fixture(autouse=True)
@@ -267,6 +267,7 @@ def test_direction_follows_the_table(locales: Path, monkeypatch: pytest.MonkeyPa
     write_catalog(locales, "fa", {"Save": "ذخیره"})
     assert i18n.current_direction() == "ltr"
     monkeypatch.setattr(sys, "platform", "linux")  # no Windows direction marks (tests/test_i18n_rtl.py)
+    monkeypatch.setattr(rtl_shaping, "available", lambda: False)  # nor Linux shaping (test_rtl_shaping.py)
     i18n.set_language("fa")
     assert i18n.current_direction() == "rtl"
     assert i18n._("Save") == "ذخیره"
@@ -353,13 +354,18 @@ def test_available_offers_rtl_catalogs_only_once_the_layout_is_mirrored(
     assert i18n.resolve_language("he", os_language=None, available=i18n.catalog_statuses()) == "he"
 
 
-def test_rtl_is_offered_on_windows_and_macos_only(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_rtl_is_offered_on_windows_and_macos_and_on_linux_with_shaping(
+        monkeypatch: pytest.MonkeyPatch) -> None:
     # Adding a platform offers Arabic, Persian and Hebrew there; do it only after checking how a
-    # right-to-left catalog looks on that platform. Linux (Tk 8.6 on X11) cannot join the letters.
+    # right-to-left catalog looks on that platform. Linux (Tk 8.6 on X11) cannot join the letters
+    # itself: it is offered only while the display shaping (app.rtl_shaping) can run.
     assert i18n.RTL_LAYOUT_READY is None
     assert i18n.RTL_PLATFORMS == frozenset({"win32", "darwin"})
     monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.setattr(rtl_shaping, "available", lambda: False)
     assert i18n.rtl_layout_ready() is False
+    monkeypatch.setattr(rtl_shaping, "available", lambda: True)
+    assert i18n.rtl_layout_ready() is True
 
 
 # --- R5 choosing the language --------------------------------------------------------------

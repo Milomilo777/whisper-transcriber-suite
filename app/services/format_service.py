@@ -291,6 +291,16 @@ class FormatService:
                     "quality": f.quality,
                     "url": f.download_url,
                 }
+        # The original-quality file (sometimes 4K) goes last so it is never the
+        # preselected choice; core.integrations.smtv supports mode "video-max".
+        for f in episode.files:
+            if f.quality == "max":
+                video_map[_("Original (max)")] = {
+                    "kind": "smtv",
+                    "mode": "video-max",
+                    "quality": f.quality,
+                    "url": f.download_url,
+                }
         if not audio_map:
             # No mp3 on the page yet (the site adds it weeks after the video): the
             # audio-only download takes the sound out of a video file instead.

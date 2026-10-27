@@ -129,6 +129,7 @@ def open_chooser(app: Any) -> None:
     box.see(current)
     if sys.platform.startswith("win"):
         _use_ui_font(box)
+    box.configure(width=fitted_width(box, [box.get(i) for i in range(box.size())]))
 
     def close() -> None:
         app._ui_language_chooser = None
@@ -154,6 +155,24 @@ def open_chooser(app: Any) -> None:
     place_over(dlg, app)
     box.focus_set()
     dlg.grab_set()
+
+
+def fitted_width(box: tk.Listbox, texts: list[str], floor: int = 36, cap: int = 64) -> int:
+    """Listbox width in characters so the longest of ``texts`` is not cut off.
+
+    Never below ``floor`` (the old fixed width, so short lists look as before). Measured in the
+    box's own font, because wide scripts and long names (for example the endonyms on Windows)
+    need more room than their character count says.
+    """
+    from tkinter import font as tkfont
+
+    try:
+        font = tkfont.Font(root=box, font=box.cget("font"))
+        zero = max(1, font.measure("0"))
+        longest = max((font.measure(t) for t in texts), default=0)
+    except tk.TclError:
+        return floor
+    return max(floor, min(cap, -(-longest // zero) + 2))
 
 
 def _use_ui_font(box: tk.Listbox) -> None:

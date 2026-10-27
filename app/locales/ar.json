@@ -1,8 +1,8 @@
 {
   "_meta": {
     "code": "ar",
-    "name": "العربية",
     "direction": "rtl",
+    "name": "العربية",
     "plural": "ar",
     "status": "machine"
   },
@@ -91,6 +91,7 @@
     "All files": "كل الملفات",
     "Already downloaded.": "نُزِّل بالفعل.",
     "Already on this computer.": "موجود بالفعل على هذا الحاسوب.",
+    "Also a random install id made by the app; turning usage statistics off deletes it": "وكذلك معرّف تثبيت عشوائي ينشئه التطبيق؛ يُحذف عند إيقاف إحصاءات الاستخدام",
     "Always download and transcribe": "التنزيل والتفريغ دائمًا",
     "American accent": "لكنة أمريكية",
     "Amharic": "الأمهرية",
@@ -1080,7 +1081,7 @@
     "Send": "إرسال",
     "Send usage statistics (on by default; also in the Help menu)": "إرسال إحصاءات الاستخدام (مفعَّل افتراضيًا؛ وأيضًا في قائمة «تعليمات»)",
     "Sending…": "جارٍ الإرسال…",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "تُرسَل بعد كل تفريغ منتهٍ؛ مفعَّلة افتراضيًا. التبديل: «تعليمات» ← «إحصاءات الاستخدام»، أو «متقدم» ← «سلوك التطبيق» (الإعداد: telemetry_opt_in)",
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "تُرسَل بعد كل تفريغ، بما في ذلك الفاشل والملغى؛ مفعَّلة افتراضيًا. التبديل: «تعليمات» ← «إحصاءات الاستخدام»، أو «متقدم» ← «سلوك التطبيق» (الإعداد: telemetry_opt_in)",
     "Sent in plain text when the URL starts with http://": "يُرسَل كنص عادي عندما يبدأ الرابط بـ http://",
     "Sent with: {system}": "أُرسل مع: {system}",
     "Serbian": "الصربية",
@@ -1238,7 +1239,7 @@
     "The exact model id your endpoint expects, e.g. gpt-4o-mini for OpenAI, openai/gpt-oss-120b for Groq, or a locally-loaded model's name for Ollama/LM Studio. Different accounts/servers have different models available.": "معرّف النموذج بالضبط الذي تتوقعه نقطة النهاية لديك، مثل gpt-4o-mini لـ OpenAI أو openai/gpt-oss-120b لـ Groq أو اسم نموذج محمّل محليًا لـ Ollama/LM Studio. تختلف النماذج المتاحة بين الحسابات والخوادم.",
     "The finished pieces are kept; the same text and voice continue from there.": "يُحتفظ بالأجزاء المنتهية؛ ويُكمل النص والصوت نفساهما من هناك.",
     "The interface language changes the next time you start the app.": "تتغير لغة الواجهة في المرة القادمة التي تشغّل فيها التطبيق.",
-    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A language marked \"machine translation\" was translated by a computer and not yet checked by a person. A change applies the next time you start the app.": "لغة قوائم التطبيق وأزراره ورسائله. يستخدم الخيار «تلقائي» لغة نظامك عند توفر ترجمة لها، وإلا فالإنجليزية. اللغة الموسومة بـ«ترجمة آلية» ترجمها حاسوب ولم يراجعها شخص بعد. يُطبَّق التغيير في المرة القادمة التي تشغّل فيها التطبيق.",
+    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A change applies the next time you start the app.": "لغة قوائم التطبيق وأزراره ورسائله. يستخدم الخيار «تلقائي» لغة نظامك عند توفر ترجمة لها، وإلا فالإنجليزية. يُطبَّق التغيير في المرة القادمة التي تشغّل فيها التطبيق.",
     "The live model '{model}' is not in the model list. The Transcribe tab's model ({main_model}) understands English only, so it cannot stand in for it. Check the internet connection and press Start again, or pick another model in the Model list.": "النموذج المباشر '{model}' غير موجود في قائمة النماذج. نموذج علامة التبويب «تفريغ» ({main_model}) لا يفهم إلا الإنجليزية، لذا لا يمكنه أن يحل محله. تحقق من الاتصال بالإنترنت واضغط «بدء» مرة أخرى، أو اختر نموذجًا آخر من قائمة النماذج.",
     "The live session could not be started.": "تعذَّر بدء الجلسة المباشرة.",
     "The live transcript is empty.": "النص المُفرَّغ المباشر فارغ.",
@@ -1604,6 +1605,8 @@
       "نحو {n} ثانية",
       "نحو {n} ثانية"
     ],
+    "about {size} GB": "حوالي {size} GB",
+    "about {size} MB": "حوالي {size} MB",
     "about {speed}": "حوالي {speed}",
     "allowed (this computer)": "مسموح به (هذا الحاسوب)",
     "audio done": "من الصوت مكتمل",
@@ -1799,7 +1802,6 @@
       "{languages} و{n} لغة أخرى"
     ],
     "{language} (automatic)": "{language} (تلقائية)",
-    "{language} (machine translation)": "{language} (ترجمة آلية)",
     "{language} (made by the uploader)": "{language} (من إعداد الناشر)",
     "{language} (not sure)": "{language} (غير مؤكد)",
     "{language} speech will come out as wrong English text: made-up words or a rough English translation, not what was said.": "سيخرج الكلام بـ{language} كنص إنجليزي خاطئ: كلمات مختلَقة أو ترجمة إنجليزية تقريبية، لا ما قيل فعلًا.",

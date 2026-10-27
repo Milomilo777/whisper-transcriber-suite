@@ -1,8 +1,8 @@
 {
   "_meta": {
     "code": "hu",
-    "name": "Magyar",
     "direction": "ltr",
+    "name": "Magyar",
     "plural": "one_other",
     "status": "machine"
   },
@@ -83,6 +83,7 @@
     "All files": "Minden fájl",
     "Already downloaded.": "Már letöltve.",
     "Already on this computer.": "Már megvan ezen a számítógépen.",
+    "Also a random install id made by the app; turning usage statistics off deletes it": "Valamint egy véletlenszerű telepítésazonosító, amelyet az alkalmazás hoz létre; a használati statisztika kikapcsolása törli",
     "Always download and transcribe": "Mindig letöltés és átírás",
     "American accent": "Amerikai akcentus",
     "Amharic": "Amhara",
@@ -1012,7 +1013,7 @@
     "Send": "Küldés",
     "Send usage statistics (on by default; also in the Help menu)": "Használati statisztika küldése (alapértelmezés szerint bekapcsolva; a Súgó menüben is)",
     "Sending…": "Küldés…",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Minden befejezett átírás után elküldi; alapértelmezés szerint bekapcsolva. Kapcsoló: Súgó → Használati statisztika, vagy Speciális → Alkalmazás viselkedése (konfiguráció: telemetry_opt_in)",
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Minden átírás után elküldi, a sikertelenek és megszakítottak után is; alapértelmezés szerint bekapcsolva. Kapcsoló: Súgó → Használati statisztika, vagy Speciális → Alkalmazás viselkedése (konfiguráció: telemetry_opt_in)",
     "Sent in plain text when the URL starts with http://": "Egyszerű szövegként kerül elküldésre, ha az URL kezdete: http://",
     "Sent with: {system}": "Elküldve ezzel: {system}",
     "Serbian": "Szerb",
@@ -1162,7 +1163,7 @@
     "The exact model id your endpoint expects, e.g. gpt-4o-mini for OpenAI, openai/gpt-oss-120b for Groq, or a locally-loaded model's name for Ollama/LM Studio. Different accounts/servers have different models available.": "A pontos modellazonosító, amelyet a végpont vár, pl. OpenAI: gpt-4o-mini, Groq: openai/gpt-oss-120b, Ollama/LM Studio: egy helyben betöltött modell neve. A különböző fiókokon és szervereken más modellek érhetők el.",
     "The finished pieces are kept; the same text and voice continue from there.": "Az elkészült részek megmaradnak; ugyanaz a szöveg és hang onnan folytatódik.",
     "The interface language changes the next time you start the app.": "A felület nyelve az alkalmazás következő indításakor változik meg.",
-    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A language marked \"machine translation\" was translated by a computer and not yet checked by a person. A change applies the next time you start the app.": "Az alkalmazás menüinek, gombjainak és üzeneteinek nyelve. Az Automatikus a rendszer nyelvét használja, ha ahhoz elérhető fordítás, egyébként az angolt. A „gépi fordítás” jelölésű nyelvet számítógép fordította, és ember még nem ellenőrizte. A módosítás az alkalmazás következő indításakor lép érvénybe.",
+    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A change applies the next time you start the app.": "Az alkalmazás menüinek, gombjainak és üzeneteinek nyelve. Az Automatikus a rendszer nyelvét használja, ha ahhoz elérhető fordítás, egyébként az angolt. A módosítás az alkalmazás következő indításakor lép érvénybe.",
     "The live model '{model}' is not in the model list. The Transcribe tab's model ({main_model}) understands English only, so it cannot stand in for it. Check the internet connection and press Start again, or pick another model in the Model list.": "A(z) „{model}” élő modell nincs a modell-listában. Az Átírás lap modellje ({main_model}) csak angolul ért, így nem helyettesítheti. Ellenőrizze az internetkapcsolatot, és nyomja meg újra az Indítás gombot, vagy válasszon másik modellt a Modell listában.",
     "The live session could not be started.": "Az élő munkamenet nem indítható el.",
     "The live transcript is empty.": "Az élő átirat üres.",
@@ -1476,6 +1477,8 @@
       "kb. {n} másodperc",
       "kb. {n} másodperc"
     ],
+    "about {size} GB": "kb. {size} GB",
+    "about {size} MB": "kb. {size} MB",
     "about {speed}": "kb. {speed}",
     "allowed (this computer)": "engedélyezve (ez a gép)",
     "audio done": "hanganyag kész",
@@ -1651,7 +1654,6 @@
       "{languages} és még {n}"
     ],
     "{language} (automatic)": "{language} (automatikus)",
-    "{language} (machine translation)": "{language} (gépi fordítás)",
     "{language} (made by the uploader)": "{language} (a feltöltőtől)",
     "{language} (not sure)": "{language} (nem biztos)",
     "{language} speech will come out as wrong English text: made-up words or a rough English translation, not what was said.": "A(z) {language} nyelvű beszéd hibás angol szövegként jelenik meg: kitalált szavak vagy durva angol fordítás, nem az, ami elhangzott.",

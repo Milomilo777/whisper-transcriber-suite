@@ -287,7 +287,18 @@ def test_openai_route_reports_429_with_retry_after(tmp_path, route):
         assert status == 429 and int(retry) >= 1
 
 
-def test_many_concurrent_http_guesses_compare_at_most_limit_plus_one(tmp_path):
+@pytest.mark.parametrize("abort_one", [False, True],
+                         ids=["plain", "one-connection-aborted"])
+def test_many_concurrent_http_guesses_compare_at_most_limit_plus_one(
+        tmp_path, monkeypatch, abort_one):
+    """30 simultaneous wrong guesses: at most limit+1 are compared.
+
+    A client connection can be reset by the OS before the server answers it
+    (WinError 10053 on a Windows CI runner when 30 connects hit the listen
+    backlog at once). That request got no answer, so it proves nothing about
+    the throttle: the client retries it. Every request must end up answered
+    with 401 or 429, and the comparison count stays the strict bound.
+    """
     clock = _Clock()
     compared = []
     from core.server import httpd
@@ -304,11 +315,32 @@ def test_many_concurrent_http_guesses_compare_at_most_limit_plus_one(tmp_path):
         httpd.token_ok = counting
         try:
             statuses: list[int] = []
+            aborted: list[int] = []  # aborts the OS added on its own (seen on Windows)
+            forced: list[int] = []  # the one abort this test injects
             barrier = threading.Barrier(30)
+            real_request = http.client.HTTPConnection.request
+            pending_abort = {"guess7"} if abort_one else set()
+
+            def flaky_request(self, method, url, *a, **kw):
+                tok = (kw.get("headers") or {}).get("X-Auth-Token")
+                if tok in pending_abort:
+                    pending_abort.discard(tok)
+                    forced.append(int(tok[5:]))
+                    raise ConnectionAbortedError(10053, "aborted by test")
+                return real_request(self, method, url, *a, **kw)
+
+            monkeypatch.setattr(http.client.HTTPConnection, "request",
+                                flaky_request)
 
             def guess(n: int) -> None:
                 barrier.wait()
-                statuses.append(_get(srv, "/api/health", f"guess{n}")[0])
+                for _attempt in range(3):
+                    try:
+                        statuses.append(_get(srv, "/api/health",
+                                             f"guess{n}")[0])
+                        return
+                    except (ConnectionError, TimeoutError):
+                        aborted.append(n)  # never reached the throttle
 
             threads = [threading.Thread(target=guess, args=(n,))
                        for n in range(30)]
@@ -318,6 +350,10 @@ def test_many_concurrent_http_guesses_compare_at_most_limit_plus_one(tmp_path):
                 th.join()
         finally:
             httpd.token_ok = real
+    if abort_one:
+        assert forced == [7]  # the injected abort happened, and its guess was answered by a retry
+    assert len(statuses) == 30  # every request was finally answered
+    assert set(statuses) <= {401, 429}
     assert len(compared) <= 6
     assert statuses.count(401) <= 6 and statuses.count(429) >= 24
 

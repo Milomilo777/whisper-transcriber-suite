@@ -76,6 +76,9 @@ def validate(actions: Any) -> list[str]:
         op = a["op"]
         if op in ("click", "move", "scroll") and not all(isinstance(a.get(k), int) for k in ("x", "y")):
             problems.append(f"step {i}: {op} needs integer x and y")
+        # run_step() scrolls up for every dir but the exact "down", so catch typos here.
+        if op == "scroll" and a.get("dir", "down") not in ("up", "down"):
+            problems.append(f"step {i}: scroll dir must be up or down")
         if op == "key" and not (isinstance(a.get("keys"), list) and a["keys"]
                                 and all(isinstance(k, str) and k for k in a["keys"])):
             # A string here was typed character by character by the Windows daemon (2026-10-26).

@@ -243,6 +243,22 @@ def test_parses_legacy_ssa_column_order(tmp_path):
     assert back[0]["speaker"] == "Bob"
 
 
+def test_format_line_with_trailing_comma_still_parses(tmp_path):
+    """A trailing comma on the Format line (a common hand-edit typo) made
+    the declared field list one entry too long, so every Dialogue row came
+    up short in the comma split and the whole file parsed to zero cues."""
+    body = (
+        "[Script Info]\nTitle: t\n\n"
+        "[Events]\n"
+        "Format: Layer, Start, End, Style, Name, MarginL, MarginR, "
+        "MarginV, Effect, Text,\n"
+        "Dialogue: 0,0:00:01.00,0:00:02.00,Default,Spk,0,0,0,,hello\n"
+    )
+    back = convert.parse_to_segments(_write(tmp_path, "t.ass", body))
+    assert [s["text"] for s in back] == ["hello"]
+    assert back[0]["speaker"] == "Spk"
+
+
 def test_comment_lines_are_not_subtitles(tmp_path):
     body = (
         "[Events]\n"

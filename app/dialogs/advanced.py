@@ -28,7 +28,14 @@ from core.backends.availability import (
     format_engine_status,
 )
 from core import offline, subtitle_edit, tts_plan
-from core.config import DEFAULT_CONFIG, NOISY_AUDIO_PRESET, save_config, sync_from_disk
+from core.config import (
+    DEFAULT_CONFIG,
+    NOISY_AUDIO_PRESET,
+    save_config,
+    sync_from_disk,
+    webhook_secret_from_input,
+)
+from core.stats import forget_install_id
 from core.model_manager import (
     DEFAULT_MODEL_SLUG,
     catalog_entry_info,
@@ -306,14 +313,10 @@ def _sort_text(text: str) -> str:
 
 
 def _ui_language_label(lang: i18n.LanguageInfo) -> str:
-    """A picker entry: the language's own name, marked when its catalog is machine translated."""
-    if lang.status == "machine":
-        label = _("{language} (machine translation)", language=lang.endonym)
-    else:
-        label = lang.endonym
-    # macOS draws a line that starts with a right-to-left name right to left ("(machine
-    # translation)" would jump to the left end); Windows and Linux keep left to right.
-    return bidi_display.ltr_base(label)
+    """A picker entry: the language's own name, nothing else."""
+    # macOS draws a line that starts with a right-to-left name right to left; Windows and Linux
+    # keep left to right.
+    return bidi_display.ltr_base(lang.endonym)
 
 
 def _ui_language_choices(current: object = _UI_LANGUAGE_AUTO) -> list[tuple[str, str]]:
@@ -543,6 +546,18 @@ class AdvancedDialog(tk.Toplevel):
         )
         self._subtitle_edit_path = tk.StringVar(
             value=str(cfg.get(subtitle_edit.CONFIG_KEY) or "")
+        )
+        self._obsidian_vault_dir = tk.StringVar(
+            value=str(cfg.get("obsidian_vault_dir") or "")
+        )
+        self._finish_webhook_url = tk.StringVar(
+            value=str(cfg.get("finish_webhook_url") or "")
+        )
+        self._finish_webhook_secret = tk.StringVar(
+            value=str(cfg.get("finish_webhook_secret") or "")
+        )
+        self._finish_webhook_include_text = tk.BooleanVar(
+            value=cfg.get("finish_webhook_include_text") is True
         )
         self._watched_folder = tk.StringVar(
             value=str(cfg.get("watched_folder") or "")
@@ -1012,7 +1027,7 @@ class AdvancedDialog(tk.Toplevel):
             combo.configure(
                 state=(
                     "readonly"
-                    if self._selected_backend() == "faster_whisper"
+                    if self._selected_backend() in ("faster_whisper", "mlx_whisper")
                     else "disabled"
                 )
             )
@@ -1880,6 +1895,7 @@ class AdvancedDialog(tk.Toplevel):
         ).pack(side="left")
         if subtitle_edit.is_supported():
             self._build_subtitle_edit_row(misc)
+        self._build_finish_hooks_rows(misc)
         self._build_ui_language_choice(misc)
         self._build_updates_choice(misc)
         return misc
@@ -1899,9 +1915,7 @@ class AdvancedDialog(tk.Toplevel):
             row,
             _("The language of the app's menus, buttons and messages. Automatic uses the "
               "language of your system when a translation for it is available, "
-              "otherwise English. A language marked \"machine translation\" was translated by a "
-              "computer and not yet checked by a person. A change applies the next time you "
-              "start the app."),
+              "otherwise English. A change applies the next time you start the app."),
         ).pack(side="left")
         self._set_ui_language_fonts()
         combo.bind("<<ComboboxSelected>>", lambda _e: self._set_ui_language_fonts(), add="+")
@@ -1961,6 +1975,50 @@ class AdvancedDialog(tk.Toplevel):
             "Choose SubtitleEdit.exe here only for a portable copy. The "
             "\"Open in Subtitle Edit\" button after a job uses it."),
         ).pack(side="left", padx=(4, 0))
+
+    def _build_finish_hooks_rows(self, parent: ttk.LabelFrame) -> None:
+        """After a job: copy the transcript to an Obsidian folder, notify a web address."""
+        row = ttk.Frame(parent)
+        row.pack(anchor="w", fill="x", padx=8, pady=4)
+        ttk.Label(row, text=_("Copy the transcript to an Obsidian vault folder:")).pack(side="left")
+        ttk.Entry(row, textvariable=self._obsidian_vault_dir, width=30).pack(
+            side="left", padx=(6, 4)
+        )
+        ttk.Button(row, text=_("Browse…"), command=self._browse_obsidian_vault).pack(side="left")
+        help_icon(
+            row,
+            _("Leave empty to turn off. Each finished job adds a Markdown note here; "
+              "existing notes are never replaced."),
+        ).pack(side="left", padx=(4, 0))
+        hook = ttk.Frame(parent)
+        hook.pack(anchor="w", fill="x", padx=8, pady=4)
+        ttk.Label(hook, text=_("Notify a web address when a job finishes:")).pack(side="left")
+        ttk.Entry(hook, textvariable=self._finish_webhook_url, width=30).pack(
+            side="left", padx=(6, 4)
+        )
+        help_icon(
+            hook,
+            _("Leave empty to turn off. Sends the job's name, language, length and saved "
+              "files when it finishes. https only (or http on this computer); "
+              "Work offline stops it."),
+        ).pack(side="left", padx=(4, 0))
+        secret = ttk.Frame(parent)
+        secret.pack(anchor="w", fill="x", padx=24, pady=(0, 4))
+        ttk.Label(secret, text=_("Secret (optional):")).pack(side="left")
+        ttk.Entry(secret, textvariable=self._finish_webhook_secret, show="*", width=24).pack(
+            side="left", padx=(6, 12)
+        )
+        ttk.Checkbutton(
+            secret, text=_("Also send the transcript text"),
+            variable=self._finish_webhook_include_text,
+        ).pack(side="left")
+
+    def _browse_obsidian_vault(self) -> None:
+        from tkinter import filedialog
+        folder = filedialog.askdirectory(
+            parent=self, title=_("Choose your Obsidian vault folder"))
+        if folder:
+            self._obsidian_vault_dir.set(folder)
 
     def _browse_subtitle_edit(self) -> None:
         from tkinter import filedialog
@@ -2414,6 +2472,12 @@ class AdvancedDialog(tk.Toplevel):
             engine_value_for_label(self._backend_display.get()) or "faster_whisper"
         )
         _backend_changed = cfg["transcribe_backend"] != _old_backend
+        if _backend_changed:
+            from core.backends import mlx_whisper_be
+
+            if mlx_whisper_be.is_apple_silicon():
+                # The opt-out from (or back into) the automatic Apple-silicon engine.
+                cfg["apple_silicon_engine"] = cfg["transcribe_backend"] == "mlx_whisper"
         cfg["cloud_stt_api_key"] = self._cloud_api_key.get().strip()
         cfg["cloud_stt_model"] = (
             self._cloud_model.get().strip() or "gemini-3.5-flash"
@@ -2467,6 +2531,7 @@ class AdvancedDialog(tk.Toplevel):
             value = bool(var.get())
             if at_open.get(key) != value:
                 cfg[key] = value
+        forget_install_id(cfg)  # stats off: the stored random id goes
         # Written only when the pick changed here (like the switches above); getattr for the
         # stand-in dialogs of the tests that build no picker.
         ui_language_changed = False
@@ -2483,6 +2548,21 @@ class AdvancedDialog(tk.Toplevel):
             cfg["minimise_to_tray"] = bool(self._minimise_to_tray.get())
         cfg[tts_plan.NO_LIMIT_KEY] = bool(self._tts_no_text_limit.get())
         cfg[subtitle_edit.CONFIG_KEY] = (self._subtitle_edit_path.get() or "").strip()
+        from core import finish_hooks
+        vault = finish_hooks.strip_path_quotes(self._obsidian_vault_dir.get())
+        cfg["obsidian_vault_dir"] = vault
+        resolved = finish_hooks.resolve_vault_dir(vault) if vault else ""
+        if vault and not (resolved and os.path.isdir(resolved)):
+            from tkinter import messagebox
+            messagebox.showwarning(
+                _("Obsidian folder"),
+                _("This folder was not found. No note is written until it exists."),
+                parent=self,
+            )
+        cfg["finish_webhook_url"] = (self._finish_webhook_url.get() or "").strip()
+        cfg["finish_webhook_secret"] = webhook_secret_from_input(
+            self._finish_webhook_secret.get())
+        cfg["finish_webhook_include_text"] = bool(self._finish_webhook_include_text.get())
         new_watched = (self._watched_folder.get() or "").strip()
         new_watched_enabled = bool(self._watched_folder_enabled.get())
         watched_changed = (

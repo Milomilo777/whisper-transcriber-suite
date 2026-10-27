@@ -275,7 +275,12 @@ def parse_route(method: str, raw_path: str) -> Route:
     Unknown paths resolve to ``name="unknown"`` so the handler returns 404.
     Query values are flattened to their first occurrence (single-valued API).
     """
-    split = urllib.parse.urlsplit(raw_path)
+    try:
+        split = urllib.parse.urlsplit(raw_path)
+    except ValueError:
+        # e.g. an absolute-form target with unbalanced IPv6 brackets
+        # ("http://[::1"): urlsplit raises, the request is still answered.
+        return Route(method.upper(), "unknown", "", {})
     path = split.path.rstrip("/") or "/"
     query = {k: (v[0] if v else "")
              for k, v in urllib.parse.parse_qs(split.query).items()}

@@ -22,6 +22,9 @@
  *   - word_count           (total words in the transcript)
  *   - platform_system/_release/_version/_machine/_processor
  *   - cpu_count / mem_total (CPU count / total RAM in bytes)
+ *   - install_id           random per-install id (UUID4) the app creates; lets
+ *                          the maintainer count distinct installs. Not derived
+ *                          from a name, machine or file; absent in older app versions
  *
  * Not stored, not looked up, not forwarded: the network address of the
  * connection. This script reads nothing from the request but the POST body
@@ -56,6 +59,7 @@ $text_limits = array(
     'platform_version'   => 256,
     'platform_machine'   => 32,
     'platform_processor' => 128,
+    'install_id'         => 36,
 );
 
 /**
@@ -149,7 +153,8 @@ try {
             platform_processor TEXT,
             cpu_count INTEGER,
             mem_total INTEGER,
-            country_code TEXT
+            country_code TEXT,
+            install_id TEXT
         )'
     );
 
@@ -173,6 +178,7 @@ try {
         'cpu_count'          => 'INTEGER',
         'mem_total'          => 'INTEGER',
         'country_code'       => 'TEXT',
+        'install_id'         => 'TEXT',
     );
     foreach ($new_columns as $col_name => $col_type) {
         if (!isset($existing_cols[$col_name])) {
@@ -192,14 +198,14 @@ try {
                  word_count, status, program_version, platform_system,
                  platform_node, platform_release, platform_version,
                  platform_machine, platform_processor, cpu_count, mem_total,
-                 country_code)
+                 country_code, install_id)
              VALUES
                 (:server_time, :client_ip, :country_name, :ip_location_json,
                  :file_name, :model, :language, :audio_duration, :transcription_time,
                  :word_count, :status, :program_version, :platform_system,
                  :platform_node, :platform_release, :platform_version,
                  :platform_machine, :platform_processor, :cpu_count, :mem_total,
-                 :country_code)'
+                 :country_code, :install_id)'
         );
         $stmt->bindValue(':server_time', date(DATE_RFC3339));
         // Kept columns from older versions; never filled any more.
@@ -212,7 +218,8 @@ try {
         $stmt->bindValue(':file_name', null, PDO::PARAM_NULL);
         foreach (array('model', 'language', 'status', 'program_version',
                        'platform_system', 'platform_release', 'platform_version',
-                       'platform_machine', 'platform_processor') as $field) {
+                       'platform_machine', 'platform_processor',
+                       'install_id') as $field) {
             $stmt->bindValue(':' . $field, post_text($field, $text_limits[$field]));
         }
         // Upper bounds: ~115 days of audio, 1e9 words, 4096 CPUs, 1 PB RAM.
@@ -253,5 +260,5 @@ if ($recorded) {
     echo "audio_duration, transcription_time, word_count, status, ";
     echo "program_version, platform_system, platform_release, ";
     echo "platform_version, platform_machine, platform_processor, ";
-    echo "cpu_count, mem_total\n";
+    echo "cpu_count, mem_total, install_id\n";
 }

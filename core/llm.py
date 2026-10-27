@@ -50,6 +50,7 @@ import http.client
 import json
 import logging
 import os
+import re
 import threading
 import time
 import urllib.error
@@ -266,9 +267,36 @@ def _summarise_prompt(text: str, max_bullets: int) -> str:
     return (
         f"Summarise the following transcript in at most {max_bullets} "
         "concise bullet points. Keep proper names and technical terms "
-        "verbatim. Do not invent details that aren't in the source.\n\n"
+        "verbatim. Do not invent details that aren't in the source. "
+        "Write plain text only: start each bullet with \"- \" and use no "
+        "Markdown formatting such as ** or #.\n\n"
         f"Transcript:\n\"\"\"\n{text}\n\"\"\""
     )
+
+
+# Bold only as a separate run: a marker glued to a letter, digit or another marker on its outer
+# side (2**3, a**b**c, snake__case) is not bold. "__x__" needs a space inside, so dunder names
+# such as __init__ stay.
+_MD_BOLD_RE = re.compile(
+    r"(?<![\w*])\*\*(?=[^\s*])(.+?)(?<=[^\s*])\*\*(?![\w*])"
+    r"|(?<![\w_])__(?=[^\s_])((?:(?!__)[^\n])*?\s(?:(?!__)[^\n])*?)(?<=[^\s_])__(?![\w_])")
+# Bold italic as a separate run: three markers on each side of whole words, same rule
+# as bold — a run glued to a letter, digit or another marker (2***3, a***b***c) is not emphasis.
+_MD_BOLD_ITALIC_RE = re.compile(r"(?<![\w*])\*\*\*(?=[^\s*])(.+?)(?<=[^\s*])\*\*\*(?![\w*])")
+_MD_HEADING_RE = re.compile(r"^[ \t]*#{1,6}[ \t]+", re.MULTILINE)
+_MD_STAR_BULLET_RE = re.compile(r"^([ \t]*)\*[ \t]+", re.MULTILINE)
+
+
+def plain_summary_text(text: str) -> str:
+    """Drop the Markdown markers some models add although the prompt asks for plain text.
+
+    Bold (``**x**``, ``__x__``) loses its markers, heading hashes at a line start go, and a
+    ``* `` bullet becomes ``- ``. A lone ``*`` inside a sentence (arithmetic) stays.
+    """
+    text = _MD_BOLD_ITALIC_RE.sub(r"\1", text)
+    text = _MD_BOLD_RE.sub(lambda m: m.group(1) or m.group(2), text)
+    text = _MD_HEADING_RE.sub("", text)
+    return _MD_STAR_BULLET_RE.sub(r"\1- ", text)
 
 
 def _action_items_prompt(text: str) -> str:
@@ -524,10 +552,10 @@ class LLMRunner:
 
     def summarise(self, transcript_text: str, *, max_bullets: int = 8) -> str:
         """Bullet-point summary of the transcript."""
-        return self._chat(
+        return plain_summary_text(self._chat(
             [{"role": "user", "content": _summarise_prompt(transcript_text, max_bullets)}],
             max_tokens=600,
-        )
+        ))
 
     def action_items(self, transcript_text: str) -> list[str]:
         """Pull out action items as a JSON list of strings.
@@ -956,10 +984,10 @@ class RemoteLLMRunner:
         return raw
 
     def summarise(self, transcript_text: str, *, max_bullets: int = 8) -> str:
-        return self._chat(
+        return plain_summary_text(self._chat(
             [{"role": "user", "content": _summarise_prompt(transcript_text, max_bullets)}],
             max_tokens=600,
-        )
+        ))
 
     def action_items(self, transcript_text: str) -> list[str]:
         raw = self._chat(

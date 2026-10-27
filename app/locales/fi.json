@@ -1,8 +1,8 @@
 {
   "_meta": {
     "code": "fi",
-    "name": "Suomi",
     "direction": "ltr",
+    "name": "Suomi",
     "plural": "one_other",
     "status": "machine"
   },
@@ -83,6 +83,7 @@
     "All files": "Kaikki tiedostot",
     "Already downloaded.": "Ladattu jo.",
     "Already on this computer.": "On jo tällä tietokoneella.",
+    "Also a random install id made by the app; turning usage statistics off deletes it": "Lisäksi sovelluksen luoma satunnainen asennustunniste; se poistetaan, kun käyttötilastot kytketään pois",
     "Always download and transcribe": "Lataa ja litteroi aina",
     "American accent": "Amerikkalainen aksentti",
     "Amharic": "Amhara",
@@ -1012,7 +1013,7 @@
     "Send": "Lähetä",
     "Send usage statistics (on by default; also in the Help menu)": "Lähetä käyttötilastoja (oletuksena päällä; myös Ohje-valikossa)",
     "Sending…": "Lähetetään…",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Lähetetään jokaisen valmiin litteroinnin jälkeen; oletuksena päällä. Kytkin: Ohje → Käyttötilastot tai Lisäasetukset → Sovelluksen toiminta (asetus: telemetry_opt_in)",
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Lähetetään jokaisen litteroinnin jälkeen, myös epäonnistuneiden ja peruttujen; oletuksena päällä. Kytkin: Ohje → Käyttötilastot tai Lisäasetukset → Sovelluksen toiminta (asetus: telemetry_opt_in)",
     "Sent in plain text when the URL starts with http://": "Lähetetään salaamattomana tekstinä, kun URL alkaa tekstillä http://",
     "Sent with: {system}": "Lähetetään mukana: {system}",
     "Serbian": "Serbia",
@@ -1162,7 +1163,7 @@
     "The exact model id your endpoint expects, e.g. gpt-4o-mini for OpenAI, openai/gpt-oss-120b for Groq, or a locally-loaded model's name for Ollama/LM Studio. Different accounts/servers have different models available.": "Tarkka mallin tunnus, jota päätepisteesi odottaa, esim. OpenAI: gpt-4o-mini, Groq: openai/gpt-oss-120b, Ollama/LM Studio: paikallisesti ladatun mallin nimi. Eri tileillä ja palvelimilla on eri mallit saatavilla.",
     "The finished pieces are kept; the same text and voice continue from there.": "Valmiit osat säilytetään; sama teksti ja ääni jatkavat siitä.",
     "The interface language changes the next time you start the app.": "Käyttöliittymän kieli vaihtuu, kun käynnistät sovelluksen seuraavan kerran.",
-    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A language marked \"machine translation\" was translated by a computer and not yet checked by a person. A change applies the next time you start the app.": "Sovelluksen valikkojen, painikkeiden ja viestien kieli. Automaattinen käyttää järjestelmäsi kieltä, jos sille on saatavilla käännös, ja muuten englantia. Merkinnällä ”konekäännös” varustettu kieli on tietokoneen kääntämä, eikä ihminen ole vielä tarkistanut sitä. Muutos tulee voimaan, kun käynnistät sovelluksen seuraavan kerran.",
+    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A change applies the next time you start the app.": "Sovelluksen valikkojen, painikkeiden ja viestien kieli. Automaattinen käyttää järjestelmäsi kieltä, jos sille on saatavilla käännös, ja muuten englantia. Muutos tulee voimaan, kun käynnistät sovelluksen seuraavan kerran.",
     "The live model '{model}' is not in the model list. The Transcribe tab's model ({main_model}) understands English only, so it cannot stand in for it. Check the internet connection and press Start again, or pick another model in the Model list.": "Reaaliaikamalli ”{model}” ei ole malliluettelossa. Litteroi-välilehden malli ({main_model}) ymmärtää vain englantia, joten se ei voi korvata sitä. Tarkista internetyhteys ja paina Aloita uudelleen tai valitse toinen malli Malli-luettelosta.",
     "The live session could not be started.": "Reaaliaikaista istuntoa ei voitu aloittaa.",
     "The live transcript is empty.": "Reaaliaikainen litterointi on tyhjä.",
@@ -1476,6 +1477,8 @@
       "noin {n} sekunti",
       "noin {n} sekuntia"
     ],
+    "about {size} GB": "noin {size} Gt",
+    "about {size} MB": "noin {size} Mt",
     "about {speed}": "noin {speed}",
     "allowed (this computer)": "sallittu (tämä tietokone)",
     "audio done": "ääntä käsitelty",
@@ -1651,7 +1654,6 @@
       "{languages} ja {n} muuta"
     ],
     "{language} (automatic)": "{language} (automaattinen)",
-    "{language} (machine translation)": "{language} (konekäännös)",
     "{language} (made by the uploader)": "{language} (lataajan tekemä)",
     "{language} (not sure)": "{language} (epävarma)",
     "{language} speech will come out as wrong English text: made-up words or a rough English translation, not what was said.": "Puhe kielellä {language} muuttuu virheelliseksi englanninkieliseksi tekstiksi: keksittyjä sanoja tai karkea englanninkielinen käännös, ei sitä, mitä sanottiin.",

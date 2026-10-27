@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 import errno
 import math
+import os
 import shutil
 import threading
 import time
@@ -714,6 +715,10 @@ def model_downloaded(config: dict[str, Any] | None, slug: str) -> bool:
     ``AdvancedDialog``-private method) specifically so a second UI surface
     could reuse it without duplicating the hub-folder lookup.
     """
+    if str((config or {}).get("transcribe_backend") or "").strip().lower() == "mlx_whisper":
+        from .backends import mlx_whisper_be
+
+        return mlx_whisper_be.model_present({**(config or {}), "whisper_model": slug})
     entry = catalog_resolve_entry(config, slug)
     if not entry:
         return False
@@ -1070,6 +1075,26 @@ def _huggingface_failure(
     return None
 
 
+# One ensure/download per model folder at a time. The download dialog's
+# worker and the transcribe worker's first-use ensure can both want the
+# same missing model in one process; without a lock both pass the
+# model_weights_present gate and run the multi-GB download twice into the
+# same output_dir.
+_ENSURE_LOCKS: dict[str, threading.Lock] = {}
+_ENSURE_LOCKS_GUARD = threading.Lock()
+_ENSURE_LOCK_POLL_SECONDS = 0.5
+
+
+def _ensure_model_lock(model_path: Path) -> threading.Lock:
+    key = os.path.normcase(os.path.abspath(str(model_path)))
+    with _ENSURE_LOCKS_GUARD:
+        lock = _ENSURE_LOCKS.get(key)
+        if lock is None:
+            lock = threading.Lock()
+            _ENSURE_LOCKS[key] = lock
+        return lock
+
+
 def ensure_model(
     config: dict[str, Any],
     status_cb: Callable[[str], None] | None = None,
@@ -1082,10 +1107,40 @@ def ensure_model(
     left in an older ``config["model"]`` (the retired zip mirror) is
     ignored. A model already on disk is never deleted here: an unfinished
     download is resumed in place, and an installed model whose resume
-    attempt fails is used as it is.
+    attempt fails is used as it is. Concurrent calls for the same model
+    folder are serialized: the later caller re-checks the folder after the
+    first one finishes and returns "already installed" instead of
+    downloading again.
     """
+    if str(config.get("transcribe_backend") or "").strip().lower() == "mlx_whisper":
+        # The Apple-silicon engine keeps its own copy of the model (MLX weights).
+        from .backends.mlx_whisper_be import ensure_mlx_model
+
+        return ensure_mlx_model(config, status_cb, progress_cb, cancel_event)
     model=config["model"]
     model_path=Path(config["model_path"])
+    lock = _ensure_model_lock(model_path)
+    # Poll instead of blocking: a caller that waits behind another download
+    # must still honour its own Cancel within half a second.
+    while not lock.acquire(timeout=_ENSURE_LOCK_POLL_SECONDS):
+        if cancel_event is not None and cancel_event.is_set():
+            raise DownloadCancelled("Model download cancelled")
+    try:
+        return _ensure_model(
+            config, model, model_path, status_cb, progress_cb, cancel_event,
+        )
+    finally:
+        lock.release()
+
+
+def _ensure_model(
+    config: dict[str, Any],
+    model: dict[str, Any],
+    model_path: Path,
+    status_cb: Callable[[str], None] | None,
+    progress_cb: Callable[[dict[str, Any]], None] | None,
+    cancel_event: threading.Event | None,
+) -> str:
     hf_repo=_hf_repo_for(config, model)
 
     cache_dir=model_path.parent

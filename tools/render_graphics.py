@@ -58,6 +58,10 @@ def render(name: str) -> None:
 
 def main() -> int:
     names = sys.argv[1:] or list(BOARDS)
+    bad = [n for n in names if n not in BOARDS]
+    if bad:
+        print(f"unknown board name: {', '.join(bad)} (choose from {', '.join(BOARDS)})", file=sys.stderr)
+        return 2
     for n in names:
         render(n)
     return 0

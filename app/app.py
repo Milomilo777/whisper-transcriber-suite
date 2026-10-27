@@ -27,7 +27,8 @@ from app.dialogs.quick_start import (
 )
 from app.dialogs import language_suggestion, share_page, ui_language
 from app import desktop_alert, mac_native, rtl_layout, shortcuts
-from app.i18n import N_, _, ngettext, pgettext, plain, translate
+from app.i18n import N_, _, display, ngettext, pgettext, plain, translate
+from app.model_text import localize_size_text
 from app.dialogs.transcript_viewer import confirm_unsaved_before_exit as confirm_unsaved_viewers_before_exit
 from app.dialogs.transcript_viewer import dirty_viewers as _dirty_viewers_now
 from app.dialogs.transcript_viewer import open_viewer as _open_transcript_viewer
@@ -87,6 +88,7 @@ from core.config import (
     webhook_secret_valid,
 )
 from core.history import EXIT_REASON, HistoryDB
+from core.stats import forget_install_id
 from core.task import apply_run_options
 from core.hub import voice_clone_tab_enabled
 from core.logging_setup import get_ui_logger, open_log_folder, setup_logging
@@ -103,6 +105,14 @@ logger = logging.getLogger(__name__)
 # each item, so no lookup ever goes by the (translated) label.
 _HELP_MENU_LABEL = N_("Help")
 _CHECK_FOR_UPDATES_LABEL = N_("Check for updates...")
+
+
+def _help_label_with_dot() -> str:
+    """The Help menu label with the update dot; the dot ends a right-to-left label, so the whole
+    label is shaped once (Linux) instead of gluing the dot to a shaped word."""
+    return display(translate(_HELP_MENU_LABEL) + " " + chr(0x25CF))
+
+
 _ABOUT_MENU_LABEL = N_("About")
 _WORK_OFFLINE_LABEL = N_("Work offline")
 # core.star_invite's two lines, marked here: the app shows them, and core/ is not translated.
@@ -896,7 +906,7 @@ def build_about_sections() -> list[AboutSection]:
                 "needs the internet then says so (config: work_offline)"),
             ]),
             (_("Usage statistics"), [
-                _("Sent after each finished transcription; on by default. "
+                _("Sent after each transcription, including failed and cancelled ones; on by default. "
                 "Switch: Help → Usage statistics, or Advanced → App "
                 "behaviour (config: telemetry_opt_in)"),
                 _("What is sent: model, language, audio length, processing "
@@ -904,6 +914,8 @@ def build_about_sections() -> list[AboutSection]:
                 "CPU and memory size, and the two-letter country of the OS "
                 "region setting; the payload never includes the file's name "
                 "or folder, the computer name or an IP address"),
+                _("Also a random install id made by the app; turning usage "
+                "statistics off deletes it"),
                 _("Launch ping and Sentry crash reports: only when "
                 "WHISPER_TELEMETRY_URL / SENTRY_DSN are set"),
             ]),
@@ -1540,6 +1552,8 @@ class App(tk.Tk):
         self._last_callback_error = ""
         # True while the quick start window is open (see _on_start).
         self._quick_start_open = False
+        # True while the "Whisper model required" question is on screen.
+        self._model_question_open = False
         self._watched_after_ids: dict[str, str] = {}
         # Watched files waiting for the model to load before they are queued,
         # so a second event for the same file meanwhile does not queue it twice.
@@ -2149,6 +2163,7 @@ class App(tk.Tk):
         """Help → Usage statistics: store the choice like the Advanced checkbox does."""
         on = bool(self.telemetry_opt_in_var.get())
         self.app_config["telemetry_opt_in"] = on
+        forget_install_id(self.app_config)
         try:
             save_config(self.app_config)
         except Exception as e:
@@ -3212,6 +3227,12 @@ class App(tk.Tk):
                 self._refresh_engine_picker_labels()
                 return
             self.app_config["transcribe_backend"] = value
+            from core.backends import mlx_whisper_be
+
+            if mlx_whisper_be.is_apple_silicon():
+                # Picking Faster-Whisper (or any other engine) here is the opt-out from the
+                # automatic Apple-silicon engine; picking the Apple-silicon entry opts back in.
+                self.app_config["apple_silicon_engine"] = value == "mlx_whisper"
             try:
                 save_config(self.app_config)
             except Exception as e:  # noqa: BLE001
@@ -3651,11 +3672,19 @@ class App(tk.Tk):
                 values.append(_("Custom (current setting)"))
             if list(combo.cget("values") or ()) != values:
                 combo.configure(values=values)
+                # The box is sized for Fast/Balanced/Best; widen it only while the longer
+                # Custom entry is in it (and size it back after), so other layouts stay as they were.
+                from app.widgets.tabs import combo_width
+                if level is None:
+                    # 44: German "Custom (current setting)" is 40 characters
+                    combo.configure(width=combo_width(values, floor=10, cap=44))
+                elif combo.cget("width") != "":
+                    combo.configure(width=combo_width(values, floor=10, cap=24))
             shown = level_to_label.get(level or "", values[-1])
             if var.get() != shown:
                 var.set(shown)
             model = short_model_name(self.app_config, slug)
-            size = approx_download_size_text(self.app_config, slug)
+            size = localize_size_text(approx_download_size_text(self.app_config, slug))
             if model_downloaded(self.app_config, slug):
                 note = _("{model} model: already downloaded", model=model)
             elif size:
@@ -3713,7 +3742,7 @@ class App(tk.Tk):
 
     def _engine_uses_whisper_model(self) -> bool:
         """True while the picked engine actually uses the Whisper-model
-        catalog (Faster-Whisper only)."""
+        catalog (Faster-Whisper, and the Apple-silicon engine, which maps the same slugs)."""
         from core.backends import availability as _eng
 
         evar = _inst_attr(self, "transcribe_engine_var")
@@ -3721,7 +3750,7 @@ class App(tk.Tk):
         value = _eng.engine_value_for_label(label)
         if value is None:
             value = _eng.normalise_engine(self.app_config.get("transcribe_backend"))
-        return value == "faster_whisper"
+        return value in ("faster_whisper", "mlx_whisper")
 
     def _model_picker_disabled_reason(self) -> str:
         """Hover text while the model picker is greyed out; "" when active.
@@ -3905,7 +3934,8 @@ class App(tk.Tk):
                     "It runs on the local transformers engine, which installs once the first "
                     "time (about 1 GB more), gives no word-level timestamps and ignores the "
                     "Whisper options (hot words, prompt).")
-            if not messagebox.askyesno(_("Model for {language}", language=language), text, parent=self):
+            if not messagebox.askyesno(_("Model for {language}", language=language), display(text),
+                                       parent=self):
                 return
         if not self._confirm_backend_switch(kind=BACKEND_SWITCH_MODEL):
             return
@@ -4350,9 +4380,13 @@ class App(tk.Tk):
         if self.model_setup_running:
             return False
         self.model_setup_running = True
-        dialog = ModelDownloadDialog(self)
-        self.wait_window(dialog)
-        self.model_setup_running = False
+        self._model_question_open = True  # the download window is modal too
+        try:
+            dialog = ModelDownloadDialog(self)
+            self.wait_window(dialog)
+        finally:
+            self._model_question_open = False
+            self.model_setup_running = False
         if dialog.success:
             # v1.0.3 — lazy model load.
             # Used to call ``transcription_service.start_standby()``
@@ -4664,11 +4698,7 @@ class App(tk.Tk):
             if self.model_setup_running:
                 self.log("Model download already in progress — please wait.")
                 return False
-            if not messagebox.askyesno(
-                _("Whisper model required"),
-                self._model_download_question(),
-                parent=self,
-            ):
+            if not self._ask_model_download():
                 self.log("Transcription cancelled: the Whisper model is required.")
                 return False
             if not self.ensure_model_with_modal():
@@ -4685,6 +4715,20 @@ class App(tk.Tk):
             return False
         return True
 
+    def _ask_model_download(self) -> bool:
+        """Show the "Whisper model required" question; True when the user agrees to download."""
+        # The first-run language suggestion waits on this flag (see
+        # app.dialogs.language_suggestion), so it never opens over the question.
+        self._model_question_open = True
+        try:
+            return bool(messagebox.askyesno(
+                _("Whisper model required"),
+                self._model_download_question(),
+                parent=self,
+            ))
+        finally:
+            self._model_question_open = False
+
     def _model_download_size_hint(self) -> str:
         """Return e.g. "about 500 MB, " for the configured model ("" if unknown)."""
         try:
@@ -4693,7 +4737,7 @@ class App(tk.Tk):
                 approx_download_size_text,
             )
             slug = str(self.app_config.get("whisper_model") or DEFAULT_MODEL_SLUG)
-            text = approx_download_size_text(self.app_config, slug)
+            text = localize_size_text(approx_download_size_text(self.app_config, slug))
         except Exception:  # noqa: BLE001 -- a size hint must never block the prompt
             text = ""
         return f"{text}, " if text else ""
@@ -4803,7 +4847,7 @@ class App(tk.Tk):
             reason=(_("About the same size and speed, and it understands {language}.",
                       language=name) if name
                     else _("About the same size and speed, and it understands other languages.")),
-            size_text=approx_download_size_text(self.app_config, alt),
+            size_text=localize_size_text(approx_download_size_text(self.app_config, alt)),
             downloaded=model_downloaded(self.app_config, alt),
         )
         self.__dict__["_english_only_asking"] = True
@@ -4886,7 +4930,7 @@ class App(tk.Tk):
             task.languages = pair
         else:
             if why_not:
-                self.log(why_not + " " + _("This file uses one language."))
+                self.log(display(why_not + " " + _("This file uses one language.")))
             if code:
                 task.language = code
         # "English translation" option: Whisper's own translate task, only
@@ -4965,6 +5009,11 @@ class App(tk.Tk):
         killed download, which the worker then fails to load. Deeper
         corruption still surfaces via the worker's ``startup_error``.
         """
+        if str(self.app_config.get("transcribe_backend") or "").strip().lower() == "mlx_whisper":
+            # The Apple-silicon engine keeps its own copy of the model.
+            from core.backends import mlx_whisper_be
+
+            return mlx_whisper_be.model_present(self.app_config)
         try:
             from core.hub import (
                 default_hub_folder,
@@ -6059,8 +6108,30 @@ class App(tk.Tk):
         self._save_server_prefs()
         if self._server_is_running():
             self._stop_server_async()
-        else:
+        elif self._server_model_agreed():
             self._start_server_async()
+
+    def _server_model_agreed(self) -> bool:
+        """True when the server may start: the model is on disk, or the user agreed to download it.
+
+        The server loads the model on its start thread and would otherwise download the default
+        model (about 3 GB) silently. Here the same question and download dialog as for a
+        transcription run first; the dialog checks the free disk space before it downloads.
+        """
+        if self._model_bytes_present():
+            return True
+        if self.model_setup_running:
+            self.log("Model download already in progress — please wait.")
+            return False
+        if not self._ask_model_download():
+            self.log("The server was not started: the Whisper model is required.")
+            return False
+        # download_model_now, not ensure_model_with_modal: that one returns at once when ANY model
+        # was loaded, and the start thread would then download the configured one silently.
+        if not self.download_model_now():
+            self.log("The server was not started: the Whisper model is not ready.")
+            return False
+        return True
 
     def _start_server_async(self) -> None:
         import threading as _t
@@ -6248,7 +6319,7 @@ class App(tk.Tk):
         if token:
             steps += " " + _("The code and the copied link include your access password: show "
                              "them only to people who may use this page.")
-        self.server_qr_note_var.set(steps)
+        self.server_qr_note_var.set(display(steps))
         frame.pack(**rtl_layout.pack_kw(frame, anchor="w", pady=(0, 12), after=self.server_url_label))
 
     def _hide_phone_link(self) -> None:
@@ -6691,6 +6762,12 @@ class App(tk.Tk):
                        "another language, choose that language and transcribe it again."),
                 foreground=tokens.themed(tokens.WARNING_TEXT),
             ).pack(anchor="w")
+        if getattr(task, "speaker_labels_failed", False):
+            ttk.Label(
+                self.last_result_body,
+                text=_("Speaker detection failed — the transcript was saved without speaker labels."),
+                foreground=tokens.themed(tokens.WARNING_TEXT),
+            ).pack(anchor="w", pady=(2, 0))
         if existing:
             ttk.Label(
                 self.last_result_body,
@@ -7466,7 +7543,7 @@ class App(tk.Tk):
         try:
             version = _updates.passive_sign_version(self.app_config, _APP_VERSION)
             if version:
-                help_label = f"{translate(_HELP_MENU_LABEL)} ●"
+                help_label = _help_label_with_dot()
                 item_label = _("Check for updates...  ● {version} available", version=version)
             else:
                 help_label = translate(_HELP_MENU_LABEL)
@@ -7643,7 +7720,7 @@ class App(tk.Tk):
         if history is None or getattr(self, "_history_owner", True) is False:
             return
         try:
-            rows = history.list_transcriptions(limit=200) or []
+            rows = history.list_interrupted_transcriptions() or []
         except Exception:  # noqa: BLE001
             return
         interrupted = [
@@ -7675,16 +7752,28 @@ class App(tk.Tk):
                 )
             except Exception:  # noqa: BLE001
                 logger.debug("Failed to dismiss interrupted rows", exc_info=True)
-            # Also drop the on-disk partial checkpoints for the declined
-            # files: declining means "don't resume", so the JSON (which can
-            # be MBs of captured segments) is now dead weight. Without this
-            # it lingered until the age-based startup sweep.
+            # Declining means "don't resume", not "throw the text away": set
+            # each partial checkpoint aside in the data folder (with a readable
+            # .txt copy) instead of deleting it. The kept files are not swept
+            # by the age-based startup sweep; the user removes them by hand.
             try:
                 from core import _checkpoint
-                for r in unique:
-                    _checkpoint.delete_checkpoint(r["file_path"])
             except Exception:  # noqa: BLE001
-                logger.debug("Failed to delete declined checkpoints", exc_info=True)
+                logger.debug("Checkpoint module unavailable", exc_info=True)
+                return
+            for r in unique:
+                try:
+                    if not _checkpoint.has_checkpoint(r["file_path"]):
+                        continue
+                    kept = _checkpoint.quarantine_checkpoint(
+                        r["file_path"], "resume declined by the user"
+                    )
+                    if kept is not None:
+                        self.log(f"Resume declined: partial transcript kept at {kept}")
+                except Exception:  # noqa: BLE001
+                    # Includes a checkpoint held by another process (a copy was
+                    # kept); never delete in that case.
+                    logger.warning("Could not set the declined checkpoint aside", exc_info=True)
             return
         # Crash-resume: if a partial checkpoint exists for any of
         # these interrupted files, flag the new task as a resume so
@@ -7858,20 +7947,30 @@ class App(tk.Tk):
         damaged install never blocks launch.
         """
         if getattr(sys, "frozen", False):
-            ico = os.path.join(
-                os.path.dirname(os.path.abspath(sys.executable)),
-                "assets", "whisper.ico",
-            )
+            assets = os.path.join(
+                os.path.dirname(os.path.abspath(sys.executable)), "assets")
         else:
-            ico = os.path.join(
+            assets = os.path.join(
                 os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                "assets", "whisper.ico",
-            )
-        if not os.path.isfile(ico):
-            return
+                "assets")
         if sys.platform == "darwin":
             # iconbitmap(default=...) is not supported on macOS/Tk and
             # throws "wrong # args: should be 'wm iconbitmap window ?bitmap?'"
+            return
+        if sys.platform != "win32":
+            # X11 Tk reads a bitmap, not an .ico (``wm iconbitmap`` with the
+            # .ico fails there); a PNG goes through iconphoto instead.
+            png = os.path.join(assets, "whisper.png")
+            if not os.path.isfile(png):
+                return
+            try:
+                self._icon_photo = tk.PhotoImage(file=png)  # keep a reference
+                self.iconphoto(True, self._icon_photo)
+            except tk.TclError as exc:
+                logger.warning("Could not set window icon (%s): %s", png, exc)
+            return
+        ico = os.path.join(assets, "whisper.ico")
+        if not os.path.isfile(ico):
             return
         try:
             self.iconbitmap(default=ico)

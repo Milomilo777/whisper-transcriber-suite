@@ -1,0 +1,18 @@
+# Extra packages for the Apple-silicon (arm64) macOS build ONLY: the MLX engine in
+# core/backends/mlx_whisper_be.py. Never installed on Windows, Linux or an Intel Mac, and
+# not part of requirements.txt.
+#
+# Install after requirements.txt, in two steps (a pip requirements file cannot carry --no-deps):
+#   python -m pip install -r platform/macos/pyinstaller/requirements-apple-silicon.txt
+#   python -m pip install --no-deps mlx-whisper==0.4.3
+# mlx-whisper 0.4.3 lists torch as a dependency, but only its model-conversion helper
+# (torch_whisper.py, never imported by the app) uses it; --no-deps keeps ~1 GB of torch out of
+# the bundle. The listed packages are what mlx-whisper imports to transcribe.
+# Every wheel below exists for cp312 macosx arm64; mlx needs macOS 14 or newer (its wheel is
+# tagged macosx_14_0_arm64), so the arm64 app's minimum macOS is 14 when it ships the engine.
+mlx==0.32.4
+numba>=0.60
+scipy>=1.11
+tiktoken>=0.7
+more-itertools
+tqdm

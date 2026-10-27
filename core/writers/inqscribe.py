@@ -16,7 +16,7 @@ from __future__ import annotations
 import math
 import re
 
-from .base import coerce_seconds, normalize_text, speaker_prefix
+from .base import coerce_seconds, labelled_text
 
 
 def fmt_inqscribe_time(seconds: float) -> str:
@@ -65,8 +65,8 @@ def escape_inqscribe_text(text: str) -> str:
 def write(segments: list[dict], audio_path: str = "") -> str:
     lines: list[str] = []
     for seg in segments:
-        text = escape_inqscribe_text(
-            speaker_prefix(seg) + normalize_text(seg.get("text", ""))
-        )
+        # labelled_text: same prefix + normalized text, but "" when the
+        # segment is empty, so it gets no dangling "Speaker: " label.
+        text = escape_inqscribe_text(labelled_text(seg))
         lines.append(f"{fmt_inqscribe_time(coerce_seconds(seg.get('start')))}{text}")
     return "\n".join(lines) + "\n"

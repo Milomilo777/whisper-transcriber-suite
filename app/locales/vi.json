@@ -81,6 +81,7 @@
     "All files": "Tất cả tệp",
     "Already downloaded.": "Đã tải xuống.",
     "Already on this computer.": "Đã có trên máy tính này.",
+    "Also a random install id made by the app; turning usage statistics off deletes it": "Kèm một mã cài đặt ngẫu nhiên do ứng dụng tạo; tắt thống kê sử dụng sẽ xóa mã này",
     "Always download and transcribe": "Luôn tải xuống và chép lời",
     "American accent": "Giọng Mỹ",
     "Amharic": "Tiếng Amhara",
@@ -995,7 +996,7 @@
     "Send": "Gửi",
     "Send usage statistics (on by default; also in the Help menu)": "Gửi thống kê sử dụng (bật theo mặc định; cũng có trong menu Trợ giúp)",
     "Sending…": "Đang gửi…",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Gửi sau mỗi lần chép lời hoàn tất; bật theo mặc định. Bật/tắt: Trợ giúp → Thống kê sử dụng, hoặc Nâng cao → Hành vi ứng dụng (cấu hình: telemetry_opt_in)",
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Gửi sau mỗi lần chép lời, kể cả lần thất bại hoặc bị hủy; bật theo mặc định. Bật/tắt: Trợ giúp → Thống kê sử dụng, hoặc Nâng cao → Hành vi ứng dụng (cấu hình: telemetry_opt_in)",
     "Sent in plain text when the URL starts with http://": "Được gửi dưới dạng văn bản thuần khi URL bắt đầu bằng http://",
     "Sent with: {system}": "Gửi kèm: {system}",
     "Serbian": "Tiếng Serbia",
@@ -1143,7 +1144,7 @@
     "The exact model id your endpoint expects, e.g. gpt-4o-mini for OpenAI, openai/gpt-oss-120b for Groq, or a locally-loaded model's name for Ollama/LM Studio. Different accounts/servers have different models available.": "Mã mô hình chính xác mà điểm cuối của bạn yêu cầu, ví dụ gpt-4o-mini cho OpenAI, openai/gpt-oss-120b cho Groq, hoặc tên mô hình đã nạp cục bộ cho Ollama/LM Studio. Mỗi tài khoản/máy chủ có các mô hình khác nhau.",
     "The finished pieces are kept; the same text and voice continue from there.": "Các phần đã xong được giữ lại; cùng văn bản và giọng sẽ tiếp tục từ đó.",
     "The interface language changes the next time you start the app.": "Ngôn ngữ giao diện sẽ thay đổi vào lần tới bạn khởi động ứng dụng.",
-    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A language marked \"machine translation\" was translated by a computer and not yet checked by a person. A change applies the next time you start the app.": "Ngôn ngữ của menu, nút và thông báo trong ứng dụng. Tự động dùng ngôn ngữ của hệ thống khi có bản dịch cho ngôn ngữ đó, nếu không thì dùng tiếng Anh. Ngôn ngữ được đánh dấu \"dịch máy\" do máy tính dịch và chưa được người kiểm tra. Thay đổi có hiệu lực vào lần tới bạn khởi động ứng dụng.",
+    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A change applies the next time you start the app.": "Ngôn ngữ của menu, nút và thông báo trong ứng dụng. Tự động dùng ngôn ngữ của hệ thống khi có bản dịch cho ngôn ngữ đó, nếu không thì dùng tiếng Anh. Thay đổi có hiệu lực vào lần tới bạn khởi động ứng dụng.",
     "The live model '{model}' is not in the model list. The Transcribe tab's model ({main_model}) understands English only, so it cannot stand in for it. Check the internet connection and press Start again, or pick another model in the Model list.": "Mô hình trực tiếp '{model}' không có trong danh sách mô hình. Mô hình của thẻ Chép lời ({main_model}) chỉ hiểu tiếng Anh nên không thể thay thế. Hãy kiểm tra kết nối Internet rồi bấm Bắt đầu lại, hoặc chọn mô hình khác trong danh sách Mô hình.",
     "The live session could not be started.": "Không thể bắt đầu phiên trực tiếp.",
     "The live transcript is empty.": "Bản chép lời trực tiếp đang trống.",
@@ -1444,6 +1445,8 @@
     "about {n} seconds": [
       "khoảng {n} giây"
     ],
+    "about {size} GB": "khoảng {size} GB",
+    "about {size} MB": "khoảng {size} MB",
     "about {speed}": "khoảng {speed}",
     "allowed (this computer)": "được phép (máy tính này)",
     "audio done": "âm thanh đã xong",
@@ -1614,7 +1617,6 @@
       "{languages} và {n} ngôn ngữ khác"
     ],
     "{language} (automatic)": "{language} (tự động)",
-    "{language} (machine translation)": "{language} (dịch máy)",
     "{language} (made by the uploader)": "{language} (do người đăng tạo)",
     "{language} (not sure)": "{language} (không chắc chắn)",
     "{language} speech will come out as wrong English text: made-up words or a rough English translation, not what was said.": "Lời nói {language} sẽ ra văn bản tiếng Anh sai: từ bịa ra hoặc bản dịch tiếng Anh thô, không phải những gì đã nói.",

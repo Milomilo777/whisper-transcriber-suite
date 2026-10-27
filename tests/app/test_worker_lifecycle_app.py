@@ -286,3 +286,62 @@ def test_a_second_instance_does_not_offer_crash_resume(tmp_path: Path, monkeypat
         assert ns.queue == [] and sorted(_offered(db)) == sorted(ids)
     finally:
         db.close()
+
+
+def _ns_for_resume(db):
+    return SimpleNamespace(history=db, queue=[], refresh=lambda: None, log=lambda m: None,
+                           _when_worker_ready=lambda on_ready, **k: on_ready())
+
+
+def test_declining_resume_keeps_the_partial_text_aside(tmp_path: Path, monkeypatch):
+    """Answering No must not delete what was already transcribed."""
+    from app import app as app_module
+    from app.app import App
+    from core import _checkpoint as cp
+
+    monkeypatch.setattr(cp, "user_data_dir", lambda: tmp_path / "data")
+    db, ids = _interrupted_history(tmp_path)
+    media = str(tmp_path / "talk.mp4")
+    try:
+        cp.write_checkpoint(
+            media, backend="faster-whisper", model_name="small", language="en",
+            language_probability=1.0, cfg_fingerprint="f", last_end_time=5.0,
+            segments=[{"start": 0.0, "end": 5.0, "text": "precious words"}],
+            checkpoint_time=1.0)
+        monkeypatch.setattr(app_module.messagebox, "askyesno", lambda *a, **k: False)
+        logged: list[str] = []
+        ns = _ns_for_resume(db)
+        ns.log = logged.append
+        App._maybe_offer_crash_resume(ns)  # type: ignore[arg-type]
+        assert not cp.has_checkpoint(media)  # no longer offered for resume
+        kept = list(cp.partials_dir().glob("*.json.unverified-*"))
+        assert len(kept) == 1
+        texts = list(cp.partials_dir().glob("*.txt"))
+        assert len(texts) == 1 and "precious words" in texts[0].read_text(encoding="utf-8")
+        assert any(str(kept[0]) in m for m in logged)
+    finally:
+        db.close()
+
+
+def test_interrupted_job_older_than_the_last_200_rows_is_still_offered(tmp_path: Path, monkeypatch):
+    from app import app as app_module
+    from app.app import App
+    from core.history import HistoryDB
+
+    media = tmp_path / "old.mp4"
+    media.write_bytes(b"x")
+    db = HistoryDB(tmp_path / "history.db")
+    try:
+        old = db.insert_transcription(str(media))
+        db.mark_interrupted()
+        for i in range(210):
+            rid = db.insert_transcription(str(tmp_path / f"n{i}.mp4"))
+            db.finish_transcription(rid, "finished")
+        monkeypatch.setattr(app_module.messagebox, "askyesno", lambda *a, **k: True)
+        ns = _ns_for_resume(db)
+        App._maybe_offer_crash_resume(ns)  # type: ignore[arg-type]
+        assert [t.file_path for t in ns.queue] == [str(media)]
+        status = {r["id"]: r["status"] for r in db.list_transcriptions(1000)}[old]
+        assert status == "cancelled"  # retired, so the next launch does not offer it again
+    finally:
+        db.close()

@@ -18,6 +18,7 @@ per transcription in an SQLite file next to the script,
 | `word_count` | words in the transcript |
 | `platform_system`, `platform_release`, `platform_version`, `platform_machine`, `platform_processor` | Python `platform` facts about the host |
 | `cpu_count`, `mem_total` | CPU count, total RAM in bytes |
+| `install_id` | random UUID4 the app makes once per install (36 characters); lets you count distinct installs. Empty in rows from older apps; the column is added to an existing database on the next request |
 
 Every text field is length-capped (see `$text_limits` in the script) and
 stripped of control characters; numbers are clamped to a sane range.

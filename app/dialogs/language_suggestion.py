@@ -25,7 +25,8 @@ def maybe_suggest(app: Any) -> None:
     (see ``app.ui_language_hint``). Never switches by itself; nothing happens without a clear hint."""
     if getattr(app, "_closing", False):
         return
-    if getattr(app, "_quick_start_open", False) or getattr(app, "_hub_setup_open", False):
+    if (getattr(app, "_quick_start_open", False) or getattr(app, "_hub_setup_open", False)
+            or getattr(app, "_model_question_open", False)):
         # Those windows hold the input grab, so this one's buttons would do nothing; ask again later.
         app.after(RETRY_MS, lambda: maybe_suggest(app))
         return

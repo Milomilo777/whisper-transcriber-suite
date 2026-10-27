@@ -17,6 +17,10 @@ Currently supported:
     run on weak CPUs that struggle with the float16 faster-whisper
     build. Opt-in via the Advanced dialog.
 
+  * ``mlx_whisper`` — Whisper on the GPU of an Apple-silicon Mac through
+    Apple's MLX (``mlx-whisper``). Offered and auto-selected only on macOS
+    arm64 when the package imports; every other system keeps faster-whisper.
+
   * ``cloud_stt`` — OPTIONAL cloud transcription via the Google Gemini
     API (uploads audio to Google; breaks the offline guarantee). Opt-in
     via the Advanced dialog with a pasted API key.
@@ -56,6 +60,9 @@ def get_backend(name: str) -> Backend:
     if name == "nvidia_asr":
         from .nvidia_asr import NvidiaAsrBackend
         return NvidiaAsrBackend()
+    if name == "mlx_whisper":
+        from .mlx_whisper_be import MlxWhisperBackend
+        return MlxWhisperBackend()
     from .faster_whisper_be import FasterWhisperBackend
     return FasterWhisperBackend()
 

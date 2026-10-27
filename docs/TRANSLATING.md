@@ -106,8 +106,8 @@ and expects an empty list, plus a test that its English texts did not change.
   settings > App behaviour > Interface language list "Automatic
   (system language)" and every catalog in `app/locales`, each language by its own name. Pick
   one, click Save and start the app again (a notice in the main window says so when the
-  language will change). A catalog with status `"machine"` is listed as "<name> (machine
-  translation)"; `"auto"` may choose it too. Right-to-left catalogs are listed on Windows and
+  language will change). A catalog with status `"machine"` is listed like the others, by
+  its name alone; `"auto"` may choose it too. Right-to-left catalogs are listed on Windows and
   macOS (see the note at the end of the next section); on Linux load them with `WTS_UI_LANGUAGE`.
 - **For one run**, without touching the setting: set `WTS_UI_LANGUAGE` to the code, then start
   from source. It wins over the saved setting; while it is set, the picker's notice says so.
@@ -145,8 +145,8 @@ and expects an empty list, plus a test that its English texts did not change.
 6. Keys that contain `\u0004` carry a context before that character; translate only the value.
 7. Status: `"machine"` for an unreviewed machine translation, `"reviewed"` once a person who
    speaks the language has checked it. `"auto"` picks either kind for a matching display
-   language. The language picker lists a machine translation with the note
-   "(machine translation)" after the language's name; a reviewed catalog shows the name alone.
+   language. The language picker shows the status nowhere: every language is listed by its
+   own name alone.
 8. Run `python -m pytest tests/test_i18n_catalogs.py` (it reports untranslated messages as
    warnings and fails on broken placeholders, wrong plural counts or keys `en.json` lacks), then
    look at the app with `WTS_UI_LANGUAGE=<code>`.
@@ -167,9 +167,21 @@ left-to-right places.
   Keep the line breaks (`\n`) of the English text: each line gets its own pair of marks.
 - The language picker offers right-to-left catalogs on Windows and macOS (`i18n.rtl_layout_ready()`;
   the platforms are `i18n.RTL_PLATFORMS`; macOS was checked on 10.15), and `"auto"` chooses one only
-  there. Linux is left out: Tk 8.6 on X11 neither joins Arabic-script letters nor orders them (Tk
-  ticket 1b81ff43a2; Tk 9.1 adds HarfBuzz shaping). There `WTS_UI_LANGUAGE` or an explicit
-  `ui_language` code still loads one, without the marks, and the letters show unjoined.
+  there. Tk 8.6 on X11 neither joins Arabic-script letters nor orders them (Tk ticket 1b81ff43a2;
+  Tk 9.1 adds HarfBuzz shaping), so on Linux (`i18n.SHAPED_PLATFORMS`) Persian and Arabic
+  (`rtl_shaping.SHAPED_LANGUAGES`) are offered with display-only text instead of marks: letters
+  joined with arabic-reshaper and lines put in visual order with python-bidi (`app/rtl_shaping.py`),
+  only while both packages are installed. Hebrew is not offered on Linux, because it is only
+  reversed and a shaped Hebrew text cannot be told from real text once it loses its identity; an
+  explicit `ui_language` code still loads it, unshaped, and so does Persian or Arabic without the
+  packages (the letters then show unjoined).
+  A shaped text is an `rtl_shaping.Shaped` (a `str` that carries its logical text); `+` keeps track
+  of it, and `i18n.display()` or `rtl_shaping.join` shape a joined line once. Join with those, or
+  let `_()` place the parts; an f-string, `str.join` or `%` around a result loses the identity, which
+  Arabic results (presentation forms) survive. `i18n.plain()`, window titles and the tray give
+  logical text. Raw data (a speaker or file name) is always taken for logical text. Known limits: a
+  label long enough to wrap shows its lines in the wrong order, and a "%" or "$" next to a number
+  inside brackets can sit on the wrong side.
 - In code, a translated text that leaves the screen (the log file, the clipboard, a file) goes
   through `i18n.plain()`, which removes the marks. `App.log` does this for the log file.
 

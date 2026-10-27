@@ -31,7 +31,7 @@ flip only into a master the pass has already visited, and a subtree built later 
 :func:`mirror_tree` on its own. Dialogs need no call of their own:
 :func:`install_window_hook` mirrors every new ``Toplevel`` once, when it is first mapped
 (:func:`mirror_window` does the same by hand, earlier). The decision is the one ``app.i18n``
-takes at start-up (:func:`app.i18n.rtl_marks`); ``WTS_RTL_LAYOUT=1`` or ``0`` overrides it for a
+takes at start-up (:func:`app.i18n.rtl_marks` or :func:`app.i18n.rtl_shaped`); ``WTS_RTL_LAYOUT=1`` or ``0`` overrides it for a
 manual try.
 """
 from __future__ import annotations
@@ -43,7 +43,7 @@ from typing import Any
 
 from app import i18n
 
-#: "1" forces the mirrored layout on, "0" off; unset or anything else: ``i18n.rtl_marks()``.
+#: "1" forces the mirrored layout on, "0" off; unset or anything else: the same decision.
 ENV_OVERRIDE = "WTS_RTL_LAYOUT"
 #: Set on a widget by :func:`keep_ltr`: its options and its whole subtree stay left to right.
 KEEP_ATTR = "_rtl_keep"
@@ -83,7 +83,7 @@ def active() -> bool:
     override = os.environ.get(ENV_OVERRIDE, "").strip()
     if override in ("0", "1"):
         return override == "1"
-    return i18n.rtl_marks()
+    return i18n.rtl_marks() or i18n.rtl_shaped()
 
 
 def flip_side(side: str) -> str:

@@ -566,7 +566,8 @@ def _fake_dialog(app: Any, provider_label: str) -> types.SimpleNamespace:
         _model_label_to_slug={"Large-v3": "large-v3"}, _telemetry_opt_in=_V(False),
         _work_offline=_V(False), _update_check_enabled=_V(True), _yt_dlp_update_mode=_V("ask"),
         _caption_choice_var=_V("ask"), _minimise_to_tray=_V(False), _tts_no_text_limit=_V(False),
-        _subtitle_edit_path=_V(""), _watched_folder=_V(""), _watched_folder_enabled=_V(False),
+        _subtitle_edit_path=_V(""), _obsidian_vault_dir=_V(""), _finish_webhook_url=_V(""),
+        _finish_webhook_secret=_V(""), _finish_webhook_include_text=_V(False), _watched_folder=_V(""), _watched_folder_enabled=_V(False),
         _sync_vad_controls_state=lambda: None, _sync_denoise_level_state=lambda: None,
         _teardown_mousewheel=lambda: None, destroy=lambda: None,
     )

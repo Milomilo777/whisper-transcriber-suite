@@ -277,8 +277,13 @@ def _parse_cue_format(text: str, path: str, *, vtt: bool = False) -> list[dict]:
         if not m:
             if "-->" in lines[i]:
                 skipped += 1
-                while i < n and lines[i].strip() != "":
+                i += 1
+                # The payload of the unplaceable cue runs to a blank line or
+                # to the next readable timing line (compact SRT has no blank
+                # line between cues), never past it.
+                while i < n and lines[i].strip() != "" and not _timing(lines[i]):
                     i += 1
+                continue
             i += 1
             continue
         g = m.groups()
@@ -298,6 +303,15 @@ def _parse_cue_format(text: str, path: str, *, vtt: bool = False) -> list[dict]:
                 break
             body_lines.append(lines[i])
             i += 1
+        # A payload line holding only invisible marks (RLM / ZWSP / a
+        # mid-file BOM — the set _timing strips from timing lines) is
+        # editor noise once the cue has visible text; a cue whose whole
+        # payload is invisible marks keeps them, because they are content
+        # the writers round-trip (see the format round-trip property
+        # tests, whose text pool includes the RTL marks).
+        visible = [ln for ln in body_lines if ln.strip().strip(_LEADING_INVISIBLE)]
+        if visible:
+            body_lines = visible
         body = _BR_TAG.sub(" ", " ".join(ln.strip() for ln in body_lines))
         body = " ".join(tag_re.sub("", body).split())
         if vtt:
@@ -597,7 +611,10 @@ def _parse_ass(text: str, path: str) -> list[dict]:
         if not in_events:
             continue
         if line.lower().startswith("format:"):
-            declared = [p.strip() for p in line.split(":", 1)[1].split(",")]
+            # Drop empty entries: a trailing comma on the Format line (a
+            # common hand-edit typo) made the declared list one field too
+            # long, so every Dialogue row fell short in the comma split.
+            declared = [p.strip() for p in line.split(":", 1)[1].split(",") if p.strip()]
             if declared:
                 fields = declared
             continue

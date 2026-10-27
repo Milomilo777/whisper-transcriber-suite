@@ -1,8 +1,8 @@
 {
   "_meta": {
     "code": "da",
-    "name": "Dansk",
     "direction": "ltr",
+    "name": "Dansk",
     "plural": "one_other",
     "status": "machine"
   },
@@ -83,6 +83,7 @@
     "All files": "Alle filer",
     "Already downloaded.": "Allerede hentet.",
     "Already on this computer.": "Findes allerede på denne computer.",
+    "Also a random install id made by the app; turning usage statistics off deletes it": "Også et tilfældigt installations-id, som appen laver; det slettes, når brugsstatistik slås fra",
     "Always download and transcribe": "Hent og transskribér altid",
     "American accent": "Amerikansk accent",
     "Amharic": "Amharisk",
@@ -1012,7 +1013,7 @@
     "Send": "Send",
     "Send usage statistics (on by default; also in the Help menu)": "Send brugsstatistik (slået til som standard; også i menuen Hjælp)",
     "Sending…": "Sender…",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Sendes efter hver færdig transskribering; slået til som standard. Skift: Hjælp → Brugsstatistik eller Avanceret → Appens adfærd (config: telemetry_opt_in)",
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Sendes efter hver transskribering, også mislykkede og annullerede; slået til som standard. Skift: Hjælp → Brugsstatistik eller Avanceret → Appens adfærd (config: telemetry_opt_in)",
     "Sent in plain text when the URL starts with http://": "Sendes som almindelig tekst, når URL'en starter med http://",
     "Sent with: {system}": "Sendes med: {system}",
     "Serbian": "Serbisk",
@@ -1162,7 +1163,7 @@
     "The exact model id your endpoint expects, e.g. gpt-4o-mini for OpenAI, openai/gpt-oss-120b for Groq, or a locally-loaded model's name for Ollama/LM Studio. Different accounts/servers have different models available.": "Det præcise model-id, som dit endpoint forventer, f.eks. gpt-4o-mini til OpenAI, openai/gpt-oss-120b til Groq eller navnet på en lokalt indlæst model til Ollama/LM Studio. Forskellige konti og servere har forskellige modeller.",
     "The finished pieces are kept; the same text and voice continue from there.": "De færdige dele beholdes; samme tekst og stemme fortsætter derfra.",
     "The interface language changes the next time you start the app.": "Grænsefladesproget skifter, næste gang du starter appen.",
-    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A language marked \"machine translation\" was translated by a computer and not yet checked by a person. A change applies the next time you start the app.": "Sproget i appens menuer, knapper og meddelelser. Automatisk bruger dit systems sprog, når der findes en oversættelse til det, ellers engelsk. Et sprog markeret »maskinoversættelse« er oversat af en computer og endnu ikke kontrolleret af et menneske. En ændring træder i kraft, næste gang du starter appen.",
+    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A change applies the next time you start the app.": "Sproget i appens menuer, knapper og meddelelser. Automatisk bruger dit systems sprog, når der findes en oversættelse til det, ellers engelsk. En ændring træder i kraft, næste gang du starter appen.",
     "The live model '{model}' is not in the model list. The Transcribe tab's model ({main_model}) understands English only, so it cannot stand in for it. Check the internet connection and press Start again, or pick another model in the Model list.": "Livemodellen ”{model}” er ikke på modellisten. Modellen på fanen Transskribér ({main_model}) forstår kun engelsk, så den kan ikke træde i stedet. Kontrollér internetforbindelsen, og tryk på Start igen, eller vælg en anden model på listen Model.",
     "The live session could not be started.": "Livesessionen kunne ikke startes.",
     "The live transcript is empty.": "Livetransskriptionen er tom.",
@@ -1476,6 +1477,8 @@
       "ca. {n} sekund",
       "ca. {n} sekunder"
     ],
+    "about {size} GB": "ca. {size} GB",
+    "about {size} MB": "ca. {size} MB",
     "about {speed}": "ca. {speed}",
     "allowed (this computer)": "tilladt (denne computer)",
     "audio done": "lyd færdig",
@@ -1651,7 +1654,6 @@
       "{languages} og {n} mere"
     ],
     "{language} (automatic)": "{language} (automatiske)",
-    "{language} (machine translation)": "{language} (maskinoversættelse)",
     "{language} (made by the uploader)": "{language} (lavet af uploaderen)",
     "{language} (not sure)": "{language} (ikke sikker)",
     "{language} speech will come out as wrong English text: made-up words or a rough English translation, not what was said.": "Tale på {language} bliver til forkert engelsk tekst: opdigtede ord eller en grov engelsk oversættelse, ikke det, der blev sagt.",

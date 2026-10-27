@@ -1,8 +1,8 @@
 {
   "_meta": {
     "code": "he",
-    "name": "עברית",
     "direction": "rtl",
+    "name": "עברית",
     "plural": "he",
     "status": "machine"
   },
@@ -85,6 +85,7 @@
     "All files": "כל הקבצים",
     "Already downloaded.": "כבר הורד.",
     "Already on this computer.": "כבר נמצא במחשב זה.",
+    "Also a random install id made by the app; turning usage statistics off deletes it": "וגם מזהה התקנה אקראי שהאפליקציה יוצרת; כיבוי סטטיסטיקת השימוש מוחק אותו",
     "Always download and transcribe": "תמיד להוריד ולתמלל",
     "American accent": "מבטא אמריקאי",
     "Amharic": "אמהרית",
@@ -1029,7 +1030,7 @@
     "Send": "שלח",
     "Send usage statistics (on by default; also in the Help menu)": "שלח סטטיסטיקת שימוש (מופעל כברירת מחדל; גם בתפריט 'עזרה')",
     "Sending…": "שולח…",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "נשלחת אחרי כל תמלול שהסתיים; מופעלת כברירת מחדל. מתג: 'עזרה' ← 'סטטיסטיקת שימוש', או 'מתקדם' ← 'התנהגות היישום' (הגדרה: telemetry_opt_in)",
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "נשלחת אחרי כל תמלול, כולל תמלולים שנכשלו או בוטלו; מופעלת כברירת מחדל. מתג: 'עזרה' ← 'סטטיסטיקת שימוש', או 'מתקדם' ← 'התנהגות היישום' (הגדרה: telemetry_opt_in)",
     "Sent in plain text when the URL starts with http://": "נשלח כטקסט רגיל כשה-URL מתחיל ב-http://",
     "Sent with: {system}": "נשלח עם: {system}",
     "Serbian": "סרבית",
@@ -1181,7 +1182,7 @@
     "The exact model id your endpoint expects, e.g. gpt-4o-mini for OpenAI, openai/gpt-oss-120b for Groq, or a locally-loaded model's name for Ollama/LM Studio. Different accounts/servers have different models available.": "מזהה המודל המדויק שנקודת הקצה שלך מצפה לו, למשל gpt-4o-mini עבור OpenAI, openai/gpt-oss-120b עבור Groq, או שם של מודל שנטען מקומית עבור Ollama/LM Studio. לחשבונות ולשרתים שונים יש מודלים שונים.",
     "The finished pieces are kept; the same text and voice continue from there.": "החלקים שהסתיימו נשמרים; אותו טקסט ואותו קול ממשיכים משם.",
     "The interface language changes the next time you start the app.": "שפת הממשק תשתנה בפעם הבאה שתפעיל את היישום.",
-    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A language marked \"machine translation\" was translated by a computer and not yet checked by a person. A change applies the next time you start the app.": "השפה של התפריטים, הכפתורים וההודעות ביישום. 'אוטומטי' משתמש בשפת המערכת כשיש לה תרגום, ואחרת באנגלית. שפה שמסומנת 'תרגום מכונה' תורגמה על ידי מחשב ועדיין לא נבדקה על ידי אדם. שינוי חל בפעם הבאה שתפעיל את היישום.",
+    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A change applies the next time you start the app.": "השפה של התפריטים, הכפתורים וההודעות ביישום. 'אוטומטי' משתמש בשפת המערכת כשיש לה תרגום, ואחרת באנגלית. שינוי חל בפעם הבאה שתפעיל את היישום.",
     "The live model '{model}' is not in the model list. The Transcribe tab's model ({main_model}) understands English only, so it cannot stand in for it. Check the internet connection and press Start again, or pick another model in the Model list.": "המודל לשידור חי '{model}' אינו ברשימת המודלים. המודל של כרטיסיית התמלול ({main_model}) מבין אנגלית בלבד, ולכן אינו יכול להחליף אותו. בדוק את החיבור לאינטרנט ולחץ שוב על 'התחל', או בחר מודל אחר ברשימת המודלים.",
     "The live session could not be started.": "לא ניתן היה להתחיל את השידור החי.",
     "The live transcript is empty.": "התמליל החי ריק.",
@@ -1508,6 +1509,8 @@
       "כשתי שניות",
       "כ-{n} שניות"
     ],
+    "about {size} GB": "כ-{size} GB",
+    "about {size} MB": "כ-{size} MB",
     "about {speed}": "כ-{speed}",
     "allowed (this computer)": "מותר (מחשב זה)",
     "audio done": "השמע הושלם",
@@ -1688,7 +1691,6 @@
       "{languages} ועוד {n}"
     ],
     "{language} (automatic)": "{language} (אוטומטיות)",
-    "{language} (machine translation)": "{language} (תרגום מכונה)",
     "{language} (made by the uploader)": "{language} (שיצר המעלה)",
     "{language} (not sure)": "{language} (לא בטוח)",
     "{language} speech will come out as wrong English text: made-up words or a rough English translation, not what was said.": "דיבור ב{language} ייצא כטקסט אנגלי שגוי: מילים מומצאות או תרגום גס לאנגלית, ולא מה שנאמר.",

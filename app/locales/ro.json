@@ -1,8 +1,8 @@
 {
   "_meta": {
     "code": "ro",
-    "name": "Română",
     "direction": "ltr",
+    "name": "Română",
     "plural": "ro",
     "status": "machine"
   },
@@ -85,6 +85,7 @@
     "All files": "Toate fișierele",
     "Already downloaded.": "Deja descărcat.",
     "Already on this computer.": "Deja pe acest computer.",
+    "Also a random install id made by the app; turning usage statistics off deletes it": "De asemenea, un ID de instalare aleatoriu creat de aplicație; dezactivarea statisticilor de utilizare îl șterge",
     "Always download and transcribe": "Descarcă și transcrie întotdeauna",
     "American accent": "Accent american",
     "Amharic": "Amharică",
@@ -1029,7 +1030,7 @@
     "Send": "Trimiteți",
     "Send usage statistics (on by default; also in the Help menu)": "Trimite statistici de utilizare (activat implicit; și în meniul Ajutor)",
     "Sending…": "Se trimite…",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Trimise după fiecare transcriere terminată; activat implicit. Comutare: Ajutor → Statistici de utilizare sau Avansat → Comportamentul aplicației (config: telemetry_opt_in)",
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Trimise după fiecare transcriere, inclusiv cele eșuate și anulate; activat implicit. Comutare: Ajutor → Statistici de utilizare sau Avansat → Comportamentul aplicației (config: telemetry_opt_in)",
     "Sent in plain text when the URL starts with http://": "Se trimite ca text simplu când URL-ul începe cu http://",
     "Sent with: {system}": "Trimis cu: {system}",
     "Serbian": "Sârbă",
@@ -1181,7 +1182,7 @@
     "The exact model id your endpoint expects, e.g. gpt-4o-mini for OpenAI, openai/gpt-oss-120b for Groq, or a locally-loaded model's name for Ollama/LM Studio. Different accounts/servers have different models available.": "ID-ul exact al modelului pe care îl așteaptă punctul dvs. final, de ex. gpt-4o-mini pentru OpenAI, openai/gpt-oss-120b pentru Groq sau numele unui model încărcat local pentru Ollama/LM Studio. Conturile și serverele diferite au modele diferite.",
     "The finished pieces are kept; the same text and voice continue from there.": "Fragmentele terminate sunt păstrate; același text și aceeași voce continuă de acolo.",
     "The interface language changes the next time you start the app.": "Limba interfeței se schimbă la următoarea pornire a aplicației.",
-    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A language marked \"machine translation\" was translated by a computer and not yet checked by a person. A change applies the next time you start the app.": "Limba meniurilor, butoanelor și mesajelor aplicației. „Automat” folosește limba sistemului dvs. când există o traducere pentru ea, altfel engleza. O limbă marcată „traducere automată” a fost tradusă de un computer și nu a fost încă verificată de o persoană. O modificare se aplică la următoarea pornire a aplicației.",
+    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A change applies the next time you start the app.": "Limba meniurilor, butoanelor și mesajelor aplicației. „Automat” folosește limba sistemului dvs. când există o traducere pentru ea, altfel engleza. O modificare se aplică la următoarea pornire a aplicației.",
     "The live model '{model}' is not in the model list. The Transcribe tab's model ({main_model}) understands English only, so it cannot stand in for it. Check the internet connection and press Start again, or pick another model in the Model list.": "Modelul live „{model}” nu este în lista de modele. Modelul din fila Transcriere ({main_model}) înțelege doar engleza, deci nu îl poate înlocui. Verificați conexiunea la internet și apăsați din nou Start sau alegeți alt model din lista Model.",
     "The live session could not be started.": "Sesiunea live nu a putut porni.",
     "The live transcript is empty.": "Transcrierea live este goală.",
@@ -1508,6 +1509,8 @@
       "aproximativ {n} secunde",
       "aproximativ {n} de secunde"
     ],
+    "about {size} GB": "aproximativ {size} GB",
+    "about {size} MB": "aproximativ {size} MB",
     "about {speed}": "aproximativ {speed}",
     "allowed (this computer)": "permis (acest computer)",
     "audio done": "audio finalizat",
@@ -1688,7 +1691,6 @@
       "{languages} și încă {n}"
     ],
     "{language} (automatic)": "{language} (automate)",
-    "{language} (machine translation)": "{language} (traducere automată)",
     "{language} (made by the uploader)": "{language} (făcute de cel care a încărcat)",
     "{language} (not sure)": "{language} (nesigur)",
     "{language} speech will come out as wrong English text: made-up words or a rough English translation, not what was said.": "Vorbirea în {language} va ieși ca text englezesc greșit: cuvinte inventate sau o traducere aproximativă în engleză, nu ce s-a spus.",

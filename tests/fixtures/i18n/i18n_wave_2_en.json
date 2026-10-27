@@ -886,10 +886,38 @@
   ],
   [
    ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe9.!frame6.!label",
-   "Interface language:"
+   "Copy the transcript to an Obsidian vault folder:"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe9.!frame6.!button",
+   "Browse…"
   ],
   [
    ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe9.!frame6.!label2",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe9.!frame7.!label",
+   "Notify a web address when a job finishes:"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe9.!frame7.!label2",
+   " ⓘ "
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe9.!frame8.!label",
+   "Secret (optional):"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe9.!frame8.!checkbutton",
+   "Also send the transcript text"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe9.!frame9.!label",
+   "Interface language:"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe9.!frame9.!label2",
    " ⓘ "
   ],
   [
@@ -1124,10 +1152,18 @@
   ],
   [
    "tooltip#49",
-   "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A language marked \"machine translation\" was translated by a computer and not yet checked by a person. A change applies the next time you start the app."
+   "Leave empty to turn off. Each finished job adds a Markdown note here; existing notes are never replaced."
   ],
   [
    "tooltip#50",
+   "Leave empty to turn off. Sends the job's name, language, length and saved files when it finishes. https only (or http on this computer); Work offline stops it."
+  ],
+  [
+   "tooltip#51",
+   "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A change applies the next time you start the app."
+  ],
+  [
+   "tooltip#52",
    "Resets the Silence & noise settings (VAD, denoise, Demucs, hallucination flagging), word-timing refinement and auto-chapters back to their defaults — plus GPU batch size, which no longer has a control of its own. Nothing is saved until you click Save, so Cancel undoes this too. Output formats, the hotwords/prompt text, model/engine choice, watched folder, and any cloud credentials are left untouched — those are deliberate choices, not per-job tuning knobs."
   ]
  ],

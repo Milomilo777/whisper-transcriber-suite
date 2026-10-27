@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import math
 
-from .base import coerce_seconds, normalize_text, speaker_prefix
+from .base import coerce_seconds, labelled_text
 
 
 def fmt_express_scribe_time(seconds: float) -> str:
@@ -32,6 +32,8 @@ def fmt_express_scribe_time(seconds: float) -> str:
 def write(segments: list[dict], audio_path: str = "") -> str:
     lines: list[str] = []
     for seg in segments:
-        text = speaker_prefix(seg) + normalize_text(seg.get("text", ""))
+        # labelled_text: same prefix + normalized text, but "" when the
+        # segment is empty, so it gets no dangling "Speaker: " label.
+        text = labelled_text(seg)
         lines.append(f"{fmt_express_scribe_time(coerce_seconds(seg.get('start')))} {text}")
     return "\n".join(lines) + "\n"

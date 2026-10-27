@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import sys
 import types
+from pathlib import Path
 
 import pytest
 
@@ -125,6 +126,35 @@ def test_a_model_of_no_level_shows_as_custom(App, monkeypatch, slug):
     assert a.transcribe_accuracy_var.get() == CUSTOM
     assert a._accuracy_choice is None
     assert list(a.transcribe_accuracy_combo.cget("values")) == [*LABELS, CUSTOM]
+
+
+def test_the_box_is_widened_for_custom_and_only_then(App, monkeypatch):
+    """"Custom (current setting)" was cut off: the box was sized for Fast/Balanced/Best only."""
+    a = _bare_app(App, monkeypatch, whisper_model="medium")
+    App._refresh_accuracy_row(a)
+    assert a.transcribe_accuracy_combo.cget("width") >= len(CUSTOM)
+    b = _bare_app(App, monkeypatch, whisper_model="large-v3")
+    App._refresh_accuracy_row(b)
+    assert b.transcribe_accuracy_combo.cget("width") == ""  # untouched: the level names fit
+
+
+def test_the_custom_entry_fits_in_every_language(App, monkeypatch):
+    # German "Benutzerdefiniert (aktuelle Einstellung)" is 40 characters: a cap of 32 cut it
+    from app import i18n
+    codes = sorted(p.stem for p in (Path(i18n.__file__).parent / "locales").glob("*.json"))
+    assert len(codes) > 40
+    too_narrow = []
+    try:
+        for code in codes:
+            i18n.set_language(code)
+            a = _bare_app(App, monkeypatch, whisper_model="medium")
+            App._refresh_accuracy_row(a)
+            label = i18n._(CUSTOM)
+            if a.transcribe_accuracy_combo.cget("width") < len(label):
+                too_narrow.append(code)
+    finally:
+        i18n.set_language("en")
+    assert too_narrow == []
 
 
 def test_the_note_names_the_model_and_its_download(App, monkeypatch):

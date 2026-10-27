@@ -32,7 +32,7 @@ from unittest.mock import patch
 
 import pytest
 
-from app import i18n
+from app import i18n, rtl_shaping
 
 # Texts the app shows that do not go through the translation layer, with the reason.
 ALLOWED: dict[str, str] = {
@@ -82,6 +82,8 @@ def _dynamic_allowed() -> set[str]:
     texts.add(updates.bar_text(UPDATE_INFO.latest_tag, _APP_VERSION, UPDATE_INFO.headline))
     texts.add(CORE_USAGE)
     texts |= {lang.endonym for lang in i18n.SUPPORTED_LANGUAGES}
+    # Linux with arabic-reshaper and python-bidi: the same names, display-shaped (ltr_base).
+    texts |= {rtl_shaping.visual(lang.endonym, base="L") for lang in i18n.SUPPORTED_LANGUAGES}
     texts.add(ui_language.button_text())  # the language button: the running language's own name
     texts |= set(cookie_browser_choices("")[1:])
     texts |= {name.upper() for name in supported_formats() if name not in adv._FORMAT_LABELS}
@@ -322,11 +324,16 @@ def test_tk_rtl_catalog_reaches_the_widgets_unchanged(build_app: Any, monkeypatc
     assert i18n.current_direction() == "rtl"
     app = build_app()
     # The catalog's text, character for character; on Windows each line inside one RLE ... PDF
-    # pair (U+202B ... U+202C), elsewhere unchanged. Tk does not reorder, and no LRM is added
-    # off macOS.
+    # pair (U+202B ... U+202C), on Linux with the display shaping (app.rtl_shaping) in visual
+    # order, elsewhere unchanged. Tk does not reorder, and no LRM is added off macOS.
     marks = (chr(0x202B), chr(0x202C)) if sys.platform == "win32" else ("", "")
+
+    def shown(text: str) -> str:
+        from app import rtl_shaping
+        return rtl_shaping.visual(text) if i18n.rtl_shaped() else marks[0] + text + marks[1]
+
     tabs = {str(app.nb.tab(t, "text")) for t in app.nb.tabs()}
-    expected = {marks[0] + messages[key] + marks[1] for key in (
+    expected = {shown(messages[key]) for key in (
         "Transcription Queue", "Download Videos", "Web / LAN access",
         "tab" + i18n.CONTEXT_SEPARATOR + "Live")}
     assert expected <= tabs, tabs
@@ -363,8 +370,8 @@ def test_tk_rtl_catalog_is_not_offered_until_the_layout_is_mirrored(
     try:
         values = list(dlg.tk.splitlist(dlg._ui_language_combo.cget("values")))
         assert values[1] == "English"
-        # "{language} (machine translation)" as the test catalog has it.
-        assert i18n.plain(values[2]).endswith(HEBREW_MARK + "עברית (machine translation)"), values
+        # The language name stands alone: no "(machine translation)" note next to it.
+        assert i18n.plain(values[2]) == "עברית", values
     finally:
         dlg.destroy()
 
@@ -388,7 +395,6 @@ PERSIAN = {
     "App behaviour": "رفتار برنامه",
     "Interface language:": "زبان رابط:",
     "Automatic (system language)": "خودکار (زبان سیستم)",
-    "{language} (machine translation)": "{language} (ترجمه ماشینی)",
 }
 
 
@@ -470,7 +476,7 @@ def test_tk_persian_catalog_marks_every_translated_line(
         assert RLE_MARK + PERSIAN["App behaviour"] + PDF_MARK in shown
         picker = list(dlg.tk.splitlist(dlg._ui_language_combo.cget("values")))
         assert picker[0] == RLE_MARK + PERSIAN["Automatic (system language)"] + PDF_MARK
-        assert RLE_MARK + "فارسی (ترجمه ماشینی)" + PDF_MARK in picker, picker
+        assert "فارسی" in picker, picker
         assert dlg._ui_language_value(dlg._ui_language_display.get()) == "auto"
         assert dlg._ui_language_value(picker[0]) == "auto"
     finally:
@@ -484,6 +490,7 @@ def test_tk_persian_catalog_marks_every_translated_line(
     from app.dialogs import ui_language
 
     names = {lang.endonym for lang in i18n.SUPPORTED_LANGUAGES} | {ui_language.button_text()}
+    names |= {rtl_shaping.visual(lang.endonym, base="L") for lang in i18n.SUPPORTED_LANGUAGES}
     bad = sorted({f"{state} | {path} | {text!r}: {', '.join(p)}" for state, path, text in rows
                   if text not in names and not _video_site(app, path)
                   for p in [_unembedded(text)] if p})

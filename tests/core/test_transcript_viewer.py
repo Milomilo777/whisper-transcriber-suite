@@ -1383,3 +1383,17 @@ def test_right_click_menu_entry_runs_after_popup_returns(sample_json, monkeypatc
             viewer._on_close()
     finally:
         root.destroy()
+
+
+def test_strip_fillers_tidies_unspaced_dash_pair():
+    """A filler framed by dashes that touch the words around it
+    ("hello—um—world") must not leave doubled dashes behind: the
+    dash-pair cleanup names "–" and "—" too, not only the spaced
+    hyphen case ("so - um - then" -> "so - then")."""
+    from app.dialogs.transcript_viewer import _strip_fillers, _filler_regex
+
+    pat = _filler_regex()
+    assert _strip_fillers("hello—um—world", pat) == "hello—world"
+    assert _strip_fillers("hello–um–world", pat) == "hello–world"
+    # The documented spaced-hyphen case still works.
+    assert _strip_fillers("so - um - then", pat) == "so - then"

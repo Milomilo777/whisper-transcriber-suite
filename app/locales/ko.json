@@ -81,6 +81,7 @@
     "All files": "모든 파일",
     "Already downloaded.": "이미 다운로드했습니다.",
     "Already on this computer.": "이미 이 컴퓨터에 있습니다.",
+    "Also a random install id made by the app; turning usage statistics off deletes it": "앱이 만든 무작위 설치 ID도 함께 보냅니다. 사용 통계를 끄면 삭제됩니다",
     "Always download and transcribe": "항상 다운로드 후 전사",
     "American accent": "미국식 억양",
     "Amharic": "암하라어",
@@ -995,7 +996,7 @@
     "Send": "보내기",
     "Send usage statistics (on by default; also in the Help menu)": "사용 통계 보내기(기본값 켬, 도움말 메뉴에도 있음)",
     "Sending…": "보내는 중…",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "전사가 끝날 때마다 전송, 기본값 켬. 전환: 도움말 → 사용 통계 또는 고급 → 앱 동작(config: telemetry_opt_in)",
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "실패하거나 취소된 전사를 포함해 전사할 때마다 전송, 기본값 켬. 전환: 도움말 → 사용 통계 또는 고급 → 앱 동작(config: telemetry_opt_in)",
     "Sent in plain text when the URL starts with http://": "URL이 http://로 시작하면 일반 텍스트로 전송됩니다",
     "Sent with: {system}": "함께 전송: {system}",
     "Serbian": "세르비아어",
@@ -1143,7 +1144,7 @@
     "The exact model id your endpoint expects, e.g. gpt-4o-mini for OpenAI, openai/gpt-oss-120b for Groq, or a locally-loaded model's name for Ollama/LM Studio. Different accounts/servers have different models available.": "엔드포인트가 요구하는 정확한 모델 ID입니다. 예: OpenAI는 gpt-4o-mini, Groq는 openai/gpt-oss-120b, Ollama/LM Studio는 로컬에 불러온 모델 이름. 계정과 서버마다 사용할 수 있는 모델이 다릅니다.",
     "The finished pieces are kept; the same text and voice continue from there.": "완료된 조각은 유지되며, 같은 텍스트와 목소리로 거기서부터 이어집니다.",
     "The interface language changes the next time you start the app.": "인터페이스 언어는 다음에 앱을 시작할 때 바뀝니다.",
-    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A language marked \"machine translation\" was translated by a computer and not yet checked by a person. A change applies the next time you start the app.": "앱의 메뉴, 버튼, 메시지에 쓰이는 언어입니다. '자동'은 번역이 있으면 시스템 언어를, 없으면 영어를 사용합니다. '기계 번역'으로 표시된 언어는 컴퓨터가 번역했으며 아직 사람이 확인하지 않았습니다. 변경 사항은 다음에 앱을 시작할 때 적용됩니다.",
+    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A change applies the next time you start the app.": "앱의 메뉴, 버튼, 메시지에 쓰이는 언어입니다. '자동'은 번역이 있으면 시스템 언어를, 없으면 영어를 사용합니다. 변경 사항은 다음에 앱을 시작할 때 적용됩니다.",
     "The live model '{model}' is not in the model list. The Transcribe tab's model ({main_model}) understands English only, so it cannot stand in for it. Check the internet connection and press Start again, or pick another model in the Model list.": "실시간 모델 '{model}'이(가) 모델 목록에 없습니다. 전사 탭의 모델({main_model})은 영어만 이해하므로 대신 사용할 수 없습니다. 인터넷 연결을 확인하고 다시 시작을 누르거나 모델 목록에서 다른 모델을 선택하세요.",
     "The live session could not be started.": "실시간 세션을 시작할 수 없습니다.",
     "The live transcript is empty.": "실시간 전사본이 비어 있습니다.",
@@ -1444,6 +1445,8 @@
     "about {n} seconds": [
       "약 {n}초"
     ],
+    "about {size} GB": "약 {size} GB",
+    "about {size} MB": "약 {size} MB",
     "about {speed}": "약 {speed}",
     "allowed (this computer)": "허용됨(이 컴퓨터)",
     "audio done": "오디오 완료",
@@ -1614,7 +1617,6 @@
       "{languages} 외 {n}개"
     ],
     "{language} (automatic)": "{language}(자동)",
-    "{language} (machine translation)": "{language}(기계 번역)",
     "{language} (made by the uploader)": "{language}(업로더 제작)",
     "{language} (not sure)": "{language} (불확실)",
     "{language} speech will come out as wrong English text: made-up words or a rough English translation, not what was said.": "{language} 음성은 잘못된 영어 텍스트로 나옵니다: 지어낸 단어나 대략적인 영어 번역이며, 실제로 말한 내용이 아닙니다.",

@@ -81,6 +81,7 @@
     "All files": "所有檔案",
     "Already downloaded.": "已下載。",
     "Already on this computer.": "已在這台電腦上。",
+    "Also a random install id made by the app; turning usage statistics off deletes it": "另有一個由應用程式產生的隨機安裝 ID；關閉使用統計後即刪除",
     "Always download and transcribe": "一律下載並轉錄",
     "American accent": "美國口音",
     "Amharic": "阿姆哈拉語",
@@ -995,7 +996,7 @@
     "Send": "傳送",
     "Send usage statistics (on by default; also in the Help menu)": "傳送使用統計（預設開啟；也可在「說明」選單中設定）",
     "Sending…": "正在傳送…",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "每次轉錄完成後傳送；預設開啟。開關：說明 → 使用統計，或 進階 → 應用程式行為（設定項：telemetry_opt_in）",
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "每次轉錄後都會傳送，包括失敗和已取消的轉錄；預設開啟。開關：說明 → 使用統計，或 進階 → 應用程式行為（設定項：telemetry_opt_in）",
     "Sent in plain text when the URL starts with http://": "當 URL 以 http:// 開頭時，以純文字傳送",
     "Sent with: {system}": "隨附資訊：{system}",
     "Serbian": "塞爾維亞語",
@@ -1143,7 +1144,7 @@
     "The exact model id your endpoint expects, e.g. gpt-4o-mini for OpenAI, openai/gpt-oss-120b for Groq, or a locally-loaded model's name for Ollama/LM Studio. Different accounts/servers have different models available.": "你的端點所期望的確切模型 ID，例如 OpenAI 用 gpt-4o-mini，Groq 用 openai/gpt-oss-120b，Ollama/LM Studio 用本機載入的模型名稱。不同的帳戶和伺服器可用的模型不同。",
     "The finished pieces are kept; the same text and voice continue from there.": "已完成的部分會保留；相同的文字和聲音會從那裡繼續。",
     "The interface language changes the next time you start the app.": "介面語言會在下次啟動應用程式時變更。",
-    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A language marked \"machine translation\" was translated by a computer and not yet checked by a person. A change applies the next time you start the app.": "應用程式選單、按鈕和訊息所用的語言。「自動」會在有翻譯時使用系統語言，否則使用英文。標示為「機器翻譯」的語言由電腦翻譯，尚未經過人工檢查。變更會在下次啟動應用程式時套用。",
+    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A change applies the next time you start the app.": "應用程式選單、按鈕和訊息所用的語言。「自動」會在有翻譯時使用系統語言，否則使用英文。變更會在下次啟動應用程式時套用。",
     "The live model '{model}' is not in the model list. The Transcribe tab's model ({main_model}) understands English only, so it cannot stand in for it. Check the internet connection and press Start again, or pick another model in the Model list.": "即時模型「{model}」不在模型清單中。「轉錄」分頁的模型（{main_model}）只懂英語，無法代替它。請檢查網路連線後再按一次「開始」，或在「模型」清單中選擇其他模型。",
     "The live session could not be started.": "無法啟動即時工作階段。",
     "The live transcript is empty.": "即時逐字稿是空的。",
@@ -1444,6 +1445,8 @@
     "about {n} seconds": [
       "約 {n} 秒"
     ],
+    "about {size} GB": "約 {size} GB",
+    "about {size} MB": "約 {size} MB",
     "about {speed}": "約 {speed}",
     "allowed (this computer)": "已允許（本機）",
     "audio done": "音訊已完成",
@@ -1614,7 +1617,6 @@
       "{languages}及另外 {n} 種"
     ],
     "{language} (automatic)": "{language}（自動產生）",
-    "{language} (machine translation)": "{language}（機器翻譯）",
     "{language} (made by the uploader)": "{language}（由上傳者製作）",
     "{language} (not sure)": "{language}（不確定）",
     "{language} speech will come out as wrong English text: made-up words or a rough English translation, not what was said.": "{language}語音會輸出為錯誤的英文文字：捏造的字詞或粗略的英文翻譯，而不是實際說的內容。",

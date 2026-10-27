@@ -329,11 +329,13 @@ def _fmt_bytes(n: int) -> str:
     """Compact filesize formatter for the Last Result card."""
     if n < 1024:
         return f"{n} B"
-    if n < 1024 * 1024:
-        return f"{n / 1024:.1f} KB"
-    if n < 1024 * 1024 * 1024:
-        return f"{n / (1024 * 1024):.1f} MB"
-    return f"{n / (1024 * 1024 * 1024):.2f} GB"
+    kb = n / 1024
+    if kb < 1023.95:  # below what :.1f rounds up to "1024.0 KB"
+        return f"{kb:.1f} KB"
+    mb = kb / 1024
+    if mb < 1023.95:
+        return f"{mb:.1f} MB"
+    return f"{mb / 1024:.2f} GB"
 
 
 def _status_text(status: str) -> str:

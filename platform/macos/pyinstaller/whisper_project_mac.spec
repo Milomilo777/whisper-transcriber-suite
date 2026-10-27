@@ -299,6 +299,23 @@ for _pkg in ('arabic_reshaper', 'bidi'):
     _rtl_binaries += _b
     _rtl_hidden += _h
 
+# Apple-silicon engine (core/backends/mlx_whisper_be.py): MLX with its Metal shader library,
+# and what mlx-whisper imports at run time (numba/llvmlite for word timestamps, scipy,
+# tiktoken). Gathered only when the build venv installed them, i.e. an arm64 build made with
+# platform/macos/pyinstaller/requirements-apple-silicon.txt; an Intel build skips this block.
+# collect_all brings the dylibs and mlx.metallib that a plain import scan would miss. The
+# result must be run on a real M-series Mac (docs/MACOS_BUILD_NOTES.md).
+_mlx_datas, _mlx_binaries, _mlx_hidden = [], [], []
+if importlib.util.find_spec('mlx_whisper') is not None:
+    for _pkg in ('mlx', 'mlx_whisper', 'numba', 'llvmlite', 'tiktoken', 'scipy'):
+        if importlib.util.find_spec(_pkg) is None:
+            raise SystemExit(f"{_pkg} is missing: mlx-whisper is installed but not its dependency "
+                             "(pip install -r platform/macos/pyinstaller/requirements-apple-silicon.txt)")
+        _d, _b, _h = collect_all(_pkg)
+        _mlx_datas += _d
+        _mlx_binaries += _b
+        _mlx_hidden += _h
+
 a = Analysis(
     [os.path.join(_REPO_ROOT, 'gui.py')],
     pathex=[_REPO_ROOT],
@@ -309,6 +326,7 @@ a = Analysis(
         *alignment_binaries,
         *_gcloud_binaries,
         *_rtl_binaries,
+        *_mlx_binaries,
         *_npstack_binaries,
     ],
     datas=[
@@ -333,6 +351,7 @@ a = Analysis(
         *alignment_datas,
         *_gcloud_datas,
         *_rtl_datas,
+        *_mlx_datas,
         *_npstack_datas,
     ],
     hiddenimports=[
@@ -343,6 +362,7 @@ a = Analysis(
         *alignment_hidden,
         *_gcloud_hidden,
         *_rtl_hidden,
+        *_mlx_hidden,
         *_npstack_hidden,
         'google.cloud.speech_v2',
         'google.cloud.storage',
@@ -359,7 +379,10 @@ a = Analysis(
         'app.observability',
         'app.crash_report',
         'app.i18n',
+        'app.model_text',
+        'app.mac_permissions',
         'app.rtl_layout',
+        'app.rtl_shaping',
         'app.theme.script_fonts',
         'app.theme.theme_colours',
         'app.theme.mac_appearance',
@@ -372,6 +395,7 @@ a = Analysis(
         'app.dialogs.caption_choice',
         'app.dialogs.english_only_model',
         'app.dialogs.hub_setup',
+        'app.dialogs.mac_permission',
         'app.dialogs.model_download',
         'app.dialogs.statistics',
         'app.dialogs.transcript_viewer',
@@ -458,6 +482,7 @@ a = Analysis(
         'core.backends.cloud_stt',
         'core.backends.google_cloud_stt',
         'core.backends.nvidia_asr',
+        'core.backends.mlx_whisper_be',
         'core.backends.availability',
         'core.chapters',
         'core.llm',
@@ -506,6 +531,7 @@ a = Analysis(
         'core.model_manager',
         'core.offline',
         'core.subtitle_edit',
+        'core.finish_hooks',
         'core.paths',
         'core.process_exit',
         'core.speed_meter',

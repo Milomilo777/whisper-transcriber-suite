@@ -81,6 +81,7 @@
     "All files": "Semua berkas",
     "Already downloaded.": "Sudah diunduh.",
     "Already on this computer.": "Sudah ada di komputer ini.",
+    "Also a random install id made by the app; turning usage statistics off deletes it": "Juga ID pemasangan acak yang dibuat aplikasi; mematikan statistik pemakaian akan menghapusnya",
     "Always download and transcribe": "Selalu unduh dan transkripsikan",
     "American accent": "Aksen Amerika",
     "Amharic": "Amharik",
@@ -995,7 +996,7 @@
     "Send": "Kirim",
     "Send usage statistics (on by default; also in the Help menu)": "Kirim statistik pemakaian (aktif secara bawaan; juga di menu Bantuan)",
     "Sending…": "Mengirim…",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Dikirim setelah setiap transkripsi selesai; aktif secara bawaan. Sakelar: Bantuan → Statistik pemakaian, atau Lanjutan → Perilaku aplikasi (config: telemetry_opt_in)",
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "Dikirim setelah setiap transkripsi, termasuk yang gagal dan dibatalkan; aktif secara bawaan. Sakelar: Bantuan → Statistik pemakaian, atau Lanjutan → Perilaku aplikasi (config: telemetry_opt_in)",
     "Sent in plain text when the URL starts with http://": "Dikirim sebagai teks biasa jika URL diawali http://",
     "Sent with: {system}": "Dikirim bersama: {system}",
     "Serbian": "Serbia",
@@ -1143,7 +1144,7 @@
     "The exact model id your endpoint expects, e.g. gpt-4o-mini for OpenAI, openai/gpt-oss-120b for Groq, or a locally-loaded model's name for Ollama/LM Studio. Different accounts/servers have different models available.": "ID model persis yang diharapkan endpoint Anda, mis. gpt-4o-mini untuk OpenAI, openai/gpt-oss-120b untuk Groq, atau nama model yang dimuat secara lokal untuk Ollama/LM Studio. Akun/server berbeda memiliki model yang berbeda.",
     "The finished pieces are kept; the same text and voice continue from there.": "Bagian yang sudah selesai tetap disimpan; teks dan suara yang sama dilanjutkan dari sana.",
     "The interface language changes the next time you start the app.": "Bahasa antarmuka berubah saat Anda memulai aplikasi berikutnya.",
-    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A language marked \"machine translation\" was translated by a computer and not yet checked by a person. A change applies the next time you start the app.": "Bahasa menu, tombol, dan pesan aplikasi. Otomatis menggunakan bahasa sistem Anda jika tersedia terjemahan untuk bahasa itu, jika tidak menggunakan bahasa Inggris. Bahasa yang ditandai \"terjemahan mesin\" diterjemahkan oleh komputer dan belum diperiksa oleh manusia. Perubahan berlaku saat Anda memulai aplikasi berikutnya.",
+    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A change applies the next time you start the app.": "Bahasa menu, tombol, dan pesan aplikasi. Otomatis menggunakan bahasa sistem Anda jika tersedia terjemahan untuk bahasa itu, jika tidak menggunakan bahasa Inggris. Perubahan berlaku saat Anda memulai aplikasi berikutnya.",
     "The live model '{model}' is not in the model list. The Transcribe tab's model ({main_model}) understands English only, so it cannot stand in for it. Check the internet connection and press Start again, or pick another model in the Model list.": "Model langsung “{model}” tidak ada di daftar model. Model tab Transkripsi ({main_model}) hanya mengerti bahasa Inggris, jadi tidak dapat menggantikannya. Periksa koneksi internet dan tekan Mulai lagi, atau pilih model lain di daftar Model.",
     "The live session could not be started.": "Sesi langsung tidak dapat dimulai.",
     "The live transcript is empty.": "Transkrip langsung kosong.",
@@ -1444,6 +1445,8 @@
     "about {n} seconds": [
       "sekitar {n} detik"
     ],
+    "about {size} GB": "sekitar {size} GB",
+    "about {size} MB": "sekitar {size} MB",
     "about {speed}": "sekitar {speed}",
     "allowed (this computer)": "diizinkan (komputer ini)",
     "audio done": "audio selesai",
@@ -1614,7 +1617,6 @@
       "{languages} dan {n} lainnya"
     ],
     "{language} (automatic)": "{language} (otomatis)",
-    "{language} (machine translation)": "{language} (terjemahan mesin)",
     "{language} (made by the uploader)": "{language} (dibuat oleh pengunggah)",
     "{language} (not sure)": "{language} (tidak yakin)",
     "{language} speech will come out as wrong English text: made-up words or a rough English translation, not what was said.": "Ucapan {language} akan keluar sebagai teks Inggris yang salah: kata-kata karangan atau terjemahan Inggris kasar, bukan yang sebenarnya diucapkan.",

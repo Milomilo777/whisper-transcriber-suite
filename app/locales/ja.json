@@ -81,6 +81,7 @@
     "All files": "すべてのファイル",
     "Already downloaded.": "ダウンロード済みです。",
     "Already on this computer.": "このコンピューターにすでにあります。",
+    "Also a random install id made by the app; turning usage statistics off deletes it": "アプリが作るランダムなインストール ID も送信されます。使用統計をオフにすると削除されます",
     "Always download and transcribe": "常にダウンロードして文字起こし",
     "American accent": "アメリカ英語のアクセント",
     "Amharic": "アムハラ語",
@@ -995,7 +996,7 @@
     "Send": "送信",
     "Send usage statistics (on by default; also in the Help menu)": "使用統計を送信（既定でオン。「ヘルプ」メニューにもあります）",
     "Sending…": "送信しています…",
-    "Sent after each finished transcription; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "文字起こしが完了するたびに送信されます。既定でオンです。切り替え: 「ヘルプ」→「使用統計」、または「詳細」→「アプリの動作」（設定: telemetry_opt_in）",
+    "Sent after each transcription, including failed and cancelled ones; on by default. Switch: Help → Usage statistics, or Advanced → App behaviour (config: telemetry_opt_in)": "失敗やキャンセルを含め、文字起こしのたびに送信されます。既定でオンです。切り替え: 「ヘルプ」→「使用統計」、または「詳細」→「アプリの動作」（設定: telemetry_opt_in）",
     "Sent in plain text when the URL starts with http://": "URL が http:// で始まる場合は平文で送信されます",
     "Sent with: {system}": "送信される情報: {system}",
     "Serbian": "セルビア語",
@@ -1143,7 +1144,7 @@
     "The exact model id your endpoint expects, e.g. gpt-4o-mini for OpenAI, openai/gpt-oss-120b for Groq, or a locally-loaded model's name for Ollama/LM Studio. Different accounts/servers have different models available.": "エンドポイントが求める正確なモデル ID です。例: OpenAI なら gpt-4o-mini、Groq なら openai/gpt-oss-120b、Ollama/LM Studio ならローカルに読み込んだモデルの名前。アカウントやサーバーによって利用できるモデルは異なります。",
     "The finished pieces are kept; the same text and voice continue from there.": "完了した部分は保持されます。同じテキストと声で、そこから続行します。",
     "The interface language changes the next time you start the app.": "表示言語は、次にアプリを起動したときに変わります。",
-    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A language marked \"machine translation\" was translated by a computer and not yet checked by a person. A change applies the next time you start the app.": "アプリのメニュー、ボタン、メッセージの言語です。「自動」では、翻訳があればシステムの言語を、なければ英語を使います。「機械翻訳」と表示された言語はコンピューターが翻訳したもので、まだ人による確認を受けていません。変更は次にアプリを起動したときに適用されます。",
+    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A change applies the next time you start the app.": "アプリのメニュー、ボタン、メッセージの言語です。「自動」では、翻訳があればシステムの言語を、なければ英語を使います。変更は次にアプリを起動したときに適用されます。",
     "The live model '{model}' is not in the model list. The Transcribe tab's model ({main_model}) understands English only, so it cannot stand in for it. Check the internet connection and press Start again, or pick another model in the Model list.": "ライブ用モデル「{model}」がモデル一覧にありません。「文字起こし」タブのモデル（{main_model}）は英語専用のため、代わりに使えません。インターネット接続を確認してもう一度「開始」を押すか、モデル一覧で別のモデルを選んでください。",
     "The live session could not be started.": "ライブ セッションを開始できませんでした。",
     "The live transcript is empty.": "ライブ文字起こしは空です。",
@@ -1444,6 +1445,8 @@
     "about {n} seconds": [
       "約 {n} 秒"
     ],
+    "about {size} GB": "約 {size} GB",
+    "about {size} MB": "約 {size} MB",
     "about {speed}": "約 {speed}",
     "allowed (this computer)": "許可（このコンピューター）",
     "audio done": "音声完了",
@@ -1614,7 +1617,6 @@
       "{languages}、ほか {n} 言語"
     ],
     "{language} (automatic)": "{language}（自動生成）",
-    "{language} (machine translation)": "{language}（機械翻訳）",
     "{language} (made by the uploader)": "{language}（アップロード者が作成）",
     "{language} (not sure)": "{language} (推定)",
     "{language} speech will come out as wrong English text: made-up words or a rough English translation, not what was said.": "{language}の音声は誤った英語のテキストとして出力されます。実際に話された内容ではなく、でたらめな単語や大まかな英訳になります。",

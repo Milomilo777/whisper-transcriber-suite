@@ -102,6 +102,10 @@ class TranscriptionTask:
         # True when a finished run recognised no speech at all; no output
         # files are written then, and the result card and history say so.
         self.no_speech: bool = False
+        # True when diarisation was enabled but failed, so the transcript was
+        # saved without speaker labels. Carried on the worker's "done" event
+        # and shown as one short notice on the result card (like no_speech).
+        self.speaker_labels_failed: bool = False
         # Write the (empty) output files even without speech: the web/LAN
         # server's own task sets it (core.transcriber._skips_outputs).
         self.keep_empty_outputs: bool = False

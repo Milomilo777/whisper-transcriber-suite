@@ -1190,10 +1190,13 @@ def detect_device_for(config: dict[str, Any]) -> tuple[str, str]:
     nothing about whether CTranslate2 can use it.
     """
     # A missing, null or blank "device" means auto (as in the wizard helper
-    # below), not an empty engine name.
+    # below), not an empty engine name. A blank "compute_type" (null or ""
+    # from a hand-edited config.json) is not a compute type either:
+    # CTranslate2 raises for None / "" at model load, so it defaults to
+    # int8 the same way an absent key does.
     dev = str(config.get("device") or "auto").strip().lower()
     if dev != "auto":
-        ct = config.get("compute_type", "int8")
+        ct = str(config.get("compute_type") or "").strip() or "int8"
         logger.info(
             "device_choice device=%s compute_type=%s source=config", dev, ct
         )
@@ -1222,7 +1225,7 @@ def detect_device_for(config: dict[str, Any]) -> tuple[str, str]:
             "NVIDIA GPU found but CUDA is not usable, using the CPU: %s",
             status.summary(),
         )
-    ct = config.get("compute_type", "int8")
+    ct = str(config.get("compute_type") or "").strip() or "int8"
     logger.info(
         "device_choice device=cpu compute_type=%s source=cpu_fallback", ct
     )

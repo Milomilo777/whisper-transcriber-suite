@@ -66,3 +66,13 @@ def test_chords_use_xdotool_names():
     assert hands.chord(["enter"]) == "Return"
     assert hands.chord(["alt", "F4"]) == "alt+F4"
     assert hands.chord(["shift", "tab"]) == "shift+Tab"
+
+
+def test_scroll_direction_must_be_up_or_down():
+    # At run time everything but the exact string "down" scrolls UP (button 4),
+    # so a typo like "Down" would silently act the other way round.
+    assert hands.validate([{"op": "scroll", "x": 1, "y": 2, "dir": "diagonal"}]) != []
+    assert hands.validate([{"op": "scroll", "x": 1, "y": 2, "dir": "Down"}]) != []
+    assert hands.validate([{"op": "scroll", "x": 1, "y": 2}]) == []
+    assert hands.validate([{"op": "scroll", "x": 1, "y": 2, "dir": "up"}]) == []
+    assert hands.validate([{"op": "scroll", "x": 1, "y": 2, "dir": "down"}]) == []
