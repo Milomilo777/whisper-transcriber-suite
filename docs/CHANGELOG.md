@@ -250,6 +250,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   way. Pages that have the MP3 still download it directly.
 - When speaker detection fails, the result card now says the transcript was saved without speaker labels (before, only the log showed it).
 - Identify speakers no longer looks frozen during the first part of a long file: the progress bar keeps moving while the speaker model is still segmenting the audio.
+- Offline summaries no longer show stray asterisks around ***bold italic*** words.
 
 ## [2.2.0] — 2026-10-22
 

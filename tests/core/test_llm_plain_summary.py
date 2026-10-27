@@ -35,3 +35,17 @@ def test_both_runners_clean_the_summary(monkeypatch: pytest.MonkeyPatch) -> None
         runner = cls.__new__(cls)
         monkeypatch.setattr(cls, "_chat", lambda self, *a, **k: "- **One**: x", raising=True)
         assert runner.summarise("t") == "- One: x"
+
+
+# ***bold italic*** runs some models emit: markers around whole words go, like **bold**;
+# runs glued to letters or digits (powers) stay.
+@pytest.mark.parametrize("raw, plain", [
+    ("***Bold italic*** text", "Bold italic text"),
+    ("- ***Key point***: yes", "- Key point: yes"),
+    ("2***3", "2***3"),
+    ("a***b***c", "a***b***c"),
+    ("g(***kw)", "g(***kw)"),
+    ("***x", "***x"),   # no closing run: nothing to strip
+])
+def test_plain_summary_text_triple_star(raw: str, plain: str) -> None:
+    assert llm.plain_summary_text(raw) == plain
