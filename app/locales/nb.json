@@ -1163,7 +1163,7 @@
     "The exact model id your endpoint expects, e.g. gpt-4o-mini for OpenAI, openai/gpt-oss-120b for Groq, or a locally-loaded model's name for Ollama/LM Studio. Different accounts/servers have different models available.": "Den nøyaktige modell-ID-en endepunktet ditt forventer, f.eks. gpt-4o-mini for OpenAI, openai/gpt-oss-120b for Groq eller navnet på en lokalt innlastet modell for Ollama/LM Studio. Ulike kontoer og servere har ulike modeller.",
     "The finished pieces are kept; the same text and voice continue from there.": "De ferdige delene beholdes; samme tekst og stemme fortsetter derfra.",
     "The interface language changes the next time you start the app.": "Grensesnittspråket endres neste gang du starter appen.",
-    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A language marked \"machine translation\" was translated by a computer and not yet checked by a person. A change applies the next time you start the app.": "Språket i appens menyer, knapper og meldinger. Automatisk bruker systemspråket ditt når det finnes en oversettelse for det, ellers engelsk. Et språk merket «maskinoversettelse» er oversatt av en datamaskin og ennå ikke kontrollert av et menneske. En endring gjelder neste gang du starter appen.",
+    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A change applies the next time you start the app.": "Språket i appens menyer, knapper og meldinger. Automatisk bruker systemspråket ditt når det finnes en oversettelse for det, ellers engelsk. En endring gjelder neste gang du starter appen.",
     "The live model '{model}' is not in the model list. The Transcribe tab's model ({main_model}) understands English only, so it cannot stand in for it. Check the internet connection and press Start again, or pick another model in the Model list.": "Direktemodellen «{model}» er ikke i modellisten. Modellen i fanen Transkriber ({main_model}) forstår bare engelsk, så den kan ikke erstatte den. Sjekk internettforbindelsen og trykk Start igjen, eller velg en annen modell i Modell-listen.",
     "The live session could not be started.": "Direkteøkten kunne ikke startes.",
     "The live transcript is empty.": "Direktetranskripsjonen er tom.",
@@ -1654,7 +1654,6 @@
       "{languages} og {n} til"
     ],
     "{language} (automatic)": "{language} (automatisk)",
-    "{language} (machine translation)": "{language} (maskinoversettelse)",
     "{language} (made by the uploader)": "{language} (laget av opplasteren)",
     "{language} (not sure)": "{language} (usikker)",
     "{language} speech will come out as wrong English text: made-up words or a rough English translation, not what was said.": "Tale på {language} blir til feil engelsk tekst: oppdiktede ord eller en grov engelsk oversettelse, ikke det som ble sagt.",

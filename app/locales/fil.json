@@ -1163,7 +1163,7 @@
     "The exact model id your endpoint expects, e.g. gpt-4o-mini for OpenAI, openai/gpt-oss-120b for Groq, or a locally-loaded model's name for Ollama/LM Studio. Different accounts/servers have different models available.": "Ang eksaktong model id na inaasahan ng endpoint mo, hal. gpt-4o-mini para sa OpenAI, openai/gpt-oss-120b para sa Groq, o pangalan ng lokal na na-load na model para sa Ollama/LM Studio. Magkakaiba ang mga model na available sa iba't ibang account/server.",
     "The finished pieces are kept; the same text and voice continue from there.": "Itinatabi ang mga natapos na piraso; doon magpapatuloy ang parehong text at boses.",
     "The interface language changes the next time you start the app.": "Magbabago ang wika ng interface sa susunod na pagbukas mo ng app.",
-    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A language marked \"machine translation\" was translated by a computer and not yet checked by a person. A change applies the next time you start the app.": "Ang wika ng mga menu, button, at mensahe ng app. Ginagamit ng Awtomatiko ang wika ng iyong system kapag may salin para dito; kung wala, Ingles. Ang wikang may markang \"salin ng makina\" ay isinalin ng computer at hindi pa nasusuri ng tao. Magkakabisa ang pagbabago sa susunod na pagbukas mo ng app.",
+    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A change applies the next time you start the app.": "Ang wika ng mga menu, button, at mensahe ng app. Ginagamit ng Awtomatiko ang wika ng iyong system kapag may salin para dito; kung wala, Ingles. Magkakabisa ang pagbabago sa susunod na pagbukas mo ng app.",
     "The live model '{model}' is not in the model list. The Transcribe tab's model ({main_model}) understands English only, so it cannot stand in for it. Check the internet connection and press Start again, or pick another model in the Model list.": "Wala sa listahan ng model ang live model na ‘{model}’. Ingles lang ang naiintindihan ng model ng tab na Transcribe ({main_model}), kaya hindi ito maipapalit. Suriin ang internet connection at pindutin muli ang Simulan, o pumili ng ibang model sa listahan ng Model.",
     "The live session could not be started.": "Hindi masimulan ang live na session.",
     "The live transcript is empty.": "Walang laman ang live na transcript.",
@@ -1654,7 +1654,6 @@
       "{languages} at {n} pa"
     ],
     "{language} (automatic)": "{language} (awtomatiko)",
-    "{language} (machine translation)": "{language} (salin ng makina)",
     "{language} (made by the uploader)": "{language} (gawa ng nag-upload)",
     "{language} (not sure)": "{language} (hindi sigurado)",
     "{language} speech will come out as wrong English text: made-up words or a rough English translation, not what was said.": "Lalabas bilang maling Ingles na text ang pananalitang {language}: mga gawa-gawang salita o magaspang na salin sa Ingles, hindi ang sinabi.",

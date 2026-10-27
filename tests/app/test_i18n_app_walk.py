@@ -363,8 +363,8 @@ def test_tk_rtl_catalog_is_not_offered_until_the_layout_is_mirrored(
     try:
         values = list(dlg.tk.splitlist(dlg._ui_language_combo.cget("values")))
         assert values[1] == "English"
-        # "{language} (machine translation)" as the test catalog has it.
-        assert i18n.plain(values[2]).endswith(HEBREW_MARK + "עברית (machine translation)"), values
+        # The language name stands alone: no "(machine translation)" note next to it.
+        assert i18n.plain(values[2]) == "עברית", values
     finally:
         dlg.destroy()
 
@@ -388,7 +388,6 @@ PERSIAN = {
     "App behaviour": "رفتار برنامه",
     "Interface language:": "زبان رابط:",
     "Automatic (system language)": "خودکار (زبان سیستم)",
-    "{language} (machine translation)": "{language} (ترجمه ماشینی)",
 }
 
 
@@ -470,7 +469,7 @@ def test_tk_persian_catalog_marks_every_translated_line(
         assert RLE_MARK + PERSIAN["App behaviour"] + PDF_MARK in shown
         picker = list(dlg.tk.splitlist(dlg._ui_language_combo.cget("values")))
         assert picker[0] == RLE_MARK + PERSIAN["Automatic (system language)"] + PDF_MARK
-        assert RLE_MARK + "فارسی (ترجمه ماشینی)" + PDF_MARK in picker, picker
+        assert "فارسی" in picker, picker
         assert dlg._ui_language_value(dlg._ui_language_display.get()) == "auto"
         assert dlg._ui_language_value(picker[0]) == "auto"
     finally:

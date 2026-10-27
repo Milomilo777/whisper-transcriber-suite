@@ -1144,7 +1144,7 @@
     "The exact model id your endpoint expects, e.g. gpt-4o-mini for OpenAI, openai/gpt-oss-120b for Groq, or a locally-loaded model's name for Ollama/LM Studio. Different accounts/servers have different models available.": "รหัสโมเดลที่ตรงเป๊ะตามที่เอนด์พอยต์ของคุณต้องการ เช่น gpt-4o-mini สำหรับ OpenAI, openai/gpt-oss-120b สำหรับ Groq หรือชื่อโมเดลที่โหลดในเครื่องสำหรับ Ollama/LM Studio บัญชีหรือเซิร์ฟเวอร์ที่ต่างกันมีโมเดลให้ใช้ไม่เหมือนกัน",
     "The finished pieces are kept; the same text and voice continue from there.": "ส่วนที่เสร็จแล้วยังเก็บไว้ ข้อความและเสียงเดียวกันจะทำต่อจากตรงนั้น",
     "The interface language changes the next time you start the app.": "ภาษาของอินเทอร์เฟซจะเปลี่ยนเมื่อคุณเริ่มแอปครั้งถัดไป",
-    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A language marked \"machine translation\" was translated by a computer and not yet checked by a person. A change applies the next time you start the app.": "ภาษาของเมนู ปุ่ม และข้อความในแอป \"อัตโนมัติ\" จะใช้ภาษาของระบบเมื่อมีคำแปล มิฉะนั้นจะใช้ภาษาอังกฤษ ภาษาที่มีป้าย \"แปลด้วยเครื่อง\" แปลโดยคอมพิวเตอร์และยังไม่มีคนตรวจสอบ การเปลี่ยนแปลงจะมีผลเมื่อคุณเริ่มแอปครั้งถัดไป",
+    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A change applies the next time you start the app.": "ภาษาของเมนู ปุ่ม และข้อความในแอป \"อัตโนมัติ\" จะใช้ภาษาของระบบเมื่อมีคำแปล มิฉะนั้นจะใช้ภาษาอังกฤษ การเปลี่ยนแปลงจะมีผลเมื่อคุณเริ่มแอปครั้งถัดไป",
     "The live model '{model}' is not in the model list. The Transcribe tab's model ({main_model}) understands English only, so it cannot stand in for it. Check the internet connection and press Start again, or pick another model in the Model list.": "โมเดลแบบสด '{model}' ไม่อยู่ในรายการโมเดล โมเดลของแท็บถอดเสียง ({main_model}) เข้าใจเฉพาะภาษาอังกฤษ จึงใช้แทนไม่ได้ ตรวจสอบการเชื่อมต่ออินเทอร์เน็ตแล้วกดเริ่มอีกครั้ง หรือเลือกโมเดลอื่นในรายการโมเดล",
     "The live session could not be started.": "เริ่มเซสชันสดไม่ได้",
     "The live transcript is empty.": "ข้อความถอดเสียงแบบสดว่างเปล่า",
@@ -1617,7 +1617,6 @@
       "{languages} และอีก {n} ภาษา"
     ],
     "{language} (automatic)": "{language} (อัตโนมัติ)",
-    "{language} (machine translation)": "{language} (แปลด้วยเครื่อง)",
     "{language} (made by the uploader)": "{language} (ผู้อัปโหลดทำเอง)",
     "{language} (not sure)": "{language} (ไม่แน่ใจ)",
     "{language} speech will come out as wrong English text: made-up words or a rough English translation, not what was said.": "เสียงพูด{language} จะออกมาเป็นข้อความภาษาอังกฤษที่ผิด: คำที่แต่งขึ้นหรือคำแปลภาษาอังกฤษคร่าว ๆ ไม่ใช่สิ่งที่พูดจริง",
