@@ -198,7 +198,8 @@ def fetch_cover(book: Book, *, timeout: float = 15.0, limit: int = 2_000_000) ->
         raise
     if len(data) > limit:
         raise BookCoverError("The cover picture is too large")
-    if not ctype.startswith("image/") or not data.startswith(_IMAGE_MAGIC):
+    # RFC 9110: media types are case-insensitive ("Image/JPEG" is legal).
+    if not ctype.lower().startswith("image/") or not data.startswith(_IMAGE_MAGIC):
         raise BookCoverError("The cover reply is not a picture")
     _write_cache(path, data)
     return data

@@ -278,6 +278,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - The local web / LAN server answers a request with a malformed address (unbalanced brackets) with a 404 instead of dropping the connection without a reply.
 - A time-range (clip) download whose saved file name could not be read from the downloader output is now found again by its planned name, so it is recorded and auto-transcribed instead of ending as "could not be told apart".
 - Importing a hand-edited .otr file (or exporting a transcript JSON to .otr) that holds half of an emoji or other broken character no longer makes the file write fail; the broken character is replaced like in every other output format.
+- A book cover served with a capitalised content type (for example Image/JPEG) is now shown instead of the placeholder.
 
 ## [2.2.0] — 2026-10-22
 
