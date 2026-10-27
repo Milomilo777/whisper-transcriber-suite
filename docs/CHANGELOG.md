@@ -153,6 +153,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- A task whose worker fails to start while a model download or setup is already running is now marked as failed instead of staying stuck on running and blocking the queue.
 - History rows for a finished task whose worker sent no output list now name the files that task was set to write, with their real extensions, even if the format settings changed meanwhile.
 - A worker error after only some of the requested output formats were written is no longer reported as a finished transcription.
 - Resume checkpoints of a transformers language-model run are now stamped with that model and engine instead of the general model.

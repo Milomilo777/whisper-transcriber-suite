@@ -1709,13 +1709,20 @@ class TranscriptionService:
                                 pass
                     elif kept_healthy:
                         app.log("A worker failed to load the model; the other workers keep running.")
-                    elif not app.model_setup_running:
-                        app.log("Existing model failed to load. Starting required download.")
+                    else:
+                        # No healthy worker is left. Tear down even while a
+                        # model setup already runs: the setup supplies the
+                        # model for the NEXT attempt, but leaving the failed
+                        # worker wedged its task at 'running' forever (history
+                        # row open, queue blocked by the active-but-dead
+                        # worker). Only the second download modal is gated.
                         self._fail_tasks_and_clear_workers_on_startup_error()
-                        # Defer so the loading modal is fully torn down (its
-                        # cancel() runs on the next main-thread drain) before the
-                        # download modal opens — no stacked modals.
-                        app.after(0, lambda: app.ensure_model_with_modal(mandatory=True))
+                        if not app.model_setup_running:
+                            app.log("Existing model failed to load. Starting required download.")
+                            # Defer so the loading modal is fully torn down (its
+                            # cancel() runs on the next main-thread drain) before the
+                            # download modal opens — no stacked modals.
+                            app.after(0, lambda: app.ensure_model_with_modal(mandatory=True))
                 elif event_type == "started":
                     pass
                 elif event_type == "progress":
