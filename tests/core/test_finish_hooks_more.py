@@ -221,6 +221,10 @@ def test_markdown_link_is_not_broken_by_parentheses(tmp_path: Path) -> None:
     assert text.count("](") == 1
 
 
+def test_front_matter_is_followed_by_a_blank_line(tmp_path: Path) -> None:
+    assert "\n---\n\n# My talk\n" in fh.build_note(SEGMENTS, _job(tmp_path))
+
+
 def test_payload_has_names_not_folders(tmp_path: Path) -> None:
     payload = fh.webhook_payload(
         _job(tmp_path, output_paths=[str(tmp_path / "Users" / "Jane" / "a.srt")]),

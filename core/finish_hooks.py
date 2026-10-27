@@ -212,7 +212,7 @@ def build_note(segments: list[dict], job: FinishedJob) -> str:
     if web and source:
         head, _sep, rest = body.partition("\n\n")
         body = f"{head}\n\n{_md_link(source)}\n\n{rest}"
-    return "\n".join(front) + body
+    return "\n".join(front) + "\n" + body
 
 
 _QUOTES = "\"'\u201c\u201d\u2018\u2019"
