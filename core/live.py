@@ -125,6 +125,11 @@ class Segmenter:
     _voiced: bool = False
     #: Byte offset of the end of the most recent silent block.
     _last_quiet_offset: int = 0
+    #: Bytes of pure silence cut away and never emitted, since the last
+    #: :meth:`take_dropped_bytes`. The caller's timeline must still count
+    #: them: they are real seconds of the session even though no chunk
+    #: carries them.
+    _dropped_bytes: int = 0
 
     # ---------- properties ------------------------------------------
 
@@ -201,9 +206,21 @@ class Segmenter:
         if not was_voiced:
             # Pure silence: never hand it to the model. Whisper invents
             # text on silence, and that junk is the main thing that makes
-            # a live transcript untrustworthy.
+            # a live transcript untrustworthy. Still count the bytes: the
+            # caller's session timeline must include this span.
+            self._dropped_bytes += split_at
             return b""
         return chunk
+
+    def take_dropped_bytes(self) -> int:
+        """Pure-silence bytes cut away since the last call (then reset).
+
+        Feeds that drop silence never return a chunk, so a caller stamping
+        chunks with a byte clock would otherwise lose track of those
+        seconds and every later event would be stamped too early.
+        """
+        dropped, self._dropped_bytes = self._dropped_bytes, 0
+        return dropped
 
     def flush(self, *, min_seconds: float = 0.4) -> bytes | None:
         """Return the trailing audio at stop, if it is worth transcribing."""
@@ -764,8 +781,15 @@ class LiveSession:
             if conv is None or conv.src_rate != rate:
                 conv = self._resampler = RateConverter(rate, self.config.sample_rate)
             chunks = self._segmenter.feed(conv.convert(pcm))
+            # Silence the segmenter threw away is still session time: the
+            # byte clock events are stamped with must advance by it, or a
+            # long pause would make every later event read too early.
+            dropped = self._segmenter.take_dropped_bytes()
         for chunk in chunks:
             self._submit(chunk)
+        if dropped:
+            with self._lock:
+                self._elapsed_bytes += dropped
 
     def _submit(self, pcm: bytes) -> None:
         """Queue a chunk, dropping the oldest if the consumer is behind."""

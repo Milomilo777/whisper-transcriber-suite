@@ -268,6 +268,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Merging two segments no longer leaves a double or triple space at the join, and a Chinese/Japanese merge joins with no space even when the right segment starts with a space.
 - Converting an ASS file whose Format line ends with a stray comma no longer reports "no subtitle cues"; the empty field is ignored.
 - Live captions keep working on a PC where numpy is installed but broken (for example a missing DLL); the live engine falls back to its built-in audio code instead of silently producing no text.
+- Live tab: the times of the captions now count the silence the engine skipped, so after a long pause they match the time in the saved session audio instead of running seconds early.
 
 ## [2.2.0] — 2026-10-22
 
