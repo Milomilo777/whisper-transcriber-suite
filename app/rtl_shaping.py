@@ -40,6 +40,10 @@ if TYPE_CHECKING:
 
 #: Platforms whose Tk cannot shape or order right-to-left text itself.
 SHAPED_PLATFORMS: frozenset[str] = frozenset({"linux"})
+#: The interface languages shaped there. Hebrew is only reversed, so a shaped Hebrew text cannot be
+#: told from real text once it loses its Shaped identity; Persian and Arabic (presentation forms)
+#: can, so only they are offered on Linux. The Hebrew code below works but is not switched on.
+SHAPED_LANGUAGES: frozenset[str] = frozenset({"fa", "ar"})
 
 # The letters of Arabic Presentation Forms-A and -B: what arabic-reshaper writes. A line holding
 # one that visual() did not make is left alone (the catalogs and transcripts never contain them).

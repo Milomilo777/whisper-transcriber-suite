@@ -67,9 +67,16 @@ def write_catalog(folder: Path, code: str, messages: dict[str, Any], status: str
     (folder / f"{code}.json").write_text(json.dumps(doc, ensure_ascii=False), encoding="utf-8")
 
 
-def on(monkeypatch: pytest.MonkeyPatch, platform: str, engine: bool = True) -> None:
+def on_default(monkeypatch: pytest.MonkeyPatch, platform: str, engine: bool = True) -> None:
+    """The platform and the engine; the languages shaped on Linux stay what ships (Persian, Arabic)."""
     monkeypatch.setattr(sys, "platform", platform)
     monkeypatch.setattr(rtl_shaping, "available", lambda: engine)
+
+
+def on(monkeypatch: pytest.MonkeyPatch, platform: str, engine: bool = True) -> None:
+    on_default(monkeypatch, platform, engine)
+    # The Hebrew shaping code is tested too, although it is not switched on (SHAPED_LANGUAGES).
+    monkeypatch.setattr(rtl_shaping, "SHAPED_LANGUAGES", frozenset({"fa", "ar", "he"}))
 
 
 @pytest.fixture
@@ -158,13 +165,31 @@ def test_linux_is_ready_only_with_the_engine(monkeypatch: pytest.MonkeyPatch) ->
         assert i18n.rtl_layout_ready() is ready, (platform, engine)
 
 
-def test_picker_offers_the_three_languages_on_linux(locales: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_picker_offers_persian_and_arabic_but_not_hebrew_on_linux(
+        locales: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    assert rtl_shaping.SHAPED_LANGUAGES == frozenset({"fa", "ar"})
     for code in ("de", "ar", "fa", "he"):
         write_catalog(locales, code, {}, status="machine")
-    on(monkeypatch, "linux")
-    assert [lang.code for lang in i18n.available_languages()] == ["en", "de", "ar", "fa", "he"]
-    on(monkeypatch, "linux", engine=False)
+    on_default(monkeypatch, "linux")
+    assert [lang.code for lang in i18n.available_languages()] == ["en", "de", "ar", "fa"]
+    on_default(monkeypatch, "linux", engine=False)
     assert [lang.code for lang in i18n.available_languages()] == ["en", "de"]
+    # Windows and macOS still offer all three.
+    for platform in ("win32", "darwin"):
+        on_default(monkeypatch, platform)
+        assert [lang.code for lang in i18n.available_languages()] == ["en", "de", "ar", "fa", "he"]
+
+
+def test_hebrew_is_not_offered_chosen_by_auto_or_shaped_on_linux(
+        locales: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    write_catalog(locales, "he", {"Save": "שמור"}, status="reviewed")
+    on_default(monkeypatch, "linux")
+    statuses = i18n.catalog_statuses()
+    assert i18n.resolve_language("auto", os_language="he-IL", available=statuses) == "en"
+    # An explicit code still loads the catalog, unshaped, exactly as before this feature.
+    assert i18n.set_language("he") == "he"
+    assert i18n.rtl_shaped() is False and i18n.rtl_marks() is False
+    assert i18n._("Save") == "שמור" and type(i18n._("Save")) is str
 
 
 def test_auto_follows_the_system_to_persian_on_linux_with_the_engine(
@@ -739,3 +764,41 @@ def test_display_and_clip_leave_a_short_raw_hebrew_word_alone(he3_linux: None) -
     assert sl._clip(raw) == expected
     assert i18n.plain(raw) == raw
     assert i18n.display(i18n._("Show") + " רמה") == rtl_shaping.visual("הצג רמה", logical_input=True)
+
+
+# --- the English fallback line (missing or misfitting translation) ------------------------------------
+
+FALLBACK_CATALOG = {"Save": "ذخیره", "Broken {name}": "خراب {other}"}
+
+
+def test_the_english_fallback_line_shapes_rtl_values_with_a_left_to_right_base(
+        locales: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    write_catalog(locales, "fa", FALLBACK_CATALOG)
+    on(monkeypatch, "linux")
+    i18n.set_language("fa")
+    # No translation for this message: the English text, with the value shaped inside it.
+    raw = i18n._("Saved {name}", name="ذخیره.txt")
+    assert raw == rtl_shaping.visual("Saved ذخیره.txt", base="L", logical_input=True)
+    assert raw != "Saved ذخیره.txt" and i18n.plain(raw) == "Saved ذخیره.txt"
+    # A shaped value from another _() goes in as its logical text: shaped once, not twice.
+    nested = i18n._("Saved {name}", name=i18n._("Save"))
+    assert nested == rtl_shaping.visual("Saved ذخیره", base="L", logical_input=True)
+    assert i18n.plain(nested) == "Saved ذخیره"
+    # A translation that does not fit its placeholders falls back the same way.
+    misfit = i18n._("Broken {name}", name="گزارش")
+    assert misfit == rtl_shaping.visual("Broken گزارش", base="L", logical_input=True)
+    # An English line with no right-to-left text is untouched, and so is a plain fallback.
+    assert i18n._("Saved {name}", name="report.txt") == "Saved report.txt"
+    assert i18n._("Not in the catalog") == "Not in the catalog"
+
+
+@pytest.mark.parametrize("platform", ["win32", "darwin"])
+def test_the_english_fallback_line_is_unchanged_on_windows_and_macos(
+        locales: Path, monkeypatch: pytest.MonkeyPatch, platform: str) -> None:
+    write_catalog(locales, "fa", FALLBACK_CATALOG)
+    on(monkeypatch, platform)
+    i18n.set_language("fa")
+    value = i18n._("Save")  # marked on both platforms
+    assert i18n._("Saved {name}", name="ذخیره.txt") == "Saved ذخیره.txt"
+    assert i18n._("Saved {name}", name=value) == "Saved " + value
+    assert i18n._("Broken {name}", name="گزارش") == "Broken گزارش"

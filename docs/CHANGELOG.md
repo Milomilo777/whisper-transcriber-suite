@@ -55,15 +55,15 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
-- **Linux: Persian, Arabic and Hebrew interface languages (display shaping)**: Tk 8.6 on X11 neither joins
+- **Linux: Persian and Arabic interface languages (display shaping)**: Tk 8.6 on X11 neither joins
   Arabic-script letters nor orders right-to-left text, so on Linux the interface texts are now joined
   (arabic-reshaper) and put in visual order (python-bidi) for display only, with the same mirrored layout as
-  Windows and macOS; the three languages are offered in the chooser and by "auto" while both packages are
-  installed (`app/rtl_shaping.py`). Entry and text fields keep logical order, `i18n.plain()` gives log and
-  clipboard text back in logical order (also for texts composed of several translated parts), window titles,
-  the tray menu and tray notifications get logical text because the desktop shapes those itself, and Windows
-  and macOS behave exactly as before. Not yet checked on a real Linux desktop; a label long enough to wrap
-  shows its lines in the wrong order.
+  Windows and macOS; the two languages are offered in the chooser and by "auto" while both packages are
+  installed (`app/rtl_shaping.py`). Hebrew stays off on Linux (an explicit `ui_language` code still loads it,
+  unshaped, as before). Entry and text fields keep logical order, `i18n.plain()` gives log and clipboard text
+  back in logical order, window titles, the tray menu and tray notifications get logical text because the
+  desktop shapes those itself, and Windows and macOS behave exactly as before. Not yet checked on a real Linux
+  desktop; a label long enough to wrap shows its lines in the wrong order.
 - **A language button above the tabs**: a globe, the own name of the language the app runs in and a
   down arrow, in the top-right corner in every language. It opens a chooser with "Automatic (system:
   <language>)", English right below it, then the other languages by their own names, with a check mark

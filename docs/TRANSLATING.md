@@ -168,22 +168,20 @@ left-to-right places.
 - The language picker offers right-to-left catalogs on Windows and macOS (`i18n.rtl_layout_ready()`;
   the platforms are `i18n.RTL_PLATFORMS`; macOS was checked on 10.15), and `"auto"` chooses one only
   there. Tk 8.6 on X11 neither joins Arabic-script letters nor orders them (Tk ticket 1b81ff43a2;
-  Tk 9.1 adds HarfBuzz shaping), so on Linux (`i18n.SHAPED_PLATFORMS`) `_()` returns display-only
-  text instead of marks: letters joined with arabic-reshaper and lines put in visual order with
-  python-bidi (`app/rtl_shaping.py`), and the catalogs are offered only while both packages are
-  installed. Without them an explicit `ui_language` code still loads one, and the letters show
-  unjoined. `i18n.plain()` turns such a text, also one composed of several translated parts, back
-  into logical order. Code that joins translated parts into one line (`_("a") + " " + _("b")`)
-  wraps the result in `i18n.display()`, which shapes the whole line once; window titles and the
-  tray go through `rtl_shaping.logical`, since the desktop shapes those itself. A shaped text is
-  an `rtl_shaping.Shaped` (a `str` that carries its logical text); `+` keeps track of it, but an
-  f-string, `str.join` or `%` around a Hebrew `_()` result does not, so join with `+`,
-  `rtl_shaping.join` or let `_()` place the parts. Text that leaves the screen (`i18n.plain()`,
-  window titles, the tray) also recognises a whole earlier result line by its text, spaces
-  around it ignored, because it has often passed through `str()` or a Tk widget; a line that
-  mixes a shaped Hebrew word with other text after such a trip cannot be recovered. Raw data (a speaker or file name) is always taken for logical text. Known limits: a
-  label long enough to wrap shows its lines in the wrong order, and a "%" or "$" next to a
-  number inside brackets can sit on the wrong side.
+  Tk 9.1 adds HarfBuzz shaping), so on Linux (`i18n.SHAPED_PLATFORMS`) Persian and Arabic
+  (`rtl_shaping.SHAPED_LANGUAGES`) are offered with display-only text instead of marks: letters
+  joined with arabic-reshaper and lines put in visual order with python-bidi (`app/rtl_shaping.py`),
+  only while both packages are installed. Hebrew is not offered on Linux, because it is only
+  reversed and a shaped Hebrew text cannot be told from real text once it loses its identity; an
+  explicit `ui_language` code still loads it, unshaped, and so does Persian or Arabic without the
+  packages (the letters then show unjoined).
+  A shaped text is an `rtl_shaping.Shaped` (a `str` that carries its logical text); `+` keeps track
+  of it, and `i18n.display()` or `rtl_shaping.join` shape a joined line once. Join with those, or
+  let `_()` place the parts; an f-string, `str.join` or `%` around a result loses the identity, which
+  Arabic results (presentation forms) survive. `i18n.plain()`, window titles and the tray give
+  logical text. Raw data (a speaker or file name) is always taken for logical text. Known limits: a
+  label long enough to wrap shows its lines in the wrong order, and a "%" or "$" next to a number
+  inside brackets can sit on the wrong side.
 - In code, a translated text that leaves the screen (the log file, the clipboard, a file) goes
   through `i18n.plain()`, which removes the marks. `App.log` does this for the log file.
 

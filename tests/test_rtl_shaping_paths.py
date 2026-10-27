@@ -26,6 +26,8 @@ LOCALES = Path(__file__).resolve().parents[1] / "app" / "locales"
 @pytest.fixture(autouse=True)
 def _fresh(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.delenv(i18n.ENV_LANGUAGE, raising=False)
+    # The Hebrew shaping code is tested although it is not switched on for Linux (SHAPED_LANGUAGES).
+    monkeypatch.setattr(rtl_shaping, "SHAPED_LANGUAGES", frozenset({"fa", "ar", "he"}))
     for memory in (rtl_shaping._VISUAL_TO_LOGICAL, rtl_shaping._BY_FIRST_CHAR, rtl_shaping._CACHE,
                    rtl_shaping._HEBREW_TO_LOGICAL):
         memory.clear()

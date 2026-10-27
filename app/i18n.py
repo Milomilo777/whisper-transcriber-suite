@@ -65,6 +65,16 @@ RTL_PLATFORMS: frozenset[str] = frozenset({"win32", "darwin"})
 #: there only when arabic-reshaper and python-bidi are installed, and ``_()`` then returns
 #: display-shaped text (:mod:`app.rtl_shaping`), without embedding marks.
 SHAPED_PLATFORMS: frozenset[str] = rtl_shaping.SHAPED_PLATFORMS
+
+
+def rtl_language_offered(code: str) -> bool:
+    """True when right-to-left catalog ``code`` is offered by the picker and by "auto": wherever
+    :func:`rtl_layout_ready`, and on a shaped platform (Linux) only for Persian and Arabic."""
+    if not rtl_layout_ready():
+        return False
+    if RTL_LAYOUT_READY is not None or sys.platform in RTL_PLATFORMS:
+        return True
+    return code in rtl_shaping.SHAPED_LANGUAGES
 #: None: right-to-left catalogs are offered on :data:`RTL_PLATFORMS` (see
 #: :func:`rtl_layout_ready`). True or False forces the answer (tests).
 RTL_LAYOUT_READY: bool | None = None
@@ -428,9 +438,8 @@ def available_languages() -> list[LanguageInfo]:
     :func:`rtl_layout_ready`. The pseudo-locale is never listed.
     """
     out: list[LanguageInfo] = []
-    rtl_ok = rtl_layout_ready()
     for lang in SUPPORTED_LANGUAGES:
-        if lang.direction == "rtl" and not rtl_ok:
+        if lang.direction == "rtl" and not rtl_language_offered(lang.code):
             continue
         status = catalog_status(lang.code) if (
             lang.code == SOURCE_LANGUAGE or (locales_dir() / f"{lang.code}.json").is_file()) else None
@@ -502,7 +511,7 @@ def resolve_language(value: object, *, os_language: str | None, available: Mappi
             if code == SOURCE_LANGUAGE:
                 return SOURCE_LANGUAGE
             lang = LANGUAGES_BY_CODE.get(code)
-            if lang is None or (lang.direction == "rtl" and not rtl_layout_ready()):
+            if lang is None or (lang.direction == "rtl" and not rtl_language_offered(lang.code)):
                 continue
             if available.get(code) in _AUTO_STATUSES:
                 return code
@@ -653,7 +662,8 @@ def set_language(code: str) -> str:
                 is_rtl = lang.direction == "rtl"
                 new = _Catalog(canonical, dict(doc["messages"]), nforms, rule, lang.direction,
                                rtl_marks=is_rtl and sys.platform in RTL_PLATFORMS,
-                               shaped=is_rtl and rtl_shaping.applies())
+                               shaped=is_rtl and canonical in rtl_shaping.SHAPED_LANGUAGES
+                               and rtl_shaping.applies())
     with _LOCK:
         _STATE = new
     if new.shaped:
@@ -816,7 +826,9 @@ def _finish(english: str, translated: str | None, kwargs: Mapping[str, Any], sta
         if not translated:
             return english
         return _decorate(translated, state)
-    fallback = english.format(**kwargs)  # a wrong call raises here, in every language
+    # A wrong call raises here, in every language. A shaped value goes into the English line as
+    # its logical text, and the line is shaped once (_fallback), as for a translation.
+    fallback = _fallback(english.format(**(_logical_values(kwargs) if state.shaped else kwargs)), state)
     if not translated:
         return fallback
     try:
@@ -829,6 +841,14 @@ def _finish(english: str, translated: str | None, kwargs: Mapping[str, Any], sta
                    key, state.code, type(e).__name__, e)
         return fallback
     return _decorate(done, state)
+
+
+def _fallback(text: str, state: _Catalog) -> str:
+    """The English line of a missing or misfitting translation. In a shaped language (Linux) a
+    right-to-left value in it is shaped inside the left-to-right sentence; elsewhere unchanged."""
+    if state.shaped:
+        return rtl_shaping.visual(text, base="L", logical_input=True)
+    return text
 
 
 def _decorate(text: str, state: _Catalog) -> str:
@@ -934,7 +954,7 @@ __all__ = [
     "catalog_status", "catalog_statuses", "current_direction", "current_language",
     "detect_os_language", "embed_rtl", "init_language", "lazy", "locales_dir", "text_in", "ngettext",
     "parse_apple_languages", "pgettext", "plain", "plural_index", "pseudo_translate",
-    "SHAPED_PLATFORMS", "display", "resolve_language", "rtl_layout_ready", "rtl_marks", "rtl_shaped",
+    "SHAPED_PLATFORMS", "display", "resolve_language", "rtl_language_offered", "rtl_layout_ready", "rtl_marks", "rtl_shaped",
     "set_language", "setting_language",
     "translate",
 ]
