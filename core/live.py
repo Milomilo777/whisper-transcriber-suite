@@ -94,7 +94,10 @@ def block_rms(pcm: bytes) -> float:
         if arr.size == 0:
             return 0.0
         return float(np.sqrt(np.mean(arr * arr)) / _INT16_FULL_SCALE)
-    except ImportError:
+    except (ImportError, OSError):
+        # ImportError: numpy absent. OSError: numpy present but broken
+        # (a missing MKL/DLL raises at import) — same degraded path, as
+        # in recorder._downmix_to_mono_int16.
         samples = array.array("h")
         samples.frombytes(pcm[:usable])
         if not samples:
@@ -268,7 +271,9 @@ class RateConverter:
         raw.frombytes(data[:usable])
         try:
             import numpy as np  # type: ignore[import-not-found]
-        except ImportError:
+        except (ImportError, OSError):
+            # Broken native numpy (DLL/MKL load failure) must take the
+            # pure-Python path too, not kill every captured block.
             return self._convert_pure(list(raw))
         return self._convert_numpy(np, raw)
 
