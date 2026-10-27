@@ -1163,7 +1163,7 @@
     "The exact model id your endpoint expects, e.g. gpt-4o-mini for OpenAI, openai/gpt-oss-120b for Groq, or a locally-loaded model's name for Ollama/LM Studio. Different accounts/servers have different models available.": "Точният идентификатор на модела, който очаква вашата крайна точка, напр. gpt-4o-mini за OpenAI, openai/gpt-oss-120b за Groq или името на локално зареден модел за Ollama/LM Studio. Различните акаунти и сървъри имат различни модели.",
     "The finished pieces are kept; the same text and voice continue from there.": "Завършените части са запазени; същият текст и глас продължават оттам.",
     "The interface language changes the next time you start the app.": "Езикът на интерфейса ще се смени при следващото стартиране на приложението.",
-    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A language marked \"machine translation\" was translated by a computer and not yet checked by a person. A change applies the next time you start the app.": "Езикът на менютата, бутоните и съобщенията на приложението. „Автоматично“ използва езика на системата ви, когато за него има превод, а иначе английски. Език с отбелязване „машинен превод“ е преведен от компютър и още не е проверен от човек. Промяната влиза в сила при следващото стартиране на приложението.",
+    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A change applies the next time you start the app.": "Езикът на менютата, бутоните и съобщенията на приложението. „Автоматично“ използва езика на системата ви, когато за него има превод, а иначе английски. Промяната влиза в сила при следващото стартиране на приложението.",
     "The live model '{model}' is not in the model list. The Transcribe tab's model ({main_model}) understands English only, so it cannot stand in for it. Check the internet connection and press Start again, or pick another model in the Model list.": "Моделът за живо '{model}' не е в списъка с модели. Моделът от раздела Транскрибиране ({main_model}) разбира само английски, затова не може да го замести. Проверете интернет връзката и натиснете Старт отново или изберете друг модел от списъка Модел.",
     "The live session could not be started.": "Сесията на живо не можа да бъде стартирана.",
     "The live transcript is empty.": "Транскрипцията на живо е празна.",
@@ -1654,7 +1654,6 @@
       "{languages} и още {n}"
     ],
     "{language} (automatic)": "{language} (автоматични)",
-    "{language} (machine translation)": "{language} (машинен превод)",
     "{language} (made by the uploader)": "{language} (от автора)",
     "{language} (not sure)": "{language} (не е сигурно)",
     "{language} speech will come out as wrong English text: made-up words or a rough English translation, not what was said.": "Речта на {language} ще излезе като грешен английски текст: измислени думи или груб превод на английски, а не казаното.",

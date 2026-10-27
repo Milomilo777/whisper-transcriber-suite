@@ -1163,7 +1163,7 @@
     "The exact model id your endpoint expects, e.g. gpt-4o-mini for OpenAI, openai/gpt-oss-120b for Groq, or a locally-loaded model's name for Ollama/LM Studio. Different accounts/servers have different models available.": "L'identificador exacte del model que espera el vostre punt final, p. ex. gpt-4o-mini per a OpenAI, openai/gpt-oss-120b per a Groq o el nom d'un model carregat en local per a Ollama/LM Studio. Cada compte o servidor té models diferents.",
     "The finished pieces are kept; the same text and voice continue from there.": "Es conserven els fragments acabats; el mateix text i la mateixa veu continuen des d'allà.",
     "The interface language changes the next time you start the app.": "La llengua de la interfície canvia la propera vegada que inicieu l'aplicació.",
-    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A language marked \"machine translation\" was translated by a computer and not yet checked by a person. A change applies the next time you start the app.": "La llengua dels menús, botons i missatges de l'aplicació. «Automàtic» fa servir la llengua del vostre sistema quan n'hi ha una traducció; si no, l'anglès. Una llengua marcada amb «traducció automàtica» l'ha traduït un ordinador i encara no l'ha revisat cap persona. Els canvis s'apliquen la propera vegada que inicieu l'aplicació.",
+    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A change applies the next time you start the app.": "La llengua dels menús, botons i missatges de l'aplicació. «Automàtic» fa servir la llengua del vostre sistema quan n'hi ha una traducció; si no, l'anglès. Els canvis s'apliquen la propera vegada que inicieu l'aplicació.",
     "The live model '{model}' is not in the model list. The Transcribe tab's model ({main_model}) understands English only, so it cannot stand in for it. Check the internet connection and press Start again, or pick another model in the Model list.": "El model en directe «{model}» no és a la llista de models. El model de la pestanya Transcriu ({main_model}) només entén l'anglès, de manera que no el pot substituir. Comproveu la connexió a Internet i premeu Inicia de nou, o trieu un altre model a la llista Model.",
     "The live session could not be started.": "No s'ha pogut iniciar la sessió en directe.",
     "The live transcript is empty.": "La transcripció en directe és buida.",
@@ -1654,7 +1654,6 @@
       "{languages} i {n} més"
     ],
     "{language} (automatic)": "{language} (automàtics)",
-    "{language} (machine translation)": "{language} (traducció automàtica)",
     "{language} (made by the uploader)": "{language} (fets per qui l'ha pujat)",
     "{language} (not sure)": "{language} (no n'està segur)",
     "{language} speech will come out as wrong English text: made-up words or a rough English translation, not what was said.": "La parla en {language} sortirà com a text anglès incorrecte: paraules inventades o una traducció aproximada a l'anglès, no el que s'ha dit.",

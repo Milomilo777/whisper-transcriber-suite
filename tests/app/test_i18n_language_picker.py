@@ -85,7 +85,7 @@ def test_every_catalog_is_listed_in_script_groups_alphabetically(
     assert len(choices) == 43
 
 
-def test_machine_catalogs_are_marked_and_rtl_ones_wait_for_the_mirrored_layout(
+def test_machine_catalogs_show_the_name_alone_and_rtl_ones_wait_for_the_mirrored_layout(
         locales: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     write_catalog(locales, "de", "reviewed")
     write_catalog(locales, "fr", "machine")
@@ -98,9 +98,20 @@ def test_machine_catalogs_are_marked_and_rtl_ones_wait_for_the_mirrored_layout(
         (AUTO_LABEL, "auto"),
         ("Deutsch", "de"),
         ("English", "en"),
-        ("Français (machine translation)", "fr"),
-        ("日本語 (machine translation)", "ja"),
+        ("Français", "fr"),
+        ("日本語", "ja"),
     ]
+
+
+def test_no_picker_entry_or_help_text_mentions_machine_translation(
+        locales: Path) -> None:
+    write_catalog(locales, "fr", "machine")
+    write_catalog(locales, "de", "reviewed")
+    for label, _value in _adv()._ui_language_choices():
+        assert "machine" not in label.lower(), label
+    source = (Path(__file__).resolve().parents[2] / "app" / "dialogs" / "advanced.py").read_text(
+        encoding="utf-8")
+    assert "machine translation" not in source.lower()
 
 
 def test_windows_offers_the_rtl_catalogs(locales: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -112,7 +123,7 @@ def test_windows_offers_the_rtl_catalogs(locales: Path, monkeypatch: pytest.Monk
         (AUTO_LABEL, "auto"),
         ("Deutsch", "de"),
         ("English", "en"),
-        ("עברית (machine translation)", "he"),
+        ("עברית", "he"),
         ("العربية", "ar"),
     ]
 
@@ -122,7 +133,7 @@ def test_only_english_ships(locales: Path) -> None:
 
 
 def test_pseudo_locale_marks_the_texts_but_never_a_language_name(locales: Path) -> None:
-    from tests.app.i18n_walk import is_pseudo_marked, unmarked_rest
+    from tests.app.i18n_walk import is_pseudo_marked
 
     write_catalog(locales, "de", "reviewed")
     write_catalog(locales, "fr", "machine")
@@ -131,8 +142,7 @@ def test_pseudo_locale_marks_the_texts_but_never_a_language_name(locales: Path) 
     assert [value for _label, value in choices] == ["auto", "de", "en", "fr"]
     assert is_pseudo_marked(choices[0][0])
     assert choices[1][0] == "Deutsch" and choices[2][0] == "English"
-    machine = choices[3][0]
-    assert "Français" in machine and unmarked_rest(machine).strip() == ""
+    assert choices[3][0] == "Français"
 
 
 @pytest.mark.parametrize("setting,index", [
@@ -171,11 +181,11 @@ def test_macos_keeps_a_right_to_left_name_in_a_left_to_right_line(
     write_catalog(locales, "de", "reviewed")
     monkeypatch.setattr(bidi_display, "is_aqua", lambda: True)
     labels = dict((v, lbl) for lbl, v in _adv()._ui_language_choices())
-    assert labels["he"] == bidi_display.LRM + "עברית (machine translation)"
+    assert labels["he"] == bidi_display.LRM + "עברית"
     assert labels["de"] == "Deutsch"  # left to right already: unchanged
     monkeypatch.setattr(bidi_display, "is_aqua", lambda: False)
     labels = dict((v, lbl) for lbl, v in _adv()._ui_language_choices())
-    assert labels["he"] == "עברית (machine translation)"
+    assert labels["he"] == "עברית"
 
 
 # --- windowless: fonts with glyphs for every language name (R1b) ---------------------------------
@@ -286,7 +296,7 @@ def test_tk_picker_sits_in_app_behaviour_and_lists_the_catalogs(harness: Any, lo
     write_catalog(locales, "ar", "reviewed")  # right to left: offered on Windows only
     dlg = harness.make()
     rtl = ["العربية"] if sys.platform == "win32" else []
-    assert _values(dlg) == [AUTO_LABEL, "Deutsch", "English", "Français (machine translation)", *rtl]
+    assert _values(dlg) == [AUTO_LABEL, "Deutsch", "English", "Français", *rtl]
     assert dlg._ui_language_display.get() == AUTO_LABEL
     assert str(dlg._ui_language_combo.cget("state")) == "readonly"
     # Inside "App behaviour", right before the "New versions:" choice.
@@ -305,10 +315,10 @@ def test_tk_saving_writes_auto_or_the_code(harness: Any, locales: Path) -> None:
     write_catalog(locales, "de", "reviewed")
     write_catalog(locales, "fr", "machine")
     dlg = harness.make(ui_language="auto")
-    _pick(dlg, "Français (machine translation)")
+    _pick(dlg, "Français")
     assert _save(harness, dlg)["ui_language"] == "fr"
     dlg = harness.make(ui_language="fr")
-    assert dlg._ui_language_display.get() == "Français (machine translation)"
+    assert dlg._ui_language_display.get() == "Français"
     _pick(dlg, "Deutsch")
     assert _save(harness, dlg)["ui_language"] == "de"
     dlg = harness.make(ui_language="de")
@@ -414,7 +424,7 @@ def test_tk_pseudo_locale_saves_the_same_value_as_english(harness: Any, locales:
             dlg = harness.make(ui_language="auto")
             if language == i18n.PSEUDO_LOCALE:
                 row = dlg._ui_language_combo.master
-                names = {"Deutsch", "English"}
+                names = {"Deutsch", "English", "Français"}
                 left = [t for _p, t in untranslated(row) if t not in names]
                 assert left == [], left
                 assert is_pseudo_marked(_values(dlg)[0])
@@ -443,7 +453,7 @@ def test_tk_windows_fonts_follow_the_shown_name(harness: Any, locales: Path) -> 
 
     if "Yu Gothic UI" in installed:
         assert family() == "Yu Gothic UI"
-    _pick(dlg, "한국어 (machine translation)")
+    _pick(dlg, "한국어")
     if "Malgun Gothic" in installed:
         assert family() == "Malgun Gothic"
     _pick(dlg, AUTO_LABEL)

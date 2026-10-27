@@ -413,7 +413,7 @@ def available_languages() -> list[LanguageInfo]:
     """The languages the picker offers, in ``SUPPORTED_LANGUAGES`` order.
 
     English and every usable catalog: status "reviewed", and status "machine" (unreviewed
-    machine translation; the picker marks it as such). A right-to-left catalog is offered only where
+    machine translation; the picker lists it like the others). A right-to-left catalog is offered only where
     :func:`rtl_layout_ready`. The pseudo-locale is never listed.
     """
     out: list[LanguageInfo] = []

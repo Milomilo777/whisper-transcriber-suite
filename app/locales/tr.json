@@ -1163,7 +1163,7 @@
     "The exact model id your endpoint expects, e.g. gpt-4o-mini for OpenAI, openai/gpt-oss-120b for Groq, or a locally-loaded model's name for Ollama/LM Studio. Different accounts/servers have different models available.": "Uç noktanızın beklediği tam model kimliği; örneğin OpenAI için gpt-4o-mini, Groq için openai/gpt-oss-120b veya Ollama/LM Studio için yerel olarak yüklenmiş bir modelin adı. Farklı hesaplarda ve sunucularda farklı modeller bulunur.",
     "The finished pieces are kept; the same text and voice continue from there.": "Biten parçalar korunur; aynı metin ve ses oradan devam eder.",
     "The interface language changes the next time you start the app.": "Arayüz dili, uygulamayı bir sonraki başlatışınızda değişir.",
-    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A language marked \"machine translation\" was translated by a computer and not yet checked by a person. A change applies the next time you start the app.": "Uygulamanın menülerinin, düğmelerinin ve iletilerinin dili. Otomatik, sisteminizin dili için bir çeviri varsa o dili, yoksa İngilizceyi kullanır. \"Makine çevirisi\" olarak işaretlenen bir dil bilgisayar tarafından çevrilmiştir ve henüz bir kişi tarafından denetlenmemiştir. Değişiklik, uygulamayı bir sonraki başlatışınızda geçerli olur.",
+    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A change applies the next time you start the app.": "Uygulamanın menülerinin, düğmelerinin ve iletilerinin dili. Otomatik, sisteminizin dili için bir çeviri varsa o dili, yoksa İngilizceyi kullanır. Değişiklik, uygulamayı bir sonraki başlatışınızda geçerli olur.",
     "The live model '{model}' is not in the model list. The Transcribe tab's model ({main_model}) understands English only, so it cannot stand in for it. Check the internet connection and press Start again, or pick another model in the Model list.": "Canlı model '{model}' model listesinde yok. Yazıya dök sekmesinin modeli ({main_model}) yalnızca İngilizce anlar, bu yüzden onun yerini tutamaz. İnternet bağlantısını denetleyip yeniden Başlat'a basın veya Model listesinden başka bir model seçin.",
     "The live session could not be started.": "Canlı oturum başlatılamadı.",
     "The live transcript is empty.": "Canlı transkript boş.",
@@ -1654,7 +1654,6 @@
       "{languages} ve {n} dil daha"
     ],
     "{language} (automatic)": "{language} (otomatik)",
-    "{language} (machine translation)": "{language} (makine çevirisi)",
     "{language} (made by the uploader)": "{language} (yükleyen tarafından hazırlanmış)",
     "{language} (not sure)": "{language} (kesin değil)",
     "{language} speech will come out as wrong English text: made-up words or a rough English translation, not what was said.": "{language} konuşma yanlış İngilizce metin olarak çıkar: söyleneni değil, uydurma kelimeleri veya kaba bir İngilizce çeviriyi alırsınız.",

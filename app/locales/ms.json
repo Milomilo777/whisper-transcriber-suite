@@ -1144,7 +1144,7 @@
     "The exact model id your endpoint expects, e.g. gpt-4o-mini for OpenAI, openai/gpt-oss-120b for Groq, or a locally-loaded model's name for Ollama/LM Studio. Different accounts/servers have different models available.": "ID model tepat yang dijangka oleh titik akhir anda, cth. gpt-4o-mini untuk OpenAI, openai/gpt-oss-120b untuk Groq, atau nama model yang dimuatkan secara setempat untuk Ollama/LM Studio. Akaun/pelayan berbeza mempunyai model yang berbeza.",
     "The finished pieces are kept; the same text and voice continue from there.": "Bahagian yang siap dikekalkan; teks dan suara yang sama diteruskan dari situ.",
     "The interface language changes the next time you start the app.": "Bahasa antara muka berubah apabila anda memulakan aplikasi pada kali seterusnya.",
-    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A language marked \"machine translation\" was translated by a computer and not yet checked by a person. A change applies the next time you start the app.": "Bahasa menu, butang dan mesej aplikasi. Automatik menggunakan bahasa sistem anda jika terjemahan tersedia untuknya, jika tidak bahasa Inggeris. Bahasa yang ditanda \"terjemahan mesin\" telah diterjemahkan oleh komputer dan belum disemak oleh manusia. Perubahan berkuat kuasa apabila anda memulakan aplikasi pada kali seterusnya.",
+    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A change applies the next time you start the app.": "Bahasa menu, butang dan mesej aplikasi. Automatik menggunakan bahasa sistem anda jika terjemahan tersedia untuknya, jika tidak bahasa Inggeris. Perubahan berkuat kuasa apabila anda memulakan aplikasi pada kali seterusnya.",
     "The live model '{model}' is not in the model list. The Transcribe tab's model ({main_model}) understands English only, so it cannot stand in for it. Check the internet connection and press Start again, or pick another model in the Model list.": "Model langsung “{model}” tiada dalam senarai model. Model tab Transkripsi ({main_model}) hanya memahami bahasa Inggeris, jadi ia tidak boleh menggantikannya. Semak sambungan Internet dan tekan Mula sekali lagi, atau pilih model lain dalam senarai Model.",
     "The live session could not be started.": "Sesi langsung tidak dapat dimulakan.",
     "The live transcript is empty.": "Transkrip langsung kosong.",
@@ -1617,7 +1617,6 @@
       "{languages} dan {n} lagi"
     ],
     "{language} (automatic)": "{language} (automatik)",
-    "{language} (machine translation)": "{language} (terjemahan mesin)",
     "{language} (made by the uploader)": "{language} (dibuat oleh pemuat naik)",
     "{language} (not sure)": "{language} (tidak pasti)",
     "{language} speech will come out as wrong English text: made-up words or a rough English translation, not what was said.": "Pertuturan {language} akan keluar sebagai teks Inggeris yang salah: perkataan rekaan atau terjemahan Inggeris kasar, bukan apa yang dituturkan.",

@@ -96,6 +96,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Changed
 
+- **The interface-language list no longer adds "(machine translation)" to language names**: every language is listed by its own name alone, and the help text beside the list no longer explains the note. The catalog status still decides which languages "Automatic" may follow. The two texts that went unused were dropped from all 42 catalogs.
 - **Usage statistics show the operating system in the version column**: macOS and Linux runs send `2.3.0-mac` or `2.3.0-linux` (Windows stays `2.3.0`), because the statistics page shows the version but not the platform fields.
 - **A long problem report can be read in full on the statistics page**: a report longer than 128 characters is also sent as a few tagged rows (`[1/3]`, `[2/3]`, ...), since the page shows only that one field.
 - CodeQL now also scans the website's JavaScript and the GitHub Actions workflows, with the security-extended

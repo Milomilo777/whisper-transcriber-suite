@@ -1163,7 +1163,7 @@
     "The exact model id your endpoint expects, e.g. gpt-4o-mini for OpenAI, openai/gpt-oss-120b for Groq, or a locally-loaded model's name for Ollama/LM Studio. Different accounts/servers have different models available.": "L'identifiant exact du modèle attendu par votre point de terminaison, p. ex. gpt-4o-mini pour OpenAI, openai/gpt-oss-120b pour Groq, ou le nom d'un modèle chargé en local pour Ollama/LM Studio. Les modèles disponibles diffèrent selon les comptes et les serveurs.",
     "The finished pieces are kept; the same text and voice continue from there.": "Les morceaux terminés sont conservés ; le même texte et la même voix reprennent à partir de là.",
     "The interface language changes the next time you start the app.": "La langue de l'interface change au prochain démarrage de l'application.",
-    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A language marked \"machine translation\" was translated by a computer and not yet checked by a person. A change applies the next time you start the app.": "La langue des menus, boutons et messages de l'application. « Automatique » utilise la langue de votre système lorsqu'une traduction est disponible, sinon l'anglais. Une langue marquée « traduction automatique » a été traduite par un ordinateur et pas encore vérifiée par une personne. Un changement s'applique au prochain démarrage de l'application.",
+    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A change applies the next time you start the app.": "La langue des menus, boutons et messages de l'application. « Automatique » utilise la langue de votre système lorsqu'une traduction est disponible, sinon l'anglais. Un changement s'applique au prochain démarrage de l'application.",
     "The live model '{model}' is not in the model list. The Transcribe tab's model ({main_model}) understands English only, so it cannot stand in for it. Check the internet connection and press Start again, or pick another model in the Model list.": "Le modèle en direct « {model} » ne figure pas dans la liste des modèles. Le modèle de l'onglet Transcrire ({main_model}) ne comprend que l'anglais et ne peut donc pas le remplacer. Vérifiez la connexion Internet et appuyez de nouveau sur Démarrer, ou choisissez un autre modèle dans la liste Modèle.",
     "The live session could not be started.": "Impossible de démarrer la session en direct.",
     "The live transcript is empty.": "La transcription en direct est vide.",
@@ -1654,7 +1654,6 @@
       "{languages} et {n} autres"
     ],
     "{language} (automatic)": "{language} (automatiques)",
-    "{language} (machine translation)": "{language} (traduction automatique)",
     "{language} (made by the uploader)": "{language} (créés par l'auteur de la vidéo)",
     "{language} (not sure)": "{language} (incertain)",
     "{language} speech will come out as wrong English text: made-up words or a rough English translation, not what was said.": "La parole en {language} donnera un texte anglais erroné : des mots inventés ou une traduction anglaise approximative, pas ce qui a été dit.",

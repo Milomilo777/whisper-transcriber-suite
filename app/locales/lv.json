@@ -1182,7 +1182,7 @@
     "The exact model id your endpoint expects, e.g. gpt-4o-mini for OpenAI, openai/gpt-oss-120b for Groq, or a locally-loaded model's name for Ollama/LM Studio. Different accounts/servers have different models available.": "Precīzs modeļa ID, ko sagaida jūsu galapunkts, piem., gpt-4o-mini OpenAI, openai/gpt-oss-120b Groq vai lokāli ielādēta modeļa nosaukums Ollama/LM Studio. Dažādiem kontiem un serveriem ir pieejami dažādi modeļi.",
     "The finished pieces are kept; the same text and voice continue from there.": "Pabeigtās daļas ir saglabātas; tas pats teksts un balss turpinās no turienes.",
     "The interface language changes the next time you start the app.": "Saskarnes valoda mainīsies nākamajā lietotnes palaišanas reizē.",
-    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A language marked \"machine translation\" was translated by a computer and not yet checked by a person. A change applies the next time you start the app.": "Lietotnes izvēlņu, pogu un ziņojumu valoda. Automātiski izmanto jūsu sistēmas valodu, ja tai ir pieejams tulkojums, citādi angļu valodu. Valodu, kas atzīmēta ar „mašīntulkojums”, ir tulkojis dators, un to vēl nav pārbaudījis cilvēks. Izmaiņas stājas spēkā nākamajā lietotnes palaišanas reizē.",
+    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A change applies the next time you start the app.": "Lietotnes izvēlņu, pogu un ziņojumu valoda. Automātiski izmanto jūsu sistēmas valodu, ja tai ir pieejams tulkojums, citādi angļu valodu. Izmaiņas stājas spēkā nākamajā lietotnes palaišanas reizē.",
     "The live model '{model}' is not in the model list. The Transcribe tab's model ({main_model}) understands English only, so it cannot stand in for it. Check the internet connection and press Start again, or pick another model in the Model list.": "Tiešraides modelis „{model}” nav modeļu sarakstā. Cilnes Transkribēt modelis ({main_model}) saprot tikai angļu valodu, tāpēc to nevar aizstāt. Pārbaudiet interneta savienojumu un vēlreiz nospiediet Sākt vai izvēlieties citu modeli sarakstā Modelis.",
     "The live session could not be started.": "Tiešraides sesiju neizdevās sākt.",
     "The live transcript is empty.": "Tiešraides transkripts ir tukšs.",
@@ -1691,7 +1691,6 @@
       "{languages} un vēl {n}"
     ],
     "{language} (automatic)": "{language} (automātiski)",
-    "{language} (machine translation)": "{language} (mašīntulkojums)",
     "{language} (made by the uploader)": "{language} (no augšupielādētāja)",
     "{language} (not sure)": "{language} (nav pārliecības)",
     "{language} speech will come out as wrong English text: made-up words or a rough English translation, not what was said.": "Runa valodā {language} iznāks kā nepareizs angļu teksts: izdomāti vārdi vai aptuvens tulkojums angļu valodā, nevis tas, kas tika teikts.",

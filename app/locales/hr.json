@@ -1182,7 +1182,7 @@
     "The exact model id your endpoint expects, e.g. gpt-4o-mini for OpenAI, openai/gpt-oss-120b for Groq, or a locally-loaded model's name for Ollama/LM Studio. Different accounts/servers have different models available.": "Točan ID modela koji očekuje vaša krajnja točka, npr. gpt-4o-mini za OpenAI, openai/gpt-oss-120b za Groq ili naziv lokalno učitanog modela za Ollama/LM Studio. Različiti računi i poslužitelji imaju različite modele.",
     "The finished pieces are kept; the same text and voice continue from there.": "Dovršeni dijelovi se zadržavaju; isti tekst i glas nastavljaju odande.",
     "The interface language changes the next time you start the app.": "Jezik sučelja promijenit će se pri sljedećem pokretanju aplikacije.",
-    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A language marked \"machine translation\" was translated by a computer and not yet checked by a person. A change applies the next time you start the app.": "Jezik izbornika, gumba i poruka aplikacije. Automatski koristi jezik vašeg sustava kada je za njega dostupan prijevod, a inače engleski. Jezik označen kao „strojni prijevod” preveo je računalo i još ga nije provjerila osoba. Promjena se primjenjuje pri sljedećem pokretanju aplikacije.",
+    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A change applies the next time you start the app.": "Jezik izbornika, gumba i poruka aplikacije. Automatski koristi jezik vašeg sustava kada je za njega dostupan prijevod, a inače engleski. Promjena se primjenjuje pri sljedećem pokretanju aplikacije.",
     "The live model '{model}' is not in the model list. The Transcribe tab's model ({main_model}) understands English only, so it cannot stand in for it. Check the internet connection and press Start again, or pick another model in the Model list.": "Model uživo „{model}” nije na popisu modela. Model s kartice Transkribiraj ({main_model}) razumije samo engleski pa ga ne može zamijeniti. Provjerite internetsku vezu i ponovno pritisnite Pokreni ili odaberite drugi model na popisu Model.",
     "The live session could not be started.": "Sesiju uživo nije bilo moguće pokrenuti.",
     "The live transcript is empty.": "Transkripcija uživo je prazna.",
@@ -1691,7 +1691,6 @@
       "{languages} i još {n}"
     ],
     "{language} (automatic)": "{language} (automatski)",
-    "{language} (machine translation)": "{language} (strojni prijevod)",
     "{language} (made by the uploader)": "{language} (izradio autor)",
     "{language} (not sure)": "{language} (nije sigurno)",
     "{language} speech will come out as wrong English text: made-up words or a rough English translation, not what was said.": "Govor na jeziku {language} izaći će kao pogrešan engleski tekst: izmišljene riječi ili grub prijevod na engleski, a ne ono što je rečeno.",

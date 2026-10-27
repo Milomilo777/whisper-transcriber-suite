@@ -1182,7 +1182,7 @@
     "The exact model id your endpoint expects, e.g. gpt-4o-mini for OpenAI, openai/gpt-oss-120b for Groq, or a locally-loaded model's name for Ollama/LM Studio. Different accounts/servers have different models available.": "Přesné ID modelu, které váš koncový bod očekává, např. gpt-4o-mini pro OpenAI, openai/gpt-oss-120b pro Groq nebo název lokálně načteného modelu pro Ollama/LM Studio. Různé účty a servery mají k dispozici různé modely.",
     "The finished pieces are kept; the same text and voice continue from there.": "Dokončené části zůstávají; stejný text a hlas pokračují odtamtud.",
     "The interface language changes the next time you start the app.": "Jazyk rozhraní se změní při příštím spuštění aplikace.",
-    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A language marked \"machine translation\" was translated by a computer and not yet checked by a person. A change applies the next time you start the app.": "Jazyk nabídek, tlačítek a zpráv aplikace. Možnost Automaticky použije jazyk vašeho systému, pokud je pro něj k dispozici překlad, jinak angličtinu. Jazyk označený „strojový překlad“ přeložil počítač a dosud jej nezkontroloval člověk. Změna se projeví při příštím spuštění aplikace.",
+    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A change applies the next time you start the app.": "Jazyk nabídek, tlačítek a zpráv aplikace. Možnost Automaticky použije jazyk vašeho systému, pokud je pro něj k dispozici překlad, jinak angličtinu. Změna se projeví při příštím spuštění aplikace.",
     "The live model '{model}' is not in the model list. The Transcribe tab's model ({main_model}) understands English only, so it cannot stand in for it. Check the internet connection and press Start again, or pick another model in the Model list.": "Živý model „{model}“ není v seznamu modelů. Model z karty Přepis ({main_model}) rozumí jen angličtině, takže ho nemůže nahradit. Zkontrolujte připojení k internetu a znovu stiskněte Spustit, nebo vyberte jiný model v seznamu Model.",
     "The live session could not be started.": "Živou relaci nelze spustit.",
     "The live transcript is empty.": "Živý přepis je prázdný.",
@@ -1691,7 +1691,6 @@
       "{languages} a {n} dalších"
     ],
     "{language} (automatic)": "{language} (automatické)",
-    "{language} (machine translation)": "{language} (strojový překlad)",
     "{language} (made by the uploader)": "{language} (od autora)",
     "{language} (not sure)": "{language} (nejisté)",
     "{language} speech will come out as wrong English text: made-up words or a rough English translation, not what was said.": "Řeč v jazyce {language} vyjde jako chybný anglický text: vymyšlená slova nebo hrubý anglický překlad, ne to, co bylo řečeno.",

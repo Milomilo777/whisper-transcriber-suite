@@ -307,14 +307,10 @@ def _sort_text(text: str) -> str:
 
 
 def _ui_language_label(lang: i18n.LanguageInfo) -> str:
-    """A picker entry: the language's own name, marked when its catalog is machine translated."""
-    if lang.status == "machine":
-        label = _("{language} (machine translation)", language=lang.endonym)
-    else:
-        label = lang.endonym
-    # macOS draws a line that starts with a right-to-left name right to left ("(machine
-    # translation)" would jump to the left end); Windows and Linux keep left to right.
-    return bidi_display.ltr_base(label)
+    """A picker entry: the language's own name, nothing else."""
+    # macOS draws a line that starts with a right-to-left name right to left; Windows and Linux
+    # keep left to right.
+    return bidi_display.ltr_base(lang.endonym)
 
 
 def _ui_language_choices(current: object = _UI_LANGUAGE_AUTO) -> list[tuple[str, str]]:
@@ -1900,9 +1896,7 @@ class AdvancedDialog(tk.Toplevel):
             row,
             _("The language of the app's menus, buttons and messages. Automatic uses the "
               "language of your system when a translation for it is available, "
-              "otherwise English. A language marked \"machine translation\" was translated by a "
-              "computer and not yet checked by a person. A change applies the next time you "
-              "start the app."),
+              "otherwise English. A change applies the next time you start the app."),
         ).pack(side="left")
         self._set_ui_language_fonts()
         combo.bind("<<ComboboxSelected>>", lambda _e: self._set_ui_language_fonts(), add="+")

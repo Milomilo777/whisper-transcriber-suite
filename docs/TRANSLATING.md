@@ -106,8 +106,8 @@ and expects an empty list, plus a test that its English texts did not change.
   settings > App behaviour > Interface language list "Automatic
   (system language)" and every catalog in `app/locales`, each language by its own name. Pick
   one, click Save and start the app again (a notice in the main window says so when the
-  language will change). A catalog with status `"machine"` is listed as "<name> (machine
-  translation)"; `"auto"` may choose it too. Right-to-left catalogs are listed on Windows and
+  language will change). A catalog with status `"machine"` is listed like the others, by
+  its name alone; `"auto"` may choose it too. Right-to-left catalogs are listed on Windows and
   macOS (see the note at the end of the next section); on Linux load them with `WTS_UI_LANGUAGE`.
 - **For one run**, without touching the setting: set `WTS_UI_LANGUAGE` to the code, then start
   from source. It wins over the saved setting; while it is set, the picker's notice says so.
@@ -145,8 +145,8 @@ and expects an empty list, plus a test that its English texts did not change.
 6. Keys that contain `\u0004` carry a context before that character; translate only the value.
 7. Status: `"machine"` for an unreviewed machine translation, `"reviewed"` once a person who
    speaks the language has checked it. `"auto"` picks either kind for a matching display
-   language. The language picker lists a machine translation with the note
-   "(machine translation)" after the language's name; a reviewed catalog shows the name alone.
+   language. The language picker shows the status nowhere: every language is listed by its
+   own name alone.
 8. Run `python -m pytest tests/test_i18n_catalogs.py` (it reports untranslated messages as
    warnings and fails on broken placeholders, wrong plural counts or keys `en.json` lacks), then
    look at the app with `WTS_UI_LANGUAGE=<code>`.

@@ -1182,7 +1182,7 @@
     "The exact model id your endpoint expects, e.g. gpt-4o-mini for OpenAI, openai/gpt-oss-120b for Groq, or a locally-loaded model's name for Ollama/LM Studio. Different accounts/servers have different models available.": "Точний ідентифікатор моделі, якого очікує ваша кінцева точка, наприклад gpt-4o-mini для OpenAI, openai/gpt-oss-120b для Groq або назва локально завантаженої моделі для Ollama/LM Studio. У різних облікових записів і серверів доступні різні моделі.",
     "The finished pieces are kept; the same text and voice continue from there.": "Готові фрагменти збережено; той самий текст і голос продовжаться з цього місця.",
     "The interface language changes the next time you start the app.": "Мова інтерфейсу зміниться під час наступного запуску застосунку.",
-    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A language marked \"machine translation\" was translated by a computer and not yet checked by a person. A change applies the next time you start the app.": "Мова меню, кнопок і повідомлень застосунку. «Автоматично» використовує мову вашої системи, якщо для неї є переклад, інакше — англійську. Мову з позначкою «машинний переклад» переклав комп'ютер, і її ще не перевірила людина. Зміна набуде чинності під час наступного запуску застосунку.",
+    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A change applies the next time you start the app.": "Мова меню, кнопок і повідомлень застосунку. «Автоматично» використовує мову вашої системи, якщо для неї є переклад, інакше — англійську. Зміна набуде чинності під час наступного запуску застосунку.",
     "The live model '{model}' is not in the model list. The Transcribe tab's model ({main_model}) understands English only, so it cannot stand in for it. Check the internet connection and press Start again, or pick another model in the Model list.": "Моделі «{model}» для режиму реального часу немає в списку моделей. Модель вкладки «Транскрипція» ({main_model}) розуміє лише англійську, тому не може її замінити. Перевірте з'єднання з інтернетом і знову натисніть «Старт» або виберіть іншу модель у списку «Модель».",
     "The live session could not be started.": "Не вдалося запустити сеанс у реальному часі.",
     "The live transcript is empty.": "Транскрипт у реальному часі порожній.",
@@ -1691,7 +1691,6 @@
       "{languages} і ще {n}"
     ],
     "{language} (automatic)": "{language} (створені автоматично)",
-    "{language} (machine translation)": "{language} (машинний переклад)",
     "{language} (made by the uploader)": "{language} (від автора)",
     "{language} (not sure)": "{language} (непевно)",
     "{language} speech will come out as wrong English text: made-up words or a rough English translation, not what was said.": "Мовлення мовою «{language}» перетвориться на хибний англійський текст: вигадані слова або грубий переклад англійською, а не те, що було сказано.",

@@ -1182,7 +1182,7 @@
     "The exact model id your endpoint expects, e.g. gpt-4o-mini for OpenAI, openai/gpt-oss-120b for Groq, or a locally-loaded model's name for Ollama/LM Studio. Different accounts/servers have different models available.": "Тачан ID модела који очекује ваша крајња тачка, нпр. gpt-4o-mini за OpenAI, openai/gpt-oss-120b за Groq или назив локално учитаног модела за Ollama/LM Studio. Различити налози и сервери имају различите моделе.",
     "The finished pieces are kept; the same text and voice continue from there.": "Завршени делови су задржани; исти текст и глас настављају одатле.",
     "The interface language changes the next time you start the app.": "Језик интерфејса ће се променити при следећем покретању апликације.",
-    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A language marked \"machine translation\" was translated by a computer and not yet checked by a person. A change applies the next time you start the app.": "Језик менија, дугмади и порука апликације. Аутоматски користи језик вашег система када је за њега доступан превод, а у супротном енглески. Језик означен као „машински превод“ превео је рачунар и још га није проверила особа. Промена се примењује при следећем покретању апликације.",
+    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A change applies the next time you start the app.": "Језик менија, дугмади и порука апликације. Аутоматски користи језик вашег система када је за њега доступан превод, а у супротном енглески. Промена се примењује при следећем покретању апликације.",
     "The live model '{model}' is not in the model list. The Transcribe tab's model ({main_model}) understands English only, so it cannot stand in for it. Check the internet connection and press Start again, or pick another model in the Model list.": "Модел уживо '{model}' није на листи модела. Модел из картице Транскрипција ({main_model}) разуме само енглески, па не може да га замени. Проверите интернет везу и поново притисните Покрени, или изаберите други модел са листе Модел.",
     "The live session could not be started.": "Сесија уживо није могла да се покрене.",
     "The live transcript is empty.": "Транскрипт уживо је празан.",
@@ -1691,7 +1691,6 @@
       "{languages} и још {n}"
     ],
     "{language} (automatic)": "{language} (аутоматски)",
-    "{language} (machine translation)": "{language} (машински превод)",
     "{language} (made by the uploader)": "{language} (од аутора)",
     "{language} (not sure)": "{language} (није сигурно)",
     "{language} speech will come out as wrong English text: made-up words or a rough English translation, not what was said.": "Говор на језику {language} биће погрешан енглески текст: измишљене речи или груб превод на енглески, а не оно што је речено.",

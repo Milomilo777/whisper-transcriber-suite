@@ -1144,7 +1144,7 @@
     "The exact model id your endpoint expects, e.g. gpt-4o-mini for OpenAI, openai/gpt-oss-120b for Groq, or a locally-loaded model's name for Ollama/LM Studio. Different accounts/servers have different models available.": "你的终结点所期望的确切模型 ID，例如 OpenAI 用 gpt-4o-mini，Groq 用 openai/gpt-oss-120b，Ollama/LM Studio 用本地加载的模型名称。不同的账户和服务器可用的模型不同。",
     "The finished pieces are kept; the same text and voice continue from there.": "已完成的部分会保留；之后用相同的文本和声音生成时，会从中断处继续。",
     "The interface language changes the next time you start the app.": "界面语言将在下次启动应用时更改。",
-    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A language marked \"machine translation\" was translated by a computer and not yet checked by a person. A change applies the next time you start the app.": "应用菜单、按钮和消息所用的语言。“自动”会在有译文时使用系统语言，否则使用英语。标有“机器翻译”的语言由计算机翻译，尚未经过人工检查。更改将在下次启动应用时生效。",
+    "The language of the app's menus, buttons and messages. Automatic uses the language of your system when a translation for it is available, otherwise English. A change applies the next time you start the app.": "应用菜单、按钮和消息所用的语言。“自动”会在有译文时使用系统语言，否则使用英语。更改将在下次启动应用时生效。",
     "The live model '{model}' is not in the model list. The Transcribe tab's model ({main_model}) understands English only, so it cannot stand in for it. Check the internet connection and press Start again, or pick another model in the Model list.": "实时模型“{model}”不在模型列表中。“转录”标签页的模型（{main_model}）只支持英语，无法替代它。请检查网络连接后再次按“开始”，或在“模型”列表中选择其他模型。",
     "The live session could not be started.": "无法启动实时会话。",
     "The live transcript is empty.": "实时转录文本为空。",
@@ -1617,7 +1617,6 @@
       "{languages}及另外 {n} 种"
     ],
     "{language} (automatic)": "{language}（自动生成）",
-    "{language} (machine translation)": "{language}（机器翻译）",
     "{language} (made by the uploader)": "{language}（由上传者制作）",
     "{language} (not sure)": "{language}（不确定）",
     "{language} speech will come out as wrong English text: made-up words or a rough English translation, not what was said.": "{language}语音会输出为错误的英语文本：编造的词语或粗略的英语翻译，而不是实际说的内容。",
