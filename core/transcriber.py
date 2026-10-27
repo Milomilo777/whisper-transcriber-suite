@@ -3418,8 +3418,11 @@ def _recover_resume_cursor(data: dict[str, Any]) -> float | None:
         return f if math.isfinite(f) and f >= 0.0 else None
 
     raw = data.get("last_end_time")
-    if raw is None or raw == "":
+    if (raw is None or raw == "") and not data.get("segments"):
         return 0.0
+    # A missing/empty cursor with segments saved falls through to the
+    # segment recovery below: resuming from 0 would decode the captured
+    # stretch again and concatenate every saved line a second time.
     cursor = _num(raw)
     if cursor is not None:
         return cursor
