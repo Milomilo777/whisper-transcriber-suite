@@ -2502,14 +2502,19 @@ class DownloadService:
             raise RuntimeError("SMTV CDN read timeout") from e
 
     def _run_subtitle_process(
-        self, task: "VideoDownloadTask", sub_lang: str, *, force_no_cookies: bool = False
+        self, task: "VideoDownloadTask", sub_lang: str, *, force_no_cookies: bool = False,
+        run_generation: int | None = None,
     ) -> tuple[list[str], bool, int, str]:
         """Run one yt-dlp caption fetch to completion.
 
         Returns ``(written_files, no_captions_warning, return_code,
         last_error_line)``; streams every output line to the task log.
+        A run that was cancelled, paused or replaced by a newer run of the
+        same task starts nothing and returns ``([], False, 0, "")``.
         """
         app = self.app
+        if _stop_requested(task, run_generation):
+            return [], False, 0, ""
         proc = subprocess.Popen(
             self.build_subtitle_command(task, sub_lang, force_no_cookies=force_no_cookies),
             cwd=os.path.dirname(os.path.abspath(app.entry_file)),
@@ -2523,7 +2528,14 @@ class DownloadService:
             # Isolate so a cancel/exit can kill yt-dlp AND its ffmpeg child.
             **new_session_kwargs(),
         )
+        if run_generation is not None and getattr(task, "_run_generation", run_generation) != run_generation:
+            # A newer run took the task while this one was starting: never take its process slot.
+            kill_download_tree(proc)
+            return [], False, 0, ""
         task.process = proc
+        if _stop_requested(task, run_generation):
+            # The stop landed between the check above and the slot: it could not see this process.
+            kill_download_tree(proc)
         wrote_files: list[str] = []
         no_subs_warning = False
         last_error_line = ""
@@ -2565,7 +2577,7 @@ class DownloadService:
         no_captions_warning, return_code)``.
         """
         wrote_files, no_subs_warning, sub_rc, error_line = self._run_subtitle_process(
-            task, sub_lang
+            task, sub_lang, run_generation=run_generation
         )
         if (
             sub_rc
@@ -2581,7 +2593,7 @@ class DownloadService:
         ):
             self._note_cookie_failure(task, error_line, "the captions")
             wrote_files, no_subs_warning, sub_rc, _ = self._run_subtitle_process(
-                task, sub_lang, force_no_cookies=True
+                task, sub_lang, force_no_cookies=True, run_generation=run_generation
             )
         return wrote_files, no_subs_warning, sub_rc
 
@@ -2618,6 +2630,10 @@ class DownloadService:
         avoid posting a second one for the same stop.
         """
         app = self.app
+        if _stop_requested(task, run_generation):
+            # Cancelled, paused or replaced before the phase began: start no yt-dlp at all. The
+            # caller reports the cancel (this returns False) and returns at once for the others.
+            return False
         sub_lang = self.resolve_subtitle_lang(task)
         if not sub_lang:
             app.download_events.put(("subtitle_status", task, _("no language detected")))
@@ -2631,6 +2647,10 @@ class DownloadService:
         wrote_files, no_subs_warning, sub_rc = self._fetch_subtitles(
             task, sub_lang, run_generation
         )
+        if run_generation is not None and getattr(task, "_run_generation", run_generation) != run_generation:
+            # A newer run owns the task, its files and all reporting (the caller returns at once);
+            # a caption file with this name may already be that run's.
+            return False
         if task.cancelled:
             for partial in wrote_files:
                 try:
