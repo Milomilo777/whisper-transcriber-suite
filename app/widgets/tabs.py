@@ -2009,8 +2009,8 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
         cookies_row,
         textvariable=app.download_cookies_var,
         state="readonly",
-        values=cookie_browser_choices(current_cookies),
-        width=14,
+        values=cookie_browser_choices(current_cookies, with_file_entry=True),
+        width=22,
     )
     app.download_cookies_combo.pack(side="left", padx=(6, 0))
     app.download_cookies_combo.bind(
@@ -2025,9 +2025,11 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
         cookies_row,
         _("Pick the browser you are signed in with, so videos that need an account "
           "(Instagram, Facebook, TikTok stories, age-restricted YouTube) can be "
-          "downloaded. The sign-in is used on this computer only; nothing is uploaded. "
-          "If Chrome or Edge reports a cookie error, close that browser completely "
-          "and try again."),
+          "downloaded. The sign-in is used on this computer only; nothing is uploaded.\n\n"
+          "On Windows, Chrome, Edge and Brave lock their cookies: sign in to the site in "
+          "Firefox and pick Firefox here.\n\n"
+          "\"cookies.txt file…\" is for people who already have such a file. Never share it: "
+          "it holds your log-ins."),
     ).pack(side="left", padx=(6, 0))
 
     # --- Optional time-range slice (v1.0.3) -------------------------------

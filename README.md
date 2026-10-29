@@ -517,7 +517,9 @@ Guide with screenshots: [transcripts with speaker labels](https://whisper-transc
   them instead of transcribing (**Download and transcribe**, **Subtitles only (no video)** or **Use the
   subtitles**). Regional variants such as `pt-BR` or `en-GB` match too.
 - **Log-in cookies** from a browser you pick open private, age-restricted or members-only videos. On Windows,
-  close that browser if reading its cookies fails.
+  Chrome, Edge, Brave and other Chromium browsers encrypt their cookies so that downloaders cannot read them;
+  sign in to the site in Firefox and pick Firefox there. A **cookies.txt file** you already have works too
+  (keep it private: it holds your log-ins).
 - **SponsorBlock** can cut sponsor segments and other categories you pick.
 - Downloads resume instead of starting over, and a full disk is reported as such.
 
@@ -1096,7 +1098,7 @@ Bugs and feature requests: [GitHub Issues](https://github.com/Milomilo777/whispe
 | Transcription is very slow | Pick **Fast** or **Balanced**; with an NVIDIA GPU, run **Advanced → Re-detect hardware…**. |
 | The model download stops | Start it again: downloads resume. Check free disk space and the model folder. |
 | A YouTube download fails | Click **Update it** on the yt-dlp bar; in a source install, also install the YouTube helper when asked. |
-| A private or age-restricted video fails | Use **More options → Log-in cookies** with a browser where you are signed in (close it first on Windows). |
+| A private or age-restricted video fails | Use **More options → Log-in cookies** with a browser where you are signed in (on Windows: Firefox, or a cookies.txt file). |
 | English text appears for non-English audio | An English-only model is picked: choose a multilingual model or an Accuracy level. |
 | Repeated or invented lines | Keep voice-activity detection on, name the language, try **Best**, or turn on adaptive denoise. |
 | The GPU is not used | **Advanced → Re-detect hardware…** says why; **Install GPU support** adds the missing cuBLAS library. |

@@ -168,6 +168,8 @@ def test_media_phase_retries_without_cookies_on_extraction_failure(monkeypatch):
 
 
 def test_media_phase_reports_actionable_error_when_retry_also_fails(monkeypatch):
+    # Not a Chromium-on-Windows case (that one has its own message): a locked cookie jar.
+    monkeypatch.setattr("app.domain.cookies._is_windows", lambda: False)
     app = _app("brave")
     calls = _fake_popen_factory(monkeypatch, [
         ([COOKIE_ERROR_LINE], 1),

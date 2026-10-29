@@ -16,6 +16,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import threading
 import time
 import uuid
@@ -95,8 +96,16 @@ from app.i18n import _, ngettext, pgettext
 from app.domain.cookies import (
     COOKIE_BROWSERS,
     COOKIE_EXTRACTION_ERROR_RE,
+    cookies_blocked_text,
+    cookies_failed_before,
     cookies_from_browser_args,
+    cookies_unreadable_for_good,
     is_cookie_extraction_error,
+    looks_like_login_wall,
+    private_cookies_copy,
+    remember_cookie_failure,
+    strip_cookie_args,
+    usable_cookie_value,
 )
 from app.domain.languages import subtitle_lang_patterns
 from core import burn_subs, yt_dlp_update
@@ -346,6 +355,85 @@ def _section_name_suffix(sections_arg: str | None) -> str:
     return f" (clip {start}-{end})"
 
 
+# A page title can be hundreds of characters (a Facebook post's whole text), and a file name over
+# NTFS's 255 UTF-16 units fails with [Errno 22]. The title part of every output template is cut
+# with yt-dlp's own "%(title).<N>B" (N UTF-8 bytes: at least as many as the UTF-16 units, and
+# yt-dlp's filename sanitising only swaps one character for one). N leaves room for what is added
+# after the title: " (9999)", ".f<format id>", the extension, ".part-Frag12345", ".zh-Hans-CN.vtt".
+_MAX_NAME_UNITS = 255
+_MAX_PATH_UNITS = 259  # MAX_PATH (260) without the terminating NUL, when Windows long paths are off
+_NAME_SUFFIX_RESERVE = 64
+_MIN_TITLE_BYTES = 40
+
+
+def _utf16_len(text: str) -> int:
+    return len(text.encode("utf-16-le", "surrogatepass")) // 2
+
+
+def title_byte_budget(folder: str, extra: str = "", *, windows: bool | None = None) -> int:
+    """How many UTF-8 bytes of the title a file name in *folder* may use.
+
+    *extra* is fixed text that follows the title in the name (the clip tag of a time-range
+    download). On Windows the whole path must stay under MAX_PATH too, so a deep folder leaves
+    less room; the result never drops below a short, still readable title."""
+    if windows is None:
+        windows = sys.platform == "win32"
+    size = _utf16_len if windows else (lambda s: len(s.encode("utf-8", "surrogatepass")))
+    room = _MAX_NAME_UNITS - _NAME_SUFFIX_RESERVE - size(extra)
+    if windows:
+        stem_room = _MAX_PATH_UNITS - (_utf16_len((folder or "").rstrip("\\/")) + 1)
+        room = min(room, stem_room - _NAME_SUFFIX_RESERVE - size(extra))
+    return max(_MIN_TITLE_BYTES, room)
+
+
+def title_template(folder: str, extra: str = "") -> str:
+    """The title field of an output template: ``%(title).<N>B``."""
+    return f"%(title).{title_byte_budget(folder, extra)}B"
+
+
+def trim_title(title: str, budget: int) -> str:
+    """*title* as ``%(title).<budget>B`` leaves it (cut at a character boundary)."""
+    return title.encode("utf-8", "surrogatepass")[:budget].decode("utf-8", "ignore")
+
+
+def _is_nonempty_file(path: str) -> bool:
+    try:
+        return os.path.isfile(path) and os.path.getsize(path) > 0
+    except OSError:
+        return False
+
+
+_LOGIN_PHRASES = (
+    "login", "log in", "sign in", "sign-in", "cookies",
+    "private video", "members-only", "age-restrict",
+    "age restrict", "this video is private", "confirm your age",
+)
+
+
+def _mentions_login(low: str) -> bool:
+    """Specific phrases only: bare "age"/"account" matched unrelated errors ("storage", "page")."""
+    return any(k in low for k in _LOGIN_PHRASES)
+
+
+def file_system_hint(low: str) -> str:
+    """Plain words for a yt-dlp error that is the file system's, not the site's ("" when it is not).
+
+    *low* is the lower-cased error line. A name or path that is too long reaches yt-dlp as
+    ``[Errno 22] Invalid argument`` on Windows and ``[Errno 36] File name too long`` elsewhere."""
+    if any(k in low for k in (
+        "errno 22", "invalid argument", "name too long", "errno 36", "path too long", "winerror 206",
+    )):
+        return _("The file name or folder path is too long. Choose a shorter download folder and try again.")
+    if any(k in low for k in ("permission denied", "errno 13", "access is denied")):
+        return _("The app is not allowed to write there. Choose another download folder and try again.")
+    return ""
+
+
+def name_key_of_title(title: str, folder: str, extra: str = "") -> str:
+    """:func:`_name_key` of the name a download of *title* gets in *folder*, plus *extra*."""
+    return _name_key(trim_title(title, title_byte_budget(folder, extra)) + extra)
+
+
 def _time_range_badge(
     start: float | None, end: float | None
 ) -> str | None:
@@ -402,7 +490,8 @@ def build_subtitle_command(
     number: int = 0,
 ) -> list[str]:
     # ``number``: the video is saved as "Title (N)" (ADR 0019), so its captions carry that name.
-    stem = f"%(title)s ({number})" if number > 0 else "%(title)s"
+    title = title_template(task.folder)
+    stem = f"{title} ({number})" if number > 0 else title
     output = os.path.join(task.folder, stem + ".%(ext)s")
     sub_langs = subtitle_lang_patterns(lang)
     command = [yt_dlp_path]
@@ -550,8 +639,9 @@ def build_download_command(
     sections_arg = _download_sections_arg(
         getattr(task, "section_start", None), getattr(task, "section_end", None)
     )
+    clip_tag = _section_name_suffix(sections_arg)
     output = os.path.join(
-        task.folder, "%(title)s" + _section_name_suffix(sections_arg) + ".%(ext)s"
+        task.folder, title_template(task.folder, clip_tag) + clip_tag + ".%(ext)s"
     )
     command = [yt_dlp_path]
     if bin_path:
@@ -1040,6 +1130,27 @@ class DownloadService:
     def __init__(self, app: "App") -> None:
         self.app = app
 
+    def _cookies_setting(self, force_no_cookies: bool = False) -> str | None:
+        """The log-in cookies setting a command is built with: None when a retry forbids them,
+        "" when this run already found them unreadable."""
+        if force_no_cookies:
+            return None
+        usable = usable_cookie_value(self.app, self.app.app_config.get("cookies_from_browser", ""))
+        return private_cookies_copy(usable)  # yt-dlp rewrites the cookies file it is given
+
+    def _note_cookie_failure(self, task: "VideoDownloadTask", error_text: str, what: str) -> bool:
+        """Log that the browser cookies could not be read and remember it when it will stay so
+        (a Chromium-family browser on Windows). True when it will stay so."""
+        value = str(self.app.app_config.get("cookies_from_browser", "") or "").strip()
+        for_good = cookies_unreadable_for_good(value, error_text)
+        if for_good:
+            remember_cookie_failure(self.app, value)
+            line = f"--- Log-in cookies from {value} cannot be read (browser encryption) — retrying {what} without cookies ---"
+        else:
+            line = f"--- Could not read cookies from your browser (close it fully if it's open) — retrying {what} without cookies ---"
+        self.app.download_events.put(("log", task, line))
+        return for_good
+
     # Helpers exposed to the App
     def resolve_subtitle_lang(self, task: "VideoDownloadTask") -> str:
         lang = task.subtitle_lang or task.detected_language or ""
@@ -1053,9 +1164,7 @@ class DownloadService:
             task, lang,
             yt_dlp_path=self.app.yt_dlp_path(),
             bin_path=self.app.bin_path(),
-            cookies_from_browser=(
-                None if force_no_cookies else self.app.app_config.get("cookies_from_browser", "")
-            ),
+            cookies_from_browser=self._cookies_setting(force_no_cookies),
             js_runtime_args=yt_dlp_js_args(self.app.yt_dlp_path()),
             number=name_number if isinstance(name_number, int) else 0,
         )
@@ -1069,9 +1178,7 @@ class DownloadService:
             bin_path=self.app.bin_path(),
             sponsorblock_categories=list(self.app.app_config.get("sponsorblock_categories") or []),
             progress_template="%(progress)j",
-            cookies_from_browser=(
-                None if force_no_cookies else self.app.app_config.get("cookies_from_browser", "")
-            ),
+            cookies_from_browser=self._cookies_setting(force_no_cookies),
             js_runtime_args=yt_dlp_js_args(self.app.yt_dlp_path()),
         )
 
@@ -2442,6 +2549,9 @@ class DownloadService:
         # it would make that live process unkillable/unwaitable.
         if task.process is proc:
             task.process = None
+        # yt-dlp prints "Writing video subtitles to:" BEFORE it writes: after an Errno 22 the
+        # file is missing or empty, and reporting it as downloaded gave "could not be read".
+        wrote_files = [p for p in wrote_files if _is_nonempty_file(p)]
         return wrote_files, no_subs_warning, sub_rc, last_error_line or last_line
 
     def _fetch_subtitles(
@@ -2469,11 +2579,7 @@ class DownloadService:
             and _cookies_from_browser_args(self.app.app_config.get("cookies_from_browser", ""))
             and _is_cookie_extraction_error(error_line)
         ):
-            self.app.download_events.put((
-                "log", task,
-                "--- Could not read cookies from your browser (close it fully "
-                "if it's open) — retrying the captions without cookies ---",
-            ))
+            self._note_cookie_failure(task, error_line, "the captions")
             wrote_files, no_subs_warning, sub_rc, _ = self._run_subtitle_process(
                 task, sub_lang, force_no_cookies=True
             )
@@ -2814,7 +2920,7 @@ class DownloadService:
             lock.release()
 
     def _plan_pass(
-        self, task: "VideoDownloadTask", command: list[str]
+        self, task: "VideoDownloadTask", command: list[str], *, _retry_without_cookies: bool = False
     ) -> "list[download_guard.PlannedItem] | None":
         """Ask yt-dlp which files the download will write (nothing is downloaded).
 
@@ -2866,6 +2972,19 @@ class DownloadService:
             if not _stop_requested(task, None):
                 last = (err or out or "").strip().splitlines()
                 note(last[-1] if last else f"yt-dlp exit code {proc.returncode}")
+                # The browser's cookies could not be read: a public link needs none. Plan again
+                # without them (the plan is a safety check; skipping it dropped the numbering of
+                # the file names), and remember the failure when it will stay.
+                stripped = strip_cookie_args(command)
+                if (
+                    not _retry_without_cookies
+                    and stripped != list(command)
+                    and is_cookie_extraction_error(err or out or "")
+                ):
+                    value = str(app.app_config.get("cookies_from_browser", "") or "").strip()
+                    if cookies_unreadable_for_good(value, err or out or ""):
+                        remember_cookie_failure(app, value)
+                    return self._plan_pass(task, stripped, _retry_without_cookies=True)
             return None
         return download_guard.parse_plan(out or "", command) or None
 
@@ -3101,9 +3220,18 @@ class DownloadService:
 
     def _media_phase(self, task: "VideoDownloadTask", run_generation: int | None = None) -> None:
         app = self.app
-        cookies_configured = bool(
-            _cookies_from_browser_args(app.app_config.get("cookies_from_browser", ""))
-        )
+        cookie_setting = str(app.app_config.get("cookies_from_browser", "") or "")
+        configured = bool(_cookies_from_browser_args(cookie_setting))
+        # This run already found the browser's cookies unreadable: the command is built without
+        # them (_cookies_setting), so say so once instead of trying and failing again.
+        skipped_cookies = configured and cookies_failed_before(app, cookie_setting)
+        cookies_configured = configured and not skipped_cookies
+        if skipped_cookies:
+            app.download_events.put((
+                "log", task,
+                f"Log-in cookies from {cookie_setting.strip()} are skipped: they could not be "
+                "read earlier in this session.",
+            ))
 
         return_code, last_error_line, last_line, saved_path, _ = (
             self._run_media_process(task, self.build_download_command(task))
@@ -3126,7 +3254,7 @@ class DownloadService:
         # longer breaking every other download whenever the browser happens
         # to be open.
         retried_without_cookies = False
-        cookie_jar_encrypted = False
+        cookies_unreadable = skipped_cookies  # for good: only those are remembered
         if (
             return_code
             and not task.cancelled
@@ -3136,14 +3264,12 @@ class DownloadService:
         ):
             retried_without_cookies = True
             # Chrome / Edge / Brave on Windows encrypt cookies so only the
-            # browser itself can read them ("Failed to decrypt with DPAPI");
+            # browser itself can read them (App-Bound Encryption; "Failed to
+            # decrypt with DPAPI" or "Could not copy ... cookie database");
             # closing the browser does not help there, unlike a locked file.
-            cookie_jar_encrypted = "dpapi" in (last_error_line or last_line).lower()
-            app.download_events.put((
-                "log", task,
-                "--- Could not read cookies from your browser (close it fully "
-                "if it's open) — retrying this download without cookies ---",
-            ))
+            cookies_unreadable = self._note_cookie_failure(
+                task, last_error_line or last_line, "this download"
+            )
             return_code, last_error_line, last_line, saved_path, _ = (
                 self._run_media_process(
                     task, self.build_download_command(task, force_no_cookies=True)
@@ -3183,15 +3309,15 @@ class DownloadService:
             low = reason.lower()
             if mentions_missing_js_runtime(reason):
                 msg += "  — " + missing_js_runtime_hint(app.yt_dlp_path())
-            elif retried_without_cookies and cookie_jar_encrypted:
-                msg += (
-                    "  — this browser's cookies cannot be read (Chrome, Edge "
-                    "and Brave on Windows encrypt them for the browser only), "
-                    "and the download failed without them too. Log in to the "
-                    "site in Firefox, pick Firefox under 'Log-in cookies' "
-                    "(Download tab) and retry."
-                )
-            elif retried_without_cookies:
+            # A file-system error is reported as what it is, never as a cookie or login problem.
+            elif file_system_hint(low):
+                msg += "  — " + file_system_hint(low)
+            # Cookies are blamed only when the request without them failed on a login wall.
+            elif (retried_without_cookies or skipped_cookies) and cookies_unreadable and (
+                looks_like_login_wall(reason) or _mentions_login(low)
+            ):
+                msg += "  — " + cookies_blocked_text()
+            elif retried_without_cookies and looks_like_login_wall(reason):
                 msg += (
                     "  — could not read cookies from your browser, and the "
                     "download failed again without them too: this video "
@@ -3209,11 +3335,7 @@ class DownloadService:
                 msg += "  — your disk is full: clear some space and try again."
             # Specific phrases only — bare "age"/"account" matched unrelated
             # errors ("storage", "page", "message").
-            elif any(k in low for k in (
-                "login", "log in", "sign in", "sign-in", "cookies",
-                "private video", "members-only", "age-restrict",
-                "age restrict", "this video is private", "confirm your age",
-            )):
+            elif _mentions_login(low):
                 if cookies_configured:
                     msg += (
                         "  — the site still wants a logged-in session: check "
@@ -3545,12 +3667,10 @@ class DownloadService:
             found.append((mtime, full))
         if not found:
             return None, False
-        if len(found) == 1:
-            return found[0][1], False
         wanted = {
             key for key in (
                 _name_key(os.path.splitext(os.path.basename(parsed or ""))[0]),
-                _name_key(str(getattr(task, "title", "") or "")),
+                name_key_of_title(str(getattr(task, "title", "") or ""), folder),
             ) if key
         }
         # A time-range task's title carries the queue decoration
@@ -3567,12 +3687,26 @@ class DownloadService:
             tail = f"  -  trim {_time_range_badge(getattr(task, 'section_start', None), getattr(task, 'section_end', None))}"
             if tail and title.endswith(tail):
                 title = title[: -len(tail)]
-            clip_key = _name_key(title + _section_name_suffix(sections_arg))
+            clip_key = name_key_of_title(title, folder, _section_name_suffix(sections_arg))
             if clip_key:
                 wanted.add(clip_key)
+        def _is_wanted(file_key: str) -> bool:
+            # One key starts the other: "Title (2)" (the number of ADR 0019) follows the wanted
+            # key, and a capped or garbled name is the start of the full one.
+            return any(
+                file_key == w
+                or (min(len(file_key), len(w)) >= 6 and (file_key.startswith(w) or w.startswith(file_key)))
+                for w in wanted
+            )
+
+        # A lone fresh file is taken only when it carries the expected name: another program
+        # writing into the same folder during the download must not be taken as its output.
+        # (Without any expected name, e.g. no title yet, the lone file is all there is.)
+        if len(found) == 1 and not wanted:
+            return found[0][1], False
         matching = [
             item for item in found
-            if _name_key(os.path.splitext(os.path.basename(item[1]))[0]) in wanted
+            if _is_wanted(_name_key(os.path.splitext(os.path.basename(item[1]))[0]))
         ]
         if matching:
             return max(matching)[1], False
