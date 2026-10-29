@@ -33,7 +33,18 @@ export function fakeD1() {
 
   return {
     prepare: (sql) => statement(sql),
-    batch: async (statements) => statements.map((s) => s._run()),
+    batch: async (statements) => {
+      // D1 runs a batch as one transaction: all statements or none.
+      db.exec('BEGIN');
+      try {
+        const out = statements.map((s) => s._run());
+        db.exec('COMMIT');
+        return out;
+      } catch (e) {
+        db.exec('ROLLBACK');
+        throw e;
+      }
+    },
     raw: db,
     counters,
   };

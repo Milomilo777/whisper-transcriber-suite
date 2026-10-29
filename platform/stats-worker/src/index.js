@@ -30,15 +30,21 @@ export const TEXT_LIMITS = {
 const NUMBER_LIMITS = { audio_duration: 1e7, transcription_time: 1e7 };
 const INT_LIMITS = { word_count: 1e9, cpu_count: 4096, mem_total: 1e15 };
 
-export const MAX_RUN_BODY = 8 * 1024;
+// Room for every field at its cap even in 4-byte characters, percent-encoded (the PHP script has no body cap).
+export const MAX_RUN_BODY = 16 * 1024;
 export const MAX_REPORT_BODY = 64 * 1024;
 export const REPORT_TEXT_CHARS = 2000;
-export const REPORT_LOG_CHARS = 20000;
-// The collector keeps everything locally; D1 keeps a bounded recent window (~600 MB of runs at most).
-export const KEEP_RUNS = 2000000;
-export const KEEP_REPORTS = 50000;
-// The view page reads at most this many recent runs (D1 bills rows read; a full scan would not scale).
-export const VIEW_WINDOW = 50000;
+export const REPORT_LOG_CHARS = 8000;
+// The collector keeps everything locally; D1 keeps a recent window only. A D1 Free database holds at most
+// 500 MB: a run row is ~250 bytes (at most ~3 KB with every field at its cap in 4-byte characters) and a
+// report at most ~40 KB, so these counts stay under it even then. The purge runs hourly, so a flood adds at
+// most an hour of rows (the 100k/day write quota) on top.
+export const KEEP_RUNS = 100000;
+export const KEEP_REPORTS = 2000;
+// The view page reads at most this many recent runs (D1 Free: 5 million rows read a day).
+export const VIEW_WINDOW = 5000;
+// A page of report exports holds at most this many rows (each up to ~40 KB; the Worker has 128 MB).
+export const REPORT_EXPORT_LIMIT = 100;
 
 const RUN_COLUMNS = [
   'id', 'server_time', 'country_code', 'model', 'language', 'audio_duration', 'transcription_time',
@@ -59,7 +65,8 @@ export function cleanText(value, max, keepNewlines = false) {
 
 /** A finite number in [0, max]; 0 otherwise (PHP is_numeric accepts surrounding spaces and exponents). */
 export function cleanNumber(value, max) {
-  if (typeof value !== 'string' || !/^\s*[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?\s*$/.test(value)) return 0;
+  // ASCII white space only, like PHP's is_numeric (JavaScript's \s would also accept U+00A0 and more).
+  if (typeof value !== 'string' || !/^[ \t\n\r\v\f]*[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?[ \t\n\r\v\f]*$/.test(value)) return 0;
   const n = Number(value.trim());
   if (!Number.isFinite(n) || n < 0) return 0;
   return Math.min(n, max);
@@ -69,13 +76,21 @@ export function cleanCountry(value) {
   return typeof value === 'string' && /^[A-Z]{2}$/.test(value) ? value : '';
 }
 
+/** A repeated form field's LAST value, as PHP's $_POST keeps it; null when absent. */
+function lastValue(form, name) {
+  const all = form.getAll(name);
+  return all.length ? all[all.length - 1] : null;
+}
+
 /** The row to store for one POST /v1/runs form, or null when it is not a stats form. */
 export function runFromForm(form, now) {
   if (!form.has('form_submitted')) return null;
-  const row = { server_time: now, country_code: cleanCountry(form.get('country')) };
-  for (const [field, max] of Object.entries(TEXT_LIMITS)) row[field] = cleanText(form.get(field), max);
-  for (const [field, max] of Object.entries(NUMBER_LIMITS)) row[field] = cleanNumber(form.get(field), max);
-  for (const [field, max] of Object.entries(INT_LIMITS)) row[field] = Math.floor(cleanNumber(form.get(field), max));
+  const row = { server_time: now, country_code: cleanCountry(lastValue(form, 'country')) };
+  for (const [field, max] of Object.entries(TEXT_LIMITS)) row[field] = cleanText(lastValue(form, field), max);
+  for (const [field, max] of Object.entries(NUMBER_LIMITS)) row[field] = cleanNumber(lastValue(form, field), max);
+  for (const [field, max] of Object.entries(INT_LIMITS)) {
+    row[field] = Math.floor(cleanNumber(lastValue(form, field), max));
+  }
   return row;
 }
 
@@ -202,7 +217,9 @@ export async function authorised(request, env) {
   if (!/^Basic /i.test(header)) return false;
   let decoded = '';
   try {
-    decoded = atob(header.slice(6).trim());
+    // RFC 7617 with charset="UTF-8": base64 of the UTF-8 bytes.
+    const bytes = Uint8Array.from(atob(header.slice(6).trim()), (c) => c.charCodeAt(0));
+    decoded = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
   } catch {
     return false;
   }
@@ -321,7 +338,7 @@ export async function handle(request, env, nowMs = Date.now()) {
     const p = url.searchParams;
     const kind = p.get('kind') || 'runs';
     const since = intParam(p, 'since_id', 0, 0, 999999999999999);
-    const limit = intParam(p, 'limit', 500, 1, 1000);
+    const limit = intParam(p, 'limit', 500, 1, kind === 'reports' ? REPORT_EXPORT_LIMIT : 1000);
     const upto = intParam(p, 'upto_id', null, 0, 999999999999999);
     if (!['runs', 'reports'].includes(kind) || since === undefined || limit === undefined || upto === undefined) {
       return json({ error: 'bad parameter' }, 400);
