@@ -127,6 +127,6 @@
       "info": "~1.6 GB, multilingual. Community CT2 conversion of the Large v3 Turbo weights — ~5x faster than Large v3 with similar accuracy."
     }
   },
-  "stats_url": "https://smch.ir/stats/transcription_stats.php",
+  "stats_url": "https://stats.whisper-transcriber-suite.com/v1/runs",
   "latest_version": "1.5.0"
 }

@@ -10,9 +10,9 @@ Decision record: `docs/DECISIONS.md`, entry 0021.
 
 | Method and path | Who | What |
 |---|---|---|
-| `POST /v1/runs` | the app | One usage row. The same `application/x-www-form-urlencoded` fields as the PHP script (`form_submitted=1`, `country`, `model`, `language`, `audio_duration`, `transcription_time`, `word_count`, `status`, `program_version`, `platform_*`, `cpu_count`, `mem_total`, `install_id`), the same length caps and number bounds. Body at most 8 KB. Answers `OK`. |
-| `POST /v1/report` | the app | One problem report as JSON: `text` (at most 2,000 characters, line breaks kept), optional `log` (at most 20,000 characters), `program_version`, `os`, `machine`, `install_id`. Body at most 64 KB. Answers `{"ok": true, "id": n}`. |
-| `GET /v1/export` | maintainer | Rows after `since_id` (`kind=runs` or `reports`, `limit` 1-1000, `upto_id`), HTTP Basic. Same reply shape as the PHP `export.php`: `rows`, `next_since_id`, `upto_id`, `count`, `has_more`. |
+| `POST /v1/runs` | the app | One usage row. The same `application/x-www-form-urlencoded` fields as the PHP script (`form_submitted=1`, `country`, `model`, `language`, `audio_duration`, `transcription_time`, `word_count`, `status`, `program_version`, `platform_*`, `cpu_count`, `mem_total`, `install_id`), the same length caps and number bounds. Body at most 16 KB; a repeated field keeps its last value, as in PHP. Answers `OK`. |
+| `POST /v1/report` | the app | One problem report as JSON: `text` (at most 2,000 characters, line breaks kept), optional `log` (at most 8,000 characters), `program_version`, `os`, `machine`, `install_id`. Body at most 64 KB. Answers `{"ok": true, "id": n}`. |
+| `GET /v1/export` | maintainer | Rows after `since_id` (`kind=runs` or `reports`, `limit` 1-1000 (at most 100 for reports), `upto_id`), HTTP Basic. Same reply shape as the PHP `export.php`: `rows`, `next_since_id`, `upto_id`, `count`, `has_more`. |
 | `GET /view` | maintainer | A small HTML overview (recent days, latest reports, latest runs), HTTP Basic. `no-store`, strict CSP, all text escaped. |
 | `GET /` | anyone | One line saying what this is. |
 
@@ -25,8 +25,10 @@ A missing or weak secret (user under 3 or password under 16 characters) keeps `/
 Workers Free allows 100,000 requests a day (reset 00:00 UTC; over it the custom domain answers
 error 1027 and the app's best-effort POST is dropped). D1 Free allows 100,000 rows written and
 5 million rows read a day. So the schema has no secondary index and no `AUTOINCREMENT` (each would
-add a write per row), and every read goes by id: the view reads at most the newest 50,000 runs, and
-the daily cron (03:17 UTC) keeps the newest 2,000,000 runs and 50,000 reports. The website's
+add a write per row), and every read goes by id: the view reads at most the newest 5,000 runs, and
+an hourly cron keeps the newest 100,000 runs and 2,000 reports, which stays under the 500 MB size
+limit of a D1 Free database even with every field at its cap. The collector keeps everything locally; it
+must run more often than that window fills, or rows are purged before they are exported. The website's
 Pages Functions share the same daily request quota.
 
 ## Deploy
