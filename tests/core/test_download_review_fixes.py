@@ -714,3 +714,21 @@ def test_smtv_cut_off_page_raises_the_smtv_error(monkeypatch):
                         lambda *_a, **_k: _Resp(exc=http.client.IncompleteRead(b"par", 10)))
     with pytest.raises(smtv.SmtvError):
         smtv._http_get("https://suprememastertv.com/x", timeout=1)
+
+
+def test_two_finished_playlist_items_named_like_streams_are_kept_on_cancel(tmp_path):
+    # "Part.f1.mp4" and "Part.f2.mp4" are two finished items, not two streams of one merge:
+    # yt-dlp announced format "18" for each, so ".f1" / ".f2" are not format ids.
+    task = types.SimpleNamespace(stream_format_ids=set())
+    ds._remember_formats(task, "[info] abc123: Downloading 1 format(s): 18")
+    ds._remember_formats(task, "[info] def456: Downloading 1 format(s): 137+140")
+    assert task.stream_format_ids == {"18", "137", "140"}
+    first = _touch(tmp_path / "Part.f1.mp4")
+    second = tmp_path / "Part.f2.mp4"
+    assert ds.partial_download_files(str(first), [str(first), str(second)], task.stream_format_ids) == []
+    # Real streams of a merge still count as leftovers.
+    video = _touch(tmp_path / "Title.f137.mp4")
+    audio = tmp_path / "Title.f140.m4a"
+    assert ds.partial_download_files(str(video), [str(video), str(audio)], task.stream_format_ids) == [str(video)]
+    # Without announced ids (older yt-dlp output) the name rule stays as before.
+    assert ds.partial_download_files(str(first), [str(first), str(second)]) == [str(first)]

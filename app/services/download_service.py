@@ -821,7 +821,25 @@ def select_saved_path(lines: "Iterable[str]") -> str | None:
 # A per-format stream of a video+audio download ("Title.f137.mp4",
 # "Title.fhls-720.mp4"): yt-dlp deletes it after the merge. Group 1 is the
 # merged file's name without its extension.
-_FORMAT_STREAM_RE = re.compile(r"^(.+)\.f[^.]+\.[^.]+$")
+_FORMAT_STREAM_RE = re.compile(r"^(.+)\.f([^.]+)\.[^.]+$")
+# "[info] <video id>: Downloading 1 format(s): 137+140": the format ids whose per-format streams
+# ("name.f137.mp4") a merge leaves on disk until it is done.
+_FORMATS_RE = re.compile(r"^\[info\] .*: Downloading \d+ format\(s\): (\S+)$")
+
+
+def _remember_formats(task: Any, line: str) -> None:
+    """Note the format ids yt-dlp announced, so only those streams count as unmerged pieces."""
+    m = _FORMATS_RE.match(line.strip())
+    if not m:
+        return
+    ids = getattr(task, "stream_format_ids", None)
+    if not isinstance(ids, set):
+        ids = set()
+        try:
+            task.stream_format_ids = ids
+        except AttributeError:
+            return
+    ids.update(i for i in re.split(r"[+/,]", m.group(1)) if i)
 
 
 def _remember_partial(task: Any, line: str, path: str) -> None:
@@ -840,13 +858,18 @@ def _remember_partial(task: Any, line: str, path: str) -> None:
         paths.append(path)
 
 
-def partial_download_files(dest: str, announced: "Iterable[str]" = ()) -> list[str]:
+def partial_download_files(
+    dest: str, announced: "Iterable[str]" = (), format_ids: "set[str] | None" = None,
+) -> list[str]:
     """The leftovers of an unfinished download of *dest* that exist on disk:
     ``dest.part``, ``dest.ytdl``, ``dest.part-Frag*``, a merger temp file
     (``name.temp.ext``, recorded as such), and *dest* itself only when it
     is one of two or more per-format streams of one merge (another
     *announced* path is ``same-name.f<other id>.ext``). A file downloaded as
-    one piece is never listed, whatever its title looks like.
+    one piece is never listed, whatever its title looks like. When the
+    *format_ids* yt-dlp announced are known, only ``.f<id>.`` with one of
+    them counts: two finished playlist items called ``Part.f1.mp4`` and
+    ``Part.f2.mp4`` are not streams of one merge.
     """
     import glob
 
@@ -858,6 +881,8 @@ def partial_download_files(dest: str, announced: "Iterable[str]" = ()) -> list[s
     if m:
         for other in announced:
             o = _FORMAT_STREAM_RE.match(os.path.basename(other))
+            if format_ids and (m.group(2) not in format_ids or (o and o.group(2) not in format_ids)):
+                continue
             if other != dest and o and o.group(1) == m.group(1):
                 candidates.append(dest)
                 break
@@ -3186,6 +3211,7 @@ class DownloadService:
                         convert_open = path
                         _add_path(created, path)
                         pairs.append((last_source or "", path))
+                _remember_formats(task, line)
                 dest = parse_destination_line(line)
                 if dest is not None:
                     path, is_final = dest
@@ -3576,7 +3602,7 @@ class DownloadService:
         with _CLAIMS_LOCK:
             claims = _load_claims()
         for dest in paths:
-            for leftover in partial_download_files(dest, paths):
+            for leftover in partial_download_files(dest, paths, getattr(task, "stream_format_ids", None) or None):
                 # A partial that another task holds (its claim is written under that task, which is
                 # running, paused or queued) is not this task's to delete, whatever name this task
                 # once announced. The claim of a task that is done with it protects nothing.

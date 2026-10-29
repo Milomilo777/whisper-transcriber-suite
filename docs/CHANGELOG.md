@@ -154,6 +154,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **Cancelling a playlist no longer deletes finished items whose names look like format streams** (for example `Part.f1.mp4` and `Part.f2.mp4`): only the format ids yt-dlp announced count as unmerged pieces.
 - **Captions of a paused, resumed or cancelled download**: an older run of the same download no longer starts a caption fetch, takes over the newer run's process or deletes a caption file the newer run wrote.
 - **A transcription that could not be started after a download** now ends the row as an error with the reason (the file is kept) instead of a plain "finished"; a transcription engine that stops while loading its model is logged as such, not as a load that "timed out".
 - **Auto-transcribe no longer gives up while the model is still loading**: the wait for the Whisper worker (after a download, for a watched folder and for crash-resume) continues as long as a worker process is alive, up to a 15-minute cap (and ends at once if the worker dies), instead of dropping the task after 120 s; a large model on a slow CPU needs longer than that.

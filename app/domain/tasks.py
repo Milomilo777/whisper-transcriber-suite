@@ -83,6 +83,9 @@ class VideoDownloadTask:
         # the merge target). A cancel removes their leftovers (.part, .ytdl,
         # unmerged streams); a pause keeps them so a resume can continue.
         self.partial_paths: list[str] = []
+        # Format ids yt-dlp announced ("Downloading 1 format(s): 137+140"): only "name.f137.ext"
+        # and "name.f140.ext" are streams of a merge (download_service.partial_download_files).
+        self.stream_format_ids: set[str] = set()
         # Files this job created (ADR 0019): what a pause keeps for the resume and what
         # Cancel may delete. A file that is not listed here, or that was in the folder
         # before the run started (``_start_listing``), is never resumed, converted or
