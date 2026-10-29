@@ -485,9 +485,16 @@ def test_exit_wait_is_bounded_and_names_what_was_not_rebuilt(
 ) -> None:
     json_path = _make(tmp_path, ["srt", "docx", "json"], count=20)
     viewer = _open(root, json_path)
-    _slow_docx(monkeypatch, 2.5)
+    started = _slow_docx(monkeypatch, 2.5)
     _edit(viewer)
     viewer._save_changes()
+    # Quick formats are rebuilt before slow ones (viewer_exports.update_exports), so once the docx
+    # writer has started the srt is done. Without this wait a slow CI runner could still be on the srt
+    # after the 0.4 s exit wait, and both files were (rightly) reported as not rebuilt.
+    deadline = time.monotonic() + 10
+    while not started and time.monotonic() < deadline:
+        time.sleep(0.02)
+    assert started
     t0 = time.monotonic()
     with caplog.at_level("WARNING", logger=tv.logger.name):
         left = tv.finish_exports_before_exit(timeout=0.4)
