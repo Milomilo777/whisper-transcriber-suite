@@ -4,6 +4,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+## [2.3.0] — 2026-10-30
+
 ### Security
 
 - The phone-spike experiment (not part of the app) pins `datasets` 5.0.1, which fixes a path-traversal advisory in 2.20.0; its FLEURS download script now reads the stored audio instead of relying on the removed dataset-script loader.
@@ -94,7 +96,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   offered). Advanced settings keeps its picker and shares the same setting.
 - **Persian, Arabic and Hebrew on macOS too**: the right-to-left interface languages, so far listed on
   Windows only, are now offered on macOS as well, with the same mirrored layout (checked on macOS 10.15).
-  Linux still leaves them out: its Tk cannot join the letters yet.
+  On Linux, Persian and Arabic come through display shaping (see the Linux entry above); Hebrew stays off there.
 - **A first-run language suggestion (Windows)**: when the app runs in English but the regional format
   (dates, numbers) names a language the app speaks and an installed keyboard layout is a layout of the same
   language, a small window asks once, in that language and in English, "Use <language>?" with "Use

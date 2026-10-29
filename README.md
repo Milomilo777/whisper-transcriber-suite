@@ -737,7 +737,7 @@ notarized, so SmartScreen and Gatekeeper warn on first launch;
 [docs/INSTALL.md](docs/INSTALL.md) shows what to click. To update, run the
 newer installer over the old one; settings are kept.
 
-For version 2.2.0 the Windows installer is about 250 MB, the Portable ZIP about 380 MB and the Mac files about
+For version 2.3.0 the Windows installer is about 240 MB, the Portable ZIP about 360 MB and the Mac files about
 290 MB (Apple silicon) and 350 MB (Intel). The Apple-silicon `.dmg` is built and tested on GitHub's
 Apple-silicon machines, not yet by hand on a real Apple-silicon Mac; if it does not start, the Intel `.dmg`
 runs through Rosetta.
@@ -747,6 +747,7 @@ release — older versions stay published and their counts are never
 reset):
 
 [![all versions](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/total?label=all%20versions&color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite/releases)
+[![v2.3.0](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/v2.3.0/total?label=v2.3.0&color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v2.3.0)
 [![v2.2.0](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/v2.2.0/total?label=v2.2.0&color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v2.2.0)
 [![v2.1.0](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/v2.1.0/total?label=v2.1.0&color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v2.1.0)
 [![v2.0.0](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/v2.0.0/total?label=v2.0.0&color=8a8a8a)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v2.0.0)
