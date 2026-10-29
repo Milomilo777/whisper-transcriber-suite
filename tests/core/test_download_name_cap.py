@@ -82,6 +82,18 @@ def _o(command: list[str]) -> str:
     return command[command.index("-o") + 1]
 
 
+@pytest.fixture
+def windows_budget(monkeypatch):
+    """The Windows budget (MAX_PATH included) on every OS: the checks below use a Windows folder, and
+    on Linux/macOS ``title_byte_budget`` rightly applies only the 255-byte name limit."""
+    real = ds.title_byte_budget
+
+    def on_windows(folder: str, extra: str = "", *, windows: bool | None = None) -> int:
+        return real(folder, extra, windows=True)
+
+    monkeypatch.setattr(ds, "title_byte_budget", on_windows)
+
+
 def test_budget_shrinks_with_folder_length_and_keeps_a_minimum():
     short = ds.title_byte_budget(r"C:\dl", windows=True)
     deep = ds.title_byte_budget("C:\\" + "x" * 120, windows=True)
@@ -92,6 +104,7 @@ def test_budget_shrinks_with_folder_length_and_keeps_a_minimum():
     assert ds.title_byte_budget("/home/me/dl", windows=False) > 150
 
 
+@pytest.mark.usefixtures("windows_budget")
 def test_download_template_caps_the_title_and_the_real_title_fits():
     cmd = ds.build_download_command(_task(), yt_dlp_path="y", bin_path="")
     out = _o(cmd)
@@ -99,6 +112,7 @@ def test_download_template_caps_the_title_and_the_real_title_fits():
     _check_fits(out, FOLDER)
 
 
+@pytest.mark.usefixtures("windows_budget")
 def test_section_clip_template_reserves_room_for_the_clip_tag():
     cmd = ds.build_download_command(_task(section_start=51.0, section_end=85.0), yt_dlp_path="y", bin_path="")
     out = _o(cmd)
@@ -106,6 +120,7 @@ def test_section_clip_template_reserves_room_for_the_clip_tag():
     _check_fits(out, FOLDER)
 
 
+@pytest.mark.usefixtures("windows_budget")
 def test_caption_template_caps_the_title_and_the_numbered_form_still_fits():
     plain = ds.build_subtitle_command(_task(), "en", yt_dlp_path="y", bin_path="")
     numbered = ds.build_subtitle_command(_task(), "en", yt_dlp_path="y", bin_path="", number=9999)
@@ -114,6 +129,7 @@ def test_caption_template_caps_the_title_and_the_numbered_form_still_fits():
         _check_fits(_o(cmd), FOLDER)
 
 
+@pytest.mark.usefixtures("windows_budget")
 def test_numbering_keeps_the_cap_and_adds_the_number_after_it():
     cmd = ds.build_download_command(_task(), yt_dlp_path="y", bin_path="")
     n = download_guard.numbered_command(cmd, 12)
@@ -121,6 +137,7 @@ def test_numbering_keeps_the_cap_and_adds_the_number_after_it():
     _check_fits(_o(n), FOLDER)
 
 
+@pytest.mark.usefixtures("windows_budget")
 def test_a_deep_folder_leaves_less_room_but_the_whole_path_still_fits():
     folder = "C:\\" + "d" * 100 + "\\" + "e" * 60
     cmd = ds.build_download_command(_task(folder), yt_dlp_path="y", bin_path="")
