@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 
 import pytest
 
@@ -612,5 +613,5 @@ def test_build_subtitle_command_output_carries_the_video_number():
     task = _task()
     plain = build_subtitle_command(task, "en", yt_dlp_path="y", bin_path="")
     numbered = build_subtitle_command(task, "en", yt_dlp_path="y", bin_path="", number=2)
-    assert plain[plain.index("-o") + 1].endswith("%(title)s.%(ext)s")
-    assert numbered[numbered.index("-o") + 1].endswith("%(title)s (2).%(ext)s")
+    assert re.search(r"%\(title\)\.\d+B\.%\(ext\)s$", plain[plain.index("-o") + 1])
+    assert re.search(r"%\(title\)\.\d+B \(2\)\.%\(ext\)s$", numbered[numbered.index("-o") + 1])

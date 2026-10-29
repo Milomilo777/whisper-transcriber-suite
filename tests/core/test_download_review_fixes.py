@@ -8,6 +8,7 @@ Hermetic: yt-dlp, the network and Tk are faked.
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import sys
 import types
@@ -625,7 +626,7 @@ def test_a_time_range_download_gets_its_own_file_name():
     out_clip = clip[clip.index("-o") + 1]
     assert out_full != out_clip
     name = os.path.basename(out_clip)
-    assert name == "%(title)s (clip 0.00.51-0.01.25).%(ext)s"
+    assert re.fullmatch(r"%\(title\)\.\d+B \(clip 0\.00\.51-0\.01\.25\)\.%\(ext\)s", name)
     assert ":" not in name
     open_end = ds.build_download_command(_task(section_start=51.0), yt_dlp_path="y", bin_path="")
     assert os.path.basename(open_end[open_end.index("-o") + 1]).endswith("-end).%(ext)s")

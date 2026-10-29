@@ -16,6 +16,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import threading
 import time
 import uuid
@@ -346,6 +347,52 @@ def _section_name_suffix(sections_arg: str | None) -> str:
     return f" (clip {start}-{end})"
 
 
+# A page title can be hundreds of characters (a Facebook post's whole text), and a file name over
+# NTFS's 255 UTF-16 units fails with [Errno 22]. The title part of every output template is cut
+# with yt-dlp's own "%(title).<N>B" (N UTF-8 bytes: at least as many as the UTF-16 units, and
+# yt-dlp's filename sanitising only swaps one character for one). N leaves room for what is added
+# after the title: " (9999)", ".f<format id>", the extension, ".part-Frag12345", ".zh-Hans-CN.vtt".
+_MAX_NAME_UNITS = 255
+_MAX_PATH_UNITS = 259  # MAX_PATH (260) without the terminating NUL, when Windows long paths are off
+_NAME_SUFFIX_RESERVE = 64
+_MIN_TITLE_BYTES = 40
+
+
+def _utf16_len(text: str) -> int:
+    return len(text.encode("utf-16-le", "surrogatepass")) // 2
+
+
+def title_byte_budget(folder: str, extra: str = "", *, windows: bool | None = None) -> int:
+    """How many UTF-8 bytes of the title a file name in *folder* may use.
+
+    *extra* is fixed text that follows the title in the name (the clip tag of a time-range
+    download). On Windows the whole path must stay under MAX_PATH too, so a deep folder leaves
+    less room; the result never drops below a short, still readable title."""
+    if windows is None:
+        windows = sys.platform == "win32"
+    size = _utf16_len if windows else (lambda s: len(s.encode("utf-8", "surrogatepass")))
+    room = _MAX_NAME_UNITS - _NAME_SUFFIX_RESERVE - size(extra)
+    if windows:
+        stem_room = _MAX_PATH_UNITS - (_utf16_len((folder or "").rstrip("\\/")) + 1)
+        room = min(room, stem_room - _NAME_SUFFIX_RESERVE - size(extra))
+    return max(_MIN_TITLE_BYTES, room)
+
+
+def title_template(folder: str, extra: str = "") -> str:
+    """The title field of an output template: ``%(title).<N>B``."""
+    return f"%(title).{title_byte_budget(folder, extra)}B"
+
+
+def trim_title(title: str, budget: int) -> str:
+    """*title* as ``%(title).<budget>B`` leaves it (cut at a character boundary)."""
+    return title.encode("utf-8", "surrogatepass")[:budget].decode("utf-8", "ignore")
+
+
+def name_key_of_title(title: str, folder: str, extra: str = "") -> str:
+    """:func:`_name_key` of the name a download of *title* gets in *folder*, plus *extra*."""
+    return _name_key(trim_title(title, title_byte_budget(folder, extra)) + extra)
+
+
 def _time_range_badge(
     start: float | None, end: float | None
 ) -> str | None:
@@ -402,7 +449,8 @@ def build_subtitle_command(
     number: int = 0,
 ) -> list[str]:
     # ``number``: the video is saved as "Title (N)" (ADR 0019), so its captions carry that name.
-    stem = f"%(title)s ({number})" if number > 0 else "%(title)s"
+    title = title_template(task.folder)
+    stem = f"{title} ({number})" if number > 0 else title
     output = os.path.join(task.folder, stem + ".%(ext)s")
     sub_langs = subtitle_lang_patterns(lang)
     command = [yt_dlp_path]
@@ -550,8 +598,9 @@ def build_download_command(
     sections_arg = _download_sections_arg(
         getattr(task, "section_start", None), getattr(task, "section_end", None)
     )
+    clip_tag = _section_name_suffix(sections_arg)
     output = os.path.join(
-        task.folder, "%(title)s" + _section_name_suffix(sections_arg) + ".%(ext)s"
+        task.folder, title_template(task.folder, clip_tag) + clip_tag + ".%(ext)s"
     )
     command = [yt_dlp_path]
     if bin_path:
@@ -3550,7 +3599,7 @@ class DownloadService:
         wanted = {
             key for key in (
                 _name_key(os.path.splitext(os.path.basename(parsed or ""))[0]),
-                _name_key(str(getattr(task, "title", "") or "")),
+                name_key_of_title(str(getattr(task, "title", "") or ""), folder),
             ) if key
         }
         # A time-range task's title carries the queue decoration
@@ -3567,7 +3616,7 @@ class DownloadService:
             tail = f"  -  trim {_time_range_badge(getattr(task, 'section_start', None), getattr(task, 'section_end', None))}"
             if tail and title.endswith(tail):
                 title = title[: -len(tail)]
-            clip_key = _name_key(title + _section_name_suffix(sections_arg))
+            clip_key = name_key_of_title(title, folder, _section_name_suffix(sections_arg))
             if clip_key:
                 wanted.add(clip_key)
         matching = [

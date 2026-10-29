@@ -30,6 +30,15 @@ import time
 import urllib.parse
 
 
+def _fill(template: str, title: str, ext: str) -> str:
+    """Expand ``%(title)s`` / ``%(title).<N>B`` (N UTF-8 bytes, as yt-dlp cuts it) and ``%(ext)s``."""
+    def cut(m: re.Match) -> str:
+        raw = title.encode("utf-8")
+        return (raw[: int(m.group(1))] if m.group(1) else raw).decode("utf-8", "ignore")
+
+    return re.sub(r"%\(title\)(?:\.(\d+)B|s)", cut, template).replace("%(ext)s", ext)
+
+
 def main(argv: list[str]) -> int:
     template = ""
     audio = False
@@ -83,7 +92,7 @@ def main(argv: list[str]) -> int:
     src_ext = "webm" if audio else merge
     if captions and not plan:                      # the caption phase: one .vtt per item, no media
         for t in titles:
-            sub = template.replace("%(title)s", t).replace("%(ext)s", sub_lang + ".vtt")
+            sub = _fill(template, t, sub_lang + ".vtt")
             with open(sub, "w", encoding="utf-8") as fh:
                 fh.write("WEBVTT\n\n00:00:01.000 --> 00:00:02.000\ntext\n")
             print(f"[info] Writing video subtitles to: {sub}", flush=True)
@@ -93,10 +102,10 @@ def main(argv: list[str]) -> int:
             print("ERROR: plan pass failed", file=sys.stderr)
             return 1
         for t in titles:
-            print("wts-plan:" + template.replace("%(title)s", t).replace("%(ext)s", src_ext), flush=True)
+            print("wts-plan:" + _fill(template, t, src_ext), flush=True)
         return 0
     for t in titles:
-        src = template.replace("%(title)s", t).replace("%(ext)s", src_ext)
+        src = _fill(template, t, src_ext)
         if os.path.exists(src):
             print(f"[download] {src} has already been downloaded", flush=True)
             time.sleep(float(os.environ.get("FAKE_YTDLP_SLOW", "0")))
