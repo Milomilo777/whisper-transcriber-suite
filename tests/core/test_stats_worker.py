@@ -79,7 +79,8 @@ def test_the_workers_own_tests_pass_when_node_is_available():
         pytest.skip("Node.js 22.5+ (node:sqlite) not installed")
     tests = sorted(str(p) for p in (WORKER / "test").glob("*.test.mjs"))
     result = subprocess.run(
-        ["node", "--test", "--no-warnings=ExperimentalWarning", *tests],
+        # Node 22 prints TAP when stdout is not a terminal, Node 23+ the spec format: pin one.
+        ["node", "--test", "--test-reporter=spec", "--no-warnings=ExperimentalWarning", *tests],
         cwd=WORKER, capture_output=True, text=True, encoding="utf-8", timeout=170,
     )
     assert result.returncode == 0, result.stdout[-4000:] + result.stderr[-2000:]
