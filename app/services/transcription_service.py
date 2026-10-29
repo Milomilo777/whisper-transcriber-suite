@@ -287,6 +287,11 @@ def transcribe_command(t: Any) -> dict[str, Any]:
 # environments (like virtual machines).
 HEADLESS_READY_TIMEOUT_S: float = 1200.0 if sys.platform == "darwin" else 120.0
 
+# Safety cap for the non-blocking wait in ``App._when_worker_ready``: past
+# HEADLESS_READY_TIMEOUT_S the wait goes on while a worker process is still
+# alive (a large model on a CPU can need minutes) and ends here at the latest.
+HEADLESS_LOAD_CAP_S: float = max(900.0, 2 * HEADLESS_READY_TIMEOUT_S)
+
 
 #: Pauses (s) between attempts to write the finished row while the history
 #: database is locked by another connection (kept short: finish_task runs on

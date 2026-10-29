@@ -45,6 +45,7 @@ from app.services.download_service import DownloadService
 from app.services.format_service import FormatService
 from app.services.integrations_service import IntegrationsService
 from app.services.transcription_service import (
+    HEADLESS_LOAD_CAP_S,
     HEADLESS_READY_TIMEOUT_S,
     TranscriptionService,
 )
@@ -5087,7 +5088,7 @@ class App(tk.Tk):
             self.refresh()
 
         def _on_timeout() -> None:
-            self.log(f"Auto-transcribe skipped: model load timed out for {base} — {HEADLESS_READY_TIMEOUT_S} s")
+            self.log(f"Auto-transcribe skipped: model load timed out for {base}")
             if source_download is None:
                 return
             source_download.transcription_task = None
@@ -5139,13 +5140,20 @@ class App(tk.Tk):
             svc.start_worker(temporary=False)
             if loading_label:
                 self.log(f"Loading Whisper model — {loading_label}")
-        deadline = time.monotonic() + HEADLESS_READY_TIMEOUT_S
+        started = time.monotonic()
+        deadline = started + HEADLESS_READY_TIMEOUT_S
+        hard_deadline = started + HEADLESS_LOAD_CAP_S
 
         def _await_ready() -> None:
             if svc.ready_workers():
                 on_ready()
                 return
-            if time.monotonic() >= deadline:
+            now = time.monotonic()
+            # Past the usual wait, a worker that is still alive is still
+            # loading (a large model on a CPU takes minutes): keep waiting
+            # for it up to a long safety cap. Give up at once when no worker
+            # is left (the load failed or the process died).
+            if now >= hard_deadline or (now >= deadline and not svc.active_workers()):
                 if on_timeout is not None:
                     on_timeout()
                 return
@@ -7701,7 +7709,7 @@ class App(tk.Tk):
             def _on_timeout() -> None:
                 self._watched_pending.discard(norm)
                 self.log(
-                    f"Watched: skipped {base} — model load timed out {HEADLESS_READY_TIMEOUT_S} s"
+                    f"Watched: skipped {base} — model load timed out"
                 )
 
             try:
@@ -7843,7 +7851,7 @@ class App(tk.Tk):
             _do_resume,
             on_timeout=lambda: self.log(
                 f"Crash-resume skipped: model load timed out "
-                f"({n} task(s) not re-enqueued) — {HEADLESS_READY_TIMEOUT_S} s"
+                f"({n} task(s) not re-enqueued)"
             ),
             loading_label=f"resuming {n} interrupted transcription(s) when ready.",
         )

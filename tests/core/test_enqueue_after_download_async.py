@@ -140,3 +140,40 @@ def test_enqueue_drops_task_on_load_timeout(monkeypatch):
     assert app.queue == []           # task dropped, not queued forever
     assert any("timed out" in m for m in app.logs)
     assert after.pending == []       # gave up — no reschedule
+
+
+def test_enqueue_keeps_waiting_past_soft_deadline_while_worker_loads(monkeypatch):
+    # Real case: large-v3 on CPU needed ~125 s; the task was dropped at 120 s.
+    from app.services.transcription_service import HEADLESS_READY_TIMEOUT_S
+
+    clock = {"t": 1000.0}
+    monkeypatch.setattr(time, "monotonic", lambda: clock["t"])
+    svc = _FakeService(ready=False, active=False)
+    after = _FakeAfter()
+    app = _FakeApp(svc, after)
+    _call(app)
+    clock["t"] = 1000.0 + HEADLESS_READY_TIMEOUT_S + 5   # past the soft deadline
+    after.pump()
+    assert app.queue == []
+    assert len(after.pending) == 1                      # still polling
+    assert not any("timed out" in m for m in app.logs)
+    svc._ready = True                                    # "Model loaded"
+    after.pump()
+    assert len(app.queue) == 1
+
+
+def test_enqueue_gives_up_at_soft_deadline_when_worker_died(monkeypatch):
+    from app.services.transcription_service import HEADLESS_READY_TIMEOUT_S
+
+    clock = {"t": 1000.0}
+    monkeypatch.setattr(time, "monotonic", lambda: clock["t"])
+    svc = _FakeService(ready=False, active=False)
+    after = _FakeAfter()
+    app = _FakeApp(svc, after)
+    _call(app)
+    svc._active = False                                  # load failed, worker gone
+    clock["t"] = 1000.0 + HEADLESS_READY_TIMEOUT_S + 1
+    after.pump()
+    assert app.queue == []
+    assert any("timed out" in m for m in app.logs)
+    assert after.pending == []
