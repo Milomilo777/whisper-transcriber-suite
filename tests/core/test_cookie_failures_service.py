@@ -190,8 +190,11 @@ def test_the_plan_pass_retries_without_cookies_and_remembers(monkeypatch, window
     assert ck.cookies_failed_before(app, "brave")
 
 
-def test_the_login_hint_for_chromium_on_windows_is_the_plain_message(windows):
-    hint = ck.login_required_hint("rate-limit reached or login required. Use --cookies", "edge")
+def test_the_login_hint_for_unreadable_chromium_cookies_on_windows_is_the_plain_message(windows):
+    # Only once reading them failed: a readable jar plus a login wall means "log in to the site".
+    hint = ck.login_required_hint(
+        "rate-limit reached or login required. Use --cookies", "edge", cookies_unreadable=True
+    )
     assert hint == ck.cookies_blocked_text()
 
 

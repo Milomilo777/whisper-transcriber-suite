@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, Any
 
 from app.i18n import _
 from app.domain.cookies import (
+    cookies_failed_before,
     cookies_from_browser_args,
     cookies_unreadable_for_good,
     is_cookie_extraction_error,
@@ -415,7 +416,12 @@ class FormatService:
 
         if kind == "error":
             cfg = getattr(app, "app_config", None) or {}
-            hint = login_required_hint(str(payload), cfg.get("cookies_from_browser", ""))
+            cookie_setting = str(cfg.get("cookies_from_browser", "") or "").strip()
+            hint = login_required_hint(
+                str(payload),
+                cookie_setting,
+                cookies_unreadable=cookies_failed_before(self.app, cookie_setting),
+            )
             if not hint and mentions_missing_js_runtime(str(payload)):
                 hint = missing_js_runtime_hint(app.yt_dlp_path())
             app.format_status_var.set(f"{hint}\n{payload}" if hint else payload)

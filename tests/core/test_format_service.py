@@ -199,6 +199,18 @@ def test_login_wall_with_cookies_on_says_to_check_the_browser_login():
     assert "logged in to it in edge" in app.format_status_var.get()
 
 
+def test_login_wall_with_unreadable_cookies_says_can_no_longer_be_read(monkeypatch):
+    import app.domain.cookies as ck
+    from app.domain.cookies import remember_cookie_failure
+
+    monkeypatch.setattr(ck, "_is_windows", lambda: True)
+    app = _FakeApp()
+    app.app_config = {"cookies_from_browser": "edge"}  # type: ignore[attr-defined]
+    remember_cookie_failure(app, "edge")
+    FormatService(app)._handle_event("error", "http://x", _INSTAGRAM_WALL)  # type: ignore[arg-type]
+    assert "can no longer be read" in app.format_status_var.get()
+
+
 def test_lookup_opens_no_console_window(monkeypatch):
     """From the windowed app every lookup popped a black yt-dlp console window
     (click-through test, 2026-10-21): the probe runs with the no-window flags."""

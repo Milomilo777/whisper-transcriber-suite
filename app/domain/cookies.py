@@ -284,15 +284,20 @@ def looks_like_login_wall(error_text: str) -> bool:
     return bool(_LOGIN_WALL_RE.search(error_text or "")) and not is_cookie_extraction_error(error_text)
 
 
-def login_required_hint(error_text: str, cookies_browser: str | None) -> str:
+def login_required_hint(
+    error_text: str, cookies_browser: str | None, *, cookies_unreadable: bool = False
+) -> str:
     """One sentence telling the user how to get past a login wall, or "".
 
     ``cookies_browser`` is the current config value ("" = off).
+    ``cookies_unreadable`` is True when reading the cookies has already failed.
     """
     if not _LOGIN_WALL_RE.search(error_text or "") or is_cookie_extraction_error(error_text):
         return ""
     browser = (cookies_browser or "").strip()
-    if _is_windows() and is_chromium_browser(browser):
+    if (_is_windows() and is_chromium_browser(browser)) and (
+        cookies_unreadable or "could not be decrypted" in (error_text or "").lower()
+    ):
         return cookies_blocked_text()  # its cookies cannot be read: "check you are logged in" is no help
     if is_cookies_file(browser):
         return _("The site still asks for a login: export a fresh cookies.txt file after logging in to it.")

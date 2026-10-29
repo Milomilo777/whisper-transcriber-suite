@@ -128,3 +128,33 @@ def test_login_wall_text_is_detected_but_not_a_file_error():
     assert ck.looks_like_login_wall("rate-limit reached or login required. Use --cookies")
     assert not ck.looks_like_login_wall("[Errno 22] Invalid argument: 'C:\\x.part'")
     assert not ck.looks_like_login_wall("ERROR: Could not copy Chrome cookie database. --cookies")
+
+
+def test_login_hint_chromium_on_windows_readable_says_check_login(monkeypatch):
+    monkeypatch.setattr(ck, "_is_windows", lambda: True)
+    hint = ck.login_required_hint(
+        "rate-limit reached or login required. Use --cookies",
+        "edge",
+        cookies_unreadable=False,
+    )
+    assert "logged in to it in edge" in hint
+    assert "can no longer be read" not in hint
+
+
+def test_login_hint_chromium_on_windows_unreadable_says_blocked(monkeypatch):
+    monkeypatch.setattr(ck, "_is_windows", lambda: True)
+    hint = ck.login_required_hint(
+        "rate-limit reached or login required. Use --cookies",
+        "edge",
+        cookies_unreadable=True,
+    )
+    assert hint == ck.cookies_blocked_text()
+    assert "can no longer be read" in hint
+
+
+def test_login_hint_chromium_on_windows_decrypt_failure_says_blocked(monkeypatch):
+    monkeypatch.setattr(ck, "_is_windows", lambda: True)
+    err = "rate-limit reached or login required. Use --cookies. Extracted 0 cookies from edge (12 could not be decrypted)"
+    hint = ck.login_required_hint(err, "edge")
+    assert hint == ck.cookies_blocked_text()
+    assert "can no longer be read" in hint
