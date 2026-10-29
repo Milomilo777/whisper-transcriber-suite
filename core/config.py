@@ -527,12 +527,15 @@ DEFAULT_CONFIG = {
     "model_catalog": {},
     # App-level URLs/info that the ONLINE config is allowed to set. Defaulted
     # here so reads never KeyError. ``stats_url`` is the usage-stats POST
-    # endpoint, defaulted to the project's smch.ir collector so stats work
-    # out of the box (a no-op whenever ``telemetry_opt_in`` is off — see
-    # core.stats.post_stats_async); ``latest_version`` is the
+    # endpoint, defaulted to the project's own collector so stats work out of
+    # the box (a no-op whenever ``telemetry_opt_in`` is off — see
+    # core.stats.post_stats_async); it is never saved to config.json, so a new
+    # default reaches every user on upgrade. The collector is the Worker in
+    # platform/stats-worker/ (older versions post to the PHP script in
+    # platform/stats-server/). ``latest_version`` is the
     # newest published version string. Both are SAFE for the online layer to
     # control.
-    "stats_url": "https://smch.ir/stats/transcription_stats.php",
+    "stats_url": "https://stats.whisper-transcriber-suite.com/v1/runs",
     "latest_version": "",
 }
 

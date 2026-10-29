@@ -1,7 +1,7 @@
 """Problem reports sent through the usage-statistics endpoint, for people without a GitHub account.
 
-The statistics server (``platform/stats-server/transcription_stats.php``) is used exactly as it
-is: it stores one row of short, length-capped text fields per request. A report is one such row
+The statistics server (the Worker in ``platform/stats-worker/``, which accepts the same form as the
+older ``platform/stats-server/transcription_stats.php``) is used exactly as it is: it stores one row of short, length-capped text fields per request. A report is one such row
 with ``status`` = ``problem_report``: the app version and the operating system go into their own
 fields, and the person's own words are spread over the three longest text fields
 (``model`` 128, ``platform_version`` 256 and ``platform_processor`` 128 characters), so a report
