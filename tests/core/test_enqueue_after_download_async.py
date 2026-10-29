@@ -138,7 +138,7 @@ def test_enqueue_drops_task_on_load_timeout(monkeypatch):
     clock["t"] = 1000.0 + 10_000.0   # jump well past the timeout
     after.pump()
     assert app.queue == []           # task dropped, not queued forever
-    assert any("timed out" in m for m in app.logs)
+    assert any("did not finish loading within" in m for m in app.logs)
     assert after.pending == []       # gave up — no reschedule
 
 
@@ -173,5 +173,7 @@ def test_enqueue_gives_up_at_once_when_the_worker_died_while_loading(monkeypatch
     clock["t"] = 1000.0 + 3                              # seconds, not the long cap
     after.pump()
     assert app.queue == []
-    assert any("timed out" in m for m in app.logs)
+    # Said as what it is: the engine stopped, not a slow load.
+    assert any("engine stopped while loading" in m for m in app.logs)
+    assert not any("timed out" in m or "within" in m for m in app.logs)
     assert after.pending == []

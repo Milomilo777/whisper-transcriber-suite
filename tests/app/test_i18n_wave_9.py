@@ -253,10 +253,17 @@ def _subtitle_statuses(mp: pytest.MonkeyPatch, mod: Any, tmp: Path) -> States:
         return SimpleNamespace(**base)
 
     def phase(name: str, result: tuple[list[str], bool, int], method: str = "_subtitle_phase",
-              config: dict[str, Any] | None = None, **task_kw: Any) -> None:
+              config: dict[str, Any] | None = None, cancel_during_fetch: bool = False,
+              **task_kw: Any) -> None:
         app = _download_app([], app_config=config or {})
         service = mod.DownloadService(app)
-        mp.setattr(service, "_fetch_subtitles", lambda *_a: result)
+
+        def fetch(t: Any, *_a: Any) -> tuple[list[str], bool, int]:
+            if cancel_during_fetch:
+                t.cancelled = True  # a run cancelled before the phase starts no fetch at all
+            return result
+
+        mp.setattr(service, "_fetch_subtitles", fetch)
         getattr(service, method)(task(**task_kw))
         states[name] = _statuses(app)
 
@@ -267,7 +274,7 @@ def _subtitle_statuses(mp: pytest.MonkeyPatch, mod: Any, tmp: Path) -> States:
     phase("subs_none_available", ([], True, 0))
     phase("subs_failed", ([], False, 2))
     phase("subs_nothing_written", ([], False, 0))
-    phase("subs_cancelled", ([], False, 0), cancelled=True)
+    phase("subs_cancelled", ([], False, 0), cancel_during_fetch=True)
 
     co = "_run_caption_only_task"
     phase("captions_no_language", ([], False, 0), co, subtitle_lang="")

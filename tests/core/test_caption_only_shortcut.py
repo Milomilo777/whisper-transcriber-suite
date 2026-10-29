@@ -219,15 +219,45 @@ def test_no_resolvable_language_never_calls_popen(monkeypatch, tmp_path):
 
 def test_cancelled_removes_partial_file_and_posts_done_cancelled(monkeypatch, tmp_path):
     caption_path = tmp_path / "video.en.vtt"
+    task = _task(tmp_path)
+
+    def _output():
+        # yt-dlp writes the file, then the cancel lands while it is still running.
+        caption_path.write_text(ROLLING_VTT, encoding="utf-8")
+        yield f"Writing video subtitles to: {caption_path}"
+        task.cancelled = True
+
+    class _CancelledMidway(_FakeProcess):
+        def __init__(self) -> None:
+            super().__init__([])
+            self.stdout = _output()
+
+    monkeypatch.setattr(
+        "app.services.download_service.subprocess.Popen", lambda *_a, **_k: _CancelledMidway()
+    )
+    app = _app()
+
+    _svc(app)._run_caption_only_task(task)
+
+    assert not caption_path.exists()
+    events = _drain(app)
+    assert ("done", task, "cancelled") in events
+    assert not any(e[0] == "done_full" for e in events)
+
+
+def test_cancelled_before_start_runs_nothing_and_keeps_existing_file(monkeypatch, tmp_path):
+    # A file already on disk was not written by this run: a cancel must not delete it.
+    caption_path = tmp_path / "video.en.vtt"
     caption_path.write_text(ROLLING_VTT, encoding="utf-8")
-    _popen_factory(monkeypatch, [f"Writing video subtitles to: {caption_path}"])
+    calls = _popen_factory(monkeypatch, [f"Writing video subtitles to: {caption_path}"])
     app = _app()
     task = _task(tmp_path)
     task.cancelled = True
 
     _svc(app)._run_caption_only_task(task)
 
-    assert not caption_path.exists()
+    assert calls == []
+    assert caption_path.exists()
     events = _drain(app)
     assert ("done", task, "cancelled") in events
     assert not any(e[0] == "done_full" for e in events)
