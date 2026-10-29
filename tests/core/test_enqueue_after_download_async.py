@@ -162,9 +162,7 @@ def test_enqueue_keeps_waiting_past_soft_deadline_while_worker_loads(monkeypatch
     assert len(app.queue) == 1
 
 
-def test_enqueue_gives_up_at_soft_deadline_when_worker_died(monkeypatch):
-    from app.services.transcription_service import HEADLESS_READY_TIMEOUT_S
-
+def test_enqueue_gives_up_at_once_when_the_worker_died_while_loading(monkeypatch):
     clock = {"t": 1000.0}
     monkeypatch.setattr(time, "monotonic", lambda: clock["t"])
     svc = _FakeService(ready=False, active=False)
@@ -172,7 +170,7 @@ def test_enqueue_gives_up_at_soft_deadline_when_worker_died(monkeypatch):
     app = _FakeApp(svc, after)
     _call(app)
     svc._active = False                                  # load failed, worker gone
-    clock["t"] = 1000.0 + HEADLESS_READY_TIMEOUT_S + 1
+    clock["t"] = 1000.0 + 3                              # seconds, not the long cap
     after.pump()
     assert app.queue == []
     assert any("timed out" in m for m in app.logs)

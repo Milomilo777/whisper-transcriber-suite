@@ -46,7 +46,6 @@ from app.services.format_service import FormatService
 from app.services.integrations_service import IntegrationsService
 from app.services.transcription_service import (
     HEADLESS_LOAD_CAP_S,
-    HEADLESS_READY_TIMEOUT_S,
     TranscriptionService,
 )
 from app.dialogs.statistics import show_statistics as _show_stats
@@ -3018,11 +3017,40 @@ class App(tk.Tk):
         Same config key as Advanced › Downloads. A pasted link that failed
         the lookup for want of a log-in is looked up again right away.
         """
-        from app.domain.cookies import cookie_browser_value
+        from app.domain.cookies import (
+            cookie_browser_choices,
+            cookie_browser_label,
+            cookie_browser_value,
+            file_entry_label,
+            forget_cookie_failures,
+        )
 
         var = getattr(self, "download_cookies_var", None)
         if var is None:
             return
+        # Picking a setting again is a retry: forget which browsers failed earlier in this run.
+        forget_cookie_failures(self)
+        if var.get() == file_entry_label():
+            # The last entry opens a picker for a Netscape cookies.txt file (browser extension export).
+            from tkinter import filedialog
+
+            chosen = filedialog.askopenfilename(
+                parent=self,
+                title=file_entry_label().rstrip("…"),
+                filetypes=[("cookies.txt", "*.txt"), ("*", "*.*")],
+            )
+            current = str(self.app_config.get("cookies_from_browser") or "")
+            if not chosen:
+                var.set(cookie_browser_label(current))  # cancelled: back to what was set
+                return
+            chosen = os.path.normpath(chosen)
+            var.set(chosen)
+            combo = getattr(self, "download_cookies_combo", None)
+            if combo is not None:
+                try:
+                    combo.configure(values=cookie_browser_choices(chosen, with_file_entry=True))
+                except tk.TclError:
+                    pass
         value = cookie_browser_value(var.get())
         if value == str(self.app_config.get("cookies_from_browser") or ""):
             return
@@ -3042,15 +3070,20 @@ class App(tk.Tk):
 
     def sync_cookies_browser_from_config(self) -> None:
         """Refresh the Download tab's cookies picker after Advanced saved it."""
-        from app.domain.cookies import cookie_browser_choices, cookie_browser_label
+        from app.domain.cookies import (
+            cookie_browser_choices,
+            cookie_browser_label,
+            forget_cookie_failures,
+        )
 
+        forget_cookie_failures(self)  # Advanced saved the setting: try the browser again
         var = getattr(self, "download_cookies_var", None)
         combo = getattr(self, "download_cookies_combo", None)
         if var is None or combo is None:
             return
         current = str(self.app_config.get("cookies_from_browser") or "")
         try:
-            combo.configure(values=cookie_browser_choices(current))
+            combo.configure(values=cookie_browser_choices(current, with_file_entry=True))
             var.set(cookie_browser_label(current))
         except tk.TclError:
             pass
@@ -5141,7 +5174,6 @@ class App(tk.Tk):
             if loading_label:
                 self.log(f"Loading Whisper model — {loading_label}")
         started = time.monotonic()
-        deadline = started + HEADLESS_READY_TIMEOUT_S
         hard_deadline = started + HEADLESS_LOAD_CAP_S
 
         def _await_ready() -> None:
@@ -5149,11 +5181,11 @@ class App(tk.Tk):
                 on_ready()
                 return
             now = time.monotonic()
-            # Past the usual wait, a worker that is still alive is still
-            # loading (a large model on a CPU takes minutes): keep waiting
-            # for it up to a long safety cap. Give up at once when no worker
-            # is left (the load failed or the process died).
-            if now >= hard_deadline or (now >= deadline and not svc.active_workers()):
+            # A worker that is still alive is still loading (a large model on
+            # a CPU takes minutes): keep waiting for it up to a long safety
+            # cap. Give up at once when no worker is left (the load failed
+            # or the process died), whatever the time.
+            if now >= hard_deadline or not svc.active_workers():
                 if on_timeout is not None:
                     on_timeout()
                 return

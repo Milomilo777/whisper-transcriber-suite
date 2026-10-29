@@ -2009,8 +2009,8 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
         cookies_row,
         textvariable=app.download_cookies_var,
         state="readonly",
-        values=cookie_browser_choices(current_cookies),
-        width=14,
+        values=cookie_browser_choices(current_cookies, with_file_entry=True),
+        width=22,
     )
     app.download_cookies_combo.pack(side="left", padx=(6, 0))
     app.download_cookies_combo.bind(

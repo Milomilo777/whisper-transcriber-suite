@@ -20,8 +20,12 @@ from typing import TYPE_CHECKING, Any
 from app.i18n import _
 from app.domain.cookies import (
     cookies_from_browser_args,
+    cookies_unreadable_for_good,
     is_cookie_extraction_error,
     login_required_hint,
+    private_cookies_copy,
+    remember_cookie_failure,
+    usable_cookie_value,
 )
 from core import offline, yt_dlp_update
 from core._proc import new_session_kwargs
@@ -175,8 +179,10 @@ class FormatService:
 
         self.app.format_status_var.set(_("Loading formats..."))
         # Read on the Tk thread; the lookup thread only uses the copy.
+        cookie_setting = str(self.app.app_config.get("cookies_from_browser", "") or "").strip()
+        # "" once this run found the browser's cookies unreadable (the download service notes it).
         cookie_args = cookies_from_browser_args(
-            self.app.app_config.get("cookies_from_browser", "")
+            private_cookies_copy(usable_cookie_value(self.app, cookie_setting))
         )
 
         def _probe(extra: list[str]) -> subprocess.CompletedProcess[str]:
@@ -238,6 +244,8 @@ class FormatService:
                     # The browser's cookie jar could not be read (Chrome/Edge
                     # still open on Windows, DPAPI). Public links don't need
                     # it -- same fallback as the download service.
+                    if cookies_unreadable_for_good(cookie_setting, r.stderr or r.stdout or ""):
+                        remember_cookie_failure(self.app, cookie_setting)
                     r = _probe([])
                 if r.returncode:
                     # Strip before choosing: a stderr of only blank lines must
