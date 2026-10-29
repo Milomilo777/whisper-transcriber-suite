@@ -5121,7 +5121,7 @@ class App(tk.Tk):
             self.refresh()
 
         def _on_timeout() -> None:
-            self.log(f"Auto-transcribe skipped: model load timed out for {base}")
+            self.log(f"Auto-transcribe skipped: the model did not load for {base}")
             if source_download is None:
                 return
             source_download.transcription_task = None
@@ -5185,7 +5185,15 @@ class App(tk.Tk):
             # a CPU takes minutes): keep waiting for it up to a long safety
             # cap. Give up at once when no worker is left (the load failed
             # or the process died), whatever the time.
-            if now >= hard_deadline or not svc.active_workers():
+            if not svc.active_workers():
+                # Say what happened: "timed out" here sent people looking for a slow disk.
+                self.log("The transcription engine stopped while loading the Whisper model.")
+                if on_timeout is not None:
+                    on_timeout()
+                return
+            if now >= hard_deadline:
+                self.log(f"The Whisper model did not finish loading within "
+                         f"{HEADLESS_LOAD_CAP_S / 60:.0f} minutes.")
                 if on_timeout is not None:
                     on_timeout()
                 return
@@ -7741,7 +7749,7 @@ class App(tk.Tk):
             def _on_timeout() -> None:
                 self._watched_pending.discard(norm)
                 self.log(
-                    f"Watched: skipped {base} — model load timed out"
+                    f"Watched: skipped {base} — the model did not load"
                 )
 
             try:
@@ -7882,7 +7890,7 @@ class App(tk.Tk):
         self._when_worker_ready(
             _do_resume,
             on_timeout=lambda: self.log(
-                f"Crash-resume skipped: model load timed out "
+                f"Crash-resume skipped: the model did not load "
                 f"({n} task(s) not re-enqueued)"
             ),
             loading_label=f"resuming {n} interrupted transcription(s) when ready.",

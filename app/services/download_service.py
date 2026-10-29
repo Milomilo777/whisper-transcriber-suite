@@ -3882,7 +3882,11 @@ class DownloadService:
                     task.status = "transcribing"
                     app.log(f"-> Now transcribing: {os.path.basename(saved_path)}")
                 except Exception as e:  # noqa: BLE001
-                    app.log(f"Auto-transcribe wiring failed: {e}")
+                    # The file is kept, but the row must not read as plain success while the
+                    # transcription the person asked for never started.
+                    chain_error = f"The download finished, but its transcription could not be started: {e}"
+                    app.log(chain_error)
+                    task.status = "error"
             # macOS banner, like the chime above, but only when no transcription follows: that
             # stage (or the burn after it) is the job's last and posts the banner.
             if saved_path and task.status != "transcribing":
