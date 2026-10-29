@@ -4,6 +4,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+## [2.3.0] — 2026-10-30
+
 ### Security
 
 - The phone-spike experiment (not part of the app) pins `datasets` 5.0.1, which fixes a path-traversal advisory in 2.20.0; its FLEURS download script now reads the stored audio instead of relying on the removed dataset-script loader.
