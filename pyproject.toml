@@ -39,7 +39,7 @@ dependencies = [
     # only in requirements.txt — kept here too so `pip install
     # whisper-transcriber-suite` yields a runnable install.
     "python-docx>=1.0",
-    "tkinterdnd2>=0.4.0",
+    "tkinterdnd2>=0.4.0,<0.7",
     "sherpa-onnx>=1.10",
     "python-vlc>=3.0",
     "reportlab>=4.0",
