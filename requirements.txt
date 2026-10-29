@@ -41,7 +41,9 @@ requests>=2.31.0
 
 # UI
 sv-ttk>=2.6.0
-tkinterdnd2>=0.4.0
+# <0.7: 0.7.0 bundles the tkdnd library of both Mac architectures, which fails the macOS
+# bundle check (one is always the wrong arch); adopt it after the Mac spec drops the other one.
+tkinterdnd2>=0.4.0,<0.7
 python-vlc>=3.0
 
 # OS-correct config / cache / log paths
