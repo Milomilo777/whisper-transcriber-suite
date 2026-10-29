@@ -1,0 +1,16 @@
+{
+  "name": "wts-stats-worker",
+  "private": true,
+  "type": "module",
+  "description": "Usage statistics and problem reports for Whisper Transcriber Suite (Cloudflare Worker + D1)",
+  "scripts": {
+    "test": "node --test --no-warnings=ExperimentalWarning test/*.test.mjs",
+    "deploy": "wrangler deploy"
+  },
+  "engines": {
+    "node": ">=22.5"
+  },
+  "devDependencies": {
+    "wrangler": "4.151.0"
+  }
+}

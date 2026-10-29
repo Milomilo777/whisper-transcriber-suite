@@ -1001,3 +1001,42 @@ long file shows only a heartbeat. Not applied on this engine: the VAD options, `
 guarded to faster-whisper). The package's last release is old; if it breaks with a new MLX the pin
 in the requirements file holds the working pair. A reported problem on real Macs is expected and
 the opt-out is the first answer.
+
+---
+
+## 0021 — Usage statistics move to a Cloudflare Worker on the project's own domain
+
+**Status:** Accepted
+
+**Date:** 2026-10-29
+
+**Context:** The app's default `stats_url` pointed at a PHP script on a host the project does not
+control; the maintainer could read the data only through that host's viewer page (the last 1,000
+rows) and problem reports had to be squeezed into three capped text fields (512 characters). The
+project's domain already has its DNS on Cloudflare. Requirements: free (no paid plan), no IP address
+or location stored, the reading side behind a password, the sending side open, and nothing that
+can slow or break the app when the endpoint is down. Measured load on 2026-10-26..29: 577 to 2,536
+rows a day.
+
+**Options considered:**
+1. Keep the PHP host. No change, but no control over the server, its logs or its retention.
+2. A small receiver on a home server behind a Cloudflare Tunnel. No request quota, but a public
+   program, its database and backups on a machine that also runs other live services; down whenever
+   that machine or its connection is.
+3. A hosted error-tracking service (Sentry, GlitchTip). Built for stack traces, not for usage rows;
+   more data and setup than needed.
+4. A Cloudflare Worker with D1 at `stats.whisper-transcriber-suite.com`. Chosen.
+
+**Decision:** `platform/stats-worker/` accepts exactly the PHP script's form at `/v1/runs`, so the
+app only changes the default `stats_url` (the key is never saved in `config.json`, so every user
+gets the new default on upgrade). `/v1/report` takes a longer JSON problem report for a later app
+version. `/v1/export` and `/view` use HTTP Basic with secrets set in Cloudflare. Older app versions
+keep posting to the PHP script; the maintainer's collector reads both sources.
+
+**Consequences:** The free plan caps the Worker at 100,000 requests and D1 at 100,000 written rows
+a day, shared with the website's Pages Functions; over the cap, stats from the rest of that UTC day
+are lost (the app's POST is best-effort). To stay far from the D1 caps the schema has no secondary
+index and no `AUTOINCREMENT`, reads go by id, and a daily cron keeps the newest rows only. If daily
+traffic approaches the cap, the plan is: the app queues unsent rows and sends them in batches, and
+the Worker runs on a route set to "fail open", so requests over the quota reach a second, self-hosted
+origin. Cloudflare sees the connection's IP address as any web host does; the Worker does not store it.
