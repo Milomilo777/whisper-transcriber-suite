@@ -6,7 +6,7 @@ import pytest
 from core import offline
 from core import problem_report as pr
 
-# The capped text fields of platform/stats-server/transcription_stats.php ($text_limits).
+# The capped text fields the stats server accepts.
 SERVER_LIMITS = {"model": 128, "language": 32, "status": 32, "program_version": 32,
                  "platform_system": 32, "platform_release": 64, "platform_version": 256,
                  "platform_machine": 32, "platform_processor": 128}

@@ -29,9 +29,6 @@ Design rules:
     POST.
   * No POST is attempted when ``stats_url`` is empty.
 
-The matching server is the Worker in ``platform/stats-worker/`` (older app versions
-post to ``platform/stats-server/transcription_stats.php``); deployment notes in
-each folder's README.
 """
 from __future__ import annotations
 
