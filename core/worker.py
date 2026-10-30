@@ -934,7 +934,13 @@ def _main() -> int:
         # startup_error; a bare crash arrives as worker_exit and reads
         # as "model load was cancelled" with no explanation.
         logger.exception("load_existing_model raised; emitting startup_error")
-        emit("startup_error", message=f"Model load failed ({type(e).__name__}): {e}")
+        clue: dict[str, str] = {}
+        try:
+            from core.failure_clue import worker_clue
+            clue = worker_clue(e, site="worker.model")
+        except Exception:  # noqa: BLE001
+            logger.debug("Startup failure clue unavailable", exc_info=True)
+        emit("startup_error", message=f"Model load failed ({type(e).__name__}): {e}", **clue)
         heartbeat_stop.set()
         return 1
     if not model_loaded:
@@ -1181,11 +1187,22 @@ def _main() -> int:
                 str(p) for p in (getattr(task, "output_paths", None) or [])
             ]
             message = _job_error_message(e)
+            clue = {}
+            try:
+                from core.failure_clue import worker_clue
+                try:
+                    clue_device = get_effective_device().device
+                except Exception:  # noqa: BLE001
+                    logger.debug("Worker device unavailable", exc_info=True)
+                    clue_device = "unknown"
+                clue = worker_clue(e, task, device=clue_device)
+            except Exception:  # noqa: BLE001 - do not break the error event
+                logger.debug("Worker failure clue unavailable", exc_info=True)
             if written:
                 emit("error", message=message, file_path=file_path,
-                     task_id=task_id, outputs=written)
+                     task_id=task_id, outputs=written, **clue)
             else:
-                emit("error", message=message, file_path=file_path, task_id=task_id)
+                emit("error", message=message, file_path=file_path, task_id=task_id, **clue)
 
 
 if __name__ == "__main__":

@@ -365,6 +365,7 @@ def build_stats_payload(
     status: str,
     word_count: int = 0,
     install_id: str = "",
+    failure_clue: dict[str, Any] | None = None,
 ) -> dict[str, str]:
     """Build the form-encoded stats payload (no network I/O).
 
@@ -403,6 +404,12 @@ def build_stats_payload(
     }
     if _valid_install_id(install_id):
         payload["install_id"] = install_id
+    if status == "error":
+        try:
+            from core.failure_clue import sanitise_clue
+            payload.update(sanitise_clue(failure_clue))
+        except Exception:  # noqa: BLE001 - stats must never affect transcription
+            logger.debug("Failure clue unavailable", exc_info=True)
     return payload
 
 

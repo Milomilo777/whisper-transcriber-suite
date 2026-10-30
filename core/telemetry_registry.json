@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "fields": {
+    "failure_site": {"type": "enum", "values": ["worker.decode", "worker.vad", "worker.features", "worker.language", "worker.segments", "worker.postprocess", "worker.output", "worker.prepare", "worker.model", "parent.watchdog", "parent.worker_exit", "other"]},
+    "exception_family": {"type": "enum", "values": ["MemoryError", "RuntimeError", "OSError", "PermissionError", "FileNotFoundError", "TimeoutError", "ValueError", "TypeError", "KeyError", "IndexError", "UnicodeError", "AssertionError", "subprocess.TimeoutExpired", "subprocess.CalledProcessError", "av.InvalidDataError", "other"]},
+    "observed_code": {"type": "enum", "values": ["numpy_alloc_failed", "ct2_bad_alloc", "cuda_out_of_memory", "cublas_missing", "cudnn_missing", "av_invalid_data", "no_audio_stream", "probe_timeout", "disk_full", "access_denied", "file_not_found", "none"]},
+    "classifier_version": {"type": "enum", "values": ["1"]},
+    "os_error": {"type": "integer", "min": 0, "max": 4294967295},
+    "exit_code": {"type": "integer", "min": -2147483648, "max": 4294967295},
+    "device": {"type": "enum", "values": ["cpu", "cuda", "mps", "mlx", "unknown"]},
+    "peak_mem_mb": {"type": "integer", "min": 0, "max": 16777216, "step": 256}
+  }
+}

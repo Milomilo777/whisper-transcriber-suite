@@ -519,6 +519,26 @@ What is sent (built by `core.stats.build_stats_payload`, posted by `core.stats.p
 | `cpu_count`, `mem_total` | logical CPU count and total RAM in bytes (`psutil`; `0` when it is missing) |
 | `install_id` | the random per-install id described above (`core.stats.install_id_for`); left out when the switch is off |
 
+Failed rows also carry the following closed failure clue (registry version 1). It is absent on finished
+and cancelled rows. The site records the observed catch location; the family and code record the exception
+family or a recognized library message, never the message itself. `os_error` is the observed Windows error
+number when available, otherwise errno; `exit_code` is only nonzero for a worker exit (Windows exit codes are
+unsigned, POSIX signals remain negative). `device` is the worker's effective device. `peak_mem_mb` is the
+Windows worker's process-lifetime peak private commit rounded to the nearest 256 MB, or 0 when unavailable;
+a worker can have handled earlier jobs. A 0 in an integer
+field means unknown or not applicable. These fields use the existing usage-statistics and Work offline gates.
+
+| Failure clue field | Allowed values |
+|---|---|
+| `failure_site` | `worker.decode`, `worker.vad`, `worker.features`, `worker.language`, `worker.segments`, `worker.postprocess`, `worker.output`, `worker.prepare`, `worker.model`, `parent.watchdog`, `parent.worker_exit`, `other` |
+| `exception_family` | `MemoryError`, `RuntimeError`, `OSError`, `PermissionError`, `FileNotFoundError`, `TimeoutError`, `ValueError`, `TypeError`, `KeyError`, `IndexError`, `UnicodeError`, `AssertionError`, `subprocess.TimeoutExpired`, `subprocess.CalledProcessError`, `av.InvalidDataError`, `other` |
+| `observed_code` | `numpy_alloc_failed`, `ct2_bad_alloc`, `cuda_out_of_memory`, `cublas_missing`, `cudnn_missing`, `av_invalid_data`, `no_audio_stream`, `probe_timeout`, `disk_full`, `access_denied`, `file_not_found`, `none` |
+| `classifier_version` | `1` |
+| `os_error` | integer `0` to `4294967295`, step `1` |
+| `exit_code` | integer `-2147483648` to `4294967295`, step `1` |
+| `device` | `cpu`, `cuda`, `mps`, `mlx`, `unknown` |
+| `peak_mem_mb` | integer `0` to `16777216`, step `256` |
+
 Never sent: audio, transcript text, the source file's name or folder path, a local model folder's path, the computer name, the user name, serial numbers or an IP address field. (App versions up to 1.9.3 also sent `file_name`, the source file's name without its folder.) The server still sees the connection's IP address, as every web server does; what it stores is decided by the server script.
 
 The default `stats_url` is the project's own stats server. It stores the fields above, length-capped, and does not store the connection's IP address, its location or a `file_name`. App versions before the switch post to an older address, whose server stores the same fields; it is updated separately and may still record what its installed version records. The same `word_count` is also stored locally in `history.db` (`transcriptions.word_count`, added by an idempotent migration) whatever the switch says.

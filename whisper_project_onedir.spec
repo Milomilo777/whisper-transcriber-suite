@@ -144,6 +144,7 @@ a = Analysis(
         *_rtl_binaries,
     ],
     datas=[
+        ('core/telemetry_registry.json', 'core'),
         ('bin', 'bin'),
         ('assets', 'assets'),
         # Static page served by the optional LAN/web HTTP job server
@@ -338,6 +339,7 @@ a = Analysis(
         'core.process_exit',
         'core.speed_meter',
         'core.stats',
+        'core.failure_clue',
         'core.text_metrics',
         'core.tls_trust',
         'core.task',

@@ -35,6 +35,28 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+
+def _remember_failure_clue(
+    task: Any, worker: dict[str, Any], *, event: dict[str, Any] | None = None,
+    site: str | None = None, exit_code: Any = 0, pid: int | None = None,
+) -> None:
+    """Record only closed codes; a telemetry failure must never break task handling."""
+    try:
+        from core.failure_clue import parent_clue, sanitise_clue
+        if site and site.startswith("parent."):
+            clue = parent_clue(site, device=worker.get("device", "unknown"),
+                               exit_code=exit_code, pid=pid)
+        else:
+            data = dict(event or {})
+            if site:
+                data["failure_site"] = site
+            if site != "worker.model" and data.get("device") in (None, "", "unknown"):
+                data["device"] = worker.get("device") or "unknown"
+            clue = sanitise_clue(data)
+        task.failure_clue = clue
+    except Exception:  # noqa: BLE001
+        logger.debug("Could not remember failure clue", exc_info=True)
+
 # Worker events that carry no result: a copy arriving after its worker left app.workers is
 # expected (see _poll_once) and is only logged at debug level.
 _LATE_EVENTS = frozenset({"heartbeat", "worker_exit"})
@@ -1710,6 +1732,8 @@ class TranscriptionService:
                     self._release_pending_load(worker, success=True)
                 elif event_type == "startup_error":
                     worker["ready"] = False
+                    if worker.get("task") is not None:
+                        _remember_failure_clue(worker["task"], worker, event=event, site="worker.model")
                     app.log(event.get("message", "Existing model failed to load."))
                     # Release any ensure_worker_ready() waiter FIRST so its
                     # loading modal closes (with success=False) before we maybe
@@ -1874,6 +1898,7 @@ class TranscriptionService:
                                 worker, failed, event, message
                             ):
                                 failed.status = "error"
+                                _remember_failure_clue(failed, worker, event=event)
                                 # Kept for the Queue row and the history row; both
                                 # said only "error" before.
                                 failed.error_reason = failure_reason(failed.file_path, message)
@@ -1945,6 +1970,8 @@ class TranscriptionService:
                             else:
                                 code = event.get("return_code")
                                 worker["task"].status = "error"
+                                _remember_failure_clue(worker["task"], worker,
+                                                       site="parent.worker_exit", exit_code=code)
                                 worker["task"].error_reason = _(
                                     "The transcription stopped unexpectedly (exit code {code}); "
                                     "try the file again.", code=code,
@@ -2027,6 +2054,9 @@ class TranscriptionService:
             self.finish_task(w, keep_status=True)
         elif w["task"]:
             w["task"].status = "error"
+            process = w.get("process")
+            _remember_failure_clue(w["task"], w, site="parent.watchdog",
+                                   pid=getattr(process, "pid", None))
             # Without a note the history row of this error was blank, so
             # the record never said why the job failed.
             w["task"].recovery_note = HUNG_WORKER_NOTE
@@ -2182,6 +2212,10 @@ class TranscriptionService:
             # this attempt with the previous attempt's failure.
             t.recovery_note = ""
             t.error_reason = ""
+            try:
+                t.failure_clue = None
+            except Exception:  # noqa: BLE001 - unusual task objects must still dispatch
+                logger.debug("Could not reset failure clue", exc_info=True)
             t.start_time = _time.time()
             # Clear any prior end_time (re-run path) so the freshly-
             # restarted task counter doesn't immediately freeze.
@@ -2782,6 +2816,9 @@ class TranscriptionService:
                 status=status or getattr(task, "status", "") or "",
                 word_count=word_count,
                 install_id=_stats.install_id_for(app.app_config),
+                failure_clue=getattr(task, "failure_clue", None) or {
+                    "device": (worker or {}).get("device") or "unknown",
+                },
             )
             _stats.post_stats_async(app.app_config, payload)
         except Exception as e:  # noqa: BLE001

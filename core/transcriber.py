@@ -35,6 +35,7 @@ except ImportError:  # pragma: no cover
     BatchedInferencePipeline = None  # type: ignore[assignment]
 
 from . import _checkpoint
+from .failure_clue import phase as _clue_phase
 from . import loop_guard as _loop_guard
 from . import mel_blocks as _mel_blocks
 from . import speech_collect as _speech_collect
@@ -2588,6 +2589,7 @@ def transcribe(
     # We wrap log_cb at the top of transcribe so every downstream
     # call (including the alt-backend dispatcher) inherits the
     # prefix without each call site having to manage it.
+    _clue_phase(task, "worker.prepare")
     log_cb = _with_task_prefix(log_cb, task)
     if getattr(task, "cancelled", False):
         # Cancelled before it started (a control that overtook the dispatch,
@@ -2630,6 +2632,7 @@ def transcribe(
         global MODEL
         lm_slot = getattr(_LM_RUNNER, "slot", None)  # a Whisper language model (ADR 0018)
         if lm_slot is None:
+            _clue_phase(task, "worker.model")
             while not MODEL_READY:
                 if MODEL_ERROR:
                     raise RuntimeError(MODEL_ERROR)
@@ -2644,6 +2647,7 @@ def transcribe(
         # Optional Demucs vocal-separation pre-process (v0.8 Phase 2).
         # Returns the input path unchanged when demucs isn't installed or
         # the feature is off, so this is safe to always call.
+        _clue_phase(task, "worker.prepare")
         audio_path = task.file_path
         if config.get("demucs_enabled", False):
             try:
@@ -2752,6 +2756,7 @@ def transcribe(
             )
         meter = _speed_meter.SpeedMeter(_meter_end, _clip_start_s)
         meter.start()
+        _clue_phase(task, "worker.language")
         try:
             # faster-whisper runs the VAD inside transcribe(), before it
             # returns the lazy iterator, so the window scope covers it.
@@ -2768,6 +2773,7 @@ def transcribe(
                 except OSError:
                     pass
             raise
+        _clue_phase(task, "worker.segments")
         if _ts_offset:
             segments = _shift_segments(segments, _ts_offset)
 
@@ -2956,6 +2962,7 @@ def transcribe(
                 log_cb, transcription_completed=True,
             )
 
+        _clue_phase(task, "worker.postprocess")
         # Speaker diarization (opt-in) + word-level alignment (opt-in).
         detected_lang = str(getattr(info, "language", "") or "")
         speaker_count = _run_post_pipeline(task, segments_data, detected_lang, log_cb, progress_cb)
@@ -2964,6 +2971,7 @@ def transcribe(
             return
 
         _note_no_speech(task, segments_data, log_cb)
+        _clue_phase(task, "worker.output")
         written = [] if _skips_outputs(task) else _write_outputs(
             base,
             segments_data,
@@ -3010,6 +3018,7 @@ def _transcribe_via_alt_backend(
     ``backend``: an already-loaded backend to use instead of the cached one for ``backend_name``
     (the web/LAN language-model slot).
     """
+    _clue_phase(task, "worker.model")
     if backend is None:
         backend = _get_alt_backend(backend_name, log_cb)
 
@@ -3018,6 +3027,7 @@ def _transcribe_via_alt_backend(
     # with demucs_enabled=true silently transcribes the raw mix while
     # the config fingerprint records demucs as enabled, producing the
     # same conditioning-mismatch class as F4's resume bug.
+    _clue_phase(task, "worker.prepare")
     audio_path = task.file_path
     if config.get("demucs_enabled", False):
         try:
@@ -3109,6 +3119,7 @@ def _transcribe_via_alt_backend(
         meter.resume()
         return False
 
+    _clue_phase(task, "worker.segments")
     try:
         try:
             segments_data, lang_info = backend.transcribe_to_segments(
@@ -3200,6 +3211,7 @@ def _transcribe_via_alt_backend(
     # downstream consumers (writer template, post-pipeline) never
     # see "None" as a stringified language code.
     detected_lang = str(lang_info.language or "")
+    _clue_phase(task, "worker.postprocess")
     speaker_count = _run_post_pipeline(task, segments_data, detected_lang, log_cb, progress_cb)
 
     # Cancellation can arrive while the post-pipeline runs — diarisation on
@@ -3214,6 +3226,7 @@ def _transcribe_via_alt_backend(
         return
 
     _note_no_speech(task, segments_data, log_cb)
+    _clue_phase(task, "worker.output")
     written = [] if _skips_outputs(task) else _write_outputs(
         base,
         segments_data,
@@ -3442,6 +3455,7 @@ def _write_resumed_outputs(
     progress_cb: Callable[[int], None] | None,
 ) -> None:
     """Final step of a resume: write the outputs, then drop the checkpoint."""
+    _clue_phase(task, "worker.output")
     base = _task_output_base(task)
     _note_no_speech(task, segments, log_cb)
     written = [] if _skips_outputs(task) else _write_outputs(
@@ -3550,6 +3564,7 @@ def resume_transcription(
     The slicing strategy assumes the WhisperModel.transcribe API
     surface; backends that don't share it would need their own slicer.
     """
+    _clue_phase(task, "worker.prepare")
     log_cb = _with_task_prefix(log_cb, task)
     if getattr(task, "cancelled", False):
         # Cancelled before it started: the checkpoint on disk stays as it is
@@ -3665,6 +3680,7 @@ def resume_transcription(
             )
             if progress_cb:
                 progress_cb(90)
+            _clue_phase(task, "worker.postprocess")
             speaker_count = _run_post_pipeline(
                 task, done_segments, done_language, log_cb, progress_cb
             )
@@ -3714,6 +3730,7 @@ def resume_transcription(
 
         # Make sure the model is loaded — same wait as transcribe().
         global MODEL
+        _clue_phase(task, "worker.model")
         while not MODEL_READY:
             if MODEL_ERROR:
                 raise RuntimeError(MODEL_ERROR)
@@ -3727,6 +3744,7 @@ def resume_transcription(
         # Slice the source audio from last_end_time to end. Slices live
         # under ``user_data_dir()/partials/`` next to the checkpoint
         # JSON so a stray temp file is easy to garbage-collect later.
+        _clue_phase(task, "worker.prepare")
         slice_dir = _checkpoint.partials_dir()
         try:
             slice_path = _slice_audio_from(
@@ -3821,6 +3839,7 @@ def resume_transcription(
             if pair:
                 runner = _two_language_runner(runner, pair)
 
+            _clue_phase(task, "worker.language")
             with _vad_window.windowed_vad(_vad_window_seconds()):
                 new_segments_iter, info = runner.transcribe(
                     transcribe_slice, **transcribe_kwargs
@@ -3829,6 +3848,7 @@ def resume_transcription(
             # timeline (shifted below). The last checkpointed line seeds its
             # text; its times are on the other timeline, so the first tail
             # copy never counts as back to back with it.
+            _clue_phase(task, "worker.segments")
             new_segments_iter = _loop_guard.guard_repeats(
                 new_segments_iter,
                 limit=_loop_guard.repeat_limit(config),
@@ -3994,6 +4014,7 @@ def resume_transcription(
         # Post-pipeline must see the full ORIGINAL audio (diarisation,
         # alignment, chapters all need the whole file). Reuse the
         # existing helper unchanged.
+        _clue_phase(task, "worker.postprocess")
         speaker_count = _run_post_pipeline(
             task, final_segments, detected_lang, log_cb, progress_cb
         )

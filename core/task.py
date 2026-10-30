@@ -115,6 +115,9 @@ class TranscriptionTask:
         # Why a failed attempt failed, in the UI language, for the Queue's
         # line under the selected row; cleared at every dispatch too.
         self.error_reason: str = ""
+        # Closed, best-effort usage-statistics clue for this attempt only.
+        self.failure_clue: dict[str, str] | None = None
+        self._failure_site: str = "other"
         # Speed meter (core.speed_meter). ``live_*`` are the smoothed speed
         # (x real time) and time left while the decode runs, None until
         # there is enough data; carried on the worker's "progress" events.

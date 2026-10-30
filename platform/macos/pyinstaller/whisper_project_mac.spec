@@ -330,6 +330,7 @@ a = Analysis(
         *_npstack_binaries,
     ],
     datas=[
+        (os.path.join(_REPO_ROOT, 'core', 'telemetry_registry.json'), 'core'),
         *bin_datas,
         (os.path.join(_REPO_ROOT, 'assets'), 'assets'),
         # The app's licence and the third-party notices travel with the app.
@@ -540,6 +541,7 @@ a = Analysis(
         'core.process_exit',
         'core.speed_meter',
         'core.stats',
+        'core.failure_clue',
         'core.text_metrics',
         'core.tls_trust',
         'core.task',

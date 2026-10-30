@@ -10,6 +10,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- Failed transcription statistics include a privacy-preserving failure clue with closed codes and bucketed peak memory.
 - **The website describes 2.3**: a "What's new in 2.3" section above the older releases' cards, a 2.3 FAQ
   answer and a 2.3 line in `llms.txt`.
 
