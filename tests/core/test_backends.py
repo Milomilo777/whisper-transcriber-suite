@@ -36,6 +36,13 @@ def backends_module(monkeypatch):
     for m in [m for m in list(sys.modules) if m.startswith("core.backends")]:
         del sys.modules[m]
     sys.modules.update(saved)
+    # Re-importing also rebound each parent package's attribute (core.backends,
+    # core.backends.nvidia_asr, ...) to the fresh objects; point those back too,
+    # or `from core import backends` and `from .backends import x` disagree.
+    for name, mod in saved.items():
+        parent, _, child = name.rpartition(".")
+        if parent in sys.modules:
+            setattr(sys.modules[parent], child, mod)
 
 
 def test_get_backend_default_is_faster_whisper(backends_module):
