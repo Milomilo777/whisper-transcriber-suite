@@ -157,6 +157,25 @@ def _speed_fields(task: "TranscriptionTask") -> dict[str, Any]:
     return fields
 
 
+def _emit_done(task: "TranscriptionTask", file_path: str, task_id: str) -> None:
+    """Send the ``done`` event that ends a task (also a cancelled one)."""
+    emit(
+        "done",
+        file_path=file_path,
+        task_id=task_id,
+        outputs=getattr(task, "output_paths", None) or [],
+        # Added fields (protocol is add-only): transcript stats
+        # computed from the in-memory segments, so the parent
+        # never needs a machine-readable output file to know
+        # the word count (txt/docx/pdf-only runs recorded 0).
+        word_count=int(getattr(task, "word_count", 0) or 0),
+        audio_duration=float(getattr(task, "audio_duration", 0.0) or 0.0),
+        no_speech=bool(getattr(task, "no_speech", False)),
+        speaker_labels_failed=bool(getattr(task, "speaker_labels_failed", False)),
+        **_speed_fields(task),
+    )
+
+
 # Parent loss. The app is the only writer of this worker's stdin pipe, so
 # EOF there (or a broken stdout pipe) is the sign the app may be gone; it is
 # confirmed by checking that the parent process really ended (a test feeding
@@ -1107,31 +1126,21 @@ def _main() -> int:
                 # task can no longer arrive while this finished task is
                 # still the current one and get swallowed by it.
                 _set_current_task(None)
-            emit(
-                "done",
-                file_path=file_path,
-                task_id=task_id,
-                outputs=getattr(task, "output_paths", None) or [],
-                # Added fields (protocol is add-only): transcript stats
-                # computed from the in-memory segments, so the parent
-                # never needs a machine-readable output file to know
-                # the word count (txt/docx/pdf-only runs recorded 0).
-                word_count=int(getattr(task, "word_count", 0) or 0),
-                audio_duration=float(
-                    getattr(task, "audio_duration", 0.0) or 0.0
-                ),
-                no_speech=bool(getattr(task, "no_speech", False)),
-                speaker_labels_failed=bool(
-                    getattr(task, "speaker_labels_failed", False)
-                ),
-                **_speed_fields(task),
-            )
+            _emit_done(task, file_path, task_id)
         except Exception as e:  # noqa: BLE001
             if isinstance(e, OSError) and _parent_lost.is_set():
                 # The result could not be sent: the app is gone. The
                 # cancelled task has saved its checkpoint; just exit.
                 _clear_parked_controls()
                 return 0
+            if task is not None and getattr(task, "cancelled", False):
+                # A step that raised because the user cancelled (an ffmpeg or
+                # a backend stopped mid-run) is a cancel, not a failure: end
+                # it with the normal cooperative-cancel ``done`` so the parent
+                # records "cancelled" (files already written stay listed).
+                logger.info("Cancelled task ended with %s: %s", type(e).__name__, e)
+                _emit_done(task, file_path, task_id)
+                continue
             # Files already written stay reported (add-only field): a failure
             # after the outputs exist (a late post-processing step) must not
             # make the parent discard a finished transcript.
