@@ -4,6 +4,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+## [2.3.1] — 2026-10-31
+
 ### Removed
 
 - The usage-stats server code is no longer part of the repository.

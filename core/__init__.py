@@ -6,7 +6,7 @@ from __future__ import annotations
 # available). The About dialog and the telemetry ping read this so the
 # displayed version never goes stale. Bump it alongside pyproject.toml
 # and the two .iss files on every release.
-__version__ = "2.3.0"
+__version__ = "2.3.1"
 
 # Sent on every HTTP request to an AI provider. Some providers (Groq, behind
 # Cloudflare) answer urllib's default User-Agent with HTTP 403 "error code: 1010".
