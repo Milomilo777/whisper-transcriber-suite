@@ -4,6 +4,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Fixed
+
+- **The website's download count near the top is current again**: it now comes from the same hourly-cached
+  counter as the footer, instead of a number written into the page once a week.
+
 ## [2.3.0] — 2026-10-30
 
 ### Security

@@ -422,10 +422,12 @@
     render();
   }
 
-  /* Visit + download counters in the footer (same-origin Pages Function).
+  /* Visit + download counters in the footer (same-origin Pages Function), and the
+     hero's download figure, which otherwise only changes when the page is rebuilt.
      A visit is counted at most once per browser per day. */
   const stats = $('[data-site-stats]');
-  if (stats && 'fetch' in window) {
+  const heroDownloads = $('[data-auto="downloads"]');
+  if ((stats || heroDownloads) && 'fetch' in window) {
     const today = new Date().toISOString().slice(0, 10);
     let counted = false;
     try { counted = localStorage.getItem('wts-visit-day') === today; } catch (e) { counted = true; }
@@ -434,6 +436,8 @@
       .then((d) => {
         if (!d) return;
         if (!counted) { try { localStorage.setItem('wts-visit-day', today); } catch (e) { /* storage unavailable */ } }
+        if (heroDownloads && typeof d.downloads === 'number') heroDownloads.textContent = d.downloads.toLocaleString('en-US');
+        if (!stats) return;
         let shown = false;
         ['visits', 'downloads'].forEach((k) => {
           const el = $(`[data-stat="${k}"]`, stats);
