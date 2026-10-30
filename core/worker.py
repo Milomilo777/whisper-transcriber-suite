@@ -1139,8 +1139,13 @@ def _main() -> int:
                 # it with the normal cooperative-cancel ``done`` so the parent
                 # records "cancelled" (files already written stay listed).
                 logger.info("Cancelled task ended with %s: %s", type(e).__name__, e)
-                _emit_done(task, file_path, task_id)
-                continue
+                try:
+                    _emit_done(task, file_path, task_id)
+                    continue
+                except OSError:
+                    raise
+                except Exception:  # noqa: BLE001 - fall back to the error report below
+                    logger.exception("Could not send the done event of a cancelled task")
             # Files already written stay reported (add-only field): a failure
             # after the outputs exist (a late post-processing step) must not
             # make the parent discard a finished transcript.

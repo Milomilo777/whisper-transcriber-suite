@@ -1829,7 +1829,15 @@ class TranscriptionService:
                                     getattr(failed, "file_path", "?"), message,
                                 )
                                 app.log(message)
-                                self.finish_task(worker, keep_status=True)
+                                outs = event.get("outputs")
+                                if isinstance(outs, list) and outs:
+                                    # Files were written before the failure: the same
+                                    # rule as a cancel followed by "done" decides
+                                    # (all formats written -> finished, else cancelled).
+                                    failed.output_paths = [str(p) for p in outs]
+                                    self.finish_task(worker)
+                                else:
+                                    self.finish_task(worker, keep_status=True)
                             # A late failure after every output file was written must
                             # not discard the finished transcript.
                             elif not self._salvage_error_with_outputs(
