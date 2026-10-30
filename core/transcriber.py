@@ -36,6 +36,7 @@ except ImportError:  # pragma: no cover
 
 from . import _checkpoint
 from . import loop_guard as _loop_guard
+from . import mel_blocks as _mel_blocks
 from . import speed_meter as _speed_meter
 from . import task_settings as _task_settings
 from . import translate_task as _translate
@@ -52,6 +53,11 @@ from .writers import (
     is_binary,
     supported_formats,
 )
+
+# Long files: faster-whisper builds the log-mel features of the whole file at
+# once (GBs per hour of audio); compute them in blocks instead. A no-op when
+# the installed faster-whisper does not match (see core/mel_blocks.py).
+_mel_blocks.install()
 
 # Periodic checkpoint cadence. Writing after every segment is wasteful
 # on long files (1 fsync per ~5 s of audio); waiting until completion
