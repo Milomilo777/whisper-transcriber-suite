@@ -1601,10 +1601,33 @@ class TranscriptionService:
             if self._needs_poll():
                 self._ensure_poll_scheduled()
 
+    # poll() runs every 100 ms while a worker is busy. A much longer gap means
+    # this process itself was not running: the computer slept (Windows'
+    # monotonic clock keeps counting through sleep) or the GUI thread hung.
+    # Worker silence measured across such a gap says nothing about the worker.
+    SUSPEND_GAP_S: float = 30.0
+
+    def _restart_liveness_after_gap(self, now: float) -> None:
+        last_poll = getattr(self, "_last_poll_at", None)
+        self._last_poll_at = now
+        if last_poll is None or now - last_poll <= self.SUSPEND_GAP_S:
+            return
+        restarted = 0
+        for w in self.app.workers:
+            if w.get("last_event_at"):
+                w["last_event_at"] = now
+                restarted += 1
+        if restarted:
+            logger.info(
+                "No poll for %.0f s (system sleep or a stalled GUI); restarted the "
+                "liveness window of %d worker(s)", now - last_poll, restarted,
+            )
+
     def _poll_once(self) -> None:
         app = self.app
         import time as _time
         now = _time.monotonic()
+        self._restart_liveness_after_gap(now)
         while True:
             try:
                 event = app.worker_events.get_nowait()

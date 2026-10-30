@@ -299,6 +299,7 @@ a = Analysis(
         'core.tts_job',
         'core.mel_blocks',
         'core.speech_collect',
+        'core.keep_awake',
         'core.vad_window',
         'core.language_defaults',
         'core.accuracy',
