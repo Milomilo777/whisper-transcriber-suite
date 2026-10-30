@@ -618,6 +618,10 @@ class NvidiaAsrBackend(Backend):
     def is_ready(self) -> bool:
         return self._ready
 
+    @property
+    def device(self) -> str:
+        return self._device if self._ready else "unknown"
+
     def get_error(self) -> str | None:
         return self._error
 

@@ -282,7 +282,7 @@ def test_worker_event_reaches_the_error_stats_payload(monkeypatch):
     assert len(posted) == 1
     assert posted[0]["failure_site"] == "worker.features"
     assert posted[0]["observed_code"] == "numpy_alloc_failed"
-    assert posted[0]["device"] == "cuda" and posted[0]["peak_mem_mb"] == "1024"
+    assert posted[0]["device"] == "unknown" and posted[0]["peak_mem_mb"] == "1024"
     assert "private" not in str(posted[0])
 
 

@@ -25,6 +25,8 @@ SITE_FRAMES: dict[tuple[str, str | None], str] = {
     ("av.container.input", None): "worker.decode",
     ("faster_whisper.vad", None): "worker.vad",
     ("core.vad_window", None): "worker.vad",
+    ("core.speech_collect", "collect_chunks"): "worker.vad",
+    ("core.speech_collect", "gather_speech"): "worker.vad",
     ("faster_whisper.feature_extractor", None): "worker.features",
     ("core.mel_blocks", None): "worker.features",
     ("faster_whisper.transcribe", "detect_language"): "worker.language",
@@ -76,6 +78,9 @@ def _has_frame(tb: TracebackType | None, module: str, function: str) -> bool:
 
 
 def _library_frame(tb: TracebackType | None, code: str) -> bool:
+    # NumPy's native concatenate can raise without a Python numpy frame.
+    if code == "numpy_alloc_failed" and _has_frame(tb, "core.speech_collect", "gather_speech"):
+        return True
     prefixes = ("numpy", "core.mel_blocks") if code == "numpy_alloc_failed" else ("ctranslate2", "faster_whisper")
     while tb is not None:
         name = tb.tb_frame.f_globals.get("__name__", "")
@@ -111,8 +116,11 @@ _PATTERNS = (
     ("numpy_alloc_failed", re.compile(r"Unable to allocate [0-9.]+ (?:bytes|KiB|MiB|GiB|TiB) for an array with shape \([0-9, ]*\) and data type [A-Za-z0-9_<>|]+")),
     ("ct2_bad_alloc", re.compile(r"(?:std::bad_alloc|bad allocation)")),
     ("cuda_out_of_memory", re.compile(r"CUDA failed with error out of memory")),
-    ("cublas_missing", re.compile(r"Library cublas(?:64_[0-9]+\.dll|\.so(?:\.[0-9]+)*) is not found or cannot be loaded")),
-    ("cudnn_missing", re.compile(r"Library cudnn(?:64_[0-9]+\.dll|\.so(?:\.[0-9]+)*) is not found or cannot be loaded")),
+    ("cublas_missing", re.compile(r"Library (?:cublas(?:Lt)?64_[0-9]+\.dll|(?:lib)?cublas(?:Lt)?\.so(?:\.[0-9]+)*) is not found or cannot be loaded")),
+    ("cudnn_missing", re.compile(
+        r"Library (?:cudnn(?:_(?:(?:ops|cnn|adv)(?:_infer|_train)?|graph|heuristic|engines_precompiled|engines_runtime_compiled))?64_[0-9]+\.dll"
+        r"|(?:lib)?cudnn(?:_(?:(?:ops|cnn|adv)(?:_infer|_train)?|graph|heuristic|engines_precompiled|engines_runtime_compiled))?\.so(?:\.[0-9]+)*) is not found or cannot be loaded"
+    )),
 )
 
 
@@ -190,10 +198,20 @@ def sanitise_clue(clue: Mapping[str, Any] | None = None) -> dict[str, str]:
 
 def worker_clue(exc: BaseException, task: Any = None, *, site: str | None = None,
                 device: str = "unknown") -> dict[str, str]:
+    failure_site = site or site_from_traceback(exc.__traceback__, getattr(task, "_failure_site", "other"))
+    # Model loaders wrap the original exception for the user-facing message.
+    # Only follow explicit causes, and stop cycles; implicit context can be an
+    # unrelated failure handled before this one.
+    origin = exc
+    if failure_site == "worker.model":
+        seen = {id(origin)}
+        while origin.__cause__ is not None and id(origin.__cause__) not in seen and len(seen) < 16:
+            origin = origin.__cause__
+            seen.add(id(origin))
     return sanitise_clue({
-        "failure_site": site or site_from_traceback(exc.__traceback__, getattr(task, "_failure_site", "other")),
-        "exception_family": exception_family(exc), "observed_code": observed_code(exc),
-        "os_error": os_error(exc), "device": device, "peak_mem_mb": peak_memory_mb(),
+        "failure_site": failure_site,
+        "exception_family": exception_family(origin), "observed_code": observed_code(origin),
+        "os_error": os_error(origin), "device": device, "peak_mem_mb": peak_memory_mb(),
     })
 
 

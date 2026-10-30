@@ -30,6 +30,11 @@ class Backend(ABC):
 
     name: str = ""
 
+    @property
+    def device(self) -> str:
+        """The observed execution device, or unknown when not exposed."""
+        return "unknown"
+
     @abstractmethod
     def load(
         self,

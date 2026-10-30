@@ -151,6 +151,8 @@ MODEL: Any = None
 PIPELINE: Any = None  # BatchedInferencePipeline wrapper when device == "cuda"
 MODEL_READY = False
 MODEL_ERROR: str | None = None
+# Only closed, sanitised values are retained when a loader returns False.
+_MODEL_FAILURE_CLUE: dict[str, str] | None = None
 
 # R3: effective-device tracking. ``device`` / ``compute_type`` (assigned just
 # below) are what we *requested*. After a load we read back what CTranslate2
@@ -231,6 +233,20 @@ def get_model_error() -> str | None:
     return MODEL_ERROR
 
 
+def get_model_failure_clue() -> dict[str, str]:
+    return dict(_MODEL_FAILURE_CLUE or {})
+
+
+def _remember_model_failure(exc: BaseException) -> None:
+    global _MODEL_FAILURE_CLUE
+    try:
+        from .failure_clue import worker_clue
+        _MODEL_FAILURE_CLUE = worker_clue(exc, site="worker.model")
+    except Exception:  # noqa: BLE001 - diagnostics must not break model loading
+        _MODEL_FAILURE_CLUE = None
+        logger.debug("Could not record model failure clue", exc_info=True)
+
+
 def _wrap_for_batched(model: Any) -> Any:
     """Wrap with BatchedInferencePipeline on CUDA if available."""
     if device != "cuda" or BatchedInferencePipeline is None:
@@ -257,32 +273,56 @@ class EffectiveDevice:
     downgraded: bool
 
 
-def get_effective_device() -> EffectiveDevice:
+def _device_kind(value: Any) -> str:
+    name = str(value or "").strip().lower()
+    head, separator, index = name.partition(":")
+    if head == "cuda" and (not separator or index.isdecimal()):
+        return "cuda"
+    return name if name in ("cpu", "mps", "mlx") else "unknown"
+
+
+def _backend_effective_device(backend: Any) -> EffectiveDevice:
+    bdev = _device_kind(getattr(backend, "device", ""))
+    return EffectiveDevice(
+        device=bdev,
+        compute_type=str(getattr(backend, "compute_type", "") or ""),
+        requested_device=str(getattr(backend, "requested_device", "") or ""),
+        downgraded=bool(getattr(backend, "downgraded", False)),
+    )
+
+
+def get_effective_device(backend_name: str | None = None) -> EffectiveDevice:
     """Return the device the loaded model is actually running on.
 
-    Safe to call before any load — reports the requested values with
-    ``downgraded=False`` until a load populates the effective state. When a
-    non-default backend is active (``_ALT_BACKEND``), prefer its self-reported
-    device info if it exposes the R3 accessors; otherwise fall back to its
-    plain ``device`` (other backends don't track a downgrade).
+    A non-default backend reports its own device, or ``unknown`` when it
+    cannot observe one. ``backend_name`` can select the per-file engine even
+    when another backend is still cached.
     """
-    if _ALT_BACKEND is not None:
-        bdev = str(getattr(_ALT_BACKEND, "device", "") or "") or device
-        bcompute = str(getattr(_ALT_BACKEND, "compute_type", "") or "") or compute_type
-        breq = str(getattr(_ALT_BACKEND, "requested_device", "") or "") or bdev
-        bdown = bool(getattr(_ALT_BACKEND, "downgraded", False))
-        return EffectiveDevice(
-            device=bdev,
-            compute_type=bcompute,
-            requested_device=breq,
-            downgraded=bdown,
-        )
+    selected = (backend_name or str(config.get("transcribe_backend") or "faster_whisper")).strip().lower()
+    if selected != "faster_whisper":
+        if _ALT_BACKEND is None or (_ALT_BACKEND_NAME and _ALT_BACKEND_NAME != selected):
+            return EffectiveDevice("unknown", "", "", False)
+        return _backend_effective_device(_ALT_BACKEND)
     return EffectiveDevice(
-        device=_EFFECTIVE_DEVICE or device,
+        device=_device_kind(_EFFECTIVE_DEVICE),
         compute_type=_EFFECTIVE_COMPUTE_TYPE or compute_type,
         requested_device=_REQUESTED_DEVICE or device,
         downgraded=_DEVICE_DOWNGRADED,
     )
+
+
+def _remember_task_device(task: Any, backend: Any = None, *, whisper: bool = False) -> None:
+    """Keep the running job's device after its configuration scope ends."""
+    try:
+        if whisper:
+            value = get_effective_device("faster_whisper").device
+        elif backend is not None:
+            value = _backend_effective_device(backend).device
+        else:
+            value = "unknown"
+        task._failure_device = value
+    except Exception:  # noqa: BLE001 - diagnostics cannot interrupt a job
+        logger.debug("Could not record task device", exc_info=True)
 
 
 # CPU self-heal target — what we retry with when a CUDA load fails. int8 is the
@@ -385,19 +425,21 @@ def load_existing_model(status_cb: Callable[[str], None] | None = None) -> bool:
     it loads via the backend interface and flips ``MODEL_READY`` so
     the transcribe loop's "wait until ready" check passes.
     """
-    global MODEL, PIPELINE, MODEL_READY, MODEL_ERROR, _ALT_BACKEND, _ALT_BACKEND_NAME
+    global MODEL, PIPELINE, MODEL_READY, MODEL_ERROR, _ALT_BACKEND, _ALT_BACKEND_NAME, _MODEL_FAILURE_CLUE
 
     backend_name = (
         str(config.get("transcribe_backend") or "faster_whisper").strip().lower()
     )
     MODEL_READY = False
     MODEL_ERROR = None
+    _MODEL_FAILURE_CLUE = None
 
     if backend_name and backend_name != "faster_whisper":
         try:
             from .backends import get_backend
             backend = get_backend(backend_name)
         except Exception as e:  # noqa: BLE001
+            _remember_model_failure(e)
             MODEL_ERROR = f"Backend {backend_name} not available: {e}"
             if status_cb:
                 status_cb(MODEL_ERROR)
@@ -406,6 +448,7 @@ def load_existing_model(status_cb: Callable[[str], None] | None = None) -> bool:
         try:
             ok = backend.load(status_cb)
         except Exception as e:  # noqa: BLE001
+            _remember_model_failure(e)
             MODEL_ERROR = f"{backend_name} load failed: {e}"
             if status_cb:
                 status_cb(MODEL_ERROR)
@@ -461,6 +504,7 @@ def load_existing_model(status_cb: Callable[[str], None] | None = None) -> bool:
             status_cb("Model loaded")
         return True
     except Exception as e:
+        _remember_model_failure(e)
         MODEL_ERROR = str(e)
         if status_cb:
             status_cb(f"Existing model failed to load: {e}")
@@ -2589,6 +2633,7 @@ def transcribe(
     # We wrap log_cb at the top of transcribe so every downstream
     # call (including the alt-backend dispatcher) inherits the
     # prefix without each call site having to manage it.
+    _remember_task_device(task)
     _clue_phase(task, "worker.prepare")
     log_cb = _with_task_prefix(log_cb, task)
     if getattr(task, "cancelled", False):
@@ -2643,6 +2688,7 @@ def transcribe(
             # case MODEL is still None but MODEL_READY is True). Lazy-load the
             # default model now instead of crashing on `assert MODEL is not None`.
             _ensure_default_backend_loaded(log_cb)
+        _remember_task_device(task, whisper=True)
 
         # Optional Demucs vocal-separation pre-process (v0.8 Phase 2).
         # Returns the input path unchanged when demucs isn't installed or
@@ -3021,6 +3067,7 @@ def _transcribe_via_alt_backend(
     _clue_phase(task, "worker.model")
     if backend is None:
         backend = _get_alt_backend(backend_name, log_cb)
+    _remember_task_device(task, backend)
 
     # Demucs vocal separation — mirror the default faster-whisper path
     # (transcribe() lines 1761-1771). Without this, an alt-backend run
@@ -3564,6 +3611,7 @@ def resume_transcription(
     The slicing strategy assumes the WhisperModel.transcribe API
     surface; backends that don't share it would need their own slicer.
     """
+    _remember_task_device(task)
     _clue_phase(task, "worker.prepare")
     log_cb = _with_task_prefix(log_cb, task)
     if getattr(task, "cancelled", False):
@@ -3740,6 +3788,7 @@ def resume_transcription(
         # started on an alt backend (MODEL None, MODEL_READY True) while
         # this file resolves to the default backend.
         _ensure_default_backend_loaded(log_cb)
+        _remember_task_device(task, whisper=True)
 
         # Slice the source audio from last_end_time to end. Slices live
         # under ``user_data_dir()/partials/`` next to the checkpoint

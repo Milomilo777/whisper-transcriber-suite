@@ -89,6 +89,7 @@ from .translate_task import normalise_task
 from .transcriber import (
     get_effective_device,
     get_model_error,
+    get_model_failure_clue,
     load_existing_model,
     resume_transcription,
     transcribe,
@@ -945,7 +946,13 @@ def _main() -> int:
         return 1
     if not model_loaded:
         detail = get_model_error() or "Existing model failed to load in worker"
-        emit("startup_error", message=detail)
+        clue = {}
+        try:
+            from core.failure_clue import sanitise_clue
+            clue = sanitise_clue({"failure_site": "worker.model", **get_model_failure_clue()})
+        except Exception:  # noqa: BLE001 - do not break the startup error event
+            logger.debug("Startup failure clue unavailable", exc_info=True)
+        emit("startup_error", message=detail, **clue)
         heartbeat_stop.set()
         return 1
 
@@ -1191,7 +1198,9 @@ def _main() -> int:
             try:
                 from core.failure_clue import worker_clue
                 try:
-                    clue_device = get_effective_device().device
+                    clue_device = getattr(task, "_failure_device", None)
+                    if clue_device is None:
+                        clue_device = get_effective_device().device
                 except Exception:  # noqa: BLE001
                     logger.debug("Worker device unavailable", exc_info=True)
                     clue_device = "unknown"

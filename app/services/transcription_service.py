@@ -50,7 +50,7 @@ def _remember_failure_clue(
             data = dict(event or {})
             if site:
                 data["failure_site"] = site
-            if site != "worker.model" and data.get("device") in (None, "", "unknown"):
+            if site != "worker.model" and data.get("device") in (None, ""):
                 data["device"] = worker.get("device") or "unknown"
             clue = sanitise_clue(data)
         task.failure_clue = clue
