@@ -325,10 +325,10 @@
     },
     {
       "@type": "Question",
-      "name": "2.2 版有哪些新內容？",
+      "name": "What is new in version 2.3?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "轉錄分頁上的引擎和模型選擇器改為「準確度等級」：選擇快速、平衡或最佳，應用程式會挑選適合你的語言和電腦的模型，全新安裝預設使用 Large v3 Turbo。較少用的選項收在「更多選項」裡。波斯語、中文、日語、德語、泰語、瑞典語和希伯來語有專為該語言訓練的模型；網頁 / 區域網路存取分頁會顯示 QR 碼，可用同一 Wi-Fi 下的手機傳送錄音；Windows 為波斯語、阿拉伯語和希伯來語鏡像整個視窗；雙語音訊以實驗性選項提供；下載表單也更精簡。全部 42 種介面語言皆已完整，並修正了 35 個錯誤。網站上還有一個能在瀏覽器中轉錄短檔案的頁面。2.1 版加入了 42 種介面語言、可靠的說話者標籤和更安全的儲存；2.0 版加入了佇列的速度與剩餘時間、透過連結取得附字幕的影片、存成單一離線網頁的逐字稿、可查證的「離線工作」模式，以及翻譯成英文。"
+        "text": "A globe button above the tabs switches the interface language, and Persian, Arabic and Hebrew now work on macOS too. On M-series Macs, Whisper runs on the GPU through Apple's MLX. Finished transcripts can be saved as Obsidian notes or sent to a webhook such as n8n, the built-in server guards the links it downloads and slows down wrong passwords, a download never overwrites a file with the same name, Live captions survive a crash, and Groq is one click away in Advanced → AI. More than 107 bugs were fixed. Version 2.2 brought Fast, Balanced or Best accuracy, models trained for one language, phone access by QR code and a right-to-left window on Windows. Version 2.1 added the interface in 42 languages, reliable speaker labels and safer saving; version 2.0 added the queue's speed and time left, subtitled video from a link, transcripts as one offline web page, a checkable Work offline mode and translation to English."
       }
     },
     {
@@ -568,16 +568,51 @@
     </div>
   </section>
 
-  <!-- ============ WHAT'S NEW IN 2.2 (AND 2.1, 2.0) ============ -->
+  <!-- ============ WHAT'S NEW IN 2.3 (AND 2.2, 2.1, 2.0) ============ -->
   <section class="section whatsnew" id="whats-new" aria-labelledby="new-title">
     <div class="wrap">
       <header class="section-head sr">
-        <p class="eyebrow">2.2 新功能</p>
-        <h2 id="new-title">2.2 新功能。<span class="h2-soft">更簡單，還能放進口袋。</span></h2>
-        <p class="section-lede">以單一的準確度選項取代引擎和模型選擇器、單一語言專用模型、用手機傳送錄音、為波斯語、阿拉伯語和希伯來語鏡像的視窗，以及瀏覽器裡的試用頁面。下方還有 2.1 和 2.0 的新增內容。</p>
+        <p class="eyebrow">New in 2.3</p>
+        <h2 id="new-title">What's new in 2.3. <span class="h2-soft">Your language, your Mac, your other apps.</span></h2>
+        <p class="section-lede">A language button above the tabs, Whisper on the GPU of M-series Macs, transcripts sent to Obsidian or n8n, a safer built-in server and more than 107 bugs fixed. Below them, what 2.2, 2.1 and 2.0 added.</p>
       </header>
 
       <div class="new-grid">
+        <article class="new-card sr">
+          <p class="new-tag">2.3 · All platforms</p>
+          <h3>A language button</h3>
+          <p>A globe button above the tabs shows the language the app runs in and opens a list of every language by its own name. Persian, Arabic and Hebrew now work on macOS too, and Persian and Arabic on Linux.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.3 · macOS</p>
+          <h3>Whisper on the Mac's GPU</h3>
+          <p>On a Mac with an M-series chip, Whisper runs on the graphics chip through Apple's MLX, chosen for you when the model has an MLX version. Pick Faster-Whisper in the Engine list to turn it off.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.3 · All platforms</p>
+          <h3>Send transcripts to other apps</h3>
+          <p>When a job finishes, the transcript can also be saved as a note in your Obsidian vault, and a short message can go to a web address such as an n8n webhook. Turn them on in <em>Advanced → App behaviour</em>.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.3 · All platforms</p>
+          <h3>A safer built-in server</h3>
+          <p>Links sent to the Web / LAN server download through a guarded path that refuses addresses inside your network, and wrong passwords are slowed down after five tries.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.3 · All platforms</p>
+          <h3>Downloads leave your files alone</h3>
+          <p>If a file with the same name is already in the folder, the new download is saved as <em>Title (1)</em> and the old file is never touched. Very long titles no longer make a download fail.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.3 · All platforms</p>
+          <h3>Live captions that survive a crash</h3>
+          <p>Every finished sentence in the Live tab is written to disk before it appears, so a crash or power cut before you save no longer loses it. On a Mac, the Live tab explains the microphone permission the first time it listens.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.3 · All platforms</p>
+          <h3>Groq in one click</h3>
+          <p>Press <em>Use Groq</em> in <em>Advanced → AI</em> and add your free Groq key for summaries and translations from a fast online model. Persian <em>Best quality</em> now uses a model trained for Persian.</p>
+        </article>
         <article class="new-card sr">
           <p class="new-tag">2.2 · 所有平台</p>
           <h3>更簡單的轉錄分頁</h3>
@@ -932,7 +967,7 @@ python gui.py</code></pre>
         <article class="qa"><h3>它可以複製聲音並讓它唸出新的文字嗎？</h3><div class="faq-a"><p>可以，透過選用的「複製您的聲音」分頁，完全在您的本機電腦上使用 OmniVoice (Apache-2.0) 執行。預設為關閉；可在安裝時選擇啟用，且您必須確認已取得複製參考聲音的授權許可。</p></div></article>
         <article class="qa"><h3>這與直接呼叫 Whisper API 有何不同？</h3><div class="faq-a"><p>預設透過 faster-whisper 在本機執行模型，因此沒有按分鐘計費的 API 費用，也沒有任何音訊會離開您的電腦——除非您明確選擇使用兩種雲端後端之一。</p></div></article>
         <article class="qa"><h3>同一個網路上的多人可以在不必每台電腦都安裝的情況下使用它嗎？</h3><div class="faq-a"><p>可以——Web/LAN 存取模式可將這台電腦轉變為轉錄網頁，供同網路上的其他裝置使用。</p></div></article>
-        <article class="qa"><h3>2.2 版有哪些新內容？</h3><div class="faq-a"><p>轉錄分頁上的引擎和模型選擇器改為「準確度等級」：選擇快速、平衡或最佳，應用程式會挑選適合你的語言和電腦的模型，全新安裝預設使用 Large v3 Turbo。較少用的選項收在<em>更多選項</em>裡。波斯語、中文、日語、德語、泰語、瑞典語和希伯來語有專為該語言訓練的模型；網頁 / 區域網路存取分頁會顯示 QR 碼，可用同一 Wi-Fi 下的手機傳送錄音；Windows 為波斯語、阿拉伯語和希伯來語鏡像整個視窗；雙語音訊以實驗性選項提供；下載表單也更精簡。全部 42 種介面語言皆已完整，並修正了 35 個錯誤。網站上還有一個<a href="/zh-tw/try/">能在瀏覽器中轉錄短檔案的頁面</a>。2.1 版加入了 42 種介面語言、可靠的說話者標籤和更安全的儲存；2.0 版加入了佇列的速度與剩餘時間、透過連結取得附字幕的影片、存成單一離線網頁的逐字稿、可查證的「離線工作」模式，以及翻譯成英文。請見<a href="#whats-new">2.2 新功能</a>和<a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">變更記錄</a>。</p></div></article>
+        <article class="qa"><h3>What is new in version 2.3?</h3><div class="faq-a"><p>A globe button above the tabs switches the interface language, and Persian, Arabic and Hebrew now work on macOS too. On M-series Macs, Whisper runs on the GPU through Apple's MLX. Finished transcripts can be saved as Obsidian notes or sent to a webhook such as n8n, the built-in server guards the links it downloads and slows down wrong passwords, a download never overwrites a file with the same name, Live captions survive a crash, and Groq is one click away in <em>Advanced → AI</em>. More than 107 bugs were fixed. Version 2.2 brought Fast, Balanced or Best accuracy, models trained for one language, phone access by QR code, a right-to-left window on Windows and a <a href="/zh-tw/try/">page that transcribes a short file in your browser</a>. Version 2.1 added the interface in 42 languages, reliable speaker labels and safer saving; version 2.0 added the queue's speed and time left, subtitled video from a link, transcripts as one offline web page, a checkable Work offline mode and translation to English. See <a href="#whats-new">What's new in 2.3</a> and the <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">changelog</a>.</p></div></article>
         <article class="qa"><h3>它可以將影片連結轉換為帶有字幕的影片嗎？</h3><div class="faq-a"><p>可以。在「下載影片」分頁中，勾選 <b>製作字幕影片</b>：軟體會下載影片、使用 Whisper 進行轉錄，並以 ffmpeg 將字幕燒錄進影片中，產生一個以該影片命名並帶有 <code>-subbed.mp4</code> 的檔案。下載的原始檔案與逐字稿均會保留，且絕不會覆寫現有的 <code>-subbed.mp4</code>。</p></div></article>
         <article class="qa"><h3>我可以讓這款應用程式完全不連網嗎？</h3><div class="faq-a"><p>可以。<b>檔案 → 離線工作</b> 會停止檢查更新、使用狀況統計、模型下載以及遠端 AI 提供者。開啟此模式時，視窗底部會有一行字顯示是否有連線開啟，且 <em>立即驗證離線狀態</em> 會顯示測試連線已被拒絕。關閉此模式時，軟體僅在啟動時讀取其線上設定、執行每日更新檢查、傳送使用狀況統計（可於「說明」→「使用狀況統計」關閉），以及進行您手動發起的下載。</p></div></article>
         <article class="qa"><h3>我該如何聯絡專案團隊？</h3><div class="faq-a"><p>錯誤回報與功能建議請至 <a href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener">GitHub Issues</a>，提問請至 <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">Discussions</a>，其他事項請透過電子郵件聯絡（地址可在 <a href="#contact">聯絡資訊區塊</a> 點選顯示）。安全性回報請透過 GitHub 的私人漏洞回報機制。</p></div></article>

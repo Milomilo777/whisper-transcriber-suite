@@ -4,6 +4,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+
+- **The website describes 2.3**: a "What's new in 2.3" section above the older releases' cards, a 2.3 FAQ
+  answer and a 2.3 line in `llms.txt`.
+
 ### Fixed
 
 - **The website's download count near the top is current again**: it now comes from the same hourly-cached

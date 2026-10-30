@@ -327,10 +327,10 @@
     },
     {
       "@type": "Question",
-      "name": "Mi újság a 2.2-es verzióban?",
+      "name": "What is new in version 2.3?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "A pontossági szintek leváltják a motor- és modellválasztót az Átírás lapon: válaszd a Gyors, a Kiegyensúlyozott vagy a Legjobb szintet, és az alkalmazás olyan modellt választ, amely illik a nyelvedhez és a géped teljesítményéhez, az új telepítések pedig a Large v3 Turbóval indulnak. A ritkábban használt beállítások a További lehetőségek alatt vannak. A perzsa, kínai, japán, német, thai, svéd és héber nyelvhez az adott nyelvre tanított modell jár. A Webes / LAN-hozzáférés lap QR-kódot mutat, így telefonról, ugyanazon a Wi-Fi-n elküldhetsz egy felvételt. A Windows tükrözi az ablakot perzsa, arab és héber nyelvhez. A kétnyelvű hang kísérleti lehetőségként elérhető, a Letöltés űrlap pedig tömörebb lett. Mind a 42 felületnyelv teljes, és 35 hibát javítottunk. A webhelyen van egy oldal is, amely a böngésződben átír egy rövid fájlt. A 2.1-es verzió hozta a 42 nyelvű felületet, a megbízható beszélőcímkéket és a biztonságosabb mentést; a 2.0-s verzió a várólista sebességét és hátralévő idejét, a feliratos videót linkből, az átiratot egyetlen offline weboldalként, a bejelölhető Offline munka módot és az angolra fordítást."
+        "text": "A globe button above the tabs switches the interface language, and Persian, Arabic and Hebrew now work on macOS too. On M-series Macs, Whisper runs on the GPU through Apple's MLX. Finished transcripts can be saved as Obsidian notes or sent to a webhook such as n8n, the built-in server guards the links it downloads and slows down wrong passwords, a download never overwrites a file with the same name, Live captions survive a crash, and Groq is one click away in Advanced → AI. More than 107 bugs were fixed. Version 2.2 brought Fast, Balanced or Best accuracy, models trained for one language, phone access by QR code and a right-to-left window on Windows. Version 2.1 added the interface in 42 languages, reliable speaker labels and safer saving; version 2.0 added the queue's speed and time left, subtitled video from a link, transcripts as one offline web page, a checkable Work offline mode and translation to English."
       }
     },
     {
@@ -570,16 +570,51 @@
     </div>
   </section>
 
-  <!-- ============ WHAT'S NEW IN 2.2 (AND 2.1, 2.0) ============ -->
+  <!-- ============ WHAT'S NEW IN 2.3 (AND 2.2, 2.1, 2.0) ============ -->
   <section class="section whatsnew" id="whats-new" aria-labelledby="new-title">
     <div class="wrap">
       <header class="section-head sr">
-        <p class="eyebrow">Újdonság a 2.2-ben</p>
-        <h2 id="new-title">Mi újság a 2.2-ben. <span class="h2-soft">Egyszerűbb, és a zsebedben van.</span></h2>
-        <p class="section-lede">Egyetlen Pontosság-választó a motor- és modellválasztók helyett, egy nyelvre tanított modellek, a telefonod mint bemenet, tükrözött ablak perzsa, arab és héber nyelvhez, és egy kipróbálóoldal a böngészőben. Alattuk azt találod, amit a 2.1 és a 2.0 hozott.</p>
+        <p class="eyebrow">New in 2.3</p>
+        <h2 id="new-title">What's new in 2.3. <span class="h2-soft">Your language, your Mac, your other apps.</span></h2>
+        <p class="section-lede">A language button above the tabs, Whisper on the GPU of M-series Macs, transcripts sent to Obsidian or n8n, a safer built-in server and more than 107 bugs fixed. Below them, what 2.2, 2.1 and 2.0 added.</p>
       </header>
 
       <div class="new-grid">
+        <article class="new-card sr">
+          <p class="new-tag">2.3 · All platforms</p>
+          <h3>A language button</h3>
+          <p>A globe button above the tabs shows the language the app runs in and opens a list of every language by its own name. Persian, Arabic and Hebrew now work on macOS too, and Persian and Arabic on Linux.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.3 · macOS</p>
+          <h3>Whisper on the Mac's GPU</h3>
+          <p>On a Mac with an M-series chip, Whisper runs on the graphics chip through Apple's MLX, chosen for you when the model has an MLX version. Pick Faster-Whisper in the Engine list to turn it off.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.3 · All platforms</p>
+          <h3>Send transcripts to other apps</h3>
+          <p>When a job finishes, the transcript can also be saved as a note in your Obsidian vault, and a short message can go to a web address such as an n8n webhook. Turn them on in <em>Advanced → App behaviour</em>.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.3 · All platforms</p>
+          <h3>A safer built-in server</h3>
+          <p>Links sent to the Web / LAN server download through a guarded path that refuses addresses inside your network, and wrong passwords are slowed down after five tries.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.3 · All platforms</p>
+          <h3>Downloads leave your files alone</h3>
+          <p>If a file with the same name is already in the folder, the new download is saved as <em>Title (1)</em> and the old file is never touched. Very long titles no longer make a download fail.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.3 · All platforms</p>
+          <h3>Live captions that survive a crash</h3>
+          <p>Every finished sentence in the Live tab is written to disk before it appears, so a crash or power cut before you save no longer loses it. On a Mac, the Live tab explains the microphone permission the first time it listens.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.3 · All platforms</p>
+          <h3>Groq in one click</h3>
+          <p>Press <em>Use Groq</em> in <em>Advanced → AI</em> and add your free Groq key for summaries and translations from a fast online model. Persian <em>Best quality</em> now uses a model trained for Persian.</p>
+        </article>
         <article class="new-card sr">
           <p class="new-tag">2.2 · Minden platform</p>
           <h3>Egyszerűbb Átírás lap</h3>
@@ -934,7 +969,7 @@ python gui.py</code></pre>
         <article class="qa"><h3>Képes hangot klónozni, és új szöveget kimondatni vele?</h3><div class="faq-a"><p>Igen, az opcionális Hang lapon, amely az OmniVoice-t (Apache-2.0) használja teljesen a gépeden. Alapértelmezés szerint ki van kapcsolva; a telepítés során engedélyezhető, és meg kell erősítened, hogy rendelkezel engedéllyel a referenciahang klónozásához.</p></div></article>
         <article class="qa"><h3>Miben különbözik ez a Whisper API közvetlen meghívásától?</h3><div class="faq-a"><p>Alapértelmezés szerint a modellt helyben futtatja a faster-whisper segítségével, így nincs percalapú API-költség, és semmilyen hanganyag nem hagyja el a gépedet — hacsak kifejezetten be nem kapcsolod a két felhőalapú backend egyikét.</p></div></article>
         <article class="qa"><h3>Használhatják többen is ugyanazon a hálózaton anélkül, hogy minden gépre telepíteni kellene?</h3><div class="faq-a"><p>Igen — a Webes / LAN-hozzáférés mód átíró oldallá alakítja ezt a gépet, amelyet a hálózat többi eszköze is használhat.</p></div></article>
-        <article class="qa"><h3>Mi újság a 2.2-es verzióban?</h3><div class="faq-a"><p>A pontossági szintek leváltják a motor- és modellválasztót az Átírás lapon: válaszd a Gyors, a Kiegyensúlyozott vagy a Legjobb szintet, és az alkalmazás olyan modellt választ, amely illik a nyelvedhez és a géped teljesítményéhez, az új telepítések pedig a Large v3 Turbóval indulnak. A ritkábban használt beállítások a <em>További lehetőségek</em> alatt vannak. A perzsa, kínai, japán, német, thai, svéd és héber nyelvhez az adott nyelvre tanított modell jár. A Webes / LAN-hozzáférés lap QR-kódot mutat, így telefonról, ugyanazon a Wi-Fi-n elküldhetsz egy felvételt. A Windows tükrözi az ablakot perzsa, arab és héber nyelvhez. A kétnyelvű hang kísérleti lehetőségként elérhető, a Letöltés űrlap pedig tömörebb lett. Mind a 42 felületnyelv teljes, és 35 hibát javítottunk. A webhelyen van egy <a href="/hu/try/">oldal is, amely a böngésződben átír egy rövid fájlt</a>. A 2.1-es verzió hozta a 42 nyelvű felületet, a megbízható beszélőcímkéket és a biztonságosabb mentést; a 2.0-s verzió a várólista sebességét és hátralévő idejét, a feliratos videót linkből, az átiratot egyetlen offline weboldalként, az ellenőrizhető Offline munka módot és az angolra fordítást. Lásd: <a href="#whats-new">Mi újság a 2.2-ben</a> és a <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">változásnapló</a>.</p></div></article>
+        <article class="qa"><h3>What is new in version 2.3?</h3><div class="faq-a"><p>A globe button above the tabs switches the interface language, and Persian, Arabic and Hebrew now work on macOS too. On M-series Macs, Whisper runs on the GPU through Apple's MLX. Finished transcripts can be saved as Obsidian notes or sent to a webhook such as n8n, the built-in server guards the links it downloads and slows down wrong passwords, a download never overwrites a file with the same name, Live captions survive a crash, and Groq is one click away in <em>Advanced → AI</em>. More than 107 bugs were fixed. Version 2.2 brought Fast, Balanced or Best accuracy, models trained for one language, phone access by QR code, a right-to-left window on Windows and a <a href="/hu/try/">page that transcribes a short file in your browser</a>. Version 2.1 added the interface in 42 languages, reliable speaker labels and safer saving; version 2.0 added the queue's speed and time left, subtitled video from a link, transcripts as one offline web page, a checkable Work offline mode and translation to English. See <a href="#whats-new">What's new in 2.3</a> and the <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">changelog</a>.</p></div></article>
         <article class="qa"><h3>Képes egy videóhivatkozásból feliratos videót készíteni?</h3><div class="faq-a"><p>Igen. A Videók letöltése lapon jelöld be a <b>Feliratos videó készítése</b> lehetőséget: az app letölti a videót, átírja a Whisperrel, és az ffmpeg segítségével ráégeti a feliratokat, létrehozva egy a videóról elnevezett fájlt ezzel: <code>-subbed.mp4</code>. A letöltés és az átirat megmarad, és egy már meglévő <code>-subbed.mp4</code> soha nem íródik felül.</p></div></article>
         <article class="qa"><h3>Teljesen hálózati kapcsolat nélkül tarthatom az alkalmazást?</h3><div class="faq-a"><p>Igen. A <b>Fájl → Offline munka</b> leállítja a frissítésellenőrzést, a használati statisztikát, a modell-letöltéseket és a távoli AI-szolgáltatókat. Amíg be van kapcsolva, az ablak alján egy sor jelzi, hogy nyitva van-e kapcsolat, az <em>Offline ellenőrzés most</em> pedig mutatja a tesztkapcsolatok elutasítását. Kikapcsolt állapotban az alkalmazás csak az indításkori online beállítások lekéréséhez, a napi frissítésellenőrzéshez, a használati statisztikához (amely a Súgó → Használati statisztika menüpontban kapcsolható ki) és az általad indított letöltésekhez kapcsolódik a hálózathoz.</p></div></article>
         <article class="qa"><h3>Hogyan léphetek kapcsolatba a projekttel?</h3><div class="faq-a"><p>A hibajelentéseket és funkciókéréseket a <a href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener">GitHub Issues</a>, a kérdéseket a <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">Discussions</a> felületén várjuk, minden egyéb pedig e-mailben intézhető (a cím kérésre megjelenik a <a href="#contact">Kapcsolat szakaszban</a>). A biztonsági bejelentések a GitHub privát sebezhetőség-bejelentőjén keresztül küldhetők be.</p></div></article>

@@ -325,10 +325,10 @@
     },
     {
       "@type": "Question",
-      "name": "2.2 সংস্করণে নতুন কী?",
+      "name": "What is new in version 2.3?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "ট্রান্সক্রাইব ট্যাবে ইঞ্জিন ও মডেল বাছাইয়ের জায়গায় এখন নির্ভুলতার স্তর: দ্রুত, ভারসাম্যপূর্ণ বা সেরা বেছে নিন, আর অ্যাপ আপনার ভাষা ও কম্পিউটারের উপযোগী মডেল বেছে নেয়; নতুন ইনস্টল শুরু হয় Large v3 Turbo দিয়ে। কম ব্যবহৃত অপশনগুলো আছে আরও বিকল্পের ভেতরে। ফার্সি, চীনা, জাপানি, জার্মান, থাই, সুইডিশ ও হিব্রুর জন্য সেই ভাষাতেই প্রশিক্ষিত মডেল মেলে; ওয়েব / LAN অ্যাক্সেস ট্যাব একটি QR কোড দেখায়, যাতে একই Wi-Fi-তে ফোন থেকে রেকর্ডিং পাঠানো যায়; Windows ফার্সি, আরবি ও হিব্রুর জন্য উইন্ডো উল্টে (ডান-থেকে-বামে) দেয়; দুই ভাষার অডিও একটি পরীক্ষামূলক অপশন হিসেবে আছে; আর ডাউনলোড ফর্ম আরও গোছানো। 42টি ইন্টারফেস ভাষাই সম্পূর্ণ এবং 35টি বাগ ঠিক করা হয়েছে। সাইটে এমন একটি পেজও আছে যা ছোট ফাইল আপনার ব্রাউজারেই ট্রান্সক্রাইব করে। 2.1 সংস্করণে এসেছিল 42 ভাষার ইন্টারফেস, নির্ভরযোগ্য বক্তা লেবেল ও আরও নিরাপদ সেভ; 2.0 সংস্করণে এসেছিল সারির গতি ও বাকি সময়, লিংক থেকে সাবটাইটেলসহ ভিডিও, একটি অফলাইন ওয়েব পেজ হিসেবে ট্রান্সক্রিপ্ট, যাচাই করা যায় এমন অফলাইন মোড এবং ইংরেজিতে অনুবাদ।"
+        "text": "A globe button above the tabs switches the interface language, and Persian, Arabic and Hebrew now work on macOS too. On M-series Macs, Whisper runs on the GPU through Apple's MLX. Finished transcripts can be saved as Obsidian notes or sent to a webhook such as n8n, the built-in server guards the links it downloads and slows down wrong passwords, a download never overwrites a file with the same name, Live captions survive a crash, and Groq is one click away in Advanced → AI. More than 107 bugs were fixed. Version 2.2 brought Fast, Balanced or Best accuracy, models trained for one language, phone access by QR code and a right-to-left window on Windows. Version 2.1 added the interface in 42 languages, reliable speaker labels and safer saving; version 2.0 added the queue's speed and time left, subtitled video from a link, transcripts as one offline web page, a checkable Work offline mode and translation to English."
       }
     },
     {
@@ -568,16 +568,51 @@
     </div>
   </section>
 
-  <!-- ============ WHAT'S NEW IN 2.2 (AND 2.1, 2.0) ============ -->
+  <!-- ============ WHAT'S NEW IN 2.3 (AND 2.2, 2.1, 2.0) ============ -->
   <section class="section whatsnew" id="whats-new" aria-labelledby="new-title">
     <div class="wrap">
       <header class="section-head sr">
-        <p class="eyebrow">2.2-এ নতুন</p>
-        <h2 id="new-title">2.2-এ নতুন কী। <span class="h2-soft">আরও সহজ, আর আপনার পকেটে।</span></h2>
-        <p class="section-lede">ইঞ্জিন ও মডেল বাছাইয়ের বদলে একটিমাত্র নির্ভুলতার বিকল্প, এক ভাষার জন্য প্রশিক্ষিত মডেল, প্রবেশপথ হিসেবে আপনার ফোন, ফার্সি, আরবি ও হিব্রুর জন্য উল্টানো উইন্ডো, আর ব্রাউজারে ট্রাই করার পেজ। এগুলোর নিচে 2.1 ও 2.0 যা যোগ করেছিল।</p>
+        <p class="eyebrow">New in 2.3</p>
+        <h2 id="new-title">What's new in 2.3. <span class="h2-soft">Your language, your Mac, your other apps.</span></h2>
+        <p class="section-lede">A language button above the tabs, Whisper on the GPU of M-series Macs, transcripts sent to Obsidian or n8n, a safer built-in server and more than 107 bugs fixed. Below them, what 2.2, 2.1 and 2.0 added.</p>
       </header>
 
       <div class="new-grid">
+        <article class="new-card sr">
+          <p class="new-tag">2.3 · All platforms</p>
+          <h3>A language button</h3>
+          <p>A globe button above the tabs shows the language the app runs in and opens a list of every language by its own name. Persian, Arabic and Hebrew now work on macOS too, and Persian and Arabic on Linux.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.3 · macOS</p>
+          <h3>Whisper on the Mac's GPU</h3>
+          <p>On a Mac with an M-series chip, Whisper runs on the graphics chip through Apple's MLX, chosen for you when the model has an MLX version. Pick Faster-Whisper in the Engine list to turn it off.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.3 · All platforms</p>
+          <h3>Send transcripts to other apps</h3>
+          <p>When a job finishes, the transcript can also be saved as a note in your Obsidian vault, and a short message can go to a web address such as an n8n webhook. Turn them on in <em>Advanced → App behaviour</em>.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.3 · All platforms</p>
+          <h3>A safer built-in server</h3>
+          <p>Links sent to the Web / LAN server download through a guarded path that refuses addresses inside your network, and wrong passwords are slowed down after five tries.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.3 · All platforms</p>
+          <h3>Downloads leave your files alone</h3>
+          <p>If a file with the same name is already in the folder, the new download is saved as <em>Title (1)</em> and the old file is never touched. Very long titles no longer make a download fail.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.3 · All platforms</p>
+          <h3>Live captions that survive a crash</h3>
+          <p>Every finished sentence in the Live tab is written to disk before it appears, so a crash or power cut before you save no longer loses it. On a Mac, the Live tab explains the microphone permission the first time it listens.</p>
+        </article>
+        <article class="new-card sr">
+          <p class="new-tag">2.3 · All platforms</p>
+          <h3>Groq in one click</h3>
+          <p>Press <em>Use Groq</em> in <em>Advanced → AI</em> and add your free Groq key for summaries and translations from a fast online model. Persian <em>Best quality</em> now uses a model trained for Persian.</p>
+        </article>
         <article class="new-card sr">
           <p class="new-tag">2.2 · সব প্ল্যাটফর্ম</p>
           <h3>আরও সহজ ট্রান্সক্রাইব ট্যাব</h3>
@@ -932,7 +967,7 @@ python gui.py</code></pre>
         <article class="qa"><h3>এটি কি একটি কণ্ঠস্বর ক্লোন করতে এবং এটিকে নতুন টেক্সট বলতে পারে?</h3><div class="faq-a"><p>হ্যাঁ, ঐচ্ছিক আপনার কণ্ঠস্বর ক্লোন করুন ট্যাবের মাধ্যমে, সম্পূর্ণভাবে আপনার মেশিনে OmniVoice (Apache-2.0) ব্যবহার করে। ডিফল্টভাবে বন্ধ; ইনস্টলের সময় এটি চালু করতে পারেন, এবং রেফারেন্স কণ্ঠস্বর ক্লোন করার অনুমতি আপনার আছে কিনা তা নিশ্চিত করতে হবে।</p></div></article>
         <article class="qa"><h3>এটি সরাসরি Whisper API কল করার থেকে কীভাবে আলাদা?</h3><div class="faq-a"><p>এটি ডিফল্টভাবে faster-whisper-এর মাধ্যমে মডেলটি লোকালি চালায়, তাই প্রতি মিনিটে কোনো API খরচ নেই এবং কোনো অডিও আপনার মেশিন ছেড়ে যায় না — যদি না আপনি স্পষ্টভাবে দুটি ক্লাউড ব্যাকএন্ডের একটিতে অপ্ট-ইন করেন।</p></div></article>
         <article class="qa"><h3>একই নেটওয়ার্কের কয়েকজন লোক কি প্রতিটি মেশিনে ইনস্টল না করেই এটি ব্যবহার করতে পারে?</h3><div class="faq-a"><p>হ্যাঁ — Web/LAN অ্যাক্সেস মোড এই মেশিনটিকে একটি ট্রান্সক্রিপশন পেজে পরিণত করে যা নেটওয়ার্কের অন্যান্য ডিভাইসগুলো ব্যবহার করতে পারে।</p></div></article>
-        <article class="qa"><h3>2.2 সংস্করণে নতুন কী?</h3><div class="faq-a"><p>ট্রান্সক্রাইব ট্যাবে ইঞ্জিন ও মডেল বাছাইয়ের জায়গায় এখন নির্ভুলতার স্তর: দ্রুত, ভারসাম্যপূর্ণ বা সেরা বেছে নিন, আর অ্যাপ আপনার ভাষা ও কম্পিউটারের উপযোগী মডেল বেছে নেয়; নতুন ইনস্টল শুরু হয় Large v3 Turbo দিয়ে। কম ব্যবহৃত অপশনগুলো আছে <em>আরও বিকল্প</em>-এর ভেতরে। ফার্সি, চীনা, জাপানি, জার্মান, থাই, সুইডিশ ও হিব্রুর জন্য সেই ভাষাতেই প্রশিক্ষিত মডেল মেলে; ওয়েব / LAN অ্যাক্সেস ট্যাব একটি QR কোড দেখায়, যাতে একই Wi-Fi-তে ফোন থেকে রেকর্ডিং পাঠানো যায়; Windows ফার্সি, আরবি ও হিব্রুর জন্য উইন্ডো উল্টে (ডান-থেকে-বামে) দেয়; দুই ভাষার অডিও একটি পরীক্ষামূলক অপশন হিসেবে আছে; আর ডাউনলোড ফর্ম আরও গোছানো। 42টি ইন্টারফেস ভাষাই সম্পূর্ণ এবং 35টি বাগ ঠিক করা হয়েছে। সাইটে এমন একটি <a href="/bn/try/">পেজও আছে যা ছোট ফাইল আপনার ব্রাউজারেই ট্রান্সক্রাইব করে</a>। 2.1 সংস্করণে এসেছিল 42 ভাষার ইন্টারফেস, নির্ভরযোগ্য বক্তা লেবেল ও আরও নিরাপদ সেভ; 2.0 সংস্করণে এসেছিল সারির গতি ও বাকি সময়, লিংক থেকে সাবটাইটেলসহ ভিডিও, একটি অফলাইন ওয়েব পেজ হিসেবে ট্রান্সক্রিপ্ট, যাচাই করা যায় এমন অফলাইন মোড এবং ইংরেজিতে অনুবাদ। দেখুন <a href="#whats-new">2.2-এ নতুন কী</a> ও <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">চেঞ্জলগ</a>।</p></div></article>
+        <article class="qa"><h3>What is new in version 2.3?</h3><div class="faq-a"><p>A globe button above the tabs switches the interface language, and Persian, Arabic and Hebrew now work on macOS too. On M-series Macs, Whisper runs on the GPU through Apple's MLX. Finished transcripts can be saved as Obsidian notes or sent to a webhook such as n8n, the built-in server guards the links it downloads and slows down wrong passwords, a download never overwrites a file with the same name, Live captions survive a crash, and Groq is one click away in <em>Advanced → AI</em>. More than 107 bugs were fixed. Version 2.2 brought Fast, Balanced or Best accuracy, models trained for one language, phone access by QR code, a right-to-left window on Windows and a <a href="/bn/try/">page that transcribes a short file in your browser</a>. Version 2.1 added the interface in 42 languages, reliable speaker labels and safer saving; version 2.0 added the queue's speed and time left, subtitled video from a link, transcripts as one offline web page, a checkable Work offline mode and translation to English. See <a href="#whats-new">What's new in 2.3</a> and the <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/CHANGELOG.md" rel="noopener">changelog</a>.</p></div></article>
         <article class="qa"><h3>এটি কি একটি ভিডিও লিঙ্ককে সাবটাইটেলযুক্ত ভিডিওতে পরিণত করতে পারে?</h3><div class="faq-a"><p>হ্যাঁ। ভিডিও ডাউনলোড ট্যাবে, <b>সাবটাইটেলযুক্ত ভিডিও তৈরি করুন</b> টিক দিন: অ্যাপটি ভিডিওটি ডাউনলোড করে, Whisper দিয়ে ট্রান্সক্রাইব করে এবং ffmpeg দিয়ে সাবটাইটেলগুলো বার্ন করে, যার ফলে ভিডিওটির নামের সাথে মিলিয়ে <code>-subbed.mp4</code> সহ একটি ফাইল তৈরি হয়। ডাউনলোড এবং ট্রান্সক্রিপ্টটি রাখা হয়, এবং একটি বিদ্যমান <code>-subbed.mp4</code> কখনোই প্রতিস্থাপিত হয় না।</p></div></article>
         <article class="qa"><h3>আমি কি অ্যাপটিকে সম্পূর্ণরূপে নেটওয়ার্ক থেকে দূরে রাখতে পারি?</h3><div class="faq-a"><p>হ্যাঁ। <b>File → অফলাইনে কাজ করুন</b> আপডেট চেক, ব্যবহারের পরিসংখ্যান, মডেল ডাউনলোড এবং রিমোট AI প্রোভাইডারগুলো বন্ধ করে দেয়। এটি চালু থাকাকালীন, উইন্ডোর নিচের দিকের একটি লাইনে বলা থাকে যে কোনো সংযোগ খোলা আছে কিনা, এবং <em>এখনই অফলাইন যাচাই করুন</em> টেস্ট সংযোগগুলো প্রত্যাখ্যাত হতে দেখায়। এটি বন্ধ থাকলে, অ্যাপটি কেবল স্টার্টআপে এর অনলাইন সেটিংস, দৈনিক আপডেট চেক, ব্যবহারের পরিসংখ্যান (যা Help → ব্যবহারের পরিসংখ্যান থেকে বন্ধ করা যায়) এবং আপনার শুরু করা ডাউনলোডগুলোর জন্য নেটওয়ার্কে যোগাযোগ করে।</p></div></article>
         <article class="qa"><h3>আমি কীভাবে প্রকল্পের সাথে যোগাযোগ করতে পারি?</h3><div class="faq-a"><p>বাগ এবং ফিচারের অনুরোধগুলো <a href="https://github.com/Milomilo777/whisper-transcriber-suite/issues" rel="noopener">GitHub Issues</a>-এ করুন, প্রশ্নগুলো <a href="https://github.com/Milomilo777/whisper-transcriber-suite/discussions" rel="noopener">Discussions</a>-এ, এবং অন্য যেকোনো কিছু ইমেলের মাধ্যমে (ঠিকানাটি অনুরোধের পর <a href="#contact">যোগাযোগ বিভাগে</a> দেখানো হয়)। নিরাপত্তা রিপোর্টগুলো GitHub-এর প্রাইভেট ভালনারেবিলিটি রিপোর্টিংয়ের মাধ্যমে যায়।</p></div></article>
