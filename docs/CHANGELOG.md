@@ -4,6 +4,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Removed
+
+- The usage-stats server code is no longer part of the repository.
+
 ### Added
 
 - **The website describes 2.3**: a "What's new in 2.3" section above the older releases' cards, a 2.3 FAQ

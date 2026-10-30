@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import inspect
 import uuid
-from pathlib import Path
 
 import pytest
 
@@ -119,10 +118,3 @@ def test_problem_reports_never_carry_the_id():
     payload = problem_report.build_payload("it crashed")
     assert "install_id" not in payload
     assert "install_id" not in inspect.getsource(problem_report)
-
-
-def test_server_script_stores_the_column():
-    php = (Path(__file__).resolve().parents[2] / "platform" / "stats-server" / "transcription_stats.php").read_text(
-        encoding="utf-8"
-    )
-    assert "'install_id'" in php and ":install_id" in php

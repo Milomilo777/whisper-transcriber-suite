@@ -530,9 +530,7 @@ DEFAULT_CONFIG = {
     # endpoint, defaulted to the project's own collector so stats work out of
     # the box (a no-op whenever ``telemetry_opt_in`` is off — see
     # core.stats.post_stats_async); it is never saved to config.json, so a new
-    # default reaches every user on upgrade. The collector is the Worker in
-    # platform/stats-worker/ (older versions post to the PHP script in
-    # platform/stats-server/). ``latest_version`` is the
+    # default reaches every user on upgrade. ``latest_version`` is the
     # newest published version string. Both are SAFE for the online layer to
     # control.
     "stats_url": "https://stats.whisper-transcriber-suite.com/v1/runs",
