@@ -31,6 +31,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   Windows and macOS not to sleep by themselves (the screen may still turn off; closing the lid still sleeps).
 - **An out-of-memory failure says so**: instead of a raw "Unable to allocate ..." text, the error explains
   that memory ran out and suggests closing other programs, a smaller model or a shorter part.
+- **Two download messages appear in your language**: the notices for a download that is still stopping and
+  for a file name that is already in the download folder were English-only; they are now in all 41 other
+  interface languages.
 - **The website's download count near the top is current again**: it now comes from the same hourly-cached
   counter as the footer, instead of a number written into the page once a week.
 
