@@ -71,11 +71,16 @@ def test_transcription_service_restarts_on_real_monotonic_timeout(monkeypatch):
     monkeypatch.setattr(service, "_restart_wedged_worker", lambda w, dt: restarted_workers.append(w))
     monkeypatch.setattr(service, "_expire_dead_workers", lambda now: None)
 
-    # Simulate real elapsed time exceeding timeout
+    # Simulate real elapsed time exceeding timeout. Polls keep running through
+    # the silence (every 100 ms in the app; 1 s steps here): one jump with no
+    # poll in between is a system sleep, which the watchdog must not count
+    # (tests/core/test_liveness_after_sleep.py).
     real_monotonic = time.monotonic()
-    monkeypatch.setattr(time, "monotonic", lambda: real_monotonic + service.LIVENESS_TIMEOUT_S + 10.0)
-
-    service._poll_once()
+    clock = [real_monotonic]
+    monkeypatch.setattr(time, "monotonic", lambda: clock[0])
+    while not restarted_workers and clock[0] < real_monotonic + service.LIVENESS_TIMEOUT_S + 10.0:
+        clock[0] += 1.0
+        service._poll_once()
 
     assert len(restarted_workers) == 1
     assert restarted_workers[0]["id"] == 2
