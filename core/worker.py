@@ -82,6 +82,7 @@ from typing import Any, Callable, Iterator, cast
 from . import task_settings
 from ._proc import parent_identity, wait_parent_gone
 from .config import load_config
+from .keep_awake import keep_awake
 from .logging_setup import setup_logging, worker_log_filename
 from .task import TranscriptionTask
 from .translate_task import normalise_task
@@ -1132,13 +1133,15 @@ def _main() -> int:
                 emit("language_detected", language=lang, probability=prob, file_path=file_path)
 
             try:
-                did_resume = False
-                if task.resume:
-                    did_resume = resume_transcription(
-                        task, progress_cb, log_cb, language_cb=language_cb
-                    )
-                if not did_resume:
-                    transcribe(task, progress_cb, log_cb, language_cb=language_cb)
+                # No idle sleep mid-job: see core/keep_awake.py.
+                with keep_awake():
+                    did_resume = False
+                    if task.resume:
+                        did_resume = resume_transcription(
+                            task, progress_cb, log_cb, language_cb=language_cb
+                        )
+                    if not did_resume:
+                        transcribe(task, progress_cb, log_cb, language_cb=language_cb)
             finally:
                 # Clear the in-flight slot BEFORE the done event goes out.
                 # The parent only learns this task ended when it sees
