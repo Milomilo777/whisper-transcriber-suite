@@ -45,10 +45,12 @@ def gather_speech(audio: Any, chunks: list[dict], sampling_rate: int = 16000) ->
 
 def _make_collect(original: Callable[..., Any]) -> Callable[..., Any]:
     def collect_chunks(audio: Any, chunks: list[dict], sampling_rate: int = 16000,
-                       max_duration: float = float("inf")) -> Any:
-        if not chunks or not (isinstance(max_duration, float) and math.isinf(max_duration)
-                              and max_duration > 0):
-            return original(audio, chunks, sampling_rate, max_duration)
+                       max_duration: float = float("inf"), *args: Any, **kwargs: Any) -> Any:
+        if args or kwargs or not chunks or not (
+                isinstance(max_duration, float) and math.isinf(max_duration)
+                and max_duration > 0):
+            # Arguments a later faster-whisper may add: only upstream knows them.
+            return original(audio, chunks, sampling_rate, max_duration, *args, **kwargs)
         return gather_speech(audio, chunks, sampling_rate)
 
     setattr(collect_chunks, _MARKER, True)
