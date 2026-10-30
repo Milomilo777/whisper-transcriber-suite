@@ -118,6 +118,10 @@ def test_connections_beyond_the_cap_get_a_fast_503(small_server):
             held.append(s)
         assert _wait_until(
             lambda: small_server.server.active_connections() == 3)
+        # Headers parsed too: a still-pending connection would be evicted to
+        # make room for the extra one instead of the extra getting the 503.
+        assert _wait_until(
+            lambda: small_server.server.pending_connections() == 0)
         extra = socket.create_connection(("127.0.0.1", small_server.port),
                                          timeout=3)
         started = time.monotonic()
