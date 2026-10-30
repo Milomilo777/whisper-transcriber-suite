@@ -116,11 +116,16 @@ def _make_call(original: Callable[..., Any]) -> Callable[..., Any]:
 
 
 def _matches_upstream(extractor_cls: Any, original: Callable[..., Any]) -> bool:
-    """Compare the block version with upstream on 3 s of noise, 64-frame blocks."""
+    """Compare the block version with upstream on 3 s of noise, 64-frame blocks.
+
+    The last second is 30x louder, so the global ``max - 8`` floor differs
+    from any single early block's.
+    """
     import numpy as np
 
     rng = np.random.default_rng(1234)
-    audio = (rng.standard_normal(48_000) * 0.1).astype(np.float32)
+    audio = (rng.standard_normal(48_000) * 0.01).astype(np.float32)
+    audio[32_000:] *= 30
     for n_mels in (80, 128):
         fe = extractor_cls(feature_size=n_mels)
         want = original(fe, audio)
