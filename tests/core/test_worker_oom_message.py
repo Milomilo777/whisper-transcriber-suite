@@ -22,6 +22,9 @@ def test_out_of_memory_errors_get_the_note(exc):
 @pytest.mark.parametrize("exc", [
     RuntimeError("Invalid data found when processing input"),
     ValueError("Time range start (900s) is at or beyond the media length"),
+    # A file name is not an out-of-memory failure.
+    FileNotFoundError(2, "No such file or directory", "C:/talks/Out of memory podcast.mp3"),
+    ValueError("could not read 'bad_alloc notes.wav'"),
 ])
 def test_other_errors_are_unchanged(exc):
     assert worker._job_error_message(exc) == str(exc)

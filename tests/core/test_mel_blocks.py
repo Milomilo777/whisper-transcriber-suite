@@ -83,6 +83,10 @@ def test_install_routes_long_inputs_to_blocks_and_short_ones_upstream(monkeypatc
     long = _signal(16000 * 12)    # 1200 frames: blocks
     np.testing.assert_allclose(fe(long), _upstream()(fe, long), rtol=0, atol=1e-5)
     assert seen == [1]
+    # An argument only a later faster-whisper knows goes to upstream untouched.
+    with pytest.raises(TypeError):
+        fe(long, 160, None, "future-arg")
+    assert seen == [1]
 
 
 def test_install_refuses_an_extractor_it_cannot_reproduce(monkeypatch):

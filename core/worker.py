@@ -791,7 +791,11 @@ def _job_error_message(exc: BaseException) -> str:
     """The error text sent to the app; an out-of-memory failure says so plainly."""
     text = str(exc) or type(exc).__name__
     lowered = text.lower()
-    if isinstance(exc, MemoryError) or any(m in lowered for m in _OUT_OF_MEMORY_MARKERS):
+    # Markers only on the engines' RuntimeError (CTranslate2; torch's CUDA OOM
+    # subclasses it): an OSError or ValueError text can hold a file name such
+    # as "Out of memory podcast.mp3".
+    if isinstance(exc, MemoryError) or (
+            isinstance(exc, RuntimeError) and any(m in lowered for m in _OUT_OF_MEMORY_MARKERS)):
         return f"{OUT_OF_MEMORY_NOTE} ({type(exc).__name__}: {text})"
     return text
 

@@ -34,6 +34,7 @@ def _windows_set(flags: int) -> bool:
     import ctypes
 
     kernel32 = getattr(ctypes, "windll").kernel32
+    kernel32.SetThreadExecutionState.argtypes = [ctypes.c_uint32]
     kernel32.SetThreadExecutionState.restype = ctypes.c_uint32
     # Returns the previous state (ES_CONTINUOUS at least), or 0 on failure.
     return bool(kernel32.SetThreadExecutionState(ctypes.c_uint32(flags)))

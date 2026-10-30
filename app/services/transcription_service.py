@@ -1612,23 +1612,30 @@ class TranscriptionService:
     # poll() runs every 100 ms while a worker is busy. A much longer gap means
     # this process itself was not running: the computer slept (Windows'
     # monotonic clock keeps counting through sleep) or the GUI thread hung.
-    # Worker silence measured across such a gap says nothing about the worker.
-    SUSPEND_GAP_S: float = 30.0
+    # Worker silence measured across such a gap says nothing about the worker,
+    # so the gap is excused: only the silence before and after it counts.
+    SUSPEND_GAP_S: float = 5.0
 
     def _restart_liveness_after_gap(self, now: float) -> None:
         last_poll = getattr(self, "_last_poll_at", None)
         self._last_poll_at = now
-        if last_poll is None or now - last_poll <= self.SUSPEND_GAP_S:
+        if last_poll is None:
             return
-        restarted = 0
+        gap = now - last_poll
+        if gap <= self.SUSPEND_GAP_S:
+            return
+        excused = 0
         for w in self.app.workers:
-            if w.get("last_event_at"):
-                w["last_event_at"] = now
-                restarted += 1
-        if restarted:
+            last = float(w.get("last_event_at") or 0.0)
+            # A worker stamped after the last poll (spawned while polling was
+            # idle) was not silent through the gap.
+            if last and last <= last_poll:
+                w["last_event_at"] = last + gap
+                excused += 1
+        if excused and gap > 30.0:
             logger.info(
-                "No poll for %.0f s (system sleep or a stalled GUI); restarted the "
-                "liveness window of %d worker(s)", now - last_poll, restarted,
+                "No poll for %.0f s (system sleep or a stalled GUI); not counted as "
+                "silence for %d worker(s)", gap, excused,
             )
 
     def _poll_once(self) -> None:

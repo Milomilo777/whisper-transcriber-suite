@@ -64,33 +64,46 @@ def blockwise_log_mel(
         # Tiny input: numpy's own padding (it reflects repeatedly if needed).
         if padding:
             signal = np.pad(signal, (0, padding))
-        padded = np.pad(signal, (half, half), mode="reflect")
+        whole = np.pad(signal, (half, half), mode="reflect")
+
+        def padded(lo: int, hi: int) -> Any:
+            return whole[lo:hi]
     else:
-        # One buffer for both paddings: [reflection | signal | zeros | reflection],
-        # equal to upstream's np.pad(np.pad(x, (0, padding)), half, "reflect").
-        padded = np.empty(length + 2 * half, dtype=np.float32)
-        padded[half:half + signal.shape[0]] = signal
-        padded[half + signal.shape[0]:half + length] = 0.0
-        padded[:half] = padded[2 * half:half:-1]
-        padded[half + length:] = padded[half + length - 2:length - 2:-1]
-    del signal
-    n_frames = 1 + (padded.shape[0] - n_fft) // hop
+        # upstream: np.pad(np.pad(x, (0, padding)), half, "reflect"), i.e.
+        # [reflection | signal | zeros | reflection]. Never built whole: an
+        # interior block is a view of the signal, an edge block is gathered.
+        sig_len = signal.shape[0]
+
+        def padded(lo: int, hi: int) -> Any:
+            if lo >= half and hi <= half + sig_len:
+                return signal[lo - half:hi - half]
+            i = np.arange(lo, hi)
+            t = i - half                                  # index into signal+zeros
+            t = np.where(i < half, half - i, t)           # left reflection
+            t = np.where(i >= half + length, 2 * length - 2 - (i - half), t)  # right
+            out = np.zeros(hi - lo, dtype=np.float32)     # the zeros of `padding`
+            real = t < sig_len
+            out[real] = signal[t[real]]
+            return out
+
+    n_frames = 1 + (length + 2 * half - n_fft) // hop
     out_frames = n_frames - 1  # upstream drops the last frame
     window = np.hanning(n_fft + 1)[:-1].astype("float32")
     filters = extractor.mel_filters
     mel = np.empty((filters.shape[0], max(out_frames, 0)), dtype=np.float32)
     for start in range(0, out_frames, block_frames):
         stop = min(start + block_frames, out_frames)
-        seg = padded[start * hop:(stop - 1) * hop + n_fft]
+        seg = padded(start * hop, (stop - 1) * hop + n_fft)
         # A bounds-checked view (unlike as_strided): a short slice fails here.
         frames = np.lib.stride_tricks.sliding_window_view(seg, n_fft)[::hop]
         if frames.shape[0] != stop - start:
             raise ValueError(f"mel blocks: {frames.shape[0]} frames, expected {stop - start}")
-        spectrum = np.fft.rfft(frames * window, n=n_fft, axis=-1).astype("complex64")
+        spectrum = np.fft.rfft(frames * window, n=n_fft, axis=-1).astype(
+            "complex64", copy=False)
         power = np.abs(spectrum) ** 2
         del spectrum
         mel[:, start:stop] = filters @ power.T
-    del padded
+    del signal
     np.clip(mel, 1e-10, None, out=mel)
     np.log10(mel, out=mel)
     np.maximum(mel, mel.max() - 8.0, out=mel)
@@ -101,12 +114,13 @@ def blockwise_log_mel(
 
 def _make_call(original: Callable[..., Any]) -> Callable[..., Any]:
     def __call__(self: Any, waveform: Any, padding: int = 160,
-                 chunk_length: int | None = None) -> Any:
+                 chunk_length: int | None = None, *args: Any, **kwargs: Any) -> Any:
         ndim = getattr(waveform, "ndim", 0)
         length = waveform.shape[-1] if ndim else 0
         frames = (length + (padding or 0)) // max(int(self.hop_length), 1)
-        if ndim != 1 or frames <= BLOCK_FRAMES:
-            return original(self, waveform, padding=padding, chunk_length=chunk_length)
+        if args or kwargs or ndim != 1 or frames <= BLOCK_FRAMES:
+            # Arguments a later faster-whisper may add: only upstream knows them.
+            return original(self, waveform, padding, chunk_length, *args, **kwargs)
         return blockwise_log_mel(self, waveform, padding=padding,
                                  chunk_length=chunk_length)
 

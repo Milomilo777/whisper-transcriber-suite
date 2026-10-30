@@ -50,20 +50,42 @@ def _service(monkeypatch, clock):
     return svc, worker, restarted
 
 
-def test_a_sleep_gap_restarts_the_window_instead_of_the_worker(monkeypatch):
+def test_a_sleep_gap_is_not_counted_as_worker_silence(monkeypatch):
     clock = [1000.5]
     svc, worker, restarted = _service(monkeypatch, clock)
-    svc.poll()                      # last poll before the sleep
+    svc.poll()                      # last poll before the sleep (0.5 s of silence)
     clock[0] = 1000.5 + 600         # 10 minutes asleep, no events queued
     svc.poll()
     assert restarted == []
     woke = clock[0]
-    assert worker["last_event_at"] == woke
-    # A worker that really stays silent is still caught afterwards.
-    for _ in range(14):
-        clock[0] += 10              # polls keep running, 140 s of silence
+    assert worker["last_event_at"] == 1000.0 + 600  # the gap is excused, nothing more
+    # A worker that really stays silent is still caught: 0.5 s before the
+    # sleep + 120 s after it.
+    for _ in range(140):
+        clock[0] += 1               # polls keep running, worker silent
         svc.poll()
-    assert [(i, t - woke) for i, t in restarted] == [(1, 130)]
+    assert [(i, t - woke) for i, t in restarted] == [(1, 120)]
+
+
+def test_short_sleeps_are_excused_too(monkeypatch):
+    clock = [1000.5]
+    svc, worker, restarted = _service(monkeypatch, clock)
+    worker["last_event_at"] = 1000.0
+    svc.poll()
+    clock[0] = 1000.5 + 25          # a 25 s sleep
+    svc.poll()
+    assert worker["last_event_at"] == 1000.0 + 25
+    assert restarted == []
+
+
+def test_a_worker_stamped_during_the_gap_is_left_alone(monkeypatch):
+    clock = [1000.5]
+    svc, worker, restarted = _service(monkeypatch, clock)
+    svc.poll()                      # polling then stops (no busy worker) ...
+    clock[0] = 2000.0
+    worker["last_event_at"] = 1999.0  # ... a worker is spawned later
+    svc.poll()
+    assert worker["last_event_at"] == 1999.0  # not pushed into the future
 
 
 def test_silence_without_a_gap_still_restarts_the_worker(monkeypatch):
