@@ -774,6 +774,27 @@ class _OnceFilter(logging.Filter):
         return True
 
 
+#: Prefix of a job error caused by running out of memory (RAM or GPU memory).
+OUT_OF_MEMORY_NOTE = (
+    "Not enough memory to transcribe this file. Close other programs, pick a "
+    "smaller model, or transcribe a shorter part (Time range)."
+)
+
+# numpy raises MemoryError ("Unable to allocate 2.1 GiB for an array ..."),
+# CTranslate2 a RuntimeError naming std::bad_alloc or the CUDA error.
+_OUT_OF_MEMORY_MARKERS = ("bad_alloc", "bad allocation", "unable to allocate",
+                          "out of memory")
+
+
+def _job_error_message(exc: BaseException) -> str:
+    """The error text sent to the app; an out-of-memory failure says so plainly."""
+    text = str(exc) or type(exc).__name__
+    lowered = text.lower()
+    if isinstance(exc, MemoryError) or any(m in lowered for m in _OUT_OF_MEMORY_MARKERS):
+        return f"{OUT_OF_MEMORY_NOTE} ({type(exc).__name__}: {text})"
+    return text
+
+
 def _install_log_filters() -> None:
     target = logging.getLogger("faster_whisper")
     if not any(isinstance(f, _OnceFilter) for f in target.filters):
@@ -1152,11 +1173,12 @@ def _main() -> int:
             written = [
                 str(p) for p in (getattr(task, "output_paths", None) or [])
             ]
+            message = _job_error_message(e)
             if written:
-                emit("error", message=str(e), file_path=file_path,
+                emit("error", message=message, file_path=file_path,
                      task_id=task_id, outputs=written)
             else:
-                emit("error", message=str(e), file_path=file_path, task_id=task_id)
+                emit("error", message=message, file_path=file_path, task_id=task_id)
 
 
 if __name__ == "__main__":

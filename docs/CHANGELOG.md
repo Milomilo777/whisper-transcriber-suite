@@ -18,6 +18,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - **A cancelled transcription is no longer recorded as an error**: an error or a hung-worker restart that
   followed the Cancel used to turn the queue row, history row and usage-stats row into "error"; they now stay
   "cancelled".
+- **Long files no longer run out of memory before transcription starts**: the engine built the audio
+  features of the whole file at once (about 2.3 GB per hour of audio); they are now built in five-minute
+  blocks with the same result. Peak memory for a 3-hour file fell from 9.4 GB to 4.7 GB (measured with the
+  small model), so 8 GB computers can transcribe long recordings with larger models.
+- **An out-of-memory failure says so**: instead of a raw "Unable to allocate ..." text, the error explains
+  that memory ran out and suggests closing other programs, a smaller model or a shorter part.
 - **The website's download count near the top is current again**: it now comes from the same hourly-cached
   counter as the footer, instead of a number written into the page once a week.
 

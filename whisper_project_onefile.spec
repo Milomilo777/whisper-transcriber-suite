@@ -304,6 +304,7 @@ a = Analysis(
         'core.synthetic_audio',
         'core.tts_plan',
         'core.tts_job',
+        'core.mel_blocks',
         'core.vad_window',
         'core.language_defaults',
         'core.accuracy',
