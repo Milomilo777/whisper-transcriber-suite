@@ -11,6 +11,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- **A cancelled transcription is no longer recorded as an error**: an error or a hung-worker restart that
+  followed the Cancel used to turn the queue row, history row and usage-stats row into "error"; they now stay
+  "cancelled".
 - **The website's download count near the top is current again**: it now comes from the same hourly-cached
   counter as the footer, instead of a number written into the page once a week.
 

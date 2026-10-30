@@ -98,6 +98,14 @@ def failure_reason(file_path: str, message: object) -> str:
 CLOUD_BACKENDS = frozenset({"cloud_stt", "google_cloud_stt", "nvidia_asr"})
 
 
+def _user_cancelled(task: Any) -> bool:
+    """True when the user cancelled this task (App.cancel sets both fields).
+
+    A failure that follows such a Cancel must not turn it into an error.
+    """
+    return bool(getattr(task, "cancelled", False)) and getattr(task, "status", None) == "cancelled"
+
+
 def _mark_stopped_early(task: Any) -> None:
     """Give a job ended by a worker teardown a reason when it has none yet."""
     if not getattr(task, "error_reason", ""):
@@ -1812,9 +1820,27 @@ class TranscriptionService:
                         else:
                             failed = worker["task"]
                             message = event.get("message", "Worker error")
+                            if _user_cancelled(failed):
+                                # The user's Cancel wins over a failure that follows
+                                # it (a backend raising while it stops): the task
+                                # stays "cancelled"; the text is only logged.
+                                logger.info(
+                                    "Worker error after the user cancelled %r: %s",
+                                    getattr(failed, "file_path", "?"), message,
+                                )
+                                app.log(message)
+                                outs = event.get("outputs")
+                                if isinstance(outs, list) and outs:
+                                    # Files were written before the failure: the same
+                                    # rule as a cancel followed by "done" decides
+                                    # (all formats written -> finished, else cancelled).
+                                    failed.output_paths = [str(p) for p in outs]
+                                    self.finish_task(worker)
+                                else:
+                                    self.finish_task(worker, keep_status=True)
                             # A late failure after every output file was written must
                             # not discard the finished transcript.
-                            if not self._salvage_error_with_outputs(
+                            elif not self._salvage_error_with_outputs(
                                 worker, failed, event, message
                             ):
                                 failed.status = "error"
@@ -1965,7 +1991,11 @@ class TranscriptionService:
 
     def _restart_wedged_worker(self, w: dict[str, Any], silent_for: float) -> None:
         app = self.app
-        if w["task"]:
+        if w["task"] and _user_cancelled(w["task"]):
+            # The worker ignored the user's Cancel: the task stays "cancelled"
+            # (not a failure); only the stuck worker is replaced below.
+            self.finish_task(w, keep_status=True)
+        elif w["task"]:
             w["task"].status = "error"
             # Without a note the history row of this error was blank, so
             # the record never said why the job failed.
