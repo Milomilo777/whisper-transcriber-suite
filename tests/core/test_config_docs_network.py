@@ -83,7 +83,15 @@ def test_no_documented_field_is_missing_from_the_payload(config_md: str) -> None
         transcription_time=1.0, status="finished", word_count=1,
         install_id="00000000-0000-4000-8000-000000000000",
     )
-    extra = sorted(documented - set(payload))
+    # A failed run's row also carries the failure clue (docs list it too).
+    from core import failure_clue
+    error_payload = stats.build_stats_payload(
+        model="m", language="en", audio_duration=0.0,
+        transcription_time=1.0, status="error", word_count=0,
+        install_id="00000000-0000-4000-8000-000000000000",
+        failure_clue=failure_clue.parent_clue("parent.watchdog"),
+    )
+    extra = sorted(documented - set(payload) - set(error_payload))
     assert not extra, f"docs/CONFIG.md lists fields the payload lacks: {extra}"
 
 
