@@ -19,9 +19,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   part, so the wait before transcription grew with the square of the file length; they are now joined in one
   copy.
 - **A computer that went to sleep no longer turns the running job into an error**: on Windows the app's
-  hang check counted the sleep as minutes of silence and restarted the worker after waking. The check now
-  restarts its clock after such a gap, and while a file is being transcribed the app asks Windows and macOS
-  not to sleep by themselves (the screen may still turn off; closing the lid still sleeps).
+  hang check counted the sleep as minutes of silence and restarted the worker after waking. Time the app
+  itself was not running no longer counts as silence, and while a file is being transcribed the app asks
+  Windows and macOS not to sleep by themselves (the screen may still turn off; closing the lid still sleeps).
 - **An out-of-memory failure says so**: instead of a raw "Unable to allocate ..." text, the error explains
   that memory ran out and suggests closing other programs, a smaller model or a shorter part.
 - **The website's download count near the top is current again**: it now comes from the same hourly-cached
