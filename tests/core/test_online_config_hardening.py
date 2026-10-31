@@ -233,10 +233,10 @@ def test_only_stats_expire_from_a_timestamped_cache(tmp_path, age, expect_stats)
     assert CACHE_TIME_KEY not in result
 
 
-def test_legacy_untimed_cache_is_fresh_until_successful_rewrite(monkeypatch, tmp_path):
+def test_untimed_cache_supplies_no_stats_until_successful_rewrite(monkeypatch, tmp_path):
     cache = tmp_path / "online.json"
     cache.write_text(json.dumps({"stats_url": SAFE_STATS}), encoding="utf-8")
-    assert cfg.fetch_online_config("", cache_path=cache)["stats_url"] == SAFE_STATS
+    assert "stats_url" not in cfg.fetch_online_config("", cache_path=cache)
     monkeypatch.setattr(cfg, "urlopen_https_only",
                         lambda *a, **kw: io.BytesIO(json.dumps({"stats_url": SAFE_STATS}).encode()))
     assert cfg.fetch_online_config(URL, cache_path=cache)["stats_url"] == SAFE_STATS
@@ -326,7 +326,7 @@ def test_online_catalog_rejects_non_repository_download_references(repo):
 
 
 def test_online_catalog_keeps_normal_repos_and_local_catalog_is_free():
-    online = {"model_catalog": {"good": {"name": "model", "hf_repo": "org/model-v1.2"}}}
+    online = {"model_catalog": {"good": {"name": "model", "hf_repo": "Systran/model-v1.2"}}}
     local = {"model_catalog": {"local": {"name": "local", "hf_repo": "http://custom"}}}
     result = cfg.merge_config_sources({"model_catalog": {}}, online, local)["model_catalog"]
     assert result == {**online["model_catalog"], **local["model_catalog"]}
@@ -348,8 +348,105 @@ def test_startup_stats_diagnostic_reports_effective_source_and_host(
     config = cfg.load_config()
     with caplog.at_level(logging.INFO, logger="core.config"):
         cfg.log_effective_stats_url(config)
-    messages = [r.getMessage() for r in caplog.records if r.levelno == logging.INFO]
+    # Other INFO lines (e.g. the model path) depend on the machine: count only this diagnostic.
+    messages = [r.getMessage() for r in caplog.records
+                if r.levelno == logging.INFO and r.getMessage().startswith("Effective stats_url")]
     assert len(messages) == 1
     assert f"source={source}" in messages[0]
     assert f"host={host}" in messages[0]
     assert "secret" not in messages[0]
+
+
+@pytest.mark.parametrize("repo", ["SYSTRAN/faster-whisper-new", "systran/faster-whisper-new",
+                                  "kblab/kb-whisper-small", "Ivrit-AI/whisper-large-v3-ct2"])
+def test_online_catalog_accepts_built_in_owners_in_any_case(repo):
+    online = {"model_catalog": {"new": {"name": "new", "hf_repo": repo}}}
+    result = cfg.merge_config_sources({"model_catalog": {}}, online, None)["model_catalog"]
+    assert result == {"new": {"name": "new", "hf_repo": repo}}
+
+
+@pytest.mark.parametrize("entry", [
+    {"name": "x", "hf_repo": "unknown-owner/faster-whisper-x"},
+    {"name": "x", "hf_repo": ""},
+    {"name": "x"},
+    {"name": "x", "hf_repo": None},
+    {"name": "x", "hf_repo": "faster-whisper-x"},
+    {"name": "x", "hf_repo": "/faster-whisper-x"},
+    {"name": "x", "hf_repo": "Systran/faster..whisper"},
+    {"name": "x", "hf_repo": "Systran/model.."},
+    {"name": "x", "hf_repo": "Systran../model"},
+])
+def test_online_catalog_drops_untrusted_empty_and_ownerless_repos(entry):
+    good = {"name": "g", "hf_repo": "Systran/faster-whisper-g"}
+    online = {"model_catalog": {"bad": entry, "good": good}}
+    result = cfg.merge_config_sources({"model_catalog": {}}, online, None)["model_catalog"]
+    assert result == {"good": good}
+
+
+def test_local_catalog_entry_with_an_unknown_owner_still_works(monkeypatch, tmp_path):
+    entry = {"label": "Mine", "name": "faster-whisper-mine", "hf_repo": "someone-else/whisper-mine"}
+    online = {"model_catalog": {"mine": {"name": "online", "hf_repo": "someone-else/online"}}}
+    merged = cfg.merge_config_sources({"model_catalog": {}}, online, {"model_catalog": {"mine": entry}})
+    assert merged["model_catalog"] == {"mine": entry}
+    use_local_file(monkeypatch, tmp_path, {"model_catalog": {"mine": entry}})
+    assert cfg.load_config(fetch_online=False)["model_catalog"]["mine"] == entry
+
+
+def test_every_built_in_repo_owner_is_trusted():
+    from core.model_manager import MODEL_REGISTRY
+
+    repos = [entry["hf_repo"] for entry in MODEL_REGISTRY.values()]
+    repos += [cfg.DEFAULT_CONFIG["model"]["hf_repo"], cfg.FRESH_INSTALL_MODEL["hf_repo"]]
+    for repo in repos:
+        assert repo.split("/")[0].lower() in cfg.ONLINE_MODEL_OWNERS, repo
+    # The built-in catalog published as an online one passes the filter whole.
+    online = {"model_catalog": {slug: dict(entry) for slug, entry in MODEL_REGISTRY.items()}}
+    result = cfg.merge_config_sources({"model_catalog": {}}, online, None)["model_catalog"]
+    assert result.keys() == MODEL_REGISTRY.keys()
+
+
+def test_untimed_cache_keeps_other_keys(tmp_path):
+    cache = tmp_path / "online.json"
+    cached = {"latest_version": "1.2.3",
+              "model_catalog": {"x": {"name": "x", "hf_repo": "Systran/x"}}}
+    cache.write_text(json.dumps({**cached, "stats_url": SAFE_STATS}), encoding="utf-8")
+    assert cfg.fetch_online_config("", cache_path=cache) == cached
+
+
+def test_memoized_copy_without_timestamp_supplies_no_stats_url(monkeypatch, tmp_path):
+    cached_url = "https://cached.whisper-transcriber-suite.com/stats"
+    untimed = cfg._CachedOnlineConfig({"stats_url": cached_url, "latest_version": "1.2.3"}, None)
+    assert cfg._unexpired_online(untimed) == {"latest_version": "1.2.3"}
+    use_local_file(monkeypatch, tmp_path, {})
+    monkeypatch.setattr(cfg, "fetch_online_config", lambda *args, **kwargs: untimed)
+    config = cfg.load_config()
+    assert config["stats_url"] == cfg.DEFAULT_CONFIG["stats_url"]
+    assert cfg.effective_stats_url(config) == cfg.DEFAULT_CONFIG["stats_url"]
+    assert config["latest_version"] == "1.2.3"
+
+
+@pytest.mark.parametrize("value", [
+    "https://whisper-transcriber-suite.com/a b",
+    "https://whisper-transcriber-suite.com/a\tb",
+    "https://whisper-transcriber-suite.com/a\u00a0b",
+    "https://whisper-transcriber-suite.com/a\u2028b",
+    "https://whisper-transcriber-suite.com/a\x7fb",
+    "https://whisper-transcriber-suite.com/caf\u00e9",
+    "https://st\u00e4ts.whisper-transcriber-suite.com/x",
+])
+def test_online_stats_rejects_whitespace_and_non_printable_ascii(value):
+    assert not cfg._online_stats_url_allowed(value)
+    merged = cfg.merge_config_sources(cfg.DEFAULT_CONFIG, {"stats_url": value}, None)
+    assert merged["stats_url"] == cfg.DEFAULT_CONFIG["stats_url"]
+
+
+def test_online_stats_host_is_at_most_253_characters():
+    def host(length):
+        prefix = ("a" * 63 + ".") * 3
+        suffix = "." + cfg.ONLINE_STATS_HOST
+        name = prefix + "b" * (length - len(prefix) - len(suffix)) + suffix
+        assert len(name) == length
+        return name
+
+    assert cfg._online_stats_url_allowed(f"https://{host(253)}/x")
+    assert not cfg._online_stats_url_allowed(f"https://{host(254)}/x")

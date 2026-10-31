@@ -318,7 +318,9 @@ def test_yt_dlp_mode_migration_survives_a_merged_save(cfg_dir):
 
 def test_online_model_catalog_is_not_pinned_by_a_save(cfg_dir, monkeypatch):
     _write(cfg_dir, {"theme": "dark"})
-    monkeypatch.setattr(cfgmod, "fetch_online_config", lambda *a, **k: {"model_catalog": {"x": {"name": "x"}}})
+    # An online catalog entry needs an hf_repo from a trusted owner.
+    monkeypatch.setattr(cfgmod, "fetch_online_config",
+                        lambda *a, **k: {"model_catalog": {"x": {"name": "x", "hf_repo": "Systran/faster-whisper-x"}}})
     cfgmod.refresh_online_config()
     cfg = cfgmod.load_config()
     assert "x" in cfg["model_catalog"]

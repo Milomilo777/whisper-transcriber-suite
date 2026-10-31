@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 import urllib.error
 from pathlib import Path
 
@@ -746,7 +747,8 @@ def test_merge_local_can_override_local_only_key():
 def test_merge_deep_merges_dict_keys():
     """Dict-valued keys deep-merge so a partial override keeps siblings."""
     hardcoded = {"model_catalog": {"a": {"name": "A"}}, "model": {"name": "x", "url": "u"}}
-    online = {"model_catalog": {"b": {"name": "B"}}}
+    # An online catalog entry needs an hf_repo from a trusted owner.
+    online = {"model_catalog": {"b": {"name": "B", "hf_repo": "Systran/faster-whisper-b"}}}
     local = {"model": {"name": "y"}}
     merged = cfg.merge_config_sources(hardcoded, online, local)
     assert set(merged["model_catalog"].keys()) == {"a", "b"}  # online adds b
@@ -784,7 +786,8 @@ def test_fetch_online_returns_parsed_json(tmp_path, monkeypatch):
 def test_fetch_online_falls_back_to_cache_on_error(tmp_path, monkeypatch):
     cached = {"stats_url": "https://cached/stats"}
     cache = tmp_path / "cache.json"
-    cache.write_text(json.dumps(cached), encoding="utf-8")
+    # A dated cache: an undated one may not supply stats_url (30-day rule).
+    cache.write_text(json.dumps({**cached, cfg._ONLINE_CACHE_SAVED_AT: time.time()}), encoding="utf-8")
 
     def _boom(req, timeout=0):  # noqa: ARG001
         raise cfg.urllib.error.URLError("offline")
@@ -868,7 +871,7 @@ def test_fetch_online_survives_garbage_http_response(tmp_path, monkeypatch):
 
     cached = {"stats_url": "https://cached/stats"}
     cache = tmp_path / "cache.json"
-    cache.write_text(json.dumps(cached), encoding="utf-8")
+    cache.write_text(json.dumps({**cached, cfg._ONLINE_CACHE_SAVED_AT: time.time()}), encoding="utf-8")
 
     def _garbage(req, timeout=0):  # noqa: ARG001
         raise http.client.BadStatusLine("oops")

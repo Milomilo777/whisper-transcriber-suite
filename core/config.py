@@ -578,6 +578,23 @@ ONLINE_ALLOWED_KEYS: frozenset[str] = frozenset({
 
 ONLINE_STATS_HOST = "whisper-transcriber-suite.com"
 
+# Hugging Face repo owners of the built-in catalog (every ``hf_repo`` in
+# core.model_manager.MODEL_REGISTRY and DEFAULT_CONFIG), lower case. An online
+# model_catalog entry may download only from one of them; local entries are free.
+# tests/core/test_online_config_hardening.py checks the built-ins against it.
+ONLINE_MODEL_OWNERS: frozenset[str] = frozenset({
+    "systran",
+    "mobiuslabsgmbh",
+    "distil-whisper",
+    "deepdml",
+    "flateon",
+    "kotoba-tech",
+    "jimmymeister",
+    "vinxscribe",
+    "kblab",
+    "ivrit-ai",
+})
+
 
 # Keys only the user decides. The online layer can never set them, even if a
 # later edit adds one to ONLINE_ALLOWED_KEYS by mistake: merge_config_sources
@@ -1056,7 +1073,8 @@ def _merge_with_defaults(loaded: dict[str, Any]) -> dict[str, Any]:
 def _online_stats_url_allowed(value: Any) -> bool:
     if not isinstance(value, str) or not value or value != value.strip():
         return False
-    if any(ord(char) < 32 or ord(char) == 127 for char in value):
+    # Printable ASCII only: no whitespace, control or non-ASCII characters.
+    if any(ord(char) <= 32 or ord(char) >= 127 for char in value):
         return False
     try:
         parts = urllib.parse.urlsplit(value)
@@ -1067,6 +1085,8 @@ def _online_stats_url_allowed(value: Any) -> bool:
             return False
     except ValueError:
         return False
+    if len(host) > 253:
+        return False
     if host != ONLINE_STATS_HOST and not host.endswith("." + ONLINE_STATS_HOST):
         return False
     return all(re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?", label)
@@ -1076,14 +1096,17 @@ def _online_stats_url_allowed(value: Any) -> bool:
 def _safe_online_catalog(value: Any) -> dict[str, Any]:
     if not isinstance(value, dict):
         return {}
-    # Hugging Face repo IDs are names, not arbitrary URLs or paths.
-    repo_pattern = r"[A-Za-z0-9_][A-Za-z0-9_.-]{0,95}(?:/[A-Za-z0-9_][A-Za-z0-9_.-]{0,95})?"
+    # Hugging Face repo IDs are owner/name, not arbitrary URLs or paths, and the
+    # owner must be one the built-in catalog already downloads from.
+    repo_pattern = r"([A-Za-z0-9_][A-Za-z0-9_.-]{0,95})/[A-Za-z0-9_][A-Za-z0-9_.-]{0,95}"
     result: dict[str, Any] = {}
     for slug, entry in value.items():
         if not isinstance(slug, str) or not isinstance(entry, dict):
             continue
-        repo = entry.get("hf_repo", "")
-        if not isinstance(repo, str) or (repo and not re.fullmatch(repo_pattern, repo)):
+        repo = entry.get("hf_repo")
+        match = re.fullmatch(repo_pattern, repo) if isinstance(repo, str) else None
+        if (match is None or ".." in match.group(0)
+                or match.group(1).lower() not in ONLINE_MODEL_OWNERS):
             logger.debug("Ignoring online model_catalog entry with invalid hf_repo")
             continue
         result[slug] = entry
@@ -1151,7 +1174,8 @@ class _CachedOnlineConfig(dict[str, Any]):
 
 
 def _unexpired_online(data: dict[str, Any]) -> dict[str, Any]:
-    if (isinstance(data, _CachedOnlineConfig) and data.saved_at is not None
+    # A cached copy of unknown age (saved_at None) counts as expired.
+    if (isinstance(data, _CachedOnlineConfig)
             and not _stats_cache_fresh(data.saved_at)):
         return {key: value for key, value in data.items() if key != "stats_url"}
     return data
@@ -1171,7 +1195,7 @@ def fetch_online_config(
       2. On a successful JSON-object response, write it to ``cache_path``
          (the last-good cache) and return it.
       3. On HTTP 410, discard the cached copy. Other failures fall back to
-         the cache, excluding a stats URL older than 30 days.
+         the cache, excluding a stats URL older than 30 days or of unknown age.
       4. If there is no usable cache either, return ``{}`` — the caller then
          uses only the hard-coded + local layers.
 
@@ -1314,7 +1338,10 @@ def fetch_online_config(
         )
         if isinstance(cached, dict):
             if _ONLINE_CACHE_SAVED_AT not in cached:
+                # No saved-at time (an older app's cache): stats_url counts as expired.
+                cached.pop("stats_url", None)
                 return _CachedOnlineConfig(cached, None)
+            # A stale or implausible saved-at time expires it as well.
             saved_at = cached.pop(_ONLINE_CACHE_SAVED_AT)
             if not _stats_cache_fresh(saved_at):
                 cached.pop("stats_url", None)
