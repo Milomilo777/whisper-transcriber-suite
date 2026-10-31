@@ -18,6 +18,12 @@ macOS and Linux: see [Download](#download).
 No install? **[Try it in your browser](https://whisper-transcriber-suite.com/try/)**: transcribe a short file
 (up to 10 minutes) right in the page and get TXT, SRT or VTT. The audio never leaves your device.
 
+[![Watch the 13-minute Whisper Transcriber Suite product tour on YouTube](https://img.youtube.com/vi/pfnjrinmayA/maxresdefault.jpg)](https://www.youtube.com/watch?v=pfnjrinmayA "Whisper Transcriber Suite: free offline transcription, full tour (13:16)")
+
+**[▶ Watch the full 13-minute video tour on YouTube](https://www.youtube.com/watch?v=pfnjrinmayA)**: local transcription with
+faster-whisper, whisper.cpp and NVIDIA Parakeet, editing with click-to-play, speaker labels, SRT/VTT subtitles,
+link downloads, phone upload over Wi-Fi and live captions. Chapters and subtitles in 13 languages.
+
 Step-by-step guides: [YouTube video to text](https://whisper-transcriber-suite.com/youtube-to-text/) · [video to SRT subtitles](https://whisper-transcriber-suite.com/video-to-srt/) · [transcripts with speaker labels](https://whisper-transcriber-suite.com/speaker-labels/)
 
 <!-- language-links:start -->
@@ -101,6 +107,8 @@ Version 2.1 added the interface in 42 languages, reliable speaker labels and saf
    them, opens the transcript viewer, or saves a shareable web page.
 
 No file at hand? **Try it now (sample clip)** transcribes an 18-second public-domain clip that ships with the app.
+
+Prefer to see it first? [Watch the step-by-step video tour](https://www.youtube.com/watch?v=pfnjrinmayA) (13 minutes, with chapters).
 
 ## Features
 
