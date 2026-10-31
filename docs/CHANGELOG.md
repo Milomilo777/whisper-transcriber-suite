@@ -4,6 +4,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Changed
+
+- Online configuration now uses the project's domain and validates remote statistics endpoints, version strings and model repository IDs. A 410 response removes cached overrides, and cached statistics endpoints expire after 30 days.
+
 ## [2.3.1] — 2026-10-31
 
 ### Removed

@@ -7,11 +7,20 @@ from __future__ import annotations
 
 import json
 import os
+import urllib.error
 from pathlib import Path
 
 import pytest
 
 from core import config as cfg
+
+
+@pytest.fixture(autouse=True)
+def _prevent_network(monkeypatch):
+    def _offline(*args, **kwargs):
+        raise urllib.error.URLError("network disabled for test")
+
+    monkeypatch.setattr(cfg.urllib.request, "urlopen", _offline)
 
 
 @pytest.fixture(autouse=True)
@@ -595,7 +604,7 @@ def test_remote_config_cannot_turn_saved_off_back_on(isolated_dirs, monkeypatch)
     config["telemetry_opt_in"] = False
     cfg.save_config(config)
 
-    online_payload = {"telemetry_opt_in": True, "stats_url": "https://online/stats"}
+    online_payload = {"telemetry_opt_in": True, "stats_url": "https://online.whisper-transcriber-suite.com/stats"}
 
     def _fake_urlopen(req, timeout=0):  # noqa: ARG001
         return io.BytesIO(json.dumps(online_payload).encode("utf-8"))
@@ -606,7 +615,7 @@ def test_remote_config_cannot_turn_saved_off_back_on(isolated_dirs, monkeypatch)
         merged = cfg.load_config(fetch_online=True)
     finally:
         cfg.refresh_online_config()
-    assert merged["stats_url"] == "https://online/stats"
+    assert merged["stats_url"] == "https://online.whisper-transcriber-suite.com/stats"
     assert merged["telemetry_opt_in"] is False
 
 
@@ -689,11 +698,11 @@ def test_merge_precedence_local_over_online_over_hardcoded():
     """local > online > hard-coded; a key missing from a higher layer falls
     through to the next."""
     hardcoded = {"latest_version": "1.0.0", "theme": "dark", "stats_url": "hc"}
-    online = {"latest_version": "2.0.0", "stats_url": "https://online/stats"}
+    online = {"latest_version": "2.0.0", "stats_url": "https://online.whisper-transcriber-suite.com/stats"}
     local = {"latest_version": "3.0.0"}  # theme + stats_url fall through
     merged = cfg.merge_config_sources(hardcoded, online, local)
     assert merged["latest_version"] == "3.0.0"          # local wins
-    assert merged["stats_url"] == "https://online/stats"  # online (no local)
+    assert merged["stats_url"] == "https://online.whisper-transcriber-suite.com/stats"  # online (no local)
     assert merged["theme"] == "dark"                    # hard-coded (no higher)
 
 
@@ -711,7 +720,7 @@ def test_merge_online_only_touches_allowlisted_keys():
         "hub_folder": "\\\\evil\\share",
         "cloud_stt_api_key": "leaked",
         "theme": "light",
-        "stats_url": "https://online/stats",
+        "stats_url": "https://online.whisper-transcriber-suite.com/stats",
     }
     merged = cfg.merge_config_sources(hardcoded, online, local=None)
     # Local-only keys are untouched by the online layer...
@@ -719,7 +728,7 @@ def test_merge_online_only_touches_allowlisted_keys():
     assert merged["cloud_stt_api_key"] == "secret"
     assert merged["theme"] == "dark"
     # ...only the allowlisted app-level key comes through.
-    assert merged["stats_url"] == "https://online/stats"
+    assert merged["stats_url"] == "https://online.whisper-transcriber-suite.com/stats"
     assert "stats_url" in cfg.ONLINE_ALLOWED_KEYS
     assert "hub_folder" not in cfg.ONLINE_ALLOWED_KEYS
 
@@ -767,7 +776,9 @@ def test_fetch_online_returns_parsed_json(tmp_path, monkeypatch):
     result = cfg.fetch_online_config("https://host/app.json", cache_path=cache)
     assert result == payload
     # A successful fetch is written to the cache for offline fallback.
-    assert json.loads(cache.read_text(encoding="utf-8")) == payload
+    stored = json.loads(cache.read_text(encoding="utf-8"))
+    assert isinstance(stored.pop("_wts_saved_at"), (int, float))
+    assert stored == payload
 
 
 def test_fetch_online_falls_back_to_cache_on_error(tmp_path, monkeypatch):
@@ -831,7 +842,7 @@ def test_load_config_merges_online_allowlisted_key(isolated_dirs, monkeypatch):
     cfg.refresh_online_config()  # clear the in-process memo
 
     online_payload = {
-        "stats_url": "https://online/stats",
+        "stats_url": "https://online.whisper-transcriber-suite.com/stats",
         "hub_folder": "\\\\evil\\should-be-ignored",  # not allowlisted
     }
 
@@ -843,7 +854,7 @@ def test_load_config_merges_online_allowlisted_key(isolated_dirs, monkeypatch):
         json.dumps({"hub_folder": "D:/local/hub"}), encoding="utf-8"
     )
     config = cfg.load_config(fetch_online=True)
-    assert config["stats_url"] == "https://online/stats"  # from online
+    assert config["stats_url"] == "https://online.whisper-transcriber-suite.com/stats"  # from online
     assert config["hub_folder"] == "D:/local/hub"          # local wins; online ignored
     cfg.refresh_online_config()  # leave the memo clean for other tests
 
@@ -963,4 +974,6 @@ def test_fetch_online_accepts_a_utf8_bom(tmp_path, monkeypatch):
     cache = tmp_path / "cache.json"
     result = cfg.fetch_online_config("https://host/app.json", cache_path=cache)
     assert result == payload
-    assert json.loads(cache.read_text(encoding="utf-8")) == payload
+    stored = json.loads(cache.read_text(encoding="utf-8"))
+    assert isinstance(stored.pop("_wts_saved_at"), (int, float))
+    assert stored == payload

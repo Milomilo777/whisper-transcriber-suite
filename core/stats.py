@@ -460,13 +460,11 @@ def post_stats_async(
             if str(config.get("stats_url") or "").strip():
                 offline.skipped("usage statistics")
             return False
-        url = str(config.get("stats_url") or "").strip()
+        from core.config import effective_stats_url
+        url = str(effective_stats_url(config) or "").strip()
         if not url:
             return False
-        # stats_url is in ONLINE_ALLOWED_KEYS, so a compromised / MITM'd online
-        # config could point telemetry at an arbitrary scheme (file://, ftp://,
-        # an attacker collector). urlopen honours whatever scheme it is given,
-        # so reject anything that is not plain web traffic before the request.
+        # A local override may use HTTP, but not a non-web scheme.
         if urllib.parse.urlsplit(url).scheme not in ("http", "https"):
             logger.debug("stats post skipped: non-http(s) stats_url scheme")
             return False

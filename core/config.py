@@ -9,6 +9,7 @@ import json
 import logging
 import math
 import os
+import re
 import shutil
 import sys
 import tempfile
@@ -513,10 +514,7 @@ DEFAULT_CONFIG = {
     # under user_cache_dir(), and a fall-through to the hard-coded defaults
     # when offline — it NEVER blocks or crashes startup.
     #
-    # OWNER ACTION: replace this placeholder with the real URL on the
-    # maintainer's host (e.g. a raw GitHub file or this smch.ir path). Until
-    # a valid JSON lives there, the app silently uses the built-in defaults.
-    "config_url": "https://smch.ir/whisper/app_config.json",
+    "config_url": "https://whisper-transcriber-suite.com/app_config.json",
     # Catalog of selectable Whisper models, in the same shape as
     # core.model_manager.MODEL_REGISTRY (slug → {label, name, hf_repo,
     # approx_size_gb, info}). Models download only from ``hf_repo`` on the
@@ -578,6 +576,8 @@ ONLINE_ALLOWED_KEYS: frozenset[str] = frozenset({
     "latest_version",
 })
 
+ONLINE_STATS_HOST = "whisper-transcriber-suite.com"
+
 
 # Keys only the user decides. The online layer can never set them, even if a
 # later edit adds one to ONLINE_ALLOWED_KEYS by mistake: merge_config_sources
@@ -620,8 +620,7 @@ LOCAL_ONLY_KEYS: frozenset[str] = frozenset({
 })
 
 
-# Hard cap on the online-config response body. config_url defaults to a
-# third-party host; a compromised/MITM endpoint streaming a multi-GB body
+# Hard cap on the online-config response body. A compromised endpoint streaming a multi-GB body
 # would otherwise be buffered whole into memory at startup. 2 MB is far
 # above any legitimate app-config JSON, so an oversized body is treated as
 # hostile and we fall through to the cache instead of parsing it.
@@ -645,16 +644,23 @@ def online_cache_path() -> Path:
     return user_cache_dir() / "app_config_cache.json"
 
 
-#: After an HTTP 404/410 from ``config_url`` (the file was never published)
+#: After an HTTP 404/410 from ``config_url``
 #: the fetch is skipped for this long, so every worker start does not repeat
 #: a request that cannot succeed and does not log the failure again.
 ONLINE_MISSING_RETRY_SECONDS = 24 * 3600
+ONLINE_STATS_CACHE_SECONDS = 30 * 24 * 3600
+_ONLINE_CACHE_SAVED_AT = "_wts_saved_at"
 _MTIME_SLACK_SECONDS = 2.0
 
 
 def _online_missing_marker(cache_path: Path) -> Path:
-    """Marker file beside the cache that records a 404 for ``config_url``."""
+    """Marker file beside the cache that records a 404 or 410."""
     return cache_path.with_name(cache_path.name + ".missing")
+
+
+def _online_revoked_marker(cache_path: Path) -> Path:
+    """Keep a failed cache deletion revoked until a successful replacement."""
+    return cache_path.with_name(cache_path.name + ".revoked")
 
 
 def _url_digest(url: str) -> str:
@@ -703,6 +709,7 @@ def _forget_online_missing(cache_path: Path) -> None:
 # ``refresh_online_config()`` clears it for an explicit re-check.
 _ONLINE_MEMO: dict[str, dict[str, Any]] = {}
 _ONLINE_MEMO_LOCK = threading.Lock()
+_ONLINE_REVOKED_CACHES: set[Path] = set()
 
 
 def refresh_online_config() -> None:
@@ -1046,6 +1053,43 @@ def _merge_with_defaults(loaded: dict[str, Any]) -> dict[str, Any]:
 # blocks or crashes startup.
 
 
+def _online_stats_url_allowed(value: Any) -> bool:
+    if not isinstance(value, str) or not value or value != value.strip():
+        return False
+    if any(ord(char) < 32 or ord(char) == 127 for char in value):
+        return False
+    try:
+        parts = urllib.parse.urlsplit(value)
+        host = parts.hostname or ""
+        if (parts.scheme.lower() != "https" or parts.username is not None
+                or parts.password is not None or parts.port not in (None, 443)
+                or parts.netloc.endswith(":")):
+            return False
+    except ValueError:
+        return False
+    if host != ONLINE_STATS_HOST and not host.endswith("." + ONLINE_STATS_HOST):
+        return False
+    return all(re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?", label)
+               for label in host.split("."))
+
+
+def _safe_online_catalog(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        return {}
+    # Hugging Face repo IDs are names, not arbitrary URLs or paths.
+    repo_pattern = r"[A-Za-z0-9_][A-Za-z0-9_.-]{0,95}(?:/[A-Za-z0-9_][A-Za-z0-9_.-]{0,95})?"
+    result: dict[str, Any] = {}
+    for slug, entry in value.items():
+        if not isinstance(slug, str) or not isinstance(entry, dict):
+            continue
+        repo = entry.get("hf_repo", "")
+        if not isinstance(repo, str) or (repo and not re.fullmatch(repo_pattern, repo)):
+            logger.debug("Ignoring online model_catalog entry with invalid hf_repo")
+            continue
+        result[slug] = entry
+    return result
+
+
 def merge_config_sources(
     hardcoded: dict[str, Any],
     online: dict[str, Any] | None,
@@ -1073,10 +1117,44 @@ def merge_config_sources(
             k: v for k, v in online.items()
             if k in ONLINE_ALLOWED_KEYS and k not in LOCAL_ONLY_KEYS
         }
+        if "stats_url" in safe_online and not _online_stats_url_allowed(safe_online["stats_url"]):
+            logger.debug("Ignoring invalid online stats_url")
+            del safe_online["stats_url"]
+        version = safe_online.get("latest_version")
+        if "latest_version" in safe_online and (
+            not isinstance(version, str) or not re.fullmatch(r"[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}", version)
+        ):
+            del safe_online["latest_version"]
+        if "model_catalog" in safe_online:
+            safe_online["model_catalog"] = _safe_online_catalog(safe_online["model_catalog"])
         deep_merge_dicts(merged, safe_online)
     if local:
         deep_merge_dicts(merged, local)
     return merged
+
+
+def _stats_cache_fresh(saved_at: Any) -> bool:
+    if isinstance(saved_at, bool) or not isinstance(saved_at, (int, float)):
+        return False
+    now = time.time()
+    if saved_at < 0 or saved_at > now + _MTIME_SLACK_SECONDS:
+        return False
+    return now - saved_at <= ONLINE_STATS_CACHE_SECONDS
+
+
+class _CachedOnlineConfig(dict[str, Any]):
+    """Remember cache age even while the online layer is memoized."""
+
+    def __init__(self, data: dict[str, Any], saved_at: float | int | None) -> None:
+        super().__init__(data)
+        self.saved_at = saved_at
+
+
+def _unexpired_online(data: dict[str, Any]) -> dict[str, Any]:
+    if (isinstance(data, _CachedOnlineConfig) and data.saved_at is not None
+            and not _stats_cache_fresh(data.saved_at)):
+        return {key: value for key, value in data.items() if key != "stats_url"}
+    return data
 
 
 def fetch_online_config(
@@ -1092,14 +1170,14 @@ def fetch_online_config(
       1. GET ``url`` (stdlib urllib only) with a short ``timeout``.
       2. On a successful JSON-object response, write it to ``cache_path``
          (the last-good cache) and return it.
-      3. On ANY failure (offline, timeout, HTTP error, bad JSON), fall back
-         to the cached copy at ``cache_path`` if present and valid.
+      3. On HTTP 410, discard the cached copy. Other failures fall back to
+         the cache, excluding a stats URL older than 30 days.
       4. If there is no usable cache either, return ``{}`` — the caller then
          uses only the hard-coded + local layers.
 
     ``cache_path`` defaults to ``online_cache_path()``. An empty ``url``
-    short-circuits to the cache (then to ``{}``), so disabling the online
-    layer is just clearing ``config_url``.
+    short-circuits to the cache (then to ``{}``). ``load_config`` treats a
+    blank ``config_url`` as an opt-out from both fetching and the cache.
     """
     if cache_path is None:
         cache_path = online_cache_path()
@@ -1114,7 +1192,7 @@ def fetch_online_config(
 
     if url and _online_known_missing(cache_path, url):
         logger.debug(
-            "Online config skipped: %s was missing (HTTP 404) recently",
+            "Online config skipped: %s returned HTTP 404/410 recently",
             _url_for_log(url),
         )
         url = ""
@@ -1153,13 +1231,19 @@ def fetch_online_config(
                 raw.decode("utf-8-sig"), parse_constant=_reject_nonfinite
             )
             if isinstance(data, dict):
+                data.pop(_ONLINE_CACHE_SAVED_AT, None)
+                saved_at = time.time()
                 try:
                     cache_path.parent.mkdir(parents=True, exist_ok=True)
-                    _write_text_atomic(cache_path, json.dumps(data))
+                    _write_text_atomic(cache_path, json.dumps({**data, _ONLINE_CACHE_SAVED_AT: saved_at}))
+                    with _ONLINE_MEMO_LOCK:
+                        _ONLINE_REVOKED_CACHES.discard(cache_path)
+                    with contextlib.suppress(FileNotFoundError):
+                        _online_revoked_marker(cache_path).unlink()
                 except OSError as e:
                     logger.warning("Could not cache online config: %s", e)
                 _forget_online_missing(cache_path)
-                return data
+                return _CachedOnlineConfig(data, saved_at)
             logger.warning("Online config at %s is not a JSON object", url)
         except (
             urllib.error.URLError,
@@ -1177,8 +1261,7 @@ def fetch_online_config(
             # too, not crash launch. RecursionError covers a hostile
             # deeply-nested body under the size cap. Fall through to cache.
             if isinstance(e, urllib.error.HTTPError) and e.code in (404, 410):
-                # Never published at this URL: not an outage. Remember it
-                # so the next processes stay quiet and skip the request.
+                # Remember missing responses so the next process stays quiet.
                 try:
                     cache_path.parent.mkdir(parents=True, exist_ok=True)
                     _write_text_atomic(
@@ -1186,6 +1269,29 @@ def fetch_online_config(
                     )
                 except OSError:
                     pass
+                if e.code == 410:
+                    # A durable tombstone prevents reuse if Windows cannot
+                    # delete the cache because another process holds it.
+                    with _ONLINE_MEMO_LOCK:
+                        _ONLINE_REVOKED_CACHES.add(cache_path)
+                    try:
+                        _write_text_atomic(_online_revoked_marker(cache_path), "410")
+                    except OSError as revoke_error:
+                        logger.warning("Could not record online cache removal: %s", revoke_error)
+                    try:
+                        cache_path.unlink(missing_ok=True)
+                    except OSError as delete_error:
+                        logger.warning("Could not remove revoked online cache: %s", delete_error)
+                    else:
+                        with _ONLINE_MEMO_LOCK:
+                            _ONLINE_REVOKED_CACHES.discard(cache_path)
+                        with contextlib.suppress(OSError):
+                            _online_revoked_marker(cache_path).unlink()
+                    logger.info(
+                        "Online config removed at %s (HTTP 410); using built-in settings, "
+                        "not asking again for 24 h", _url_for_log(url),
+                    )
+                    return {}
                 logger.info(
                     "Online config not published at %s (HTTP %s); using the "
                     "cache and built-in settings, not asking again for 24 h",
@@ -1197,13 +1303,23 @@ def fetch_online_config(
                     "Online config fetch failed (%s); using cache if available", e
                 )
 
+    with _ONLINE_MEMO_LOCK:
+        revoked_in_process = cache_path in _ONLINE_REVOKED_CACHES
+    if revoked_in_process or _online_revoked_marker(cache_path).exists():
+        return {}
     try:
         cached = json.loads(
             cache_path.read_text(encoding="utf-8"),
             parse_constant=_reject_nonfinite,
         )
         if isinstance(cached, dict):
-            return cached
+            if _ONLINE_CACHE_SAVED_AT not in cached:
+                return _CachedOnlineConfig(cached, None)
+            saved_at = cached.pop(_ONLINE_CACHE_SAVED_AT)
+            if not _stats_cache_fresh(saved_at):
+                cached.pop("stats_url", None)
+                return _CachedOnlineConfig(cached, None)
+            return _CachedOnlineConfig(cached, saved_at)
     except (OSError, ValueError, RecursionError):
         # RecursionError: a hostile deeply-nested cache file under the
         # size cap — treated as corrupt, same as any other bad JSON.
@@ -1880,7 +1996,7 @@ def load_config(*, fetch_online: bool = True) -> dict[str, Any]:
     # Distinguish "key absent" (use the default URL) from "key present and
     # empty" (the user deliberately blanked it to opt out of the network
     # fetch): an explicit "" must STAY empty so it short-circuits below,
-    # otherwise ``"" or default`` would silently restore the third-party URL
+    # otherwise ``"" or default`` would silently restore the default URL
     # and still phone home for a privacy/offline-conscious user.
     config_url = ""
     if fetch_online:
@@ -1915,7 +2031,17 @@ def load_config(*, fetch_online: bool = True) -> dict[str, Any]:
             with _ONLINE_MEMO_LOCK:
                 _ONLINE_MEMO[config_url] = online
 
+    online = _unexpired_online(online)
     merged = merge_config_sources(DEFAULT_CONFIG, online, local)
+    if "stats_url" in local:
+        stats_source = "local" if isinstance(local["stats_url"], str) else "default"
+    elif ("stats_url" in ONLINE_ALLOWED_KEYS and "stats_url" not in LOCAL_ONLY_KEYS
+          and _online_stats_url_allowed(online.get("stats_url"))):
+        stats_source = "online"
+    else:
+        stats_source = "default"
+    stats_saved_at = (online.saved_at if stats_source == "online"
+                      and isinstance(online, _CachedOnlineConfig) else None)
     # What the layers hold before the repairs and migrations below: save_config
     # writes only keys that differ from this, so a repair is saved once and a
     # key this process never touched is not written back over a newer value
@@ -2073,7 +2199,7 @@ def load_config(*, fetch_online: bool = True) -> dict[str, Any]:
     for key in ("model_path", "download_folder", "hub_folder"):
         if key in result:
             baseline[key] = copy.deepcopy(result[key])
-    return LoadedConfig(result, baseline)
+    return LoadedConfig(result, baseline, stats_source, stats_saved_at)
 
 
 class LoadedConfig(dict[str, Any]):
@@ -2087,15 +2213,49 @@ class LoadedConfig(dict[str, Any]):
     ``cfg.copy()`` and ``copy.copy(cfg)`` keep it.
     """
 
-    def __init__(self, data: Any = (), baseline: dict[str, Any] | None = None) -> None:
+    def __init__(
+        self, data: Any = (), baseline: dict[str, Any] | None = None,
+        stats_source: str = "default", stats_saved_at: float | int | None = None,
+    ) -> None:
         super().__init__(data)
         self._config_baseline: dict[str, Any] | None = baseline
+        self._stats_url_source = stats_source
+        self._stats_url_saved_at = stats_saved_at
+        self._stats_url_at_load = self.get("stats_url") if stats_source == "online" else None
 
     def copy(self) -> LoadedConfig:  # type: ignore[override]
         """A shallow copy that still remembers the load-time values."""
-        return LoadedConfig(self, copy.deepcopy(self._config_baseline))
+        result = LoadedConfig(self, copy.deepcopy(self._config_baseline),
+                              self._stats_url_source, self._stats_url_saved_at)
+        result._stats_url_at_load = self._stats_url_at_load
+        return result
 
     __copy__ = copy
+
+
+def effective_stats_url(config: dict[str, Any]) -> Any:
+    """Expire an online cache value even if a loaded config is held for days."""
+    value = config.get("stats_url")
+    if (isinstance(config, LoadedConfig) and config._stats_url_source == "online"
+            and config._stats_url_saved_at is not None
+            and value == config._stats_url_at_load
+            and not _stats_cache_fresh(config._stats_url_saved_at)):
+        return DEFAULT_CONFIG["stats_url"]
+    return value
+
+
+def log_effective_stats_url(config: dict[str, Any]) -> None:
+    """Log only the source and host, never credentials, paths or query data."""
+    source = getattr(config, "_stats_url_source", "default")
+    value = effective_stats_url(config)
+    if value != config.get("stats_url"):
+        source = "default"
+    try:
+        host = urllib.parse.urlsplit(value).hostname if isinstance(value, str) else None
+    except ValueError:
+        host = None
+    shown = host.encode("unicode_escape").decode("ascii")[:253] if host else "<none>"
+    logger.info("Effective stats_url: source=%s host=%s", source, shown)
 
 
 def _persistable_model_path(config: dict[str, Any]) -> str:

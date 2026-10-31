@@ -83,6 +83,7 @@ from core._proc import kill_download_tree
 from core.config import (
     _PROJECT_KEY_RANGES,
     load_config,
+    log_effective_stats_url,
     save_config,
     webhook_secret_from_input,
     webhook_secret_valid,
@@ -1409,6 +1410,7 @@ class App(tk.Tk):
         send_launch_ping_async()
         self._ui_logger = get_ui_logger()
         logger.info("App startup; theme=%s", self.app_config.get("theme", "dark"))
+        log_effective_stats_url(self.app_config)
         self.theme_var = tk.StringVar(value=self.app_config.get("theme", "light"))
         # macOS: pin each window's title bar to the theme mode BEFORE it is resolved ("System" must
         # be set back to auto first: Tk's isdark answer comes from the window's own appearance).
