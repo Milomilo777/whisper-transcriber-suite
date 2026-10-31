@@ -37,6 +37,10 @@
 /facts.json
   Cache-Control: public, max-age=3600
 
+/app_config.json
+  Cache-Control: public, max-age=300
+  Content-Type: application/json; charset=utf-8
+
 /sitemap.xml
   Cache-Control: public, max-age=3600
 
