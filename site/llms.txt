@@ -6,6 +6,26 @@ Whisper Transcriber Suite runs faster-whisper, whisper.cpp or NVIDIA Parakeet lo
 
 Common questions this page answers: Is it free? Yes — BSD-3-Clause, no subscription, no per-minute fee; only the ~1-3GB Whisper model itself downloads once, on first launch. Does it upload recordings anywhere? No, not by default — the two cloud backends above are opt-in and stay off until enabled. What platforms does it run on? Windows, macOS and Linux, with published Windows and macOS installers and a from-source build for Linux. How is this different from calling the Whisper API directly? No per-minute cost and no audio leaves the machine, because transcription runs locally by default instead of through a paid cloud API.
 
+## Video tour
+- [Watch the tour and chapters](https://whisper-transcriber-suite.com/tour/); [YouTube](https://www.youtube.com/watch?v=pfnjrinmayA). English narration, subtitles in 13 languages.
+- [Intro](https://www.youtube.com/watch?v=pfnjrinmayA&t=0s) (0:00)
+- [Your first transcript](https://www.youtube.com/watch?v=pfnjrinmayA&t=34s) (0:34)
+- [Edit and review](https://www.youtube.com/watch?v=pfnjrinmayA&t=107s) (1:47)
+- [Rescue noisy audio](https://www.youtube.com/watch?v=pfnjrinmayA&t=164s) (2:44)
+- [Speakers, languages, translation](https://www.youtube.com/watch?v=pfnjrinmayA&t=206s) (3:26)
+- [Export, convert, share](https://www.youtube.com/watch?v=pfnjrinmayA&t=253s) (4:13)
+- [Links and subtitled video](https://www.youtube.com/watch?v=pfnjrinmayA&t=302s) (5:02)
+- [Phone over Wi-Fi](https://www.youtube.com/watch?v=pfnjrinmayA&t=366s) (6:06)
+- [A pile of files](https://www.youtube.com/watch?v=pfnjrinmayA&t=404s) (6:44)
+- [Live captions](https://www.youtube.com/watch?v=pfnjrinmayA&t=444s) (7:24)
+- [Models and hardware](https://www.youtube.com/watch?v=pfnjrinmayA&t=492s) (8:12)
+- [Voice and AI tools](https://www.youtube.com/watch?v=pfnjrinmayA&t=546s) (9:06)
+- [Your language, your look](https://www.youtube.com/watch?v=pfnjrinmayA&t=602s) (10:02)
+- [Try it in your browser](https://www.youtube.com/watch?v=pfnjrinmayA&t=633s) (10:33)
+- [For builders](https://www.youtube.com/watch?v=pfnjrinmayA&t=682s) (11:22)
+- [Install and privacy](https://www.youtube.com/watch?v=pfnjrinmayA&t=703s) (11:43)
+- [Which settings + where to get it](https://www.youtube.com/watch?v=pfnjrinmayA&t=759s) (12:39)
+
 ## Tools
 - [Try it in your browser](https://whisper-transcriber-suite.com/try/): free online audio transcription with no upload and no sign-up. Whisper Small (250 MB, every current browser) or Large v3 Turbo (730 MB, WebGPU) runs inside the browser tab, for MP3, WAV, M4A or MP4 files of up to 10 minutes (5 on a phone); download TXT, SRT or VTT. The audio never leaves the device (only the model downloads, from Hugging Face). In English and 41 more languages (for example /de/try/); the desktop app handles longer files.
 
