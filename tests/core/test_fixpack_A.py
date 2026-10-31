@@ -166,7 +166,9 @@ def test_online_memo_not_contaminated_across_loads(isolated_dirs, monkeypatch):
     """Two load_config() calls in one process share _ONLINE_MEMO; a local
     catalog override on the first call must NOT leak into the second."""
     online_payload = {
-        "model_catalog": {"slugX": {"label": "ORIG", "url": "u", "md5": "m"}}
+        "model_catalog": {
+            "slugX": {"label": "ORIG", "hf_repo": "Systran/faster-whisper-x", "md5": "m"}
+        }
     }
 
     def _fake_urlopen(req, timeout=0):  # noqa: ARG001
@@ -185,7 +187,7 @@ def test_online_memo_not_contaminated_across_loads(isolated_dirs, monkeypatch):
     second = cfg.load_config(fetch_online=True)
     assert second["model_catalog"]["slugX"]["label"] == "ORIG"
     # The sibling keys from the online layer survived the merge too.
-    assert second["model_catalog"]["slugX"]["url"] == "u"
+    assert second["model_catalog"]["slugX"]["hf_repo"] == "Systran/faster-whisper-x"
 
 
 # --- Fix 4: explicitly empty config_url disables the online fetch ----------
