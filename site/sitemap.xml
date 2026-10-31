@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+<urlset xmlns:video="http://www.google.com/schemas/sitemap-video/1.1" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
     <loc>https://whisper-transcriber-suite.com/</loc>
     <xhtml:link rel="alternate" hreflang="en" href="https://whisper-transcriber-suite.com/"/>
@@ -262,6 +262,18 @@
     <lastmod>2026-10-26</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://whisper-transcriber-suite.com/tour/</loc>
+    <lastmod>2026-10-31</lastmod>
+    <video:video>
+      <video:thumbnail_loc>https://whisper-transcriber-suite.com/assets/tour-thumbnail.jpg</video:thumbnail_loc>
+      <video:title>Whisper Transcriber Suite: free offline transcription, full tour</video:title>
+      <video:description>Explore the free offline transcription app in a 13-minute tour, with English narration and subtitles in 13 languages.</video:description>
+      <video:player_loc>https://www.youtube-nocookie.com/embed/pfnjrinmayA</video:player_loc>
+      <video:duration>796</video:duration>
+      <video:publication_date>2026-10-30T00:00:00+00:00</video:publication_date>
+    </video:video>
   </url>
   <!-- i18n:sitemap:start -->
   <url>
