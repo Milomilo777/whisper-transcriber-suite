@@ -55,7 +55,10 @@ def test_online_config_cache_and_marker_round_trip(tmp_path, monkeypatch):
         lambda req, timeout=0: _Body(json.dumps({"k": "v"}).encode()),
     )
     assert cfg.fetch_online_config(_URL, cache_path=cache) == {"k": "v"}
-    assert json.loads(cache.read_text(encoding="utf-8")) == {"k": "v"}
+    saved = json.loads(cache.read_text(encoding="utf-8"))
+    # The cache also records when it was saved (the 30-day stats_url limit).
+    assert isinstance(saved.pop(cfg._ONLINE_CACHE_SAVED_AT), (int, float))
+    assert saved == {"k": "v"}
 
     def _not_found(req, timeout=0):
         raise urllib.error.HTTPError(_URL, 404, "x", {}, io.BytesIO(b""))  # type: ignore[arg-type]

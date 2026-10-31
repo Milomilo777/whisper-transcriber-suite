@@ -159,7 +159,8 @@ def _record_fetches(monkeypatch) -> list[str]:
 
     def fake_fetch(url, **_kw):
         urls.append(url)
-        return {"latest_version": "9.9.9"} if url else {"latest_version": "cached"}
+        # The cached value must be a real version: the online layer drops anything else.
+        return {"latest_version": "9.9.9"} if url else {"latest_version": "1.2.3"}
 
     monkeypatch.setattr(cfg, "fetch_online_config", fake_fetch)
     cfg.refresh_online_config()
@@ -171,7 +172,7 @@ def test_online_config_is_not_fetched_while_offline(isolated_config, monkeypatch
     urls = _record_fetches(monkeypatch)
     merged = cfg.load_config()
     assert urls == [""]  # only the cache read, no URL
-    assert merged["latest_version"] == "cached"
+    assert merged["latest_version"] == "1.2.3"
     assert merged["work_offline"] is True
 
 
