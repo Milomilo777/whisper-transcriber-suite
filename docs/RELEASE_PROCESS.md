@@ -108,6 +108,21 @@ pytest tests/core/test_transcribe_end_to_end.py
 If anything's red, fix it before continuing. **Do not** ship a known
 flake — your users will hit it.
 
+Real-run checklist (a passing unit suite does not replace it). Before every release that ships a
+build, run the freshly built installer or app on real data, not only the tests:
+
+- Windows: a real transcription of a real file with the installed build, and the microphone path
+  (Live tab) on a machine with a real microphone.
+- macOS (needs the extra care): the `.dmg` must be installed and run on a real Intel Mac or a
+  supervised Intel macOS VM; a green CI smoke test alone does not count. Check the first launch
+  (Gatekeeper path), a real transcription with the bundled ffmpeg (a quarantined bundled binary is
+  a known trap), progress moving on a long clip, and a download through yt-dlp. There is no Apple
+  silicon hardware: the arm64 build ships CI-built with the disclaimer and is smoke-tested on the
+  Apple-silicon runner only.
+- yt-dlp: the bundled copy is the version the build pinned. Check the latest `ytdlp-watch.yml` run
+  before tagging (a red run means a site changed; update the pin first).
+- The latest `model-links-weekly.yml` run is green (no dead model link ships).
+
 ## Step 5 — Build the three deliverables
 
 From the repo root, in order:
