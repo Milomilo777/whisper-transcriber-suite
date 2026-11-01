@@ -1491,6 +1491,9 @@ class App(tk.Tk):
         # app_config, the bar is built on first use.
         self._star_bar: Any = None
         self._star_stamp_first_run()
+        # The quiet offer to send technical details of an unexplained failure (consent first).
+        from app.services.diagnostic_offer import DiagnosticOffer
+        self.diagnostic_offer = DiagnosticOffer(self)
 
         self._build_menu()
         # macOS: the app menu, Finder "Open With" and the Dock icon call back
@@ -5116,6 +5119,7 @@ class App(tk.Tk):
                 task.source_download = source_download
                 source_download.transcription_task = task
                 source_download.status = "transcribing"
+                source_download.end_time = None  # the Time column keeps counting while it transcribes
                 self.refresh_download_queue()
             self.queue.append(task)
             self._warn_english_only(language or None, base)
@@ -5138,6 +5142,8 @@ class App(tk.Tk):
                 return
             else:
                 source_download.status = "finished"
+                if getattr(source_download, "end_time", None) is None:
+                    source_download.end_time = time.time()
             self.refresh_download_queue()
 
         self._when_worker_ready(
@@ -5332,6 +5338,12 @@ class App(tk.Tk):
                 m.add_command(
                     label=_("Open file"),
                     command=lambda p=saved: self._open_file(p),
+                )
+            transcript_file = App._download_transcript_file(task) if task.status == "finished" else None
+            if transcript_file:
+                m.add_command(
+                    label=_("Open transcript"),
+                    command=lambda p=transcript_file: self._open_file(p),
                 )
             reveal_target = saved if task.status == "finished" and saved and os.path.isfile(saved) else None
             m.add_command(
@@ -5835,7 +5847,28 @@ class App(tk.Tk):
             getattr(task, "status", ""),
             is_smtv=_is_smtv_task(task),
             has_saved_file=bool(saved) and os.path.isfile(saved),
+            has_transcript=App._download_transcript_file(task) is not None,  # class call: test stand-ins lack it
         )
+
+    @staticmethod
+    def _download_transcript_file(task: Any) -> str | None:
+        """The transcript file to open for a download row, or None (checked on disk every time)."""
+        from app.domain.task_outputs import pick_openable_transcript
+        return pick_openable_transcript(getattr(task, "transcript_paths", None))
+
+    def _download_action_open_transcript(self) -> None:
+        """Transcript button: open the transcript of each selected row; say so when the file is gone."""
+        for t in list(self._selected_downloads()):
+            target = App._download_transcript_file(t)
+            if target:
+                self._open_file(target)
+            elif getattr(t, "transcript_paths", None):
+                messagebox.showinfo(
+                    _("Transcript"),
+                    _("The transcript file is no longer where it was saved. It may have been moved or deleted."),
+                    parent=self,
+                )
+        self._update_download_action_bar()
 
     def _download_action_apply(
         self, fn: "Callable[[VideoDownloadTask], Any]", key: str,

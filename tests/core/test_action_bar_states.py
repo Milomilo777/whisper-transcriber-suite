@@ -127,3 +127,13 @@ def test_download_open_not_offered_for_non_finished():
     assert "open" not in _on(
         download_button_states_for_status("cancelled", has_saved_file=True)
     )
+
+
+def test_download_transcript_button_only_for_finished_row_with_a_transcript():
+    on = _on(download_button_states_for_status("finished", has_saved_file=True, has_transcript=True))
+    assert on == {"rerun", "remove", "open", "transcript"}
+    # The transcript stays reachable when the video file itself is gone.
+    assert "transcript" in _on(download_button_states_for_status("finished", has_transcript=True))
+    for status in ("waiting", "running", "paused", "transcribing", "cancelled", "error"):
+        assert "transcript" not in _on(download_button_states_for_status(status, has_transcript=True))
+    assert "transcript" not in _on(download_button_states_for_status("finished"))

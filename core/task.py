@@ -117,6 +117,8 @@ class TranscriptionTask:
         self.error_reason: str = ""
         # Closed, best-effort usage-statistics clue for this attempt only.
         self.failure_clue: dict[str, str] | None = None
+        # Class, allow-listed frames and message SHAPE of the failure (core.diagnostic); only offered, never auto-sent.
+        self.failure_diag: dict[str, str] | None = None
         self._failure_site: str = "other"
         # Speed meter (core.speed_meter). ``live_*`` are the smoothed speed
         # (x real time) and time left while the decode runs, None until

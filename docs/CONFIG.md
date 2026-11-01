@@ -503,6 +503,8 @@ It binds **loopback (`127.0.0.1`) by default** — no Windows firewall prompt
 |---|---|---|---|
 | `telemetry_opt_in` | bool | `true` | The usage-statistics switch: **Help → Usage statistics**, or the same checkbox under **Advanced → App behaviour** (both show the same value). Turning it off is saved in `config.json` and survives restarts and upgrades; the untouched default is not written to the file. Local-only: the online config can never set it (`core.config.LOCAL_ONLY_KEYS`). The same flag also gates the launch ping and Sentry crash reports below, which in addition need environment variables. |
 | `install_id` | string | `""` | A random UUID4 that tags the usage-statistics rows so the maintainer can count distinct installs (one person transcribing thousands of clips is one install, not many users). Created the first time a row is sent, stored here, never derived from the hardware, the user name, paths or the network. Turning `telemetry_opt_in` off deletes it; turning it on again makes a new, unrelated id. Not sent in problem reports. Local-only (`core.config.LOCAL_ONLY_KEYS`). |
+| `diagnostic_offer` | bool | `true` | Allows the quiet offer to send technical details of an unexplained failure (see Changelog). "Don't ask again" sets it to false. Local only. |
+| `diagnostic_offer_last` | number | `0` | Time of the last offer, so it appears at most once a day. Local only. |
 
 What is sent (built by `core.stats.build_stats_payload`, posted by `core.stats.post_stats_async` on a daemon thread with a 5 s timeout; every error is swallowed, so stats never block or crash a transcription):
 

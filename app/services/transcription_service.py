@@ -56,6 +56,15 @@ def _remember_failure_clue(
         task.failure_clue = clue
     except Exception:  # noqa: BLE001
         logger.debug("Could not remember failure clue", exc_info=True)
+    try:
+        raw = (event or {}).get("diag")
+        if raw:
+            from core import diagnostic
+            record = diagnostic.sanitise(raw)
+            if record["cls"]:
+                task.failure_diag = record
+    except Exception:  # noqa: BLE001 - a report must never break task handling
+        logger.debug("Could not remember the diagnostic record", exc_info=True)
 
 # Worker events that carry no result: a copy arriving after its worker left app.workers is
 # expected (see _poll_once) and is only logged at debug level.
@@ -2214,6 +2223,7 @@ class TranscriptionService:
             t.error_reason = ""
             try:
                 t.failure_clue = None
+                t.failure_diag = None
             except Exception:  # noqa: BLE001 - unusual task objects must still dispatch
                 logger.debug("Could not reset failure clue", exc_info=True)
             t.start_time = _time.time()
@@ -2604,6 +2614,8 @@ class TranscriptionService:
                 self._post_usage_stats(
                     task, 0, 0.0, worker, status=terminal_status
                 )
+                if terminal_status == "error":
+                    self._note_failure_for_offer(task)
         # If this task was auto-spawned from a download, the Download row
         # mirrored "transcribing" + live progress while it ran. It's
         # terminal now (finished / error / cancelled) — restore that row to
@@ -2612,6 +2624,16 @@ class TranscriptionService:
         # Only restore a row still showing "transcribing" — never clobber a
         # download the user cancelled/removed while it was transcribing.
         if dl is not None and getattr(dl, "status", None) == "transcribing":
+            if newly_finished:
+                # Keep the transcript files on the row: the person who gave a link must be
+                # able to open the result from the Download tab.
+                try:
+                    dl.transcript_paths = [str(p) for p in (getattr(task, "output_paths", None) or [])
+                                           if p and os.path.isfile(str(p))]
+                    dl.transcript_language = str(
+                        getattr(task, "language", "") or getattr(task, "detected_language", "") or "")
+                except Exception:  # noqa: BLE001 - the transcript is saved already
+                    logger.debug("Could not remember the transcript files on the download row", exc_info=True)
             dl.transcription_task = None
             task.source_download = None
             if getattr(dl, "make_subbed_video", False):
@@ -2626,6 +2648,8 @@ class TranscriptionService:
             else:
                 dl.status = "finished"
                 dl.progress = 100
+            if getattr(dl, "end_time", None) is None:
+                dl.end_time = _time.time()  # freeze the Time column now that the row is really done
             try:
                 app.refresh_download_queue()
             except Exception:  # noqa: BLE001
@@ -2642,6 +2666,15 @@ class TranscriptionService:
         app.update_overall_progress()
         if worker.get("temporary") and not any(t.status == "waiting" for t in app.queue):
             self.retire_worker(worker)
+
+    def _note_failure_for_offer(self, task: Any) -> None:
+        """Hand a failed task's diagnostic record to the (consent-based) offer; never raises into task handling."""
+        try:
+            offer = getattr(self.app, "diagnostic_offer", None)
+            if offer is not None:
+                offer.note(task)
+        except Exception:  # noqa: BLE001
+            logger.debug("Diagnostic offer failed", exc_info=True)
 
     def _run_finish_hooks(self, task: Any, audio_duration: float) -> None:
         """Hand a finished, saved job to the optional Obsidian note / webhook.

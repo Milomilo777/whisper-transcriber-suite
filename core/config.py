@@ -143,6 +143,12 @@ DEFAULT_CONFIG = {
     "star_invites_shown": 0,
     "star_last_invite": "",
     "star_dont_ask": False,
+    # Failure details the person may send (core.diagnostic, app.services.diagnostic_offer). The offer is
+    # shown only while telemetry_opt_in is on; "Don't ask again" turns diagnostic_offer off for good.
+    # diagnostic_offer_last is the time of the last offer (seconds), so it appears at most once a day.
+    # Both are LOCAL_ONLY_KEYS.
+    "diagnostic_offer": True,
+    "diagnostic_offer_last": 0.0,
     # Browser to read cookies from for yt-dlp, so login-walled / age-gated
     # content downloads using the user's logged-in session (Facebook,
     # Instagram, TikTok stories; some YouTube Shorts). Empty = off. One of
@@ -631,6 +637,8 @@ LOCAL_ONLY_KEYS: frozenset[str] = frozenset({
     "star_invites_shown",
     "star_last_invite",
     "star_dont_ask",
+    "diagnostic_offer",
+    "diagnostic_offer_last",
     "yt_dlp_update_mode",
     "last_yt_dlp_update_check",
     "auto_update_yt_dlp",

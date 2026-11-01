@@ -1207,6 +1207,13 @@ def _main() -> int:
                 clue = worker_clue(e, task, device=clue_device)
             except Exception:  # noqa: BLE001 - do not break the error event
                 logger.debug("Worker failure clue unavailable", exc_info=True)
+            try:
+                # Add-only field: class, allow-listed frames and the message SHAPE (never the message). The
+                # parent shows it to the person and sends it only if they agree; see core.diagnostic.
+                from core.diagnostic import build as _build_diagnostic
+                clue["diag"] = _build_diagnostic(e)  # type: ignore[assignment]
+            except Exception:  # noqa: BLE001 - do not break the error event
+                logger.debug("Diagnostic record unavailable", exc_info=True)
             if written:
                 emit("error", message=message, file_path=file_path,
                      task_id=task_id, outputs=written, **clue)

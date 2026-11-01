@@ -547,11 +547,12 @@ def button_states_for_status(
 
 
 # Download action keys for the per-row Download action bar.
-DOWNLOAD_ACTION_KEYS = ("pause", "resume", "cancel", "rerun", "remove", "open")
+DOWNLOAD_ACTION_KEYS = ("pause", "resume", "cancel", "rerun", "remove", "open", "transcript")
 
 
 def download_button_states_for_status(
-    status: str, *, is_smtv: bool = False, has_saved_file: bool = False
+    status: str, *, is_smtv: bool = False, has_saved_file: bool = False,
+    has_transcript: bool = False,
 ) -> dict[str, bool]:
     """Which download actions are valid for a task in ``status``.
 
@@ -565,6 +566,7 @@ def download_button_states_for_status(
 
     ``is_smtv`` disables Pause (SMTV CDN has no HTTP Range resume point).
     ``has_saved_file`` gates Open to a finished download with a real file.
+    ``has_transcript`` gates Transcript to a finished row whose transcription wrote a file that still exists.
     """
     states = {k: False for k in DOWNLOAD_ACTION_KEYS}
     if status in ("waiting", "running", "transcribing", "burning"):
@@ -579,6 +581,8 @@ def download_button_states_for_status(
         states["remove"] = True
         if status == "finished" and has_saved_file:
             states["open"] = True
+        if status == "finished" and has_transcript:
+            states["transcript"] = True
     return states
 
 
@@ -2275,8 +2279,12 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
             dl_action_bar, text=pgettext("button", "Open"),
             command=app._download_action_open,
         ),
+        "transcript": ttk.Button(
+            dl_action_bar, text=_("Open transcript"),
+            command=app._download_action_open_transcript,
+        ),
     }
-    for key in ("pause", "resume", "cancel", "rerun", "remove", "open"):
+    for key in ("pause", "resume", "cancel", "rerun", "remove", "open", "transcript"):
         app.download_action_buttons[key].pack(side="left", padx=(0, 6))
         app.download_action_buttons[key].state(["disabled"])
     # Global list action (not tied to a selection), so it lives on the

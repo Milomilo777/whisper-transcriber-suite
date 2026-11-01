@@ -251,3 +251,26 @@ def show_update_command(parent: tk.Misc, *, version: str, command: str) -> tk.To
     ttk.Button(buttons, text=_("Close"), command=top.destroy).pack(side="right")
     place_over(top, parent)
     return top
+
+
+class DiagnosticBar(_QuietBar):
+    """The offer to send technical details of a failure: Show details / Send / Not now / Don't ask again.
+
+    The rules for when it may appear live in ``app.services.diagnostic_offer``; what is sent is built by
+    ``core.diagnostic`` and ``core.problem_report``. Nothing is sent before the person presses Send.
+    """
+
+    BUTTONS = (
+        ("details", N_("Show details")),
+        ("send", N_("Send")),
+        ("not_now", N_("Not now")),
+        ("never", N_("Don't ask again")),
+    )
+
+    def __init__(self, master: tk.Misc, *, commands: dict[str, Callable[[], None]]) -> None:
+        super().__init__(master)
+        self.buttons: dict[str, ttk.Button] = {}
+        for key, text in self.BUTTONS:
+            button = ttk.Button(self._button_row, text=translate(text), command=commands[key])
+            button.pack(side="left", padx=(6, 0))
+            self.buttons[key] = button

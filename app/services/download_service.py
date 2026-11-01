@@ -3906,6 +3906,9 @@ class DownloadService:
                     # being transcribed, which can be slow. The app /
                     # finish_task flip it back to "finished" when done.
                     task.status = "transcribing"
+                    # The Time column froze at the download's end while the transcription went on (it
+                    # stops at end_time); run it again until the row is really finished.
+                    task.end_time = None
                     app.log(f"-> Now transcribing: {os.path.basename(saved_path)}")
                 except Exception as e:  # noqa: BLE001
                     # The file is kept, but the row must not read as plain success while the

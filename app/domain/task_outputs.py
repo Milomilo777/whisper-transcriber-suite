@@ -88,3 +88,18 @@ def task_output_file(task: Any) -> str | None:
         if isinstance(p, str) and os.path.isfile(p):
             return p
     return None
+
+
+# What a person wants to read first when they open "the transcript" of a row: plain text, then subtitles, then
+# documents. JSON is the viewer's file, not something to hand to a text editor, and sidecars never count.
+_TRANSCRIPT_OPEN_ORDER = (".txt", ".srt", ".vtt", ".md", ".docx", ".pdf", ".lrc", ".tsv", ".ass")
+
+
+def pick_openable_transcript(paths: Any) -> str | None:
+    """The existing output file to open for "Open transcript"; None when no readable output is on disk."""
+    found = [p for p in (paths or ()) if isinstance(p, str) and p and os.path.isfile(p) and not is_sidecar_json(p)]
+    for ext in _TRANSCRIPT_OPEN_ORDER:
+        for p in found:
+            if p.lower().endswith(ext):
+                return p
+    return next((p for p in found if not p.lower().endswith(".json")), None)

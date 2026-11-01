@@ -4,6 +4,15 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+
+- **Open transcript on the Download Videos tab**: a finished row that was transcribed after download has an Open transcript button and menu entry (text first, then subtitles); the video's own Open button is unchanged.
+- **Optional technical details after an unexplained failure**: a quiet bar offers to send the failure's class, code locations and a word-filtered shape of the message (only vocabulary words survive). Nothing is sent before Send; at most one offer per session and per day, never while a job runs, and never with statistics off or Work offline. The last 30 records are also kept locally in the log folder (`diagnostics.jsonl`).
+
+### Fixed
+
+- The Time column of a download that is transcribed after download stopped counting when the download ended; it now runs until the transcription is done.
+
 ### Changed
 
 - Online configuration now uses the project's domain and validates remote statistics endpoints, version strings and model repository IDs; online model entries must come from a repository owner of the built-in catalog, and a statistics endpoint must be printable ASCII with a host of at most 253 characters. A 410 response removes cached overrides, and cached statistics endpoints expire after 30 days or at once when the cache has no saved time.
