@@ -61,23 +61,42 @@ def frames_text(tb: TracebackType | None, limit: int = MAX_FRAMES) -> str:
     return ">".join(kept[-limit:])
 
 
+#: A number survives only when it stands alone next to one of these words: an OS or HTTP code, a size. Numbers in a
+#: row ("192 168 1 1", "415 555 0123") are never kept, because a run of short numbers is an address or a phone number.
+_NUMBER_CONTEXT = frozenset({"winerror", "errno", "error", "code", "status", "exit", "returned", "signal",
+                             "bytes", "byte", "http", "channels", "dimension", "axis", "index", "line"})
+
+
 def message_shape(text: object) -> str:
     """*text* with every token outside the technical vocabulary replaced by ``*`` (see the module docstring).
 
     Only letters and digits are ever looked at, so path separators, quotes, brackets and URL punctuation vanish
-    with the tokens they belonged to. Consecutive ``*`` collapse into one. The result is lower case ASCII.
+    with the tokens they belonged to. Numbers become ``#`` unless one stands alone beside a context word (an error
+    code or a size). Consecutive ``*`` and ``#`` collapse. The result is lower case ASCII.
     """
+    tokens = _TOKEN.findall(str(text or ""))
+    kinds = ["n" if t.isdigit() else "w" for t in tokens]
     out: list[str] = []
-    for token in _TOKEN.findall(str(text or "")):
-        if token.isdigit():
-            piece = token if len(token) <= _MAX_NUMBER_DIGITS else "#"
+    for i, token in enumerate(tokens):
+        if kinds[i] == "n":
+            alone = (i == 0 or kinds[i - 1] != "n") and (i + 1 >= len(tokens) or kinds[i + 1] != "n")
+            near = (i > 0 and tokens[i - 1].lower() in _NUMBER_CONTEXT) or (
+                i + 1 < len(tokens) and tokens[i + 1].lower() in _NUMBER_CONTEXT)
+            piece = token if alone and near and len(token) <= _MAX_NUMBER_DIGITS else "#"
         else:
             lowered = token.lower()
             piece = lowered if lowered in VOCABULARY else "*"
-        if piece == "*" and out and out[-1] == "*":
+        if piece in ("*", "#") and out and out[-1] == piece:
             continue
         out.append(piece)
     return " ".join(out)[:MAX_SHAPE_CHARS].strip()
+
+
+def _revalidate_shape(text: object) -> str:
+    """A shape that arrived from the worker: keep only vocabulary words, digits, ``*`` and ``#``."""
+    kept = [t for t in str(text or "").split()
+            if t in ("*", "#") or t.isdigit() or t in VOCABULARY]
+    return " ".join(kept)[:MAX_SHAPE_CHARS]
 
 
 def _os_error(exc: BaseException) -> int:
@@ -117,9 +136,11 @@ def sanitise(record: Mapping[str, Any] | None) -> dict[str, str]:
     os_text = str(src.get("os", "0"))
     out["os"] = os_text if os_text.isdigit() and len(os_text) <= 10 else "0"
     frames = str(src.get("frames", ""))
-    if re.fullmatch(r"[A-Za-z0-9_.:<>\-]{0,400}", frames):
+    if re.fullmatch(r"[A-Za-z0-9_.:<>\-]{0,400}", frames) and all(
+        _top_package(f.split(":", 1)[0]) in APP_PACKAGES + LIBRARY_PACKAGES for f in frames.split(">") if f
+    ):
         out["frames"] = frames
-    out["shape"] = message_shape(src.get("shape", ""))  # the same filter again: the parent never trusts the worker
+    out["shape"] = _revalidate_shape(src.get("shape", ""))  # the parent never trusts the worker
     digest = str(src.get("hash", ""))
     if re.fullmatch(r"[0-9a-f]{8}", digest):
         out["hash"] = digest

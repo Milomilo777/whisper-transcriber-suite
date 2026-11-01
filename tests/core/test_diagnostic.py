@@ -39,7 +39,23 @@ def test_shape_keeps_no_personal_word(text):
 
 def test_shape_keeps_the_useful_part():
     shape = dg.message_shape("Unable to allocate 5 bytes for an array with shape (1, 2) and data type float32")
-    assert "unable to allocate 5 bytes for an array with shape 1 2 and data type float32" == shape
+    assert "unable to allocate 5 bytes for an array with shape # and data type float32" == shape
+
+
+def test_runs_of_short_numbers_never_survive():
+    # an IPv4 address, a phone number and a date are rows of short numbers
+    for text in ("connection to 192.168.1.20 port 8080 refused", "call 415 555 0123", "on 2026 11 02 error 5"):
+        shape = dg.message_shape(text)
+        assert not any(t.isdigit() and t not in ("5",) for t in shape.split()), shape
+    assert dg.message_shape("[WinError 5] Access is denied") == "winerror 5 access is denied"
+
+
+def test_sanitise_keeps_the_placeholders_of_a_real_shape():
+    rec = {"cls": "ValueError", "os": "0", "frames": "core.worker:run:12", "shape": "invalid * value # 5 bytes",
+           "hash": "ab12cd34"}
+    assert dg.sanitise(rec)["shape"] == "invalid * value # 5 bytes"
+    assert dg.sanitise(dict(rec, shape="invalid johnsmith value"))["shape"] == "invalid value"
+    assert dg.sanitise(dict(rec, frames="home.maria.secret:run:3"))["frames"] == ""
 
 
 def test_long_numbers_and_empty_input():

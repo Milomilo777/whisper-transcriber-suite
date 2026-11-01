@@ -2648,7 +2648,7 @@ class TranscriptionService:
             else:
                 dl.status = "finished"
                 dl.progress = 100
-            if getattr(dl, "end_time", None) is None:
+            if getattr(dl, "status", "") in ("finished", "error", "cancelled") and getattr(dl, "end_time", None) is None:
                 dl.end_time = _time.time()  # freeze the Time column now that the row is really done
             try:
                 app.refresh_download_queue()

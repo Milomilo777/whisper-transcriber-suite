@@ -1755,6 +1755,7 @@ class DownloadService:
         # Re-run path: clear a frozen end_time so the counter starts
         # incrementing again for the second attempt.
         task.end_time = None
+        task.transcript_paths = []  # the earlier run's transcript is not this run's
         app.refresh_download_queue()
 
         from core._threads import safe_thread
@@ -3916,6 +3917,7 @@ class DownloadService:
                     chain_error = f"The download finished, but its transcription could not be started: {e}"
                     app.log(chain_error)
                     task.status = "error"
+                    task.end_time = time.time() if getattr(task, "end_time", None) is None else task.end_time
             # macOS banner, like the chime above, but only when no transcription follows: that
             # stage (or the burn after it) is the job's last and posts the banner.
             if saved_path and task.status != "transcribing":

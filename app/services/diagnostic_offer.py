@@ -16,6 +16,7 @@ Rules (each one is a test in ``tests/app/test_diagnostic_offer.py``):
 from __future__ import annotations
 
 import logging
+import queue
 import time
 from typing import Any, Callable
 
@@ -84,9 +85,11 @@ class DiagnosticOffer:
         self._scheduled = False
         if not self._pending or getattr(self.app, "_closing", False):
             return
-        if self.app._jobs_active() or not self._allowed():
-            if self._allowed():
-                self._schedule()  # busy: look again later
+        if not self._allowed():
+            self._pending.clear()  # switched off (or offline) while waiting: nothing stays queued
+            return
+        if self.app._jobs_active():
+            self._schedule()  # busy: look again later
             return
         self._show()
 
@@ -141,20 +144,32 @@ class DiagnosticOffer:
             return
         config = dict(self.app.app_config)
 
+        results: "queue.Queue[bool]" = queue.Queue()
+
         def _work() -> None:
-            ok = True
-            try:
-                for line in lines:
+            sent = 0
+            for line in lines:  # one failed line must not hide that the others went out
+                try:
                     pr.send(config, "[auto] " + line)
-            except pr.ProblemReportError as e:
-                ok = False
-                logger.info("diagnostic details not sent: %s", e)
-            except Exception:  # noqa: BLE001 - never raised into Tk
-                ok = False
-                logger.debug("diagnostic details not sent", exc_info=True)
-            self.app.after(0, lambda: self._after_send(ok))
+                    sent += 1
+                except pr.ProblemReportError as e:
+                    logger.info("diagnostic details not sent: %s", e)
+                except Exception:  # noqa: BLE001 - never raised into Tk
+                    logger.debug("diagnostic details not sent", exc_info=True)
+            results.put(sent == len(lines))
+
+        def _poll() -> None:
+            # Tk is only touched from its own thread: the worker thread just fills the queue.
+            try:
+                ok = results.get_nowait()
+            except queue.Empty:
+                if not getattr(self.app, "_closing", False):
+                    self.app.after(300, _poll)
+                return
+            self._after_send(ok)
 
         safe_thread(_work, name="diagnostic-send")
+        self.app.after(300, _poll)
 
     def _after_send(self, ok: bool) -> None:
         from app.widgets.notice import notify

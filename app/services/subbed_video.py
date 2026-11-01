@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from typing import Any
 
 from app import desktop_alert
@@ -223,6 +224,8 @@ def end_chain(
     # A Cancel that landed after the encode finished keeps the finished file.
     if burned or dl.status != "cancelled":
         dl.status = status
+    if getattr(dl, "end_time", None) is None:
+        dl.end_time = time.time()  # the Time column ran through the transcription and the burn: stop it here
     if status == "finished":
         dl.progress = 100
         app.log(f"✓ Subtitled video: {burned}")
