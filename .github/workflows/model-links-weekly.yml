@@ -1,0 +1,29 @@
+name: Model links weekly
+
+# Every Saturday: check that the Hugging Face repositories the app and the website's Try page download from,
+# and the script the Try page loads from jsDelivr, still exist (tools/check_model_links.py). A gone link fails
+# the run, and GitHub then emails the maintainer.
+
+on:
+  schedule:
+    - cron: "17 2 * * 6"
+  workflow_dispatch:
+
+concurrency:
+  group: model-links-weekly
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  links:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Check the links
+        run: python tools/check_model_links.py
