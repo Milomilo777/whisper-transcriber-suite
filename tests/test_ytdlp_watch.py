@@ -75,6 +75,17 @@ def test_main_reports_a_yt_dlp_that_does_not_start(tmp_path):
     assert watch.main(["--urls", str(urls), "--yt-dlp", "nope"], runner=lambda _cmd: (1, "", "boom")) == 1
 
 
+def test_quoted_program_path_with_spaces_reaches_the_runner_unquoted(tmp_path):
+    seen: list[list[str]] = []
+
+    def run(cmd: list[str]) -> tuple[int, str, str]:
+        seen.append(cmd)
+        return (0, "1.0\n", "") if cmd[-1] == "--version" else (0, "a|10|t\n", "")
+    urls = _urls(tmp_path, {"A": "https://a.example/1"})
+    watch.main(["--urls", str(urls), "--yt-dlp", '"C:/Program Files/yt dlp/yt-dlp.exe"'], runner=run)
+    assert seen[0][0] == "C:/Program Files/yt dlp/yt-dlp.exe"  # no quote characters left on the token
+
+
 def test_run_command_reports_a_missing_program_instead_of_raising():
     rc, out, err = watch.run_command(["definitely-not-a-real-program-xyz", "--version"])
     assert rc == 127 and out == "" and "cannot start" in err

@@ -82,7 +82,8 @@ def main(argv: list[str], runner: Runner = run_command) -> int:
     ap.add_argument("--yt-dlp", dest="ytdlp", default=f'"{sys.executable}" -m yt_dlp')
     args = ap.parse_args(argv)
     entries = json.loads(Path(args.urls).read_text(encoding="utf-8"))
-    base = shlex.split(args.ytdlp, posix=os.name != "nt")
+    # On Windows shlex keeps the quotes around a quoted path (non-POSIX mode): drop them.
+    base = [t[1:-1] if len(t) > 1 and t[0] == t[-1] == '"' else t for t in shlex.split(args.ytdlp, posix=os.name != "nt")]
     rc, out, err = runner([*base, "--version"])
     if rc != 0:
         print(f"yt-dlp does not start: {err.strip()[:200]}")
