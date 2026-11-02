@@ -85,6 +85,17 @@ def env(monkeypatch, tmp_path):
         monkeypatch.setitem(tr.config, key, value)
 
     engine = _Engine()
+    reloads: list[str] = []
+
+    def reload_model(folder, *args):
+        reloads.append(folder)
+        return engine
+
+    # Diarization now unloads Whisper between tasks. Keep the real lazy
+    # loader in the test, with its model path and constructor both hermetic.
+    monkeypatch.setitem(tr.config, "model_path", str(tmp_path))
+    monkeypatch.setattr(tr, "_load_whisper_model_self_healing", reload_model)
+    monkeypatch.setattr(tr, "_wrap_for_batched", lambda model: None)
     monkeypatch.setattr(tr, "MODEL", engine)
     monkeypatch.setattr(tr, "PIPELINE", None, raising=False)
     monkeypatch.setattr(tr, "MODEL_READY", True, raising=False)
@@ -123,7 +134,7 @@ def env(monkeypatch, tmp_path):
 
     return types.SimpleNamespace(
         engine=engine, written=written, diarize=diarize_calls,
-        chapters=chapter_calls, tmp=tmp_path,
+        chapters=chapter_calls, tmp=tmp_path, reloads=reloads,
     )
 
 
@@ -173,6 +184,7 @@ def test_unticked_diarization_is_honoured_by_a_long_lived_worker(env, monkeypatc
     assert [e["task_id"] for e in events if e["event"] == "done"] == ["h1", "h2"]
     assert len(env.diarize) == 1, "task 2 was diarised although the setting was off"
     assert [w["speaker_count"] for w in env.written] == [1, 0]
+    assert env.reloads == [str(env.tmp)]
 
 
 def test_ticked_diarization_applies_to_a_worker_spawned_with_it_off(env, monkeypatch):

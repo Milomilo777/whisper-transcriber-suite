@@ -4,7 +4,7 @@ sherpa-onnx prints nothing during its segmentation pass (~100 s for 12 min
 of audio), so before the first "progress" event no progress_cb fires: the
 UI bar freezes and the parent's liveness watchdog sees no events. While no
 real progress has arrived, diarize() must now emit a periodic 0.0-fraction
-heartbeat through the same progress_cb (the transcriber maps it to the 90
+heartbeat through the same progress_cb (the transcriber maps it to the 85
 percent slot, so the bar keeps moving and events keep flowing).
 """
 from __future__ import annotations
@@ -72,7 +72,7 @@ def test_heartbeat_while_waiting_for_the_first_progress(fake_worker, monkeypatch
     assert len(seen) >= 2
 
 
-def test_heartbeat_stops_once_real_progress_arrives(fake_worker, monkeypatch):
+def test_heartbeat_never_resets_after_real_progress_arrives(fake_worker, monkeypatch):
     """After the worker's own progress events no 0.0 heartbeats interleave."""
     fake_worker("""
         time.sleep(1.2)
@@ -86,6 +86,7 @@ def test_heartbeat_stops_once_real_progress_arrives(fake_worker, monkeypatch):
     seen: list[float] = []
     assert diarization.diarize("talk.wav", progress_cb=seen.append) == []
 
-    assert seen[-2:] == [0.5, 1.0]
+    assert 0.5 in seen and seen[-1] == 1.0
+    assert seen == sorted(seen)
     assert 0.0 in seen  # heartbeats ran before the first real progress
-    assert 0.0 not in seen[seen.index(0.5):]  # ...and stopped after it
+    assert 0.0 not in seen[seen.index(0.5):]  # ...and never restarted at zero

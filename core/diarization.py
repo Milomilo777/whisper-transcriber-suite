@@ -23,8 +23,11 @@ beside the exe in onedir mode.
 from __future__ import annotations
 
 import logging
+import gc
+import math
 import os
 import subprocess
+import tempfile
 from dataclasses import dataclass
 from typing import Any, Callable
 
@@ -117,13 +120,18 @@ def _prepare_audio_16k_mono(audio_path: str) -> tuple[Any, int]:
     ]
     kwargs: dict[str, Any] = {
         "stdin": subprocess.DEVNULL,
-        "stdout": subprocess.PIPE,
         "stderr": subprocess.PIPE,
     }
     if os.name == "nt":
         kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
     try:
-        result = subprocess.run(cmd, check=True, timeout=600, **kwargs)
+        # communicate() accumulates pipe chunks then joins them, temporarily
+        # holding two full decoded buffers. Spool to disk and allocate just
+        # one owned float32 array; keep run()'s timeout and pipe draining.
+        with tempfile.TemporaryFile() as decoded:
+            subprocess.run(cmd, stdout=decoded, check=True, timeout=600, **kwargs)
+            decoded.seek(0)
+            samples = np.fromfile(decoded, dtype=np.float32)
     except subprocess.CalledProcessError as e:
         raise DiarizationUnavailable(
             f"ffmpeg failed to decode audio: {(e.stderr or b'').decode('utf-8', 'replace')[:300]}"
@@ -138,7 +146,6 @@ def _prepare_audio_16k_mono(audio_path: str) -> tuple[Any, int]:
         raise DiarizationUnavailable(
             f"ffmpeg binary not available: {e}"
         ) from e
-    samples = np.frombuffer(result.stdout, dtype=np.float32)
     if samples.size == 0:
         # A valid container with no audio frames (or a header-only
         # WAV) decodes to nothing with ffmpeg exit code 0. sherpa's
@@ -160,9 +167,10 @@ WORKER_MIN_TIMEOUT_S = 600.0  # overall limit floor
 WORKER_TIMEOUT_PER_AUDIO_S = 4.0  # overall limit: this many seconds per audio second
 # sherpa-onnx reports nothing during its segmentation pass, so until the
 # first real progress event a periodic 0.0 heartbeat goes out through
-# progress_cb (the transcriber maps it to the 90 percent slot) to keep the
-# UI bar moving and the parent's liveness watchdog fed.
+# progress_cb. Later heartbeats repeat the latest real fraction. Heartbeats
+# keep the parent's watchdog fed, but must not reset our worker stall clock.
 SEGMENTATION_HEARTBEAT_S = 15.0
+WORKER_THREADS = 2
 _CANCEL_POLL_S = 0.1
 
 
@@ -250,6 +258,12 @@ def diarize(
         "text": True,
         "encoding": "utf-8",
         "errors": "replace",
+        # Set before the child imports native libraries; do not change the
+        # server's environment or its ASR thread settings.
+        "env": {**os.environ, **{name: str(WORKER_THREADS) for name in (
+            "OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS",
+            "NUMEXPR_NUM_THREADS",
+        )}},
     }
     kwargs.update(new_session_kwargs())
     try:
@@ -304,7 +318,7 @@ def diarize(
         # stderr below say why.
         logger.debug("diarization worker did not take the request: %s", e)
 
-    start = last_event = time.monotonic()
+    start = last_event = last_heartbeat = time.monotonic()
     segments: list[dict[str, Any]] | None = None
     exited = False
     # sherpa-onnx reports nothing during its segmentation pass, which takes
@@ -312,6 +326,7 @@ def diarize(
     # desktop CPU), so the stall limit only starts with the first progress;
     # before that the overall limit, which grows with the audio, applies.
     progressed = False
+    last_fraction = 0.0
     try:
         while segments is None:
             if cancelled is not None and cancelled():
@@ -319,16 +334,11 @@ def diarize(
                 return []
             now = time.monotonic()
             if (
-                not progressed
-                and progress_cb is not None
-                and now - last_event >= SEGMENTATION_HEARTBEAT_S
+                progress_cb is not None
+                and now - last_heartbeat >= SEGMENTATION_HEARTBEAT_S
             ):
-                # The segmentation pass prints nothing for minutes; this
-                # keeps progress_cb (and the events it feeds) alive until
-                # the worker's own progress starts. 0.0 maps to the 90
-                # percent slot in the transcriber's wrapper.
-                progress_cb(0.0)
-                last_event = now
+                progress_cb(last_fraction)
+                last_heartbeat = now
             if now - start > overall_timeout_s:
                 _stop(force=True)
                 raise DiarizationUnavailable(
@@ -351,8 +361,10 @@ def diarize(
             kind = ev.get("event")
             if kind == "progress":
                 progressed = True
+                last_fraction = float(ev.get("fraction", 0.0))
+                last_heartbeat = last_event
                 if progress_cb is not None:
-                    progress_cb(float(ev.get("fraction", 0.0)))
+                    progress_cb(last_fraction)
             elif kind == "done":
                 segments = list(ev.get("segments") or [])
             elif kind == "error":
@@ -421,8 +433,11 @@ def _diarize_impl(
             pyannote=sherpa_onnx.OfflineSpeakerSegmentationPyannoteModelConfig(
                 model=seg_path
             ),
+            num_threads=WORKER_THREADS,
         ),
-        embedding=sherpa_onnx.SpeakerEmbeddingExtractorConfig(model=emb_path),
+        embedding=sherpa_onnx.SpeakerEmbeddingExtractorConfig(
+            model=emb_path, num_threads=WORKER_THREADS,
+        ),
         clustering=sherpa_onnx.FastClusteringConfig(
             num_clusters=int(num_speakers), threshold=float(cluster_threshold)
         ),
@@ -450,15 +465,92 @@ def _diarize_impl(
                 pass
         return 0  # don't cancel
 
-    result = sd.process(samples, callback=_on_progress).sort_by_start_time()
-    return [
+    try:
+        result = sd.process(samples, callback=_on_progress)
+    finally:
+        del samples
+        gc.collect()
+    segments = [
         DiarSegment(
             start=float(r.start),
             end=float(r.end),
             speaker=f"Speaker {int(r.speaker):02d}",
         )
-        for r in result
+        for r in result.sort_by_start_time()
     ]
+    # The public sherpa result exposes turns, not cluster embeddings. Use
+    # temporal adjacency here rather than decoding/extracting them again.
+    return merge_small_speakers(segments, num_speakers=num_speakers)
+
+
+def _speaker_gap(left: list[DiarSegment], right: list[DiarSegment]) -> float:
+    """Minimum interval gap in linear time and constant auxiliary memory.
+
+    Inputs are sorted by start. No pairwise turn-distance matrix is needed.
+    """
+    i = j = 0
+    best = math.inf
+    while i < len(left) and j < len(right):
+        a, b = left[i], right[j]
+        ae, be = max(a.start, a.end), max(b.start, b.end)
+        best = min(best, max(0.0, a.start - be, b.start - ae))
+        if best == 0.0:
+            return best
+        if ae <= be:
+            i += 1
+        else:
+            j += 1
+    return best
+
+
+def merge_small_speakers(
+    segments: list[DiarSegment],
+    *,
+    centroids: dict[str, list[float]] | None = None,
+    num_speakers: int = -1,
+) -> list[DiarSegment]:
+    """Merge whole small clusters repeatedly; preserve explicit counts and times.
+
+    Prefer embedding distance when available, otherwise use nearest turns.
+    Centroids are duration-weighted after a merge. Ties use speaker labels
+    so results do not depend on set iteration order. Inputs are not mutated.
+    """
+    if num_speakers > 0 or not segments:
+        return segments
+    turns: dict[str, list[DiarSegment]] = {}
+    totals: dict[str, float] = {}
+    for seg in sorted(segments, key=lambda s: s.start):
+        turns.setdefault(seg.speaker, []).append(seg)
+        totals[seg.speaker] = totals.get(seg.speaker, 0.0) + max(0.0, seg.end - seg.start)
+    threshold = max(10.0, 0.03 * sum(totals.values()))
+    vectors = {k: list(v) for k, v in (centroids or {}).items() if k in totals}
+    labels = {s: s for s in totals}
+    while len(totals) > 1:
+        small = min(totals, key=lambda s: (totals[s], s))
+        if totals[small] >= threshold:
+            break
+        others = [s for s in totals if s != small]
+        available = [s for s in others if s in vectors] if small in vectors else []
+        if available:
+            target = min(available, key=lambda s: (math.dist(vectors[small], vectors[s]), s))
+        else:
+            target = min(others, key=lambda s: (_speaker_gap(turns[small], turns[s]), s))
+        combined = totals[target] + totals[small]
+        if target in vectors and small in vectors:
+            weight = totals[small] / combined if combined else 0.5
+            vectors[target] = [a * (1.0 - weight) + b * weight
+                               for a, b in zip(vectors[target], vectors[small])]
+        # A partial centroid would misrepresent a merged cluster.
+        elif target in vectors:
+            del vectors[target]
+        vectors.pop(small, None)
+        totals[target] = combined
+        del totals[small]
+        turns[target] = sorted(turns[target] + turns.pop(small), key=lambda s: s.start)
+        for original, current in labels.items():
+            if current == small:
+                labels[original] = target
+    return [DiarSegment(s.start, s.end, labels[s.speaker]) for s in segments]
 
 
 def assign_speakers_to_segments(

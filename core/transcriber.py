@@ -36,6 +36,7 @@ except ImportError:  # pragma: no cover
 
 from . import _checkpoint
 from .failure_clue import phase as _clue_phase
+from .job_progress import JobProgress
 from . import loop_guard as _loop_guard
 from . import mel_blocks as _mel_blocks
 from . import speech_collect as _speech_collect
@@ -1838,12 +1839,25 @@ def transcribe_with_language_model(
         _LM_RUNNER.slot = None
 
 
+def _release_asr_for_diarization() -> None:
+    """Release Whisper before the native child; callers drop local runners first.
+
+    The normal lazy loader reloads Whisper for the next job. Language-model
+    identity stays on the thread-local slot for checkpoint metadata, with its
+    weights unloaded.
+    """
+    release_default_model()
+    if isinstance(getattr(_LM_RUNNER, "slot", None), _WhisperLanguageModel):
+        release_language_model()
+    gc.collect()
+
+
 def _run_post_pipeline(
     task: TranscriptionTask,
     segments_data: list[dict[str, Any]],
     detected_lang: str,
     log_cb: Callable[[str], None] | None,
-    progress_cb: Callable[[int], None] | None = None,
+    progress_cb: Callable[[float], None] | None = None,
 ) -> int:
     """Diarisation + alignment + speaker_count for the writer.
 
@@ -1863,12 +1877,11 @@ def _run_post_pipeline(
 
                 def _diar_progress(fraction: float) -> None:
                     if progress_cb:
-                        # Diarisation runs after Whisper inference. Map its 0..1
-                        # progress to the 90..99 percent slot so the bar keeps
-                        # moving AND the parent's liveness watchdog sees regular
-                        # events during this otherwise-silent long-running C call.
-                        progress_cb(90 + int(fraction * 9))
+                        progress_cb(fraction)
 
+                _release_asr_for_diarization()
+                if progress_cb:
+                    progress_cb(0.0)
                 diar_segments = _diar.diarize(
                     task.file_path,
                     num_speakers=num_speakers,
@@ -2674,6 +2687,9 @@ def transcribe(
             )
             return
 
+        progress = JobProgress(progress_cb, diarization=bool(config.get("diarization_enabled", False)))
+        progress_cb = progress.transcription
+
         global MODEL
         lm_slot = getattr(_LM_RUNNER, "slot", None)  # a Whisper language model (ADR 0018)
         if lm_slot is None:
@@ -3011,7 +3027,9 @@ def transcribe(
         _clue_phase(task, "worker.postprocess")
         # Speaker diarization (opt-in) + word-level alignment (opt-in).
         detected_lang = str(getattr(info, "language", "") or "")
-        speaker_count = _run_post_pipeline(task, segments_data, detected_lang, log_cb, progress_cb)
+        del segments, runner, base_model, base_pipeline, info
+        gc.collect()
+        speaker_count = _run_post_pipeline(task, segments_data, detected_lang, log_cb, progress.diarization)
 
         if _handle_cancelled():
             return
@@ -3044,8 +3062,7 @@ def transcribe(
         if clip is None:
             _checkpoint.delete_checkpoint(task.file_path)
 
-        if progress_cb:
-            progress_cb(100)
+        progress.finish()
 
         elapsed = time.time() - start
         log(f"Done in {elapsed:.2f}s", log_cb)
@@ -3064,6 +3081,8 @@ def _transcribe_via_alt_backend(
     ``backend``: an already-loaded backend to use instead of the cached one for ``backend_name``
     (the web/LAN language-model slot).
     """
+    progress = JobProgress(progress_cb, diarization=bool(config.get("diarization_enabled", False)))
+    progress_cb = progress.transcription
     _clue_phase(task, "worker.model")
     if backend is None:
         backend = _get_alt_backend(backend_name, log_cb)
@@ -3259,7 +3278,7 @@ def _transcribe_via_alt_backend(
     # see "None" as a stringified language code.
     detected_lang = str(lang_info.language or "")
     _clue_phase(task, "worker.postprocess")
-    speaker_count = _run_post_pipeline(task, segments_data, detected_lang, log_cb, progress_cb)
+    speaker_count = _run_post_pipeline(task, segments_data, detected_lang, log_cb, progress.diarization)
 
     # Cancellation can arrive while the post-pipeline runs — diarisation on
     # a long file takes minutes, which is exactly why a checkpoint is
@@ -3302,8 +3321,7 @@ def _transcribe_via_alt_backend(
     # faster_whisper path's counters.
     if backend_name == "cloud_stt":
         _accumulate_cloud_minutes(duration, log_cb)
-    if progress_cb:
-        progress_cb(100)
+    progress.finish()
     elapsed = time.time() - start
     log(f"Done in {elapsed:.2f}s", log_cb)
 
@@ -3620,6 +3638,8 @@ def resume_transcription(
         log("Task cancelled during resume.", log_cb)
         return True
     with _runtime_overrides_scope(task) as runtime_cfg:
+        progress = JobProgress(progress_cb, diarization=bool(config.get("diarization_enabled", False)))
+        progress_cb = progress.transcription
         # A checkpoint is keyed to the whole file with no clip marker, and
         # clipped runs never write one. Resuming a clipped task from a
         # whole-file partial would transcribe past clip_end (prior segments
@@ -3727,16 +3747,16 @@ def resume_transcription(
                 log_cb,
             )
             if progress_cb:
-                progress_cb(90)
+                progress_cb(100)
             _clue_phase(task, "worker.postprocess")
             speaker_count = _run_post_pipeline(
-                task, done_segments, done_language, log_cb, progress_cb
+                task, done_segments, done_language, log_cb, progress.diarization
             )
             if task.cancelled:
                 # The completed checkpoint stays as it is.
                 log("Task cancelled during resume.", log_cb)
                 return True
-            _write_resumed_outputs(task, done_segments, done_language, speaker_count, log_cb, progress_cb)
+            _write_resumed_outputs(task, done_segments, done_language, speaker_count, log_cb, progress.finish)
             return True
 
         recovered = _recover_resume_cursor(data)
@@ -4059,19 +4079,21 @@ def resume_transcription(
             )
 
         detected_lang = cp_language or str(getattr(info, "language", "") or "")
+        del runner, new_segments_iter, info
+        gc.collect()
 
         # Post-pipeline must see the full ORIGINAL audio (diarisation,
         # alignment, chapters all need the whole file). Reuse the
         # existing helper unchanged.
         _clue_phase(task, "worker.postprocess")
         speaker_count = _run_post_pipeline(
-            task, final_segments, detected_lang, log_cb, progress_cb
+            task, final_segments, detected_lang, log_cb, progress.diarization
         )
 
         if _handle_resume_cancelled():
             return True
 
-        _write_resumed_outputs(task, final_segments, detected_lang, speaker_count, log_cb, progress_cb)
+        _write_resumed_outputs(task, final_segments, detected_lang, speaker_count, log_cb, progress.finish)
         elapsed = time.time() - start
         log(f"Resume: done in {elapsed:.2f}s", log_cb)
         # runtime_cfg is used implicitly via the scope; reference it

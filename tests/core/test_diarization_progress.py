@@ -5,9 +5,8 @@ Background: a long file (~14 min) hit the worker liveness watchdog
 without forwarding ``progress_cb``, so no events flowed during the
 otherwise-silent long-running C call and the watchdog killed the worker.
 
-This test pins the wrapper math: when the diarize wrapper inside
-``_run_post_pipeline`` is invoked with ``fraction=0.5``, the user-facing
-``progress_cb`` receives the int ``94`` (since ``90 + int(0.5 * 9) = 94``).
+The post-pipeline forwards fractions to the shared tracker, which maps
+0.5 to 92 percent in the reserved 85..99 diarization slice.
 """
 from __future__ import annotations
 
@@ -28,8 +27,8 @@ def transcriber(monkeypatch):
     return t
 
 
-def test_diar_progress_wrapper_maps_fraction_to_90_99_slot(transcriber, monkeypatch):
-    """Calling the wrapper with fraction=0.5 must call progress_cb(94)."""
+def test_diar_progress_uses_shared_85_99_slice(transcriber, monkeypatch):
+    """Native fractions use the same tracker as GUI, server and CLI jobs."""
     monkeypatch.setattr(transcriber, "config", {
         "diarization_enabled": True,
         "diarization_num_speakers": -1,
@@ -66,16 +65,17 @@ def test_diar_progress_wrapper_maps_fraction_to_90_99_slot(transcriber, monkeypa
     progress_calls: list[int] = []
     segs: list[dict] = [{"start": 0.0, "end": 1.0, "text": "hi"}]
 
+    from core.job_progress import JobProgress
+    progress = JobProgress(progress_calls.append, diarization=True)
     n = transcriber._run_post_pipeline(
-        _Task(), segs, "en", None, progress_calls.append,
+        _Task(), segs, "en", None, progress.diarization,
     )
 
     # speaker_count = 0 because our fake returned no diar segments.
     assert n == 0
     # The wrapper must have been built + handed to diarize.
     assert captured.get("progress_cb") is not None
-    # The wrapper math: 90 + int(0.5 * 9) = 94.
-    assert progress_calls == [94]
+    assert progress_calls == [85, 92]
 
 
 def test_diar_progress_wrapper_is_noop_when_progress_cb_is_none(

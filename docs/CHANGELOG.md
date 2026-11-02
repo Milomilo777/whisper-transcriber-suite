@@ -11,6 +11,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Diarized jobs reserve 0–85% for transcription and 85–99% for speaker detection, with monotonic updates and heartbeats throughout the native worker phase. Completion reaches 100% after outputs are saved.
+- Automatic speaker detection repeatedly merges clusters below the greater of 10 seconds or 3% of speech into the nearest speaker, using time adjacency when embeddings are unavailable. Explicit speaker counts are preserved.
+- Speaker detection releases completed Whisper runners and weights before starting its worker, decodes audio through a temporary file to avoid full pipe-buffer copies, and limits native worker threads. The next transcription reloads Whisper on demand.
+
 - The Time column of a download that is transcribed after download stopped counting when the download ended; it now runs until the transcription is done.
 
 ### Changed

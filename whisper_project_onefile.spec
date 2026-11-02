@@ -350,6 +350,7 @@ a = Analysis(
         'core.paths',
         'core.process_exit',
         'core.speed_meter',
+        'core.job_progress',
         'core.stats',
         'core.failure_clue',
         'core.diagnostic',
