@@ -21,6 +21,15 @@ INCIDENT = [
 ]
 
 
+REAL_TEN_MINUTES = [
+    {"cy": 0.61, "en": 0.39},
+    {"cy": 0.87, "en": 0.13},
+    {"cy": 0.89, "en": 0.11},
+    {"cy": 0.88, "en": 0.12},
+    {"cy": 0.92, "en": 0.08},
+]
+
+
 class FakeDetector:
     def __init__(self, windows):
         self.windows = iter(windows)
@@ -43,6 +52,18 @@ def test_incident_six_windows_overrides_welsh():
     assert result.probability == pytest.approx(2.23 / 5.97)
     assert result.shares["cy"] == pytest.approx(3.74 / 5.97)
     assert result.window_count == 6
+
+
+def test_real_ten_minute_table_overrides_welsh():
+    detector = FakeDetector(REAL_TEN_MINUTES)
+    result = prior.detect_with_prior(
+        600, {"en"}, lambda start, length: dict(detector.detect_language(audio=start)[2]))
+    assert detector.calls == pytest.approx([45, 165, 285, 405, 525])
+    assert result.window_count == 5
+    assert result.language == "en"
+    assert result.reason == "prior_override"
+    assert result.probability == pytest.approx(0.83 / 5)
+    assert result.shares["cy"] == pytest.approx(4.17 / 5)
 
 
 def test_clear_welsh_stays_welsh():
@@ -68,17 +89,83 @@ def test_english_always_plausible_with_persian_only_history():
     assert prior.choose_language(INCIDENT, {"fa"}).language == "en"
 
 
-@pytest.mark.parametrize("share,expected", [(0.249, "cy"), (0.25, "en"), (0.251, "en")])
-def test_override_threshold_is_inclusive(share, expected):
-    assert prior.choose_language([{"cy": 1 - share, "en": share}], {"en"}).language == expected
+@pytest.mark.parametrize("english_mass,expected", [(0.149, "cy"), (0.15, "cy"), (0.151, "en")])
+def test_weighted_score_boundary_and_alphabetical_tie(english_mass, expected):
+    result = prior.choose_language([{"cy": 1.0, "en": english_mass}], {"en"})
+    assert result.language == expected
+    assert result.reason == ("winner" if expected == "cy" else "prior_override")
+    assert result.probability == pytest.approx(result.shares[expected])
 
 
-def test_prior_uses_best_plausible_individual_share():
-    # Combined plausible mass is insufficient if no individual language reaches 25%.
-    result = prior.choose_language([{"cy": 0.6, "en": 0.2, "fa": 0.2}], {"fa"})
+def test_prior_compares_individual_weighted_scores():
+    # Plausible languages compete individually, rather than pooling their mass.
+    result = prior.choose_language([{"cy": 0.8, "en": 0.1, "fa": 0.1}], {"fa"})
     assert result.language == "cy"
+    result = prior.choose_language([{"cy": 0.6, "en": 0.2, "fa": 0.2}], {"fa"})
+    assert result.language == "en"
+    assert result.reason == "prior_override"
     result = prior.choose_language([{"cy": 0.4, "fa": 0.35, "en": 0.25}], {"fa"})
     assert result.language == "fa"
+    assert result.probability == pytest.approx(0.35)
+
+
+def test_clear_japanese_stays_japanese():
+    result = prior.choose_language([{"ja": 0.90, "en": 0.08}], {"en"})
+    assert result.language == "ja"
+    assert result.reason == "winner"
+    assert result.probability == pytest.approx(0.90 / 0.98)
+
+
+def test_japanese_in_history_keeps_full_weight():
+    # This ambiguous sample would choose English without Japanese in the history.
+    result = prior.choose_language([{"ja": 0.75, "en": 0.25}], {"ja"})
+    assert result.language == "ja"
+    assert result.reason == "winner"
+    assert result.probability == pytest.approx(0.75)
+
+
+def test_ambiguous_first_time_japanese_accepts_english_override():
+    result = prior.choose_language([{"ja": 0.75, "en": 0.25}], {"en"})
+    assert result.language == "en"
+    assert result.reason == "prior_override"
+    assert result.probability == pytest.approx(0.25)
+
+
+def test_weighted_prior_properties():
+    pytest.importorskip("hypothesis")
+    from hypothesis import assume, given, settings, strategies as st
+
+    codes = st.sampled_from(["en", "fa", "ja", "cy", "de"])
+
+    @settings(max_examples=300, derandomize=True, deadline=None, database=None)
+    @given(windows=st.lists(st.dictionaries(codes, st.integers(0, 1000), min_size=1),
+                           min_size=1, max_size=5),
+           plausible=st.sets(codes), increase=st.integers(1, 1000), data=st.data())
+    def check(windows, plausible, increase, data):
+        mass = {}
+        for window in windows:
+            for code, probability in window.items():
+                mass[code] = mass.get(code, 0) + probability
+        assume(sum(mass.values()) > 0)
+        result = prior.choose_language(windows, plausible)
+        assert result.language in mass
+        raw_winner = min(mass, key=lambda code: (-mass[code], code))
+        if raw_winner in plausible | {"en"}:
+            assert result.language == raw_winner
+        # Increase each plausible input language that was chosen, including implicit en.
+        for code in sorted(mass.keys() & (plausible | {"en"})):
+            boosted = [*windows, {code: increase}]
+            if result.language == code:
+                assert prior.choose_language(boosted, plausible).language == code
+        # Also exercise a randomly selected input language made explicitly plausible.
+        target = data.draw(st.sampled_from(sorted(mass)))
+        with_target = plausible | {target}
+        before = prior.choose_language(windows, with_target)
+        after = prior.choose_language([*windows, {target: increase}], with_target)
+        if before.language == target:
+            assert after.language == target
+
+    check()
 
 
 @pytest.mark.parametrize("duration,length", [(1, 1), (29, 29), (30, 30), (149.9, 30)])

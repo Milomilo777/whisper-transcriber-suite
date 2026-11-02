@@ -1,9 +1,15 @@
-"""Language probability aggregation and sampling policy, without app or model imports."""
+"""Aggregate raw language shares and apply a weighted prior, without app or model imports."""
 from __future__ import annotations
 
 import math
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
+
+
+# Downweight unfamiliar languages while preserving strong evidence for a new language.
+# Accepted trade-off: a first-time language with substantial English content may be
+# overridden (ja=0.75/en=0.25 chooses en); the existing override log makes this visible.
+IMPLAUSIBLE_WEIGHT = 0.15
 
 
 @dataclass(frozen=True)
@@ -28,7 +34,7 @@ def sample_windows(duration: float) -> list[tuple[float, float]]:
 def choose_language(
     windows: Iterable[Mapping[str, float]], plausible: Iterable[str],
 ) -> LanguageDecision:
-    """Sum all-language probabilities; allow a plausible alternative at 25 percent."""
+    """Choose by prior-weighted shares, reporting the chosen language's raw share."""
     mass: dict[str, float] = {}
     count = 0
     for window in windows:
@@ -47,11 +53,9 @@ def choose_language(
     shares = {code: mass[code] / total for code in ranked}
     winner = ranked[0]
     plausible_set = set(plausible) | {"en"}
-    chosen, reason = winner, "winner"
-    if winner not in plausible_set:
-        best = next((code for code in ranked if code in plausible_set), None)
-        if best is not None and shares[best] >= 0.25:
-            chosen, reason = best, "prior_override"
+    chosen = min(shares, key=lambda code: (
+        -shares[code] * (1.0 if code in plausible_set else IMPLAUSIBLE_WEIGHT), code))
+    reason = "prior_override" if chosen != winner else "winner"
     return LanguageDecision(chosen, shares[chosen], reason, count, shares)
 
 
