@@ -590,6 +590,15 @@ class HistoryDB:
             )
             return [_row_to_dict(r, ("output_paths", "run_options")) for r in cur.fetchall()]
 
+    def recent_finished_languages(self, limit: int = 20) -> list[str]:
+        """Detected languages of the last finished jobs, including empty entries in the limit."""
+        with self._write_lock:
+            rows = self._conn.execute(
+                "SELECT language FROM transcriptions WHERE status='finished' "
+                "ORDER BY finished_at DESC, id DESC LIMIT ?", (limit,),
+            ).fetchall()
+            return [str(row[0] or "") for row in rows]
+
     def list_interrupted_transcriptions(self, limit: int = 1000) -> list[dict[str, Any]]:
         """Every ``interrupted`` row, newest first, however old.
 

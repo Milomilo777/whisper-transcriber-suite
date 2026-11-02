@@ -35,6 +35,7 @@ except ImportError:  # pragma: no cover
     BatchedInferencePipeline = None  # type: ignore[assignment]
 
 from . import _checkpoint
+from . import language_prior as _language_prior
 from .failure_clue import phase as _clue_phase
 from . import loop_guard as _loop_guard
 from . import mel_blocks as _mel_blocks
@@ -2622,6 +2623,78 @@ def _shift_segments(segments: Any, offset: float) -> Any:
             yield s
 
 
+def _read_language_window(audio_path: str, start: float, length: float) -> Any:
+    """Read only one bounded window as 16 kHz mono PCM, without temporary files."""
+    import numpy as np
+
+    result = subprocess.run(
+        [bundled_binary("ffmpeg"), "-nostdin", "-loglevel", "error",
+         "-ss", f"{start:.6f}", "-i", audio_path, "-t", f"{length:.6f}",
+         "-map", "0:a:0", "-vn", "-ac", "1", "-ar", "16000", "-f", "f32le", "pipe:1"],
+        stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        timeout=60, check=True, **new_session_kwargs(),
+    )
+    audio = np.frombuffer(result.stdout, dtype="<f4").copy()
+    if not audio.size:
+        raise ValueError("Language detection window contains no audio")
+    return audio
+
+
+def _apply_language_prior(
+    task: TranscriptionTask, model: Any, audio_path: str, duration: float,
+    runtime_cfg: dict[str, Any], kwargs: dict[str, Any],
+    log_cb: Callable[[str], None] | None,
+    *, backend_name: str = "faster_whisper",
+) -> _language_prior.LanguageDecision | None:
+    """Best-effort auto-only preflight; leave engine detection intact on any failure."""
+    if (str(getattr(task, "language", None) or "").strip().lower() not in ("", "auto")
+            or mixed_language_pair(task)
+            or _translate.normalise_task(getattr(task, "whisper_task", None)) != _translate.TASK_TRANSCRIBE
+            or backend_name != "faster_whisper"
+            or (getattr(task, "resume", False) and getattr(task, "detected_language", ""))):
+        return None
+    count = 0
+    try:
+        from app.i18n import setting_language
+        from .history import HistoryDB
+
+        ui_language = os.environ.get("WTS_UI_LANGUAGE", runtime_cfg.get("ui_language", "auto"))
+        plausible = {"en", setting_language(ui_language)}
+        history = HistoryDB()
+        try:
+            plausible.update(history.recent_finished_languages(20))
+        finally:
+            history.close()
+        # Download metadata is used only when the originating task is already present.
+        source = getattr(task, "source_download", None)
+        plausible.add(str(getattr(source, "detected_language", "") or ""))
+        plausible = {code for hint in plausible if (code := _normalize_language(hint))}
+
+        def detect_window(start: float, length: float) -> dict[str, float]:
+            nonlocal count
+            audio = _read_language_window(audio_path, start, length)
+            _language, _probability, all_probabilities = model.detect_language(audio=audio)
+            count += 1
+            return dict(all_probabilities)
+
+        decision = _language_prior.detect_with_prior(duration, plausible, detect_window)
+    except Exception as exc:
+        logger.warning("Language prior failed; using engine auto-detection: %s", exc, exc_info=True)
+        logger.info("language_prior windows=%d shares=[] chosen=auto reason=fallback", count)
+        return None
+    logger.info(
+        "language_prior windows=%d shares=%s chosen=%s reason=%s",
+        decision.window_count,
+        ", ".join(f"{code}={share:.3f}" for code, share in list(decision.shares.items())[:4]),
+        decision.language, decision.reason,
+    )
+    kwargs["language"] = decision.language
+    if decision.reason == "prior_override":
+        log(f"Auto language: using {decision.language} ({decision.probability:.0%} of sampled "
+            "probability) based on languages used in the interface and recent jobs.", log_cb)
+    return decision
+
+
 def transcribe(
     task: TranscriptionTask,
     progress_cb: Callable[[int], None] | None = None,
@@ -2804,6 +2877,12 @@ def transcribe(
         meter.start()
         _clue_phase(task, "worker.language")
         try:
+            # audio_path already represents the clip/denoised input. Cap the
+            # span on the source timeline so no sample can run past the clip.
+            prior = _apply_language_prior(
+                task, base_model, audio_path, _meter_end - _clip_start_s,
+                runtime_cfg, transcribe_kwargs, log_cb, backend_name=backend_name,
+            )
             # faster-whisper runs the VAD inside transcribe(), before it
             # returns the lazy iterator, so the window scope covers it.
             with _vad_window.windowed_vad(_vad_window_seconds()):
@@ -2823,9 +2902,9 @@ def transcribe(
         if _ts_offset:
             segments = _shift_segments(segments, _ts_offset)
 
-        if getattr(info, "language", None):
-            lang_code = str(info.language)
-            lang_prob = float(getattr(info, "language_probability", 0.0))
+        lang_code = prior.language if prior else str(getattr(info, "language", "") or "")
+        lang_prob = prior.probability if prior else float(getattr(info, "language_probability", 0.0) or 0.0)
+        if lang_code:
             # Audit B10: warn the user when language detection was a
             # low-confidence guess. Whisper has been known to return
             # "Welsh" at 5 % confidence for ambient noise; downstream
@@ -2858,8 +2937,8 @@ def transcribe(
         # triggers a new write. See module constants for the values.
         last_checkpoint_time = time.time()
         segments_since_checkpoint = 0
-        detected_lang_so_far = str(getattr(info, "language", "") or "")
-        lang_prob_so_far = float(getattr(info, "language_probability", 0.0) or 0.0)
+        detected_lang_so_far = lang_code
+        lang_prob_so_far = lang_prob
 
         # Repetition-loop guard (core.loop_guard). A restart decodes the rest
         # again without the previous text as a prompt; the batched pipeline
@@ -3003,14 +3082,13 @@ def transcribe(
             transcript_complete = True
             _write_periodic_checkpoint(
                 task, segments_data, float(segments_data[-1].get("end", 0.0)),
-                str(getattr(info, "language", "") or ""),
-                float(getattr(info, "language_probability", 0.0) or 0.0),
+                lang_code, lang_prob,
                 log_cb, transcription_completed=True,
             )
 
         _clue_phase(task, "worker.postprocess")
         # Speaker diarization (opt-in) + word-level alignment (opt-in).
-        detected_lang = str(getattr(info, "language", "") or "")
+        detected_lang = lang_code
         speaker_count = _run_post_pipeline(task, segments_data, detected_lang, log_cb, progress_cb)
 
         if _handle_cancelled():

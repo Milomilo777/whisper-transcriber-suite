@@ -11,6 +11,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Auto language detection now samples several audio windows and prefers languages from the interface and recent finished jobs when supported by the audio, fixing an incorrect rare-language choice for an entire file.
 - The Time column of a download that is transcribed after download stopped counting when the download ended; it now runs until the transcription is done.
 
 ### Changed

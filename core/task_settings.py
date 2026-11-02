@@ -110,7 +110,11 @@ NO_UI_KEYS: tuple[str, ...] = (
 
 # Read from config.json by the module that needs them, on every use: never
 # stale, so they need no snapshot.
-FRESH_READ_KEYS: tuple[str, ...] = ("denoise_cache_mb", "demucs_cache_mb")
+FRESH_READ_KEYS: tuple[str, ...] = (
+    "denoise_cache_mb", "demucs_cache_mb",
+    # Language prior reads the freshly loaded runtime config, not the worker snapshot.
+    "ui_language",
+)
 
 
 def url_has_credentials(url: Any) -> bool:
