@@ -340,6 +340,7 @@ a = Analysis(
         'core.transcript_qa',
         'core.task_settings',
         'core.history',
+        'core.language_prior',
         'core.hub',
         'core.logging_setup',
         'core.media_types',

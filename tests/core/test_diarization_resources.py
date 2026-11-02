@@ -175,6 +175,9 @@ def test_whisper_released_before_diarization_and_completion_saved(t, monkeypatch
             _checkpoint.checkpoint_path(str(audio)).write_text(json.dumps(data), encoding="utf-8")
     else:
         task = TranscriptionTask(str(audio))
+        if mode != "mixed":
+            # A fixed language skips the auto-language preflight (it needs real audio).
+            task.language = "en"
     _slices, written = _wire(t, monkeypatch, tmp_path, HoldingModel(), batched=mode == "batched")
     model_ref = weakref.ref(t.MODEL)
     audio_ref = weakref.ref(t.MODEL.audio)

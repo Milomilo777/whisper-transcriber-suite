@@ -15,6 +15,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Automatic speaker detection repeatedly merges clusters below the greater of 10 seconds or 3% of speech into the nearest speaker, using time adjacency when embeddings are unavailable. Explicit speaker counts are preserved.
 - Speaker detection releases completed Whisper runners and weights before starting its worker, decodes audio through a temporary file to avoid full pipe-buffer copies, and limits native worker threads. The next transcription reloads Whisper on demand.
 
+- Auto language detection now samples several audio windows and verifies ambiguous unfamiliar-language choices by comparing forced-language decodes against a plausible language. Inconclusive verification keeps engine auto-detection, avoiding probability-only overrides of genuine foreign speech.
 - The Time column of a download that is transcribed after download stopped counting when the download ended; it now runs until the transcription is done.
 
 ### Changed
