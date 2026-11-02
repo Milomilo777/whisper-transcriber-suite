@@ -68,6 +68,8 @@ core/
 ├── task_settings.py        per-task options snapshot sent to the worker
 ├── worker.py               worker subprocess entry point, JSON stdio protocol
 ├── transcriber.py          transcription pipeline, model lifecycle, output writing
+├── language_prior.py       auto-language choice over several windows; checks an unlikely winner by forced decodes
+├── job_progress.py         one monotonic progress counter (transcription 0-85 %, speaker detection 85-99 %)
 ├── backends/               ASR engines (faster-whisper, Apple-silicon MLX, whisper.cpp, NVIDIA, cloud)
 ├── writers/                one module per output format
 ├── model_manager.py, hub.py   model catalog, Hub download, model folders
