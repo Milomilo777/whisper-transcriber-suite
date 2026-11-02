@@ -1,4 +1,4 @@
-"""Hermetic language-prior decisions and real transcriber wiring; no Tk or real model."""
+"""Language evidence decisions, transcriber wiring, and optional bundled-media checks."""
 from __future__ import annotations
 
 import logging
@@ -12,20 +12,13 @@ from core import language_prior as prior
 
 
 INCIDENT = [
-    {"cy": 0.80, "en": 0.20},
-    {"en": 0.57, "cy": 0.43},
-    {"cy": 0.72, "en": 0.28},
-    {"cy": 0.92, "en": 0.07},
-    {"cy": 0.86, "en": 0.14},
-    {"en": 0.97, "cy": 0.01},
+    {"cy": 0.80, "en": 0.20}, {"en": 0.57, "cy": 0.43},
+    {"cy": 0.72, "en": 0.28}, {"cy": 0.92, "en": 0.07},
+    {"cy": 0.86, "en": 0.14}, {"en": 0.97, "cy": 0.01},
 ]
-
-
 REAL_TEN_MINUTES = [
-    {"cy": 0.61, "en": 0.39},
-    {"cy": 0.87, "en": 0.13},
-    {"cy": 0.89, "en": 0.11},
-    {"cy": 0.88, "en": 0.12},
+    {"cy": 0.61, "en": 0.39}, {"cy": 0.87, "en": 0.13},
+    {"cy": 0.89, "en": 0.11}, {"cy": 0.88, "en": 0.12},
     {"cy": 0.92, "en": 0.08},
 ]
 
@@ -42,155 +35,188 @@ class FakeDetector:
         return language, probabilities[language], list(probabilities.items())
 
 
-def test_incident_six_windows_overrides_welsh():
-    # The supplied six measurements test aggregation directly; production samples five.
-    detector = FakeDetector(INCIDENT)
-    windows = [dict(detector.detect_language(audio=t)[2]) for t in (0, 60, 300, 600, 1200, 1800)]
-    result = prior.choose_language(windows, {"en", "fa"})
-    assert result.language == "en"
-    assert result.reason == "prior_override"
-    assert result.probability == pytest.approx(2.23 / 5.97)
-    assert result.shares["cy"] == pytest.approx(3.74 / 5.97)
-    assert result.window_count == 6
+def segment(score, tokens=10):
+    return SimpleNamespace(tokens=list(range(tokens)), avg_logprob=score)
 
 
-def test_real_ten_minute_table_overrides_welsh():
+class FakeDecoder:
+    def __init__(self, scores):
+        self.scores = scores
+        self.calls = []
+
+    def __call__(self, start, length, language):
+        self.calls.append((start, length, language))
+        return iter([segment(self.scores[language])])
+
+
+def forbidden_decode(*args):
+    pytest.fail("Clear evidence must not invoke verification")
+
+
+@pytest.mark.parametrize("scores,language,reason", [
+    ({"en": -0.2, "cy": -0.8}, "en", "verified_override"),
+    ({"en": -0.8, "cy": -0.2}, "cy", "verified_winner"),
+    ({"en": -0.2, "cy": -0.25}, None, "inconclusive"),
+])
+def test_real_ten_minute_evidence(scores, language, reason):
     detector = FakeDetector(REAL_TEN_MINUTES)
+    decoder = FakeDecoder(scores)
     result = prior.detect_with_prior(
-        600, {"en"}, lambda start, length: dict(detector.detect_language(audio=start)[2]))
+        600, {"en"}, lambda start, length: dict(detector.detect_language(audio=start)[2]), decoder)
     assert detector.calls == pytest.approx([45, 165, 285, 405, 525])
+    assert decoder.calls == [(165, 30, "cy"), (405, 30, "cy"),
+                             (165, 30, "en"), (405, 30, "en")]
     assert result.window_count == 5
-    assert result.language == "en"
-    assert result.reason == "prior_override"
-    assert result.probability == pytest.approx(0.83 / 5)
-    assert result.shares["cy"] == pytest.approx(4.17 / 5)
+    assert result.language == language and result.reason == reason
+    assert result.shares == pytest.approx({"en": 0.166, "cy": 0.834})
+    assert result.probability == pytest.approx(result.shares[language] if language else 0)
+    assert result.scores == scores
 
 
-def test_clear_welsh_stays_welsh():
-    result = prior.choose_language([{"cy": 0.98, "en": 0.01, "fa": 0.01}] * 5, {"en", "fa"})
-    assert result.language == "cy"
-    assert result.reason == "winner"
-    assert result.probability == pytest.approx(0.98)
+def test_incident_six_windows_verified_override():
+    result = prior.choose_language(INCIDENT, {"en", "fa"}, lambda code: {"en": -0.2, "cy": -0.8}[code])
+    assert result.language == "en" and result.reason == "verified_override"
+    assert result.probability == pytest.approx(2.23 / 5.97) and result.window_count == 6
 
 
-def test_winner_already_plausible_is_unchanged():
-    result = prior.choose_language([{"fa": 0.60, "en": 0.40}] * 5, {"fa", "en"})
-    assert result.language == "fa"
-    assert result.reason == "winner"
-    assert result.probability == pytest.approx(0.60)
+@pytest.mark.parametrize("row,plausible,expected", [
+    ({"cy": 0.98, "en": 0.01, "fa": 0.01}, {"en", "fa"}, "cy"),
+    ({"ja": 0.97, "en": 0.03}, {"en"}, "ja"),
+    ({"fa": 0.6, "en": 0.4}, {"fa"}, "fa"),
+    ({"ja": 0.75, "en": 0.25}, {"ja"}, "ja"),
+    ({"en": 0.98, "fa": 0.02}, {"fa"}, "en"),
+    ({"cy": 0.9, "ja": 0.1}, {"fa"}, "cy"),
+])
+def test_clear_or_plausible_winner_needs_no_verification(row, plausible, expected):
+    result = prior.detect_with_prior(600, plausible, lambda *args: row, forbidden_decode)
+    assert result.language == expected and result.reason == "winner"
+    assert result.probability == pytest.approx(row[expected]) and result.scores == {}
 
 
-def test_english_always_plausible_with_persian_only_history():
-    result = prior.choose_language([{"en": 0.98, "fa": 0.02}] * 5, {"fa"})
-    assert result.language == "en"
-    assert result.reason == "winner"
-    assert result.probability == pytest.approx(0.98)
-    # Also prove the unconditional English prior matters when the winner is rare.
-    assert prior.choose_language(INCIDENT, {"fa"}).language == "en"
+def test_ambiguous_first_time_japanese_verified_winner():
+    decoder = FakeDecoder({"ja": -0.1, "en": -0.8})
+    result = prior.detect_with_prior(600, {"en"}, lambda *args: {"ja": 0.75, "en": 0.25}, decoder)
+    assert result.language == "ja" and result.reason == "verified_winner"
+    assert result.probability == 0.75 and len(decoder.calls) == 4
 
 
-@pytest.mark.parametrize("english_mass,expected", [(0.149, "cy"), (0.15, "cy"), (0.151, "en")])
-def test_weighted_score_boundary_and_alphabetical_tie(english_mass, expected):
-    result = prior.choose_language([{"cy": 1.0, "en": english_mass}], {"en"})
-    assert result.language == expected
-    assert result.reason == ("winner" if expected == "cy" else "prior_override")
-    assert result.probability == pytest.approx(result.shares[expected])
+def test_highest_individual_plausible_share_is_verified():
+    codes = []
+    result = prior.choose_language([{"cy": 0.6, "fa": 0.25, "en": 0.15}], {"fa"},
+                                   lambda code: codes.append(code) or {"cy": -0.9, "fa": -0.2}[code])
+    assert result.language == "fa" and result.probability == 0.25 and codes == ["cy", "fa"]
 
 
-def test_prior_compares_individual_weighted_scores():
-    # Plausible languages compete individually, rather than pooling their mass.
-    result = prior.choose_language([{"cy": 0.8, "en": 0.1, "fa": 0.1}], {"fa"})
-    assert result.language == "cy"
-    result = prior.choose_language([{"cy": 0.6, "en": 0.2, "fa": 0.2}], {"fa"})
-    assert result.language == "en"
-    assert result.reason == "prior_override"
-    result = prior.choose_language([{"cy": 0.4, "fa": 0.35, "en": 0.25}], {"fa"})
-    assert result.language == "fa"
-    assert result.probability == pytest.approx(0.35)
+@pytest.mark.parametrize("difference,expected,reason", [
+    (0.0, None, "inconclusive"), (0.149, None, "inconclusive"),
+    (0.15, "en", "verified_override"), (-0.149, None, "inconclusive"),
+    (-0.15, "cy", "verified_winner"),
+])
+def test_verification_margin(difference, expected, reason):
+    result = prior.choose_language([{"cy": 0.8, "en": 0.2}], {"en"},
+                                   lambda code: difference if code == "en" else 0.0)
+    assert result.language == expected and result.reason == reason
 
 
-def test_clear_japanese_stays_japanese():
-    result = prior.choose_language([{"ja": 0.90, "en": 0.08}], {"en"})
-    assert result.language == "ja"
-    assert result.reason == "winner"
-    assert result.probability == pytest.approx(0.90 / 0.98)
-
-
-def test_japanese_in_history_keeps_full_weight():
-    # This ambiguous sample would choose English without Japanese in the history.
-    result = prior.choose_language([{"ja": 0.75, "en": 0.25}], {"ja"})
-    assert result.language == "ja"
-    assert result.reason == "winner"
-    assert result.probability == pytest.approx(0.75)
-
-
-def test_ambiguous_first_time_japanese_accepts_english_override():
-    result = prior.choose_language([{"ja": 0.75, "en": 0.25}], {"en"})
-    assert result.language == "en"
-    assert result.reason == "prior_override"
-    assert result.probability == pytest.approx(0.25)
-
-
-def test_weighted_prior_properties():
-    pytest.importorskip("hypothesis")
-    from hypothesis import assume, given, settings, strategies as st
-
-    codes = st.sampled_from(["en", "fa", "ja", "cy", "de"])
-
-    @settings(max_examples=300, derandomize=True, deadline=None, database=None)
-    @given(windows=st.lists(st.dictionaries(codes, st.integers(0, 1000), min_size=1),
-                           min_size=1, max_size=5),
-           plausible=st.sets(codes), increase=st.integers(1, 1000), data=st.data())
-    def check(windows, plausible, increase, data):
-        mass = {}
-        for window in windows:
-            for code, probability in window.items():
-                mass[code] = mass.get(code, 0) + probability
-        assume(sum(mass.values()) > 0)
-        result = prior.choose_language(windows, plausible)
-        assert result.language in mass
-        raw_winner = min(mass, key=lambda code: (-mass[code], code))
-        if raw_winner in plausible | {"en"}:
-            assert result.language == raw_winner
-        # Increase each plausible input language that was chosen, including implicit en.
-        for code in sorted(mass.keys() & (plausible | {"en"})):
-            boosted = [*windows, {code: increase}]
-            if result.language == code:
-                assert prior.choose_language(boosted, plausible).language == code
-        # Also exercise a randomly selected input language made explicitly plausible.
-        target = data.draw(st.sampled_from(sorted(mass)))
-        with_target = plausible | {target}
-        before = prior.choose_language(windows, with_target)
-        after = prior.choose_language([*windows, {target: increase}], with_target)
-        if before.language == target:
-            assert after.language == target
-
-    check()
-
-
-@pytest.mark.parametrize("duration,length", [(1, 1), (29, 29), (30, 30), (149.9, 30)])
-def test_short_audio_one_window_from_start(duration, length):
+@pytest.mark.parametrize("share,verified", [(0.049, False), (0.05, True)])
+def test_ambiguity_boundary(share, verified):
     calls = []
-    result = prior.detect_with_prior(duration, {"fa"},
-                                    lambda start, span: calls.append((start, span)) or {"en": 1.0})
-    assert calls == [(0.0, length)]
-    assert result.window_count == 1
+    result = prior.choose_language([{"cy": 1 - share, "en": share}], {"en"},
+                                   lambda code: calls.append(code) or (-0.1 if code == "en" else -0.8))
+    assert bool(calls) == verified
+    assert result.reason == ("verified_override" if verified else "winner")
 
 
-@pytest.mark.parametrize("duration", [150, 300, 1980])
-def test_five_windows_at_percentile_centers(duration):
-    windows = prior.sample_windows(duration)
-    assert len(windows) == 5
-    assert [start + length / 2 for start, length in windows] == pytest.approx(
-        [duration * p for p in (0.1, 0.3, 0.5, 0.7, 0.9)])
-    assert all(0 <= start < start + length <= duration for start, length in windows)
+def test_token_weighted_scores_across_both_windows():
+    def decode(start, length, language):
+        # Unweighted means would prefer cy; pooled token weighting prefers en.
+        if language == "cy":
+            return iter([segment(-0.1, 1), segment(-1.0, 99)])
+        return iter([segment(-0.5 if start == 165 else -0.3, 10)])
+    result = prior.detect_with_prior(600, {"en"}, lambda *args: REAL_TEN_MINUTES[0], decode)
+    assert result.language == "en" and result.reason == "verified_override"
+    assert result.scores == pytest.approx({"cy": -0.991, "en": -0.4})
+
+
+@pytest.mark.parametrize("failure", ["call", "iterator", "empty", "nan"])
+def test_decoder_failure_returns_no_decision(failure):
+    def decode(*args):
+        if failure == "call":
+            raise RuntimeError("broken decoder")
+        if failure == "empty":
+            return iter([])
+        if failure == "nan":
+            return iter([segment(float("nan"))])
+        def broken():
+            yield segment(-0.2)
+            raise RuntimeError("lazy decode failed")
+        return broken()
+    result = prior.detect_with_prior(600, {"en"}, lambda *args: REAL_TEN_MINUTES[0], decode)
+    assert result.language is None and result.reason == "fallback" and result.error
+
+
+@pytest.mark.parametrize("valid_count", [0, 1, 2, 3, 4])
+def test_bad_windows_skipped_and_minimum_three_required(valid_count):
+    calls, skipped = [], []
+    def detect(start, length):
+        calls.append(start)
+        if len(calls) > valid_count:
+            raise prior.WindowReadError("empty or unreadable")
+        return {"en": 1.0}
+    result = prior.detect_with_prior(600, {"en"}, detect, forbidden_decode, on_skip=skipped.append)
+    assert len(calls) == 5 and len(skipped) == 5 - valid_count
+    assert result.window_count == valid_count
+    assert result.language == ("en" if valid_count >= 3 else None)
+    assert result.reason == ("winner" if valid_count >= 3 else "fallback")
+
+
+def test_verification_uses_valid_windows_when_preferred_samples_fail():
+    decoder = FakeDecoder({"en": -0.2, "cy": -0.8})
+    def detect(start, length):
+        if start in (165, 405):
+            raise prior.WindowReadError("failed preferred window")
+        return REAL_TEN_MINUTES[0]
+    result = prior.detect_with_prior(600, {"en"}, detect, decoder)
+    assert result.language == "en" and result.window_count == 3
+    assert decoder.calls == [(45, 30, "cy"), (285, 30, "cy"),
+                             (45, 30, "en"), (285, 30, "en")]
+
+
+@pytest.mark.parametrize("duration,count", [(1, 1), (29, 1), (30, 1), (59.9, 1),
+                                           (60, 3), (100, 3), (149.9, 3), (150, 5), (600, 5)])
+def test_short_audio_window_counts(duration, count):
+    calls = []
+    result = prior.detect_with_prior(duration, {"en"},
+        lambda start, length: calls.append((start, length)) or {"en": 1.0}, forbidden_decode)
+    assert result.window_count == count and calls == prior.sample_windows(duration)
+    assert all(0 <= start < start + length <= duration for start, length in calls)
+    if count == 1:
+        assert calls == [(0, min(duration, 30))]
+
+
+@pytest.mark.parametrize("duration", [60, 100, 149.9])
+def test_medium_audio_centers_are_clamped(duration):
+    expected = [min(max(0, duration * p - 15), duration - 30) for p in (0.1, 0.5, 0.9)]
+    assert prior.sample_windows(duration) == [(start, 30) for start in expected]
+
+
+@pytest.mark.parametrize("duration", [20, 100])
+def test_short_audio_can_verify_one_valid_sample(duration):
+    decoder = FakeDecoder({"en": -0.2, "cy": -0.8})
+    def detect(start, length):
+        if duration == 100 and start != 35:
+            raise prior.WindowReadError("bad sample")
+        return REAL_TEN_MINUTES[0]
+    result = prior.detect_with_prior(duration, {"en"}, detect, decoder)
+    assert result.window_count == 1 and result.language == "en" and len(decoder.calls) == 2
 
 
 def test_deterministic_including_ties_and_mapping_order():
-    baseline = prior.choose_language(INCIDENT, {"en", "fa"})
+    score = lambda code: {"cy": -0.8, "en": -0.2}[code]
+    baseline = prior.choose_language(INCIDENT, {"en", "fa"}, score)
     for _ in range(10):
         assert prior.choose_language([dict(reversed(list(row.items()))) for row in INCIDENT],
-                                     ["fa", "en"]) == baseline
+                                     ["fa", "en"], score) == baseline
     assert sum(baseline.shares.values()) == pytest.approx(1)
     assert prior.choose_language([{"fa": 0.5, "en": 0.5}], {"fa"}).language == "en"
 
@@ -224,7 +250,7 @@ def wiring(monkeypatch, tmp_path):
     monkeypatch.setattr(t, "_write_outputs", lambda *args, **kwargs: [])
     reads = []
     monkeypatch.setattr(t, "_read_language_window",
-                        lambda path, start, length: reads.append((path, start, length)) or start)
+                        lambda path, start, length, **kw: reads.append((path, start, length)) or start)
     return t, task, cfg, reads
 
 
@@ -236,6 +262,8 @@ def test_transcribe_forces_choice_reports_share_and_persists_before_done(wiring,
 
     def transcribe(path, **kwargs):
         calls.append((path, kwargs))
+        if not isinstance(path, str):
+            return iter([segment(-0.2 if kwargs["language"] == "en" else -0.8)]), None
         return iter([SimpleNamespace(start=0.0, end=5.0, text="hello", words=[])]), SimpleNamespace(
             language=kwargs["language"], language_probability=1.0)
 
@@ -250,16 +278,23 @@ def test_transcribe_forces_choice_reports_share_and_persists_before_done(wiring,
     with caplog.at_level(logging.INFO):
         t.transcribe(task, lambda percent: order.append(percent), logs.append,
                      lambda code, probability: reported.append((code, probability)))
-    assert calls[0][1]["language"] == "en"
-    assert ("batch_size" in calls[0][1]) is batched
+    assert len(calls) == 5
+    for path, options in calls[:4]:
+        assert options == dict(language=options["language"], task="transcribe", beam_size=1,
+                               best_of=1, temperature=0, without_timestamps=True,
+                               condition_on_previous_text=False, vad_filter=False, word_timestamps=False)
+    assert [path for path, options in calls[:4]] == [75, 195, 75, 195]
+    assert calls[-1][1]["language"] == "en"
+    assert ("batch_size" in calls[-1][1]) is batched
     assert reported == [("en", pytest.approx(0.37))]
     assert task.detected_language == "en" and task.language_probability == pytest.approx(0.37)
     assert checkpoints[-1] == ("en", pytest.approx(0.37))
     assert order.index("save") < order.index(100)
     assert len(reads) == len(detector.calls) == 5
     records = [r.message for r in caplog.records if "language_prior windows=" in r.message]
-    assert len(records) == 1 and "windows=5" in records[0] and "reason=prior_override" in records[0]
+    assert len(records) == 1 and "windows=5" in records[0] and "reason=verified_override" in records[0]
     assert "cy=0.630, en=0.370" in records[0]
+    assert "scores=cy=-0.800, en=-0.200" in records[0]
     assert len([line for line in logs if "Auto language: using en" in line]) == 1
 
 
@@ -355,11 +390,13 @@ def test_ui_history_and_existing_source_metadata_form_the_prior(wiring, monkeypa
     t, task, cfg, reads = wiring
     from core.history import HistoryDB
     cfg["ui_language"] = "de-DE"
-    monkeypatch.setattr(HistoryDB, "recent_finished_languages", lambda self, limit: ["fa-IR", "iw"])
+    # "cy" finished once (a possible wrong detection) and must not become plausible; "fa" and "he" twice.
+    monkeypatch.setattr(HistoryDB, "recent_finished_languages",
+                        lambda self, limit: ["cy", "fa-IR", "fa", "iw", "he", ""])
     task.source_download = SimpleNamespace(detected_language="pt-BR")
     captured = []
 
-    def capture(duration, plausible, detect):
+    def capture(duration, plausible, detect, decode, **kwargs):
         captured.append(plausible)
         return prior.choose_language([{"de": 1.0}], plausible)
 
@@ -400,11 +437,14 @@ def test_audio_reader_uses_one_bounded_seek_and_hidden_process(monkeypatch, tmp_
     calls = []
     monkeypatch.setattr(t, "bundled_binary", lambda name: "ffmpeg")
 
-    def run(command, **kwargs):
+    def popen(command, **kwargs):
+        from io import BytesIO
         calls.append((command, kwargs))
-        return SimpleNamespace(stdout=np.array([0.1, 0.2], dtype="<f4").tobytes())
+        return SimpleNamespace(stdout=BytesIO(np.array([0.1, 0.2], dtype="<f4").tobytes()),
+                               stderr=BytesIO(), wait=lambda **kw: 0, poll=lambda: 0,
+                               returncode=0, args=command)
 
-    monkeypatch.setattr(t.subprocess, "run", run)
+    monkeypatch.setattr(t.subprocess, "Popen", popen)
     audio = t._read_language_window(str(tmp_path / "talk.wav"), 180.0, 30.0)
     command, kwargs = calls[0]
     assert len(calls) == 1
@@ -412,6 +452,199 @@ def test_audio_reader_uses_one_bounded_seek_and_hidden_process(monkeypatch, tmp_
     assert command[command.index("-ss") + 1] == "180.000000"
     assert command[command.index("-t") + 1] == "30.000000"
     assert command[command.index("-map") + 1] == "0:a:0"
-    assert kwargs["stdin"] == t.subprocess.DEVNULL and kwargs["timeout"] == 60
+    assert kwargs["stdin"] == t.subprocess.DEVNULL
     assert t.new_session_kwargs().items() <= kwargs.items()
     assert audio.tolist() == pytest.approx([0.1, 0.2])
+
+
+@pytest.mark.parametrize("outcome", ["inconclusive", "verified_winner", "fallback"])
+def test_verification_wiring_preserves_engine_fallback_and_user_log(wiring, monkeypatch, caplog, outcome):
+    t, task, cfg, reads = wiring
+    detector = FakeDetector(REAL_TEN_MINUTES)
+    main_calls, logs = [], []
+
+    def transcribe(path, **kwargs):
+        if not isinstance(path, str):
+            if outcome == "fallback":
+                raise RuntimeError("verification failed")
+            score = -0.2 if kwargs["language"] == "cy" else (-0.8 if outcome == "verified_winner" else -0.25)
+            return iter([segment(score)]), None
+        main_calls.append(kwargs)
+        return iter([]), SimpleNamespace(language="cy", language_probability=0.85)
+
+    detector.transcribe = transcribe
+    monkeypatch.setattr(t, "MODEL", detector)
+    with caplog.at_level(logging.INFO):
+        t.transcribe(task, log_cb=logs.append)
+    assert ("language" in main_calls[0]) is (outcome == "verified_winner")
+    assert task.detected_language == "cy"
+    assert task.language_probability == pytest.approx(0.834 if outcome == "verified_winner" else 0.85)
+    assert not any("Auto language: using" in line for line in logs)
+    records = [r.message for r in caplog.records if "language_prior windows=" in r.message]
+    assert len(records) == 1 and f"reason={outcome}" in records[0]
+    assert "cy=0.834, en=0.166" in records[0]
+
+
+@pytest.mark.parametrize("stage", ["sampling", "verification"])
+def test_total_deadline_falls_back_without_further_model_calls(wiring, monkeypatch, caplog, stage):
+    t, task, cfg, reads = wiring
+    now = [0.0]
+    monkeypatch.setattr(t, "time", SimpleNamespace(monotonic=lambda: now[0]))
+    detector = FakeDetector(REAL_TEN_MINUTES)
+    decodes = []
+    original = detector.detect_language
+
+    def detect(**kwargs):
+        result = original(**kwargs)
+        if stage == "sampling":
+            now[0] = 181.0
+        return result
+
+    def decode(*args, **kwargs):
+        decodes.append(kwargs)
+        now[0] = 181.0
+        return iter([segment(-0.1)]), None
+
+    detector.detect_language, detector.transcribe = detect, decode
+    kwargs = {}
+    with caplog.at_level(logging.INFO):
+        assert t._apply_language_prior(task, detector, task.file_path, 600, cfg, kwargs, None) is None
+    assert not kwargs and "reason=fallback" in caplog.text and "180 s deadline" in caplog.text
+    assert len(detector.calls) == (1 if stage == "sampling" else 5)
+    assert len(decodes) == (0 if stage == "sampling" else 1)
+
+
+@pytest.mark.parametrize("stage", ["sampling", "verification", "iterator"])
+def test_cancellation_aborts_before_main_decode_and_cleans_slice(wiring, monkeypatch, stage):
+    t, task, cfg, reads = wiring
+    task.clip_start, task.clip_end = 10, 290
+    sliced = Path(task.file_path).with_name("slice.wav")
+    sliced.write_bytes(b"fake slice")
+    monkeypatch.setattr(t, "_slice_audio_from", lambda *args, **kwargs: str(sliced))
+    detector = FakeDetector(REAL_TEN_MINUTES)
+    original = detector.detect_language
+    decodes = []
+
+    def detect(**kwargs):
+        result = original(**kwargs)
+        if stage == "sampling":
+            task.cancelled = True
+        return result
+
+    def transcribe(path, **kwargs):
+        assert not isinstance(path, str), "Cancelled preflight must not start main decode"
+        decodes.append(kwargs)
+        if stage == "verification":
+            task.cancelled = True
+        def segments():
+            if stage == "iterator":
+                task.cancelled = True
+            yield segment(-0.1)
+        return segments(), None
+
+    detector.detect_language, detector.transcribe = detect, transcribe
+    monkeypatch.setattr(t, "MODEL", detector)
+    reported, logs = [], []
+    t.transcribe(task, log_cb=logs.append, language_cb=lambda *args: reported.append(args))
+    assert task.cancelled and not reported and not sliced.exists()
+    assert len(detector.calls) == (1 if stage == "sampling" else 5)
+    assert len(decodes) == (0 if stage == "sampling" else 1)
+    assert any("Task cancelled" in line for line in logs)
+
+
+@pytest.mark.parametrize("known_duration", [20, 100, 0, None])
+def test_real_input_duration_clamps_stale_estimate(wiring, monkeypatch, known_duration):
+    t, task, cfg, reads = wiring
+    def probe(path):
+        if known_duration is None:
+            raise RuntimeError("ffprobe unavailable")
+        return known_duration
+    monkeypatch.setattr(t, "get_duration", probe)
+    detector = FakeDetector([{"en": 1.0}] * 5)
+    kwargs = {}
+    result = t._apply_language_prior(task, detector, task.file_path, 600, cfg, kwargs, None)
+    assert result.language == "en"
+    assert [(start, length) for path, start, length in reads] == prior.sample_windows(known_duration or 600)
+
+
+def test_read_failures_are_skipped_in_wiring(wiring, monkeypatch, caplog):
+    t, task, cfg, reads = wiring
+    def read(path, start, length, **kwargs):
+        reads.append(start)
+        if start in (45, 525):
+            raise RuntimeError("empty audio / ffmpeg error")
+        return start
+    monkeypatch.setattr(t, "get_duration", lambda path: 600)
+    monkeypatch.setattr(t, "_read_language_window", read)
+    model = FakeDetector([{"en": 1.0}] * 3)
+    with caplog.at_level(logging.INFO):
+        result = t._apply_language_prior(task, model, task.file_path, 600, cfg, {}, None)
+    assert result.window_count == 3 and result.language == "en"
+    assert len(reads) == 5 and "windows=3" in caplog.text
+    assert len([r for r in caplog.records if "Skipping language window" in r.message]) == 2
+
+
+def test_audio_reader_bounds_stderr_and_rejects_empty_audio(monkeypatch):
+    from core import transcriber as t
+    from io import BytesIO
+    monkeypatch.setattr(t, "bundled_binary", lambda name: "ffmpeg")
+
+    def process(command, **kwargs):
+        return SimpleNamespace(stdout=BytesIO(), stderr=BytesIO(b"x" * 10000 + b"TAIL"),
+                               wait=lambda **kw: 1, poll=lambda: 1, returncode=1, args=command)
+    monkeypatch.setattr(t.subprocess, "Popen", process)
+    with pytest.raises(RuntimeError) as error:
+        t._read_language_window("bad.wav", 0, 30)
+    assert str(error.value).endswith("x" * 2044 + "TAIL")
+    assert len(str(error.value)) < 2150
+
+    def empty(command, **kwargs):
+        result = process(command, **kwargs)
+        result.returncode = 0
+        return result
+    monkeypatch.setattr(t.subprocess, "Popen", empty)
+    with pytest.raises(ValueError, match="no audio"):
+        t._read_language_window("empty.wav", 0, 30)
+
+
+@pytest.mark.parametrize("interrupt", ["timeout", "cancel"])
+def test_audio_reader_kills_process_on_timeout_or_cancel(monkeypatch, interrupt):
+    from core import transcriber as t
+    from io import BytesIO
+    killed = []
+    def process(command, **kwargs):
+        return SimpleNamespace(stdout=BytesIO(), stderr=BytesIO(), args=command,
+                               poll=lambda: None if not killed else -9,
+                               kill=lambda: killed.append(True), wait=lambda **kw: -9)
+    monkeypatch.setattr(t, "bundled_binary", lambda name: "ffmpeg")
+    monkeypatch.setattr(t.subprocess, "Popen", process)
+    def check():
+        if interrupt == "cancel":
+            raise prior.PreflightCancelled()
+    with pytest.raises(prior.PreflightCancelled if interrupt == "cancel" else t.subprocess.TimeoutExpired):
+        t._read_language_window("talk.wav", 0, 30, timeout=0, check=check)
+    assert killed == [True]
+
+
+def test_real_media_reader_first_stream_and_short_clip(tmp_path, monkeypatch):
+    """Use only the bundled ffmpeg, with no network or installed system fallback."""
+    from core import transcriber as t
+    import numpy as np
+    ffmpeg = Path(__file__).resolve().parents[2] / "bin" / ("ffmpeg.exe" if t.os.name == "nt" else "ffmpeg")
+    if not ffmpeg.is_file():
+        pytest.skip("Bundled bin/ffmpeg is absent")
+    monkeypatch.setattr(t, "bundled_binary", lambda name: str(ffmpeg))
+    media = tmp_path / "two-tracks.mka"
+    # Mark the SECOND stream as default to prove first-stream selection explicitly.
+    t.subprocess.run(
+        [str(ffmpeg), "-nostdin", "-v", "error", "-f", "lavfi", "-i", "sine=frequency=440:duration=2",
+         "-f", "lavfi", "-i", "sine=frequency=880:duration=2", "-map", "0:a", "-map", "1:a",
+         "-c:a", "pcm_s16le", "-disposition:a:0", "0", "-disposition:a:1", "default", str(media)],
+        stdin=t.subprocess.DEVNULL, capture_output=True, check=True, timeout=30, **t.new_session_kwargs())
+    audio = t._read_language_window(str(media), 0.5, 30)
+    assert 1.4 < len(audio) / 16000 < 1.6
+    frequencies = np.fft.rfftfreq(len(audio), 1 / 16000)
+    peak = frequencies[np.argmax(abs(np.fft.rfft(audio)))]
+    assert peak == pytest.approx(440, abs=2)
+    with pytest.raises(ValueError, match="no audio"):
+        t._read_language_window(str(media), 3, 30)

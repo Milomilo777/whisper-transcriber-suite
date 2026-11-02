@@ -11,7 +11,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
-- Auto language detection now samples several audio windows and weights English and languages from the interface and recent finished jobs more heavily, fixing an incorrect rare-language choice for an entire file while retaining strong evidence for unfamiliar languages.
+- Auto language detection now samples several audio windows and verifies ambiguous unfamiliar-language choices by comparing forced-language decodes against a plausible language. Inconclusive verification keeps engine auto-detection, avoiding probability-only overrides of genuine foreign speech.
 - The Time column of a download that is transcribed after download stopped counting when the download ended; it now runs until the transcription is done.
 
 ### Changed
