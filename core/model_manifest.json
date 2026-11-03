@@ -1,1 +1,586 @@
-{}
+{
+  "KBLab/kb-whisper-large": {
+    "commit": "d5d5984b4d8f7c4847a8ea203f1976285fb28300",
+    "files": {
+      "config.json": {
+        "sha256": "48be972f94e790720e32b8711ad54860b1d06d5434079d3fcdfdfe1254d29c69",
+        "size": 3717
+      },
+      "model.bin": {
+        "sha256": "69ed56887f68417f651d50fd5f225c60dfc0f9515bef85bb0f1404825c6f01de",
+        "size": 3087284276
+      },
+      "preprocessor_config.json": {
+        "sha256": "7ccc62c6f2765af1f3b46c00c9b5894426835a05021c8b9c01eecb6dfb542711",
+        "size": 340
+      },
+      "tokenizer.json": {
+        "sha256": "d06d0c877b5143ccdcb761407d5650b18a6afc33f9261fcb7e0dd44acbc1c262",
+        "size": 3931383
+      },
+      "vocabulary.json": {
+        "sha256": "c69260f2ab26d659b7c398f9a2b2b48ed0df16c3b47d7326782fd9cba71690c1",
+        "size": 1068114
+      }
+    },
+    "hosts": []
+  },
+  "Systran/faster-distil-whisper-large-v2": {
+    "commit": "fe9b404fc56de3f7c38606ef9ba6fd83526d05e4",
+    "files": {
+      "config.json": {
+        "sha256": "721df87877126490ba0060bbecac3e75d66ea49daceed46c376c59680cdd922f",
+        "size": 2657
+      },
+      "model.bin": {
+        "sha256": "b415593cd109c0418d42ecb106c40ae45c8229cb4090e67db12243901e071ab3",
+        "size": 1512556667
+      },
+      "preprocessor_config.json": {
+        "sha256": "a6a76d28c93edb273669eb9e0b0636a2bddbb1272c3261e47b7ca6dfdbac1b8d",
+        "size": 339
+      },
+      "tokenizer.json": {
+        "sha256": "56633aee7338579d67d4ee85651f79f690c640d13a652465e5afbe79c437dfa8",
+        "size": 2481187
+      },
+      "vocabulary.json": {
+        "sha256": "5ad28279db5e546349708b9a74736e2c018737ac5a600f1048f1f26c99b85b47",
+        "size": 1068103
+      }
+    },
+    "hosts": []
+  },
+  "Systran/faster-distil-whisper-large-v3": {
+    "commit": "c3058b475261292e64a0412df1d2681c06260fab",
+    "files": {
+      "config.json": {
+        "sha256": "90c55f775cc4e0bb17293d0bf12f96557a486f20dea886fabd8e6075a3588b21",
+        "size": 2690
+      },
+      "model.bin": {
+        "sha256": "b79368e19b6623813609431a6e5ee309a71506701ebc49fd7820e692dec7c5f5",
+        "size": 1512927867
+      },
+      "preprocessor_config.json": {
+        "sha256": "7ccc62c6f2765af1f3b46c00c9b5894426835a05021c8b9c01eecb6dfb542711",
+        "size": 340
+      },
+      "tokenizer.json": {
+        "sha256": "6d8cbd7cd0d8d5815e478dac67b85a26bbe77c1f5e0c6d76d1ce2abc0e5f21ca",
+        "size": 2480617
+      },
+      "vocabulary.json": {
+        "sha256": "c69260f2ab26d659b7c398f9a2b2b48ed0df16c3b47d7326782fd9cba71690c1",
+        "size": 1068114
+      }
+    },
+    "hosts": []
+  },
+  "Systran/faster-distil-whisper-medium.en": {
+    "commit": "80ddfce281f77766d8943d63109199fc8145dfa5",
+    "files": {
+      "config.json": {
+        "sha256": "8fbd09f4b35e38db19b1cf43ed4d812b8da7c6b791aafbc93b37dc82f198ab70",
+        "size": 2574
+      },
+      "model.bin": {
+        "sha256": "d4cb75d823dcd2647191064da76f026774c06c036908f38456165368d0e2d66a",
+        "size": 788826555
+      },
+      "preprocessor_config.json": {
+        "sha256": "a6a76d28c93edb273669eb9e0b0636a2bddbb1272c3261e47b7ca6dfdbac1b8d",
+        "size": 339
+      },
+      "tokenizer.json": {
+        "sha256": "79eb6cded9fd5d31cc83def0bc5fc9b3afa4973df1da4c7fbc89c44adfa8fe32",
+        "size": 2405678
+      },
+      "vocabulary.json": {
+        "sha256": "4dadfee7c4a871665f65c06037f5f5ec893fb2d7f5eb4cf11063618e31dbe11a",
+        "size": 825480
+      }
+    },
+    "hosts": []
+  },
+  "Systran/faster-distil-whisper-small.en": {
+    "commit": "ef77d90526ccd62cde3808ee70626a01e5cf83e4",
+    "files": {
+      "config.json": {
+        "sha256": "b571ae8022a34c1df50876a65b5f813a5c22e5ee3b87bc0e4db5662dfc9c2c3d",
+        "size": 2812
+      },
+      "model.bin": {
+        "sha256": "1187de3982cdcf962a2fb8f797e429fb4651b875b18fe9ce50b58b52fc9072b7",
+        "size": 332308257
+      },
+      "preprocessor_config.json": {
+        "sha256": "a6a76d28c93edb273669eb9e0b0636a2bddbb1272c3261e47b7ca6dfdbac1b8d",
+        "size": 339
+      },
+      "tokenizer.json": {
+        "sha256": "c9c77688528c0509abbd41873edab16384b8f041531b1d3092ab4d1d83a02a50",
+        "size": 2405466
+      },
+      "vocabulary.json": {
+        "sha256": "4dadfee7c4a871665f65c06037f5f5ec893fb2d7f5eb4cf11063618e31dbe11a",
+        "size": 825480
+      }
+    },
+    "hosts": []
+  },
+  "Systran/faster-whisper-base": {
+    "commit": "ebe41f70d5b6dfa9166e2c581c45c9c0cfc57b66",
+    "files": {
+      "config.json": {
+        "sha256": "56a6d8110d311f19c8f0471e562832c7527f146b567275bfca59fcf7c184da9a",
+        "size": 2309
+      },
+      "model.bin": {
+        "sha256": "d01c3014881c9c6f3133c182f3d2887eb6ca1c789a7538c5c007196857a0a6a9",
+        "size": 145217532
+      },
+      "tokenizer.json": {
+        "sha256": "fb7b63191e9bb045082c79fd742a3106a12c99513ab30df4a0d47fa6cb6fd0ab",
+        "size": 2203239
+      },
+      "vocabulary.txt": {
+        "sha256": "34ce3fe1c5041027b3f8d42912270993f986dbc4bb34cf27f951e34a1e453913",
+        "size": 459861
+      }
+    },
+    "hosts": []
+  },
+  "Systran/faster-whisper-base.en": {
+    "commit": "3d3d5dee26484f91867d81cb899cfcf72b96be6c",
+    "files": {
+      "config.json": {
+        "sha256": "f3bc3821e9fc76a27bae538e11ae5b677dcdd352b4600429ce7951d398569aeb",
+        "size": 2227
+      },
+      "model.bin": {
+        "sha256": "2a166925539a16005f14ff328359f9b9adb9dc4fb631bb3b227526862e93e2ef",
+        "size": 145216508
+      },
+      "tokenizer.json": {
+        "sha256": "929c5252409436dce1b38a75d1abbcb5e132d170d8e324e4e04ed915fa2d22df",
+        "size": 2128466
+      },
+      "vocabulary.txt": {
+        "sha256": "ff77588746d3a2595d32ab5b69ffd7b95ce2441ac57533cb66fc3eb575a115cf",
+        "size": 422309
+      }
+    },
+    "hosts": []
+  },
+  "Systran/faster-whisper-large-v1": {
+    "commit": "b07c8d4be0be90092aa01a29c975077acb8d15c9",
+    "files": {
+      "config.json": {
+        "sha256": "98eb866f6d98c38224aa2f13fc9854f75fa01280714e945f7e803aa8b16e2b4b",
+        "size": 2352
+      },
+      "model.bin": {
+        "sha256": "a3cce8081a5414206ab09a80aa410ebf9965feef52adafeead13f4a83398b1d1",
+        "size": 3086912962
+      },
+      "tokenizer.json": {
+        "sha256": "fb7b63191e9bb045082c79fd742a3106a12c99513ab30df4a0d47fa6cb6fd0ab",
+        "size": 2203239
+      },
+      "vocabulary.txt": {
+        "sha256": "34ce3fe1c5041027b3f8d42912270993f986dbc4bb34cf27f951e34a1e453913",
+        "size": 459861
+      }
+    },
+    "hosts": []
+  },
+  "Systran/faster-whisper-large-v2": {
+    "commit": "f0fe81560cb8b68660e564f55dd99207059c092e",
+    "files": {
+      "config.json": {
+        "sha256": "d86b7a7664a12559d644aa210a32ce9a7e03913e794b7ea4fb7182de69e273a7",
+        "size": 2796
+      },
+      "model.bin": {
+        "sha256": "bf2a9746382e1aa7ffff6b3a0d137ed9edbd9670c3b87e5d35f5e85e70d0333a",
+        "size": 3086912962
+      },
+      "tokenizer.json": {
+        "sha256": "fb7b63191e9bb045082c79fd742a3106a12c99513ab30df4a0d47fa6cb6fd0ab",
+        "size": 2203239
+      },
+      "vocabulary.txt": {
+        "sha256": "34ce3fe1c5041027b3f8d42912270993f986dbc4bb34cf27f951e34a1e453913",
+        "size": 459861
+      }
+    },
+    "hosts": []
+  },
+  "Systran/faster-whisper-large-v3": {
+    "commit": "edaa852ec7e145841d8ffdb056a99866b5f0a478",
+    "files": {
+      "config.json": {
+        "sha256": "a9306624f5ec14270a014b647e5c316b6e03a662c369758d1b90697a7b0655b9",
+        "size": 2394
+      },
+      "model.bin": {
+        "sha256": "69f74147e3334731bc3a76048724833325d2ec74642fb52620eda87352e3d4f1",
+        "size": 3087284237
+      },
+      "preprocessor_config.json": {
+        "sha256": "7ccc62c6f2765af1f3b46c00c9b5894426835a05021c8b9c01eecb6dfb542711",
+        "size": 340
+      },
+      "tokenizer.json": {
+        "sha256": "6d8cbd7cd0d8d5815e478dac67b85a26bbe77c1f5e0c6d76d1ce2abc0e5f21ca",
+        "size": 2480617
+      },
+      "vocabulary.json": {
+        "sha256": "c69260f2ab26d659b7c398f9a2b2b48ed0df16c3b47d7326782fd9cba71690c1",
+        "size": 1068114
+      }
+    },
+    "hosts": []
+  },
+  "Systran/faster-whisper-medium": {
+    "commit": "08e178d48790749d25932bbc082711ddcfdfbc4f",
+    "files": {
+      "config.json": {
+        "sha256": "3622a2ddc41ec0e0fd4e68c13c6830f03b90c38d89aaad184de02c8c642cf807",
+        "size": 2257
+      },
+      "model.bin": {
+        "sha256": "9b45e1009dcc4ab601eff815b61d80e60ce3fd8c74c1a14f4a282258286b51ae",
+        "size": 1527906378
+      },
+      "tokenizer.json": {
+        "sha256": "fb7b63191e9bb045082c79fd742a3106a12c99513ab30df4a0d47fa6cb6fd0ab",
+        "size": 2203239
+      },
+      "vocabulary.txt": {
+        "sha256": "34ce3fe1c5041027b3f8d42912270993f986dbc4bb34cf27f951e34a1e453913",
+        "size": 459861
+      }
+    },
+    "hosts": []
+  },
+  "Systran/faster-whisper-medium.en": {
+    "commit": "a29b04bd15381511a9af671baec01072039215e3",
+    "files": {
+      "config.json": {
+        "sha256": "4a1848ebabe7938d9797c15a2e8e4ce1d36e6fd4a43d096ae5955257c67c7962",
+        "size": 2643
+      },
+      "model.bin": {
+        "sha256": "11b220779aea4c6f3ce9d2549c8a95ea869ed84066864b999531ef53e594fe5b",
+        "size": 1527904330
+      },
+      "tokenizer.json": {
+        "sha256": "929c5252409436dce1b38a75d1abbcb5e132d170d8e324e4e04ed915fa2d22df",
+        "size": 2128466
+      },
+      "vocabulary.txt": {
+        "sha256": "ff77588746d3a2595d32ab5b69ffd7b95ce2441ac57533cb66fc3eb575a115cf",
+        "size": 422309
+      }
+    },
+    "hosts": []
+  },
+  "Systran/faster-whisper-small": {
+    "commit": "536b0662742c02347bc0e980a01041f333bce120",
+    "files": {
+      "config.json": {
+        "sha256": "b55496ac7940a7ae47d2c01eab40edfd8701feec1229d9cce3b40014383fb828",
+        "size": 2370
+      },
+      "model.bin": {
+        "sha256": "3e305921506d8872816023e4c273e75d2419fb89b24da97b4fe7bce14170d671",
+        "size": 483546902
+      },
+      "tokenizer.json": {
+        "sha256": "fb7b63191e9bb045082c79fd742a3106a12c99513ab30df4a0d47fa6cb6fd0ab",
+        "size": 2203239
+      },
+      "vocabulary.txt": {
+        "sha256": "34ce3fe1c5041027b3f8d42912270993f986dbc4bb34cf27f951e34a1e453913",
+        "size": 459861
+      }
+    },
+    "hosts": []
+  },
+  "Systran/faster-whisper-small.en": {
+    "commit": "d1d751a5f8271d482d14ca55d9e2deeebbae577f",
+    "files": {
+      "config.json": {
+        "sha256": "666a9605530ac1f61fa8177f3702b4dacec9966749e42610839fcc32661d5fae",
+        "size": 2657
+      },
+      "model.bin": {
+        "sha256": "62b2a45b05ee59acb4a5341b33ee35e041395d378d418a18acfe4c9e768ee37a",
+        "size": 483545366
+      },
+      "tokenizer.json": {
+        "sha256": "929c5252409436dce1b38a75d1abbcb5e132d170d8e324e4e04ed915fa2d22df",
+        "size": 2128466
+      },
+      "vocabulary.txt": {
+        "sha256": "ff77588746d3a2595d32ab5b69ffd7b95ce2441ac57533cb66fc3eb575a115cf",
+        "size": 422309
+      }
+    },
+    "hosts": []
+  },
+  "Systran/faster-whisper-tiny": {
+    "commit": "d90ca5fe260221311c53c58e660288d3deb8d356",
+    "files": {
+      "config.json": {
+        "sha256": "a73a28cdfe1c43ccc7202fa333d1f89c202477271407ae9a7f19afa52039cac8",
+        "size": 2249
+      },
+      "model.bin": {
+        "sha256": "dcb76c6586fc06cbdac6dd21f14cfd129cc4cdd9dce19bf4ffa62e59cbe6e6d1",
+        "size": 75538270
+      },
+      "tokenizer.json": {
+        "sha256": "fb7b63191e9bb045082c79fd742a3106a12c99513ab30df4a0d47fa6cb6fd0ab",
+        "size": 2203239
+      },
+      "vocabulary.txt": {
+        "sha256": "34ce3fe1c5041027b3f8d42912270993f986dbc4bb34cf27f951e34a1e453913",
+        "size": 459861
+      }
+    },
+    "hosts": []
+  },
+  "Systran/faster-whisper-tiny.en": {
+    "commit": "0d3d19a32d3338f10357c0889762bd8d64bbdeba",
+    "files": {
+      "config.json": {
+        "sha256": "14b1b421a90349bc551b881461426b561a874049cb9e4c4864f2ca384f6a7cc5",
+        "size": 2317
+      },
+      "model.bin": {
+        "sha256": "1a5afae06a4db91c975c9a9d78be5cc110ee4ea022ad57d55492e4550e936b2a",
+        "size": 75537502
+      },
+      "tokenizer.json": {
+        "sha256": "929c5252409436dce1b38a75d1abbcb5e132d170d8e324e4e04ed915fa2d22df",
+        "size": 2128466
+      },
+      "vocabulary.txt": {
+        "sha256": "ff77588746d3a2595d32ab5b69ffd7b95ce2441ac57533cb66fc3eb575a115cf",
+        "size": 422309
+      }
+    },
+    "hosts": []
+  },
+  "Vinxscribe/biodatlab-whisper-th-large-v3-faster": {
+    "commit": "bcbcc289272ad91e2641cd06160d7ad0b0ca62a1",
+    "files": {
+      "config.json": {
+        "sha256": "f277d9390e65adc1630b349151eca38aaf7420c41c814271928854edcfd6ffbe",
+        "size": 2634
+      },
+      "model.bin": {
+        "sha256": "645e1513b5067528dc9a6ff29eebce826e4429ebd9357811ed2cfa03cd74019b",
+        "size": 3087284237
+      },
+      "preprocessor_config.json": {
+        "sha256": "7ccc62c6f2765af1f3b46c00c9b5894426835a05021c8b9c01eecb6dfb542711",
+        "size": 340
+      },
+      "tokenizer.json": {
+        "sha256": "125cebb6a27e6e20d265e3c23bdca63c37279da75cfca8e7725f1c092b465a9b",
+        "size": 2481353
+      },
+      "vocabulary.json": {
+        "sha256": "697ee5a65726e46b4d294d1a243d98e1878f5d81caba17891b1c5ebab7a912a9",
+        "size": 1119981
+      }
+    },
+    "hosts": []
+  },
+  "deepdml/faster-whisper-large-v3-turbo-ct2": {
+    "commit": "4df90f75321148c3a29a9e2351b7ddf8f5b115a8",
+    "files": {
+      "config.json": {
+        "sha256": "b0253ea6c0d3bea6b1e19e91a02acfd3b53f4467362efcb5a3e6b16c9b3a9b7e",
+        "size": 2263
+      },
+      "model.bin": {
+        "sha256": "e76620f83d5f5b69efd3d87e3dc180c1bd21df9fbebacfd4335e5e1efcc018da",
+        "size": 1617884929
+      },
+      "preprocessor_config.json": {
+        "sha256": "7ccc62c6f2765af1f3b46c00c9b5894426835a05021c8b9c01eecb6dfb542711",
+        "size": 340
+      },
+      "tokenizer.json": {
+        "sha256": "297b13372ac43916285644fb9687add3cc62ee2a1adb60da3dc25cc94c1871fd",
+        "size": 2710337
+      },
+      "vocabulary.json": {
+        "sha256": "c69260f2ab26d659b7c398f9a2b2b48ed0df16c3b47d7326782fd9cba71690c1",
+        "size": 1068114
+      }
+    },
+    "hosts": []
+  },
+  "distil-whisper/distil-large-v3.5-ct2": {
+    "commit": "9793ccc07920e0f830e1dba0343efcdf0ef8c903",
+    "files": {
+      "config.json": {
+        "sha256": "90c55f775cc4e0bb17293d0bf12f96557a486f20dea886fabd8e6075a3588b21",
+        "size": 2690
+      },
+      "model.bin": {
+        "sha256": "c58b88b8585ffcd2135fddaaf421ce72cb223b32edea70d156aed1dea319a119",
+        "size": 1512927867
+      },
+      "preprocessor_config.json": {
+        "sha256": "7ccc62c6f2765af1f3b46c00c9b5894426835a05021c8b9c01eecb6dfb542711",
+        "size": 340
+      },
+      "tokenizer.json": {
+        "sha256": "b3c8202bbf06d8ee4232c5984baa563784ac4737e2e7fdc42fa180200d3cfcdb",
+        "size": 2480645
+      },
+      "vocabulary.json": {
+        "sha256": "c69260f2ab26d659b7c398f9a2b2b48ed0df16c3b47d7326782fd9cba71690c1",
+        "size": 1068114
+      }
+    },
+    "hosts": []
+  },
+  "flateon/Belle-whisper-large-v3-turbo-zh-ct2": {
+    "commit": "65c8d6f4fd62590871a0ed3dad64b34820b78906",
+    "files": {
+      "config.json": {
+        "sha256": "b0253ea6c0d3bea6b1e19e91a02acfd3b53f4467362efcb5a3e6b16c9b3a9b7e",
+        "size": 2263
+      },
+      "model.bin": {
+        "sha256": "ced2cf89d8932bfa3a6e0e03be0b7b24e6c4d88ce7fe53102e0bac41db9f748a",
+        "size": 1617884929
+      },
+      "preprocessor_config.json": {
+        "sha256": "7ccc62c6f2765af1f3b46c00c9b5894426835a05021c8b9c01eecb6dfb542711",
+        "size": 340
+      },
+      "tokenizer.json": {
+        "sha256": "297b13372ac43916285644fb9687add3cc62ee2a1adb60da3dc25cc94c1871fd",
+        "size": 2710337
+      },
+      "vocabulary.json": {
+        "sha256": "c69260f2ab26d659b7c398f9a2b2b48ed0df16c3b47d7326782fd9cba71690c1",
+        "size": 1068114
+      }
+    },
+    "hosts": []
+  },
+  "ivrit-ai/whisper-large-v3-turbo-ct2": {
+    "commit": "72ad623a37947395efcc3933132353790e5a12f5",
+    "files": {
+      "config.json": {
+        "sha256": "c805eff43fc2a1d00d5cfa315e4b2230895f34994257c185959808a116e7c4f0",
+        "size": 1405
+      },
+      "model.bin": {
+        "sha256": "db2a2265aa012c16c7db9edda3d699c99f984efdd3f2e22a72a8ce7e9720f3a2",
+        "size": 1617884968
+      },
+      "preprocessor_config.json": {
+        "sha256": "654cf18d3e163b948ceaf9766da56ce0b52de265d58673cf61c9376f126bd499",
+        "size": 357
+      },
+      "tokenizer.json": {
+        "sha256": "297b13372ac43916285644fb9687add3cc62ee2a1adb60da3dc25cc94c1871fd",
+        "size": 2710337
+      },
+      "vocabulary.json": {
+        "sha256": "c69260f2ab26d659b7c398f9a2b2b48ed0df16c3b47d7326782fd9cba71690c1",
+        "size": 1068114
+      }
+    },
+    "hosts": []
+  },
+  "jimmymeister/whisper-large-v3-turbo-german-ct2": {
+    "commit": "cf135709e07f448230f9664393be5fe338d83ab3",
+    "files": {
+      "config.json": {
+        "sha256": "b0253ea6c0d3bea6b1e19e91a02acfd3b53f4467362efcb5a3e6b16c9b3a9b7e",
+        "size": 2263
+      },
+      "model.bin": {
+        "sha256": "5cbf337ed600d7c58100c131943827350ae866dfabdfb4c0ae80ef44bfe6d6e2",
+        "size": 1617884929
+      },
+      "preprocessor_config.json": {
+        "sha256": "7ccc62c6f2765af1f3b46c00c9b5894426835a05021c8b9c01eecb6dfb542711",
+        "size": 340
+      },
+      "tokenizer.json": {
+        "sha256": "297b13372ac43916285644fb9687add3cc62ee2a1adb60da3dc25cc94c1871fd",
+        "size": 2710337
+      },
+      "vocabulary.json": {
+        "sha256": "c69260f2ab26d659b7c398f9a2b2b48ed0df16c3b47d7326782fd9cba71690c1",
+        "size": 1068114
+      }
+    },
+    "hosts": []
+  },
+  "kotoba-tech/kotoba-whisper-v2.0-faster": {
+    "commit": "f44edd35eaeb2274e85ac7b31fb2c6f59ff1c4bc",
+    "files": {
+      "config.json": {
+        "sha256": "a9306624f5ec14270a014b647e5c316b6e03a662c369758d1b90697a7b0655b9",
+        "size": 2394
+      },
+      "model.bin": {
+        "sha256": "60d2bc2e33de9d43f2745be09caefe1161acab670f6796d4a750d8d848382b36",
+        "size": 1512927867
+      },
+      "preprocessor_config.json": {
+        "sha256": "7ccc62c6f2765af1f3b46c00c9b5894426835a05021c8b9c01eecb6dfb542711",
+        "size": 340
+      },
+      "tokenizer.json": {
+        "sha256": "f70c9740a90657b489cf05b0fa0605c1d497db542f11a70a8cc80a025c94c7d8",
+        "size": 2481381
+      },
+      "vocabulary.json": {
+        "sha256": "c69260f2ab26d659b7c398f9a2b2b48ed0df16c3b47d7326782fd9cba71690c1",
+        "size": 1068114
+      }
+    },
+    "hosts": []
+  },
+  "mobiuslabsgmbh/faster-whisper-large-v3-turbo": {
+    "commit": "0a363e9161cbc7ed1431c9597a8ceaf0c4f78fcf",
+    "files": {
+      "config.json": {
+        "sha256": "b0253ea6c0d3bea6b1e19e91a02acfd3b53f4467362efcb5a3e6b16c9b3a9b7e",
+        "size": 2263
+      },
+      "model.bin": {
+        "sha256": "e76620f83d5f5b69efd3d87e3dc180c1bd21df9fbebacfd4335e5e1efcc018da",
+        "size": 1617884929
+      },
+      "preprocessor_config.json": {
+        "sha256": "7ccc62c6f2765af1f3b46c00c9b5894426835a05021c8b9c01eecb6dfb542711",
+        "size": 340
+      },
+      "tokenizer.json": {
+        "sha256": "297b13372ac43916285644fb9687add3cc62ee2a1adb60da3dc25cc94c1871fd",
+        "size": 2710337
+      },
+      "vocabulary.json": {
+        "sha256": "c69260f2ab26d659b7c398f9a2b2b48ed0df16c3b47d7326782fd9cba71690c1",
+        "size": 1068114
+      }
+    },
+    "hosts": []
+  }
+}

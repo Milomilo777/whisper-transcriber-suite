@@ -785,6 +785,16 @@ def _short_model_id(model_name: str) -> str | None:
     return None
 
 
+def _resolve_hf_repo(model_name: str, hf_repo: str | None = None) -> str | None:
+    """Use an explicit repo, or resolve a built-in slug/folder name once."""
+    if hf_repo or "/" in model_name:
+        return hf_repo or model_name
+    for slug, entry in MODEL_REGISTRY.items():
+        if model_name in (slug, entry["name"]):
+            return str(entry["hf_repo"])
+    return None
+
+
 def _hf_model_ref(model_name: str, hf_repo: str | None = None) -> str | None:
     """Resolve the Hugging Face download reference for a model.
 
@@ -893,9 +903,7 @@ def _download_via_huggingface(
     from core import model_download
 
     manifest = model_download.load_manifest()
-    canonical_repo = hf_repo or next(
-        (str(entry["hf_repo"]) for entry in MODEL_REGISTRY.values()
-         if entry["name"] == model_name), None)
+    canonical_repo = _resolve_hf_repo(model_name, hf_repo)
     manifest_entry = manifest.get(canonical_repo or "")
     ref = canonical_repo if manifest_entry is not None else _hf_model_ref(model_name, hf_repo)
     if not ref:
@@ -907,15 +915,15 @@ def _download_via_huggingface(
 
     if manifest_entry is not None:
         if status_cb:
-            status_cb(f"Downloading '{ref}' from huggingface.co ...")
-        _notify(progress_cb, phase="download", status=f"Downloading {ref} from Hugging Face...",
-                percent=0, detail="huggingface.co")
+            status_cb(f"Downloading '{ref}' ...")
+        _notify(progress_cb, phase="download", status=f"Downloading {ref}...",
+                percent=0, detail=ref)
         ok = model_download.ModelDownloader().download(
             ref, model_path, manifest_entry, cancel_event=cancel_event)
         if ok:
             if status_cb:
-                status_cb("Model downloaded from Hugging Face.")
-            _notify(progress_cb, phase="download", status="Model downloaded from Hugging Face.",
+                status_cb("Model downloaded.")
+            _notify(progress_cb, phase="download", status="Model downloaded.",
                     percent=100, detail=ref)
         return ok
 
@@ -1017,7 +1025,7 @@ def _progress_feed(
             _notify(
                 progress_cb,
                 phase="download",
-                status="Downloading model from Hugging Face...",
+                status="Downloading model...",
                 downloaded=done,
                 total=approx_bytes,
                 speed=speed,
@@ -1044,24 +1052,26 @@ def _offline_download_text(model: dict[str, Any]) -> str:
 def _hf_download_unfinished(model_path: Path, hf_repo: str | None = None) -> bool:
     """True when a Hugging Face download into ``model_path`` was cut off.
 
-    Pinned downloads check all manifest files and ignore old cache remnants.
-    Without a manifest, ``.part`` files also indicate an unfinished download.
+    Pinned downloads check for missing filenames without reading their contents.
+    Both paths count ``.part`` files and legacy cache remnants as unfinished.
     huggingface_hub writes each file as ``<hash>.<etag>.incomplete`` under
     ``.cache/huggingface/download`` and renames it into place when it is
     complete, so a leftover ``.incomplete`` means a file of the model
     (``model.bin`` or a tokenizer / vocabulary file) is still missing.
     """
+    download_dir = model_path / ".cache" / "huggingface" / "download"
+    try:
+        if any(model_path.glob("*.part")) or any(download_dir.rglob("*.incomplete")):
+            return True
+    except OSError:
+        pass
     if hf_repo:
         from core import model_download
 
-        entry = model_download.load_manifest().get(hf_repo)
+        entry = model_download.load_manifest().get(_resolve_hf_repo(hf_repo) or "")
         if entry is not None:
             return not model_download.model_complete(model_path, entry)
-    download_dir = model_path / ".cache" / "huggingface" / "download"
-    try:
-        return any(model_path.glob("*.part")) or any(download_dir.rglob("*.incomplete"))
-    except OSError:
-        return False
+    return False
 
 
 def _huggingface_failure(
@@ -1072,7 +1082,7 @@ def _huggingface_failure(
     cancel_event: threading.Event | None,
     hf_repo: str | None,
 ) -> str | None:
-    """Run the huggingface.co download; ``None`` on success, else the
+    """Run the model download; ``None`` on success, else the
     user-facing reason it failed. A cancellation raises
     :class:`DownloadCancelled`; the legacy Hub path observes cancellation
     only once its call has returned."""
@@ -1095,7 +1105,7 @@ def _huggingface_failure(
         # reached but some files are already on disk.
         return (
             f"the download did not complete (model files are missing in "
-            f"{model_path}); huggingface.co may be unreachable. Check the "
+            f"{model_path}); the model hosts may be unreachable. Check the "
             "internet connection, proxy or VPN, then try again."
         )
     return None
@@ -1132,8 +1142,8 @@ def ensure_model(
     Manifest entries use pinned Hub files and hash-verified fallback hosts.
     Other repositories retain the primary Hub path. Legacy ``url``/``md5``
     settings are ignored. Finished files are never deleted. Incomplete
-    downloads resume in place; an unmanifested installed model remains usable
-    if its legacy resume fails. Concurrent calls for the same model
+    downloads resume in place; an installed model remains usable if a resume
+    or missing-file download fails. Concurrent calls for the same model
     folder are serialized: the later caller re-checks the folder after the
     first one finishes and returns "already installed" instead of
     downloading again.
@@ -1167,7 +1177,7 @@ def _ensure_model(
     progress_cb: Callable[[dict[str, Any]], None] | None,
     cancel_event: threading.Event | None,
 ) -> str:
-    hf_repo=_hf_repo_for(config, model)
+    hf_repo = _resolve_hf_repo(str(model.get("name") or ""), _hf_repo_for(config, model))
 
     cache_dir=model_path.parent
     try:
@@ -1203,7 +1213,7 @@ def _ensure_model(
     manifest_entry = model_download.load_manifest().get(hf_repo or "")
     weights_present = model_weights_present(model_path)
     unfinished = weights_present and _hf_download_unfinished(model_path, hf_repo)
-    if weights_present and (not unfinished or (offline.is_offline() and manifest_entry is None)):
+    if weights_present and (not unfinished or offline.is_offline()):
         if status_cb:
             status_cb(
                 "Model already installed (offline mode: not checked)."
@@ -1224,12 +1234,21 @@ def _ensure_model(
             "the model download",
         )
     # The partial folder is kept: the download resumes from it.
-    with _progress_feed(model_path, approx_bytes, progress_cb):
-        reason = _huggingface_failure(
-            model, model_path, status_cb, progress_cb, cancel_event, hf_repo
-        )
+    try:
+        with _progress_feed(model_path, approx_bytes, progress_cb):
+            reason = _huggingface_failure(
+                model, model_path, status_cb, progress_cb, cancel_event, hf_repo
+            )
+    except DownloadCancelled:
+        raise
+    except Exception as exc:
+        if cancel_event and cancel_event.is_set():
+            raise DownloadCancelled("Model download cancelled") from exc
+        if not weights_present:
+            raise
+        reason = _describe_download_error(exc, model_path, "the model hosts")
     if reason is not None:
-        if weights_present and manifest_entry is None:
+        if weights_present:
             # An installed model with a leftover blob from an older cut-off
             # download: the resume failed, but the model itself is there.
             if status_cb:
@@ -1238,9 +1257,9 @@ def _ensure_model(
             return str(model_path)
         ref = _hf_model_ref(model.get("name", ""), hf_repo) or "unknown"
         raise RuntimeError(
-            f"Model download from huggingface.co ({ref}) failed: {reason}"
+            f"Model download ({ref}) failed: {reason}"
         )
 
     if status_cb: status_cb("Model ready")
-    _notify(progress_cb, phase="ready", status="Model ready", percent=100, detail="Download complete (Hugging Face)")
+    _notify(progress_cb, phase="ready", status="Model ready", percent=100, detail="Download complete")
     return str(model_path)

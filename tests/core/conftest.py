@@ -11,6 +11,16 @@ import pytest
 
 
 @pytest.fixture(autouse=True)
+def _isolate_model_manifest(tmp_path_factory, monkeypatch):
+    """Legacy tests use an empty manifest; pinned tests inject their own entries."""
+    from core import model_download
+
+    manifest = tmp_path_factory.mktemp("model-manifest") / "manifest.json"
+    manifest.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(model_download, "MANIFEST_PATH", manifest)
+
+
+@pytest.fixture(autouse=True)
 def _default_offline_backend(monkeypatch):
     """Pin core.transcriber's active backend to faster_whisper for tests.
 

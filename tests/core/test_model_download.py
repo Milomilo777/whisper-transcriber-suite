@@ -5,7 +5,9 @@ import contextlib
 import errno
 import hashlib
 import json
+import os
 import socket
+import struct
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -50,6 +52,12 @@ class Server:
             def log_message(self, *_args):
                 pass
 
+            def reset_connection(self):
+                linger = struct.pack("HH" if os.name == "nt" else "ii", 1, 0)
+                self.connection.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, linger)
+                self.close_connection = True
+                self.connection.close()
+
             def do_HEAD(self):
                 owner.heads.append(self.path)
                 if head_stall:
@@ -61,6 +69,9 @@ class Server:
             def do_GET(self):
                 owner.gets.append((self.path, self.headers.get("Range")))
                 action = owner.actions.pop(0) if owner.actions else {}
+                if action.get("reset_headers"):
+                    self.reset_connection()
+                    return
                 if action.get("stall_headers"):
                     owner.release.wait(3)
                 status = action.get("status", 206 if self.headers.get("Range") else 200)
@@ -99,6 +110,11 @@ class Server:
                         self.wfile.write(b"\r\n0\r\n\r\n")
                     self.wfile.flush()
                     owner.sent.set()
+                    if action.get("reset"):
+                        # Real abortive TCP close, rather than a clean short response.
+                        time.sleep(0.03)
+                        self.reset_connection()
+                        return
                     if action.get("stall"):
                         owner.release.wait(3)
                     if cut < len(body) or action.get("stall"):
@@ -347,8 +363,8 @@ def test_attack_part_from_another_version(tmp_path):
     (tmp_path / "model.bin.part").write_bytes(b"old version" * 1000)
     with Server() as first, Server() as second:
         assert downloader(first.url, second.url).download(REPO, tmp_path, entry())
-        assert first.gets[0][1] == "bytes=11000-"
-        assert second.gets[0][1] is None
+        assert [value for _, value in first.gets] == ["bytes=11000-", None]
+        assert second.gets == []
     assert (tmp_path / "model.bin").read_bytes() == PAYLOAD
 
 
@@ -423,8 +439,7 @@ def test_attack_finished_model_and_user_files_never_deleted(tmp_path):
     keep = tmp_path / "keep.txt"
     keep.write_bytes(b"user data")
     with Server() as server:
-        with pytest.raises(mm.HuggingFaceDownloadError, match="existing model file"):
-            downloader(server.url).download(REPO, tmp_path, entry())
+        assert downloader(server.url).download(REPO, tmp_path, entry())
         assert server.gets == server.heads == []
     assert final.read_bytes() == b"user's older finished model"
     assert keep.read_bytes() == b"user data"
@@ -456,13 +471,13 @@ def test_preferred_host_probe_once_per_download(tmp_path):
         assert len(primary.heads) == len(good.heads) == 1
 
 
-def test_complete_model_ignores_old_cache_and_makes_no_connection(tmp_path, monkeypatch):
+def test_complete_files_preserve_old_cache_and_make_no_connection(tmp_path, monkeypatch):
     (tmp_path / "model.bin").write_bytes(PAYLOAD)
     cache = tmp_path / ".cache" / "huggingface" / "download" / "old.incomplete"
     cache.parent.mkdir(parents=True)
     cache.write_bytes(b"legacy prefix")
     monkeypatch.setattr(md, "load_manifest", lambda: {REPO: entry()})
-    assert not mm._hf_download_unfinished(tmp_path, REPO)
+    assert mm._hf_download_unfinished(tmp_path, REPO)
     with Server() as server:
         assert downloader(server.url).download(REPO, tmp_path, entry())
         assert server.gets == server.heads == []
@@ -514,11 +529,15 @@ def test_error_unwraps_local_entry_and_names_only_hosts(tmp_path):
     assert "http://" not in str(caught.value) and "/resolve/" not in str(caught.value)
 
 
-def test_attack_renamed_unverified_weights_not_usable(tmp_path, monkeypatch):
+def test_existing_weights_are_not_rejected_by_new_pins(tmp_path, monkeypatch):
     (tmp_path / "model.bin").write_bytes(b"x" * len(PAYLOAD))
     monkeypatch.setattr(md, "load_manifest", lambda: {REPO: entry()})
-    with pytest.raises(RuntimeError, match="pinned checksum"):
-        mm.ensure_model({"model": {"name": "fixture", "hf_repo": REPO}, "model_path": str(tmp_path)})
+    with Server() as server:
+        monkeypatch.setattr(md, "DEFAULT_HOSTS", (server.url,))
+        assert Path(mm.ensure_model({"model": {"name": "fixture", "hf_repo": REPO},
+                                     "model_path": str(tmp_path)})) == tmp_path
+        assert server.heads == server.gets == []
+    assert (tmp_path / "model.bin").read_bytes() == b"x" * len(PAYLOAD)
 
 
 @pytest.mark.parametrize("drip", [0, 0.03])
@@ -598,4 +617,327 @@ def test_builtin_without_explicit_repo_still_uses_manifest(tmp_path, monkeypatch
         monkeypatch.setattr(md, "DEFAULT_HOSTS", (server.url,))
         assert mm._download_via_huggingface("faster-whisper-tiny", tmp_path)
     legacy.assert_not_called()
+    assert (tmp_path / "model.bin").read_bytes() == PAYLOAD
+
+
+def test_installed_ensure_never_hashes_finished_files(tmp_path, monkeypatch):
+    pinned = entry(**{"config.json": b"{}"})
+    (tmp_path / "model.bin").write_bytes(PAYLOAD)
+    (tmp_path / "config.json").write_bytes(b"{}")
+    monkeypatch.setattr(md, "load_manifest", lambda: {REPO: pinned})
+    hashes = Mock(wraps=md.verified.file_sha256)
+    monkeypatch.setattr(md.verified, "file_sha256", hashes)
+    with Server() as server:
+        monkeypatch.setattr(md, "DEFAULT_HOSTS", (server.url,))
+        config = {"model": {"name": "fixture", "hf_repo": REPO}, "model_path": str(tmp_path)}
+        assert Path(mm.ensure_model(config)) == tmp_path
+        assert Path(mm.ensure_model(config)) == tmp_path
+        assert server.heads == server.gets == []
+    assert hashes.call_count == 0
+
+
+@pytest.mark.parametrize("leftover", ["model.bin.part", ".cache/huggingface/download/old.incomplete"])
+def test_pinned_installed_folder_with_leftover_is_unfinished(tmp_path, monkeypatch, leftover):
+    (tmp_path / "model.bin").write_bytes(PAYLOAD)
+    partial = tmp_path / leftover
+    partial.parent.mkdir(parents=True, exist_ok=True)
+    partial.write_bytes(b"prefix")
+    monkeypatch.setattr(md, "load_manifest", lambda: {REPO: entry()})
+    assert mm._hf_download_unfinished(tmp_path, REPO)
+
+
+@pytest.mark.parametrize("offline_mode", [False, True])
+@pytest.mark.parametrize("weight_variant", ["same-size", "different-size"])
+def test_older_installed_model_survives_missing_file_fetch_failure(
+    tmp_path, monkeypatch, offline_mode, weight_variant,
+):
+    data = b"pinned weights"
+    weights = data[::-1] if weight_variant == "same-size" else b"working older model"
+    pinned = entry(data, **{"config.json": b"{}", "tokenizer.json": b"tokenizer"})
+    (tmp_path / "model.bin").write_bytes(weights)
+    (tmp_path / "config.json").write_bytes(b"different old config")
+    (tmp_path / "extra.json").write_bytes(b"extra from older revision")
+    before = {p.name: (p.read_bytes(), p.stat().st_mtime_ns) for p in tmp_path.iterdir()}
+    monkeypatch.setattr(md, "load_manifest", lambda: {REPO: pinned})
+    monkeypatch.setattr(md.offline, "is_offline", lambda: offline_mode)
+    statuses = []
+    with Server(actions=[{"status": 403}]) as first, Server(actions=[{"status": 404}]) as second:
+        monkeypatch.setattr(md, "DEFAULT_HOSTS", (first.url, second.url))
+        config = {"model": {"name": "fixture", "hf_repo": REPO}, "model_path": str(tmp_path)}
+        assert Path(mm.ensure_model(config, status_cb=statuses.append)) == tmp_path
+        if offline_mode:
+            assert first.heads == first.gets == second.heads == second.gets == []
+        else:
+            assert len(first.gets) == len(second.gets) == 1
+    for name, snapshot in before.items():
+        final = tmp_path / name
+        assert (final.read_bytes(), final.stat().st_mtime_ns) == snapshot
+    assert any("installed model" in message or "offline mode" in message for message in statuses)
+
+
+@pytest.mark.parametrize("failure", [mm.InsufficientDiskSpace("full"), PermissionError("denied")])
+def test_installed_model_survives_resume_storage_failure(tmp_path, monkeypatch, failure):
+    (tmp_path / "model.bin").write_bytes(b"working old weights")
+    pinned = entry(**{"config.json": b"{}"})
+    monkeypatch.setattr(md, "load_manifest", lambda: {REPO: pinned})
+
+    def fail_space(*_args):
+        raise failure
+
+    monkeypatch.setattr(mm, "_require_free_space", fail_space)
+    statuses = []
+    with Server() as server:
+        monkeypatch.setattr(md, "DEFAULT_HOSTS", (server.url,))
+        config = {"model": {"name": "fixture", "hf_repo": REPO}, "model_path": str(tmp_path)}
+        assert Path(mm.ensure_model(config, status_cb=statuses.append)) == tmp_path
+        assert server.heads == server.gets == []
+    assert (tmp_path / "model.bin").read_bytes() == b"working old weights"
+    assert "using the installed model" in statuses[-1]
+
+
+def test_eight_tcp_resets_with_progress_resume_on_single_host(tmp_path):
+    cut = 65536
+    with Server(actions=[{"cut": cut, "reset": True}] * 8) as server:
+        client = md.ModelDownloader(hosts=[server.url], retry_delays=(0,) * 6, chunk_size=cut)
+        assert client.download(REPO, tmp_path, entry())
+        assert [value for _, value in server.gets] == [None] + [
+            f"bytes={cut * attempt}-" for attempt in range(1, 9)]
+        assert len(server.heads) == 1
+    assert (tmp_path / "model.bin").read_bytes() == PAYLOAD
+
+
+def test_tcp_resets_without_progress_exhaust_budget_then_fall_back(tmp_path):
+    with Server(actions=[{"cut": 0, "reset": True}] * 8) as bad, Server() as good:
+        client = md.ModelDownloader(hosts=[bad.url, good.url], retry_delays=(0,) * 6)
+        assert client.download(REPO, tmp_path, entry())
+        assert len(bad.gets) == 6
+        assert [value for _, value in good.gets] == [None]
+    assert (tmp_path / "model.bin").read_bytes() == PAYLOAD
+
+
+@pytest.mark.parametrize("offset", [11000, len(PAYLOAD)])
+def test_bad_resumed_partial_restarts_same_host_from_zero(tmp_path, offset):
+    (tmp_path / "model.bin.part").write_bytes(b"!" * offset)
+    with Server() as server:
+        assert downloader(server.url).download(REPO, tmp_path, entry())
+        assert [value for _, value in server.gets] == (
+            [f"bytes={offset}-", None] if offset < len(PAYLOAD) else [None])
+        assert len(server.heads) == 1
+    assert (tmp_path / "model.bin").read_bytes() == PAYLOAD
+
+
+@pytest.mark.parametrize("seed_partial", [False, True])
+def test_bad_fresh_hash_moves_to_next_host_even_if_range_was_ignored(tmp_path, seed_partial):
+    if seed_partial:
+        (tmp_path / "model.bin.part").write_bytes(PAYLOAD[:11000])
+    with Server(data=b"!" * len(PAYLOAD), actions=[{"status": 200}]) as bad, Server() as good:
+        assert downloader(bad.url, good.url).download(REPO, tmp_path, entry())
+        assert len(bad.gets) == 1
+        assert [value for _, value in good.gets] == [None]
+    assert (tmp_path / "model.bin").read_bytes() == PAYLOAD
+
+
+def test_only_host_with_timed_out_head_still_serves_get(tmp_path):
+    with Server(head_stall=True) as server:
+        assert downloader(server.url, probe_timeout=0.12).download(REPO, tmp_path, entry())
+        assert len(server.heads) == len(server.gets) == 1
+    assert (tmp_path / "model.bin").read_bytes() == PAYLOAD
+
+
+def test_failed_probe_host_is_tried_after_other_host_fails(tmp_path):
+    with Server(head_stall=True) as patient, Server(actions=[{"status": 403}]) as bad:
+        assert downloader(patient.url, bad.url, probe_timeout=0.12).download(REPO, tmp_path, entry())
+        assert len(patient.gets) == len(bad.gets) == 1
+        assert len(patient.heads) == len(bad.heads) == 1
+    assert (tmp_path / "model.bin").read_bytes() == PAYLOAD
+
+
+@pytest.mark.parametrize("stall_timeout", [0.7, 45])
+def test_get_connect_timeout_is_independent_of_probe(tmp_path, monkeypatch, stall_timeout):
+    connect = socket.create_connection
+    timeouts = []
+
+    def record_connection(address, timeout=None, *args, **kwargs):
+        timeouts.append(timeout)
+        return connect(address, timeout, *args, **kwargs)
+
+    monkeypatch.setattr(socket, "create_connection", record_connection)
+    with Server() as server:
+        assert downloader(server.url, stall_timeout=stall_timeout, probe_timeout=0.3).download(
+            REPO, tmp_path, entry())
+    assert timeouts == [0.3, min(30, stall_timeout)]
+
+
+@pytest.mark.parametrize("installed", [False, True])
+def test_builtin_short_name_uses_same_pins_for_ensure_and_transfer(tmp_path, monkeypatch, installed):
+    repo = mm.MODEL_REGISTRY["tiny"]["hf_repo"]
+    pinned = entry(**{"config.json": PAYLOAD})
+    monkeypatch.setattr(md, "load_manifest", lambda: {repo: pinned})
+    if installed:
+        (tmp_path / "model.bin").write_bytes(PAYLOAD)
+    with Server() as server:
+        monkeypatch.setattr(md, "DEFAULT_HOSTS", (server.url,))
+        config = {"model": {"name": "tiny"}, "model_path": str(tmp_path)}
+        assert Path(mm.ensure_model(config)) == tmp_path
+        assert len(server.gets) == (1 if installed else 2)
+        assert all(path.startswith(f"/{repo}/resolve/{COMMIT}/") for path, _ in server.gets)
+    assert (tmp_path / "model.bin").read_bytes() == PAYLOAD
+    assert (tmp_path / "config.json").read_bytes() == PAYLOAD
+    (tmp_path / "config.json").unlink()
+    assert mm._hf_download_unfinished(tmp_path, "tiny")
+
+
+def test_fallback_progress_does_not_claim_primary_host_served_model(tmp_path, monkeypatch):
+    monkeypatch.setattr(md, "load_manifest", lambda: {REPO: entry()})
+    statuses = []
+    progress = []
+    with Server(actions=[{"status": 403}]) as primary, Server() as fallback:
+        monkeypatch.setattr(md, "DEFAULT_HOSTS", (primary.url, fallback.url))
+        config = {"model": {"name": "fixture", "hf_repo": REPO}, "model_path": str(tmp_path)}
+        assert Path(mm.ensure_model(config, status_cb=statuses.append, progress_cb=progress.append)) == tmp_path
+        assert len(primary.gets) == len(fallback.gets) == 1
+    text = json.dumps([statuses, progress]).lower()
+    assert "huggingface.co" not in text
+    assert "from hugging face" not in text
+    assert progress[-1]["percent"] == 100
+
+
+def test_round2_cancel_during_reset_retry_wait_keeps_resumable_bytes(tmp_path, monkeypatch):
+    cancel = threading.Event()
+    waiting = threading.Event()
+    result = []
+    errors = []
+    cut = 65536
+    with Server(actions=[{"cut": cut, "reset": True}]) as server:
+        client = md.ModelDownloader(hosts=[server.url], retry_delays=(32,) * 6)
+        wait = client._wait
+
+        def observed_wait(delay, event):
+            waiting.set()
+            wait(delay, event)
+
+        monkeypatch.setattr(client, "_wait", observed_wait)
+
+        def run():
+            try:
+                result.append(client.download(REPO, tmp_path, entry(), cancel_event=cancel))
+            except BaseException as exc:
+                errors.append(exc)
+
+        worker = threading.Thread(target=run)
+        worker.start()
+        try:
+            assert waiting.wait(3), "never reached retry backoff"
+            started = time.monotonic()
+            cancel.set()
+            worker.join(1)
+            assert not worker.is_alive()
+            assert time.monotonic() - started < 1
+            assert not errors and result == [False]
+            assert not (tmp_path / "model.bin").exists()
+            assert (tmp_path / "model.bin.part").read_bytes() == PAYLOAD[:cut]
+            assert downloader(server.url).download(REPO, tmp_path, entry())
+            assert server.gets[-1][1] == f"bytes={cut}-"
+        finally:
+            cancel.set()
+            worker.join(3)
+    assert (tmp_path / "model.bin").read_bytes() == PAYLOAD
+
+
+@pytest.mark.parametrize("cut", [len(PAYLOAD) - 1, len(PAYLOAD)])
+def test_round2_reset_at_final_byte(tmp_path, cut):
+    with Server(actions=[{"cut": cut, "reset": True}]) as server:
+        client = md.ModelDownloader(hosts=[server.url], retry_delays=(0,) * 6)
+        assert client.download(REPO, tmp_path, entry())
+        assert [value for _, value in server.gets] == (
+            [None, f"bytes={cut}-"] if cut < len(PAYLOAD) else [None])
+    assert (tmp_path / "model.bin").read_bytes() == PAYLOAD
+
+
+def test_round2_reset_then_ignored_range_restarts_cleanly(tmp_path):
+    with Server(actions=[{"cut": 65536, "reset": True}, {"status": 200}]) as server:
+        client = md.ModelDownloader(hosts=[server.url], retry_delays=(0,) * 6)
+        assert client.download(REPO, tmp_path, entry())
+        assert [value for _, value in server.gets] == [None, "bytes=65536-"]
+    assert (tmp_path / "model.bin").read_bytes() == PAYLOAD
+
+
+def test_round2_ensure_on_unicode_path(tmp_path, monkeypatch):
+    folder = tmp_path / "models with spaces \u6a21\u578b \u0622\u0632\u0645\u0648\u0646"
+    monkeypatch.setattr(md, "load_manifest", lambda: {REPO: entry()})
+    with Server() as server:
+        monkeypatch.setattr(md, "DEFAULT_HOSTS", (server.url,))
+        config = {"model": {"name": "fixture", "hf_repo": REPO}, "model_path": str(folder)}
+        assert Path(mm.ensure_model(config)) == folder
+        assert len(server.gets) == 1
+    assert (folder / "model.bin").read_bytes() == PAYLOAD
+
+
+def test_round2_two_threads_ensure_same_model(tmp_path, monkeypatch):
+    monkeypatch.setattr(md, "load_manifest", lambda: {REPO: entry()})
+    config = {"model": {"name": "fixture", "hf_repo": REPO}, "model_path": str(tmp_path)}
+    results = []
+    errors = []
+    second_started = threading.Event()
+
+    def run(started=None):
+        try:
+            if started is not None:
+                started.set()
+            results.append(mm.ensure_model(config))
+        except BaseException as exc:
+            errors.append(exc)
+
+    with Server(actions=[{"cut": 65536, "stall": True}]) as server:
+        monkeypatch.setattr(md, "DEFAULT_HOSTS", (server.url,))
+        first = threading.Thread(target=run)
+        second = threading.Thread(target=run, args=(second_started,))
+        first.start()
+        try:
+            assert server.sent.wait(3)
+            second.start()
+            assert second_started.wait(3)
+            second.join(0.1)
+            assert second.is_alive(), "second ensure did not wait for the first"
+            assert len(server.gets) == 1
+        finally:
+            server.release.set()
+            first.join(5)
+            if second.ident is not None:
+                second.join(5)
+        assert not first.is_alive() and not second.is_alive()
+        assert not errors
+        assert results == [str(tmp_path), str(tmp_path)]
+        assert [value for _, value in server.gets] == [None, "bytes=65536-"]
+    assert (tmp_path / "model.bin").read_bytes() == PAYLOAD
+
+
+def test_round2_reset_after_connect_before_headers_retries_same_host(tmp_path):
+    with Server(actions=[{"reset_headers": True}] * 8) as bad, Server() as good:
+        client = md.ModelDownloader(hosts=[bad.url, good.url], retry_delays=(0,) * 6)
+        assert client.download(REPO, tmp_path, entry())
+        assert len(bad.gets) == 6
+        assert len(good.gets) == 1
+    assert (tmp_path / "model.bin").read_bytes() == PAYLOAD
+
+
+def test_round2_failed_connect_moves_to_next_host_without_retry(tmp_path, monkeypatch):
+    connect = socket.create_connection
+    addresses = []
+
+    def record_connection(address, *args, **kwargs):
+        addresses.append(address)
+        return connect(address, *args, **kwargs)
+
+    monkeypatch.setattr(socket, "create_connection", record_connection)
+    with Server(head_stall=True) as patient, Server(actions=[{"status": 403}]) as rejected:
+        with Server() as closed:
+            unavailable = closed.url
+            address = ("127.0.0.1", closed.httpd.server_port)
+        client = md.ModelDownloader(hosts=[unavailable, rejected.url, patient.url],
+                                    retry_delays=(0,) * 6, probe_timeout=0.12, stall_timeout=2)
+        assert client.download(REPO, tmp_path, entry())
+        # One HEAD probe and one real GET connection attempt; neither is retried.
+        assert addresses.count(address) == 2
+        assert len(patient.gets) == len(rejected.gets) == 1
     assert (tmp_path / "model.bin").read_bytes() == PAYLOAD

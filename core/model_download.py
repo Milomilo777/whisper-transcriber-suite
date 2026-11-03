@@ -17,7 +17,7 @@ import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 from core import model_manager as mm
 from core import offline, verified_download as verified
@@ -114,8 +114,8 @@ def load_manifest(path: Path | None = None) -> dict[str, ManifestEntry]:
 
 
 def model_complete(folder: Path, entry: ManifestEntry) -> bool:
-    return all(verified.is_verified(folder / name, info.size, info.sha256)
-               for name, info in entry.files.items())
+    """Check installed names only; checksums apply to bytes being installed."""
+    return all((folder / name).is_file() for name in entry.files)
 
 
 class _Cancelled(Exception):
@@ -193,7 +193,7 @@ class ModelDownloader:
         self.probe_timeout = min(5, probe_timeout)
         self.max_stalls = max_stalls
         self.chunk_size = chunk_size
-        self.probed: set[str] = set()
+        self.probed: dict[str, bool] = {}
         self.unavailable: set[str] = set()
         self.tried: list[str] = []
         self.preferred: str | None = None
@@ -213,6 +213,16 @@ class ModelDownloader:
 
         def connection(cls, host, **kwargs):
             conn = cls(host, **kwargs)
+            connect = conn.connect
+
+            def connect_or_unavailable():
+                try:
+                    connect()
+                except (OSError, http.client.HTTPException) as exc:
+                    # Only connection/TLS setup failures discard this host at once.
+                    raise _HostUnavailable(self._cause(exc)) from None
+
+            conn.connect = connect_or_unavailable
             conn.response_class = Response
             return conn
 
@@ -228,26 +238,41 @@ class ModelDownloader:
         req = urllib.request.Request(url, headers={
             "User-Agent": "WhisperTranscriberSuite", "Accept-Encoding": "identity", **headers,
         }, method="HEAD" if probe else "GET")
-        return opener.open(req, timeout=self.probe_timeout)
+        return opener.open(req, timeout=timeout if probe else min(30, self.stall_timeout))
 
     @staticmethod
     def _url(host: str, repo: str, commit: str, name: str) -> str:
         return f"{host}/{urllib.parse.quote(repo, safe='/')}/resolve/{commit}/{urllib.parse.quote(name)}"
 
-    def _probe(self, host: str, url: str, cancel: threading.Event | None) -> None:
+    def _probe(self, host: str, url: str, cancel: threading.Event | None) -> bool:
         if host in self.probed:
-            return
-        self.probed.add(host)
+            return self.probed[host]
+        self.probed[host] = False
         try:
             with self._open(url, {}, cancel, probe=True):
                 pass
         except urllib.error.HTTPError as exc:
             exc.close()
-            # Some valid download hosts do not implement HEAD. GET remains authoritative.
-            if exc.code not in (405, 501):
-                raise _HostUnavailable(f"HTTP {exc.code}") from None
-        except (urllib.error.URLError, OSError, http.client.HTTPException) as exc:
-            raise _HostUnavailable(self._cause(exc)) from None
+            # A failed HEAD only changes priority; GET remains authoritative.
+            self.probed[host] = exc.code in (405, 501)
+        except (urllib.error.URLError, OSError, http.client.HTTPException, _HostUnavailable):
+            pass
+        else:
+            self.probed[host] = True
+        return self.probed[host]
+
+    def _ordered_hosts(self, hosts: list[str], repo: str, commit: str, name: str,
+                       cancel: threading.Event | None) -> Iterator[str]:
+        deferred = []
+        ordered = ([self.preferred] if self.preferred else []) + hosts
+        for host in dict.fromkeys(ordered):
+            if host in self.unavailable:
+                continue
+            if self._probe(host, self._url(host, repo, commit, name), cancel):
+                yield host
+            else:
+                deferred.append(host)
+        yield from deferred
 
     @staticmethod
     def _cause(exc: BaseException) -> str:
@@ -319,6 +344,7 @@ class ModelDownloader:
         # retained partials, a 30-second idle watchdog, and stalls outside the backoff budget.
         while True:
             _check_cancel(cancel)
+            before = part.stat().st_size if part.exists() else 0
             try:
                 return self._fetch(url, part, info, cancel)
             except _Stalled:
@@ -335,11 +361,14 @@ class ModelDownloader:
                 if exc.code < 500 and exc.code not in (408, 429):
                     raise _HostUnavailable(f"HTTP {exc.code}") from None
                 cause = f"HTTP {exc.code}"
-            except (urllib.error.URLError, ssl.SSLError, ConnectionError, TimeoutError) as exc:
-                raise _HostUnavailable(self._cause(exc)) from None
-            except (http.client.HTTPException, _Retryable) as exc:
+            except (urllib.error.URLError, ssl.SSLError, ConnectionError, TimeoutError,
+                    http.client.HTTPException, _Retryable) as exc:
                 cause = self._cause(exc)
-            failures += 1
+            if part.exists() and part.stat().st_size > before:
+                failures = 0
+                retries = iter(self.retry_delays)
+            else:
+                failures += 1
             delay = next(retries, None)
             if delay is None:
                 raise _HostUnavailable(cause)
@@ -405,10 +434,8 @@ class ModelDownloader:
         for name, info in entry.files.items():
             final = folder / name
             if final.exists():
-                if not verified.is_verified(final, info.size, info.sha256):
-                    raise mm.HuggingFaceDownloadError(
-                        f"The existing model file does not match its pinned checksum: {name}. "
-                        "Choose another model folder (Advanced settings > Model folder), then try again.")
+                if not final.is_file():
+                    raise mm.ModelDestinationNotWritable(folder)
                 continue
             part = verified.part_path(final)
             if part.is_symlink():
@@ -425,19 +452,21 @@ class ModelDownloader:
             final = folder / name
             part = verified.part_path(final)
             cause = "no download host is available"
-            ordered = ([self.preferred] if self.preferred else []) + hosts
-            for host in dict.fromkeys(ordered):
-                if host in self.unavailable:
-                    continue
+            for host in self._ordered_hosts(hosts, repo, entry.commit, name, cancel):
                 if host not in self.tried:
                     self.tried.append(host)
                 url = self._url(host, repo, entry.commit, name)
                 try:
-                    self._probe(host, url, cancel)
-                    digest = self._transfer(url, part, info, cancel)
-                    if part.stat().st_size != info.size or (digest or self._digest(part, cancel)) != info.sha256:
+                    for restart in range(2):
+                        digest = self._transfer(url, part, info, cancel)
+                        if (part.stat().st_size == info.size
+                                and (digest or self._digest(part, cancel)) == info.sha256):
+                            break
                         part.unlink()
-                        raise _HostUnavailable("download does not match its pinned checksum")
+                        if digest is not None or restart:
+                            raise _HostUnavailable("download does not match its pinned checksum")
+                        # A resumed prefix may be stale or damaged; give this host
+                        # one clean transfer before attributing bad bytes to it.
                     _check_cancel(cancel)
                     self._replace(part, final, cancel)
                     self.preferred = host
