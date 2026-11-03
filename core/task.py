@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
+import uuid
 
 
 class TranscriptionTask:
@@ -9,6 +10,17 @@ class TranscriptionTask:
         self.status: str = "waiting"
         self.progress: int = 0
         self.start_time: float | None = None
+        # Independent of protocol ids, file names and hardware; renewed at dispatch.
+        try:
+            self.run_id: str = uuid.uuid4().hex[:16]
+        except Exception:  # An optional identifier must never prevent a job.
+            self.run_id = ""
+        self._telemetry_recovery: str = "none"
+        self._telemetry_stage: str = "other"
+        self._telemetry_settings: dict[str, Any] | None = None
+        self._telemetry_gpu_vendor: str = "unknown"
+        self._failure_compute_type: str | None = None
+        self._input_duration: float | None = None
         # Frozen wall-clock for a terminal task. Set once by the
         # service / app cancel path when the task transitions to
         # finished / cancelled / error. Without this the Elapsed

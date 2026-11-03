@@ -319,9 +319,19 @@ def _remember_task_device(task: Any, backend: Any = None, *, whisper: bool = Fal
     """Keep the running job's device after its configuration scope ends."""
     try:
         if whisper:
-            value = get_effective_device("faster_whisper").device
+            effective = get_effective_device("faster_whisper")
+            value = effective.device
+            task._failure_compute_type = effective.compute_type or None
+            if effective.downgraded and getattr(task, "_telemetry_recovery", "none") == "none":
+                task._telemetry_recovery = "cpu_fallback" if value == "cpu" else "retried_ok"
+            if value == "cuda":
+                task._telemetry_gpu_vendor = "nvidia"
+                if _CUDA_BATCH_SIZE and getattr(task, "_telemetry_recovery", "none") == "none":
+                    task._telemetry_recovery = "cuda_batch_reduced"
         elif backend is not None:
-            value = _backend_effective_device(backend).device
+            effective = _backend_effective_device(backend)
+            value = effective.device
+            task._failure_compute_type = effective.compute_type or None
         else:
             value = "unknown"
         task._failure_device = value
@@ -446,10 +456,12 @@ def _whisper_runner(
         global MODEL, PIPELINE, device, compute_type, _DEVICE_DOWNGRADED, _CUDA_BATCH_SIZE
         if oom and int(options.get("batch_size", 1)) > 1:
             _CUDA_BATCH_SIZE = options["batch_size"] = 1
+            task._telemetry_recovery = "cuda_batch_reduced"
             log("CUDA ran out of memory; retrying the remaining audio with batch size 1.", log_cb)
             return
         target = "cuda" if oom and compute_type not in ("int8", "int8_float16") else "cpu"
         compute = "int8_float16" if target == "cuda" else "int8"
+        task._telemetry_recovery = "cpu_fallback" if target == "cpu" else "retried_ok"
         device, compute_type, _DEVICE_DOWNGRADED = target, compute, True
         path = slot.folder if slot is not None else str(config["model_path"])
         if slot is not None:
@@ -464,6 +476,7 @@ def _whisper_runner(
             if target != "cuda":
                 raise
             target, compute = "cpu", "int8"
+            task._telemetry_recovery = "cpu_fallback"
             device, compute_type = target, compute
         if model is None:
             model = WhisperModel(path, device=target, compute_type=compute)
@@ -1956,6 +1969,7 @@ def _run_post_pipeline(
             from . import diarization as _diar
 
             if _diar.is_available():
+                task._telemetry_stage = "diarize"
                 log("Diarising speakers...", log_cb)
                 num_speakers = int(config.get("diarization_num_speakers", -1))
                 threshold = float(config.get("diarization_cluster_threshold", 0.5))
@@ -2451,6 +2465,9 @@ def _runtime_overrides_scope(
 
         config.update(copy.deepcopy(task_layer))
         runtime_cfg = _apply_runtime_overrides(task)
+        # Keep only settings that select a code path after the scope is restored.
+        task._telemetry_settings = {"diarization_enabled": bool(config.get("diarization_enabled", False)),
+                                    "vad_enabled": bool(config.get("vad_enabled", True))}
         yield runtime_cfg
     finally:
         for key, value in snapshot.items():
@@ -2995,6 +3012,8 @@ def transcribe(
                 audio_path = task.file_path
 
         duration = get_duration(audio_path)
+        if duration > 0:
+            task._input_duration = duration
         require_audio_stream(audio_path)
         start = time.time()
         log(f"Processing: {audio_path}", log_cb)
@@ -3395,6 +3414,8 @@ def _transcribe_via_alt_backend(
             audio_path = task.file_path
 
     duration = get_duration(audio_path)
+    if duration > 0:
+        task._input_duration = duration
     require_audio_stream(audio_path)
     start = time.time()
     log(f"Processing ({backend_name}): {task.file_path}", log_cb)
@@ -4164,6 +4185,8 @@ def resume_transcription(
         # holds no timing from the first run.
         try:
             _resume_total = get_duration(task.file_path)
+            if _resume_total > 0:
+                task._input_duration = _resume_total
         except Exception:  # noqa: BLE001
             _resume_total = 0.0
         meter = _speed_meter.SpeedMeter(_resume_total, last_end_time)

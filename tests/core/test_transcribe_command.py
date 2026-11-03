@@ -61,8 +61,16 @@ def test_command_has_exactly_the_expected_keys():
     cmd = transcribe_command(_task())
     assert set(cmd) == {
         "action", "file_path", "language", "languages", "resume", "clip_start", "clip_end",
-        "output_formats", "task_id", "whisper_task", "settings",
+        "output_formats", "task_id", "run_id", "whisper_task", "settings",
     }
+
+
+def test_command_carries_the_random_run_id_separately_from_history():
+    task = _task(history_id=12, run_id="0123456789abcdef")
+    command = transcribe_command(task)
+    assert command["run_id"] == "0123456789abcdef"
+    assert command["task_id"] == "h12"
+    assert transcribe_command(task)["run_id"] == command["run_id"]
 
 
 def test_command_carries_the_task_settings_snapshot():
