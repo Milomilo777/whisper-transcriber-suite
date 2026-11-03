@@ -80,9 +80,8 @@ install test on a real machine.
 
 Contributions written with an AI assistant are welcome on the same terms
 as any other: you understand the change and it meets the quality bar
-above. End the commit message with a trailer that names the model, for
-example `Assisted-by: Claude Opus 5.5 (Anthropic)`. Use `Assisted-by:`
-rather than `Co-Authored-By:`, which GitHub would show as a co-author.
+above. Commit messages carry no AI line: neither `Assisted-by:` nor
+`Co-Authored-By:`, which GitHub would show as a co-author.
 
 ## Pull requests
 
