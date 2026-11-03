@@ -2063,6 +2063,10 @@ def _run_post_pipeline(
         except Exception as e:  # noqa: BLE001
             log(f"WARN: Alignment failed (continuing without refinement): {e}", log_cb)
 
+    # Rescue, mixed-language and resume paths can introduce cues after the
+    # streaming guard. Filter their final timings too, including alignment.
+    segments_data[:] = _loop_guard.collapse_micro_cues(segments_data)
+
     # Hallucination detector (opt-in, default ON). Runs last so it
     # sees the final diarised/aligned text. Any flagged segments get
     # ``suspect=True`` + ``suspect_reason``; the JSON writer carries

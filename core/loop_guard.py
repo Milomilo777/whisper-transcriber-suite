@@ -39,6 +39,8 @@ while a long loop is being eaten.
 from __future__ import annotations
 
 import logging
+import math
+import re
 import unicodedata
 from dataclasses import dataclass, field
 from typing import Any, Callable, Iterable, Iterator
@@ -119,6 +121,78 @@ def repeat_key(text: str) -> str:
     """
     norm = unicodedata.normalize("NFKC", text or "").casefold()
     return "".join(ch for ch in norm if ch.isalnum())
+
+
+def collapse_micro_cues(segments: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Collapse identical <=300 ms cues; keep ordinary spoken repetitions.
+
+    This final pass also sees rescue decodes and completed resume checkpoints,
+    which do not necessarily pass through the streaming restart guard. Only
+    duplicate micro-cues and non-word stubs under 80 ms disappear.
+    A surviving run covers its original span; no padding or reflow is applied.
+    Input dictionaries, word timings and non-duplicate text are left untouched.
+    """
+    # Adapted from Subtitle Edit (https://github.com/SubtitleEdit/subtitleedit/issues/6537) — post-decode identical-cue cleanup.
+    cues: list[tuple[dict[str, Any], float, float, tuple[str, ...], bool]] = []
+    for seg in segments:
+        try:
+            start, end = float(seg["start"]), float(seg["end"])
+        except (KeyError, TypeError, ValueError, OverflowError):
+            start = end = math.nan
+        text = unicodedata.normalize("NFKC", str(seg.get("text") or "")).casefold()
+        key = tuple(re.findall(r"[^\W_]+", text))
+        # A zero-length cue with words is real output: only a duplicate may go.
+        if math.isfinite(start) and math.isfinite(end) and not key and 0 <= round(end - start, 6) < .08:
+            continue
+        cues.append((seg, start, end, key, 0 <= round(end - start, 6) <= .3))
+
+    def adjacent(left: tuple, right: tuple, gap: float) -> bool:
+        return (left[0].get("speaker") == right[0].get("speaker")
+                and 0 <= round(right[1] - left[2], 6) <= gap)
+
+    def contains(neighbour: tuple, cue: tuple) -> bool:
+        words, key = neighbour[3], cue[3]
+        return bool(key) and any(words[i:i + len(key)] == key
+                                 for i in range(len(words) - len(key) + 1))
+
+    # A merge can expose a formerly separated duplicate or make a run long
+    # enough to anchor a neighbouring micro-cue. Stop at a fixed point.
+    while True:
+        runs = []
+        i = 0
+        while i < len(cues):
+            first = last = cues[i]
+            j = i + 1
+            if first[3] and 0 <= round(first[2] - first[1], 6) <= .3:
+                while (j < len(cues) and cues[j][3] == first[3]
+                       and 0 <= round(cues[j][2] - cues[j][1], 6) <= .3
+                       and adjacent(last, cues[j], .25)):
+                    last = cues[j]
+                    j += 1
+            if j > i + 1:
+                merged = dict(first[0], end=last[2])
+                runs.append((merged, first[1], last[2], first[3], True))
+            else:
+                runs.append(first)
+            i = j
+        kept = []
+        for i, cue in enumerate(runs):
+            # A collapsed burst may exceed 300 ms; its original constituent
+            # cues were all tiny, so it can still duplicate a normal neighbour.
+            tiny = cue[4]
+            previous = kept[-1] if kept else None
+            following = runs[i + 1] if i + 1 < len(runs) else None
+            if tiny and (
+                (previous is not None and previous[2] - previous[1] > .3
+                 and adjacent(previous, cue, 2.) and contains(previous, cue))
+                or (following is not None and following[2] - following[1] > .3
+                    and adjacent(cue, following, 2.) and contains(following, cue))
+            ):
+                continue
+            kept.append(cue)
+        if len(kept) == len(cues):
+            return [cue[0] for cue in kept]
+        cues = kept
 
 
 def _fmt(seconds: float) -> str:

@@ -875,7 +875,9 @@ class TranscriptionService:
             cmd = [sys.executable, "--worker"]
         else:
             cmd = [sys.executable, "-u", "-m", "core.worker"]
-        env = os.environ.copy()
+        from core.hardware import transcription_worker_env
+
+        env = transcription_worker_env()
         env["WHISPER_WORKER_TOKEN"] = worker["token"]
         kwargs: dict[str, Any] = {
             "cwd": os.path.dirname(os.path.abspath(app.entry_file)),

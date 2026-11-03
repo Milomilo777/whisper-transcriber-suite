@@ -1285,6 +1285,20 @@ def cpu_forced(config: dict[str, Any]) -> bool:
     return choice is not None and choice[0] == "cpu"
 
 
+def transcription_worker_env() -> dict[str, str]:
+    """Prepare a fresh worker's environment before its native imports.
+
+    Setting this in worker.main() would be too late. No device probe here: it would
+    load CTranslate2 into the app process, where a driver fault closes the whole app.
+    The setting only affects CUDA allocation, so a CPU worker ignores it.
+    """
+    env = os.environ.copy()
+    # Adapted from faster-whisper (https://github.com/SYSTRAN/faster-whisper/issues/829) — caching allocator workaround for CUDA model-unload crashes.
+    if sys.platform == "win32":
+        env.setdefault("CT2_CUDA_ALLOCATOR", "cub_caching")
+    return env
+
+
 # Physical memory (as the OS reports it: an 8 GB laptop shows 7.0-7.4) a model
 # needs to run on the CPU, int8, next to the OS and the app. Largest first;
 # anything not listed (tiny, base, small) runs everywhere.
