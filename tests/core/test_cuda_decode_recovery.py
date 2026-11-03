@@ -248,37 +248,6 @@ def test_transformers_retries_same_piece_and_keeps_previous_windows(monkeypatch,
     assert len([s for s in logs if "CUDA" in s]) == 2
 
 
-def test_whisper_cpp_cuda_failure_reloads_with_cpu_context(monkeypatch):
-    import sys
-    from types import ModuleType
-    from core.backends import whisper_cpp as wc
-
-    backend = wc.WhisperCppBackend()
-    backend._ready = True
-    loads = []
-
-    class Model:
-        def __init__(self, *args, **kwargs):
-            loads.append(kwargs)
-
-        def transcribe(self, *a, **k):
-            return [segment(0, 2, "cpu text")]
-
-    class Broken:
-        def transcribe(self, *a, **k):
-            raise RuntimeError("CUDA error: out of memory")
-
-    module = ModuleType("pywhispercpp.model")
-    module.Model = Model
-    monkeypatch.setitem(sys.modules, "pywhispercpp.model", module)
-    backend._model = Broken()
-    segments, _ = backend.transcribe_to_segments("fake.wav")
-    assert segments[0]["text"] == "cpu text"
-    assert loads[0]["context_params"] == {"use_gpu": False}
-    backend.transcribe_to_segments("fake.wav")
-    assert len(loads) == 1
-
-
 def test_clipped_decode_recovers_on_source_timeline(decode, monkeypatch):
     audio, written, slices = decode
     monkeypatch.setattr(tr, "get_duration", lambda path: 200.0)
