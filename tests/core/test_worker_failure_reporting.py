@@ -88,7 +88,8 @@ def test_broken_stdout_reports_closed_fields_on_stderr(monkeypatch, capsys):
     records = [json.loads(line) for line in stderr.splitlines() if line.startswith('{"event":')]
     assert records and records[0]["exception_family"] == "MemoryError"
     assert records[0]["failure_site"] == "worker.features"
-    assert "private" not in str(records)
+    assert records[0]["file_path"] == "private.wav"
+    assert "private" not in str({k: v for k, v in records[0].items() if k != "file_path"})
 
 
 def test_background_thread_baseexception_uses_worker_protocol(monkeypatch, capsys):

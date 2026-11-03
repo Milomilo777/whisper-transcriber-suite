@@ -383,7 +383,10 @@ def _load_whisper_model_self_healing(
     re-download prompt into a visible, graceful downgrade. A CPU load that
     fails still raises (nothing to fall back to).
     """
-    global device, compute_type, _DEVICE_DOWNGRADED, _REQUESTED_DEVICE
+    global device, compute_type, _DEVICE_DOWNGRADED, _REQUESTED_DEVICE, _CUDA_BATCH_SIZE
+    if _DEVICE_DOWNGRADED and (req_device, req_compute) == (device, compute_type):
+        req_device, req_compute = detect_device()
+    _CUDA_BATCH_SIZE = 0
     _REQUESTED_DEVICE = req_device
     _DEVICE_DOWNGRADED = False
     model: Any = None
@@ -434,11 +437,12 @@ def _whisper_runner(
     task: TranscriptionTask, *, batched: bool = False,
     log_cb: Callable[[str], None] | None = None,
     language_check: bool = False,
+    live_chunk: bool = False,
 ) -> Any:
     from .backends.faster_whisper_be import WhisperDecode
 
-    slot = getattr(_LM_RUNNER, "slot", None)
-    pair = mixed_language_pair(task)
+    slot = None if live_chunk else getattr(_LM_RUNNER, "slot", None)
+    pair = None if live_chunk or language_check else mixed_language_pair(task)
 
     def current(options: dict[str, Any]) -> Any:
         model = slot.model if slot is not None else MODEL
@@ -465,7 +469,7 @@ def _whisper_runner(
         device, compute_type, _DEVICE_DOWNGRADED = target, compute, True
         path = slot.folder if slot is not None else str(config["model_path"])
         if slot is not None:
-            slot.unload()
+            slot.model = slot.pipeline = None
         else:
             MODEL = PIPELINE = None
         gc.collect()
@@ -483,14 +487,15 @@ def _whisper_runner(
         _capture_effective_device(model, target, compute)
         _DEVICE_DOWNGRADED = True
         if slot is not None:
-            slot.model, slot.pipeline = model, _wrap_for_batched(model) if batched else None
+            slot.model, slot.pipeline = model, _wrap_for_batched(model)
         else:
-            MODEL, PIPELINE = model, _wrap_for_batched(model) if batched else None
+            MODEL, PIPELINE = model, _wrap_for_batched(model)
         _remember_task_device(task, whisper=True)
         log(f"CUDA decode failed; retrying the remaining audio on {target}/{compute}.", log_cb)
 
     return WhisperDecode(
-        current, lambda: _device_kind(device) == "cuda", recover, _vad_window_seconds(),
+        current, lambda: _device_kind(device) == "cuda", recover,
+        None if live_chunk else _vad_window_seconds(),
         language_check=language_check,
     )
 
@@ -1772,6 +1777,14 @@ _LM_SLOT: dict[str, Any] = {"model_id": "", "backend": None}
 _LM_SLOT_LOCK = threading.Lock()
 
 
+def _reset_decode_recovery() -> None:
+    global device, compute_type, _DEVICE_DOWNGRADED, _CUDA_BATCH_SIZE
+    if _DEVICE_DOWNGRADED:
+        device, compute_type = detect_device()
+    _DEVICE_DOWNGRADED = False
+    _CUDA_BATCH_SIZE = 0
+
+
 def release_default_model() -> bool:
     """Free the general Whisper model, if loaded; True when something was freed.
 
@@ -1780,6 +1793,7 @@ def release_default_model() -> bool:
     """
     global MODEL, PIPELINE
     with _DEFAULT_BACKEND_LOCK:
+        _reset_decode_recovery()
         if MODEL is None and PIPELINE is None:
             return False
         MODEL = None
@@ -1835,6 +1849,7 @@ class _WhisperLanguageModel:
     def unload(self) -> None:
         self.model = None
         self.pipeline = None
+        _reset_decode_recovery()
 
 
 #: The Whisper language model the current thread's ``transcribe`` call runs on instead of the
@@ -2655,7 +2670,7 @@ def transcribe_chunk_to_text(
     kwargs.pop("batch_size", None)
     kwargs["word_timestamps"] = False
 
-    segments_iter, info = _whisper_runner(task).transcribe(audio_path, **kwargs)
+    segments_iter, info = _whisper_runner(task, live_chunk=True).transcribe(audio_path, **kwargs)
     out: list[dict[str, Any]] = []
     parts: list[str] = []
     for seg in segments_iter:
@@ -4220,7 +4235,7 @@ def resume_transcription(
                 merged = prior_segments + new_segments_data
                 if merged:
                     _write_periodic_checkpoint(
-                        task, merged, float(merged[-1]["end"]), cp_language, cp_lang_prob, log_cb,
+                        task, merged, max(last_end_time, float(merged[-1]["end"])), cp_language, cp_lang_prob, log_cb,
                     )
 
             runner.before_retry = _save_before_retry

@@ -13,6 +13,7 @@ import logging
 import os
 import threading
 import time
+from contextlib import nullcontext
 from pathlib import Path
 from typing import Any, Callable
 
@@ -31,10 +32,16 @@ from .base import Backend, LanguageInfo
 logger = logging.getLogger(__name__)
 
 
-def _cuda_oom(exc: RuntimeError) -> bool:
+def _cuda_failure(exc: RuntimeError) -> str:
     from ..hardware import classify_cuda_load_failure
 
-    return classify_cuda_load_failure(str(exc)) == "out_of_memory"
+    text = str(exc)
+    kind = classify_cuda_load_failure(text)
+    if kind in {"out_of_memory", "arch_unsupported"} or any(
+        name in text.lower() for name in ("cuda", "cudnn", "cublas")
+    ):
+        return kind
+    return ""
 
 
 class WhisperDecode:
@@ -50,7 +57,7 @@ class WhisperDecode:
         runner: Callable[[dict[str, Any]], Any],
         is_cuda: Callable[[], bool],
         recover: Callable[[dict[str, Any], bool], None],
-        window_s: float,
+        window_s: float | None,
         *, language_check: bool = False,
     ) -> None:
         self._runner = runner
@@ -64,10 +71,12 @@ class WhisperDecode:
         while True:
             try:
                 return self._runner({}).detect_language(**kwargs)
-            except RuntimeError:
-                if not self._is_cuda():
+            except RuntimeError as exc:
+                failure = _cuda_failure(exc)
+                if not self._is_cuda() or not failure:
                     raise
-            self._recover({}, False)
+            self.before_retry()
+            self._recover({}, failure == "out_of_memory")
 
     def transcribe(self, audio: Any, **kwargs: Any) -> tuple[Any, Any]:
         options = dict(kwargs)
@@ -75,24 +84,28 @@ class WhisperDecode:
         def start(source: Any) -> tuple[Any, Any]:
             while True:
                 try:
-                    with vad_window.windowed_vad(self._window_s):
+                    with (vad_window.windowed_vad(self._window_s)
+                          if self._window_s is not None else nullcontext()):
                         return self._runner(options).transcribe(source, **options)
                 except RuntimeError as exc:
-                    if not self._is_cuda():
+                    failure = _cuda_failure(exc)
+                    if not self._is_cuda() or not failure:
                         raise
-                    oom = _cuda_oom(exc)
+                    oom = failure == "out_of_memory"
                 self.before_retry()
                 self._recover(options, oom)
 
         first, info = start(audio)
 
         def iterate():
+            nonlocal first
             # Import lazily: the legacy transcriber also uses this adapter.
             from ..transcriber import (
                 _checkpoint, _close_iterator_quietly, _shift_segments, _slice_audio_from,
             )
 
-            iterator = first
+            iterator: Any = first
+            first = None
             cursor = offset = 0.0
             temporary: list[str] = []
             try:
@@ -103,8 +116,9 @@ class WhisperDecode:
                             yield seg
                         return
                     except RuntimeError as exc:
-                        oom = _cuda_oom(exc)
-                        if not self._is_cuda() or (not oom and not self._language_check):
+                        failure = _cuda_failure(exc)
+                        oom = failure == "out_of_memory"
+                        if not self._is_cuda() or not failure or (not oom and not self._language_check):
                             raise
                     finally:
                         _close_iterator_quietly(iterator)
@@ -119,6 +133,19 @@ class WhisperDecode:
                             options["language"] = language
                     source = audio
                     if cursor > 0:
+                        if "clip_timestamps" in kwargs:
+                            clips = kwargs["clip_timestamps"]
+                            stamps = [float(t) for t in (clips.split(",") if isinstance(clips, str) else clips)]
+                            relative = []
+                            for i in range(0, len(stamps), 2):
+                                end = stamps[i + 1] if i + 1 < len(stamps) else float("inf")
+                                if end > cursor:
+                                    relative.append(max(0.0, stamps[i] - cursor))
+                                    if i + 1 < len(stamps):
+                                        relative.append(end - cursor)
+                            if not relative:
+                                return
+                            options["clip_timestamps"] = relative
                         if isinstance(audio, (str, os.PathLike)):
                             source = _slice_audio_from(str(audio), cursor, _checkpoint.partials_dir())
                             temporary.append(source)
@@ -279,12 +306,14 @@ class FasterWhisperBackend(Backend):
     def load_existing(self, status_cb: Callable[[str], None] | None = None) -> bool:
         config = load_config(fetch_online=False)  # worker path: local keys only
         self._read_safeguards(config)
+        model_path = Path(config["model_path"])
+        if str(model_path) != self._model_path:
+            self.unload()
         if not self._downgraded:
             self._device, self._compute_type = _detect_device(config)
             self._requested_device = self._device
         self._ready = False
         self._error = None
-        model_path = Path(config["model_path"])
         if not model_path.exists():
             self._error = f"Model folder missing: {model_path}"
             if status_cb:
@@ -313,15 +342,17 @@ class FasterWhisperBackend(Backend):
     ) -> bool:
         config = load_config(fetch_online=False)  # worker path: local keys only
         self._read_safeguards(config)
-        if not self._downgraded:
-            self._device, self._compute_type = _detect_device(config)
-            self._requested_device = self._device
         self._ready = False
         self._error = None
         try:
             model_path = ensure_model(config, status_cb, progress_cb, cancel_event)
             if cancel_event and cancel_event.is_set():
                 raise DownloadCancelled("Model download cancelled")
+            if model_path != self._model_path:
+                self.unload()
+            if not self._downgraded:
+                self._device, self._compute_type = _detect_device(config)
+                self._requested_device = self._device
             if status_cb:
                 status_cb("Loading Whisper model...")
             if progress_cb:
@@ -355,6 +386,9 @@ class FasterWhisperBackend(Backend):
         self._model = None
         self._pipeline = None
         self._ready = False
+        self._downgraded = False
+        self._decode_batch_size = 0
+        self._model_path = ""
 
     def _decode_runner(self, options: dict[str, Any]) -> Any:
         if self._pipeline is None:

@@ -434,6 +434,8 @@ class NvidiaAsrBackend(Backend):
         self._pipe = None
         self._runner = None
         self._supports_word_ts = None
+        self._cpu_fallback = False
+        self._cuda_max_samples = 0
         self._read_config()
         self._recipe = recipe_for(self._model_id)
 
@@ -632,6 +634,8 @@ class NvidiaAsrBackend(Backend):
         self._pipe = None
         self._runner = None
         self._ready = False
+        self._cpu_fallback = False
+        self._cuda_max_samples = 0
 
     # -- transcription -------------------------------------------------------
 
@@ -663,6 +667,11 @@ class NvidiaAsrBackend(Backend):
             # Outside the exception handler: release its references to the old
             # model and GPU tensors before allocating the replacement.
             if not self._cuda_max_samples and end - at > TARGET_SR:
+                gc.collect()
+                torch, _ = _import_torch_and_transformers()
+                cuda = getattr(torch, "cuda", None)
+                if cuda is not None:
+                    cuda.empty_cache()
                 self._cuda_max_samples = max(TARGET_SR, (end - at) // 2)
                 message = "CUDA ran out of memory; retrying the same audio in shorter pieces."
             else:
@@ -674,6 +683,7 @@ class NvidiaAsrBackend(Backend):
                 if cuda is not None:
                     cuda.empty_cache()
                 self._device, self._cpu_fallback = "cpu", True
+                self._cuda_max_samples = 0
                 dtype = getattr(torch, "float32", None)
                 if rnnt:
                     self._runner = _build_rnnt(self._model_id, "cpu", dtype, self._recipe or {})
@@ -861,6 +871,8 @@ class NvidiaAsrBackend(Backend):
 
             all_segments.extend(seg)
 
+            if cancelled and cancelled():
+                continue
             if progress_cb:
                 progress_cb(min(100, int(((idx + 1) / max(total, 1)) * 100)))
             if log_cb:
