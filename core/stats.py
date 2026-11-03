@@ -33,11 +33,15 @@ Design rules:
 from __future__ import annotations
 
 import logging
+import hashlib
+import json
+import math
 import os
 import platform
 import re
 import sys
 import threading
+import time
 import uuid
 import urllib.error
 import urllib.parse
@@ -62,6 +66,8 @@ logger = logging.getLogger(__name__)
 
 # Fields the PHP endpoint records (form_submitted toggles the insert).
 _FORM_FLAG = "form_submitted"
+_ERROR_LOCK = threading.Lock()
+_SESSION_ERRORS: dict[str, int] = {}
 
 # ISO 3166-1 alpha-2 country code shape.
 _ISO2_RE = re.compile(r"[A-Za-z]{2}")
@@ -356,6 +362,94 @@ def forget_install_id(config: dict[str, Any]) -> None:
         config["install_id"] = ""
 
 
+def memory_class(value: int) -> str:
+    """Keep byte units for existing readers, but only disclose RAM classes."""
+    if value <= 0:
+        return "0"
+    if value > 128 * 1024**3:
+        return "more"
+    classes = [gb * 1024**3 for gb in (2, 4, 8, 12, 16, 24, 32, 48, 64, 96, 128)]
+    return str(min(classes, key=lambda size: abs(size - value)))
+
+
+def limit_error_row(payload: dict[str, str], install_id: str, *, path: Path | None = None,
+                    now: float | None = None) -> dict[str, str] | None:
+    """Reserve an error row before posting; corrupt state resets, I/O errors drop.
+
+    The bounded file holds at most five timestamps/fingerprints and a saturating
+    duplicate count. OS locks also serialize independent app processes. Nothing
+    here retries a send, and a crash after reserving can only reduce the quota.
+    """
+    if payload.get("status") != "error":
+        return dict(payload)
+    try:
+        from core.config import config_path as config_file
+
+        target = path or Path(config_file()).with_name("telemetry-errors.json")
+        timestamp = time.time() if now is None else now
+        fingerprint = payload.get("fingerprint", "")
+        if not re.fullmatch(r"[0-9a-f]{12}", fingerprint) or not math.isfinite(timestamp):
+            return None
+        install = hashlib.sha256(install_id.encode("ascii")).hexdigest()[:12]
+        with _ERROR_LOCK:
+            count = _SESSION_ERRORS[install] = min(10, _SESSION_ERRORS.get(install, 0) + 1)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with target.with_suffix(".lock").open("a+b") as lock:
+                if lock.tell() == 0:
+                    lock.write(b"0")
+                    lock.flush()
+                lock.seek(0)
+                if sys.platform == "win32":
+                    import msvcrt
+                    msvcrt.locking(lock.fileno(), msvcrt.LK_NBLCK, 1)
+                else:
+                    import fcntl
+                    fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                # Closing the file releases the lock, including on any failure.
+                state: dict[str, Any] = {}
+                try:
+                    with target.open("r", encoding="utf-8") as stream:
+                        raw = stream.read(16385)
+                    candidate = json.loads(raw) if len(raw) <= 16384 else None
+                    if isinstance(candidate, dict) and candidate.get("install") == install:
+                        state = candidate
+                except (FileNotFoundError, ValueError, UnicodeError):
+                    pass
+                sent = state.get("sent", [])
+                if not isinstance(sent, list) or len(sent) > 5:
+                    sent = []
+                sent = [row for row in sent if isinstance(row, dict)
+                        and isinstance(row.get("t"), (int, float)) and not isinstance(row["t"], bool)
+                        and math.isfinite(row["t"]) and timestamp - row["t"] < 3600
+                        and isinstance(row.get("fp"), str) and re.fullmatch(r"[0-9a-f]{12}", row["fp"])]
+                pending = state.get("pending", 0)
+                pending = min(10, pending) if isinstance(pending, int) and 0 <= pending else 0
+                duplicate = any(row["fp"] == fingerprint for row in sent)
+                admitted = not duplicate and len(sent) < 5
+                result = dict(payload)
+                result["session_error_bucket"] = "1" if count == 1 else "2-3" if count < 4 else "4-9" if count < 10 else "10+"
+                result["repeat_bucket"] = "0" if pending == 0 else "1-2" if pending < 3 else "3-9" if pending < 10 else "10+"
+                if admitted:
+                    sent.append({"t": timestamp, "fp": fingerprint})
+                    pending = 0
+                elif duplicate:
+                    pending = min(10, pending + 1)
+                updated = {"install": install, "sent": sent, "pending": pending}
+                staged = target.with_name(target.name + "." + uuid.uuid4().hex + ".tmp")
+                try:
+                    with staged.open("w", encoding="utf-8") as stream:
+                        json.dump(updated, stream, separators=(",", ":"))
+                        stream.flush()
+                        os.fsync(stream.fileno())
+                    staged.replace(target)
+                finally:
+                    staged.unlink(missing_ok=True)
+                return result if admitted else None
+    except Exception:  # noqa: BLE001 - a broken state store must not affect a job
+        logger.debug("Error row suppressed: rate state unavailable", exc_info=True)
+        return None
+
+
 def build_stats_payload(
     *,
     model: str,
@@ -399,18 +493,26 @@ def build_stats_payload(
         "platform_processor": platform.processor(),
         "cpu_count": str(ps.cpu_count() or 0) if ps is not None else "0",
         "mem_total": (
-            str(int(ps.virtual_memory().total)) if ps is not None else "0"
+            memory_class(int(ps.virtual_memory().total)) if ps is not None else "0"
         ),
     }
     if _valid_install_id(install_id):
         payload["install_id"] = install_id
-    if status == "error":
-        try:
-            from core.failure_clue import sanitise_clue
-            payload.update(sanitise_clue(failure_clue))
-        except Exception:  # noqa: BLE001 - stats must never affect transcription
-            logger.debug("Failure clue unavailable", exc_info=True)
-    return payload
+    try:
+        from core.failure_clue import BASE_FIELDS, _fingerprint, log_memory_bucket, sanitise_clue
+
+        if status in {"error", "finished", "done"}:
+            # A worker event can never overwrite any of the existing usage facts.
+            closed = sanitise_clue(failure_clue, status=status)
+            if status == "error":
+                closed["peak_mem_mb"] = str(log_memory_bucket(closed.get("peak_mem_mb")))
+                closed.setdefault("run_id", uuid.uuid4().hex[:16])
+                closed.setdefault("fingerprint", _fingerprint(closed, [closed["top_frame"]] if "top_frame" in closed else []))
+            payload.update({k: v for k, v in closed.items() if k not in BASE_FIELDS})
+        return sanitise_clue(payload, status=status)
+    except Exception:  # noqa: BLE001 - fail closed without affecting transcription
+        logger.debug("Failure clue unavailable", exc_info=True)
+        return {k: v for k, v in payload.items() if k == "status"}
 
 
 def _post(url: str, payload: dict[str, str], timeout: float) -> None:
@@ -470,8 +572,25 @@ def post_stats_async(
             return False
         if not isinstance(payload, dict) or not payload:
             return False
+        def send() -> None:
+            try:
+                from core.failure_clue import sanitise_clue
+
+                if not bool(config.get("telemetry_opt_in", False)) or offline.is_offline():
+                    return
+                closed = sanitise_clue(payload, status=payload.get("status"))
+                if not closed:
+                    return
+                if closed.get("status") == "error":
+                    closed = limit_error_row(closed, install_id_for(config))
+                    if closed is None:
+                        return
+                _post(url, closed, float(timeout))
+            except Exception:  # noqa: BLE001
+                logger.debug("Automatic stats unavailable", exc_info=True)
+
         t = threading.Thread(
-            target=_post, args=(url, dict(payload), float(timeout)),
+            target=send, args=(),
             daemon=True, name="stats-post",
         )
         t.start()

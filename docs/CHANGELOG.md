@@ -6,6 +6,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- Automatic failure statistics include closed error codes, coarse run context, random run ids and hashes of permitted technical material, with no message text or private input details. Persistent hourly limits suppress repeated failures, and finished runs record automatic recovery.
 - **Open transcript on the Download Videos tab**: a finished row that was transcribed after download has an Open transcript button and menu entry (text first, then subtitles); the video's own Open button is unchanged.
 - **Optional technical details after an unexplained failure**: a quiet bar offers to send the failure's class, code locations and a word-filtered shape of the message (only vocabulary words survive). Nothing is sent before Send; at most one offer per session and per day, never while a job runs, and never with statistics off or Work offline. The last 30 records are also kept locally in the log folder (`diagnostics.jsonl`).
 

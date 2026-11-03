@@ -161,6 +161,13 @@ def _speed_fields(task: "TranscriptionTask") -> dict[str, Any]:
 
 def _emit_done(task: "TranscriptionTask", file_path: str, task_id: str) -> None:
     """Send the ``done`` event that ends a task (also a cancelled one)."""
+    from .failure_clue import sanitise_clue
+
+    try:
+        recovery = sanitise_clue({"recovered": getattr(task, "_telemetry_recovery", "none"),
+                                  "run_id": getattr(task, "run_id", ""), "classifier_version": "2"}, status="finished")
+    except Exception:  # noqa: BLE001 - output delivery must not depend on telemetry
+        recovery = {}
     emit(
         "done",
         file_path=file_path,
@@ -174,6 +181,7 @@ def _emit_done(task: "TranscriptionTask", file_path: str, task_id: str) -> None:
         audio_duration=float(getattr(task, "audio_duration", 0.0) or 0.0),
         no_speech=bool(getattr(task, "no_speech", False)),
         speaker_labels_failed=bool(getattr(task, "speaker_labels_failed", False)),
+        **recovery,
         **_speed_fields(task),
     )
 
@@ -954,9 +962,18 @@ def _main() -> int:
     def progress_cb(percent: float) -> None:
         # Additive fields: the decode's smoothed speed (x real time) and
         # time left in seconds, present only once the meter has enough data.
-        extra: dict[str, float] = {}
+        extra: dict[str, Any] = {}
         task = _current_task
         if task is not None:
+            task.progress = int(max(0, min(100, percent)))
+            try:
+                from .failure_clue import sanitise_clue
+                fields = {"last_stage": task._telemetry_stage, "recovered": task._telemetry_recovery,
+                          "run_id": task.run_id}
+                closed = sanitise_clue(fields)
+                extra.update({name: closed[name] for name in fields if name in closed})
+            except Exception:  # noqa: BLE001 - progress must not depend on telemetry
+                pass
             speed = getattr(task, "live_speed_x", None)
             eta = getattr(task, "live_eta_s", None)
             if speed is not None:
@@ -996,7 +1013,15 @@ def _main() -> int:
         pipe_reported = False
         while not heartbeat_stop.wait(HEARTBEAT_INTERVAL_SECONDS):
             try:
-                emit("heartbeat", ts=time.time())
+                context: dict[str, str] = {}
+                try:
+                    task = _current_task
+                    if task is not None:
+                        from .failure_clue import LEGACY_FIELDS, context_clue, sanitise_clue
+                        context = {k: v for k, v in sanitise_clue(context_clue(task)).items() if k not in LEGACY_FIELDS}
+                except Exception:  # noqa: BLE001 - liveness must survive collection failure
+                    pass
+                emit("heartbeat", ts=time.time(), **context)
             except OSError:
                 # stdout is a pipe to the app; a broken pipe means the app
                 # may be gone (see _on_pipe_closed). Keep beating: a
@@ -1208,6 +1233,14 @@ def _main() -> int:
         try:
             task = TranscriptionTask(file_path)
             task.task_id = task_id
+            task.start_time = time.time()
+            try:
+                from .failure_clue import sanitise_clue
+                run = sanitise_clue({"run_id": command.get("run_id")})
+                if "run_id" in run:
+                    task.run_id = run["run_id"]
+            except Exception:  # noqa: BLE001 - telemetry must not prevent transcription
+                logger.debug("Could not restore run id", exc_info=True)
             forced_lang = command.get("language")
             if forced_lang:
                 task.language = forced_lang

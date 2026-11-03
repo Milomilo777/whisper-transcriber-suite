@@ -44,15 +44,12 @@ def _remember_failure_clue(
     """Record only closed codes; a telemetry failure must never break task handling."""
     try:
         from core.failure_clue import parent_clue, sanitise_clue
+        observed_event = {**worker.get("run_context", {}), **(event or {})}
         if site and site.startswith("parent."):
             clue = parent_clue(site, device=worker.get("device", "unknown"),
-                               exit_code=exit_code, pid=pid)
-            if event:
-                observed = sanitise_clue(event)
-                for key in ("exception_family", "observed_code", "os_error"):
-                    clue[key] = observed[key]
+                               exit_code=exit_code, pid=pid, event=observed_event)
         else:
-            data = dict(event or {})
+            data = observed_event
             if site:
                 data["failure_site"] = site
             if site != "worker.model" and data.get("device") in (None, ""):
@@ -320,6 +317,7 @@ def transcribe_command(t: Any) -> dict[str, Any]:
         # the task's events and matches later cancel/pause/resume commands
         # against it. Optional for old workers — they ignore the extra key.
         "task_id": task_correlation_id(t),
+        "run_id": getattr(t, "run_id", ""),
     }
 
 
@@ -1738,6 +1736,15 @@ class TranscriptionService:
 
             # Audit D8: any event counts as liveness.
             worker["last_event_at"] = now
+            if (event_type in {"heartbeat", "progress"} and worker.get("task") is not None
+                    and event.get("run_id") in (None, getattr(worker["task"], "run_id", None))):
+                try:
+                    from core.failure_clue import BASE_FIELDS, sanitise_clue
+                    context = sanitise_clue(event)
+                    worker.setdefault("run_context", {}).update(
+                        {k: v for k, v in context.items() if k in event and k not in BASE_FIELDS})
+                except Exception:  # noqa: BLE001
+                    logger.debug("Could not retain worker context", exc_info=True)
             if event_type == "heartbeat":
                 # Pure liveness — already recorded above.
                 continue
@@ -1888,6 +1895,11 @@ class TranscriptionService:
                             worker["task"].speaker_labels_failed = bool(
                                 event.get("speaker_labels_failed")
                             )
+                            try:
+                                from core.failure_clue import sanitise_clue
+                                worker["task"].failure_clue = sanitise_clue(event, status="finished")
+                            except Exception:  # noqa: BLE001
+                                logger.debug("Could not remember recovery", exc_info=True)
                             apply_final_speed(worker["task"], event)
                             self.finish_task(worker)
                     else:
@@ -2237,6 +2249,7 @@ class TranscriptionService:
                     continue
 
             worker["task"] = t
+            worker.pop("run_context", None)
             t.status = "running"
             t.progress = 0
             # A re-run starts a fresh speed meter; never show the last run's.
@@ -2249,6 +2262,9 @@ class TranscriptionService:
             try:
                 t.failure_clue = None
                 t.failure_diag = None
+                import uuid
+                t.run_id = uuid.uuid4().hex[:16]
+                t._telemetry_recovery = "none"
             except Exception:  # noqa: BLE001 - unusual task objects must still dispatch
                 logger.debug("Could not reset failure clue", exc_info=True)
             t.start_time = _time.time()
@@ -2871,17 +2887,24 @@ class TranscriptionService:
             # transcribed (core.stats.build_stats_payload has no file field),
             # and a local model folder in nvidia_asr_model_id is sent as
             # "local-model" (core.stats.public_model_name).
+            from core.failure_clue import context_clue, sanitise_clue
+            terminal = status or getattr(task, "status", "") or ""
+            # Worker observations win; the parent supplies only missing local facts.
+            observed = getattr(task, "failure_clue", None) or {}
+            context = sanitise_clue(context_clue(task, device=(worker or {}).get("device", "unknown"), probe=False), status=terminal)
+            context.update((worker or {}).get("run_context", {}))
+            context.update(observed)
+            if getattr(task, "source_download", None) is not None:
+                context["input_kind"] = "download"  # The association exists only in the parent.
             payload = _stats.build_stats_payload(
                 model=model,
                 language=_reported_language(task),
                 audio_duration=audio_duration,
                 transcription_time=ai_time,
-                status=status or getattr(task, "status", "") or "",
+                status=terminal,
                 word_count=word_count,
                 install_id=_stats.install_id_for(app.app_config),
-                failure_clue=getattr(task, "failure_clue", None) or {
-                    "device": (worker or {}).get("device") or "unknown",
-                },
+                failure_clue={"device": (worker or {}).get("device") or "unknown", **context},
             )
             _stats.post_stats_async(app.app_config, payload)
         except Exception as e:  # noqa: BLE001

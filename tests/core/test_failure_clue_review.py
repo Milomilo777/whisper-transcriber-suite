@@ -82,7 +82,8 @@ def test_false_return_startup_keeps_model_exception_clue(monkeypatch, capsys, tm
     assert event["failure_site"] == "worker.model"
     assert event["exception_family"] == "RuntimeError"
     assert event["observed_code"] == "ct2_bad_alloc"
-    assert set(tr.get_model_failure_clue()) == set(clue.registry()["fields"])
+    assert clue.LEGACY_FIELDS <= tr.get_model_failure_clue().keys()
+    assert set(tr.get_model_failure_clue()) <= set(clue.registry()["fields"]) - clue.BASE_FIELDS
     monkeypatch.setattr(tr, "config", {"model_path": str(tmp_path / "missing")})
     assert tr.load_existing_model() is False
     assert tr.get_model_failure_clue() == {}
@@ -101,7 +102,8 @@ def test_lazy_default_model_failure_keeps_explicit_cause(monkeypatch, capsys, tm
     assert event["failure_site"] == "worker.model"
     assert event["exception_family"] == "MemoryError"
     assert event["observed_code"] == code
-    assert "private" not in str({name: event[name] for name in clue.registry()["fields"]})
+    assert clue.LEGACY_FIELDS <= event.keys()
+    assert "private" not in str({name: value for name, value in event.items() if name in clue.registry()["fields"]})
 
 
 def test_model_cause_cycles_and_implicit_context_are_safe():

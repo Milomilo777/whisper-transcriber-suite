@@ -85,11 +85,25 @@ def test_no_documented_field_is_missing_from_the_payload(config_md: str) -> None
     )
     # A failed run's row also carries the failure clue (docs list it too).
     from core import failure_clue
+    # Version 2 additions are optional. Exercise a row with every registered
+    # clue so this reverse contract still checks the entire documented table.
+    complete = failure_clue.parent_clue("parent.worker_exit")
+    for name, spec in failure_clue.registry()["fields"].items():
+        if name in failure_clue.BASE_FIELDS:
+            continue
+        if spec["type"] == "enum":
+            complete[name] = spec["values"][0]
+        elif spec["type"] == "integer":
+            complete[name] = str(spec["min"])
+        elif spec["type"] == "hex":
+            complete[name] = "0" * spec["length"]
+        else:
+            complete[name] = "core.transcriber:transcribe:1"
     error_payload = stats.build_stats_payload(
         model="m", language="en", audio_duration=0.0,
         transcription_time=1.0, status="error", word_count=0,
         install_id="00000000-0000-4000-8000-000000000000",
-        failure_clue=failure_clue.parent_clue("parent.watchdog"),
+        failure_clue=complete,
     )
     extra = sorted(documented - set(payload) - set(error_payload))
     assert not extra, f"docs/CONFIG.md lists fields the payload lacks: {extra}"
