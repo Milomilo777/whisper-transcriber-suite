@@ -730,7 +730,6 @@
     "No media file was found for this transcript, so the page has no player.": "Δεν βρέθηκε αρχείο πολυμέσων για αυτή τη μεταγραφή, οπότε η σελίδα δεν έχει πρόγραμμα αναπαραγωγής.",
     "No reference voice": "Καμία φωνή αναφοράς",
     "No speech was found in {name}": "Δεν βρέθηκε ομιλία στο {name}",
-    "No speech was recognised in this file, so no transcript was saved.": "Δεν αναγνωρίστηκε ομιλία σε αυτό το αρχείο, επομένως δεν αποθηκεύτηκε κείμενο μεταγραφής.",
     "No subtitle file": "Κανένα αρχείο υποτίτλων",
     "No text": "Κανένα κείμενο",
     "No tier detected — falling back to CPU.": "Δεν εντοπίστηκε βαθμίδα — επιστροφή στη CPU.",

@@ -730,7 +730,6 @@
     "No media file was found for this transcript, so the page has no player.": "No se encontró ningún archivo multimedia para esta transcripción, así que la página no tiene reproductor.",
     "No reference voice": "No hay voz de referencia",
     "No speech was found in {name}": "No se encontró voz en {name}",
-    "No speech was recognised in this file, so no transcript was saved.": "No se reconoció voz en este archivo, por lo que no se guardó ninguna transcripción.",
     "No subtitle file": "No hay archivo de subtítulos",
     "No text": "No hay texto",
     "No tier detected — falling back to CPU.": "No se detectó ningún nivel: se usa la CPU.",

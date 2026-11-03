@@ -720,7 +720,6 @@
     "No media file was found for this transcript, so the page has no player.": "この文字起こしのメディア ファイルが見つからないため、ページにプレーヤーはありません。",
     "No reference voice": "参照用の声がありません",
     "No speech was found in {name}": "{name} に音声が見つかりませんでした",
-    "No speech was recognised in this file, so no transcript was saved.": "このファイルから音声が認識されなかったため、文字起こし結果は保存されませんでした。",
     "No subtitle file": "字幕ファイルがありません",
     "No text": "テキストがありません",
     "No tier detected — falling back to CPU.": "ティアが検出されませんでした — CPU を使用します。",

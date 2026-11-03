@@ -730,7 +730,6 @@
     "No media file was found for this transcript, so the page has no player.": "Ehhez az átirathoz nem található médiafájl, ezért az oldalon nincs lejátszó.",
     "No reference voice": "Nincs referenciahang",
     "No speech was found in {name}": "Nem található beszéd a(z) {name} fájlban",
-    "No speech was recognised in this file, so no transcript was saved.": "Nem sikerült beszédet felismerni ebben a fájlban, így nem mentődött átirat.",
     "No subtitle file": "Nincs feliratfájl",
     "No text": "Nincs szöveg",
     "No tier detected — falling back to CPU.": "Nem észlelt szintet – visszaáll a CPU-ra.",

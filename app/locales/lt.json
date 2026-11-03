@@ -740,7 +740,6 @@
     "No media file was found for this transcript, so the page has no player.": "Šiai transkripcijai medijos failas nerastas, todėl puslapyje nėra leistuvo.",
     "No reference voice": "Nėra pavyzdinio balso",
     "No speech was found in {name}": "Faile {name} kalbos nerasta",
-    "No speech was recognised in this file, so no transcript was saved.": "Šiame faile kalbos neatpažinta, todėl transkripcija nebuvo įrašyta.",
     "No subtitle file": "Nėra subtitrų failo",
     "No text": "Nėra teksto",
     "No tier detected — falling back to CPU.": "Lygis neaptiktas – naudojamas CPU.",

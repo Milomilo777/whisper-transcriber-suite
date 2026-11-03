@@ -720,7 +720,6 @@
     "No media file was found for this transcript, so the page has no player.": "找不到此逐字稿對應的媒體檔案，因此頁面沒有播放器。",
     "No reference voice": "沒有參考聲音",
     "No speech was found in {name}": "在 {name} 中找不到語音",
-    "No speech was recognised in this file, so no transcript was saved.": "此檔案中未辨識到任何語音，因此未儲存逐字稿。",
     "No subtitle file": "沒有字幕檔案",
     "No text": "沒有文字",
     "No tier detected — falling back to CPU.": "未偵測到可用層級——改用 CPU。",

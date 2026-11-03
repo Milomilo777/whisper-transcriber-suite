@@ -770,7 +770,6 @@
     "No media file was found for this transcript, so the page has no player.": "لم يُعثر على ملف وسائط لهذا النص المُفرَّغ، لذا لا تحتوي الصفحة على مشغِّل.",
     "No reference voice": "لا يوجد صوت مرجعي",
     "No speech was found in {name}": "لم يتم العثور على كلام في {name}",
-    "No speech was recognised in this file, so no transcript was saved.": "لم يتم التعرف على أي كلام في هذا الملف، لذلك لم يُحفظ أي نص تفريغ.",
     "No subtitle file": "لا يوجد ملف ترجمة مصاحبة",
     "No text": "لا يوجد نص",
     "No tier detected — falling back to CPU.": "لم يُكتشف أي مستوى — يُرجع إلى CPU.",

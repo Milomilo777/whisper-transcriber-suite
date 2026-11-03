@@ -740,7 +740,6 @@
     "No media file was found for this transcript, so the page has no player.": "Nie znaleziono pliku multimedialnego dla tego transkryptu, więc strona nie ma odtwarzacza.",
     "No reference voice": "Brak głosu referencyjnego",
     "No speech was found in {name}": "Nie znaleziono mowy w {name}",
-    "No speech was recognised in this file, so no transcript was saved.": "W tym pliku nie rozpoznano mowy, więc transkrypcja nie została zapisana.",
     "No subtitle file": "Brak pliku napisów",
     "No text": "Brak tekstu",
     "No tier detected — falling back to CPU.": "Nie wykryto poziomu — powrót do CPU.",
