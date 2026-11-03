@@ -154,10 +154,13 @@ def _describe_download_error(exc: BaseException, folder: Path, source: str) -> s
     a bug report.
     """
     # A signed download link in the error text must not reach the dialog or logs.
-    raw = redact_urls(f"{type(exc).__name__}: {exc}".strip())
+    chain = list(_cause_chain(exc))
+    cause = next((e for e in reversed(chain)
+                  if type(e).__name__ != "LocalEntryNotFoundError"), None)
+    raw = (redact_urls(f"{type(cause).__name__}: {cause}".strip()) if cause is not None
+           else "The download could not reach the model host.")
     if len(raw) > 300:
         raw = raw[:297] + "..."
-    chain = list(_cause_chain(exc))
     if any(_is_disk_full(e) for e in chain):
         return (
             f"Not enough free disk space in {folder}. Free up space on that "
@@ -192,8 +195,8 @@ def _describe_download_error(exc: BaseException, folder: Path, source: str) -> s
 # the Advanced dialog. Each entry resolves to the ``model`` sub-dict
 # (name + hf_repo) the rest of this module already consumes.
 #
-# Models download only from the Hugging Face Hub. The zip mirror the app
-# used before (``url`` + ``md5`` keys) is retired: those keys are dropped
+# Catalog models use Hub repos, with hash-verified fallback hosts for pinned
+# downloads. The old zip mirror (``url`` + ``md5`` keys) is retired: those keys are dropped
 # from every catalog entry and ignored when an older config.json or a
 # hand-edited ``model_catalog`` still carries them. ``approx_size_gb`` is
 # shown in the Advanced dropdown so the user knows the install cost up front.
@@ -782,6 +785,16 @@ def _short_model_id(model_name: str) -> str | None:
     return None
 
 
+def _resolve_hf_repo(model_name: str, hf_repo: str | None = None) -> str | None:
+    """Use an explicit repo, or resolve a built-in slug/folder name once."""
+    if hf_repo or "/" in model_name:
+        return hf_repo or model_name
+    for slug, entry in MODEL_REGISTRY.items():
+        if model_name in (slug, entry["name"]):
+            return str(entry["hf_repo"])
+    return None
+
+
 def _hf_model_ref(model_name: str, hf_repo: str | None = None) -> str | None:
     """Resolve the Hugging Face download reference for a model.
 
@@ -872,18 +885,12 @@ def _download_via_huggingface(
 ) -> bool:
     """Fetch the model from the Hugging Face Hub into ``model_path``.
 
-    Delegates to ``faster_whisper.download_model`` because it already knows
-    each short id's correct upstream repo (when ``hf_repo`` isn't given).
-    ``output_dir`` is the resolved ``model_path``, so the files land in the
-    flat folder (``model.bin`` + ``config.json`` ...) the rest of the app
-    loads from.
-
-    Files already in ``model_path`` are kept: huggingface_hub resumes its
-    unfinished ``.incomplete`` blobs under ``model_path/.cache`` and, while
-    the Hub is reachable, re-checks every finished file against it, so a
-    retry continues a killed multi-GB download instead of starting from
-    zero. When the Hub is unreachable it hands back the local files without
-    an error, so callers check the folder afterwards.
+    Repositories in the shipped manifest use pinned, hash-verified Range
+    downloads with fallback hosts. Other repositories delegate to
+    ``faster_whisper.download_model`` on the primary host. That legacy path
+    does not reliably resume interrupted transfers with current Hub versions.
+    Both paths use the flat folder the app loads from and preserve finished
+    files; callers check that the folder is complete afterwards.
 
     Returns ``True`` on success and ``False`` when cancelled. A failure
     raises :class:`HuggingFaceDownloadError` whose text tells the user what
@@ -893,13 +900,32 @@ def _download_via_huggingface(
     if cancel_event and cancel_event.is_set():
         return False
 
-    ref = _hf_model_ref(model_name, hf_repo)
+    from core import model_download
+
+    manifest = model_download.load_manifest()
+    canonical_repo = _resolve_hf_repo(model_name, hf_repo)
+    manifest_entry = manifest.get(canonical_repo or "")
+    ref = canonical_repo if manifest_entry is not None else _hf_model_ref(model_name, hf_repo)
     if not ref:
         if status_cb:
             status_cb("Hugging Face download: could not resolve the model repo.")
         raise HuggingFaceDownloadError(
             "the app could not work out which huggingface.co repo holds this model"
         )
+
+    if manifest_entry is not None:
+        if status_cb:
+            status_cb(f"Downloading '{ref}' ...")
+        _notify(progress_cb, phase="download", status=f"Downloading {ref}...",
+                percent=0, detail=ref)
+        ok = model_download.ModelDownloader().download(
+            ref, model_path, manifest_entry, cancel_event=cancel_event)
+        if ok:
+            if status_cb:
+                status_cb("Model downloaded.")
+            _notify(progress_cb, phase="download", status="Model downloaded.",
+                    percent=100, detail=ref)
+        return ok
 
     try:
         from faster_whisper.utils import download_model
@@ -940,7 +966,7 @@ def _download_via_huggingface(
                     if status_cb:
                         status_cb(f"Could not delete partial download {partial}: {unlink_error}")
         if status_cb:
-            status_cb(f"Hugging Face download failed: {e}")
+            status_cb(f"Hugging Face download failed: {_describe_download_error(e, model_path.parent, 'huggingface.co')}")
         if cancel_event and cancel_event.is_set():
             return False
         if getattr(e, "winerror", None) in _FILE_IN_USE_WINERRORS:
@@ -977,11 +1003,11 @@ def _progress_feed(
     progress_cb: Callable[[dict[str, Any]], None] | None,
     interval: float = 1.0,
 ) -> Generator[None, None, None]:
-    """Report download progress while huggingface_hub runs.
+    """Report download progress while either model downloader runs.
 
     ``faster_whisper.download_model`` has no progress hook, so a helper
     thread measures the bytes in ``model_path`` (finished files plus the
-    ``.incomplete`` blobs under ``.cache``) against the catalog size.
+    ``.part`` files and legacy ``.incomplete`` blobs) against the model size.
     """
     if progress_cb is None or approx_bytes <= 0:
         yield
@@ -999,7 +1025,7 @@ def _progress_feed(
             _notify(
                 progress_cb,
                 phase="download",
-                status="Downloading model from Hugging Face...",
+                status="Downloading model...",
                 downloaded=done,
                 total=approx_bytes,
                 speed=speed,
@@ -1023,9 +1049,11 @@ def _offline_download_text(model: dict[str, Any]) -> str:
     return f"downloading the model {name}" if name else "downloading this model"
 
 
-def _hf_download_unfinished(model_path: Path) -> bool:
+def _hf_download_unfinished(model_path: Path, hf_repo: str | None = None) -> bool:
     """True when a Hugging Face download into ``model_path`` was cut off.
 
+    Pinned downloads check for missing filenames without reading their contents.
+    Both paths count ``.part`` files and legacy cache remnants as unfinished.
     huggingface_hub writes each file as ``<hash>.<etag>.incomplete`` under
     ``.cache/huggingface/download`` and renames it into place when it is
     complete, so a leftover ``.incomplete`` means a file of the model
@@ -1033,9 +1061,17 @@ def _hf_download_unfinished(model_path: Path) -> bool:
     """
     download_dir = model_path / ".cache" / "huggingface" / "download"
     try:
-        return any(download_dir.rglob("*.incomplete"))
+        if any(model_path.glob("*.part")) or any(download_dir.rglob("*.incomplete")):
+            return True
     except OSError:
-        return False
+        pass
+    if hf_repo:
+        from core import model_download
+
+        entry = model_download.load_manifest().get(_resolve_hf_repo(hf_repo) or "")
+        if entry is not None:
+            return not model_download.model_complete(model_path, entry)
+    return False
 
 
 def _huggingface_failure(
@@ -1046,10 +1082,10 @@ def _huggingface_failure(
     cancel_event: threading.Event | None,
     hf_repo: str | None,
 ) -> str | None:
-    """Run the huggingface.co download; ``None`` on success, else the
+    """Run the model download; ``None`` on success, else the
     user-facing reason it failed. A cancellation raises
-    :class:`DownloadCancelled` (huggingface_hub cannot be interrupted, so
-    it is only observable once the call has returned)."""
+    :class:`DownloadCancelled`; the legacy Hub path observes cancellation
+    only once its call has returned."""
     try:
         ok = _download_via_huggingface(
             model.get("name", ""), model_path,
@@ -1064,12 +1100,12 @@ def _huggingface_failure(
         raise DownloadCancelled("Model download cancelled")
     if not ok:
         return "the download did not finish"
-    if not model_weights_present(model_path) or _hf_download_unfinished(model_path):
+    if not model_weights_present(model_path) or _hf_download_unfinished(model_path, hf_repo):
         # huggingface_hub returns without an error when the Hub cannot be
         # reached but some files are already on disk.
         return (
             f"the download did not complete (model files are missing in "
-            f"{model_path}); huggingface.co may be unreachable. Check the "
+            f"{model_path}); the model hosts may be unreachable. Check the "
             "internet connection, proxy or VPN, then try again."
         )
     return None
@@ -1103,11 +1139,11 @@ def ensure_model(
 ) -> str:
     """Make sure the configured model is on disk; return its folder.
 
-    Models download only from the Hugging Face Hub. A ``url``/``md5`` pair
-    left in an older ``config["model"]`` (the retired zip mirror) is
-    ignored. A model already on disk is never deleted here: an unfinished
-    download is resumed in place, and an installed model whose resume
-    attempt fails is used as it is. Concurrent calls for the same model
+    Manifest entries use pinned Hub files and hash-verified fallback hosts.
+    Other repositories retain the primary Hub path. Legacy ``url``/``md5``
+    settings are ignored. Finished files are never deleted. Incomplete
+    downloads resume in place; an installed model remains usable if a resume
+    or missing-file download fails. Concurrent calls for the same model
     folder are serialized: the later caller re-checks the folder after the
     first one finishes and returns "already installed" instead of
     downloading again.
@@ -1141,7 +1177,7 @@ def _ensure_model(
     progress_cb: Callable[[dict[str, Any]], None] | None,
     cancel_event: threading.Event | None,
 ) -> str:
-    hf_repo=_hf_repo_for(config, model)
+    hf_repo = _resolve_hf_repo(str(model.get("name") or ""), _hf_repo_for(config, model))
 
     cache_dir=model_path.parent
     try:
@@ -1172,8 +1208,11 @@ def _ensure_model(
     # straight in ``model_path`` and parks in-progress blobs under its own
     # ``.cache`` next to them. Only a folder with ``model.bin`` and no
     # unfinished blob counts as installed; anything else resumes.
+    from core import model_download
+
+    manifest_entry = model_download.load_manifest().get(hf_repo or "")
     weights_present = model_weights_present(model_path)
-    unfinished = weights_present and _hf_download_unfinished(model_path)
+    unfinished = weights_present and _hf_download_unfinished(model_path, hf_repo)
     if weights_present and (not unfinished or offline.is_offline()):
         if status_cb:
             status_cb(
@@ -1184,8 +1223,9 @@ def _ensure_model(
         return str(model_path)
 
     offline.require_online(_offline_download_text(model))
-    approx_bytes = _approx_model_bytes(config, str(model.get("name") or ""))
-    if not weights_present:
+    approx_bytes = (sum(info.size for info in manifest_entry.files.values()) if manifest_entry else
+                    _approx_model_bytes(config, str(model.get("name") or "")))
+    if not weights_present and manifest_entry is None:
         # An installed model with a leftover blob is used as it is if the
         # resume fails, so a full disk must not refuse it here.
         _require_free_space(
@@ -1194,10 +1234,19 @@ def _ensure_model(
             "the model download",
         )
     # The partial folder is kept: the download resumes from it.
-    with _progress_feed(model_path, approx_bytes, progress_cb):
-        reason = _huggingface_failure(
-            model, model_path, status_cb, progress_cb, cancel_event, hf_repo
-        )
+    try:
+        with _progress_feed(model_path, approx_bytes, progress_cb):
+            reason = _huggingface_failure(
+                model, model_path, status_cb, progress_cb, cancel_event, hf_repo
+            )
+    except DownloadCancelled:
+        raise
+    except Exception as exc:
+        if cancel_event and cancel_event.is_set():
+            raise DownloadCancelled("Model download cancelled") from exc
+        if not weights_present:
+            raise
+        reason = _describe_download_error(exc, model_path, "the model hosts")
     if reason is not None:
         if weights_present:
             # An installed model with a leftover blob from an older cut-off
@@ -1208,9 +1257,9 @@ def _ensure_model(
             return str(model_path)
         ref = _hf_model_ref(model.get("name", ""), hf_repo) or "unknown"
         raise RuntimeError(
-            f"Model download from huggingface.co ({ref}) failed: {reason}"
+            f"Model download ({ref}) failed: {reason}"
         )
 
     if status_cb: status_cb("Model ready")
-    _notify(progress_cb, phase="ready", status="Model ready", percent=100, detail="Download complete (Hugging Face)")
+    _notify(progress_cb, phase="ready", status="Model ready", percent=100, detail="Download complete")
     return str(model_path)

@@ -1,0 +1,16 @@
+{
+  "fixture/tiny": {
+    "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "files": {
+      "model.bin": {
+        "size": 16,
+        "sha256": "828952d9cad7a0046f7cc2e721abbd561248a6bdc2bdbd76e4d4553e1cb9c9d3"
+      },
+      "config.json": {
+        "size": 3,
+        "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+      }
+    },
+    "hosts": []
+  }
+}
