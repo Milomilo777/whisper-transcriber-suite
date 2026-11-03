@@ -536,9 +536,12 @@ Unknown optional observations are omitted; explicitly unknown enum values remain
 traceback or exception text is sent. The innermost code location is taken from code objects in an exact,
 generated allow-list of the app and core packages; the function must also match
 the function-name constraint in the registry. The fingerprint hashes the site, family, code, classifier
-version, last three permitted module/function pairs (without line numbers) and shape hash. Before selecting
-at most twelve words from the diagnostic vocabulary for the shape hash, the app removes paths, URLs,
-quoted literals, e-mail-like tokens and all numbers. Only the hash is sent.
+version, numeric OS error, last three permitted module/function pairs (without line numbers) and shape hash.
+The shape hash uses only a fixed template ID when the entire message matches a closed library template;
+sizes, data types and library names never contribute. Unsupported messages hash nothing. OS exceptions
+always hash nothing for the shape, so localized messages group by family and numeric OS error instead of text.
+Stderr classification requires a complete Python traceback at the end of the bounded tail, or an exact
+native allocation or ffmpeg pattern. Incomplete last lines cannot supply a clue. Only closed results are sent.
 
 The automatic sender reserves at most five error rows per install in a rolling hour. A fingerprint already
 sent during that hour is suppressed, and the number of suppressed duplicates since the previous row becomes

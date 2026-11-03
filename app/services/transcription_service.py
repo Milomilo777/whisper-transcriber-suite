@@ -917,7 +917,9 @@ class TranscriptionService:
         # its task). The token is a spawn-time constant, so snapshot it
         # like the process object itself.
         spawn_token = worker["token"]
-        stderr_tail: deque[str] = deque(maxlen=12)
+        from core.failure_clue import STDERR_TAIL_LINES
+
+        stderr_tail: deque[str] = deque(maxlen=STDERR_TAIL_LINES)
         exit_clue: dict[str, str] = {}
 
         def reader() -> None:
@@ -926,8 +928,7 @@ class TranscriptionService:
             # line, however malformed, may end this thread without it.
             try:
                 for line in process.stdout:  # type: ignore[union-attr]
-                    line = line.strip()
-                    if not line:
+                    if not line.strip():
                         continue
                     try:
                         _queue_worker_line(line)
@@ -944,6 +945,9 @@ class TranscriptionService:
 
         def _queue_worker_line(line: str) -> None:
             nonlocal exit_clue
+            stderr_line = line.rstrip("\r\n")
+            complete_line = line.endswith(("\r", "\n"))
+            line = line.strip()
             try:
                 parsed = json.loads(line) if len(line) <= _WORKER_LINE_MAX_CHARS else None
             except (ValueError, RecursionError):
@@ -954,8 +958,8 @@ class TranscriptionService:
                 from core.failure_clue import stderr_clue
 
                 # One extra character marks a truncated line for the classifier.
-                stderr_tail.append(line[:2049])
-                exit_clue = stderr_clue(list(stderr_tail))
+                stderr_tail.append(stderr_line[:2049])
+                exit_clue = stderr_clue(list(stderr_tail)) if complete_line else {}
             elif parsed.get("event") in {"started", "done", "error", "live_result", "live_error"}:
                 stderr_tail.clear()
                 exit_clue = {}
