@@ -740,7 +740,6 @@
     "No media file was found for this transcript, so the page has no player.": "За овај транскрипт није пронађена медијска датотека, па страница нема плејер.",
     "No reference voice": "Нема референтног гласа",
     "No speech was found in {name}": "Није пронађен говор у {name}",
-    "No speech was recognised in this file, so no transcript was saved.": "У овој датотеци није препознат говор, па транскрипт није сачуван.",
     "No subtitle file": "Нема датотеке титлова",
     "No text": "Нема текста",
     "No tier detected — falling back to CPU.": "Ниво није пронађено – прелази се на CPU.",

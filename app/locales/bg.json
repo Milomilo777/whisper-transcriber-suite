@@ -730,7 +730,6 @@
     "No media file was found for this transcript, so the page has no player.": "Не е намерен медиен файл за тази транскрипция, затова страницата няма плейър.",
     "No reference voice": "Няма примерен глас",
     "No speech was found in {name}": "В {name} не беше открита реч",
-    "No speech was recognised in this file, so no transcript was saved.": "В този файл не беше разпозната реч, затова не беше запазена транскрипция.",
     "No subtitle file": "Няма файл със субтитри",
     "No text": "Няма текст",
     "No tier detected — falling back to CPU.": "Не е открито ниво – връщане към CPU.",

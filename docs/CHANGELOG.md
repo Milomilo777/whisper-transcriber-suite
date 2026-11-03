@@ -6,16 +6,29 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- Automatic failure statistics include closed error codes, coarse run context, random run ids and hashes of permitted technical material, with no message text or private input details. Persistent hourly limits suppress repeated failures, and finished runs record automatic recovery.
 - **Open transcript on the Download Videos tab**: a finished row that was transcribed after download has an Open transcript button and menu entry (text first, then subtitles); the video's own Open button is unchanged.
 - **Optional technical details after an unexplained failure**: a quiet bar offers to send the failure's class, code locations and a word-filtered shape of the message (only vocabulary words survive). Nothing is sent before Send; at most one offer per session and per day, never while a job runs, and never with statistics off or Work offline. The last 30 records are also kept locally in the log folder (`diagnostics.jsonl`).
 
 ### Fixed
 
+- SRT and WebVTT files never contain a zero-length or inverted cue: it gets a short display time or joins a cue starting right after it, and no words are lost.
+- A GPU driver or library failure during decoding now retries the rest of the file on CPU, and a finished transcript is delivered even if a background helper fails right after it.
+- Consecutive identical subtitle cues of at most 300 ms are collapsed or removed when a neighbouring cue already contains the same text, including rescue and resumed output. Normal-duration repeated speech keeps its original text and timing.
+- Windows CUDA transcription and live workers select the caching allocator before importing CTranslate2 to avoid driver-dependent model-unload crashes. An explicit allocator environment setting still takes precedence.
+- Automatic failure statistics use complete closed message templates, keeping private titles and localized OS text out of hashes. Stderr clues require a complete terminal traceback or an exact native/ffmpeg pattern and ignore incomplete last lines.
+- CUDA recovery preserves normal live transcription, clipped retry timestamps and resume cursors, and resets reduced memory limits when models change or unload. Worker failures report saved outputs once, retain task identity when reporting fails, and clear stderr clues after each job.
+- CUDA decoding retries with a smaller batch, quantized weights or shorter audio pieces before falling back to CPU. Captured segments and resume positions are preserved, and later jobs in the session reuse the reduced memory footprint.
+- Language detection and its verification decodes recover from CUDA runtime failures on CPU, preserving the selected language or automatic detection instead of failing the file.
+- Worker errors retain their class and processing stage when an interrupt, thread failure or error-reporting failure occurs. Unexpected exits also keep closed error codes inferred from a bounded stderr tail, without including its text.
+- Media-probe failures and invalid project options retain their underlying exception class during preparation, distinguishing a failed probe process from an invalid value while keeping existing error messages.
+- Input files that disappear before preparation produce the existing translated file-not-found notice, instead of exposing an OS error or a failed-probe detail.
 - Diarized jobs reserve 0–85% for transcription and 85–99% for speaker detection, with monotonic updates and heartbeats throughout the native worker phase. Completion reaches 100% after outputs are saved.
 - Automatic speaker detection repeatedly merges clusters below the greater of 10 seconds or 3% of speech into the nearest speaker, using time adjacency when embeddings are unavailable. Explicit speaker counts are preserved.
 - Speaker detection releases completed Whisper runners and weights before starting its worker, decodes audio through a temporary file to avoid full pipe-buffer copies, and limits native worker threads. The next transcription reloads Whisper on demand.
 
 - Auto language detection now samples several audio windows and verifies ambiguous unfamiliar-language choices by comparing forced-language decodes against a plausible language. Inconclusive verification keeps engine auto-detection, avoiding probability-only overrides of genuine foreign speech.
+- Runs without recognised speech save the selected output formats, including an empty SRT, with a visible no-speech notice. Their statistics retain the measured audio span, and a damaged JSON sidecar no longer prevents counting a valid subtitle output.
 - The Time column of a download that is transcribed after download stopped counting when the download ended; it now runs until the transcription is done.
 
 ### Changed

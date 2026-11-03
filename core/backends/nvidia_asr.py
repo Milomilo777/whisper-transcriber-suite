@@ -39,6 +39,7 @@ cached for later runs.
 """
 from __future__ import annotations
 
+import gc
 import logging
 import math
 import os
@@ -47,11 +48,11 @@ import subprocess
 import threading
 import time
 import warnings
-from typing import Any, Callable
+from typing import Any, Callable, Iterator, cast
 
 from .._liveness_tick import liveness_tick
 from ..config import load_config
-from .base import Backend, LanguageInfo
+from .base import Backend, LanguageInfo, PartialResultError
 from .cloud_stt import offset_segments, plan_chunks
 
 logger = logging.getLogger(__name__)
@@ -398,6 +399,8 @@ class NvidiaAsrBackend(Backend):
         #: None = not probed yet; True/False = does the model return word
         #: timestamps. Probed once on the first window, then reused.
         self._supports_word_ts: bool | None = None
+        self._cuda_max_samples = 0
+        self._cpu_fallback = False
 
     # -- lifecycle -----------------------------------------------------------
 
@@ -431,6 +434,8 @@ class NvidiaAsrBackend(Backend):
         self._pipe = None
         self._runner = None
         self._supports_word_ts = None
+        self._cpu_fallback = False
+        self._cuda_max_samples = 0
         self._read_config()
         self._recipe = recipe_for(self._model_id)
 
@@ -450,8 +455,8 @@ class NvidiaAsrBackend(Backend):
             cuda = bool(torch.cuda.is_available())
         except Exception:  # noqa: BLE001
             cuda = False
-        self._device = resolve_device(self._device_cfg, cuda)
-        dtype_name = resolve_dtype(self._dtype_cfg, self._device)
+        self._device = "cpu" if self._cpu_fallback else resolve_device(self._device_cfg, cuda)
+        dtype_name = "float32" if self._cpu_fallback else resolve_dtype(self._dtype_cfg, self._device)
         # getattr avoids pyright's "float16 is not exported from torch" and is
         # robust if a future torch renames a dtype.
         torch_dtype = getattr(torch, dtype_name, None)
@@ -629,8 +634,66 @@ class NvidiaAsrBackend(Backend):
         self._pipe = None
         self._runner = None
         self._ready = False
+        self._cpu_fallback = False
+        self._cuda_max_samples = 0
 
     # -- transcription -------------------------------------------------------
+
+    def _decode_audio_parts(
+        self, audio: Any, run: Callable[[Any], Any], log_cb: Callable[[str], None] | None,
+        cancelled: Callable[[], bool] | None = None,
+        paused: Callable[[], bool] | None = None,
+    ) -> Iterator[tuple[int, int, Any]]:
+        """Shrink a failed GPU piece once, then retry that same piece on CPU."""
+        from ..hardware import classify_cuda_load_failure
+
+        at = 0
+        while at < len(audio):
+            while paused and paused() and not (cancelled and cancelled()):
+                time.sleep(0.2)
+            if cancelled and cancelled():
+                return
+            end = min(len(audio), at + (self._cuda_max_samples or len(audio)))
+            try:
+                result = run(audio[at:end])
+            except RuntimeError as exc:
+                if (not self._device.startswith("cuda")
+                        or classify_cuda_load_failure(str(exc)) != "out_of_memory"):
+                    raise
+            else:
+                yield at, end, result
+                at = end
+                continue
+            # Outside the exception handler: release its references to the old
+            # model and GPU tensors before allocating the replacement.
+            if not self._cuda_max_samples and end - at > TARGET_SR:
+                gc.collect()
+                torch, _ = _import_torch_and_transformers()
+                cuda = getattr(torch, "cuda", None)
+                if cuda is not None:
+                    cuda.empty_cache()
+                self._cuda_max_samples = max(TARGET_SR, (end - at) // 2)
+                message = "CUDA ran out of memory; retrying the same audio in shorter pieces."
+            else:
+                rnnt = self._runner is not None
+                self._runner = self._pipe = None
+                gc.collect()
+                torch, pipeline = _import_torch_and_transformers()
+                cuda = getattr(torch, "cuda", None)
+                if cuda is not None:
+                    cuda.empty_cache()
+                self._device, self._cpu_fallback = "cpu", True
+                self._cuda_max_samples = 0
+                dtype = getattr(torch, "float32", None)
+                if rnnt:
+                    self._runner = _build_rnnt(self._model_id, "cpu", dtype, self._recipe or {})
+                else:
+                    self._pipe = _build_pipeline(pipeline, self._model_id, -1, dtype)
+                message = "CUDA ran out of memory; retrying the same audio on CPU."
+            if log_cb:
+                log_cb(message)
+            else:
+                logger.warning(message)
 
     def _run_pipe(self, audio: Any) -> tuple[Any, bool]:
         """Run the pipeline on one window's audio array.
@@ -650,7 +713,11 @@ class NvidiaAsrBackend(Backend):
                 self._supports_word_ts = has
                 if has:
                     return res, True
-            except Exception:  # noqa: BLE001 — model lacks word-timestamp path
+            except Exception as exc:  # noqa: BLE001 — model lacks word-timestamp path
+                from ..hardware import classify_cuda_load_failure
+                if (isinstance(exc, RuntimeError) and self._device.startswith("cuda")
+                        and classify_cuda_load_failure(str(exc)) == "out_of_memory"):
+                    raise
                 self._supports_word_ts = False
         # Build a FRESH input dict: the transformers ASR pipeline consumes /
         # mutates the dict it is handed during preprocess, so the fallback call
@@ -682,10 +749,15 @@ class NvidiaAsrBackend(Backend):
                 continue
             try:
                 with liveness_tick(log_cb, f"{self._model_id} {label}"):
-                    text = self._runner(audio[start:end])
+                    for a, b, text in self._decode_audio_parts(
+                        audio[start:end], lambda piece: cast(_RnntRunner, self._runner)(piece),
+                        log_cb, cancelled, paused,
+                    ):
+                        segments.extend(text_to_segment(text, (start + a) / TARGET_SR, (start + b) / TARGET_SR))
             except Exception as e:  # noqa: BLE001
-                raise RuntimeError(f"Local transcription with {self._model_id} failed: {e}") from e
-            segments.extend(text_to_segment(text, start / TARGET_SR, end / TARGET_SR))
+                raise PartialResultError(
+                    f"Local transcription with {self._model_id} failed: {e}", segments,
+                ) from e
         return segments
 
     def transcribe_to_segments(
@@ -765,33 +837,42 @@ class NvidiaAsrBackend(Backend):
             if audio.size == 0:
                 continue
 
-            win_len = float(audio.size) / TARGET_SR
             if self._runner is not None:
-                seg = self._run_rnnt_window(audio, f"window {idx + 1}/{total}", log_cb, cancelled, paused)
+                try:
+                    seg = self._run_rnnt_window(audio, f"window {idx + 1}/{total}", log_cb, cancelled, paused)
+                except PartialResultError as partial:
+                    raise PartialResultError(
+                        str(partial), all_segments + offset_segments(partial.segments, chunk_start),
+                    ) from partial
                 all_segments.extend(offset_segments(seg, chunk_start))
                 if cancelled and cancelled():
                     continue  # the loop's next check logs and stops; no 100% for a cancelled window
                 if progress_cb:
                     progress_cb(min(100, int(((idx + 1) / max(total, 1)) * 100)))
                 continue
+            seg = []
             try:
                 with liveness_tick(
                     log_cb, f"NVIDIA Parakeet window {idx + 1}/{total}"
                 ):
-                    result, has_words = self._run_pipe(audio)
+                    for a, b, (result, has_words) in self._decode_audio_parts(
+                        audio, self._run_pipe, log_cb, cancelled, paused,
+                    ):
+                        if has_words and isinstance(result, dict):
+                            part = chunks_to_segments(result.get("chunks"))
+                        else:
+                            text = result.get("text") if isinstance(result, dict) else result
+                            part = text_to_segment(text, 0.0, (b - a) / TARGET_SR)
+                        seg.extend(offset_segments(part, chunk_start + a / TARGET_SR))
             except Exception as e:  # noqa: BLE001
-                raise RuntimeError(
-                    f"NVIDIA Parakeet transcription failed: {e}"
+                raise PartialResultError(
+                    f"NVIDIA Parakeet transcription failed: {e}", all_segments + seg,
                 ) from e
 
-            if has_words and isinstance(result, dict):
-                seg = chunks_to_segments(result.get("chunks"))
-            else:
-                text = result.get("text") if isinstance(result, dict) else result
-                seg = text_to_segment(text, 0.0, win_len)
-            seg = offset_segments(seg, chunk_start)
             all_segments.extend(seg)
 
+            if cancelled and cancelled():
+                continue
             if progress_cb:
                 progress_cb(min(100, int(((idx + 1) / max(total, 1)) * 100)))
             if log_cb:

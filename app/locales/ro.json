@@ -740,7 +740,6 @@
     "No media file was found for this transcript, so the page has no player.": "Nu s-a găsit niciun fișier media pentru această transcriere, așa că pagina nu are player.",
     "No reference voice": "Nicio voce de referință",
     "No speech was found in {name}": "Nu a fost găsită vorbire în {name}",
-    "No speech was recognised in this file, so no transcript was saved.": "Nu a fost recunoscută vorbirea în acest fișier, așa că nu a fost salvată nicio transcriere.",
     "No subtitle file": "Niciun fișier de subtitrare",
     "No text": "Niciun text",
     "No tier detected — falling back to CPU.": "Niciun nivel detectat — se revine la CPU.",

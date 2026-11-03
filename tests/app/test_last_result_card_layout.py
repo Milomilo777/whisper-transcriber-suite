@@ -139,7 +139,7 @@ def test_a_run_without_speech_lists_no_files_not_even_older_ones(root, tmp_path)
     )
     appmod.App.show_last_result(fake, task)  # type: ignore[arg-type]
     texts = [str(w.cget("text")) for w in _all(fake.last_result_body) if w.winfo_class() == "TLabel"]
-    assert "No speech was recognised in this file, so no transcript was saved." in texts
+    assert "No speech was found in clip.mp3" in texts
     assert not any("clip.srt" in t for t in texts)
     assert not any("no output files were found" in t for t in texts)
     assert not [b for b in _buttons(fake.last_result_body) if str(b.cget("text")) == "Open"]

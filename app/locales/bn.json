@@ -730,7 +730,6 @@
     "No media file was found for this transcript, so the page has no player.": "এই ট্রান্সক্রিপ্টের কোনো মিডিয়া ফাইল পাওয়া যায়নি, তাই পৃষ্ঠায় কোনো প্লেয়ার নেই।",
     "No reference voice": "কোনো রেফারেন্স কণ্ঠস্বর নেই",
     "No speech was found in {name}": "{name}-এ কোনো কথা পাওয়া যায়নি",
-    "No speech was recognised in this file, so no transcript was saved.": "এই ফাইলে কোনো কথা শনাক্ত করা যায়নি, তাই কোনো ট্রান্সক্রিপ্ট সংরক্ষণ করা হয়নি।",
     "No subtitle file": "কোনো সাবটাইটেল ফাইল নেই",
     "No text": "কোনো লেখা নেই",
     "No tier detected — falling back to CPU.": "কোনো স্তর শনাক্ত হয়নি — CPU-তে ফিরে যাওয়া হচ্ছে।",

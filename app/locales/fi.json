@@ -730,7 +730,6 @@
     "No media file was found for this transcript, so the page has no player.": "Tälle litteroinnille ei löytynyt mediatiedostoa, joten sivulla ei ole soitinta.",
     "No reference voice": "Ei viiteääntä",
     "No speech was found in {name}": "Kohteesta {name} ei löytynyt puhetta",
-    "No speech was recognised in this file, so no transcript was saved.": "Tästä tiedostosta ei tunnistettu puhetta, joten litterointia ei tallennettu.",
     "No subtitle file": "Ei tekstitystiedostoa",
     "No text": "Ei tekstiä",
     "No tier detected — falling back to CPU.": "Tasoa ei havaittu – palataan CPU:hun.",

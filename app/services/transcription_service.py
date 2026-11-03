@@ -13,6 +13,7 @@ import subprocess
 import sys
 import threading
 import unicodedata
+from collections import deque
 from queue import Empty
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -43,11 +44,12 @@ def _remember_failure_clue(
     """Record only closed codes; a telemetry failure must never break task handling."""
     try:
         from core.failure_clue import parent_clue, sanitise_clue
+        observed_event = {**worker.get("run_context", {}), **(event or {})}
         if site and site.startswith("parent."):
             clue = parent_clue(site, device=worker.get("device", "unknown"),
-                               exit_code=exit_code, pid=pid)
+                               exit_code=exit_code, pid=pid, event=observed_event)
         else:
-            data = dict(event or {})
+            data = observed_event
             if site:
                 data["failure_site"] = site
             if site != "worker.model" and data.get("device") in (None, ""):
@@ -100,6 +102,7 @@ HUNG_WORKER_NOTE = "Stopped because the transcription stopped responding; try th
 
 # Longest worker message kept as a failure reason (a traceback tail can be long).
 _REASON_MAX_CHARS = 300
+_WORKER_LINE_MAX_CHARS = 1 << 20
 
 
 def _short_message(message: object) -> str:
@@ -315,6 +318,7 @@ def transcribe_command(t: Any) -> dict[str, Any]:
         # the task's events and matches later cancel/pause/resume commands
         # against it. Optional for old workers — they ignore the extra key.
         "task_id": task_correlation_id(t),
+        "run_id": getattr(t, "run_id", ""),
     }
 
 
@@ -858,6 +862,7 @@ class TranscriptionService:
             worker.pop("exit_synthesized", None)
 
         worker.pop("stale", None)
+        worker.pop("stderr_clue", None)
         # What this process is about to load, for labels: the config can change
         # while the worker lives on.
         worker.update(self._engine_snapshot())
@@ -870,7 +875,9 @@ class TranscriptionService:
             cmd = [sys.executable, "--worker"]
         else:
             cmd = [sys.executable, "-u", "-m", "core.worker"]
-        env = os.environ.copy()
+        from core.hardware import transcription_worker_env
+
+        env = transcription_worker_env()
         env["WHISPER_WORKER_TOKEN"] = worker["token"]
         kwargs: dict[str, Any] = {
             "cwd": os.path.dirname(os.path.abspath(app.entry_file)),
@@ -912,6 +919,10 @@ class TranscriptionService:
         # its task). The token is a spawn-time constant, so snapshot it
         # like the process object itself.
         spawn_token = worker["token"]
+        from core.failure_clue import STDERR_TAIL_LINES
+
+        stderr_tail: deque[str] = deque(maxlen=STDERR_TAIL_LINES)
+        exit_clue: dict[str, str] = {}
 
         def reader() -> None:
             # worker_exit is queued in ``finally``: it is what finishes a
@@ -919,8 +930,7 @@ class TranscriptionService:
             # line, however malformed, may end this thread without it.
             try:
                 for line in process.stdout:  # type: ignore[union-attr]
-                    line = line.strip()
-                    if not line:
+                    if not line.strip():
                         continue
                     try:
                         _queue_worker_line(line)
@@ -932,18 +942,36 @@ class TranscriptionService:
                 app.worker_events.put(
                     {"event": "worker_exit", "return_code": return_code,
                      "_pid": process.pid, "_worker_id": worker["id"],
-                     "_token": spawn_token}
+                     "_token": spawn_token, **exit_clue}
                 )
 
         def _queue_worker_line(line: str) -> None:
+            nonlocal exit_clue
+            stderr_line = line.rstrip("\r\n")
+            complete_line = line.endswith(("\r", "\n"))
+            line = line.strip()
             try:
-                parsed = json.loads(line)
+                parsed = json.loads(line) if len(line) <= _WORKER_LINE_MAX_CHARS else None
             except (ValueError, RecursionError):
                 parsed = None
+            if not isinstance(parsed, dict):
+                # stderr is already merged into stdout. Keep a small local
+                # tail; only its closed classification enters an exit event.
+                from core.failure_clue import stderr_clue
+
+                # One extra character marks a truncated line for the classifier.
+                stderr_tail.append(stderr_line[:2049])
+                exit_clue = stderr_clue(list(stderr_tail)) if complete_line else {}
+            else:
+                # The worker lived past that text, so it did not cause a later exit.
+                stderr_tail.clear()
+                exit_clue = {}
+            if worker.get("token") == spawn_token:
+                worker["stderr_clue"] = exit_clue
             # Valid JSON that is not an object (a stray print of a number or
             # a list) is a log line too.
             event: dict[str, Any] = (
-                parsed if isinstance(parsed, dict) else {"event": "log", "message": line}
+                parsed if isinstance(parsed, dict) else {"event": "log", "message": line[:_WORKER_LINE_MAX_CHARS]}
             )
             event["_pid"] = process.pid
             event["_worker_id"] = worker["id"]
@@ -1212,7 +1240,7 @@ class TranscriptionService:
         # if the worker crashed before sending the 'done' event (and output_paths).
         written = getattr(task, "output_paths", None)
         if written is not None and not written and getattr(task, "no_speech", False):
-            return True  # no speech: the worker wrote no files on purpose
+            return True  # compatibility with older workers that skipped empty exports
         derived = not written
         if written:
             paths = list(written)
@@ -1259,8 +1287,8 @@ class TranscriptionService:
         if not isinstance(outputs, list) or (not outputs and not no_speech):
             return False  # cancelled by the exit (or no files): the checkpoint is the record
         paths = [str(p) for p in outputs]
-        # A run with no speech writes no files (the web/LAN server writes them empty) and says
-        # so; every listed file must exist either way, and otherwise be non-empty.
+        # No-speech exports may be zero bytes. Older workers also sent an
+        # empty list; every listed file must still exist either way.
         try:
             complete = all(os.path.getsize(p) > 0 or no_speech for p in paths)
         except OSError:
@@ -1717,6 +1745,15 @@ class TranscriptionService:
 
             # Audit D8: any event counts as liveness.
             worker["last_event_at"] = now
+            if (event_type in {"heartbeat", "progress"} and worker.get("task") is not None
+                    and event.get("run_id") in (None, getattr(worker["task"], "run_id", None))):
+                try:
+                    from core.failure_clue import BASE_FIELDS, sanitise_clue
+                    context = sanitise_clue(event)
+                    worker.setdefault("run_context", {}).update(
+                        {k: v for k, v in context.items() if k in event and k not in BASE_FIELDS})
+                except Exception:  # noqa: BLE001
+                    logger.debug("Could not retain worker context", exc_info=True)
             if event_type == "heartbeat":
                 # Pure liveness — already recorded above.
                 continue
@@ -1867,6 +1904,11 @@ class TranscriptionService:
                             worker["task"].speaker_labels_failed = bool(
                                 event.get("speaker_labels_failed")
                             )
+                            try:
+                                from core.failure_clue import sanitise_clue
+                                worker["task"].failure_clue = sanitise_clue(event, status="finished")
+                            except Exception:  # noqa: BLE001
+                                logger.debug("Could not remember recovery", exc_info=True)
                             apply_final_speed(worker["task"], event)
                             self.finish_task(worker)
                     else:
@@ -1883,6 +1925,9 @@ class TranscriptionService:
                         else:
                             failed = worker["task"]
                             message = event.get("message", "Worker error")
+                            if (event.get("failure_site") == "worker.prepare"
+                                    and event.get("observed_code") == "file_not_found"):
+                                message = _("File not found: check the path, or click Browse files...")
                             if _user_cancelled(failed):
                                 # The user's Cancel wins over a failure that follows
                                 # it (a backend raising while it stops): the task
@@ -1980,7 +2025,7 @@ class TranscriptionService:
                                 code = event.get("return_code")
                                 worker["task"].status = "error"
                                 _remember_failure_clue(worker["task"], worker,
-                                                       site="parent.worker_exit", exit_code=code)
+                                                       event=event, site="parent.worker_exit", exit_code=code)
                                 worker["task"].error_reason = _(
                                     "The transcription stopped unexpectedly (exit code {code}); "
                                     "try the file again.", code=code,
@@ -2051,6 +2096,7 @@ class TranscriptionService:
             )
             self.app.worker_events.put({
                 "event": "worker_exit", "return_code": process.poll(),
+                **w.get("stderr_clue", {}),
                 "_pid": getattr(process, "pid", None), "_worker_id": w.get("id"),
                 "_token": w.get("token"),
             })
@@ -2212,6 +2258,7 @@ class TranscriptionService:
                     continue
 
             worker["task"] = t
+            worker.pop("run_context", None)
             t.status = "running"
             t.progress = 0
             # A re-run starts a fresh speed meter; never show the last run's.
@@ -2224,6 +2271,9 @@ class TranscriptionService:
             try:
                 t.failure_clue = None
                 t.failure_diag = None
+                import uuid
+                t.run_id = uuid.uuid4().hex[:16]
+                t._telemetry_recovery = "none"
             except Exception:  # noqa: BLE001 - unusual task objects must still dispatch
                 logger.debug("Could not reset failure clue", exc_info=True)
             t.start_time = _time.time()
@@ -2499,8 +2549,8 @@ class TranscriptionService:
                 # docx/pdf + de-duped names); fall back to deriving from
                 # config for older workers / interrupted runs.
                 written = getattr(task, "output_paths", None)
-                # A run without speech writes no files and reports an empty list: record
-                # that, never the names the config would give.
+                # Honour an explicit empty list from an older no-speech
+                # worker, never names derived from the current config.
                 if written or (written is not None and getattr(task, "no_speech", False)):
                     paths = list(written)
                 elif not newly_finished:
@@ -2766,8 +2816,13 @@ class TranscriptionService:
                 if os.path.isfile(cand):
                     json_path = cand
             if json_path and os.path.isfile(json_path):
-                with open(json_path, "r", encoding="utf-8") as f:
-                    segments = json.load(f)
+                try:
+                    with open(json_path, "r", encoding="utf-8") as f:
+                        segments = json.load(f)
+                except (OSError, ValueError) as e:
+                    # A damaged/unreadable sidecar must not hide a valid SRT.
+                    logger.debug("could not read transcript JSON stats: %s", e)
+                    segments = None
                 if isinstance(segments, list):
                     return (
                         _stats.count_words_in_segments(segments),
@@ -2841,17 +2896,24 @@ class TranscriptionService:
             # transcribed (core.stats.build_stats_payload has no file field),
             # and a local model folder in nvidia_asr_model_id is sent as
             # "local-model" (core.stats.public_model_name).
+            from core.failure_clue import context_clue, sanitise_clue
+            terminal = status or getattr(task, "status", "") or ""
+            # Worker observations win; the parent supplies only missing local facts.
+            observed = getattr(task, "failure_clue", None) or {}
+            context = sanitise_clue(context_clue(task, device=(worker or {}).get("device", "unknown"), probe=False), status=terminal)
+            context.update((worker or {}).get("run_context", {}))
+            context.update(observed)
+            if getattr(task, "source_download", None) is not None:
+                context["input_kind"] = "download"  # The association exists only in the parent.
             payload = _stats.build_stats_payload(
                 model=model,
                 language=_reported_language(task),
                 audio_duration=audio_duration,
                 transcription_time=ai_time,
-                status=status or getattr(task, "status", "") or "",
+                status=terminal,
                 word_count=word_count,
                 install_id=_stats.install_id_for(app.app_config),
-                failure_clue=getattr(task, "failure_clue", None) or {
-                    "device": (worker or {}).get("device") or "unknown",
-                },
+                failure_clue={"device": (worker or {}).get("device") or "unknown", **context},
             )
             _stats.post_stats_async(app.app_config, payload)
         except Exception as e:  # noqa: BLE001

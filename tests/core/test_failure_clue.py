@@ -158,11 +158,12 @@ def test_error_payload_is_closed_and_nonerrors_have_no_clue(monkeypatch):
     monkeypatch.setattr(stats, "public_model_name", lambda _: "model")
     monkeypatch.setattr(stats, "region_country", lambda: "")
     common = dict(model="x", language="en", audio_duration=0, transcription_time=0)
-    fields = set(clue.registry()["fields"])
+    fields = set(clue.registry()["fields"]) - clue.BASE_FIELDS
     hostile = {"failure_site": "C:/private.wav", "exception_family": "my-secret",
                "observed_code": "my-secret", "device": "private", "peak_mem_mb": 257}
     result = stats.build_stats_payload(**common, status="error", failure_clue=hostile)
-    assert set(result) >= fields
+    assert set(result) >= clue.LEGACY_FIELDS  # v2 additions are optional when unobserved.
+    assert set(result) <= set(clue.registry()["fields"])
     assert result["failure_site"] == "other" and result["peak_mem_mb"] == "0"
     assert "private" not in str(result) and "secret" not in str(result)
     for status in ("finished", "cancelled"):
@@ -171,14 +172,21 @@ def test_error_payload_is_closed_and_nonerrors_have_no_clue(monkeypatch):
 
 def test_registry_and_documentation_are_identical():
     registry = clue.registry()
-    assert registry["version"] == 1
+    assert registry["version"] == 2
     doc = (ROOT / "docs" / "CONFIG.md").read_text(encoding="utf-8")
     table = doc.split("| Failure clue field | Allowed values |", 1)[1].split("\n\n", 1)[0]
     rows = {name: re.findall(r"`([^`]+)`", text) for name, text in
             re.findall(r"\| `([^`]+)` \| ([^\n]+?) \|", table)}
     assert set(rows) == set(registry["fields"])
     for field, spec in registry["fields"].items():
-        expected = spec["values"] if spec["type"] == "enum" else [str(spec["min"]), str(spec["max"]), str(spec.get("step", 1))]
+        if spec["type"] == "enum":
+            expected = spec["values"]
+        elif spec["type"] == "integer":
+            expected = [str(spec["min"]), str(spec["max"]), str(spec.get("step", 1))]
+        elif spec["type"] == "hex":
+            expected = [str(spec["length"])]
+        else:
+            expected = [spec["pattern"], str(spec["max_length"])]
         assert rows[field] == expected
 
 
@@ -205,7 +213,8 @@ def test_worker_error_event_contains_clue_and_builder_failure_does_not_block_it(
     assert event["failure_site"] == "worker.segments"
     assert event["exception_family"] == "RuntimeError" and event["device"] == "cuda"
     assert event["observed_code"] == "none"
-    assert "private" not in str({k: event[k] for k in clue.registry()["fields"]})
+    assert clue.LEGACY_FIELDS <= event.keys()
+    assert "private" not in str({k: v for k, v in event.items() if k in clue.registry()["fields"]})
 
     def broken(*args, **kwargs):
         raise RuntimeError("clue builder broke")
@@ -340,7 +349,6 @@ def test_real_transcriber_phase_faults(monkeypatch, tmp_path, target, site):
     monkeypatch.setattr(tr, "PIPELINE", None)
     monkeypatch.setattr(tr, "config", {"transcribe_backend": "faster_whisper"})
     task = TranscriptionTask(str(tmp_path / "hostile_cuda_oom.wav"))
-    task.keep_empty_outputs = True
     with pytest.raises(RuntimeError) as caught:
         tr.transcribe(task)
     assert clue.worker_clue(caught.value, task)["failure_site"] == site

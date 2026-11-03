@@ -740,7 +740,6 @@
     "No media file was found for this transcript, so the page has no player.": "Pre tento prepis sa nenašiel žiadny mediálny súbor, preto stránka nemá prehrávač.",
     "No reference voice": "Žiadny referenčný hlas",
     "No speech was found in {name}": "V súbore {name} sa nenašla žiadna reč",
-    "No speech was recognised in this file, so no transcript was saved.": "V tomto súbore nebola rozpoznaná žiadna reč, preto sa neuložil žiadny prepis.",
     "No subtitle file": "Žiadny súbor titulkov",
     "No text": "Žiadny text",
     "No tier detected — falling back to CPU.": "Nezistila sa žiadna úroveň – použije sa CPU.",

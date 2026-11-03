@@ -439,10 +439,8 @@ def test_decoder_error_mid_file_keeps_the_decoded_segments(t, monkeypatch, tmp_p
 
 
 @pytest.mark.parametrize("script", [[], [Seg(0, 3, ""), Seg(3, 5, "  ")]])
-def test_no_speech_is_said_and_no_outputs_are_written(t, monkeypatch, tmp_path, script):
-    """S01-5: an empty transcript used to finish like any other success. Its empty .srt and
-    .json then looked like a broken run (deep review, 2026-10-21): none are written now; the
-    history row and the result card say why."""
+def test_no_speech_is_said_and_outputs_are_written(t, monkeypatch, tmp_path, script):
+    """An empty transcript still exports; the no-speech flag explains it."""
     from core.task import TranscriptionTask
 
     audio = tmp_path / "silence.wav"
@@ -453,10 +451,10 @@ def test_no_speech_is_said_and_no_outputs_are_written(t, monkeypatch, tmp_path, 
 
     t.transcribe(task, lambda p: None, logs.append)
 
-    assert "segs" not in written
+    assert "segs" in written
     assert task.output_paths == []
     assert task.no_speech is True
-    assert any("No speech recognised" in m and "no output files" in m for m in logs)
+    assert any("No speech recognised" in m and "saving outputs" in m for m in logs)
 
 
 def test_a_server_job_without_speech_still_gets_its_empty_outputs(t, monkeypatch, tmp_path):

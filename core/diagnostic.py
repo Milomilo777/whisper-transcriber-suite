@@ -115,7 +115,10 @@ def build(exc: BaseException) -> dict[str, str]:
         # An exception class from an unknown package could carry a private name: keep only its base class.
         base = next((b.__name__ for b in type(exc).__mro__ if b.__module__ == "builtins"), "Exception")
         cls = base
-    shape = message_shape(exc)
+    try:
+        shape = message_shape(exc)
+    except Exception:  # a broken __str__ must not hide the exception class
+        shape = ""
     digest = hashlib.blake2b(f"{cls}|{shape}".encode("ascii", "replace"), digest_size=4).hexdigest()
     return {
         "cls": cls,

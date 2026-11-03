@@ -730,7 +730,6 @@
     "No media file was found for this transcript, so the page has no player.": "Der blev ikke fundet nogen mediefil til denne transskription, så siden har ingen afspiller.",
     "No reference voice": "Ingen referencestemme",
     "No speech was found in {name}": "Der blev ikke fundet nogen tale i {name}",
-    "No speech was recognised in this file, so no transcript was saved.": "Der blev ikke genkendt nogen tale i denne fil, så der blev ikke gemt nogen transskription.",
     "No subtitle file": "Ingen undertekstfil",
     "No text": "Ingen tekst",
     "No tier detected — falling back to CPU.": "Intet niveau fundet – falder tilbage til CPU.",

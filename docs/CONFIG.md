@@ -497,7 +497,7 @@ It binds **loopback (`127.0.0.1`) by default** — no Windows firewall prompt
 
 ### Usage statistics (P4-4)
 
-**On by default.** After each transcription that ends in the desktop app, the app POSTs one form-encoded row to `stats_url`. A failed or cancelled job sends a row too, with `status` `error` or `cancelled`, 0 words and 0 s of audio (no error text, no file name); a job that is only requeued sends nothing. The CLI, the Web / LAN server and the Live tab never send stats. Nothing is sent while `telemetry_opt_in` is false or `stats_url` is empty.
+**On by default.** After each transcription that ends in the desktop app, the app POSTs one form-encoded row to `stats_url`. A failed or cancelled job can send a row too, with `status` `error` or `cancelled`, 0 words and 0 s of audio (no error text, no file name); a job that is only requeued sends nothing. The CLI, the Web / LAN server and the Live tab never send stats. Nothing is sent while `telemetry_opt_in` is false or `stats_url` is empty.
 
 | Field | Type | Default | Description |
 |---|---|---|---|
@@ -516,32 +516,137 @@ What is sent (built by `core.stats.build_stats_payload`, posted by `core.stats.p
 | `audio_duration` | seconds; the last segment's end time |
 | `transcription_time` | seconds of wall-clock time from task start to finish |
 | `word_count` | words in the transcript |
-| `status` | `finished`, `error` or `cancelled` (the last two come with 0 words and 0 s of audio) |
+| `status` | `finished`, `error` or `cancelled` (legacy callers may use `done` for finished; the last two come with 0 words and 0 s of audio) |
 | `program_version` | app version; `-mac` or `-linux` is appended on those systems (for example `2.3.0-mac`), Windows is unmarked |
 | `country` | two-letter code from the operating system's region setting (`core.stats.region_country`: Windows "Country or region", macOS `AppleLocale`, else `LC_ALL` / `LANG`); read locally, no network lookup; empty when no region is set |
 | `platform_system`, `platform_release`, `platform_version`, `platform_machine`, `platform_processor` | OS name, release and build, CPU architecture and processor string (Python `platform` module) |
-| `cpu_count`, `mem_total` | logical CPU count and total RAM in bytes (`psutil`; `0` when it is missing) |
+| `cpu_count`, `mem_total` | logical CPU count and the nearest RAM class in bytes: 2, 4, 8, 12, 16, 24, 32, 48, 64, 96 or 128 GiB; `more` above 128 GiB, `0` when unavailable (`psutil`). Coarsening applies to new rows only. |
 | `install_id` | the random per-install id described above (`core.stats.install_id_for`); left out when the switch is off |
 
-Failed rows also carry the following closed failure clue (registry version 1). It is absent on finished
-and cancelled rows. The site records the observed catch location; the family and code record the exception
-family or a recognized library message, never the message itself. `os_error` is the observed Windows error
-number when available, otherwise errno; `exit_code` is only nonzero for a worker exit (Windows exit codes are
-unsigned, POSIX signals remain negative). `device` is the worker's effective device. `peak_mem_mb` is the
-Windows worker's process-lifetime peak private commit rounded to the nearest 256 MB, or 0 when unavailable;
-a worker can have handled earlier jobs. A 0 in an integer
-field means unknown or not applicable. These fields use the existing usage-statistics and Work offline gates.
+Failed rows also carry an optional closed failure clue (registry version 2, classifier version 2).
+What is sent when a run fails, and what is never sent: the app automatically sends registered failure codes,
+coarse run and hardware classes, a random per-run id and hashes of closed technical material. It never sends
+file names, paths, URLs, titles, transcripts, audio, message text, IP addresses, device names or user names.
+The random install id is pseudonymous: it links rows from one installation, is not derived from personal or
+hardware information, and is deleted when usage statistics are switched off. The existing optional technical
+details offer still requires consent; its filtered message shape is never attached to an automatic row.
+
+All automatic fields, including the existing usage columns, are validated by the shared registry below.
+Unknown optional observations are omitted; explicitly unknown enum values remain unknown. No formatted
+traceback or exception text is sent. The innermost code location is taken from code objects in an exact,
+generated allow-list of the app and core packages; the function must also match
+the function-name constraint in the registry. The fingerprint hashes the site, family, code, classifier
+version, numeric OS error, last three permitted module/function pairs (without line numbers) and shape hash.
+The shape hash uses only a fixed template ID when the entire message matches a closed library template;
+sizes, data types and library names never contribute. Unsupported messages hash nothing. OS exceptions
+always hash nothing for the shape, so localized messages group by family and numeric OS error instead of text.
+Stderr classification requires a complete Python traceback at the end of the bounded tail, or an exact
+native allocation or ffmpeg pattern. Incomplete last lines cannot supply a clue. Only closed results are sent.
+
+The automatic sender reserves at most five error rows per install in a rolling hour. A fingerprint already
+sent during that hour is suppressed, and the number of suppressed duplicates since the previous row becomes
+the next row's repeat bucket. A bounded local JSON file beside the config preserves this limit across
+restarts, uses an atomic replacement and serializes processes; missing or corrupt state starts empty, and
+unavailable state suppresses the report. There is no retry queue. Rate-state work and the POST run on the
+existing background thread. The existing usage-statistics and Work offline switches gate all sends.
+
+Failure-only fields are absent on cancelled and finished rows, except that finished rows which used automatic
+recovery include recovered, run_id and classifier_version. On an error, an attempted recovery is represented
+as failed_after_recovery. The stage and effective settings are retained before a worker's settings scope
+unwinds; unavailable GPU facts remain unknown. CPU execution alone does not prove that no GPU is installed.
+Input container is derived locally from the extension. Input duration is the probed source duration; input
+size and free-space classes never contain a file name. Progress is rounded down to ten percentage points.
+The vram ranges use cutoffs at 4, 8, 16 and 32 GiB; the labels describe common capacities within each band.
+Elapsed and duration buckets have exclusive upper bounds. Free-memory/free-space cutoffs are 1, 4 and
+16 GiB, input-size cutoffs 100 MiB and 2 GiB (zero has its own class).
+
+The worker's own stderr tail is bounded and classified locally when it exits; only allowed frames and
+recognized closed codes survive. Windows exit codes are unsigned and POSIX signals remain negative.
+The exit code is zero for other failure sites. The Windows process-lifetime peak private commit (which
+can include earlier jobs in the same worker) is rounded up to a power of two in MiB, minimum 256; zero
+means unavailable. Existing stored rows are unchanged. A row is limited to 64 registered keys and
+8 KiB after form encoding. The pattern type uses full matching and a maximum character length;
+hex means exactly the stated number of lower-case hexadecimal characters. The top_frame pattern also
+requires a module in the [generated registry list](../core/telemetry_registry.json) and a function matching
+`^[A-Za-z_][A-Za-z0-9_.<>]{0,40}$` (the registry's function_pattern).
 
 | Failure clue field | Allowed values |
 |---|---|
 | `failure_site` | `worker.decode`, `worker.vad`, `worker.features`, `worker.language`, `worker.segments`, `worker.postprocess`, `worker.output`, `worker.prepare`, `worker.model`, `parent.watchdog`, `parent.worker_exit`, `other` |
 | `exception_family` | `MemoryError`, `RuntimeError`, `OSError`, `PermissionError`, `FileNotFoundError`, `TimeoutError`, `ValueError`, `TypeError`, `KeyError`, `IndexError`, `UnicodeError`, `AssertionError`, `subprocess.TimeoutExpired`, `subprocess.CalledProcessError`, `av.InvalidDataError`, `other` |
-| `observed_code` | `numpy_alloc_failed`, `ct2_bad_alloc`, `cuda_out_of_memory`, `cublas_missing`, `cudnn_missing`, `av_invalid_data`, `no_audio_stream`, `probe_timeout`, `disk_full`, `access_denied`, `file_not_found`, `none` |
-| `classifier_version` | `1` |
+| `observed_code` | `numpy_alloc_failed`, `ct2_bad_alloc`, `cuda_out_of_memory`, `cublas_missing`, `cudnn_missing`, `av_invalid_data`, `no_audio_stream`, `probe_timeout`, `disk_full`, `access_denied`, `file_not_found`, `none`, `native_access_violation`, `dll_not_found`, `illegal_instruction`, `stack_overflow`, `killed_by_signal`, `worker_exit_unclassified`, `model_load_failed`, `tokenizer_error`, `network_reset`, `ffmpeg_missing`, `codec_unsupported`, `corrupt_media` |
+| `classifier_version` | `2` |
 | `os_error` | integer `0` to `4294967295`, step `1` |
 | `exit_code` | integer `-2147483648` to `4294967295`, step `1` |
 | `device` | `cpu`, `cuda`, `mps`, `mlx`, `unknown` |
 | `peak_mem_mb` | integer `0` to `16777216`, step `256` |
+| `run_id` | hex, length `16` |
+| `fingerprint` | hex, length `12` |
+| `shape_hash` | hex, length `12` |
+| `top_frame` | pattern `^[a-z0-9_.]+:[A-Za-z0-9_.<>]+:[0-9]{1,6}$`, maximum length `80`; exact generated module allow-list and function constraint also apply |
+| `last_stage` | `download`, `decode`, `vad`, `language`, `transcribe`, `diarize`, `write`, `other` |
+| `progress_pct` | integer `0` to `100`, step `10` |
+| `elapsed_bucket` | `lt10s`, `lt1m`, `lt5m`, `lt30m`, `lt2h`, `more` |
+| `recovered` | `none`, `cuda_batch_reduced`, `cpu_fallback`, `retried_ok`, `failed_after_recovery` |
+| `gpu_vendor` | `nvidia`, `amd`, `intel`, `apple`, `none`, `unknown` |
+| `vram_bucket` | `none`, `lt4gb`, `4_6gb`, `8_12gb`, `16_24gb`, `32gb_plus`, `unknown` |
+| `compute_type` | `float16`, `int8_float16`, `int8`, `float32`, `other` |
+| `diarization` | `false`, `true` |
+| `vad` | `false`, `true` |
+| `language_mode` | `auto`, `fixed` |
+| `input_kind` | `file`, `download`, `live`, `server`, `other` |
+| `input_container` | `mp4`, `mkv`, `webm`, `mov`, `avi`, `mp3`, `wav`, `m4a`, `flac`, `ogg`, `other` |
+| `input_duration_bucket` | `lt1m`, `lt10m`, `lt1h`, `lt3h`, `more` |
+| `input_size_bucket` | `zero`, `lt100mb`, `lt2gb`, `more` |
+| `disk_free_bucket` | `lt1gb`, `lt4gb`, `lt16gb`, `more` |
+| `ram_free_bucket` | `lt1gb`, `lt4gb`, `lt16gb`, `more` |
+| `session_error_bucket` | `1`, `2-3`, `4-9`, `10+` |
+| `repeat_bucket` | `0`, `1-2`, `3-9`, `10+` |
+| `build_kind` | `installer`, `portable`, `onefile`, `source`, `other` |
+| `form_submitted` | `1` |
+| `model` | pattern `^[A-Za-z0-9_./:-]{0,128}$`, maximum length `128` |
+| `language` | pattern `^[a-z]{0,3}$`, maximum length `3` |
+| `audio_duration` | pattern `^[0-9]{1,9}[.][0-9]{3}$`, maximum length `13` |
+| `transcription_time` | pattern `^[0-9]{1,9}[.][0-9]{3}$`, maximum length `13` |
+| `status` | `finished`, `error`, `cancelled`, `done` |
+| `word_count` | integer `0` to `2147483647`, step `1` |
+| `program_version` | pattern `^[0-9A-Za-z.+-]{1,32}$`, maximum length `32` |
+| `country` | pattern `^[A-Z]{0,2}$`, maximum length `2` |
+| `platform_system` | `Windows`, `Darwin`, `Linux`, `FreeBSD`, `OpenBSD`, `NetBSD`, `other` |
+| `platform_release` | pattern `^[0-9A-Za-z ._()+#/-]{0,128}$`, maximum length `128` |
+| `platform_version` | pattern `^[0-9A-Za-z ._()+#/-]{0,128}$`, maximum length `128` |
+| `platform_machine` | pattern `^[A-Za-z0-9_-]{0,32}$`, maximum length `32` |
+| `platform_processor` | pattern `^[A-Za-z0-9 ,._()@+-]{0,128}$`, maximum length `128` |
+| `cpu_count` | integer `0` to `8192`, step `1` |
+| `mem_total` | `0`, `2147483648`, `4294967296`, `8589934592`, `12884901888`, `17179869184`, `25769803776`, `34359738368`, `51539607552`, `68719476736`, `103079215104`, `137438953472`, `more` |
+| `install_id` | pattern `^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`, maximum length `36` |
+
+| Observed code | Observed evidence |
+|---|---|
+| numpy_alloc_failed | Anchored NumPy allocation failure with a library/speech-collection frame. |
+| ct2_bad_alloc | Anchored allocation message with a library frame, or the known native termination pair. |
+| cuda_out_of_memory | Anchored CUDA out-of-memory message with a library frame. |
+| cublas_missing | Recognized cuBLAS library-load message. |
+| cudnn_missing | Recognized cuDNN library-load message. |
+| av_invalid_data | PyAV InvalidDataError. |
+| no_audio_stream | The app's audio-stream check found no audio. |
+| probe_timeout | The app's duration probe explicitly timed out. |
+| disk_full | ENOSPC or Windows error 112. |
+| access_denied | EACCES or Windows error 5. |
+| file_not_found | FileNotFoundError or ENOENT. |
+| none | No recognized cause was observed. |
+| native_access_violation | Windows exit 0xC0000005. |
+| dll_not_found | Windows exit 0xC0000135 or 0xC0000139. |
+| illegal_instruction | Windows exit 0xC000001D or POSIX SIGILL. |
+| stack_overflow | Windows exit 0xC00000FD or 0xC0000409. |
+| killed_by_signal | Another negative POSIX exit, including SIGKILL. |
+| worker_exit_unclassified | Worker exit with no recognized native or stderr cause. |
+| model_load_failed | Failure at a known model-loader boundary after more specific causes were checked. |
+| tokenizer_error | Anchored tokenizer/vocabulary message with a tokenizer frame. |
+| network_reset | ECONNRESET, Windows error 10054 or a known worker exception header. |
+| ffmpeg_missing | Missing FFmpeg/ffprobe executable at a known media-probe boundary. |
+| codec_unsupported | PyAV decoder/encoder-not-found exception or an anchored FFmpeg codec message. |
+| corrupt_media | Anchored FFmpeg invalid-data message. |
 
 Never sent: audio, transcript text, the source file's name or folder path, a local model folder's path, the computer name, the user name, serial numbers or an IP address field. (App versions up to 1.9.3 also sent `file_name`, the source file's name without its folder.) The server still sees the connection's IP address, as every web server does; what it stores is decided by the server script.
 

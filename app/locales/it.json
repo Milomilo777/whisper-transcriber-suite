@@ -730,7 +730,6 @@
     "No media file was found for this transcript, so the page has no player.": "Nessun file multimediale trovato per questa trascrizione, quindi la pagina non ha un lettore.",
     "No reference voice": "Nessuna voce di riferimento",
     "No speech was found in {name}": "Nessun parlato trovato in {name}",
-    "No speech was recognised in this file, so no transcript was saved.": "Nessun parlato è stato riconosciuto in questo file, quindi non è stata salvata alcuna trascrizione.",
     "No subtitle file": "Nessun file di sottotitoli",
     "No text": "Nessun testo",
     "No tier detected — falling back to CPU.": "Nessun livello rilevato: si ripiega sulla CPU.",

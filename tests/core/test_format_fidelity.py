@@ -200,8 +200,9 @@ def test_vtt_skips_blank_cues():
 
 @pytest.mark.parametrize("writer", [srt.write, vtt.write])
 def test_srt_vtt_clamp_end_before_start(writer):
+    # An end before the start must not become a zero-length cue: players skip those.
     out = writer([{"start": 5.0, "end": 2.0, "text": "x"}])
-    assert re.search(r"00:00:05[,.]000 --> 00:00:05[,.]000", out)
+    assert re.search(r"00:00:05[,.]000 --> 00:00:06[,.]000", out)
 
 
 def test_json_and_tsv_default_missing_end_to_start():

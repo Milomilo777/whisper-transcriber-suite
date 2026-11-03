@@ -740,7 +740,6 @@
     "No media file was found for this transcript, so the page has no player.": "Для этой расшифровки не найден медиафайл, поэтому на странице нет проигрывателя.",
     "No reference voice": "Нет образца голоса",
     "No speech was found in {name}": "В {name} речь не обнаружена",
-    "No speech was recognised in this file, so no transcript was saved.": "В этом файле не удалось распознать речь, поэтому расшифровка не была сохранена.",
     "No subtitle file": "Нет файла субтитров",
     "No text": "Нет текста",
     "No tier detected — falling back to CPU.": "Уровень не определён — используется CPU.",

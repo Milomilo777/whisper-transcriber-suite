@@ -316,11 +316,9 @@ class _ServerTask:
         self.route_warning: str = ""
         self.output_formats: list[str] | None = list(job.formats) or None
         self.output_paths: list[str] | None = None
-        # Set by the engine when the run found no speech. A web/LAN job still gets its empty
-        # outputs (keep_empty_outputs): the API answers with the empty transcript, where the
-        # desktop app writes none (core.transcriber._skips_outputs).
+        # Set by the engine when the run found no speech. The API answers
+        # with the empty transcript, just as desktop outputs contain no cues.
         self.no_speech: bool = False
-        self.keep_empty_outputs: bool = True
         self.detected_language: str = ""
         self.language_probability: float = 0.0
         self.resume: bool = False

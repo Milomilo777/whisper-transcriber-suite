@@ -88,7 +88,9 @@ class LiveTranscriber:
             cmd = [sys.executable, "--worker"]
         else:
             cmd = [sys.executable, "-u", "-m", "core.worker"]
-        env = os.environ.copy()
+        from core.hardware import transcription_worker_env
+
+        env = transcription_worker_env()
         env["WHISPER_WORKER_TOKEN"] = self._token
         from core.live_model import LIVE_MODEL_ENV
 

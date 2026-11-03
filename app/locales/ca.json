@@ -730,7 +730,6 @@
     "No media file was found for this transcript, so the page has no player.": "No s'ha trobat cap fitxer multimèdia per a aquesta transcripció, de manera que la pàgina no té reproductor.",
     "No reference voice": "Cap veu de referència",
     "No speech was found in {name}": "No s'ha trobat veu a {name}",
-    "No speech was recognised in this file, so no transcript was saved.": "No s'ha reconegut veu en aquest fitxer, de manera que no s'ha desat cap transcripció.",
     "No subtitle file": "Cap fitxer de subtítols",
     "No text": "Cap text",
     "No tier detected — falling back to CPU.": "No s'ha detectat cap nivell; s'utilitza la CPU.",

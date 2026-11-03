@@ -740,7 +740,6 @@
     "No media file was found for this transcript, so the page has no player.": "Для цього транскрипту не знайдено медіафайл, тому на сторінці немає програвача.",
     "No reference voice": "Немає зразка голосу",
     "No speech was found in {name}": "У {name} не знайдено мовлення",
-    "No speech was recognised in this file, so no transcript was saved.": "У цьому файлі не розпізнано мовлення, тому транскрипт не збережено.",
     "No subtitle file": "Немає файлу субтитрів",
     "No text": "Немає тексту",
     "No tier detected — falling back to CPU.": "Рівень не визначено — використовується CPU.",

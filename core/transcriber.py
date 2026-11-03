@@ -166,6 +166,8 @@ _DEVICE_DOWNGRADED = False
 _REQUESTED_DEVICE = ""
 _EFFECTIVE_DEVICE = ""
 _EFFECTIVE_COMPUTE_TYPE = ""
+# A decode-time reduction survives per-file settings scopes, only in this process.
+_CUDA_BATCH_SIZE = 0
 
 # Pluggable backend instance for non-default engines (e.g. whisper.cpp).
 # The default faster_whisper path keeps using MODEL/PIPELINE globals so
@@ -317,9 +319,19 @@ def _remember_task_device(task: Any, backend: Any = None, *, whisper: bool = Fal
     """Keep the running job's device after its configuration scope ends."""
     try:
         if whisper:
-            value = get_effective_device("faster_whisper").device
+            effective = get_effective_device("faster_whisper")
+            value = effective.device
+            task._failure_compute_type = effective.compute_type or None
+            if effective.downgraded and getattr(task, "_telemetry_recovery", "none") == "none":
+                task._telemetry_recovery = "cpu_fallback" if value == "cpu" else "retried_ok"
+            if value == "cuda":
+                task._telemetry_gpu_vendor = "nvidia"
+                if _CUDA_BATCH_SIZE and getattr(task, "_telemetry_recovery", "none") == "none":
+                    task._telemetry_recovery = "cuda_batch_reduced"
         elif backend is not None:
-            value = _backend_effective_device(backend).device
+            effective = _backend_effective_device(backend)
+            value = effective.device
+            task._failure_compute_type = effective.compute_type or None
         else:
             value = "unknown"
         task._failure_device = value
@@ -371,7 +383,10 @@ def _load_whisper_model_self_healing(
     re-download prompt into a visible, graceful downgrade. A CPU load that
     fails still raises (nothing to fall back to).
     """
-    global device, compute_type, _DEVICE_DOWNGRADED, _REQUESTED_DEVICE
+    global device, compute_type, _DEVICE_DOWNGRADED, _REQUESTED_DEVICE, _CUDA_BATCH_SIZE
+    if _DEVICE_DOWNGRADED and (req_device, req_compute) == (device, compute_type):
+        req_device, req_compute = detect_device()
+    _CUDA_BATCH_SIZE = 0
     _REQUESTED_DEVICE = req_device
     _DEVICE_DOWNGRADED = False
     model: Any = None
@@ -416,6 +431,72 @@ def _load_whisper_model_self_healing(
     _DEVICE_DOWNGRADED = True
     _capture_effective_device(model, cpu_device, cpu_compute)
     return model
+
+
+def _whisper_runner(
+    task: TranscriptionTask, *, batched: bool = False,
+    log_cb: Callable[[str], None] | None = None,
+    language_check: bool = False,
+    live_chunk: bool = False,
+) -> Any:
+    from .backends.faster_whisper_be import WhisperDecode
+
+    slot = None if live_chunk else getattr(_LM_RUNNER, "slot", None)
+    pair = None if live_chunk or language_check else mixed_language_pair(task)
+
+    def current(options: dict[str, Any]) -> Any:
+        model = slot.model if slot is not None else MODEL
+        pipeline = slot.pipeline if slot is not None else PIPELINE
+        if not batched or pipeline is None:
+            options.pop("batch_size", None)
+            runner = model
+        else:
+            if _CUDA_BATCH_SIZE:
+                options["batch_size"] = min(int(options.get("batch_size", 16)), _CUDA_BATCH_SIZE)
+            runner = pipeline
+        return _two_language_runner(runner, pair) if pair else runner
+
+    def recover(options: dict[str, Any], oom: bool) -> None:
+        global MODEL, PIPELINE, device, compute_type, _DEVICE_DOWNGRADED, _CUDA_BATCH_SIZE
+        if oom and int(options.get("batch_size", 1)) > 1:
+            _CUDA_BATCH_SIZE = options["batch_size"] = 1
+            task._telemetry_recovery = "cuda_batch_reduced"
+            log("CUDA ran out of memory; retrying the remaining audio with batch size 1.", log_cb)
+            return
+        target = "cuda" if oom and compute_type not in ("int8", "int8_float16") else "cpu"
+        compute = "int8_float16" if target == "cuda" else "int8"
+        task._telemetry_recovery = "cpu_fallback" if target == "cpu" else "retried_ok"
+        device, compute_type, _DEVICE_DOWNGRADED = target, compute, True
+        path = slot.folder if slot is not None else str(config["model_path"])
+        if slot is not None:
+            slot.model = slot.pipeline = None
+        else:
+            MODEL = PIPELINE = None
+        gc.collect()
+        model = None
+        try:
+            model = WhisperModel(path, device=target, compute_type=compute)
+        except RuntimeError:
+            if target != "cuda":
+                raise
+            target, compute = "cpu", "int8"
+            task._telemetry_recovery = "cpu_fallback"
+            device, compute_type = target, compute
+        if model is None:
+            model = WhisperModel(path, device=target, compute_type=compute)
+        _capture_effective_device(model, target, compute)
+        _DEVICE_DOWNGRADED = True
+        if slot is not None:
+            slot.model, slot.pipeline = model, _wrap_for_batched(model)
+        else:
+            MODEL, PIPELINE = model, _wrap_for_batched(model)
+        _remember_task_device(task, whisper=True)
+        log(f"CUDA decode failed; retrying the remaining audio on {target}/{compute}.", log_cb)
+
+    return WhisperDecode(
+        current, lambda: _device_kind(device) == "cuda", recover,
+        None if live_chunk else _vad_window_seconds(),
+    )
 
 
 def load_existing_model(status_cb: Callable[[str], None] | None = None) -> bool:
@@ -577,6 +658,8 @@ def start_background_model_load(status_cb: Callable[[str], None] | None = None) 
 
 
 def get_duration(path: str) -> float:
+    # Preserve the OS exception class when a queued source vanished.
+    os.stat(path)
     ffprobe = bundled_binary("ffprobe")
     kwargs: dict[str, Any] = {
         # Never the worker's command pipe (see _slice_audio_from).
@@ -603,10 +686,16 @@ def get_duration(path: str) -> float:
     except subprocess.TimeoutExpired as e:
         raise RuntimeError(f"ffprobe timed out for {path}") from e
     if r.returncode != 0 or not r.stdout.strip():
-        raise RuntimeError(
+        os.stat(path)  # the source may have disappeared while ffprobe ran
+        error = RuntimeError(
             f"ffprobe failed (exit={r.returncode}) for {path}: "
             f"{r.stderr.strip() or 'no output'}"
         )
+        if r.returncode:
+            raise error from subprocess.CalledProcessError(
+                r.returncode, [ffprobe, path], output=r.stdout, stderr=r.stderr,
+            )
+        raise error
     raw = r.stdout.strip()
     try:
         duration = float(raw)
@@ -819,7 +908,18 @@ def _rescue_collapsed(
         from .backends.nvidia_asr import _decode_window
 
         pair = mixed_language_pair(task)
-        rescue_runner = _two_language_runner(model, pair) if pair else model
+        rescue_runner = _whisper_runner(task, log_cb=log_cb)
+        del model
+
+        def save_before_retry() -> None:
+            if segments_data:
+                _write_periodic_checkpoint(
+                    task, segments_data, float(segments_data[-1]["end"]), language,
+                    float(getattr(task, "language_probability", 0.0) or 0.0), log_cb,
+                    transcription_completed=True,
+                )
+
+        rescue_runner.before_retry = save_before_retry
         kwargs = {k: v for k, v in transcribe_kwargs.items()
                   if k not in ("batch_size", "clip_timestamps", "vad_parameters")}
         kwargs.update(vad_filter=False, condition_on_previous_text=False)
@@ -858,25 +958,19 @@ def _note_no_speech(
 ) -> None:
     """Flag a finished run whose transcript holds no text at all.
 
-    No output files are written then (_skips_outputs); the flag travels in the
-    worker's "done" event so the result card and the history say so.
+    The flag travels in the worker's "done" event so the result card and
+    history explain why the selected output files contain no speech.
     """
     empty = not any(
         str(d.get("text") or "").strip()
         for d in segments_data if isinstance(d, dict)
     )
     task.no_speech = empty
-    if empty and _skips_outputs(task):
-        log("No speech recognised in this file; no output files were written.", log_cb)
-    elif empty:
-        log("No speech recognised in this file; the output files are empty.", log_cb)
-
-
-def _skips_outputs(task: Any) -> bool:
-    """True for a run without speech: its empty .srt and .json looked like a broken run (deep
-    review, 2026-10-21), so none are written. A web/LAN job (``keep_empty_outputs``) still gets
-    them: the API answers with the empty transcript, as OpenAI's does for silence."""
-    return bool(getattr(task, "no_speech", False)) and not getattr(task, "keep_empty_outputs", False)
+    if empty:
+        # An empty SRT is a valid zero-cue transcript. Write the selected
+        # formats as usual so a missing file cannot masquerade as an export
+        # failure; the visible no-speech notice explains the empty result.
+        log("No speech recognised in this file; saving outputs without speech.", log_cb)
 
 
 def _record_transcript_stats(
@@ -895,6 +989,13 @@ def _record_transcript_stats(
 
         task.word_count = count_words_in_segments(segments_data)
         task.audio_duration = audio_duration_from_segments(segments_data)
+        if getattr(task, "no_speech", False):
+            # Segment ends cannot measure silence. The finished speed meter
+            # already knows the processed span (including a selected clip),
+            # without another probe or any change to the stats contract.
+            covered = float(getattr(task, "speed_audio_s", 0.0) or 0.0)
+            if math.isfinite(covered) and covered > 0.0:
+                task.audio_duration = covered
     except Exception:  # noqa: BLE001 — stats must never fail a transcription
         pass
 
@@ -1675,6 +1776,14 @@ _LM_SLOT: dict[str, Any] = {"model_id": "", "backend": None}
 _LM_SLOT_LOCK = threading.Lock()
 
 
+def _reset_decode_recovery() -> None:
+    global device, compute_type, _DEVICE_DOWNGRADED, _CUDA_BATCH_SIZE
+    if _DEVICE_DOWNGRADED:
+        device, compute_type = detect_device()
+    _DEVICE_DOWNGRADED = False
+    _CUDA_BATCH_SIZE = 0
+
+
 def release_default_model() -> bool:
     """Free the general Whisper model, if loaded; True when something was freed.
 
@@ -1683,6 +1792,7 @@ def release_default_model() -> bool:
     """
     global MODEL, PIPELINE
     with _DEFAULT_BACKEND_LOCK:
+        _reset_decode_recovery()
         if MODEL is None and PIPELINE is None:
             return False
         MODEL = None
@@ -1738,6 +1848,7 @@ class _WhisperLanguageModel:
     def unload(self) -> None:
         self.model = None
         self.pipeline = None
+        _reset_decode_recovery()
 
 
 #: The Whisper language model the current thread's ``transcribe`` call runs on instead of the
@@ -1872,6 +1983,7 @@ def _run_post_pipeline(
             from . import diarization as _diar
 
             if _diar.is_available():
+                task._telemetry_stage = "diarize"
                 log("Diarising speakers...", log_cb)
                 num_speakers = int(config.get("diarization_num_speakers", -1))
                 threshold = float(config.get("diarization_cluster_threshold", 0.5))
@@ -1950,6 +2062,10 @@ def _run_post_pipeline(
                 )
         except Exception as e:  # noqa: BLE001
             log(f"WARN: Alignment failed (continuing without refinement): {e}", log_cb)
+
+    # Rescue, mixed-language and resume paths can introduce cues after the
+    # streaming guard. Filter their final timings too, including alignment.
+    segments_data[:] = _loop_guard.collapse_micro_cues(segments_data)
 
     # Hallucination detector (opt-in, default ON). Runs last so it
     # sees the final diarised/aligned text. Any flagged segments get
@@ -2367,6 +2483,9 @@ def _runtime_overrides_scope(
 
         config.update(copy.deepcopy(task_layer))
         runtime_cfg = _apply_runtime_overrides(task)
+        # Keep only settings that select a code path after the scope is restored.
+        task._telemetry_settings = {"diarization_enabled": bool(config.get("diarization_enabled", False)),
+                                    "vad_enabled": bool(config.get("vad_enabled", True))}
         yield runtime_cfg
     finally:
         for key, value in snapshot.items():
@@ -2554,7 +2673,7 @@ def transcribe_chunk_to_text(
     kwargs.pop("batch_size", None)
     kwargs["word_timestamps"] = False
 
-    segments_iter, info = MODEL.transcribe(audio_path, **kwargs)
+    segments_iter, info = _whisper_runner(task, live_chunk=True).transcribe(audio_path, **kwargs)
     out: list[dict[str, Any]] = []
     parts: list[str] = []
     for seg in segments_iter:
@@ -2911,13 +3030,15 @@ def transcribe(
                 audio_path = task.file_path
 
         duration = get_duration(audio_path)
+        if duration > 0:
+            task._input_duration = duration
         require_audio_stream(audio_path)
         start = time.time()
         log(f"Processing: {audio_path}", log_cb)
 
-        base_model: Any = lm_slot.model if lm_slot is not None else MODEL
-        base_pipeline: Any = lm_slot.pipeline if lm_slot is not None else PIPELINE
-        assert base_model is not None
+        assert (lm_slot.model if lm_slot is not None else MODEL) is not None
+        base_model = _whisper_runner(task, log_cb=log_cb, language_check=True)
+        base_pipeline = (lm_slot.pipeline if lm_slot is not None else PIPELINE) is not None
         want_words = bool(config.get("word_timestamps", False))
 
         transcribe_kwargs = _build_transcribe_kwargs(task)
@@ -2928,13 +3049,12 @@ def transcribe(
         # used for a clipped task, so it falls back to the plain model
         # (still fast for a short slice).
         clip = _clip_timestamps_arg(task)
-        use_batched = base_pipeline is not None and clip is None
-        runner: Any = base_pipeline if use_batched else base_model
+        use_batched = base_pipeline and clip is None
+        runner = _whisper_runner(task, batched=use_batched, log_cb=log_cb)
         if use_batched:
             transcribe_kwargs["batch_size"] = int(config.get("batch_size", 16))
         pair = mixed_language_pair(task)
         if pair:
-            runner = _two_language_runner(runner, pair)
             log(f"Mixed-language audio: each stretch is transcribed as {pair[0]} or {pair[1]}", log_cb)
         # NOTE: a time range is NOT passed as clip_timestamps (that makes
         # faster-whisper decode the WHOLE file — it hung on a multi-hour
@@ -3098,6 +3218,15 @@ def transcribe(
         # the post steps keeps the checkpoint marked as complete.
         transcript_complete = False
 
+        def _save_before_retry() -> None:
+            if segments_data and clip is None:
+                _write_periodic_checkpoint(
+                    task, segments_data, float(segments_data[-1]["end"]),
+                    detected_lang_so_far, lang_prob_so_far, log_cb,
+                )
+
+        runner.before_retry = _save_before_retry
+
         def _handle_cancelled() -> bool:
             if not task.cancelled:
                 return False
@@ -3176,7 +3305,7 @@ def transcribe(
                     detected_lang_so_far, float(getattr(info, "duration", 0.0) or 0.0), log_cb,
                     before_piece=lambda: _wait_while_paused(task, meter),
                 )
-        except Exception:
+        except BaseException:
             # A decoder error mid-file: keep what was decoded since the last
             # periodic checkpoint before the error reaches the worker.
             if segments_data and clip is None and not task.cancelled:
@@ -3231,7 +3360,7 @@ def transcribe(
 
         _note_no_speech(task, segments_data, log_cb)
         _clue_phase(task, "worker.output")
-        written = [] if _skips_outputs(task) else _write_outputs(
+        written = _write_outputs(
             base,
             segments_data,
             task.file_path,
@@ -3303,6 +3432,8 @@ def _transcribe_via_alt_backend(
             audio_path = task.file_path
 
     duration = get_duration(audio_path)
+    if duration > 0:
+        task._input_duration = duration
     require_audio_stream(audio_path)
     start = time.time()
     log(f"Processing ({backend_name}): {task.file_path}", log_cb)
@@ -3488,7 +3619,7 @@ def _transcribe_via_alt_backend(
 
     _note_no_speech(task, segments_data, log_cb)
     _clue_phase(task, "worker.output")
-    written = [] if _skips_outputs(task) else _write_outputs(
+    written = _write_outputs(
         base,
         segments_data,
         task.file_path,
@@ -3718,7 +3849,7 @@ def _write_resumed_outputs(
     _clue_phase(task, "worker.output")
     base = _task_output_base(task)
     _note_no_speech(task, segments, log_cb)
-    written = [] if _skips_outputs(task) else _write_outputs(
+    written = _write_outputs(
         base,
         segments,
         task.file_path,
@@ -4072,6 +4203,8 @@ def resume_transcription(
         # holds no timing from the first run.
         try:
             _resume_total = get_duration(task.file_path)
+            if _resume_total > 0:
+                task._input_duration = _resume_total
         except Exception:  # noqa: BLE001
             _resume_total = 0.0
         meter = _speed_meter.SpeedMeter(_resume_total, last_end_time)
@@ -4097,11 +4230,18 @@ def resume_transcription(
             if cp_language and not pair:
                 transcribe_kwargs["language"] = cp_language
 
-            runner = PIPELINE if PIPELINE is not None else MODEL
+            runner = _whisper_runner(task, batched=PIPELINE is not None, log_cb=log_cb)
             if PIPELINE is not None:
                 transcribe_kwargs["batch_size"] = int(config.get("batch_size", 16))
-            if pair:
-                runner = _two_language_runner(runner, pair)
+
+            def _save_before_retry() -> None:
+                merged = prior_segments + new_segments_data
+                if merged:
+                    _write_periodic_checkpoint(
+                        task, merged, max(last_end_time, float(merged[-1]["end"])), cp_language, cp_lang_prob, log_cb,
+                    )
+
+            runner.before_retry = _save_before_retry
 
             _clue_phase(task, "worker.language")
             with _vad_window.windowed_vad(_vad_window_seconds()):
@@ -4229,7 +4369,7 @@ def resume_transcription(
                     )
                     last_checkpoint_time = now
                     segments_since_checkpoint = 0
-        except Exception:
+        except BaseException:
             # A decoder error mid-tail: keep what the tail decoded so far.
             if new_segments_data and not task.cancelled:
                 merged = prior_segments + new_segments_data

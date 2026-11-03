@@ -730,7 +730,6 @@
     "No media file was found for this transcript, so the page has no player.": "Bu transkript için medya dosyası bulunamadı, bu yüzden sayfada oynatıcı yok.",
     "No reference voice": "Referans ses yok",
     "No speech was found in {name}": "{name} içinde konuşma bulunamadı",
-    "No speech was recognised in this file, so no transcript was saved.": "Bu dosyada konuşma algılanmadı, bu nedenle döküm kaydedilmedi.",
     "No subtitle file": "Altyazı dosyası yok",
     "No text": "Metin yok",
     "No tier detected — falling back to CPU.": "Katman algılanmadı — CPU'ya geri dönülüyor.",

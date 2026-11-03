@@ -740,7 +740,6 @@
     "No media file was found for this transcript, so the page has no player.": "לא נמצא קובץ מדיה לתמליל הזה, ולכן אין בדף נגן.",
     "No reference voice": "אין קול לדוגמה",
     "No speech was found in {name}": "לא נמצא דיבור ב-{name}",
-    "No speech was recognised in this file, so no transcript was saved.": "לא זוהה דיבור בקובץ זה, ולכן לא נשמר תמליל.",
     "No subtitle file": "אין קובץ כתוביות",
     "No text": "אין טקסט",
     "No tier detected — falling back to CPU.": "לא זוהתה רמה — חוזר ל-CPU.",

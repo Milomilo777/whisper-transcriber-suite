@@ -750,7 +750,6 @@
     "No media file was found for this transcript, so the page has no player.": "Za ta prepis ni bilo najdene medijske datoteke, zato stran nima predvajalnika.",
     "No reference voice": "Ni referenčnega glasu",
     "No speech was found in {name}": "V {name} ni bilo najdenega govora",
-    "No speech was recognised in this file, so no transcript was saved.": "V tej datoteki ni bilo prepoznanega govora, zato prepis ni bil shranjen.",
     "No subtitle file": "Ni datoteke s podnapisi",
     "No text": "Ni besedila",
     "No tier detected — falling back to CPU.": "Raven ni zaznana – uporabljen bo CPU.",

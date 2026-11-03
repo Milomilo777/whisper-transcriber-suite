@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
+import uuid
 
 
 class TranscriptionTask:
@@ -9,6 +10,17 @@ class TranscriptionTask:
         self.status: str = "waiting"
         self.progress: int = 0
         self.start_time: float | None = None
+        # Independent of protocol ids, file names and hardware; renewed at dispatch.
+        try:
+            self.run_id: str = uuid.uuid4().hex[:16]
+        except Exception:  # An optional identifier must never prevent a job.
+            self.run_id = ""
+        self._telemetry_recovery: str = "none"
+        self._telemetry_stage: str = "other"
+        self._telemetry_settings: dict[str, Any] | None = None
+        self._telemetry_gpu_vendor: str = "unknown"
+        self._failure_compute_type: str | None = None
+        self._input_duration: float | None = None
         # Frozen wall-clock for a terminal task. Set once by the
         # service / app cancel path when the task transitions to
         # finished / cancelled / error. Without this the Elapsed
@@ -99,16 +111,13 @@ class TranscriptionTask:
         # only) — that case used to record word_count=0.
         self.word_count: int = 0
         self.audio_duration: float = 0.0
-        # True when a finished run recognised no speech at all; no output
-        # files are written then, and the result card and history say so.
+        # True when a finished run recognised no speech at all; outputs
+        # contain no speech, and the result card and history say so.
         self.no_speech: bool = False
         # True when diarisation was enabled but failed, so the transcript was
         # saved without speaker labels. Carried on the worker's "done" event
         # and shown as one short notice on the result card (like no_speech).
         self.speaker_labels_failed: bool = False
-        # Write the (empty) output files even without speech: the web/LAN
-        # server's own task sets it (core.transcriber._skips_outputs).
-        self.keep_empty_outputs: bool = False
         # Why this attempt ended the way it did (a salvaged crash, a hung
         # worker), stored in its history row; cleared at every dispatch.
         self.recovery_note: str = ""

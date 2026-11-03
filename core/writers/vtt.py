@@ -17,6 +17,7 @@ from .base import (
     fmt_vtt_time,
     karaoke_tokens,
     normalize_text,
+    prepare_cues,
     speaker_prefix,
 )
 
@@ -55,20 +56,19 @@ def _karaoke_payload(seg: dict) -> str:
 
 
 def write(segments: list[dict], audio_path: str = "") -> str:
-    out: list[str] = ["WEBVTT", ""]
-    for seg in segments:
+    def render_text(seg: dict) -> str:
         payload = _karaoke_payload(seg)
         if not payload:
             # A blank cue shows nothing and some players reject an empty
             # payload; ASS and ELAN skip these too.
-            continue
-        # coerce_seconds: a malformed segment timestamp (None / non-numeric
-        # / NaN / Inf) must clamp rather than abort the whole file; a
-        # missing "end" falls back to the start, and an end before the
-        # start is clamped to it (as ASS does).
-        start = coerce_seconds(seg.get("start"))
-        end = max(coerce_seconds(seg.get("end"), start), start)
-        out.append(f"{fmt_vtt_time(start)} --> {fmt_vtt_time(end)}")
-        out.append(escape_vtt_text(speaker_prefix(seg)) + payload)
+            return ""
+        return escape_vtt_text(speaker_prefix(seg)) + payload
+
+    out: list[str] = ["WEBVTT", ""]
+    for start_ms, end_ms, text in prepare_cues(segments, render_text):
+        out.append(
+            f"{fmt_vtt_time(start_ms / 1000)} --> {fmt_vtt_time(end_ms / 1000)}"
+        )
+        out.append(text)
         out.append("")
     return "\n".join(out)

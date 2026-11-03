@@ -740,7 +740,6 @@
     "No media file was found for this transcript, so the page has no player.": "Za ovu transkripciju nije pronađena medijska datoteka pa stranica nema reproduktor.",
     "No reference voice": "Nema referentnog glasa",
     "No speech was found in {name}": "U {name} nije pronađen govor",
-    "No speech was recognised in this file, so no transcript was saved.": "U ovoj datoteci nije prepoznat govor, pa transkript nije spremljen.",
     "No subtitle file": "Nema datoteke podnaslova",
     "No text": "Nema teksta",
     "No tier detected — falling back to CPU.": "Nije otkrivena razina – vraća se na CPU.",
