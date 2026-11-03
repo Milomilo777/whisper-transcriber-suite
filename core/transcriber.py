@@ -496,7 +496,6 @@ def _whisper_runner(
     return WhisperDecode(
         current, lambda: _device_kind(device) == "cuda", recover,
         None if live_chunk else _vad_window_seconds(),
-        language_check=language_check,
     )
 
 

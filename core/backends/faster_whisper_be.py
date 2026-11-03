@@ -58,13 +58,11 @@ class WhisperDecode:
         is_cuda: Callable[[], bool],
         recover: Callable[[dict[str, Any], bool], None],
         window_s: float | None,
-        *, language_check: bool = False,
     ) -> None:
         self._runner = runner
         self._is_cuda = is_cuda
         self._recover = recover
         self._window_s = window_s
-        self._language_check = language_check
         self.before_retry: Callable[[], None] = lambda: None
 
     def detect_language(self, **kwargs: Any) -> Any:
@@ -118,7 +116,7 @@ class WhisperDecode:
                     except RuntimeError as exc:
                         failure = _cuda_failure(exc)
                         oom = failure == "out_of_memory"
-                        if not self._is_cuda() or not failure or (not oom and not self._language_check):
+                        if not self._is_cuda() or not failure:
                             raise
                     finally:
                         _close_iterator_quietly(iterator)
@@ -133,7 +131,7 @@ class WhisperDecode:
                             options["language"] = language
                     source = audio
                     if cursor > 0:
-                        if "clip_timestamps" in kwargs:
+                        if kwargs.get("clip_timestamps") is not None:
                             clips = kwargs["clip_timestamps"]
                             stamps = [float(t) for t in (clips.split(",") if isinstance(clips, str) else clips)]
                             relative = []

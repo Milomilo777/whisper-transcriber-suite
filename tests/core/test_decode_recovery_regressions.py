@@ -90,8 +90,7 @@ def test_non_cuda_runtime_error_never_recovers(stage, message):
     engine.detect_language = lambda **kw: (_ for _ in ()).throw(error)
     retries = []
     runner = WhisperDecode(lambda options: engine, lambda: not retries,
-                           lambda options, oom: retries.append(oom), 0,
-                           language_check=stage == "language_iterate")
+                           lambda options, oom: retries.append(oom), 0)
     with pytest.raises(RuntimeError, match=message):
         if stage == "detect":
             runner.detect_language(audio=np.zeros(16000))
@@ -380,3 +379,25 @@ def test_nvidia_cancelled_pipeline_window_does_not_report_complete(monkeypatch):
     backend.transcribe_to_segments("input.wav", duration=1, progress_cb=progress.append,
                                    cancelled=lambda: bool(stopped))
     assert progress == []
+
+
+def test_cuda_failure_during_normal_decode_retries_after_saving():
+    error = RuntimeError("cuBLAS failed with status CUBLAS_STATUS_EXECUTION_FAILED")
+    engine = Engine([[error], [segment(0, 1, "kept")]])
+    retries = []
+    saved = []
+    runner = WhisperDecode(lambda options: engine, lambda: not retries,
+                           lambda options, oom: retries.append(oom), 0)
+    runner.before_retry = lambda: saved.append(True)
+    segments, _ = runner.transcribe(np.zeros(16000))
+    assert [s.text for s in segments] == ["kept"]
+    assert retries == [False] and saved == [True]
+
+
+def test_retry_tolerates_clip_timestamps_none():
+    engine = Engine([[segment(0, 1, "a"), RuntimeError(OOM)], [segment(0, 1, "b")]])
+    retries = []
+    runner = WhisperDecode(lambda options: engine, lambda: not retries,
+                           lambda options, oom: retries.append(oom), 0)
+    segments, _ = runner.transcribe(np.zeros(48000), clip_timestamps=None)
+    assert [s.text for s in segments] == ["a", "b"]

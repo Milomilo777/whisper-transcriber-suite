@@ -244,3 +244,49 @@ def test_unprintable_origin_keeps_device_memory_and_family(monkeypatch, chained)
     assert clue["device"] == "cuda" and clue["peak_mem_mb"] == "512"
     assert clue["exception_family"] == ("PermissionError" if chained else "RuntimeError")
     assert clue["os_error"] == ("13" if chained else "0")
+
+
+def test_helper_failure_after_the_task_finished_still_delivers_done(monkeypatch, capsys, tmp_path):
+    output = tmp_path / "kept.srt"
+    finished = threading.Event()
+    delivered = threading.Event()
+    real_set = worker._set_current_task
+    real_emit = worker.emit
+
+    def set_current(task):
+        real_set(task)
+        if task is None and finished.is_set():
+            finished.clear()
+            worker._note_background_failure(RuntimeError("helper failed"))
+
+    def emit(event, **payload):
+        result = real_emit(event, **payload)
+        if event == "done":
+            delivered.set()
+        return result
+
+    class Input:
+        sent = False
+
+        def read(self, n):
+            if not self.sent:
+                self.sent = True
+                return '{"action":"transcribe","file_path":"input.wav","task_id":"job-1"}\n'
+            assert delivered.wait(5)
+            return ""
+
+    def transcribe(task, *a, **kw):
+        output.write_text("saved transcript", encoding="utf-8")
+        task.output_paths = [output]
+        finished.set()
+
+    monkeypatch.setattr(worker, "load_existing_model", lambda cb: True)
+    monkeypatch.setattr(worker, "transcribe", transcribe)
+    monkeypatch.setattr(worker, "emit", emit)
+    monkeypatch.setattr(worker, "_set_current_task", set_current)
+    monkeypatch.setattr(sys, "stdin", Input())
+    assert worker.main() == 1
+    events = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
+    assert [e["event"] for e in events if e["event"] in {"done", "error"}] == ["done", "error"]
+    done = next(e for e in events if e["event"] == "done")
+    assert done["outputs"] == [str(output)] and done["task_id"] == "job-1"

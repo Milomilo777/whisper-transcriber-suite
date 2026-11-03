@@ -143,3 +143,41 @@ def test_real_deep_traceback_is_classified_from_the_whole_tail(monkeypatch, tmp_
     assert exited["exception_family"] == "MemoryError"
     assert exited["observed_code"] == "none"
     assert "private" not in json.dumps({k: v for k, v in exited.items() if not k.startswith("_")})
+
+
+def real_traceback(tmp_path, source):
+    script = tmp_path / "real.py"
+    script.write_text(source, encoding="utf-8")
+    done = subprocess.run([sys.executable, str(script)], capture_output=True, text=True, check=False)
+    return done.stderr.splitlines(keepends=True)
+
+
+@pytest.mark.parametrize("source", [
+    'def a(x, y):\n    raise MemoryError("private title")\na(\n    1,\n    2,\n)\n',
+    'def a(n):\n    if n == 0:\n        raise MemoryError("private title")\n    a(n - 1)\n    return 1\na(30)\n',
+], ids=["multi_line_call", "repeated_frames"])
+def test_real_traceback_shapes_are_classified(tmp_path, source):
+    assert failure_clue.stderr_clue(real_traceback(tmp_path, source))["exception_family"] == "MemoryError"
+
+
+def test_old_oversize_line_does_not_hide_a_later_traceback(tmp_path):
+    lines = real_traceback(tmp_path, 'def a(): raise MemoryError("x")\na()\n')
+    assert failure_clue.stderr_clue(["x" * 2500 + "\n", *lines])["exception_family"] == "MemoryError"
+
+
+def test_oversize_line_inside_a_traceback_still_blocks_it(tmp_path):
+    lines = real_traceback(tmp_path, 'def a(): raise MemoryError("x")\na()\n')
+    clue = failure_clue.stderr_clue([lines[0], "x" * 2500 + "\n", *lines[1:]])
+    assert clue["exception_family"] == "other"
+
+
+def test_protocol_event_after_a_logged_traceback_clears_it(monkeypatch):
+    worker, events = start_reader(monkeypatch, [
+        "Traceback (most recent call last):\n",
+        '  File "C:/libs/faster_whisper/transcribe.py", line 15, in generate_segments\n',
+        "MemoryError: handled and logged\n",
+        json.dumps({"event": "heartbeat"}) + "\n",
+    ])
+    exited = next(e for e in events if e["event"] == "worker_exit")
+    assert "exception_family" not in exited
+    assert not worker.get("stderr_clue")

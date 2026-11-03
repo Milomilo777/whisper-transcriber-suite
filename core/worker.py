@@ -1349,7 +1349,8 @@ def _main() -> int:
                 # task can no longer arrive while this finished task is
                 # still the current one and get swallowed by it.
                 _set_current_task(None)
-            if _report_background_failure(task, file_path=file_path, task_id=task_id):
+            # A task not stopped by the failure has finished: deliver it; the loop then reports the failure.
+            if task.cancelled and _report_background_failure(task, file_path=file_path, task_id=task_id):
                 return 1
             _emit_done(task, file_path, task_id)
         except BaseException as e:

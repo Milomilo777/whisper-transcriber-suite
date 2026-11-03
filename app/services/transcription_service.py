@@ -960,7 +960,8 @@ class TranscriptionService:
                 # One extra character marks a truncated line for the classifier.
                 stderr_tail.append(stderr_line[:2049])
                 exit_clue = stderr_clue(list(stderr_tail)) if complete_line else {}
-            elif parsed.get("event") in {"started", "done", "error", "live_result", "live_error"}:
+            else:
+                # The worker lived past that text, so it did not cause a later exit.
                 stderr_tail.clear()
                 exit_clue = {}
             if worker.get("token") == spawn_token:

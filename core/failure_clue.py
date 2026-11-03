@@ -525,8 +525,10 @@ def stderr_clue(lines: list[str]) -> dict[str, str]:
     """Classify a complete terminal traceback or exact native/ffmpeg tail only."""
     # Keep invalid lines as barriers; dropping one could stitch together a fake traceback.
     tail = [line.rstrip("\r\n") for line in lines[-STDERR_TAIL_LINES:]]
-    if any(len(line) > 2048 for line in tail):
-        tail = []
+    for index in range(len(tail) - 1, -1, -1):
+        if len(tail[index]) > 2048:
+            tail = tail[index + 1:]
+            break
     result: dict[str, Any] = {"failure_site": "parent.worker_exit"}
     frames: list[str] = []
     families = {cls.__name__: cls for cls in (
@@ -540,19 +542,15 @@ def stderr_clue(lines: list[str]) -> dict[str, str]:
     if start >= 0 and len(tail) - start >= 3:
         matches: list[re.Match[str]] = []
         valid = True
-        source = caret = False
         for line in tail[start + 1:-1]:
             match = re.fullmatch(
                 r'  File "([^"\r\n]+)", line ([0-9]{1,6}), in ([A-Za-z_<][A-Za-z0-9_.<>]{0,40})', line
             )
             if match:
                 matches.append(match)
-                source, caret = True, False
-            elif source and line.startswith("    ") and line.strip():
-                source, caret = False, True
-            elif caret and re.fullmatch(r"    [~^ ]+", line):
-                caret = False
-            else:
+            # A frame's source can span several lines, each with its own marker line.
+            elif not matches or not (
+                    line.startswith("    ") or re.fullmatch(r"  \[Previous line repeated [0-9]+ more times?\]", line)):
                 valid = False
                 break
         name, _, message = tail[-1].partition(": ")
