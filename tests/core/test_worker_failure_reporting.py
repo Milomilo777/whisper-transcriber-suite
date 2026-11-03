@@ -109,12 +109,17 @@ def test_background_thread_baseexception_uses_worker_protocol(monkeypatch, capsy
 
 
 @pytest.mark.parametrize("lines,family,code", [
-    (["MemoryError: private input.wav"], "MemoryError", "none"),
-    (['  File "C:/private/faster_whisper/transcribe.py", line 15, in generate_segments',
+    (["Traceback (most recent call last):",
+      '  File "C:/private/input.py", line 10, in process',
+      "MemoryError: private input.wav"], "MemoryError", "none"),
+    (["Traceback (most recent call last):",
+      '  File "C:/private/faster_whisper/transcribe.py", line 15, in generate_segments',
       "RuntimeError: CUDA failed with error out of memory"], "RuntimeError", "cuda_out_of_memory"),
     (["terminate called after throwing an instance of 'std::bad_alloc'",
       "  what():  std::bad_alloc"], "RuntimeError", "ct2_bad_alloc"),
-    (["RuntimeError: C:/private/CUDA failed with error out of memory.wav"], "RuntimeError", "none"),
+    (["Traceback (most recent call last):",
+      '  File "C:/private/faster_whisper/transcribe.py", line 15, in generate_segments',
+      "RuntimeError: C:/private/CUDA failed with error out of memory.wav"], "RuntimeError", "none"),
     (["C:/private/MemoryError.wav", "private code 1"], "other", "none"),
 ])
 def test_stderr_classifier_keeps_only_registered_values(lines, family, code):
@@ -131,7 +136,11 @@ def test_parent_attaches_stderr_clue_to_exit_row(monkeypatch):
 
     app = _app()
     service = ts.TranscriptionService(app)
-    process = SimpleNamespace(pid=4242, stdout=iter(["MemoryError: private.wav\n"]), wait=lambda: 1)
+    process = SimpleNamespace(pid=4242, stdout=iter([
+        "Traceback (most recent call last):\n",
+        '  File "C:/private/input.py", line 10, in process\n',
+        "MemoryError: private.wav\n",
+    ]), wait=lambda: 1)
     monkeypatch.setattr(ts.subprocess, "Popen", lambda *a, **k: process)
     monkeypatch.setattr(_threads, "safe_thread", lambda target, **kwargs: target())
     monkeypatch.setattr(service, "_engine_snapshot", lambda: {})

@@ -130,6 +130,9 @@ _PATTERNS = (
         r"|(?:lib)?cudnn(?:_(?:(?:ops|cnn|adv)(?:_infer|_train)?|graph|heuristic|engines_precompiled|engines_runtime_compiled))?\.so(?:\.[0-9]+)*) is not found or cannot be loaded"
     )),
 )
+_TOKENIZER_PATTERN = re.compile(
+    r"(?:Error while loading tokenizer|Unable to load tokenizer|Tokenizer vocabulary is invalid)"
+)
 
 
 def observed_code(exc: BaseException) -> str:
@@ -162,9 +165,7 @@ def observed_code(exc: BaseException) -> str:
         for code, pattern in _PATTERNS:
             if pattern.fullmatch(message) and _library_frame(exc.__traceback__, code):
                 return code
-        if _tokenizer_frame(exc.__traceback__) and re.fullmatch(
-            r"(?:Error while loading tokenizer|Unable to load tokenizer|Tokenizer vocabulary is invalid)", message
-        ):
+        if _tokenizer_frame(exc.__traceback__) and _TOKENIZER_PATTERN.fullmatch(message):
             return "tokenizer_error"
     return "none"
 
@@ -322,27 +323,22 @@ def _code_frames(tb: TracebackType | None) -> list[str]:
 
 
 def shape_hash(message: str) -> str:
-    """Hash up to twelve closed tokens, after removing private spans and all numbers."""
-    from .diagnostic_vocab import VOCABULARY
-
-    text = message[:32768]
-    # Remove spans BEFORE tokenisation: a private title can consist of vocabulary words.
-    text = re.sub(r'''"[^"\r\n]*"|'[^'\r\n]*'|`[^`\r\n]*`''', " ", text)
-    text = re.sub(r"\b[A-Za-z][A-Za-z0-9+.-]*://[^\s<>]+", " ", text)
-    text = re.sub(r"(?<!\w)(?:[A-Za-z]:[\\/]|\\\\|/|~[\\/]|\.\.?[\\/])[^\r\n]*", " ", text)
-    # Token-start anchors prevent quadratic retries on long hostile tokens.
-    text = re.sub(r"(?<!\S)\S*[\\/][^\r\n]*", " ", text)
-    text = re.sub(r"(?<!\S)\S*\.[A-Za-z][A-Za-z0-9]{0,9}\b", " ", text)
-    text = re.sub(r"\S+", lambda match: " " if "@" in match[0] or any(
-        character.isnumeric() for character in match[0]) else match[0], text)
-    tokens = [word for word in re.findall(r"[a-z]+", text.lower()) if word in VOCABULARY][:12]
-    return hashlib.sha256(" ".join(tokens).encode("ascii")).hexdigest()[:12]
+    """Hash a closed template ID, or nothing; never extract words from free text."""
+    template = ""
+    # Reject oversized messages instead of turning a truncated prefix into a match.
+    if len(message) <= 32768:
+        for code, pattern in (*_PATTERNS, ("tokenizer_error", _TOKENIZER_PATTERN)):
+            if pattern.fullmatch(message):
+                template = code
+                break
+    # Even a fully matching message contributes no parameters (sizes, dtypes or DLL names).
+    return hashlib.sha256(template.encode("ascii")).hexdigest()[:12]
 
 
 def _fingerprint(row: Mapping[str, str], frames: list[str]) -> str:
     locations = [frame.rsplit(":", 1)[0] for frame in frames[-3:]]
     material = [row.get(key, "") for key in
-                ("failure_site", "exception_family", "observed_code", "classifier_version")]
+                ("failure_site", "exception_family", "observed_code", "classifier_version", "os_error")]
     material.extend(locations)
     material.append(row.get("shape_hash", ""))
     return hashlib.sha256("|".join(material).encode("ascii")).hexdigest()[:12]
@@ -474,7 +470,7 @@ def worker_clue(exc: BaseException, task: Any = None, *, site: str | None = None
                "os_error": os_error(origin), "device": device,
                "peak_mem_mb": log_memory_bucket(peak_memory_mb()),
                "last_stage": getattr(task, "_telemetry_stage", None) or _STAGES.get(failure_site, "other"),
-               "shape_hash": shape_hash(_safe_message(origin))}
+               "shape_hash": shape_hash("" if isinstance(origin, OSError) else _safe_message(origin))}
         if frames:
             row["top_frame"] = frames[-1]
         clean = sanitise_clue(row, status="error")
@@ -521,55 +517,78 @@ def parent_clue(site: str, *, device: str = "unknown", exit_code: Any = 0,
     return sanitise_clue(clean, status="error")
 
 
+# A real traceback prints up to three lines per frame; twelve lines would hide its header.
+STDERR_TAIL_LINES = 64
+
+
 def stderr_clue(lines: list[str]) -> dict[str, str]:
-    """Classify a bounded local tail; only closed results enter the worker event."""
-    tail = [line.strip() for line in lines[-12:] if len(line) <= 2048]
+    """Classify a complete terminal traceback or exact native/ffmpeg tail only."""
+    # Keep invalid lines as barriers; dropping one could stitch together a fake traceback.
+    tail = [line.rstrip("\r\n") for line in lines[-STDERR_TAIL_LINES:]]
+    if any(len(line) > 2048 for line in tail):
+        tail = []
     result: dict[str, Any] = {"failure_site": "parent.worker_exit"}
     frames: list[str] = []
-    library = tokenizer = native_alloc = False
     families = {cls.__name__: cls for cls in (
         MemoryError, RuntimeError, PermissionError, FileNotFoundError, TimeoutError, OSError,
         UnicodeError, ValueError, TypeError, KeyError, IndexError, AssertionError,
     )}
     families.update(UnicodeEncodeError=UnicodeError, UnicodeDecodeError=UnicodeError)
     families["ConnectionResetError"] = ConnectionResetError
-    for line in tail:
-        if line == "Traceback (most recent call last):":
-            library = tokenizer = native_alloc = False
-            frames.clear()
-        match = re.fullmatch(r'File "([^"\r\n]+)", line ([0-9]{1,6}), in ([A-Za-z_][A-Za-z0-9_.<>]{0,40})', line)
-        if match:
-            path = match[1].replace("\\", "/")
-            library |= bool(re.search(r'/(?:faster_whisper|ctranslate2|numpy)/(?:[A-Za-z0-9_]+/)*[A-Za-z0-9_]+\.py$', path))
-            tokenizer |= bool(re.search(r'/tokenizers/(?:[A-Za-z0-9_]+/)*[A-Za-z0-9_]+\.py$|/faster_whisper/tokenizer\.py$', path))
-            module = _module_for_file(match[1])
-            if module:
-                frame = f"{module}:{match[3]}:{match[2]}"
-                if _valid_value("top_frame", frame, registry()["fields"]["top_frame"]):
-                    frames.append(frame)
-        name, separator, message = line.partition(": ")
-        cls = families.get(name if separator else line)
-        if cls is not None:
-            result.update(exception_family=exception_family(cls()), observed_code="none", shape_hash=shape_hash(message))
-            if library and issubclass(cls, (RuntimeError, MemoryError)):
-                for code, pattern in _PATTERNS:
-                    if pattern.fullmatch(message):
-                        result["observed_code"] = code
-                        break
-            if tokenizer and re.fullmatch(r"(?:Error while loading tokenizer|Unable to load tokenizer|Tokenizer vocabulary is invalid)", message):
-                result["observed_code"] = "tokenizer_error"
+    start = next((i for i in range(len(tail) - 1, -1, -1)
+                  if tail[i] == "Traceback (most recent call last):"), -1)
+    if start >= 0 and len(tail) - start >= 3:
+        matches: list[re.Match[str]] = []
+        valid = True
+        source = caret = False
+        for line in tail[start + 1:-1]:
+            match = re.fullmatch(
+                r'  File "([^"\r\n]+)", line ([0-9]{1,6}), in ([A-Za-z_<][A-Za-z0-9_.<>]{0,40})', line
+            )
+            if match:
+                matches.append(match)
+                source, caret = True, False
+            elif source and line.startswith("    ") and line.strip():
+                source, caret = False, True
+            elif caret and re.fullmatch(r"    [~^ ]+", line):
+                caret = False
+            else:
+                valid = False
+                break
+        name, _, message = tail[-1].partition(": ")
+        cls = families.get(name)
+        if valid and matches and cls is not None:
+            result.update(exception_family=exception_family(cls()),
+                          shape_hash=shape_hash("" if issubclass(cls, OSError) else message))
+            library = tokenizer = False
+            for match in matches:
+                path = match[1].replace("\\", "/")
+                library |= bool(re.search(r'/(?:faster_whisper|ctranslate2|numpy)/(?:[A-Za-z0-9_]+/)*[A-Za-z0-9_]+\.py$', path))
+                tokenizer |= bool(re.search(r'/tokenizers/(?:[A-Za-z0-9_]+/)*[A-Za-z0-9_]+\.py$|/faster_whisper/tokenizer\.py$', path))
+                module = _module_for_file(match[1])
+                if module:
+                    frame = f"{module}:{match[3]}:{match[2]}"
+                    if _valid_value("top_frame", frame, registry()["fields"]["top_frame"]):
+                        frames.append(frame)
+            if issubclass(cls, (RuntimeError, MemoryError)):
+                if library:
+                    for code, pattern in _PATTERNS:
+                        if pattern.fullmatch(message):
+                            result["observed_code"] = code
+                            break
+                if tokenizer and _TOKENIZER_PATTERN.fullmatch(message):
+                    result["observed_code"] = "tokenizer_error"
             if name == "ConnectionResetError":
                 result["observed_code"] = "network_reset"
-            library = tokenizer = native_alloc = False
-        if line == "Invalid data found when processing input":
-            result["observed_code"] = "corrupt_media"
-        if re.fullmatch(r"(?:Decoder|Encoder) \([A-Za-z0-9_]+\) not found", line):
-            result["observed_code"] = "codec_unsupported"
-        if line == "terminate called after throwing an instance of 'std::bad_alloc'":
-            native_alloc = True
-        elif line == "what():  std::bad_alloc" and native_alloc:
-            result.update(exception_family="RuntimeError", observed_code="ct2_bad_alloc")
-            native_alloc = False
+    terminal = tail[-1].strip() if tail else ""
+    if terminal == "Invalid data found when processing input":
+        result["observed_code"] = "corrupt_media"
+    elif re.fullmatch(r"(?:Decoder|Encoder) \([A-Za-z0-9_]+\) not found", terminal):
+        result["observed_code"] = "codec_unsupported"
+    elif (len(tail) >= 2 and
+          tail[-2].strip() == "terminate called after throwing an instance of 'std::bad_alloc'" and
+          terminal == "what():  std::bad_alloc"):
+        result.update(exception_family="RuntimeError", observed_code="ct2_bad_alloc")
     if frames:
         result["top_frame"] = frames[-1]
         module, function, _ = frames[-1].split(":")

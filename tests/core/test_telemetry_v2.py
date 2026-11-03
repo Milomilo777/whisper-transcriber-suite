@@ -111,7 +111,8 @@ def test_native_exit_codes(monkeypatch, value, platform, code):
 def test_stderr_frames_come_from_worker_and_parent_does_not_replace_them():
     from app.services.transcription_service import _remember_failure_clue
 
-    lines = [f'  File "{ROOT / "core/transcriber.py"}", line 123, in transcribe',
+    lines = ["Traceback (most recent call last):",
+             f'  File "{ROOT / "core/transcriber.py"}", line 123, in transcribe',
              '  File "C:/private/faster_whisper/transcribe.py", line 10, in generate_segments',
              "RuntimeError: CUDA failed with error out of memory"]
     row = clue.stderr_clue(lines)
@@ -140,7 +141,11 @@ def test_new_closed_library_codes_require_observed_evidence():
     unsupported = type("DecoderNotFoundError", (OSError,), {"__module__": "av.error"})
     assert clue.observed_code(unsupported("private codec")) == "codec_unsupported"
     assert clue.stderr_clue(["Invalid data found when processing input"])["observed_code"] == "corrupt_media"
-    assert clue.stderr_clue(["ConnectionResetError: private endpoint"])["observed_code"] == "network_reset"
+    assert clue.stderr_clue([
+        "Traceback (most recent call last):",
+        '  File "C:/private/input.py", line 10, in process',
+        "ConnectionResetError: private endpoint",
+    ])["observed_code"] == "network_reset"
 
 
 @pytest.mark.parametrize("literal", [
@@ -153,11 +158,14 @@ def test_new_closed_library_codes_require_observed_evidence():
     '"invalid memory cuda error video title"', '192.168.12.55', '+61 412 345 678',
     '123456789', '\u062e\u0635\u0648\u0635\u06cc',
 ])
-def test_shape_strips_private_material_before_allowlist(literal):
+def test_shape_hash_excludes_private_material_and_free_tokens(literal):
     baseline = clue.shape_hash("allocation failed")
     assert clue.shape_hash("allocation failed " + literal) == baseline
     tokens = "invalid memory cuda error allocation failed network reset disk full file model extra"
-    assert clue.shape_hash(tokens) == hashlib.sha256(" ".join(tokens.split()[:12]).encode()).hexdigest()[:12]
+    # Even a message made entirely of allow-listed words is unsupported free text.
+    assert clue.shape_hash(tokens) == hashlib.sha256(b"").hexdigest()[:12]
+    assert clue.shape_hash("CUDA failed with error out of memory") == hashlib.sha256(
+        b"cuda_out_of_memory").hexdigest()[:12]
 
 
 def test_failure_context_and_unknowns(tmp_path, monkeypatch):

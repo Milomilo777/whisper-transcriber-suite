@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 from types import SimpleNamespace
 
 import pytest
@@ -9,14 +11,14 @@ import pytest
 from core import failure_clue
 
 
-def start_reader(monkeypatch, lines):
+def start_reader(monkeypatch, lines, return_code=1):
     from app.services import transcription_service as ts
     from core import _threads
     from tests.core.test_worker_lifecycle_c251b import _app
 
     app = _app()
     service = ts.TranscriptionService(app)
-    process = SimpleNamespace(pid=4242, stdout=iter(lines), wait=lambda: 1)
+    process = SimpleNamespace(pid=4242, stdout=iter(lines), wait=lambda: return_code)
     monkeypatch.setattr(ts.subprocess, "Popen", lambda *a, **kw: process)
     monkeypatch.setattr(_threads, "safe_thread", lambda target, **kw: target())
     monkeypatch.setattr(service, "_engine_snapshot", lambda: {})
@@ -30,6 +32,8 @@ def start_reader(monkeypatch, lines):
 @pytest.mark.parametrize("terminal", ["done", "error", "live_result", "live_error"])
 def test_terminal_event_clears_stderr_before_next_job_starts(monkeypatch, terminal):
     worker, events = start_reader(monkeypatch, [
+        "Traceback (most recent call last):\n",
+        '  File "C:/libs/faster_whisper/transcribe.py", line 15, in generate_segments\n',
         "MemoryError: old job\n", json.dumps({"event": terminal}) + "\n",
     ])
     # The next job can die before it has a chance to emit 'started'.
@@ -63,6 +67,7 @@ def test_json_object_line_keeps_e27f18de_protocol_behavior(monkeypatch):
 
 def test_stderr_library_evidence_must_be_a_traceback_frame():
     clue = failure_clue.stderr_clue([
+        "Traceback (most recent call last):",
         'Processing file "/private/numpy/foo.py"',
         "RuntimeError: CUDA failed with error out of memory",
     ])
@@ -71,10 +76,11 @@ def test_stderr_library_evidence_must_be_a_traceback_frame():
 
 def test_stderr_library_evidence_does_not_cross_tracebacks():
     clue = failure_clue.stderr_clue([
-        'File "C:/libs/faster_whisper/transcribe.py", line 15, in generate_segments',
+        "Traceback (most recent call last):",
+        '  File "C:/libs/faster_whisper/transcribe.py", line 15, in generate_segments',
         "RuntimeError: unrelated warning",
         "Traceback (most recent call last):",
-        'File "C:/private/input.py", line 10, in process',
+        '  File "C:/private/input.py", line 10, in process',
         "RuntimeError: CUDA failed with error out of memory",
     ])
     assert clue["observed_code"] == "none"
@@ -82,7 +88,8 @@ def test_stderr_library_evidence_does_not_cross_tracebacks():
 
 def test_stderr_accepts_nested_library_frame():
     clue = failure_clue.stderr_clue([
-        'File "C:/libs/faster_whisper/transcribe/decode.py", line 15, in generate_segments',
+        "Traceback (most recent call last):",
+        '  File "C:/libs/faster_whisper/transcribe/decode.py", line 15, in generate_segments',
         "RuntimeError: CUDA failed with error out of memory",
     ])
     assert clue["observed_code"] == "cuda_out_of_memory"
@@ -92,6 +99,8 @@ def test_later_python_exception_replaces_earlier_native_allocation_failure():
     clue = failure_clue.stderr_clue([
         "terminate called after throwing an instance of 'std::bad_alloc'",
         "  what():  std::bad_alloc",
+        "Traceback (most recent call last):",
+        '  File "C:/private/input.py", line 10, in process',
         "PermissionError: later failure",
     ])
     assert clue["exception_family"] == "PermissionError" and clue["observed_code"] == "none"
@@ -104,7 +113,33 @@ def test_truncation_cannot_create_a_complete_stderr_exception():
     prefix = prefix.replace("(1,", "(" + " " * max(0, 2048 - len("MemoryError: " + prefix)) + "1,", 1)
     assert len("MemoryError: " + prefix) == 2048
     clue = failure_clue.stderr_clue([
-        'File "C:/libs/numpy/allocate.py", line 15, in allocate',
+        "Traceback (most recent call last):",
+        '  File "C:/libs/numpy/allocate.py", line 15, in allocate',
         "MemoryError: " + prefix + " private trailing text",
     ])
     assert clue["observed_code"] == "none"
+
+
+def real_deep_traceback(tmp_path):
+    """Seven frames as a real interpreter prints them: far more than twelve lines."""
+    script = tmp_path / "deep.py"
+    script.write_text(
+        'def a(): raise MemoryError("private title")\n'
+        + "".join(f"def f{i}(): return {'a' if i == 0 else f'f{i - 1}'}() + 1\n" for i in range(6))
+        + "f5()\n",
+        encoding="utf-8",
+    )
+    done = subprocess.run([sys.executable, str(script)], capture_output=True, text=True, check=False)
+    lines = done.stderr.splitlines(keepends=True)
+    assert len(lines) > 12 and lines[0].startswith("Traceback")
+    return lines
+
+
+def test_real_deep_traceback_is_classified_from_the_whole_tail(monkeypatch, tmp_path):
+    lines = real_deep_traceback(tmp_path)
+    assert failure_clue.stderr_clue(lines)["exception_family"] == "MemoryError"
+    worker, events = start_reader(monkeypatch, lines)
+    exited = next(e for e in events if e["event"] == "worker_exit")
+    assert exited["exception_family"] == "MemoryError"
+    assert exited["observed_code"] == "none"
+    assert "private" not in json.dumps({k: v for k, v in exited.items() if not k.startswith("_")})
