@@ -340,7 +340,6 @@ def test_real_transcriber_phase_faults(monkeypatch, tmp_path, target, site):
     monkeypatch.setattr(tr, "PIPELINE", None)
     monkeypatch.setattr(tr, "config", {"transcribe_backend": "faster_whisper"})
     task = TranscriptionTask(str(tmp_path / "hostile_cuda_oom.wav"))
-    task.keep_empty_outputs = True
     with pytest.raises(RuntimeError) as caught:
         tr.transcribe(task)
     assert clue.worker_clue(caught.value, task)["failure_site"] == site

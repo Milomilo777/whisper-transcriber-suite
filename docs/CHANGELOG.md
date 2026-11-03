@@ -16,6 +16,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Speaker detection releases completed Whisper runners and weights before starting its worker, decodes audio through a temporary file to avoid full pipe-buffer copies, and limits native worker threads. The next transcription reloads Whisper on demand.
 
 - Auto language detection now samples several audio windows and verifies ambiguous unfamiliar-language choices by comparing forced-language decodes against a plausible language. Inconclusive verification keeps engine auto-detection, avoiding probability-only overrides of genuine foreign speech.
+- Runs without recognised speech save the selected output formats, including an empty SRT, with a visible no-speech notice. Their statistics retain the measured audio span, and a damaged JSON sidecar no longer prevents counting a valid subtitle output.
 - The Time column of a download that is transcribed after download stopped counting when the download ended; it now runs until the transcription is done.
 
 ### Changed

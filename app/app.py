@@ -6079,7 +6079,7 @@ class App(tk.Tk):
         if "view" in result_buttons:
             # The viewer opens a transcript .json only; a run without that format would get a
             # "choose a .json yourself?" question instead (review, 2026-10-21).
-            # No speech: no transcript was written and the result card shows no viewer either.
+            # No speech: the transcript is empty, so the result card shows no viewer either.
             _set_enabled(result_buttons["view"],
                          task is not None and not getattr(task, "no_speech", False)
                          and task_transcript_json(task, must_exist=True) is not None)
@@ -6841,7 +6841,7 @@ class App(tk.Tk):
         if no_speech:
             ttk.Label(
                 self.last_result_body,
-                text=_("No speech was recognised in this file, so no transcript was saved."),
+                text=_("No speech was found in {name}", name=os.path.basename(task.file_path)),
                 foreground=tokens.themed(tokens.WARNING_TEXT),
             ).pack(anchor="w", pady=(2, 0))
             ttk.Label(
@@ -6888,7 +6888,7 @@ class App(tk.Tk):
             # A long list scrolls inside the card: it must never grow until the drop
             # zone and the log have no room left.
             capped_rows(files_frame, len(existing), _fill_rows)
-        elif not no_speech:  # no speech: no files is the expected result, said above
+        elif not no_speech:  # older no-speech workers deliberately skipped exports
             ttk.Label(
                 self.last_result_body,
                 text=_("(no output files were found on disk — re-run the task?)"),

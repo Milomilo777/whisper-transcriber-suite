@@ -858,25 +858,19 @@ def _note_no_speech(
 ) -> None:
     """Flag a finished run whose transcript holds no text at all.
 
-    No output files are written then (_skips_outputs); the flag travels in the
-    worker's "done" event so the result card and the history say so.
+    The flag travels in the worker's "done" event so the result card and
+    history explain why the selected output files contain no speech.
     """
     empty = not any(
         str(d.get("text") or "").strip()
         for d in segments_data if isinstance(d, dict)
     )
     task.no_speech = empty
-    if empty and _skips_outputs(task):
-        log("No speech recognised in this file; no output files were written.", log_cb)
-    elif empty:
-        log("No speech recognised in this file; the output files are empty.", log_cb)
-
-
-def _skips_outputs(task: Any) -> bool:
-    """True for a run without speech: its empty .srt and .json looked like a broken run (deep
-    review, 2026-10-21), so none are written. A web/LAN job (``keep_empty_outputs``) still gets
-    them: the API answers with the empty transcript, as OpenAI's does for silence."""
-    return bool(getattr(task, "no_speech", False)) and not getattr(task, "keep_empty_outputs", False)
+    if empty:
+        # An empty SRT is a valid zero-cue transcript. Write the selected
+        # formats as usual so a missing file cannot masquerade as an export
+        # failure; the visible no-speech notice explains the empty result.
+        log("No speech recognised in this file; saving outputs without speech.", log_cb)
 
 
 def _record_transcript_stats(
@@ -895,6 +889,13 @@ def _record_transcript_stats(
 
         task.word_count = count_words_in_segments(segments_data)
         task.audio_duration = audio_duration_from_segments(segments_data)
+        if getattr(task, "no_speech", False):
+            # Segment ends cannot measure silence. The finished speed meter
+            # already knows the processed span (including a selected clip),
+            # without another probe or any change to the stats contract.
+            covered = float(getattr(task, "speed_audio_s", 0.0) or 0.0)
+            if math.isfinite(covered) and covered > 0.0:
+                task.audio_duration = covered
     except Exception:  # noqa: BLE001 — stats must never fail a transcription
         pass
 
@@ -3231,7 +3232,7 @@ def transcribe(
 
         _note_no_speech(task, segments_data, log_cb)
         _clue_phase(task, "worker.output")
-        written = [] if _skips_outputs(task) else _write_outputs(
+        written = _write_outputs(
             base,
             segments_data,
             task.file_path,
@@ -3488,7 +3489,7 @@ def _transcribe_via_alt_backend(
 
     _note_no_speech(task, segments_data, log_cb)
     _clue_phase(task, "worker.output")
-    written = [] if _skips_outputs(task) else _write_outputs(
+    written = _write_outputs(
         base,
         segments_data,
         task.file_path,
@@ -3718,7 +3719,7 @@ def _write_resumed_outputs(
     _clue_phase(task, "worker.output")
     base = _task_output_base(task)
     _note_no_speech(task, segments, log_cb)
-    written = [] if _skips_outputs(task) else _write_outputs(
+    written = _write_outputs(
         base,
         segments,
         task.file_path,
