@@ -941,3 +941,28 @@ def test_round2_failed_connect_moves_to_next_host_without_retry(tmp_path, monkey
         assert addresses.count(address) == 2
         assert len(patient.gets) == len(rejected.gets) == 1
     assert (tmp_path / "model.bin").read_bytes() == PAYLOAD
+
+
+def test_weights_are_installed_last_so_a_cut_download_never_looks_installed(tmp_path, monkeypatch):
+    # The weights are the smallest file here, so size alone would install them first.
+    bodies = {"model.bin": b"w", "config.json": b"cc", "vocabulary.json": b"vvv"}
+    pinned = md.parse_entry({
+        "commit": COMMIT,
+        "files": {n: {"size": len(b), "sha256": hashlib.sha256(b).hexdigest()} for n, b in bodies.items()},
+    })
+    installed = []
+
+    def transfer(_self, _url, part, _info, _cancel):
+        name = part.name[:-len(".part")]
+        if name == "model.bin":
+            raise md._HostUnavailable("cut")
+        part.write_bytes(bodies[name])
+        installed.append(name)
+        return None
+
+    monkeypatch.setattr(md.ModelDownloader, "_probe", lambda *_a: True)
+    monkeypatch.setattr(md.ModelDownloader, "_transfer", transfer)
+    with pytest.raises(mm.HuggingFaceDownloadError):
+        md.ModelDownloader(hosts=["https://example.test"]).download(REPO, tmp_path, pinned)
+    assert installed == ["config.json", "vocabulary.json"]
+    assert not (tmp_path / "model.bin").exists()

@@ -157,6 +157,7 @@
         "core.loop_guard",
         "core.media_types",
         "core.mel_blocks",
+        "core.model_download",
         "core.model_manager",
         "core.offline",
         "core.optional_deps",

@@ -447,6 +447,9 @@ class ModelDownloader:
             return True
         mm._require_free_space(folder, needed, "the model download")
         hosts = list(dict.fromkeys([*self.hosts, *entry.hosts]))
+        # The weights go last: a folder holding model.bin counts as installed,
+        # so a cut-off download must not leave it there without its small files.
+        missing.sort(key=lambda item: (item[0] == "model.bin", item[1].size))
         for name, info in missing:
             _check_cancel(cancel)
             final = folder / name
