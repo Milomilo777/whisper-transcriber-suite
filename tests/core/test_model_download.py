@@ -882,8 +882,14 @@ def test_round2_reset_at_final_byte(tmp_path, cut):
     with Server(actions=[{"cut": cut, "reset": True}]) as server:
         client = md.ModelDownloader(hosts=[server.url], retry_delays=(0,) * 6)
         assert client.download(REPO, tmp_path, entry())
-        assert [value for _, value in server.gets] == (
-            [None, f"bytes={cut}-"] if cut < len(PAYLOAD) else [None])
+        values = [value for _, value in server.gets]
+        # A TCP reset may discard bytes the client received but has not read yet
+        # (seen under load on Windows), so the exact offset is not guaranteed here.
+        # Exact resume offsets are asserted with a clean close elsewhere in this file.
+        assert values[0] is None and len(values) <= 2
+        assert len(values) == 2 or cut == len(PAYLOAD)
+        if len(values) == 2 and values[1] is not None:
+            assert 0 < int(values[1].removeprefix("bytes=").removesuffix("-")) <= cut
     assert (tmp_path / "model.bin").read_bytes() == PAYLOAD
 
 
