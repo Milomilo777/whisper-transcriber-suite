@@ -68,7 +68,8 @@ def test_registry_v2_and_generated_modules():
             modules.add(".".join(parts))
     assert registry["fields"]["top_frame"]["modules"] == sorted(modules)
     raw = (ROOT / "core/telemetry_registry.json").read_bytes()
-    assert b"\r\n" in raw and b"\n" not in raw.replace(b"\r\n", b"")
+    # The line ending depends on the checkout; a file must not mix them.
+    assert b"\r\n" not in raw or b"\n" not in raw.replace(b"\r\n", b"")
 
 
 def test_structural_frames_and_line_independent_fingerprint():

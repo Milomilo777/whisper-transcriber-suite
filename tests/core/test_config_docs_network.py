@@ -72,12 +72,15 @@ def _sent_table_fields(section: str) -> set[str]:
     return fields
 
 
-def test_no_documented_field_is_missing_from_the_payload(config_md: str) -> None:
+def test_no_documented_field_is_missing_from_the_payload(
+        config_md: str, monkeypatch: pytest.MonkeyPatch) -> None:
     # The reverse direction: the docs must not claim a field the app no
     # longer sends (file_name was dropped from the payload).
     section = _section(config_md, "### Usage statistics (P4-4)")
     documented = _sent_table_fields(section)
     assert "model" in documented and "cpu_count" in documented  # parser control
+    # Linux and macOS version strings hold a ":" that the field pattern rejects.
+    monkeypatch.setattr(stats.platform, "version", lambda: "10.0.19045")
     payload = stats.build_stats_payload(
         model="m", language="en", audio_duration=1.0,
         transcription_time=1.0, status="finished", word_count=1,
