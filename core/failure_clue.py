@@ -523,12 +523,10 @@ def parent_clue(site: str, *, device: str = "unknown", exit_code: Any = 0,
 
 def stderr_clue(lines: list[str]) -> dict[str, str]:
     """Classify a bounded local tail; only closed results enter the worker event."""
-    tail = [line[:2048].strip() for line in lines[-12:]]
+    tail = [line.strip() for line in lines[-12:] if len(line) <= 2048]
     result: dict[str, Any] = {"failure_site": "parent.worker_exit"}
     frames: list[str] = []
-    library = any(re.search(r'[/\\](?:faster_whisper|ctranslate2|numpy)[/\\][A-Za-z_]+\.py"', s)
-                  for s in tail)
-    tokenizer = any(re.search(r'[/\\]tokenizers[/\\][A-Za-z_]+\.py"|[/\\]faster_whisper[/\\]tokenizer\.py"', s) for s in tail)
+    library = tokenizer = native_alloc = False
     families = {cls.__name__: cls for cls in (
         MemoryError, RuntimeError, PermissionError, FileNotFoundError, TimeoutError, OSError,
         UnicodeError, ValueError, TypeError, KeyError, IndexError, AssertionError,
@@ -536,8 +534,14 @@ def stderr_clue(lines: list[str]) -> dict[str, str]:
     families.update(UnicodeEncodeError=UnicodeError, UnicodeDecodeError=UnicodeError)
     families["ConnectionResetError"] = ConnectionResetError
     for line in tail:
+        if line == "Traceback (most recent call last):":
+            library = tokenizer = native_alloc = False
+            frames.clear()
         match = re.fullmatch(r'File "([^"\r\n]+)", line ([0-9]{1,6}), in ([A-Za-z_][A-Za-z0-9_.<>]{0,40})', line)
         if match:
+            path = match[1].replace("\\", "/")
+            library |= bool(re.search(r'/(?:faster_whisper|ctranslate2|numpy)/(?:[A-Za-z0-9_]+/)*[A-Za-z0-9_]+\.py$', path))
+            tokenizer |= bool(re.search(r'/tokenizers/(?:[A-Za-z0-9_]+/)*[A-Za-z0-9_]+\.py$|/faster_whisper/tokenizer\.py$', path))
             module = _module_for_file(match[1])
             if module:
                 frame = f"{module}:{match[3]}:{match[2]}"
@@ -556,13 +560,16 @@ def stderr_clue(lines: list[str]) -> dict[str, str]:
                 result["observed_code"] = "tokenizer_error"
             if name == "ConnectionResetError":
                 result["observed_code"] = "network_reset"
+            library = tokenizer = native_alloc = False
         if line == "Invalid data found when processing input":
             result["observed_code"] = "corrupt_media"
         if re.fullmatch(r"(?:Decoder|Encoder) \([A-Za-z0-9_]+\) not found", line):
             result["observed_code"] = "codec_unsupported"
-    if ("terminate called after throwing an instance of 'std::bad_alloc'" in tail
-            and "what():  std::bad_alloc" in tail):
-        result.update(exception_family="RuntimeError", observed_code="ct2_bad_alloc")
+        if line == "terminate called after throwing an instance of 'std::bad_alloc'":
+            native_alloc = True
+        elif line == "what():  std::bad_alloc" and native_alloc:
+            result.update(exception_family="RuntimeError", observed_code="ct2_bad_alloc")
+            native_alloc = False
     if frames:
         result["top_frame"] = frames[-1]
         module, function, _ = frames[-1].split(":")

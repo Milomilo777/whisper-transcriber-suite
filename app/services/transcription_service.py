@@ -102,6 +102,7 @@ HUNG_WORKER_NOTE = "Stopped because the transcription stopped responding; try th
 
 # Longest worker message kept as a failure reason (a traceback tail can be long).
 _REASON_MAX_CHARS = 300
+_WORKER_LINE_MAX_CHARS = 1 << 20
 
 
 def _short_message(message: object) -> str:
@@ -944,7 +945,7 @@ class TranscriptionService:
         def _queue_worker_line(line: str) -> None:
             nonlocal exit_clue
             try:
-                parsed = json.loads(line)
+                parsed = json.loads(line) if len(line) <= _WORKER_LINE_MAX_CHARS else None
             except (ValueError, RecursionError):
                 parsed = None
             if not isinstance(parsed, dict):
@@ -952,9 +953,10 @@ class TranscriptionService:
                 # tail; only its closed classification enters an exit event.
                 from core.failure_clue import stderr_clue
 
-                stderr_tail.append(line[:2048])
+                # One extra character marks a truncated line for the classifier.
+                stderr_tail.append(line[:2049])
                 exit_clue = stderr_clue(list(stderr_tail))
-            elif parsed.get("event") == "started":
+            elif parsed.get("event") in {"started", "done", "error", "live_result", "live_error"}:
                 stderr_tail.clear()
                 exit_clue = {}
             if worker.get("token") == spawn_token:
@@ -962,7 +964,7 @@ class TranscriptionService:
             # Valid JSON that is not an object (a stray print of a number or
             # a list) is a log line too.
             event: dict[str, Any] = (
-                parsed if isinstance(parsed, dict) else {"event": "log", "message": line}
+                parsed if isinstance(parsed, dict) else {"event": "log", "message": line[:_WORKER_LINE_MAX_CHARS]}
             )
             event["_pid"] = process.pid
             event["_worker_id"] = worker["id"]

@@ -319,13 +319,14 @@ def test_collapsed_window_retry_keeps_completed_checkpoint(decode, monkeypatch):
 RESCUE_COLLAPSED = tr._rescue_collapsed
 
 
-def test_backend_reload_keeps_session_cpu_fallback(monkeypatch, tmp_path):
+def test_backend_unload_allows_requested_device_after_cpu_fallback(monkeypatch, tmp_path):
     from core import hardware
     from core.backends import faster_whisper_be as fw
 
     backend = fw.FasterWhisperBackend()
     backend._device, backend._compute_type = "cpu", "int8"
     backend._requested_device, backend._downgraded = "cuda", True
+    backend._decode_batch_size = 1
     monkeypatch.setattr(fw, "load_config", lambda **k: {"model_path": str(tmp_path)})
     monkeypatch.setattr(fw, "_detect_device", lambda cfg: ("cuda", "float16"))
     monkeypatch.setattr(hardware, "prepare_cuda_runtime", lambda: None)
@@ -339,8 +340,9 @@ def test_backend_reload_keeps_session_cpu_fallback(monkeypatch, tmp_path):
     monkeypatch.setattr(fw, "WhisperModel", load)
     backend.unload()
     assert backend.load_existing()
-    assert calls == [("cpu", "int8")]
-    assert backend.requested_device == "cuda" and backend.downgraded
+    assert calls == [("cuda", "float16")]
+    assert backend.requested_device == "cuda" and not backend.downgraded
+    assert backend._decode_batch_size == 0
 
 
 @pytest.mark.parametrize("exc", [SystemExit(1), KeyboardInterrupt()])

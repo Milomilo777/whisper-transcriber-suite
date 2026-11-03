@@ -12,6 +12,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- CUDA recovery preserves normal live transcription, clipped retry timestamps and resume cursors, and resets reduced memory limits when models change or unload. Worker failures report saved outputs once, retain task identity when reporting fails, and clear stderr clues after each job.
 - CUDA decoding retries with a smaller batch, quantized weights or shorter audio pieces before falling back to CPU. Captured segments and resume positions are preserved, and later jobs in the session reuse the reduced memory footprint.
 - Language detection and its verification decodes recover from CUDA runtime failures on CPU, preserving the selected language or automatic detection instead of failing the file.
 - Worker errors retain their class and processing stage when an interrupt, thread failure or error-reporting failure occurs. Unexpected exits also keep closed error codes inferred from a bounded stderr tail, without including its text.
