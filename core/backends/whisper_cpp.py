@@ -11,6 +11,7 @@ ggml-large-v3-q5_0.bin`` and is downloaded on demand via
 """
 from __future__ import annotations
 
+import gc
 import logging
 import math
 import os
@@ -157,6 +158,8 @@ class WhisperCppBackend(Backend):
     name = "whisper_cpp"
 
     def __init__(self) -> None:
+        self._cpu_only = False
+        self._model_path = ""
         self._model: Any = None
         self._ready = False
         self._error: str | None = None
@@ -204,7 +207,9 @@ class WhisperCppBackend(Backend):
         try:
             # pywhispercpp resolves named models via download itself,
             # but we pass an absolute path so we control the cache.
-            self._model = Model(str(model_path), print_progress=False)
+            self._model_path = str(model_path)
+            options = {"context_params": {"use_gpu": False}} if self._cpu_only else {}
+            self._model = Model(str(model_path), print_progress=False, **options)
         except Exception as e:  # noqa: BLE001
             self._error = f"whisper.cpp load failed: {e}"
             if status_cb:
@@ -263,7 +268,33 @@ class WhisperCppBackend(Backend):
         # runs. Wrap it in a liveness tick so the parent watchdog
         # sees a heartbeat at least every 10 s on slow CPUs.
         with liveness_tick(log_cb, "whisper.cpp transcribe"):
-            segments = self._model.transcribe(audio_path, **kwargs)
+            retry_cpu = False
+            segments: Any = []
+            try:
+                segments = self._model.transcribe(audio_path, **kwargs)
+            except RuntimeError as exc:
+                from ..hardware import classify_cuda_load_failure
+                if (self._cpu_only or "cuda" not in str(exc).lower()
+                        or classify_cuda_load_failure(str(exc)) != "out_of_memory"):
+                    raise
+                retry_cpu = True
+            # This native call returns the whole file at once: no partial
+            # segments or resume cursor exist before it returns.
+            if retry_cpu:
+                from pywhispercpp.model import Model  # type: ignore[import-not-found]
+
+                self._model = None
+                gc.collect()
+                self._cpu_only = True
+                self._model = Model(
+                    self._model_path or str(default_model_path()), print_progress=False,
+                    context_params={"use_gpu": False},
+                )
+                if log_cb:
+                    log_cb("CUDA ran out of memory; retrying whisper.cpp on CPU.")
+                else:
+                    logger.warning("CUDA ran out of memory; retrying whisper.cpp on CPU.")
+                segments = self._model.transcribe(audio_path, **kwargs)
 
         segments_data: list[dict[str, Any]] = []
         n = len(segments) if hasattr(segments, "__len__") else 0

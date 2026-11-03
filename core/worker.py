@@ -196,6 +196,7 @@ _parent_lost = threading.Event()
 _parent_lost_timer: "threading.Timer | None" = None
 _session_active = False
 _parent: "tuple[int, float] | None" = None
+_heartbeat_stop: threading.Event | None = None
 
 
 def _hard_exit(code: int) -> None:
@@ -340,6 +341,8 @@ def _end_session() -> None:
         _parent_lost.clear()
     if timer is not None:
         timer.cancel()
+    if _heartbeat_stop is not None:
+        _heartbeat_stop.set()
 
 
 # How long an id-bearing control may wait for its transcribe command to be
@@ -790,7 +793,10 @@ _OUT_OF_MEMORY_MARKERS = ("bad_alloc", "bad allocation", "unable to allocate",
 
 def _job_error_message(exc: BaseException) -> str:
     """The error text sent to the app; an out-of-memory failure says so plainly."""
-    text = str(exc) or type(exc).__name__
+    try:
+        text = str(exc) or type(exc).__name__
+    except BaseException:  # even formatting an allocation failure can fail
+        return type(exc).__name__
     lowered = text.lower()
     # Markers only on the engines' RuntimeError (CTranslate2; torch's CUDA OOM
     # subclasses it): an OSError or ValueError text can hold a file name such
@@ -801,6 +807,80 @@ def _job_error_message(exc: BaseException) -> str:
     return text
 
 
+def _report_error(
+    exc: BaseException, task: TranscriptionTask | None = None, *,
+    file_path: str = "", task_id: str = "", event: str = "error",
+    site: str | None = None, chunk_id: Any = None,
+) -> None:
+    """Best-effort normal report, then a small, closed report on stderr.
+
+    Error formatting, optional diagnostics and stdout are all fallible. The
+    fallback carries only registered class/site values, never exception text.
+    A dead pipe or an exhausted allocator can still prevent both writes.
+    """
+    from .failure_clue import SITE_FRAMES, exception_family, site_from_traceback
+
+    failure_site = site or site_from_traceback(exc.__traceback__, getattr(task, "_failure_site", "other"))
+    if failure_site not in {*SITE_FRAMES.values(), "other"}:
+        failure_site = "other"
+    family = exception_family(exc)
+    minimal: dict[str, Any] = {"failure_site": failure_site, "exception_family": family}
+    try:
+        from .failure_clue import worker_clue
+
+        try:
+            value = getattr(task, "_failure_device", None)
+            if value is None:
+                value = get_effective_device().device
+        except BaseException:
+            value = "unknown"
+        clue: dict[str, Any] = worker_clue(exc, task, site=site, device=value)
+    except BaseException:
+        clue = dict(minimal)
+    try:
+        from .diagnostic import build
+
+        clue["diag"] = build(exc)
+    except BaseException:
+        cls = type(exc).__name__ if type(exc) in (SystemExit, KeyboardInterrupt) else family
+        clue["diag"] = {"cls": cls}
+    try:
+        payload: dict[str, Any] = {"message": _job_error_message(exc), **clue}
+        if event == "live_error":
+            payload["id"] = chunk_id
+        if file_path:
+            payload.update(file_path=file_path, task_id=task_id)
+        written = getattr(task, "output_paths", None)
+        if written:
+            payload["outputs"] = list(written)
+        emit(event, **payload)
+        if not _output_pipe_reported:
+            return
+    except BaseException:
+        pass
+    try:
+        cls = type(exc).__name__ if type(exc) in (SystemExit, KeyboardInterrupt) else family
+        record = {"event": event, "message": family, "diag": {"cls": cls}, **minimal}
+        if _SESSION_TOKEN:
+            record["_token"] = _SESSION_TOKEN
+        # Existing local protocol fields let the parent salvage finished files;
+        # none are included in the diagnostic or the closed failure clue.
+        try:
+            if task_id:
+                record["task_id"] = task_id
+            if event == "live_error":
+                record["id"] = chunk_id
+            written = getattr(task, "output_paths", None)
+            if written:
+                record["outputs"] = list(written)
+        except BaseException:
+            pass
+        with _emit_lock:
+            print(json.dumps(record), file=sys.stderr, flush=True)
+    except BaseException:
+        pass
+
+
 def _install_log_filters() -> None:
     target = logging.getLogger("faster_whisper")
     if not any(isinstance(f, _OnceFilter) for f in target.filters):
@@ -808,19 +888,34 @@ def _install_log_filters() -> None:
 
 
 def main() -> int:
-    _utf8_stdio()
-    _install_log_filters()
-    # Work offline backstop for this process (Hugging Face / PyTorch Hub
-    # downloads started by third-party code); inert while the switch is off.
-    from core import offline
-    offline.install_network_guard()
-    _begin_session()
+    previous_hook = threading.excepthook
+
+    def thread_failed(args: Any) -> None:
+        task = _current_task
+        if task is not None:
+            task.cancelled = True
+        _report_error(
+            args.exc_value, task, file_path=getattr(task, "file_path", ""),
+            task_id=getattr(task, "task_id", ""),
+        )
+
+    threading.excepthook = thread_failed
     try:
-        return _main()
+        _utf8_stdio()
+        _install_log_filters()
+        # Third-party downloads obey the existing offline switch.
+        from core import offline
+        offline.install_network_guard()
+        _begin_session()
+        try:
+            return _main()
+        finally:
+            _end_session()
+    except BaseException as exc:
+        _report_error(exc, _current_task)
+        return 1
     finally:
-        # A normal return ends the process; the backstop is only for a
-        # task that never returns. (Tests call main() many times.)
-        _end_session()
+        threading.excepthook = previous_hook
 
 
 def _main() -> int:
@@ -894,7 +989,8 @@ def _main() -> int:
     # printing stray "heartbeat" lines into whichever later test happens to
     # have capsys capturing stdout at the 5 s mark — a real, previously
     # unfixed source of CI flakiness.
-    heartbeat_stop = threading.Event()
+    global _heartbeat_stop
+    heartbeat_stop = _heartbeat_stop = threading.Event()
 
     def _heartbeat() -> None:
         pipe_reported = False
@@ -927,26 +1023,19 @@ def _main() -> int:
         logger.exception("Live model override failed; loading the main model")
     try:
         model_loaded = load_existing_model(log_cb)
-    except Exception as e:  # noqa: BLE001
+    except BaseException as e:  # model libraries can raise SystemExit too
         # A raise here (e.g. a bad model-path type slipping past the
         # config coercion, or a status_cb/emit failure) must still be
         # reported through the frozen protocol. The parent can only
         # release its loading modal / surface the real reason on
         # startup_error; a bare crash arrives as worker_exit and reads
         # as "model load was cancelled" with no explanation.
-        logger.exception("load_existing_model raised; emitting startup_error")
-        clue: dict[str, str] = {}
-        try:
-            from core.failure_clue import worker_clue
-            clue = worker_clue(e, site="worker.model")
-        except Exception:  # noqa: BLE001
-            logger.debug("Startup failure clue unavailable", exc_info=True)
-        emit("startup_error", message=f"Model load failed ({type(e).__name__}): {e}", **clue)
+        _report_error(e, event="startup_error", site="worker.model")
         heartbeat_stop.set()
         return 1
     if not model_loaded:
         detail = get_model_error() or "Existing model failed to load in worker"
-        clue = {}
+        clue: dict[str, Any] = {}
         try:
             from core.failure_clue import sanitise_clue
             clue = sanitise_clue({"failure_site": "worker.model", **get_model_failure_clue()})
@@ -983,6 +1072,7 @@ def _main() -> int:
     # Transcribe/shutdown commands are handed to the main thread via this
     # queue; cancel/pause/resume are applied inline by the reader thread.
     cmd_queue: "queue.Queue[dict[str, Any] | None]" = queue.Queue()
+    reader_failed = threading.Event()
 
     def _stdin_reader() -> None:
         """Read stdin concurrently with transcription.
@@ -1033,19 +1123,36 @@ def _main() -> int:
                     )
                 else:
                     cmd_queue.put(command)
+        except BaseException as exc:
+            task = _current_task
+            if task is not None:
+                task.cancelled = True
+            _report_error(exc, task, file_path=getattr(task, "file_path", ""),
+                          task_id=getattr(task, "task_id", ""))
+            reader_failed.set()
         finally:
-            _on_pipe_closed("its input pipe is closed")
-            cmd_queue.put(None)
+            try:
+                _on_pipe_closed("its input pipe is closed")
+                cmd_queue.put(None)
+            except BaseException as exc:
+                if not reader_failed.is_set():
+                    _report_error(exc, _current_task)
+                    reader_failed.set()
 
     threading.Thread(target=_stdin_reader, name="worker-stdin",
                      daemon=True).start()
 
     while True:
-        command = cmd_queue.get()
+        try:
+            command = cmd_queue.get(timeout=0.2)
+        except queue.Empty:
+            if reader_failed.is_set():
+                return 1
+            continue
         if command is None:  # stdin closed — parent gone
             heartbeat_stop.set()
             _clear_parked_controls()
-            return 0
+            return 1 if reader_failed.is_set() else 0
 
         action = command.get("action")
         if action == "shutdown":
@@ -1078,11 +1185,13 @@ def _main() -> int:
                     language=result["language"],
                     language_probability=result["language_probability"],
                 )
-            except Exception as e:  # noqa: BLE001
+            except BaseException as e:  # keep a failed live chunk observable too
                 # One bad chunk must not end the session; the parent logs
                 # it and keeps feeding the next one.
-                emit("live_error", id=chunk_id, file_path=chunk_path,
-                     message=str(e))
+                _report_error(e, file_path=chunk_path, event="live_error",
+                              site="worker.segments", chunk_id=chunk_id)
+                if not isinstance(e, Exception):
+                    return 1
             continue
 
         if action != "transcribe":
@@ -1168,57 +1277,33 @@ def _main() -> int:
                 # still the current one and get swallowed by it.
                 _set_current_task(None)
             _emit_done(task, file_path, task_id)
-        except Exception as e:  # noqa: BLE001
+        except BaseException as e:
             if isinstance(e, OSError) and _parent_lost.is_set():
                 # The result could not be sent: the app is gone. The
                 # cancelled task has saved its checkpoint; just exit.
                 _clear_parked_controls()
                 return 0
-            if task is not None and getattr(task, "cancelled", False):
+            if isinstance(e, Exception) and task is not None and getattr(task, "cancelled", False):
                 # A step that raised because the user cancelled (an ffmpeg or
                 # a backend stopped mid-run) is a cancel, not a failure: end
                 # it with the normal cooperative-cancel ``done`` so the parent
                 # records "cancelled" (files already written stay listed).
-                logger.info("Cancelled task ended with %s: %s", type(e).__name__, e)
+                logger.info("Cancelled task ended with %s: %s", type(e).__name__, _job_error_message(e))
                 try:
                     _emit_done(task, file_path, task_id)
                     continue
-                except OSError:
-                    raise
+                except OSError as delivery_error:
+                    _report_error(delivery_error, task, file_path=file_path, task_id=task_id)
+                    return 1
                 except Exception:  # noqa: BLE001 - fall back to the error report below
                     logger.exception("Could not send the done event of a cancelled task")
             # Files already written stay reported (add-only field): a failure
             # after the outputs exist (a late post-processing step) must not
             # make the parent discard a finished transcript.
-            written = [
-                str(p) for p in (getattr(task, "output_paths", None) or [])
-            ]
-            message = _job_error_message(e)
-            clue = {}
-            try:
-                from core.failure_clue import worker_clue
-                try:
-                    clue_device = getattr(task, "_failure_device", None)
-                    if clue_device is None:
-                        clue_device = get_effective_device().device
-                except Exception:  # noqa: BLE001
-                    logger.debug("Worker device unavailable", exc_info=True)
-                    clue_device = "unknown"
-                clue = worker_clue(e, task, device=clue_device)
-            except Exception:  # noqa: BLE001 - do not break the error event
-                logger.debug("Worker failure clue unavailable", exc_info=True)
-            try:
-                # Add-only field: class, allow-listed frames and the message SHAPE (never the message). The
-                # parent shows it to the person and sends it only if they agree; see core.diagnostic.
-                from core.diagnostic import build as _build_diagnostic
-                clue["diag"] = _build_diagnostic(e)  # type: ignore[assignment]
-            except Exception:  # noqa: BLE001 - do not break the error event
-                logger.debug("Diagnostic record unavailable", exc_info=True)
-            if written:
-                emit("error", message=message, file_path=file_path,
-                     task_id=task_id, outputs=written, **clue)
-            else:
-                emit("error", message=message, file_path=file_path, task_id=task_id, **clue)
+            _set_current_task(None)
+            _report_error(e, task, file_path=file_path, task_id=task_id)
+            if not isinstance(e, Exception):
+                return 1
 
 
 if __name__ == "__main__":
