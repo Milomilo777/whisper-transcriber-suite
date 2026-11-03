@@ -15,7 +15,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 
-TRAILER_RULE = "Assisted-by: <model name> (<vendor>)"
+ATTRIBUTION_RULE = "Commit messages carry no AI attribution"
 NOREPLY = re.compile(r"^\d+\+[A-Za-z0-9-]+@users\.noreply\.github\.com$")
 MAINTAINER_ALIAS = "Milomilo777 <117558067+Milomilo777@users.noreply.github.com>"
 
@@ -33,10 +33,10 @@ def _mailmap_lines() -> list[str]:
     return lines
 
 
-def test_agents_md_states_the_trailer_rule() -> None:
+def test_agents_md_states_the_attribution_rule() -> None:
     agents = " ".join(_read("AGENTS.md").split())
-    assert TRAILER_RULE in agents
-    assert "No `Co-Authored-By:` line for an AI" in agents
+    assert ATTRIBUTION_RULE in agents
+    assert "no `Assisted-by:` line, no `Co-Authored-By:` line for an AI" in agents
 
 
 @pytest.mark.parametrize("rel", ["README.md", "CONTRIBUTING.md"])

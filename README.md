@@ -1185,8 +1185,8 @@ find it.
 The maintainer develops it with heavy help from AI coding assistants (mainly Claude). Type checks
 and the unit tests must pass before each commit, and CI runs them again on Windows and Linux after
 every push. The [release checklist](docs/RELEASE_PROCESS.md) includes a manual install test on a
-real machine. Commits made with AI help now name the model in an `Assisted-by:` line; many older
-ones carry a `Co-Authored-By: Claude` line instead.
+real machine. Commits no longer carry a line naming the AI model; older ones have an `Assisted-by:`
+or a `Co-Authored-By: Claude` line.
 
 ## License
 
