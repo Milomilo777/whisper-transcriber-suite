@@ -145,6 +145,7 @@ a = Analysis(
     ],
     datas=[
         ('core/telemetry_registry.json', 'core'),
+        ('core/model_manifest.json', 'core'),
         ('bin', 'bin'),
         ('assets', 'assets'),
         # Static page served by the optional LAN/web HTTP job server
@@ -334,6 +335,7 @@ a = Analysis(
         'core.logging_setup',
         'core.media_types',
         'core.model_manager',
+        'core.model_download',
         'core.offline',
         'core.subtitle_edit',
         'core.finish_hooks',

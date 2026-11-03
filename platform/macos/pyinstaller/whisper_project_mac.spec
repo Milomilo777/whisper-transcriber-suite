@@ -331,6 +331,7 @@ a = Analysis(
     ],
     datas=[
         (os.path.join(_REPO_ROOT, 'core', 'telemetry_registry.json'), 'core'),
+        (os.path.join(_REPO_ROOT, 'core', 'model_manifest.json'), 'core'),
         *bin_datas,
         (os.path.join(_REPO_ROOT, 'assets'), 'assets'),
         # The app's licence and the third-party notices travel with the app.
@@ -536,6 +537,7 @@ a = Analysis(
         'core.logging_setup',
         'core.media_types',
         'core.model_manager',
+        'core.model_download',
         'core.offline',
         'core.subtitle_edit',
         'core.finish_hooks',

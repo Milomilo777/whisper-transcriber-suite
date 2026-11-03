@@ -12,6 +12,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Pinned model downloads retain partial files for Range resume, verify every file before installation, and try fallback hosts when a host fails. Custom repositories retain the primary-host downloader; interrupted downloads and antivirus rename delays no longer discard verified work.
 - SRT and WebVTT files never contain a zero-length or inverted cue: it gets a short display time or joins a cue starting right after it, and no words are lost.
 - A GPU driver or library failure during decoding now retries the rest of the file on CPU, and a finished transcript is delivered even if a background helper fails right after it.
 - Consecutive identical subtitle cues of at most 300 ms are collapsed or removed when a neighbouring cue already contains the same text, including rescue and resumed output. Normal-duration repeated speech keeps its original text and timing.
