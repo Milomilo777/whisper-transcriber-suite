@@ -1052,25 +1052,25 @@ def _offline_download_text(model: dict[str, Any]) -> str:
 def _hf_download_unfinished(model_path: Path, hf_repo: str | None = None) -> bool:
     """True when a Hugging Face download into ``model_path`` was cut off.
 
-    Pinned downloads check for missing filenames without reading their contents.
-    Both paths count ``.part`` files and legacy cache remnants as unfinished.
+    Pinned downloads inspect only this entry's files and partial names.
+    The legacy path also counts cache remnants as unfinished.
     huggingface_hub writes each file as ``<hash>.<etag>.incomplete`` under
     ``.cache/huggingface/download`` and renames it into place when it is
     complete, so a leftover ``.incomplete`` means a file of the model
     (``model.bin`` or a tokenizer / vocabulary file) is still missing.
     """
-    download_dir = model_path / ".cache" / "huggingface" / "download"
-    try:
-        if any(model_path.glob("*.part")) or any(download_dir.rglob("*.incomplete")):
-            return True
-    except OSError:
-        pass
     if hf_repo:
         from core import model_download
 
         entry = model_download.load_manifest().get(_resolve_hf_repo(hf_repo) or "")
         if entry is not None:
             return not model_download.model_complete(model_path, entry)
+    download_dir = model_path / ".cache" / "huggingface" / "download"
+    try:
+        if any(model_path.glob("*.part")) or any(download_dir.rglob("*.incomplete")):
+            return True
+    except OSError:
+        pass
     return False
 
 
