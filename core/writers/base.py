@@ -273,3 +273,92 @@ def is_rtl_text(text: str) -> bool:
             ltr += 1
             first = first or "L"
     return rtl > ltr or (rtl == ltr and first == "R")
+
+
+def _cue_identity(seg: object) -> tuple[str, str]:
+    """What makes two segments the *same text* for rule 3.
+
+    The raw speaker and the normalised source text, not the rendered
+    payload: SRT rewrites a literal ``-->`` to an arrow, so two different
+    source texts can render identically. Comparing payloads would drop
+    one of them.
+    """
+    if not isinstance(seg, dict):
+        return ("", "")
+    return (speaker_prefix(seg), normalize_text(seg.get("text", "")))
+
+
+def prepare_cues(
+    segments: list[dict],
+    render_text,
+) -> list[tuple[int, int, str]]:
+    """Return subtitle cues with valid, non-zero written durations.
+
+    ``render_text`` builds a cue's final payload from one segment (the
+    writers pass their format-specific text escaping). Empty payloads are
+    skipped exactly as before. Times are measured in whole milliseconds,
+    the precision the SRT/VTT formatters write, so a positive sub-ms
+    difference cannot collapse into a zero-length cue.
+
+    A cue whose end is not after its start is given 1000 ms (clipped to
+    the next cue's start when that still leaves at least 100 ms). When
+    the next cue begins less than 100 ms later, or at the same time, the
+    texts are merged in input order and use the earlier start. Exact
+    duplicate text is written once; differing text is joined by a space.
+    Duplicates are compared by source text and speaker (see
+    :func:`_cue_identity`), not by rendered payload, and a merge chain
+    keeps deduplicating against everything already merged. Valid cues are
+    untouched.
+
+    Non-dict entries carry no text and are skipped: one hand-edited
+    ``null`` in the list must not abort the whole file (the other
+    writers already skip them).
+    """
+    cues: list[list] = []
+    for seg in segments:
+        if not isinstance(seg, dict):
+            continue
+        text = render_text(seg)
+        if not text:
+            continue
+        start = coerce_seconds(seg.get("start"))
+        end = max(coerce_seconds(seg.get("end"), start), start)
+        cues.append([
+            max(0, int(round(start * 1000))),
+            max(0, int(round(end * 1000))),
+            [(_cue_identity(seg), text)],
+        ])
+
+    written: list[list] = []
+    i = 0
+    while i < len(cues):
+        start_ms, end_ms, parts = cues[i]
+        i += 1
+        if end_ms > start_ms:
+            written.append([start_ms, end_ms, parts])
+            continue
+        # A bad cue takes in whatever starts under 100 ms after it. It stays bad
+        # until it takes in a valid cue, whose end it then keeps.
+        merged = list(parts)
+        seen = {key for key, _text in merged}
+        while i < len(cues) and cues[i][0] - start_ms < 100:
+            next_start, next_end, next_parts = cues[i]
+            i += 1
+            for key, text in next_parts:
+                if key not in seen:
+                    seen.add(key)
+                    merged.append((key, text))
+            start_ms = min(start_ms, next_start)
+            if next_end > next_start:
+                end_ms = next_end
+                break
+        if end_ms <= start_ms:
+            end_ms = start_ms + 1000
+            if i < len(cues):
+                end_ms = min(end_ms, cues[i][0])
+        written.append([start_ms, end_ms, merged])
+
+    return [
+        (start, end, " ".join(text for _key, text in parts))
+        for start, end, parts in written
+    ]

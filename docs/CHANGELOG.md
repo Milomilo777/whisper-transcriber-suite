@@ -12,6 +12,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- SRT and WebVTT files never contain a zero-length or inverted cue: it gets a short display time or joins a cue starting right after it, and no words are lost.
 - A GPU driver or library failure during decoding now retries the rest of the file on CPU, and a finished transcript is delivered even if a background helper fails right after it.
 - Consecutive identical subtitle cues of at most 300 ms are collapsed or removed when a neighbouring cue already contains the same text, including rescue and resumed output. Normal-duration repeated speech keeps its original text and timing.
 - Windows CUDA transcription and live workers select the caching allocator before importing CTranslate2 to avoid driver-dependent model-unload crashes. An explicit allocator environment setting still takes precedence.
