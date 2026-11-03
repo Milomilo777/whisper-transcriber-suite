@@ -13,6 +13,7 @@ import subprocess
 import sys
 import threading
 import unicodedata
+from collections import deque
 from queue import Empty
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -46,6 +47,10 @@ def _remember_failure_clue(
         if site and site.startswith("parent."):
             clue = parent_clue(site, device=worker.get("device", "unknown"),
                                exit_code=exit_code, pid=pid)
+            if event:
+                observed = sanitise_clue(event)
+                for key in ("exception_family", "observed_code", "os_error"):
+                    clue[key] = observed[key]
         else:
             data = dict(event or {})
             if site:
@@ -858,6 +863,7 @@ class TranscriptionService:
             worker.pop("exit_synthesized", None)
 
         worker.pop("stale", None)
+        worker.pop("stderr_clue", None)
         # What this process is about to load, for labels: the config can change
         # while the worker lives on.
         worker.update(self._engine_snapshot())
@@ -912,6 +918,8 @@ class TranscriptionService:
         # its task). The token is a spawn-time constant, so snapshot it
         # like the process object itself.
         spawn_token = worker["token"]
+        stderr_tail: deque[str] = deque(maxlen=12)
+        exit_clue: dict[str, str] = {}
 
         def reader() -> None:
             # worker_exit is queued in ``finally``: it is what finishes a
@@ -932,14 +940,27 @@ class TranscriptionService:
                 app.worker_events.put(
                     {"event": "worker_exit", "return_code": return_code,
                      "_pid": process.pid, "_worker_id": worker["id"],
-                     "_token": spawn_token}
+                     "_token": spawn_token, **exit_clue}
                 )
 
         def _queue_worker_line(line: str) -> None:
+            nonlocal exit_clue
             try:
                 parsed = json.loads(line)
             except (ValueError, RecursionError):
                 parsed = None
+            if not isinstance(parsed, dict):
+                # stderr is already merged into stdout. Keep a small local
+                # tail; only its closed classification enters an exit event.
+                from core.failure_clue import stderr_clue
+
+                stderr_tail.append(line[:2048])
+                exit_clue = stderr_clue(list(stderr_tail))
+            elif parsed.get("event") == "started":
+                stderr_tail.clear()
+                exit_clue = {}
+            if worker.get("token") == spawn_token:
+                worker["stderr_clue"] = exit_clue
             # Valid JSON that is not an object (a stray print of a number or
             # a list) is a log line too.
             event: dict[str, Any] = (
@@ -1883,6 +1904,9 @@ class TranscriptionService:
                         else:
                             failed = worker["task"]
                             message = event.get("message", "Worker error")
+                            if (event.get("failure_site") == "worker.prepare"
+                                    and event.get("observed_code") == "file_not_found"):
+                                message = _("File not found: check the path, or click Browse files...")
                             if _user_cancelled(failed):
                                 # The user's Cancel wins over a failure that follows
                                 # it (a backend raising while it stops): the task
@@ -1980,7 +2004,7 @@ class TranscriptionService:
                                 code = event.get("return_code")
                                 worker["task"].status = "error"
                                 _remember_failure_clue(worker["task"], worker,
-                                                       site="parent.worker_exit", exit_code=code)
+                                                       event=event, site="parent.worker_exit", exit_code=code)
                                 worker["task"].error_reason = _(
                                     "The transcription stopped unexpectedly (exit code {code}); "
                                     "try the file again.", code=code,
@@ -2051,6 +2075,7 @@ class TranscriptionService:
             )
             self.app.worker_events.put({
                 "event": "worker_exit", "return_code": process.poll(),
+                **w.get("stderr_clue", {}),
                 "_pid": getattr(process, "pid", None), "_worker_id": w.get("id"),
                 "_token": w.get("token"),
             })

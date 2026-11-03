@@ -203,14 +203,20 @@ def worker_clue(exc: BaseException, task: Any = None, *, site: str | None = None
     # Only follow explicit causes, and stop cycles; implicit context can be an
     # unrelated failure handled before this one.
     origin = exc
-    if failure_site == "worker.model":
+    if failure_site in ("worker.model", "worker.prepare"):
         seen = {id(origin)}
         while origin.__cause__ is not None and id(origin.__cause__) not in seen and len(seen) < 16:
             origin = origin.__cause__
             seen.add(id(origin))
+    code = observed_code(origin)
+    if failure_site == "worker.prepare":
+        wrapper_code = observed_code(exc)
+        if wrapper_code != "none":
+            code = wrapper_code
     return sanitise_clue({
         "failure_site": failure_site,
-        "exception_family": exception_family(origin), "observed_code": observed_code(origin),
+        "exception_family": exception_family(origin),
+        "observed_code": code,
         "os_error": os_error(origin), "device": device, "peak_mem_mb": peak_memory_mb(),
     })
 
@@ -220,3 +226,38 @@ def parent_clue(site: str, *, device: str = "unknown", exit_code: Any = 0,
     return sanitise_clue({"failure_site": site, "device": device,
                           "exit_code": normalise_exit_code(exit_code),
                           "peak_mem_mb": peak_memory_mb(pid) if pid is not None else 0})
+
+
+def stderr_clue(lines: list[str]) -> dict[str, str]:
+    """Reduce a bounded stderr tail to registered codes, never retaining text.
+
+    Python exception headers supply only a known family. Library allocation
+    patterns still need a library frame; C++ termination has its own exact
+    message shape because native failures have no Python traceback.
+    """
+    tail = [line[:2048].strip() for line in lines[-12:]]
+    result: dict[str, Any] = {}
+    library = any(re.search(r'[/\\](?:faster_whisper|ctranslate2|numpy)[/\\][A-Za-z_]+\.py"', s)
+                  for s in tail)
+    families = {cls.__name__: cls for cls in (
+        MemoryError, RuntimeError, PermissionError, FileNotFoundError, TimeoutError,
+        OSError, UnicodeError, ValueError,
+        TypeError, KeyError, IndexError, AssertionError,
+    )}
+    families.update(UnicodeEncodeError=UnicodeError, UnicodeDecodeError=UnicodeError)
+    for line in tail:
+        name, separator, message = line.partition(": ")
+        cls = families.get(name if separator else line)
+        if cls is None:
+            continue
+        error = cls()
+        result = {"exception_family": exception_family(error), "observed_code": observed_code(error)}
+        if library and isinstance(error, (RuntimeError, MemoryError)):
+            for code, pattern in _PATTERNS:
+                if pattern.fullmatch(message):
+                    result["observed_code"] = code
+                    break
+    if ("terminate called after throwing an instance of 'std::bad_alloc'" in tail
+            and "what():  std::bad_alloc" in tail):
+        result = {"exception_family": "RuntimeError", "observed_code": "ct2_bad_alloc"}
+    return sanitise_clue(result)

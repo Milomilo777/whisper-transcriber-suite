@@ -11,6 +11,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- CUDA decoding retries with a smaller batch, quantized weights or shorter audio pieces before falling back to CPU. Captured segments and resume positions are preserved, and later jobs in the session reuse the reduced memory footprint.
+- Language detection and its verification decodes recover from CUDA runtime failures on CPU, preserving the selected language or automatic detection instead of failing the file.
+- Worker errors retain their class and processing stage when an interrupt, thread failure or error-reporting failure occurs. Unexpected exits also keep closed error codes inferred from a bounded stderr tail, without including its text.
+- Media-probe failures and invalid project options retain their underlying exception class during preparation, distinguishing a failed probe process from an invalid value while keeping existing error messages.
+- Input files that disappear before preparation produce the existing translated file-not-found notice, instead of exposing an OS error or a failed-probe detail.
 - Diarized jobs reserve 0–85% for transcription and 85–99% for speaker detection, with monotonic updates and heartbeats throughout the native worker phase. Completion reaches 100% after outputs are saved.
 - Automatic speaker detection repeatedly merges clusters below the greater of 10 seconds or 3% of speech into the nearest speaker, using time adjacency when embeddings are unavailable. Explicit speaker counts are preserved.
 - Speaker detection releases completed Whisper runners and weights before starting its worker, decodes audio through a temporary file to avoid full pipe-buffer copies, and limits native worker threads. The next transcription reloads Whisper on demand.

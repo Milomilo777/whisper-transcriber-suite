@@ -81,6 +81,13 @@ _TRANSCRIBER_GLOBALS = (
     "_MODEL_FAILURE_CLUE",
     "_ALT_BACKEND",
     "_ALT_BACKEND_NAME",
+    "device",
+    "compute_type",
+    "_DEVICE_DOWNGRADED",
+    "_REQUESTED_DEVICE",
+    "_EFFECTIVE_DEVICE",
+    "_EFFECTIVE_COMPUTE_TYPE",
+    "_CUDA_BATCH_SIZE",
 )
 
 

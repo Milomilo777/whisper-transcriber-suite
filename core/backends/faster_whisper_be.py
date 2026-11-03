@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import gc
 import logging
+import os
 import threading
 import time
 from pathlib import Path
@@ -28,6 +29,112 @@ from ..model_manager import DownloadCancelled, ensure_model
 from .base import Backend, LanguageInfo
 
 logger = logging.getLogger(__name__)
+
+
+def _cuda_oom(exc: RuntimeError) -> bool:
+    from ..hardware import classify_cuda_load_failure
+
+    return classify_cuda_load_failure(str(exc)) == "out_of_memory"
+
+
+class WhisperDecode:
+    """Retry a CUDA decode from its last yielded timestamp, including lazy errors.
+
+    Getters retain no old model: close failed generators and leave their exception
+    handlers before replacing weights, so a retry does not hold two GPU models.
+    Shared by the desktop, live chunks, language models and the backend adapter.
+    """
+
+    def __init__(
+        self,
+        runner: Callable[[dict[str, Any]], Any],
+        is_cuda: Callable[[], bool],
+        recover: Callable[[dict[str, Any], bool], None],
+        window_s: float,
+        *, language_check: bool = False,
+    ) -> None:
+        self._runner = runner
+        self._is_cuda = is_cuda
+        self._recover = recover
+        self._window_s = window_s
+        self._language_check = language_check
+        self.before_retry: Callable[[], None] = lambda: None
+
+    def detect_language(self, **kwargs: Any) -> Any:
+        while True:
+            try:
+                return self._runner({}).detect_language(**kwargs)
+            except RuntimeError:
+                if not self._is_cuda():
+                    raise
+            self._recover({}, False)
+
+    def transcribe(self, audio: Any, **kwargs: Any) -> tuple[Any, Any]:
+        options = dict(kwargs)
+
+        def start(source: Any) -> tuple[Any, Any]:
+            while True:
+                try:
+                    with vad_window.windowed_vad(self._window_s):
+                        return self._runner(options).transcribe(source, **options)
+                except RuntimeError as exc:
+                    if not self._is_cuda():
+                        raise
+                    oom = _cuda_oom(exc)
+                self.before_retry()
+                self._recover(options, oom)
+
+        first, info = start(audio)
+
+        def iterate():
+            # Import lazily: the legacy transcriber also uses this adapter.
+            from ..transcriber import (
+                _checkpoint, _close_iterator_quietly, _shift_segments, _slice_audio_from,
+            )
+
+            iterator = first
+            cursor = offset = 0.0
+            temporary: list[str] = []
+            try:
+                while True:
+                    try:
+                        for seg in _shift_segments(iterator, offset) if offset else iterator:
+                            cursor = max(cursor, float(getattr(seg, "end", 0.0) or 0.0))
+                            yield seg
+                        return
+                    except RuntimeError as exc:
+                        oom = _cuda_oom(exc)
+                        if not self._is_cuda() or (not oom and not self._language_check):
+                            raise
+                    finally:
+                        _close_iterator_quietly(iterator)
+                    iterator = None
+                    self.before_retry()
+                    self._recover(options, oom)
+                    # Pin the detected language for the remaining audio, unless
+                    # mixed-language decoding deliberately detects each stretch.
+                    if not options.get("language") and not options.get("multilingual"):
+                        language = str(getattr(info, "language", "") or "")
+                        if language:
+                            options["language"] = language
+                    source = audio
+                    if cursor > 0:
+                        if isinstance(audio, (str, os.PathLike)):
+                            source = _slice_audio_from(str(audio), cursor, _checkpoint.partials_dir())
+                            temporary.append(source)
+                        else:
+                            source = audio[round(cursor * 16000):]
+                    offset = cursor
+                    iterator, _ = start(source)
+            finally:
+                _close_iterator_quietly(iterator)
+                for path in temporary:
+                    try:
+                        os.unlink(path)
+                    except OSError:
+                        pass
+
+        return iterate(), info
 
 
 def _detect_device(config: dict[str, Any]) -> tuple[str, str]:
@@ -60,6 +167,8 @@ class FasterWhisperBackend(Backend):
         # core.vad_window and core.loop_guard).
         self._vad_window_s = vad_window.DEFAULT_WINDOW_S
         self._loop_guard_repeats = loop_guard.DEFAULT_REPEATS
+        self._decode_batch_size = 0
+        self._model_path = ""
 
     def _read_safeguards(self, config: dict[str, Any]) -> None:
         self._vad_window_s = vad_window.window_seconds(config)
@@ -125,8 +234,9 @@ class FasterWhisperBackend(Backend):
         this GPU) logs the real reason, flips ``self._downgraded``, and
         retries with ("cpu", "int8") rather than crashing the worker.
         """
-        req_device = self._requested_device
+        req_device = self._device if self._downgraded else self._requested_device
         req_compute = self._compute_type
+        self._model_path = model_path
         try:
             if req_device == "cuda":
                 from ..hardware import prepare_cuda_runtime
@@ -169,9 +279,9 @@ class FasterWhisperBackend(Backend):
     def load_existing(self, status_cb: Callable[[str], None] | None = None) -> bool:
         config = load_config(fetch_online=False)  # worker path: local keys only
         self._read_safeguards(config)
-        self._device, self._compute_type = _detect_device(config)
-        self._requested_device = self._device
-        self._downgraded = False
+        if not self._downgraded:
+            self._device, self._compute_type = _detect_device(config)
+            self._requested_device = self._device
         self._ready = False
         self._error = None
         model_path = Path(config["model_path"])
@@ -203,9 +313,9 @@ class FasterWhisperBackend(Backend):
     ) -> bool:
         config = load_config(fetch_online=False)  # worker path: local keys only
         self._read_safeguards(config)
-        self._device, self._compute_type = _detect_device(config)
-        self._requested_device = self._device
-        self._downgraded = False
+        if not self._downgraded:
+            self._device, self._compute_type = _detect_device(config)
+            self._requested_device = self._device
         self._ready = False
         self._error = None
         try:
@@ -246,6 +356,44 @@ class FasterWhisperBackend(Backend):
         self._pipeline = None
         self._ready = False
 
+    def _decode_runner(self, options: dict[str, Any]) -> Any:
+        if self._pipeline is None:
+            options.pop("batch_size", None)
+            return self._model
+        if self._decode_batch_size:
+            options["batch_size"] = min(int(options.get("batch_size", 16)), self._decode_batch_size)
+        return self._pipeline
+
+    def _recover_decode(self, options: dict[str, Any], oom: bool, log_cb: Callable[[str], None] | None) -> None:
+        if oom and int(options.get("batch_size", 1)) > 1:
+            self._decode_batch_size = options["batch_size"] = 1
+            message = "CUDA ran out of memory; retrying the remaining audio with batch size 1."
+        else:
+            target = "cuda" if oom and self._compute_type not in ("int8", "int8_float16") else "cpu"
+            compute = "int8_float16" if target == "cuda" else "int8"
+            self._device, self._compute_type, self._downgraded = target, compute, True
+            self._ready = False
+            self._pipeline = self._model = None
+            gc.collect()
+            try:
+                self._model = WhisperModel(self._model_path, device=target, compute_type=compute)
+            except RuntimeError:
+                if target != "cuda":
+                    raise
+                target, compute = "cpu", "int8"
+                self._device, self._compute_type = target, compute
+            if self._model is None:
+                self._model = WhisperModel(self._model_path, device=target, compute_type=compute)
+            self._capture_effective_device(target, compute)
+            self._pipeline = self._wrap_for_batched()
+            self._ready = True
+            self._downgraded = True
+            message = f"CUDA decode failed; retrying the remaining audio on {target}/{compute}."
+        if log_cb:
+            log_cb(message)
+        else:
+            logger.warning(message)
+
     def transcribe_to_segments(
         self,
         audio_path: str,
@@ -278,7 +426,10 @@ class FasterWhisperBackend(Backend):
         if hotwords:
             transcribe_kwargs["hotwords"] = hotwords
 
-        runner = self._pipeline if self._pipeline is not None else self._model
+        runner = WhisperDecode(
+            self._decode_runner, lambda: self._device.split(":")[0] == "cuda",
+            lambda options, oom: self._recover_decode(options, oom, log_cb), self._vad_window_s,
+        )
         if self._pipeline is not None:
             transcribe_kwargs["batch_size"] = int(batch_size)
 
