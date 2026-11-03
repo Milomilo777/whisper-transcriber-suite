@@ -12,6 +12,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- A GPU driver or library failure during decoding now retries the rest of the file on CPU, and a finished transcript is delivered even if a background helper fails right after it.
 - Automatic failure statistics use complete closed message templates, keeping private titles and localized OS text out of hashes. Stderr clues require a complete terminal traceback or an exact native/ffmpeg pattern and ignore incomplete last lines.
 - CUDA recovery preserves normal live transcription, clipped retry timestamps and resume cursors, and resets reduced memory limits when models change or unload. Worker failures report saved outputs once, retain task identity when reporting fails, and clear stderr clues after each job.
 - CUDA decoding retries with a smaller batch, quantized weights or shorter audio pieces before falling back to CPU. Captured segments and resume positions are preserved, and later jobs in the session reuse the reduced memory footprint.
