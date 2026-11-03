@@ -333,8 +333,10 @@ def test_convert_file_survives_hand_edited_json(tmp_path):
     body = open(out, encoding="utf-8").read()
     assert "kept" in body
     assert "42" in body
-    # Every segment made it into the output (nothing was skipped).
-    assert len(convert.parse_to_segments(out)) == len(payload)
+    # Every text made it into the output, in order; cues with no usable times share one valid cue.
+    segments = convert.parse_to_segments(out)
+    assert " ".join(s["text"] for s in segments).split() == "null times garbage times 42 kept".split()
+    assert all(s["end"] > s["start"] for s in segments)
 
 
 def test_dedupe_rolling_captions_does_not_turn_null_text_into_the_word_none():
