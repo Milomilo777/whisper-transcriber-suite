@@ -1,4 +1,4 @@
-﻿"""Regression tests for zero-length and inverted subtitle cues."""
+"""Regression tests for zero-length and inverted subtitle cues."""
 from __future__ import annotations
 
 import re
