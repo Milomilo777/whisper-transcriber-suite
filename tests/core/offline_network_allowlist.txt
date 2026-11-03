@@ -23,6 +23,7 @@ core/backends/cloud_stt.py::CloudSttBackend._delete_file  only reached from tran
 core/backends/cloud_stt.py::CloudSttBackend._post_json  only reached from transcribe() (see above)
 core/js_runtime.py::_download  only reached from install_deno(), which asks first
 core/llm.py::RemoteLLMRunner._post_once  only reached from the request method that refuses a non-local base_url while offline
+core/model_download.py::ModelDownloader._open  only reached from ModelDownloader.download(), which calls require_online() first
 core/model_manager.py::_download_via_huggingface  only reached from ensure_model(), which calls require_online() first
 core/verified_download.py::urlopen_https_only  shared opener for the online config, update check, usage stats and problem report; each caller asks core.offline (or is skipped while offline) before it
 core/offline.py::self_test.tcp  the Verify offline now probe; self_test() runs it only while offline, to a reserved address
