@@ -8,18 +8,16 @@ viewers like VLC render it cleanly.
 from __future__ import annotations
 
 from .base import (
-    coerce_seconds,
     escape_cue_separator,
     fmt_srt_time,
     normalize_text,
+    prepare_cues,
     speaker_prefix,
 )
 
 
 def write(segments: list[dict], audio_path: str = "") -> str:
-    out: list[str] = []
-    i = 0
-    for seg in segments:
+    def render_text(seg: dict) -> str:
         # escape_cue_separator: literal "-->" in the payload would
         # collide with SRT's own time-code separator and confuse
         # downstream parsers.
@@ -27,20 +25,19 @@ def write(segments: list[dict], audio_path: str = "") -> str:
         if not text:
             # An empty payload line ends the cue early in strict parsers
             # and shows nothing; ASS and ELAN skip blank segments too.
-            continue
+            return ""
         # The label is hand-editable too: escape it like the payload, or a
         # "-->" in it adds a second separator to the cue.
-        text = escape_cue_separator(speaker_prefix(seg)) + text
-        # coerce_seconds: a hand-edited / externally produced segment can
-        # carry None / a non-numeric string / a non-finite time; the cue
-        # must survive with a clamped timestamp rather than aborting the
-        # whole file. Missing "end" falls back to the start, and an end
-        # before the start is clamped to it (as ASS does).
-        start = coerce_seconds(seg.get("start"))
-        end = max(coerce_seconds(seg.get("end"), start), start)
-        i += 1
+        return escape_cue_separator(speaker_prefix(seg)) + text
+
+    out: list[str] = []
+    for i, (start_ms, end_ms, text) in enumerate(
+        prepare_cues(segments, render_text), start=1
+    ):
         out.append(f"{i}")
-        out.append(f"{fmt_srt_time(start)} --> {fmt_srt_time(end)}")
+        out.append(
+            f"{fmt_srt_time(start_ms / 1000)} --> {fmt_srt_time(end_ms / 1000)}"
+        )
         out.append(text)
         out.append("")
     return "\n".join(out)
