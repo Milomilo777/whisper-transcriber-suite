@@ -58,7 +58,8 @@ def test_worker_releases_samples_caps_threads_and_cleans_clusters(monkeypatch):
 
     class Result:
         def sort_by_start_time(self):
-            assert refs[0]() is None, "decoded audio must be freed before result conversion"
+            # Unknown-count relabelling reuses this audio for voice windows.
+            assert refs[0]() is not None, "keep decoded audio through window extraction"
             return [types.SimpleNamespace(start=0, end=100, speaker=0),
                     types.SimpleNamespace(start=101, end=102, speaker=1)]
 
@@ -87,7 +88,8 @@ def test_worker_releases_samples_caps_threads_and_cleans_clusters(monkeypatch):
     monkeypatch.setattr(diar, "_prepare_audio_16k_mono", audio)
     seen = []
     result = diar._diarize_impl("fake.wav", progress_cb=seen.append)
-    assert seen == [0.5]
+    assert refs[0]() is None, "decoded audio must be freed after success or fallback"
+    assert seen == sorted(seen) and 0 < seen[0] < 0.5 and seen[-1] == 1.0
     assert {s.speaker for s in result} == {"Speaker 00"}
     assert configs["segmentation"]["num_threads"] == 2
     assert configs["embedding"]["num_threads"] == 2

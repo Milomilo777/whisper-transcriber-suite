@@ -297,7 +297,7 @@ def _run_worker_main(monkeypatch, capsys, request: str) -> tuple[int, list[dict[
 def test_worker_main_reports_segments(monkeypatch, capsys):
     monkeypatch.setitem(sys.modules, "sherpa_onnx", object())
 
-    def fake_impl(path, *, num_speakers, cluster_threshold, progress_cb):
+    def fake_impl(path, *, num_speakers, cluster_threshold, progress_cb, fallback_cb=None):
         assert (path, num_speakers, cluster_threshold) == ("a.wav", 2, 0.4)
         progress_cb(0.5)
         return [diarization.DiarSegment(0.0, 1.0, "Speaker 00")]
@@ -545,7 +545,7 @@ def test_worker_main_reports_segments_with_unicode(monkeypatch, capsys):
     monkeypatch.setitem(sys.modules, "sherpa_onnx", object())
     label = "".join(map(chr, (0x633, 0x62E, 0x646, 0x631, 0x627, 0x646))) + " 00"  # Persian "speaker 00"
 
-    def fake_impl(path, *, num_speakers, cluster_threshold, progress_cb):
+    def fake_impl(path, *, num_speakers, cluster_threshold, progress_cb, fallback_cb=None):
         return [diarization.DiarSegment(0.0, 1.0, label)]
 
     monkeypatch.setattr(diarization, "_diarize_impl", fake_impl)
