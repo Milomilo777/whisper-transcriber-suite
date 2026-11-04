@@ -26,7 +26,10 @@ from __future__ import annotations
 
 import logging
 import os
+import re
+import stat
 import time
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
@@ -91,6 +94,20 @@ def session_work_dir() -> str:
 #: who steps away and comes back the next day.
 SCRATCH_MAX_AGE_DAYS = 7.0
 
+# Original sessions had only a timestamp; mkdtemp adds eight random characters.
+_SCRATCH_DIR_NAME = re.compile(
+    r"(?:[0-9]{8}-[0-9]{6}(?:-[a-z0-9_]{8})?|job-[0-9a-f]{16}|\.sweep-[0-9a-f]{32})"
+)
+
+
+def _scratch_dir_stat(path: Path) -> os.stat_result | None:
+    """Inspect the entry itself, never a symlink or Windows reparse point."""
+    info = path.lstat()
+    if (not stat.S_ISDIR(info.st_mode)
+            or getattr(info, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT):
+        return None
+    return info
+
 
 def sweep_old_session_dirs(max_age_days: float = SCRATCH_MAX_AGE_DAYS) -> None:
     """Remove voice_clone scratch dirs (see :func:`session_work_dir`)
@@ -101,6 +118,8 @@ def sweep_old_session_dirs(max_age_days: float = SCRATCH_MAX_AGE_DAYS) -> None:
     The folder of an unfinished long job (``core.tts_job``) is kept for
     ``tts_job.UNFINISHED_MAX_AGE_DAYS`` after its last finished piece, so
     a job someone continues now and then is never swept from under them.
+    Only recognised scratch names are eligible; held job locks, symlinks
+    and Windows junctions are left alone.
     """
     import shutil
 
@@ -109,6 +128,8 @@ def sweep_old_session_dirs(max_age_days: float = SCRATCH_MAX_AGE_DAYS) -> None:
 
     root = user_cache_dir() / "voice_clone"
     try:
+        if _scratch_dir_stat(root) is None:
+            return
         entries = list(root.iterdir())
     except OSError:
         return
@@ -117,16 +138,62 @@ def sweep_old_session_dirs(max_age_days: float = SCRATCH_MAX_AGE_DAYS) -> None:
     unfinished_cutoff = now - max(max_age_days, tts_job.UNFINISHED_MAX_AGE_DAYS) * 86400
     for entry in entries:
         try:
-            if not entry.is_dir():
+            if _SCRATCH_DIR_NAME.fullmatch(entry.name) is None:
                 continue
-            last = entry.stat().st_mtime
+            info = _scratch_dir_stat(entry)
+            if info is None:
+                continue
+            last = info.st_mtime
             limit = cutoff
             if tts_job.is_unfinished_job_dir(entry):
                 progress = entry / tts_job.PARTS_DIR / tts_job.PROGRESS_FILE
                 last = max(last, progress.stat().st_mtime)
                 limit = unfinished_cutoff
-            if last < limit:
-                shutil.rmtree(entry, ignore_errors=True)
+            if last >= limit:
+                continue
+            # Share the job's OS lock before touching any saved work.
+            lock_path = entry / tts_job.LOCK_FILE
+            if lock_path.is_symlink() or (
+                lock_path.exists() and getattr(lock_path.lstat(), "st_file_attributes", 0)
+                & stat.FILE_ATTRIBUTE_REPARSE_POINT
+            ):
+                continue
+            lock_existed = lock_path.exists()
+            lock = tts_job._JobLock(lock_path)
+            try:
+                lock.acquire()
+            except tts_job.JobBusy:
+                continue
+            try:
+                # Recheck the entry and progress after obtaining exclusive use.
+                current_info = _scratch_dir_stat(entry)
+                if current_info is None or current_info.st_ino != info.st_ino:
+                    continue
+                # Creating a missing lock changes the directory's own mtime;
+                # an existing lock does not. Preserve newly refreshed jobs.
+                if lock_existed and current_info.st_mtime >= limit:
+                    continue
+                if tts_job.is_unfinished_job_dir(entry):
+                    progress = entry / tts_job.PARTS_DIR / tts_job.PROGRESS_FILE
+                    if progress.stat().st_mtime >= unfinished_cutoff:
+                        continue
+                if os.name == "nt":
+                    # Windows keeps the open lock file in place. Delete data
+                    # while locked; after release only remove the lock and an
+                    # EMPTY directory. A newly acquired lock prevents unlink.
+                    shutil.rmtree(entry, ignore_errors=True)
+                else:
+                    # POSIX permits renaming a folder with an open lock. A
+                    # new job can then start at the original path safely.
+                    quarantine = root / (".sweep-" + uuid.uuid4().hex)
+                    entry.rename(quarantine)
+            finally:
+                lock.release()
+            if os.name == "nt":
+                lock_path.unlink()
+                entry.rmdir()
+            else:
+                shutil.rmtree(quarantine, ignore_errors=True)
         except OSError:
             continue
 
