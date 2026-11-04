@@ -80,7 +80,7 @@ def install_excepthook(notify: Callable[[str], None] | None = None) -> None:
     def _hook(
         exc_type: type[BaseException], exc: BaseException, tb: TracebackType | None
     ) -> None:
-        if not issubclass(exc_type, KeyboardInterrupt):
+        if not issubclass(exc_type, (KeyboardInterrupt, SystemExit)):
             _ensure_log_file()
             logger.critical("The app stopped because of an unhandled error",
                             exc_info=(exc_type, exc, tb))
