@@ -2543,6 +2543,15 @@ class JobRequestHandler(BaseHTTPRequestHandler):
                 remaining -= len(buf)
 
     def _create_url_job(self) -> None:
+        if self._queue_is_full():
+            # Refuse before the body is read, as the upload path does: a
+            # client that stalls mid-body must not hold the connection for
+            # the whole read budget just to learn the queue is full.
+            self._reject_post_early(
+                HTTPStatus.SERVICE_UNAVAILABLE,
+                "too many queued jobs; try again later",
+                retry_after=30)
+            return
         body = self._read_json_body()
         if body is None:
             return  # error already sent (JSON cap exceeded)
