@@ -33,6 +33,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Auto language detection now samples several audio windows and verifies ambiguous unfamiliar-language choices by comparing forced-language decodes against a plausible language. Inconclusive verification keeps engine auto-detection, avoiding probability-only overrides of genuine foreign speech.
 - Runs without recognised speech save the selected output formats, including an empty SRT, with a visible no-speech notice. Their statistics retain the measured audio span, and a damaged JSON sidecar no longer prevents counting a valid subtitle output.
 - The Time column of a download that is transcribed after download stopped counting when the download ended; it now runs until the transcription is done.
+- A URL job sent to a full job queue over the LAN server is refused with 503 before its request body is read, so a client that stalls mid-upload cannot hold its connection open for the whole read timeout.
+- A requested exit is no longer reported as a crash, failure details follow an implicit exception chain, an oversized timestamp no longer aborts oTranscribe to SRT, and merge or split accepts a number as segment text.
+- Files with an `.oga` extension dropped into a watched folder (or onto the window) are transcribed again: the watcher now takes its extension list from the same shared list as the file dialog and the transcript viewer, which had gained `.oga` on its own.
 
 ### Changed
 

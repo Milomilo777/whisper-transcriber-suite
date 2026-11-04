@@ -112,8 +112,8 @@ def merge_with_next(segments: list[dict], index: int) -> list[dict]:
         if k not in new_seg:
             new_seg[k] = copy.deepcopy(v)
 
-    l_text = left.get("text", "") or ""
-    r_text = right.get("text", "") or ""
+    l_text = "" if left.get("text") is None else str(left.get("text"))
+    r_text = "" if right.get("text") is None else str(right.get("text"))
 
     # Join on the whitespace-stripped edges: whisper texts carry a leading
     # space, and stacking it on the joiner made "hello " + " world" come out
@@ -168,7 +168,7 @@ def split_at(segments: list[dict], index: int, char_offset: int) -> list[dict]:
         raise SegmentOpError("Index out of range.")
 
     seg = segments[index]
-    text = seg.get("text", "") or ""
+    text = "" if seg.get("text") is None else str(seg.get("text"))
 
     if char_offset <= 0 or char_offset >= len(text):
         raise SegmentOpError("char_offset out of bounds.")

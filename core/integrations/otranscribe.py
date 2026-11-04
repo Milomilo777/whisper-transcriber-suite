@@ -83,7 +83,10 @@ def fmt_otr_time(seconds: float) -> str:
 
 
 def _fmt_srt_time(seconds: float) -> str:
-    total_ms = int(round(_safe_seconds(seconds) * 1000))
+    try:
+        total_ms = int(round(_safe_seconds(seconds) * 1000))
+    except OverflowError:
+        total_ms = 0
     if total_ms < 0:
         total_ms = 0
     h = total_ms // 3_600_000
