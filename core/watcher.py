@@ -19,19 +19,15 @@ import unicodedata
 from typing import Any, Callable
 
 from .burn_subs import is_burn_temp, is_own_output, is_reserved
+from .media_types import MEDIA_EXTENSIONS
 
 logger = logging.getLogger(__name__)
 
 
-_MEDIA_EXTENSIONS = {
-    ".mp3", ".mp4", ".wav", ".m4a", ".mkv", ".webm", ".flac",
-    ".ogg", ".aac", ".aiff", ".opus", ".mov",
-    # Formats ffmpeg reads that the watcher and folder drops used to skip
-    # without a word: broadcast / camcorder / DVD video, Windows Media,
-    # older containers.
-    ".ts", ".m2ts", ".mts", ".vob", ".wmv", ".wma", ".avi", ".m4v",
-    ".3gp", ".flv", ".mpg", ".mpeg", ".mka",
-}
+# One list with the viewer and the Browse... dialog (core.media_types):
+# a file the dialog offers must not be silently ignored when it is dropped
+# into the watched folder.
+_MEDIA_EXTENSIONS = frozenset(MEDIA_EXTENSIONS)
 
 # MPEG transport streams start every 188-byte packet with this sync byte.
 _TS_SYNC_BYTE = b"\x47"

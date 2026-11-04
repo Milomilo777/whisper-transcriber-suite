@@ -9,6 +9,14 @@ def test_every_extension_the_watcher_accepts_is_in_the_shared_list():
     assert set(watcher._MEDIA_EXTENSIONS) <= set(MEDIA_EXTENSIONS)
 
 
+def test_the_watcher_accepts_every_extension_in_the_shared_list():
+    """The shared list's promise: a viewer pairs a transcript with media
+    exactly when the watcher would transcribe it. A file the Browse...
+    dialog offers (.oga) must not be silently ignored when it is dropped
+    into the watched folder."""
+    assert set(watcher._MEDIA_EXTENSIONS) >= set(MEDIA_EXTENSIONS)
+
+
 def test_the_list_is_lowercase_dotted_and_free_of_duplicates():
     assert all(e.startswith(".") and e == e.lower() for e in MEDIA_EXTENSIONS)
     assert len(set(MEDIA_EXTENSIONS)) == len(MEDIA_EXTENSIONS)
