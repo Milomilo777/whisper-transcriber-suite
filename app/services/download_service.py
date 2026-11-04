@@ -19,6 +19,7 @@ import subprocess
 import sys
 import threading
 import time
+import unicodedata
 import uuid
 import weakref
 import urllib.error
@@ -40,7 +41,13 @@ def _name_key(stem: str) -> str:
     """A file name reduced to its letters and digits, case folded, so the
     name yt-dlp announced matches the file on disk despite a replaced
     character (U+FFFD for an apostrophe) or different quote marks."""
-    return "".join(ch for ch in stem.casefold() if ch.isalnum())
+    normalized = unicodedata.normalize("NFC", stem)
+    folded = normalized.casefold()
+    key = "".join(ch for ch in folded if ch.isalnum())
+    # Keep replacement tolerance for ordinary titles, but distinguish
+    # symbol-only titles so an empty key cannot claim an unrelated file.
+    return key or "".join(ch for ch in folded
+                          if unicodedata.category(ch) == "So" and ch != "\ufffd")
 
 
 def _may_go_online(app: object, what: str) -> bool:
@@ -250,8 +257,8 @@ def _parse_timecode(raw: str | None) -> float | None:
 
     Returns ``None`` for ``None``, empty string, pure whitespace,
     negative values, values above the 24-hour sanity cap, or any
-    string the parser can't make sense of (so the caller can treat
-    "garbled input" the same as "left blank").
+    string the parser can't make sense of. Live editing tolerates these;
+    submission must validate nonblank input separately.
     """
     if raw is None:
         return None
@@ -297,6 +304,25 @@ def _parse_timecode(raw: str | None) -> float | None:
     if total < 0 or total > _MAX_TIMECODE_SECONDS:
         return None
     return total
+
+
+def _parse_time_range(start_raw: str | None, end_raw: str | None) -> tuple[float | None, float | None]:
+    """Validate committed bounds without changing the user's entry text.
+
+    Zero means unset, as both Transcribe-tab fields default to 0:00:00: a start
+    of zero is the file's start, an end of zero runs to the file's end.
+    """
+    start = _parse_timecode(start_raw)
+    end = _parse_timecode(end_raw)
+    if start_raw and start_raw.strip() and start is None:
+        raise ValueError(_("Invalid start time."))
+    if end_raw and end_raw.strip() and end is None:
+        raise ValueError(_("Invalid end time."))
+    start = start or None
+    end = end or None
+    if start is not None and end is not None and end <= start:
+        raise ValueError(_("End time must be after start time."))
+    return start, end
 
 
 def _fmt_timecode(seconds: float) -> str:
