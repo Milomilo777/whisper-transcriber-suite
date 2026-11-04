@@ -12,6 +12,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Two-language mode no longer writes a stretch of one language translated into the other: the previous text is not used as a prompt in this mode.
 - Pinned model downloads verify new bytes, resume dropped transfers and fall back from stalled or invalid hosts while preserving saved prefixes. Older installed models and unrelated legacy remnants no longer trigger repeated downloads; antivirus file locks allow cancellable retries.
 - Automatic speaker detection now clusters short voice windows to reduce excess labels, with bounded memory on long recordings and the previous labels retained if relabelling fails. Explicit speaker counts and turn boundaries are preserved.
 - Pinned model downloads retain partial files for Range resume, verify new bytes before installation, retry dropped connections on the same host, and try fallback hosts when needed. Installed files stay usable online and offline without repeated hashing; custom repositories retain the primary-host downloader, and antivirus rename delays preserve verified work.

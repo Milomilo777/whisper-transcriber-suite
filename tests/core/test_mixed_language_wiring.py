@@ -103,6 +103,8 @@ def _wire(t, monkeypatch, tmp_path, engine):
 def _mixed_call(call):
     assert call["kwargs"].get("multilingual") is True
     assert "language" not in call["kwargs"], "one language was pinned"
+    # The previous text as prompt turns a stretch into the other language (measured on real audio).
+    assert call["kwargs"].get("condition_on_previous_text") is False
     assert not call["is_shared"], "the shared model ran the job"
     assert [p[0] for p in call["detects"]] == ["<|en|>", "<|zh|>"]
 

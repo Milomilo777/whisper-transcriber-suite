@@ -2613,8 +2613,11 @@ def _build_transcribe_kwargs(task: "TranscriptionTask") -> dict[str, Any]:
     forced_lang = _normalize_language(getattr(task, "language", None))
     if mixed_language_pair(task):
         # Language detection per stretch, limited to the pair by the runner
-        # (_two_language_runner); no single forced language.
+        # (_two_language_runner); no single forced language. The library keeps
+        # the previous text as prompt across a language change, which turns a
+        # stretch into the other language, so it stays off here.
         kwargs["multilingual"] = True
+        kwargs["condition_on_previous_text"] = False
     elif forced_lang:
         kwargs["language"] = forced_lang
     # Whisper's own translate task: English text straight from the speech.
