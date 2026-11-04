@@ -250,8 +250,8 @@ def _parse_timecode(raw: str | None) -> float | None:
 
     Returns ``None`` for ``None``, empty string, pure whitespace,
     negative values, values above the 24-hour sanity cap, or any
-    string the parser can't make sense of (so the caller can treat
-    "garbled input" the same as "left blank").
+    string the parser can't make sense of. Live editing tolerates these;
+    submission must validate nonblank input separately.
     """
     if raw is None:
         return None
@@ -297,6 +297,25 @@ def _parse_timecode(raw: str | None) -> float | None:
     if total < 0 or total > _MAX_TIMECODE_SECONDS:
         return None
     return total
+
+
+def _parse_time_range(start_raw: str | None, end_raw: str | None) -> tuple[float | None, float | None]:
+    """Validate committed bounds without changing the user's entry text.
+
+    Zero means unset, as both Transcribe-tab fields default to 0:00:00: a start
+    of zero is the file's start, an end of zero runs to the file's end.
+    """
+    start = _parse_timecode(start_raw)
+    end = _parse_timecode(end_raw)
+    if start_raw and start_raw.strip() and start is None:
+        raise ValueError(_("Invalid start time."))
+    if end_raw and end_raw.strip() and end is None:
+        raise ValueError(_("Invalid end time."))
+    start = start or None
+    end = end or None
+    if start is not None and end is not None and end <= start:
+        raise ValueError(_("End time must be after start time."))
+    return start, end
 
 
 def _fmt_timecode(seconds: float) -> str:

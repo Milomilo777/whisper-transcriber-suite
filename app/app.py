@@ -4624,7 +4624,8 @@ class App(tk.Tk):
         # Per-task language override + optional clip range. The cleaned path,
         # never the raw field: quotes or a leading space would reach the worker.
         task = TranscriptionTask(text)
-        self._apply_task_options(task)
+        if self._apply_task_options(task) is False:
+            return
         if self._same_job_active(task):
             # A second click (the button showed no change) queued the same job twice
             # (screenshot reviews, 2026-10-21): show the one that is there. Another part of
@@ -4951,13 +4952,24 @@ class App(tk.Tk):
         self._on_model_selected()
         return str(self.app_config.get("whisper_model") or "") == slug
 
-    def _apply_task_options(self, task: TranscriptionTask) -> None:
+    def _apply_task_options(self, task: TranscriptionTask) -> bool:
         """Apply the Transcribe-tab language + clip-range options to a task.
 
         Shared by add() and _bulk_enqueue so a bulk-enqueued file gets the
         same per-task language override and optional time-slice as a single
-        file enqueued through Transcribe.
+        file enqueued through Transcribe. False refuses invalid bounds;
+        the entry variables remain untouched.
         """
+        if hasattr(self, "transcribe_start_time_var"):
+            from app.services.download_service import _parse_time_range
+
+            try:
+                start, end = _parse_time_range(
+                    self.transcribe_start_time_var.get(), self.transcribe_end_time_var.get())
+            except ValueError as exc:
+                show_error(self, _("Invalid time range"), str(exc))
+                return False
+            task.clip_start, task.clip_end = start, end
         # Per-task language override. The picker shows "Auto" for the
         # default Whisper auto-detect; any other value is a language
         # name that maps to a known code via app.domain.languages.
@@ -4981,13 +4993,7 @@ class App(tk.Tk):
                 self.log(f"English translation skipped for this file: {reason}")
             else:
                 task.whisper_task = "translate"
-        # Optional time-slice (Transcribe-tab time range): transcribe only
-        # [start, end]. A 0:00:00 / blank bound is "unset", so leaving both
-        # at 0:00:00 transcribes the whole file.
-        if hasattr(self, "transcribe_start_time_var"):
-            from app.services.download_service import _parse_timecode
-            task.clip_start = _parse_timecode(self.transcribe_start_time_var.get()) or None
-            task.clip_end = _parse_timecode(self.transcribe_end_time_var.get()) or None
+        return True
 
     def _bulk_enqueue(self, paths: "list[str]") -> int:
         """Enqueue many files as transcription tasks in one shot.
@@ -5025,7 +5031,8 @@ class App(tk.Tk):
         count = 0
         for path in files:
             task = TranscriptionTask(path)
-            self._apply_task_options(task)
+            if self._apply_task_options(task) is False:
+                return count
             if self._same_job_active(task):
                 # Same rule as add(): a job already waiting, running or paused for this
                 # file (and time range) is not queued a second time.
