@@ -58,7 +58,7 @@ def test_registry_v2_and_generated_modules():
     registry = clue.registry()
     assert registry["version"] == 2
     assert NEW_FIELDS <= registry["fields"].keys()
-    assert registry["fields"]["classifier_version"]["values"] == ["2"]
+    assert registry["fields"]["classifier_version"]["values"] == ["1", "2"]
     modules = set()
     for package in ("core", "app"):
         for file in (ROOT / package).rglob("*.py"):

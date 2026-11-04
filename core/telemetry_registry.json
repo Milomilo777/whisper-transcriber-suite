@@ -4,7 +4,7 @@
     "failure_site": {"type": "enum", "values": ["worker.decode", "worker.vad", "worker.features", "worker.language", "worker.segments", "worker.postprocess", "worker.output", "worker.prepare", "worker.model", "parent.watchdog", "parent.worker_exit", "other"]},
     "exception_family": {"type": "enum", "values": ["MemoryError", "RuntimeError", "OSError", "PermissionError", "FileNotFoundError", "TimeoutError", "ValueError", "TypeError", "KeyError", "IndexError", "UnicodeError", "AssertionError", "subprocess.TimeoutExpired", "subprocess.CalledProcessError", "av.InvalidDataError", "other"]},
     "observed_code": {"type": "enum", "values": ["numpy_alloc_failed", "ct2_bad_alloc", "cuda_out_of_memory", "cublas_missing", "cudnn_missing", "av_invalid_data", "no_audio_stream", "probe_timeout", "disk_full", "access_denied", "file_not_found", "none", "native_access_violation", "dll_not_found", "illegal_instruction", "stack_overflow", "killed_by_signal", "worker_exit_unclassified", "model_load_failed", "tokenizer_error", "network_reset", "ffmpeg_missing", "codec_unsupported", "corrupt_media"]},
-    "classifier_version": {"type": "enum", "values": ["2"]},
+    "classifier_version": {"type": "enum", "values": ["1", "2"]},
     "os_error": {"type": "integer", "min": 0, "max": 4294967295},
     "exit_code": {"type": "integer", "min": -2147483648, "max": 4294967295},
     "device": {"type": "enum", "values": ["cpu", "cuda", "mps", "mlx", "unknown"]},
@@ -16,7 +16,7 @@
       "type": "pattern",
       "pattern": "^[a-z0-9_.]+:[A-Za-z0-9_.<>]+:[0-9]{1,6}$",
       "max_length": 80,
-      "function_pattern": "^[A-Za-z_][A-Za-z0-9_.<>]{0,40}$",
+      "function_pattern": "^(?:[A-Za-z_][A-Za-z0-9_]*(?:[.][A-Za-z_][A-Za-z0-9_]*)*|<(?:module|lambda|listcomp|dictcomp|setcomp|genexpr)>)$",
       "modules": [
         "app",
         "app.app",
