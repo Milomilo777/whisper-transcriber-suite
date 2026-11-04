@@ -13,6 +13,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 ### Fixed
 
 - Pinned model downloads verify new bytes, resume dropped transfers and fall back from stalled or invalid hosts while preserving saved prefixes. Older installed models and unrelated legacy remnants no longer trigger repeated downloads; antivirus file locks allow cancellable retries.
+- Automatic speaker detection now clusters short voice windows to reduce excess labels, with bounded memory on long recordings and the previous labels retained if relabelling fails. Explicit speaker counts and turn boundaries are preserved.
+- Pinned model downloads retain partial files for Range resume, verify new bytes before installation, retry dropped connections on the same host, and try fallback hosts when needed. Installed files stay usable online and offline without repeated hashing; custom repositories retain the primary-host downloader, and antivirus rename delays preserve verified work.
 - SRT and WebVTT files never contain a zero-length or inverted cue: it gets a short display time or joins a cue starting right after it, and no words are lost.
 - A GPU driver or library failure during decoding now retries the rest of the file on CPU, and a finished transcript is delivered even if a background helper fails right after it.
 - Consecutive identical subtitle cues of at most 300 ms are collapsed or removed when a neighbouring cue already contains the same text, including rescue and resumed output. Normal-duration repeated speech keeps its original text and timing.

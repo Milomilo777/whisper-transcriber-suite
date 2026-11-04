@@ -36,6 +36,18 @@ from .paths import bin_dir, bundled_binary
 
 logger = logging.getLogger(__name__)
 
+
+def _log_relabel_failure(stage: str, error: Exception) -> None:
+    # A retained LogRecord with exc_info would retain extractor traceback
+    # frames, including the entire decoded audio and window vector arrays.
+    try:
+        detail = str(error)[:500]
+    except Exception:  # noqa: BLE001 - broken exception formatting is optional too
+        detail = "exception details unavailable"
+    logger.warning("%s failed (%s: %s); retaining existing speaker labels",
+                   stage, type(error).__name__, detail)
+
+
 SEGMENTATION_MODEL = "segmentation.onnx"
 EMBEDDING_MODEL = "embedding.onnx"
 DIARIZATION_SUBDIR = "diarization"
@@ -320,6 +332,7 @@ def diarize(
 
     start = last_event = last_heartbeat = time.monotonic()
     segments: list[dict[str, Any]] | None = None
+    fallback: list[dict[str, Any]] | None = None
     exited = False
     # sherpa-onnx reports nothing during its segmentation pass, which takes
     # minutes on long audio (first progress after ~100 s for 12 min on a
@@ -327,36 +340,64 @@ def diarize(
     # before that the overall limit, which grows with the audio, applies.
     progressed = False
     last_fraction = 0.0
+
+    def _retain_fallback(reason: str) -> bool:
+        nonlocal segments, fallback
+        readers[0].join(timeout=2.0)
+        while True:
+            try:
+                ev = events.get_nowait()
+            except queue.Empty:
+                break
+            if ev.get("event") == "done":
+                segments = list(ev.get("segments") or [])
+            elif ev.get("event") == "fallback":
+                fallback = list(ev.get("segments") or [])
+        if segments is not None:
+            return True
+        if fallback is None:
+            return False
+        logger.warning("%s; retaining existing speaker labels", reason)
+        segments = fallback
+        return True
+
     try:
         while segments is None:
             if cancelled is not None and cancelled():
                 _stop(force=False)
                 return []
-            now = time.monotonic()
-            if (
-                progress_cb is not None
-                and now - last_heartbeat >= SEGMENTATION_HEARTBEAT_S
-            ):
-                progress_cb(last_fraction)
-                last_heartbeat = now
-            if now - start > overall_timeout_s:
-                _stop(force=True)
-                raise DiarizationUnavailable(
-                    f"speaker detection took longer than {overall_timeout_s:.0f} s and was stopped")
-            if progressed and now - last_event > WORKER_STALL_TIMEOUT_S:
-                _stop(force=True)
-                raise DiarizationUnavailable(
-                    f"speaker detection made no progress for {WORKER_STALL_TIMEOUT_S:.0f} s and was stopped")
             try:
-                ev = events.get(timeout=_CANCEL_POLL_S)
+                ev = events.get_nowait()
             except queue.Empty:
-                if exited:
-                    break  # exited and every event it printed has been handled
-                if process.poll() is not None:
-                    # Let the reader hand over what the worker printed last.
-                    readers[0].join(timeout=2.0)
-                    exited = True
-                continue
+                now = time.monotonic()
+                if (
+                    progress_cb is not None
+                    and now - last_heartbeat >= SEGMENTATION_HEARTBEAT_S
+                ):
+                    progress_cb(last_fraction)
+                    last_heartbeat = now
+                if now - start > overall_timeout_s:
+                    _stop(force=True)
+                    reason = f"speaker detection took longer than {overall_timeout_s:.0f} s and was stopped"
+                    if _retain_fallback(reason):
+                        break
+                    raise DiarizationUnavailable(reason)
+                if progressed and now - last_event > WORKER_STALL_TIMEOUT_S:
+                    _stop(force=True)
+                    reason = f"speaker detection made no progress for {WORKER_STALL_TIMEOUT_S:.0f} s and was stopped"
+                    if _retain_fallback(reason):
+                        break
+                    raise DiarizationUnavailable(reason)
+                try:
+                    ev = events.get(timeout=_CANCEL_POLL_S)
+                except queue.Empty:
+                    if exited:
+                        break  # exited and every event it printed has been handled
+                    if process.poll() is not None:
+                        # Let the reader hand over what the worker printed last.
+                        readers[0].join(timeout=2.0)
+                        exited = True
+                    continue
             last_event = time.monotonic()
             kind = ev.get("event")
             if kind == "progress":
@@ -367,13 +408,23 @@ def diarize(
                     progress_cb(last_fraction)
             elif kind == "done":
                 segments = list(ev.get("segments") or [])
+            elif kind == "fallback":
+                # Sent before optional window extraction. A native crash or
+                # allocation failure after this cannot discard the good turns.
+                fallback = list(ev.get("segments") or [])
             elif kind == "error":
                 _stop(force=True)
-                raise DiarizationUnavailable(str(ev.get("error") or "unknown error"))
+                reason = str(ev.get("error") or "unknown error")
+                if _retain_fallback(reason):
+                    break
+                raise DiarizationUnavailable(reason)
 
         if segments is None:
             readers[1].join(timeout=2.0)
-            raise DiarizationUnavailable(_crash_reason(process.returncode, list(stderr_tail)))
+            reason = _crash_reason(process.returncode, list(stderr_tail))
+            if not _retain_fallback(reason):
+                raise DiarizationUnavailable(reason)
+        assert segments is not None
         try:
             process.wait(timeout=10.0)
         except Exception:  # noqa: BLE001 - the result is already in hand
@@ -382,6 +433,14 @@ def diarize(
             DiarSegment(start=float(s["start"]), end=float(s["end"]), speaker=str(s["speaker"]))
             for s in segments
         ]
+    except Exception as error:  # noqa: BLE001 - optional relabelling/delivery cannot lose good turns
+        if fallback is None:
+            raise
+        if cancelled is not None and cancelled():
+            return []
+        _log_relabel_failure("Speaker relabelling delivery", error)
+        return [DiarSegment(float(s["start"]), float(s["end"]), str(s["speaker"]))
+                for s in fallback]
     finally:
         # Whatever left the loop (a raising progress callback, a malformed
         # result, an interrupt), the worker must not outlive this call.
@@ -395,6 +454,8 @@ def _diarize_impl(
     num_speakers: int = -1,
     cluster_threshold: float = 0.5,
     progress_cb: Callable[[float], None] | None = None,
+    cancelled: Callable[[], bool] | None = None,
+    fallback_cb: Callable[[list[DiarSegment]], None] | None = None,
 ) -> list[DiarSegment]:
     """Diarize ``audio_path`` in THIS process (the worker's side of ``diarize``).
 
@@ -409,6 +470,10 @@ def _diarize_impl(
         cluster_threshold: lower = more clusters (more speakers).
             Default 0.5 is sherpa-onnx's recommended starting value.
         progress_cb: optional callback receiving 0.0–1.0 fractions.
+        cancelled: optional cooperative check, including between voice windows.
+            The public caller also polls cancellation and stops this process.
+        fallback_cb: publish legacy labels before optional native extraction,
+            so the parent can retain them even if this process crashes.
 
     Returns:
         List of ``DiarSegment(start, end, speaker)`` sorted by
@@ -424,6 +489,23 @@ def _diarize_impl(
         raise DiarizationUnavailable(reason)
 
     import sherpa_onnx  # type: ignore[import-untyped]
+    import threading
+
+    if cancelled is not None and cancelled():
+        return []
+
+    progress_lock = threading.Lock()
+    last_fraction = 0.0
+
+    def _report(fraction: float) -> None:
+        nonlocal last_fraction
+        with progress_lock:
+            last_fraction = max(last_fraction, min(1.0, fraction))
+            if progress_cb is not None:
+                try:
+                    progress_cb(last_fraction)
+                except Exception:  # noqa: BLE001 - progress cannot discard labels
+                    pass
 
     seg_path = _model_path(SEGMENTATION_MODEL)
     emb_path = _model_path(EMBEDDING_MODEL)
@@ -458,29 +540,131 @@ def _diarize_impl(
     samples, _sr = _prepare_audio_16k_mono(audio_path)
 
     def _on_progress(processed: int, total: int) -> int:
-        if progress_cb and total > 0:
-            try:
-                progress_cb(min(1.0, processed / total))
-            except Exception:  # noqa: BLE001
-                pass
-        return 0  # don't cancel
+        if total > 0:
+            # Explicit counts keep the native clustering path. Unknown counts
+            # reserve the final quarter for window embeddings and clustering.
+            _report((1.0 if num_speakers > 0 else 0.75) * processed / total)
+        return int(cancelled is not None and cancelled())
 
     try:
         result = sd.process(samples, callback=_on_progress)
+        if cancelled is not None and cancelled():
+            return []
+        segments = [
+            DiarSegment(
+                start=float(r.start),
+                end=float(r.end),
+                speaker=f"Speaker {int(r.speaker):02d}",
+            )
+            for r in result.sort_by_start_time()
+        ]
+        # Release the first model/extractor before creating the window extractor.
+        del result, sd, config
+        if num_speakers > 0 or not segments:
+            return merge_small_speakers(segments, num_speakers=num_speakers)
+
+        # Keep the full legacy result ready before doing any optional work.
+        # A failed window N must not expose a partially relabelled transcript.
+        fallback = merge_small_speakers(segments)
+        try:
+            if fallback_cb is not None:
+                fallback_cb(fallback)
+            _report(0.75)
+            labelled = _recluster_speakers(
+                samples, _sr, segments, emb_path,
+                progress_cb=_report, cancelled=cancelled,
+            )
+        except Exception as error:  # noqa: BLE001 - optional, including allocation failures
+            if cancelled is not None and cancelled():
+                return []
+            _log_relabel_failure("Window speaker clustering", error)
+            labelled = fallback
+        _report(1.0)
+        # Spectral clusters have already been selected by the eigengap. The
+        # temporal small-cluster merge adds no benefit on the replay data and
+        # can erase a genuine speaker with little speech. Keep it for fallback.
+        return labelled
     finally:
         del samples
         gc.collect()
-    segments = [
-        DiarSegment(
-            start=float(r.start),
-            end=float(r.end),
-            speaker=f"Speaker {int(r.speaker):02d}",
+
+
+def _recluster_speakers(
+    samples: Any, sample_rate: int, segments: list[DiarSegment], model_path: str,
+    *, progress_cb: Callable[[float], None], cancelled: Callable[[], bool] | None,
+) -> list[DiarSegment]:
+    """Extract fixed-size voice windows, then replace labels atomically.
+
+    Called only in the isolated diarization worker, after the caller has saved
+    its completed transcription checkpoint. Exceptions retain legacy labels.
+    """
+    import threading
+
+    import numpy as np
+    import sherpa_onnx  # type: ignore[import-untyped]
+
+    from . import speaker_cluster as cluster
+
+    def _check_cancelled() -> None:
+        if cancelled is not None and cancelled():
+            raise cluster.ClusteringCancelled("speaker window extraction cancelled")
+
+    _check_cancelled()
+    turns = [(s.start, s.end) for s in segments]
+    windows = list(cluster.windows_from_turns(turns))
+    if not windows:
+        raise ValueError("no speech windows for speaker embeddings")
+    # The model might have disappeared since availability_reason(). Avoid
+    # handing a missing path to native code after a good diarization result.
+    if not os.path.isfile(model_path):
+        raise FileNotFoundError("speaker embedding model is missing")
+    config = sherpa_onnx.SpeakerEmbeddingExtractorConfig(
+        model=model_path, num_threads=WORKER_THREADS,
+    )
+    extractor = sherpa_onnx.SpeakerEmbeddingExtractor(config)
+    vectors, spans, turn_ids = [], [], []
+    minimum_samples = int(cluster.MIN_PIECE_SECONDS * sample_rate)
+    window_samples = int(cluster.WINDOW_SECONDS * sample_rate)
+    for index, window in enumerate(windows):
+        _check_cancelled()
+        piece = samples[int(window.start * sample_rate):int(window.end * sample_rate)]
+        if len(piece) >= minimum_samples:
+            if len(piece) < window_samples:
+                # Adapted from 3D-Speaker (https://github.com/modelscope/3D-Speaker) — circular voice padding.
+                piece = np.resize(piece, window_samples)  # circular padding
+            stream = extractor.create_stream()
+            stream.accept_waveform(sample_rate, piece)
+            stream.input_finished()
+            vectors.append(np.asarray(extractor.compute(stream), dtype=np.float32))
+            spans.append((window.start, window.end))
+            turn_ids.append(window.turn_id)
+        progress_cb(0.75 + 0.20 * (index + 1) / len(windows))
+        _check_cancelled()
+    del extractor, config
+    if not vectors:
+        raise ValueError("no decoded speech windows for speaker embeddings")
+    stop = threading.Event()
+
+    def _heartbeat() -> None:
+        while not stop.wait(SEGMENTATION_HEARTBEAT_S):
+            progress_cb(0.95)
+
+    heartbeat = threading.Thread(
+        target=_heartbeat, name="speaker-cluster-heartbeat", daemon=True,
+    )
+    heartbeat.start()
+    try:
+        labels = cluster.cluster_turns(
+            turns, np.vstack(vectors), np.asarray(spans), np.asarray(turn_ids),
+            cancelled=cancelled, progress_cb=lambda fraction: progress_cb(0.95 + 0.04 * fraction),
         )
-        for r in result.sort_by_start_time()
-    ]
-    # The public sherpa result exposes turns, not cluster embeddings. Use
-    # temporal adjacency here rather than decoding/extracting them again.
-    return merge_small_speakers(segments, num_speakers=num_speakers)
+    finally:
+        stop.set()
+        if heartbeat.ident is not None:
+            heartbeat.join(timeout=1.0)
+    _check_cancelled()
+    return [DiarSegment(s.start, s.end, f"Speaker {label:02d}")
+            for s, label in zip(segments, labels, strict=True)]
 
 
 def _speaker_gap(left: list[DiarSegment], right: list[DiarSegment]) -> float:

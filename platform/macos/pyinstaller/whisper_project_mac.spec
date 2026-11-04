@@ -523,6 +523,7 @@ a = Analysis(
         'core.collapse_rescue',
         'core.convert',
         'core.diarization',
+        'core.speaker_cluster',
         'core.download_guard',
         'core.hallucination',
         'core.hardware',

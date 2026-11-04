@@ -9,6 +9,8 @@ it holds, alive whatever happens here.
 Protocol (newline-delimited JSON):
   stdin, one line:  ``{"audio_path", "num_speakers", "cluster_threshold"}``
   stdout events:    ``{"event": "progress", "fraction"}`` (0.0-1.0, repeated),
+                    ``{"event": "fallback", "segments": [...]}`` before
+                    optional speaker relabelling (retained on a later crash),
                     then ``{"event": "done", "segments": [{"start", "end",
                     "speaker"}]}`` or ``{"event": "error", "error"}``.
 Exit code 0 after ``done``, 1 after ``error``; a native crash shows up only as
@@ -45,6 +47,9 @@ def main() -> int:
             num_speakers=int(request.get("num_speakers", -1)),
             cluster_threshold=float(request.get("cluster_threshold", 0.5)),
             progress_cb=lambda fraction: _emit({"event": "progress", "fraction": float(fraction)}),
+            fallback_cb=lambda turns: _emit({"event": "fallback", "segments": [
+                {"start": s.start, "end": s.end, "speaker": s.speaker} for s in turns
+            ]}),
         )
         _emit({"event": "done", "segments": [
             {"start": s.start, "end": s.end, "speaker": s.speaker} for s in segments
