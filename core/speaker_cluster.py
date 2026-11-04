@@ -18,6 +18,10 @@ WINDOW_SECONDS = 1.5
 STEP_SECONDS = 0.75
 MIN_PIECE_SECONDS = 0.25
 MAX_SPECTRAL_WINDOWS = 3000
+# 3 % of the sampled windows at most. A lower cap protects short speakers on synthetic
+# data, yet on a real 45-minute meeting file 30 raised the confusion from 0.398 to 0.469.
+_MAX_NEIGHBOURS = 90
+_MIN_EDGE_SIMILARITY = 0.3
 
 Turns = Sequence[tuple[float, float]]
 CancelCheck = Callable[[], bool] | None
@@ -77,7 +81,7 @@ def _embeddings(vectors: NDArray) -> NDArray:
         raise ValueError("speaker embeddings must be a nonempty-width matrix")
     if x.dtype.kind not in "fiu":
         raise ValueError("speaker embeddings must be real numbers")
-    if x.dtype.kind != "f" or x.dtype.itemsize < 4:
+    if x.dtype.kind != "f" or x.dtype.itemsize < 8:
         x = x.astype(np.float64)
     if not np.isfinite(x).all():
         raise ValueError("speaker embeddings contain non-finite values")
@@ -118,22 +122,35 @@ def _dense_spectral(
     n = len(x)
     if n == 1:
         return np.zeros(1, dtype=np.int32), 1, np.zeros(1)
+    if n == 2:
+        same = float(x[0] @ x[1]) >= 0.5
+        return (
+            np.zeros(2, dtype=np.int32) if same else np.array([0, 1], dtype=np.int32),
+            1 if same else 2,
+            np.array([0.0, 2.0 if same else 0.0]),
+        )
     similarities = x @ x.T
     np.fill_diagonal(similarities, 0)
-    keep = min(n - 1, max(min_neighbours, int(round(p * n))))
-    thresholds = np.partition(similarities, n - keep, axis=1)[:, n - keep, None]
+    keep = min(n - 1, max(min_neighbours, min(_MAX_NEIGHBOURS, int(round(p * n)))))
+    thresholds = np.maximum(
+        np.partition(similarities, n - keep, axis=1)[:, n - keep, None],
+        _MIN_EDGE_SIMILARITY,
+    )
     weights = np.where(similarities >= thresholds, np.maximum(similarities, 0), 0.0)
+    del similarities, thresholds
     adjacency = 0.5 * (weights + weights.T)
-    del similarities, weights, thresholds
+    del weights
     degree = np.maximum(adjacency.sum(1), 1e-9) ** -0.5
-    laplacian = np.eye(n) - degree[:, None] * adjacency * degree[None, :]
+    laplacian = -degree[:, None] * adjacency * degree[None, :]
     del adjacency, degree
+    laplacian = 0.5 * (laplacian + laplacian.T)
+    laplacian.flat[::n + 1] += 1.0
     _check_cancelled(cancelled)
     if progress_cb is not None:
         progress_cb(0.15)
     # eigh itself cannot poll Python. Production runs in a killable worker;
     # its heartbeat thread continues reporting during this bounded solve.
-    eigenvalues, eigenvectors = np.linalg.eigh(0.5 * (laplacian + laplacian.T))
+    eigenvalues, eigenvectors = np.linalg.eigh(laplacian)
     del laplacian
     _check_cancelled(cancelled)
     if progress_cb is not None:
@@ -150,6 +167,10 @@ def _dense_spectral(
     k = int(np.argmax(gaps)) + 1
     labels = (np.zeros(n, dtype=np.int32) if k == 1
               else _kmeans(_normalise(eigenvectors[:, :k]), k, cancelled))
+    used = np.unique(labels)
+    if len(used) < k:
+        labels = np.searchsorted(used, labels).astype(np.int32)
+        k = int(len(used))
     return labels, k, leading
 
 
@@ -241,7 +262,7 @@ def cluster_turns(
     # Turn times precede window times, matching extraction even for overlapping
     # turns. Vector bytes break exact time ties without using input positions.
     order = sorted(range(len(v)), key=lambda i: (
-        turns[int(ids[i])], float(s[i, 0]), float(s[i, 1]), v[i].tobytes(),
+        turns[int(ids[i])], int(ids[i]), float(s[i, 0]), float(s[i, 1]), v[i].tobytes(),
     ))
     labels, _k, _eigenvalues = spectral(
         v[order], max_windows=max_windows, cancelled=cancelled, progress_cb=progress_cb,

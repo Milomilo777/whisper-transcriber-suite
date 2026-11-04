@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import sys
 import threading
+from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
@@ -479,3 +480,217 @@ def test_unprintable_extractor_exception_still_retains_labels(worker, caplog):
     worker.fail_at, worker.failure = 2, Unprintable
     assert diar._diarize_impl("in-memory.wav") == today(worker)
     assert "Unprintable" in caplog.text
+
+
+def test_empty_sampled_cluster_does_not_warn_or_hijack_unsampled_windows(recwarn):
+    edges = [
+        (6, 8), (4, 7), (9, 1), (9, 7), (5, 1), (9, 0),
+        (3, 2), (6, 4), (10, 2), (11, 6), (1, 2), (5, 3),
+    ]
+    sampled = np.zeros((12, len(edges)))
+    for col, (u, v) in enumerate(edges):
+        sampled[[u, v], col] = 1.0
+    sample_ids = np.linspace(0, 13, 12, dtype=np.int64)
+    vectors = np.zeros((14, len(edges)))
+    vectors[sample_ids] = sampled
+    vectors[[6, 12]] = sampled[:2]
+    labels, k, _ = cluster.spectral(vectors, max_windows=12)
+    warnings_seen = [str(w.message) for w in recwarn]
+    assert warnings_seen == [] and k == 4, (
+        f"warnings={warnings_seen}, k={k}, sampled_unique={np.unique(labels[sample_ids]).tolist()}, "
+        f"unsampled={labels[[6, 12]].tolist()}"
+    )
+    assert np.unique(labels[sample_ids]).tolist() == [0, 1, 2, 3]
+    assert np.unique(labels).tolist() == [0, 1, 2, 3]
+    assert labels[[6, 12]].tolist() == labels[sample_ids[:2]].tolist()
+
+
+def test_tunable_neighbour_cap_and_edge_similarity_keep_legacy_mode(monkeypatch):
+    assert cluster._MAX_NEIGHBOURS == 90
+    assert cluster._MIN_EDGE_SIMILARITY == 0.3
+    vectors, truth = blobs([580, 580, 7, 7])
+    vectors = vectors + 0.35
+    labels, k, evals = cluster.spectral(vectors)
+    assert k == 4 and purity(labels, truth) == 1.0
+    assert float(evals[3]) < 1e-12
+
+    # Legacy reference: keep = min(n - 1, max(6, round(p * n))), no similarity floor.
+    x = cluster._embeddings(vectors)
+    n = len(x)
+    sim = x @ x.T
+    np.fill_diagonal(sim, 0)
+    keep = min(n - 1, max(6, int(round(0.03 * n))))
+    thresh = np.partition(sim, n - keep, axis=1)[:, n - keep, None]
+    weights = np.where(sim >= thresh, np.maximum(sim, 0), 0.0)
+    adj = 0.5 * (weights + weights.T)
+    deg = np.maximum(adj.sum(1), 1e-9) ** -0.5
+    lap = np.eye(n) - deg[:, None] * adj * deg[None, :]
+    ref_evals, ref_evecs = np.linalg.eigh(0.5 * (lap + lap.T))
+    ref_leading = ref_evals[:13]
+    ref_k = int(np.argmax(np.diff(ref_leading))) + 1
+    ref_labels = cluster._kmeans(cluster._normalise(ref_evecs[:, :ref_k]), ref_k, None)
+
+    monkeypatch.setattr(cluster, "_MAX_NEIGHBOURS", n)
+    monkeypatch.setattr(cluster, "_MIN_EDGE_SIMILARITY", -1.0)
+    leg_labels, leg_k, leg_evals = cluster.spectral(vectors)
+    assert leg_k == ref_k
+    assert np.array_equal(leg_labels, ref_labels)
+    assert np.allclose(leg_evals, ref_leading)
+    assert float(leg_evals[3]) > 0.3
+
+
+@pytest.mark.parametrize("case", ["queued_before_timeout", "flushed_before_exit"])
+def test_queued_or_flushed_events_win_over_timeout_and_worker_exit(fake_worker, monkeypatch, case):
+    import time
+
+    monkeypatch.setattr("core.transcriber.get_duration", lambda path: 0.01)
+    if case == "queued_before_timeout":
+        monkeypatch.setattr(diar, "WORKER_MIN_TIMEOUT_S", 0.05)
+        fake_worker("""
+            emit({'event': 'progress', 'fraction': 0.5})
+            emit({'event': 'fallback', 'segments': [{'start': 0, 'end': 2, 'speaker': 'Speaker 07'}]})
+            emit({'event': 'done', 'segments': [{'start': 0, 'end': 2, 'speaker': 'Speaker 00'}]})
+        """)
+        result = diar.diarize("in-memory.wav", progress_cb=lambda _f: time.sleep(0.12))
+        assert result == [diar.DiarSegment(0, 2, "Speaker 00")]
+    else:
+        monkeypatch.setattr(diar, "WORKER_MIN_TIMEOUT_S", 0.05)
+        fake_worker("""
+            emit({'event': 'progress', 'fraction': 0.5})
+            emit({'event': 'fallback', 'segments': [{'start': 0, 'end': 2, 'speaker': 'Speaker 07'}]})
+            time.sleep(30)
+        """)
+        result = diar.diarize("in-memory.wav", progress_cb=lambda _f: time.sleep(0.12))
+        assert result == [diar.DiarSegment(0, 2, "Speaker 07")]
+
+
+def test_hung_window_extraction_hits_stall_limit_not_masked_by_heartbeat(fake_worker, monkeypatch, caplog):
+    monkeypatch.setenv("PYTHONPATH", str(Path(diar.__file__).resolve().parents[1]))
+    started = fake_worker("""
+        from types import SimpleNamespace
+        import numpy as np
+        from core import diarization as diar
+
+        diar.SEGMENTATION_HEARTBEAT_S = 0.05
+        diar.availability_reason = lambda: ""
+        diar._model_path = lambda _name: diar.__file__
+        diar._prepare_audio_16k_mono = lambda _path: (np.ones(32000, dtype=np.float32), 16000)
+
+        class Stream:
+            def accept_waveform(self, sr, piece): pass
+            def input_finished(self): pass
+
+        class Extractor:
+            def __init__(self, cfg): pass
+            def create_stream(self): return Stream()
+            def compute(self, stream):
+                time.sleep(30)
+                return np.ones(8, dtype=np.float32)
+
+        class Diarizer:
+            def __init__(self, cfg): pass
+            def process(self, samples, callback):
+                callback(4, 4)
+                return SimpleNamespace(sort_by_start_time=lambda: [
+                    SimpleNamespace(start=0.0, end=2.0, speaker=7)
+                ])
+
+        sys.modules["sherpa_onnx"] = SimpleNamespace(
+            OfflineSpeakerDiarizationConfig=lambda **kw: SimpleNamespace(validate=lambda: True, **kw),
+            OfflineSpeakerSegmentationModelConfig=lambda **kw: SimpleNamespace(**kw),
+            OfflineSpeakerSegmentationPyannoteModelConfig=lambda **kw: SimpleNamespace(**kw),
+            SpeakerEmbeddingExtractorConfig=lambda **kw: SimpleNamespace(**kw),
+            FastClusteringConfig=lambda **kw: SimpleNamespace(**kw),
+            OfflineSpeakerDiarization=Diarizer,
+            SpeakerEmbeddingExtractor=Extractor,
+        )
+        diar._diarize_impl(
+            "in-memory.wav",
+            progress_cb=lambda f: emit({"event": "progress", "fraction": float(f)}),
+            fallback_cb=lambda turns: emit({"event": "fallback", "segments": [
+                {"start": s.start, "end": s.end, "speaker": s.speaker} for s in turns
+            ]}),
+        )
+    """)
+    monkeypatch.setattr(diar, "WORKER_STALL_TIMEOUT_S", 0.25)
+    monkeypatch.setattr(diar, "WORKER_MIN_TIMEOUT_S", 0.9)
+    monkeypatch.setattr("core.transcriber.get_duration", lambda path: 0.01)
+    assert diar.diarize("in-memory.wav") == [diar.DiarSegment(0, 2, "Speaker 07")]
+    assert started[-1].poll() is not None
+    assert "made no progress" in caplog.text, f"expected stall log, got: {caplog.text!r}"
+
+
+def test_float32_duplicates_and_coincident_turn_tie_break_are_permutation_invariant():
+    x_dup = np.ones((100, 192), dtype=np.float32)
+    labels, k, _ = cluster.spectral(x_dup)
+    assert k == 1, f"expected k=1 for 100 identical float32 vectors, got k={k}"
+    assert labels.tolist() == [0] * 100
+
+    turns_dup = [(0.0, 1.5)] * 100
+    spans_dup = np.tile([[0.0, 1.5]], (100, 1))
+    ids_dup = np.arange(100)
+    rng = np.random.default_rng(7)
+    perm = rng.permutation(100)
+    assert cluster.cluster_turns(turns_dup, x_dup, spans_dup, ids_dup) == [0] * 100
+    assert cluster.cluster_turns(
+        turns_dup, x_dup[perm], spans_dup[perm], ids_dup[perm],
+    ) == [0] * 100
+
+    # Coincident turns with an identical window vector at (0.0, 1.5) and a
+    # second window on turn 1: turn_id must break the exact (turn, span, bytes)
+    # tie when max_windows subsamples the ordered windows.
+    v0, v1 = blobs([20, 20], dim=16, seed=3)[0][:20], blobs([20, 20], dim=16, seed=3)[0][20:]
+    turns = [(0.0, 2.25), (0.0, 2.25)] + [(float(i + 3), float(i + 4.5)) for i in range(38)]
+    shared = v0[0].copy()
+    vecs = np.vstack([shared, shared, v1[0], v0[1:20], v1[1:20]]).astype(np.float32)
+    spans = np.array(
+        [(0.0, 1.5), (0.0, 1.5), (0.75, 2.25)]
+        + [(float(i + 3), float(i + 4.5)) for i in range(38)]
+    )
+    ids = np.array([0, 1, 1] + list(range(2, 40)))
+    base = cluster.cluster_turns(turns, vecs, spans, ids, max_windows=20)
+    for seed in range(10):
+        p = np.random.default_rng(seed).permutation(len(vecs))
+        assert cluster.cluster_turns(turns, vecs[p], spans[p], ids[p], max_windows=20) == base
+
+
+def test_two_windows_orthogonal_and_similar_do_not_raise():
+    labels_orth, k_orth, _ = cluster.spectral(np.eye(2, 8, dtype=np.float32))
+    assert k_orth == 2
+    assert labels_orth.tolist() == [0, 1]
+
+    labels_same, k_same, _ = cluster.spectral(np.ones((2, 8), dtype=np.float32))
+    assert k_same == 1
+    assert labels_same.tolist() == [0, 0]
+
+
+def test_laplacian_temporaries_reduce_peak_memory_with_bit_identical_labels():
+    import tracemalloc
+
+    vectors, _ = blobs([500] * 4, dim=64, noise=0.15, seed=1)
+    x = vectors / np.linalg.norm(vectors, axis=1, keepdims=True)
+    n = len(x)
+    sim = x @ x.T
+    np.fill_diagonal(sim, 0)
+    keep = min(n - 1, max(6, int(round(0.03 * n))))
+    thresh = np.partition(sim, n - keep, axis=1)[:, n - keep, None]
+    weights = np.where(sim >= thresh, np.maximum(sim, 0), 0.0)
+    adj = 0.5 * (weights + weights.T)
+    deg = np.maximum(adj.sum(1), 1e-9) ** -0.5
+    lap = np.eye(n) - deg[:, None] * adj * deg[None, :]
+    evals, evecs = np.linalg.eigh(0.5 * (lap + lap.T))
+    ref_k = int(np.argmax(np.diff(evals[:13]))) + 1
+    ref_labels = cluster._kmeans(cluster._normalise(evecs[:, :ref_k]), ref_k, None)
+    del sim, thresh, weights, adj, deg, lap, evals, evecs
+
+    tracemalloc.start()
+    labels, k, _ = cluster.spectral(vectors)
+    _, peak = tracemalloc.get_traced_memory()
+    tracemalloc.stop()
+    peak_mb = peak / (1024 * 1024)
+    assert k == ref_k == 4
+    assert np.array_equal(labels, ref_labels)
+    # The peak depends on the numpy build; only the order of magnitude is stable: at most
+    # about eight n x n float64 matrices at once.
+    limit_mb = 8 * n * n * 8 / (1024 * 1024)
+    assert peak_mb < limit_mb, f"expected peak_mb < {limit_mb:.0f} MB, got {peak_mb:.2f} MB"

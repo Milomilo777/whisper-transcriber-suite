@@ -342,7 +342,19 @@ def diarize(
     last_fraction = 0.0
 
     def _retain_fallback(reason: str) -> bool:
-        nonlocal segments
+        nonlocal segments, fallback
+        readers[0].join(timeout=2.0)
+        while True:
+            try:
+                ev = events.get_nowait()
+            except queue.Empty:
+                break
+            if ev.get("event") == "done":
+                segments = list(ev.get("segments") or [])
+            elif ev.get("event") == "fallback":
+                fallback = list(ev.get("segments") or [])
+        if segments is not None:
+            return True
         if fallback is None:
             return False
         logger.warning("%s; retaining existing speaker labels", reason)
@@ -354,35 +366,38 @@ def diarize(
             if cancelled is not None and cancelled():
                 _stop(force=False)
                 return []
-            now = time.monotonic()
-            if (
-                progress_cb is not None
-                and now - last_heartbeat >= SEGMENTATION_HEARTBEAT_S
-            ):
-                progress_cb(last_fraction)
-                last_heartbeat = now
-            if now - start > overall_timeout_s:
-                _stop(force=True)
-                reason = f"speaker detection took longer than {overall_timeout_s:.0f} s and was stopped"
-                if _retain_fallback(reason):
-                    break
-                raise DiarizationUnavailable(reason)
-            if progressed and now - last_event > WORKER_STALL_TIMEOUT_S:
-                _stop(force=True)
-                reason = f"speaker detection made no progress for {WORKER_STALL_TIMEOUT_S:.0f} s and was stopped"
-                if _retain_fallback(reason):
-                    break
-                raise DiarizationUnavailable(reason)
             try:
-                ev = events.get(timeout=_CANCEL_POLL_S)
+                ev = events.get_nowait()
             except queue.Empty:
-                if exited:
-                    break  # exited and every event it printed has been handled
-                if process.poll() is not None:
-                    # Let the reader hand over what the worker printed last.
-                    readers[0].join(timeout=2.0)
-                    exited = True
-                continue
+                now = time.monotonic()
+                if (
+                    progress_cb is not None
+                    and now - last_heartbeat >= SEGMENTATION_HEARTBEAT_S
+                ):
+                    progress_cb(last_fraction)
+                    last_heartbeat = now
+                if now - start > overall_timeout_s:
+                    _stop(force=True)
+                    reason = f"speaker detection took longer than {overall_timeout_s:.0f} s and was stopped"
+                    if _retain_fallback(reason):
+                        break
+                    raise DiarizationUnavailable(reason)
+                if progressed and now - last_event > WORKER_STALL_TIMEOUT_S:
+                    _stop(force=True)
+                    reason = f"speaker detection made no progress for {WORKER_STALL_TIMEOUT_S:.0f} s and was stopped"
+                    if _retain_fallback(reason):
+                        break
+                    raise DiarizationUnavailable(reason)
+                try:
+                    ev = events.get(timeout=_CANCEL_POLL_S)
+                except queue.Empty:
+                    if exited:
+                        break  # exited and every event it printed has been handled
+                    if process.poll() is not None:
+                        # Let the reader hand over what the worker printed last.
+                        readers[0].join(timeout=2.0)
+                        exited = True
+                    continue
             last_event = time.monotonic()
             kind = ev.get("event")
             if kind == "progress":
@@ -551,22 +566,9 @@ def _diarize_impl(
         # Keep the full legacy result ready before doing any optional work.
         # A failed window N must not expose a partially relabelled transcript.
         fallback = merge_small_speakers(segments)
-        stop: threading.Event | None = None
-        heartbeat: threading.Thread | None = None
         try:
             if fallback_cb is not None:
                 fallback_cb(fallback)
-            stop = threading.Event()
-
-            def _heartbeat() -> None:
-                assert stop is not None
-                while not stop.wait(SEGMENTATION_HEARTBEAT_S):
-                    _report(last_fraction)
-
-            heartbeat = threading.Thread(
-                target=_heartbeat, name="speaker-cluster-heartbeat", daemon=True,
-            )
-            heartbeat.start()
             _report(0.75)
             labelled = _recluster_speakers(
                 samples, _sr, segments, emb_path,
@@ -577,11 +579,6 @@ def _diarize_impl(
                 return []
             _log_relabel_failure("Window speaker clustering", error)
             labelled = fallback
-        finally:
-            if stop is not None:
-                stop.set()
-            if heartbeat is not None and heartbeat.ident is not None:
-                heartbeat.join(timeout=1.0)
         _report(1.0)
         # Spectral clusters have already been selected by the eigengap. The
         # temporal small-cluster merge adds no benefit on the replay data and
@@ -601,6 +598,8 @@ def _recluster_speakers(
     Called only in the isolated diarization worker, after the caller has saved
     its completed transcription checkpoint. Exceptions retain legacy labels.
     """
+    import threading
+
     import numpy as np
     import sherpa_onnx  # type: ignore[import-untyped]
 
@@ -644,10 +643,25 @@ def _recluster_speakers(
     del extractor, config
     if not vectors:
         raise ValueError("no decoded speech windows for speaker embeddings")
-    labels = cluster.cluster_turns(
-        turns, np.vstack(vectors), np.asarray(spans), np.asarray(turn_ids),
-        cancelled=cancelled, progress_cb=lambda fraction: progress_cb(0.95 + 0.04 * fraction),
+    stop = threading.Event()
+
+    def _heartbeat() -> None:
+        while not stop.wait(SEGMENTATION_HEARTBEAT_S):
+            progress_cb(0.95)
+
+    heartbeat = threading.Thread(
+        target=_heartbeat, name="speaker-cluster-heartbeat", daemon=True,
     )
+    heartbeat.start()
+    try:
+        labels = cluster.cluster_turns(
+            turns, np.vstack(vectors), np.asarray(spans), np.asarray(turn_ids),
+            cancelled=cancelled, progress_cb=lambda fraction: progress_cb(0.95 + 0.04 * fraction),
+        )
+    finally:
+        stop.set()
+        if heartbeat.ident is not None:
+            heartbeat.join(timeout=1.0)
     _check_cancelled()
     return [DiarSegment(s.start, s.end, f"Speaker {label:02d}")
             for s, label in zip(segments, labels, strict=True)]
