@@ -183,7 +183,7 @@
             <input type="number" id="o_vad_min_silence_ms" min="0" step="50" placeholder="500">
           </label>
         </div>
-        <label><input type="checkbox" id="o_word_timestamps"> Per-word timestamps</label>
+        <label><input type="checkbox" id="o_word_timestamps" disabled> Per-word timestamps</label>
         <label id="diar_row"><input type="checkbox" id="o_diarization_enabled"> Identify speakers (diarization)</label>
         <label>Number of speakers (blank / -1 = auto)
           <input type="number" id="o_diarization_num_speakers" min="-1" step="1" placeholder="auto">
@@ -435,10 +435,16 @@
 	  yo: "Yoruba", zu: "Zulu"
   };
 
+  var wordTimestampsDefault = false;
+  var wordTimestampsLoaded = false;
   function loadOptions() {
     fetch("/api/options", { headers: authHeaders() })
       .then(function (r) { return r.json(); })
       .then(function (d) {
+        wordTimestampsDefault = !!(d.defaults && d.defaults.word_timestamps);
+        document.getElementById("o_word_timestamps").checked = wordTimestampsDefault;
+        document.getElementById("o_word_timestamps").disabled = false;
+        wordTimestampsLoaded = true;
         var formats = d.formats || ["srt", "txt", "json"];
         var defaults = { srt: true, txt: true };
         fmtBox.innerHTML = "";
@@ -494,12 +500,14 @@
   function gatherOptions() {
     var o = {
       vad_enabled: document.getElementById("o_vad").checked,
-      word_timestamps: document.getElementById("o_word_timestamps").checked,
       diarization_enabled: document.getElementById("o_diarization_enabled").checked,
       demucs_enabled: document.getElementById("o_demucs_enabled").checked,
       hallucination_detect_enabled: document.getElementById("o_hallucination_detect_enabled").checked,
       auto_chapters_enabled: document.getElementById("o_auto_chapters_enabled").checked
     };
+    if (wordTimestampsLoaded) {
+      o.word_timestamps = document.getElementById("o_word_timestamps").checked;
+    }
     var vt = numOrUndef("o_vad_threshold");
     if (vt !== undefined) { o.vad_threshold = vt; }
     var vms = numOrUndef("o_vad_min_silence_ms");
@@ -882,7 +890,7 @@
     document.getElementById("o_vad").checked = true;
     document.getElementById("o_vad_threshold").value = "";
     document.getElementById("o_vad_min_silence_ms").value = "";
-    document.getElementById("o_word_timestamps").checked = false;
+    document.getElementById("o_word_timestamps").checked = wordTimestampsDefault;
     document.getElementById("o_diarization_enabled").checked = false;
     document.getElementById("o_diarization_num_speakers").value = "";
     document.getElementById("o_demucs_enabled").checked = false;

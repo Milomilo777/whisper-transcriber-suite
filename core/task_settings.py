@@ -33,7 +33,7 @@ import os
 from typing import Any, Mapping
 from urllib.parse import urlsplit
 
-from .config import load_config
+from .config import effective_word_timestamps, load_config
 
 logger = logging.getLogger(__name__)
 
@@ -148,7 +148,7 @@ def snapshot(cfg: Mapping[str, Any]) -> dict[str, Any]:
     A value that cannot be sent as JSON is skipped (the worker then keeps its
     own value for that key) instead of failing the whole dispatch.
     """
-    out: dict[str, Any] = {}
+    out: dict[str, Any] = {"word_timestamps": effective_word_timestamps(cfg)}
     for key in PER_TASK_KEYS:
         if key in cfg:
             value = cfg[key]

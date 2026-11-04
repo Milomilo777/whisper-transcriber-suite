@@ -23,6 +23,7 @@ from app.theme import tokens
 from app.widgets.disclosure import Disclosure
 from app.widgets.tooltip import bind_tooltip, help_icon, section_labelframe
 from app.widgets.wrap_row import WrapRow
+from core.config import effective_word_timestamps
 
 if TYPE_CHECKING:
     from app.app import App
@@ -912,7 +913,7 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
         value=bool(app.app_config.get("vad_enabled", True))
     )
     app.word_timestamps_var = tk.BooleanVar(
-        value=bool(app.app_config.get("word_timestamps", False))
+        value=effective_word_timestamps(app.app_config)
     )
     app.translate_var = tk.BooleanVar(
         value=bool(app.app_config.get("translate_to_english", False))

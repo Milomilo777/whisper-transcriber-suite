@@ -372,7 +372,7 @@ def test_snapshot_never_contains_secrets_or_load_time_keys():
            "model": {"name": "m"}, "diarization_enabled": True,
            "cloud_api_key": "dummy-credential-B"}
     snap = task_settings.snapshot(cfg)
-    assert snap == {"diarization_enabled": True, "alignment": "none"}
+    assert snap == {"diarization_enabled": True, "alignment": "none", "word_timestamps": False}
     assert "dummy-credential" not in json.dumps(snap)
 
 
@@ -513,6 +513,35 @@ def test_resume_uses_the_settings_the_run_started_with(env, monkeypatch):
 
 
 # ------------------------------------------------- checkpoint fingerprint
+
+
+@pytest.mark.parametrize('original', [False, True, None])
+def test_resume_recovers_words_after_upgrade_without_snapshot(env, monkeypatch, original):
+    import core._checkpoint as cp
+    audio = env.tmp / 'resume.wav'
+    audio.write_bytes(b'original media')
+    monkeypatch.setattr(tr, 'load_config', lambda *a, **k: {})
+    first = TranscriptionTask(str(audio))
+    with tr._runtime_overrides_scope(first):
+        old = dict(tr.config)
+        if original is None:
+            old.pop('word_timestamps', None)
+        else:
+            old['word_timestamps'] = original
+        fp = cp.config_fingerprint(old)
+        backend, model = tr._current_backend_and_model()
+    cp.write_checkpoint(str(audio), backend=backend, model_name=model, language='en',
+                        language_probability=.9, cfg_fingerprint=fp, last_end_time=10.,
+                        segments=[dict(start=0., end=10., text='early')], checkpoint_time=1.)
+    monkeypatch.setitem(tr.config, 'word_timestamps', original is not True)
+    monkeypatch.setitem(tr.config, 'word_timestamps_profile_default', True)
+    sliced = env.tmp / 'slice.wav'
+    sliced.write_bytes(b'tail')
+    monkeypatch.setattr(tr, '_slice_audio_from', lambda *a, **k: str(sliced))
+    monkeypatch.setattr(tr, '_run_post_pipeline', lambda *a, **k: 0)
+    assert tr.resume_transcription(TranscriptionTask(str(audio))) is True
+    assert env.engine.calls[0]['word_timestamps'] is bool(original)
+    assert tr.config['word_timestamps'] is (original is not True)
 
 
 def test_fingerprint_follows_the_tasks_settings_and_not_the_stale_config(

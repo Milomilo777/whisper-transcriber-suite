@@ -27,7 +27,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Iterator
 
-from faster_whisper import WhisperModel
+from .backends.faster_whisper_be import WhisperModel
 
 try:  # 1.0.3+ ships this; older wheels do not
     from faster_whisper import BatchedInferencePipeline  # type: ignore[attr-defined]
@@ -46,7 +46,7 @@ from . import task_settings as _task_settings
 from . import translate_task as _translate
 from . import vad_window as _vad_window
 from ._proc import new_session_kwargs
-from .config import load_config
+from .config import effective_word_timestamps, load_config
 from .model_manager import DownloadCancelled, ensure_model
 from .paths import bundled_binary
 from .task import TranscriptionTask
@@ -1149,6 +1149,7 @@ def _write_periodic_checkpoint(
             whisper_task=whisper_task,
             transcription_completed=transcription_completed,
             languages=list(mixed_language_pair(task) or ()) or None,
+            word_timestamps=effective_word_timestamps(config),
         )
         task.checkpoint_failures = 0
     except Exception as e:  # noqa: BLE001
@@ -2467,6 +2468,7 @@ def _runtime_overrides_scope(
             set(overrides)
             | {k for k, _ in _RUNTIME_OVERRIDE_DEFAULTS}
             | set(task_layer)
+            | {"word_timestamps"}  # resume may recover it from a legacy fingerprint
         )
         for key in keys_to_track:
             if key in config:
@@ -2597,7 +2599,7 @@ def _build_transcribe_kwargs(task: "TranscriptionTask") -> dict[str, Any]:
     continue to drive behaviour. Pure-ish: never raises, never
     mutates ``config``.
     """
-    want_words = bool(config.get("word_timestamps", False))
+    want_words = effective_word_timestamps(config)
     kwargs: dict[str, Any] = {
         "vad_filter": _vad_parameters() is not None,
         "word_timestamps": want_words,
@@ -3042,7 +3044,7 @@ def transcribe(
         assert (lm_slot.model if lm_slot is not None else MODEL) is not None
         base_model = _whisper_runner(task, log_cb=log_cb, language_check=True)
         base_pipeline = (lm_slot.pipeline if lm_slot is not None else PIPELINE) is not None
-        want_words = bool(config.get("word_timestamps", False))
+        want_words = effective_word_timestamps(config)
 
         transcribe_kwargs = _build_transcribe_kwargs(task)
         # Optional time-slice (Transcribe-tab time range): process only
@@ -3441,7 +3443,7 @@ def _transcribe_via_alt_backend(
     start = time.time()
     log(f"Processing ({backend_name}): {task.file_path}", log_cb)
 
-    want_words = bool(config.get("word_timestamps", False))
+    want_words = effective_word_timestamps(config)
     vad_params = _vad_parameters()
 
     # Optional Transcribe-tab time range. Alt backends have no
@@ -4005,7 +4007,8 @@ def resume_transcription(
         # with: the captured half is already in that task, so the tail must
         # use it too or one transcript would mix two tasks.
         cp_task = _translate.normalise_task(data.get("whisper_task"))
-        cfg_fp = _checkpoint.accepted_fingerprints(config, cp_task)
+        resume_config = _checkpoint.config_for_resume(data, config, cp_task)
+        cfg_fp = _checkpoint.accepted_fingerprints(resume_config, cp_task)
         reason = _checkpoint.validate_checkpoint(
             data,
             backend=backend_for_check,
@@ -4040,6 +4043,9 @@ def resume_transcription(
             _checkpoint.delete_checkpoint(task.file_path)
             return False
         _note_run_identity(task)
+        # A legacy missing key meant False even if this profile was created
+        # under a newer default. Hash its original spelling, decode its value.
+        config["word_timestamps"] = bool(resume_config.get("word_timestamps", False))
         task.whisper_task = cp_task
         _checked_whisper_task(task, backend_for_check or "faster_whisper")
 
@@ -4221,7 +4227,7 @@ def resume_transcription(
         segments_since_checkpoint = 0
         try:
             assert MODEL is not None
-            want_words = bool(config.get("word_timestamps", False))
+            want_words = effective_word_timestamps(config)
 
             # Reuse the standard kwarg builder so VAD / hotwords /
             # word_timestamps all match the original run. Force the

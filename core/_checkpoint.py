@@ -199,6 +199,28 @@ def accepted_fingerprints(cfg: dict[str, Any], whisper_task: str = "transcribe")
     return (current,) if earlier == current else (current, earlier)
 
 
+def config_for_resume(
+    data: dict[str, Any], cfg: dict[str, Any], whisper_task: str = "transcribe",
+) -> dict[str, Any]:
+    """Recover only the original word setting, without accepting other changes.
+
+    Earlier checkpoints stored only a fingerprint. Try both original boolean
+    spellings and the missing-key spelling against that hash. New checkpoints
+    also carry the setting explicitly; it must still match the fingerprint.
+    """
+    saved = data.get("word_timestamps")
+    candidates = (saved,) if isinstance(saved, bool) else (False, True, None)
+    for value in candidates:
+        candidate = dict(cfg)
+        if value is None:
+            candidate.pop("word_timestamps", None)
+        else:
+            candidate["word_timestamps"] = value
+        if data.get("config_fingerprint") in accepted_fingerprints(candidate, whisper_task):
+            return candidate
+    return dict(cfg)
+
+
 # Source identity (size, mtime) of the media each run started on, keyed by
 # absolute path. A later stat blip must not replace it with "unknown": the
 # checkpoint then still says which media the saved segments came from.
@@ -538,6 +560,7 @@ def write_checkpoint(
     whisper_task: str = "transcribe",
     transcription_completed: bool = False,
     languages: list[str] | None = None,
+    word_timestamps: bool | None = None,
 ) -> Path:
     """Atomically persist a checkpoint.
 
@@ -589,6 +612,8 @@ def write_checkpoint(
         "checkpoint_time": float(checkpoint_time or _time.time()),
         "transcription_completed": transcription_completed,
     }
+    if word_timestamps is not None:
+        payload["word_timestamps"] = bool(word_timestamps)
 
     path = checkpoint_path(abs_path)
     # A fixed ".tmp" name let two writers for the same source (two app

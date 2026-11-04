@@ -20,7 +20,7 @@ import urllib.parse
 import urllib.request
 from collections.abc import Callable, Generator
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 import platformdirs
 
@@ -1833,6 +1833,8 @@ def update_config(fn: Callable[[dict[str, Any]], None]) -> dict[str, Any]:
                         0, f"{path} is damaged and has no usable backup; not changing it",
                     )
                 data = {}
+                if DEFAULT_CONFIG["word_timestamps"]:
+                    data["word_timestamps_profile_default"] = True
             _FILE_LOCK_STATE.in_fn = True
             try:
                 fn(data)
@@ -2004,6 +2006,11 @@ def read_local_config_for_switches() -> dict[str, Any] | None:
     return {}
 
 
+def effective_word_timestamps(config: Mapping[str, Any]) -> bool:
+    """Explicit choice, then profile-era default; incomplete legacy configs stay off."""
+    return bool(config.get("word_timestamps", config.get("word_timestamps_profile_default", False)))
+
+
 def load_config(*, fetch_online: bool = True) -> dict[str, Any]:
     """Return the effective config from the three merged layers.
 
@@ -2111,6 +2118,19 @@ def load_config(*, fetch_online: bool = True) -> dict[str, Any]:
     # A file that holds only a usage counter came from a headless run (the server
     # with a cloud engine) of a new install, not from someone who set the app up.
     used_before = bool(set(local) - _COUNTER_ONLY_KEYS)
+    # Record the default of a new profile's era separately from a saved choice.
+    # Older profiles without the key keep their original segment-only behavior.
+    if "word_timestamps" not in local:
+        era = local.get("word_timestamps_profile_default")
+        fresh = not (used_before or read_closed or os.path.exists(config_path())
+                     or os.path.exists(config_path() + ".corrupt"))
+        if not isinstance(era, bool):
+            era = bool(DEFAULT_CONFIG["word_timestamps"]) if fresh else False
+        merged["word_timestamps"] = era
+        baseline["word_timestamps"] = era
+        if fresh:
+            merged["word_timestamps_profile_default"] = era
+            baseline.pop("word_timestamps_profile_default", None)
     if "quick_start_done" not in local and (
         used_before or os.path.exists(config_path() + ".corrupt")
     ):
@@ -2522,6 +2542,13 @@ def save_config(config: dict[str, Any]) -> None:
                     )
                 changed = set(snapshot)
                 to_persist = copy.deepcopy(snapshot)
+                if (baseline is not None and on_disk is None
+                        and snapshot.get("word_timestamps") == baseline.get("word_timestamps")):
+                    # An untouched inherited value is not an explicit user choice.
+                    to_persist.pop("word_timestamps", None)
+            if (on_disk is None and DEFAULT_CONFIG["word_timestamps"]
+                    and not os.path.exists(path + ".corrupt")):
+                to_persist.setdefault("word_timestamps_profile_default", True)
             # Don't persist an auto-derived model_path — it would harden
             # into an explicit override that defeats hub_folder. See
             # _persistable_model_path for the full rationale.

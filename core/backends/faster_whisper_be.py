@@ -17,7 +17,7 @@ from contextlib import nullcontext
 from pathlib import Path
 from typing import Any, Callable
 
-from faster_whisper import WhisperModel
+from faster_whisper import WhisperModel as _WhisperModel
 
 try:  # 1.0.3+ ships this; older wheels do not
     from faster_whisper import BatchedInferencePipeline  # type: ignore[attr-defined]
@@ -30,6 +30,40 @@ from ..model_manager import DownloadCancelled, ensure_model
 from .base import Backend, LanguageInfo
 
 logger = logging.getLogger(__name__)
+
+
+class WhisperModel(_WhisperModel):
+    """Keep decoded text when optional alignment cannot provide usable bounds.
+
+    The sequential and batched upstream paths both call this seam before
+    publishing segments. Tokens remain authoritative; word times are optional.
+    """
+
+    # Adapted from faster-whisper (https://github.com/SYSTRAN/faster-whisper/blob/v1.2.1/faster_whisper/transcribe.py) — guard the alignment mutation seam.
+    def add_word_timestamps(
+        self, segments, tokenizer, encoder_output, num_frames,
+        prepend_punctuations, append_punctuations, last_speech_timestamp,
+    ):
+        raw = [(segment, segment["start"], segment["end"])
+               for group in segments for segment in group]
+        try:
+            result = super().add_word_timestamps(
+                segments, tokenizer, encoder_output, num_frames,
+                prepend_punctuations, append_punctuations, last_speech_timestamp,
+            )
+        except IndexError:
+            # Empty/truncated alignment output can fail in find_alignment or
+            # its consumer. Restore the whole call, including earlier groups.
+            logger.warning("Word alignment index error; retaining decoded text with raw segment bounds.",
+                           exc_info=True)
+            for segment, start, end in raw:
+                segment.update(start=start, end=end, words=[])
+            return last_speech_timestamp
+        for segment, start, end in raw:
+            if segment["end"] <= segment["start"] and end > start:
+                logger.warning("Word alignment collapsed a segment; retaining decoded text with raw bounds.")
+                segment.update(start=start, end=end, words=[])
+        return result
 
 
 def _cuda_failure(exc: RuntimeError) -> str:

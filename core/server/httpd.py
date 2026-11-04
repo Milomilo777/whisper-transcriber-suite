@@ -873,6 +873,13 @@ def language_model_notes() -> dict[str, dict[str, Any]]:
         return {}
 
 
+def _server_word_timestamps_default() -> bool:
+    from core import transcriber
+    from core.config import effective_word_timestamps
+
+    return effective_word_timestamps(transcriber.config)
+
+
 # Per-job options the web may set. Each entry is (key, kind) where kind drives
 # the coercion in normalize_options. These mirror the desktop Advanced dialog /
 # Transcribe-tab keys and are written into the per-job .whisperproject.json so
@@ -1901,6 +1908,7 @@ class JobRequestHandler(BaseHTTPRequestHandler):
             diar_available = False
         return {
             "formats": supported_formats(),
+            "defaults": {"word_timestamps": _server_word_timestamps_default()},
             "languages": list(WEB_LANGUAGE_CODES),
             "diarization_available": diar_available,
             # The page offers the "two languages in this file" tick only here.
