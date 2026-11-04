@@ -482,27 +482,20 @@ def test_unprintable_extractor_exception_still_retains_labels(worker, caplog):
     assert "Unprintable" in caplog.text
 
 
-def test_empty_sampled_cluster_does_not_warn_or_hijack_unsampled_windows(recwarn):
-    edges = [
-        (6, 8), (4, 7), (9, 1), (9, 7), (5, 1), (9, 0),
-        (3, 2), (6, 4), (10, 2), (11, 6), (1, 2), (5, 3),
-    ]
-    sampled = np.zeros((12, len(edges)))
-    for col, (u, v) in enumerate(edges):
-        sampled[[u, v], col] = 1.0
-    sample_ids = np.linspace(0, 13, 12, dtype=np.int64)
-    vectors = np.zeros((14, len(edges)))
-    vectors[sample_ids] = sampled
-    vectors[[6, 12]] = sampled[:2]
-    labels, k, _ = cluster.spectral(vectors, max_windows=12)
-    warnings_seen = [str(w.message) for w in recwarn]
-    assert warnings_seen == [] and k == 4, (
-        f"warnings={warnings_seen}, k={k}, sampled_unique={np.unique(labels[sample_ids]).tolist()}, "
-        f"unsampled={labels[[6, 12]].tolist()}"
-    )
-    assert np.unique(labels[sample_ids]).tolist() == [0, 1, 2, 3]
-    assert np.unique(labels).tolist() == [0, 1, 2, 3]
-    assert labels[[6, 12]].tolist() == labels[sample_ids[:2]].tolist()
+def test_empty_sampled_cluster_does_not_warn_or_hijack_unsampled_windows(monkeypatch, recwarn):
+    # Whether k-means empties a cluster depends on the solver build, so force it: the middle
+    # cluster gets no window. An unguarded mean gives it a NaN centre that takes every unsampled window.
+    def kmeans_with_an_empty_cluster(x, k, cancelled):
+        assert k == 3
+        return np.where(np.arange(len(x)) < len(x) // 2, 0, 2).astype(np.int32)
+
+    monkeypatch.setattr(cluster, "_kmeans", kmeans_with_an_empty_cluster)
+    vectors, _ = blobs([20, 20, 20])
+    labels, k, _ = cluster.spectral(vectors, max_windows=30)
+    assert [str(w.message) for w in recwarn] == []
+    assert k == 2
+    assert np.unique(labels).tolist() == [0, 1]
+    assert len(labels) == 60
 
 
 def test_tunable_neighbour_cap_and_edge_similarity_keep_legacy_mode(monkeypatch):
