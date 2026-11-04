@@ -454,8 +454,13 @@ def worker_clue(exc: BaseException, task: Any = None, *, site: str | None = None
         origin = exc
         if failure_site in {"worker.model", "worker.prepare"}:
             seen = {id(origin)}
-            while origin.__cause__ is not None and id(origin.__cause__) not in seen and len(seen) < 16:
-                origin = origin.__cause__
+            while True:
+                nxt = getattr(origin, "__cause__", None)
+                if nxt is None and not getattr(origin, "__suppress_context__", False):
+                    nxt = getattr(origin, "__context__", None)
+                if nxt is None or id(nxt) in seen or len(seen) >= 16:
+                    break
+                origin = nxt
                 seen.add(id(origin))
         code = observed_code(origin)
         if failure_site == "worker.prepare" and observed_code(exc) != "none":
