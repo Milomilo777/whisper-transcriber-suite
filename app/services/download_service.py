@@ -19,6 +19,7 @@ import subprocess
 import sys
 import threading
 import time
+import unicodedata
 import uuid
 import weakref
 import urllib.error
@@ -40,7 +41,13 @@ def _name_key(stem: str) -> str:
     """A file name reduced to its letters and digits, case folded, so the
     name yt-dlp announced matches the file on disk despite a replaced
     character (U+FFFD for an apostrophe) or different quote marks."""
-    return "".join(ch for ch in stem.casefold() if ch.isalnum())
+    normalized = unicodedata.normalize("NFC", stem)
+    folded = normalized.casefold()
+    key = "".join(ch for ch in folded if ch.isalnum())
+    # Keep replacement tolerance for ordinary titles, but distinguish
+    # symbol-only titles so an empty key cannot claim an unrelated file.
+    return key or "".join(ch for ch in folded
+                          if unicodedata.category(ch) == "So" and ch != "\ufffd")
 
 
 def _may_go_online(app: object, what: str) -> bool:

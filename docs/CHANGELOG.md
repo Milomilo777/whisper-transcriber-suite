@@ -14,6 +14,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 - Transcription submissions reject invalid or reversed time ranges without clearing the typed values.
 - Voice scratch cleanup removes only recognised session and job folders, preserves active jobs and linked folders, and keeps the existing unfinished-job retention period.
+- Download recovery matches canonically equivalent Unicode filenames and distinguishes symbol-only titles while retaining tolerance for replaced filename characters.
 - Two-language mode no longer writes a stretch of one language translated into the other: the previous text is not used as a prompt in this mode.
 - Pinned model downloads verify new bytes, resume dropped transfers and fall back from stalled or invalid hosts while preserving saved prefixes. Older installed models and unrelated legacy remnants no longer trigger repeated downloads; antivirus file locks allow cancellable retries.
 - Automatic speaker detection now clusters short voice windows to reduce excess labels, with bounded memory on long recordings and the previous labels retained if relabelling fails. Explicit speaker counts and turn boundaries are preserved.
