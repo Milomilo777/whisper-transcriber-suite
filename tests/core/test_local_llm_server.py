@@ -569,11 +569,15 @@ def test_a_killed_apps_server_is_gone_after_the_next_start(model, tmp_path, fake
     """Windows: the Job Object ends it at once; elsewhere the next start reaps it."""
     parent, child = _start_parent(tmp_path, model)
     try:
+        run = tmp_path / "run"
+        record = json.loads((run / f"llama-server-{child}.json").read_text(encoding="utf-8"))
         parent.kill()
         parent.wait(timeout=10)
-        reaped = lls.reap_stale_servers(tmp_path / "run")
+        # A Windows venv launcher may exit before the Python app it started.
+        assert gone(record["owner_pid"]), "the recorded server owner is still running"
+        reaped = lls.reap_stale_servers(run)
         assert gone(child), f"child {child} still alive after the reaper returned {reaped}"
-        assert not list((tmp_path / "run").glob("llama-server-*.json"))
+        assert not list(run.glob("llama-server-*.json"))
     finally:
         if psutil.pid_exists(child):
             try:

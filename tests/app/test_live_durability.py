@@ -427,11 +427,16 @@ def test_discard_rest_keeps_the_session_audio(tmp_path):
 
 
 def test_exit_with_a_backlog_never_deletes_the_audio(tmp_path):
-    s, t = _spoken_session(tmp_path, delay=3.0, sentences=2)
+    gate = threading.Event()
+    s, t = _spoken_session(tmp_path, sentences=2, gate=gate)
     app = _make_app(s, t, tmp_path)
-    live_tab.stop_live_session(app)  # stop(timeout=3.0) cannot drain 2 slow chunks
-    assert os.path.isfile(s.recording_path)
-    t.stop()  # the slow chunks now fail, the threads end, the deferred cleanup runs
+    try:
+        assert _wait(lambda: t.calls > 0)
+        live_tab.stop_live_session(app)  # The gate keeps a chunk in flight past the stop timeout.
+        assert os.path.isfile(s.recording_path)
+    finally:
+        t.stop()
+        gate.set()
     assert _wait(lambda: not s._threads_alive())
     assert _wait(lambda: not any(th.name == "live-cleanup" for th in threading.enumerate()))
     assert os.path.isfile(s.recording_path), "lost chunks: the audio must outlive the cleanup too"
