@@ -12,6 +12,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Turning off usage statistics erases local error-rate history and prevents an older pending sender from recreating it. Recovered runs retain their random run identifiers, specific native failure clues survive parent reporting, and suppressed-repeat counts stay with their own error fingerprint.
+- Collapsed word alignment restores consistent raw segment groups without replaying an earlier cue, and batched fallback preserves merged text. Word-timestamp profile choices survive resume and saves, and web defaults come from the saved profile.
+- Voice scratch cleanup retains stable lock files and checks recent file activity before deleting old data under the job lock. Download recovery preserves combining marks when matching non-Latin filenames.
+- Word-timing acceptance checks reject missing word timings, overlapping cues, failed runs and device mismatches, and count deletions conservatively when equally accurate text alignments differ.
 - Word alignment retains decoded text with raw segment bounds when alignment collapses a segment or raises an index error. Resumed jobs retain their original word-timestamp setting, and the web form uses the server's effective setting when initialized or reset.
 - Transcription submissions reject invalid or reversed time ranges without clearing the typed values.
 - Voice scratch cleanup removes only recognised session and job folders, preserves active jobs and linked folders, and keeps the existing unfinished-job retention period.
