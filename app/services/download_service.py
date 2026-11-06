@@ -38,16 +38,15 @@ logger = logging.getLogger(__name__)
 
 
 def _name_key(stem: str) -> str:
-    """A file name reduced to its letters and digits, case folded, so the
+    """A file name reduced to letters, marks and digits, case folded, so the
     name yt-dlp announced matches the file on disk despite a replaced
     character (U+FFFD for an apostrophe) or different quote marks."""
-    normalized = unicodedata.normalize("NFC", stem)
-    folded = normalized.casefold()
-    key = "".join(ch for ch in folded if ch.isalnum())
+    folded = unicodedata.normalize("NFC", unicodedata.normalize("NFD", stem).casefold())
+    key = "".join(ch for ch in folded if unicodedata.category(ch)[0] in "LNM")
     # Keep replacement tolerance for ordinary titles, but distinguish
     # symbol-only titles so an empty key cannot claim an unrelated file.
     return key or "".join(ch for ch in folded
-                          if unicodedata.category(ch) == "So" and ch != "\ufffd")
+                          if unicodedata.category(ch)[0] in "SP" and ch != "\ufffd")
 
 
 def _may_go_online(app: object, what: str) -> bool:
