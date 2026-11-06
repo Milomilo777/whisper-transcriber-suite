@@ -8,16 +8,17 @@ from tools import word_timing_gate as gate
 
 def fixture(*, bad=False):
     rows = [{'type': 'manifest', 'id': 'fixture', 'files': [{'path': 'reader.wav'}],
-             'options': {'pairs': 2}}]
+             'options': {'pairs': 2, 'device': 'cpu', 'compute_type': 'int8'}}]
     for pair in range(2):
         for setting in ((False, True) if pair % 2 == 0 else (True, False)):
             rows.append({'type': 'run', 'manifest_id': 'fixture', 'file': 'reader.wav',
+                         'device': 'cpu', 'compute_type': 'int8',
                          'pair': pair, 'setting': setting, 'kwargs': [{'word_timestamps': setting}],
                          'wall_seconds': 11 if setting else 10,
                          'peak_memory_bytes': (120 if setting else 100) * 2**20,
                          'segments': [{'start': 0, 'end': 5 if setting else 10,
                                        'text': 'one two' if bad and setting else 'one two three',
-                                       'words': []}]})
+                                       'words': [dict(word='one two three', start=0, end=5)] if setting else []}]})
     rows.append({'type': 'end', 'manifest_id': 'fixture', 'complete': True, 'expected_runs': 4})
     return rows
 

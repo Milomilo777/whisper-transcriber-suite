@@ -46,8 +46,9 @@ def normalise(text: str, chars: bool | None = None) -> list[str]:
 def edit_counts(reference: list[str], hypothesis: list[str]) -> dict[str, int]:
     """Exact Levenshtein S/D/I counts with an expanding diagonal band.
 
-    Rolling rows bound memory. Equal-cost paths prefer substitution, deletion,
-    then insertion. Common ends are removed before dynamic programming.
+    Rolling rows bound memory. Equal-cost paths maximize deletions so an
+    equally cheap substitution alignment cannot hide a missing reference unit.
+    Common ends are removed before dynamic programming.
     """
     original_length = len(reference)
     start = 0
@@ -74,7 +75,7 @@ def edit_counts(reference: list[str], hypothesis: list[str]) -> dict[str, int]:
                 deletion = (cost+1, s, d+1, ins)
                 cost, s, d, ins = row.get(j-1, missing)
                 insertion = (cost+1, s, d, ins+1)
-                row[j] = min((diagonal, deletion, insertion), key=lambda x: x[0])
+                row[j] = min((diagonal, deletion, insertion), key=lambda x: (x[0], -x[2]))
             prev = row
         answer = prev.get(m, missing)
         if answer[0] <= band:
@@ -140,6 +141,8 @@ def score_records(records: list[dict[str, Any]], references: dict[str, str] | No
         reasons.append('exactly one manifest is required')
         return result
     manifest = headers[0]
+    if any(r.get('type') not in {'manifest', 'run', 'end'} for r in records):
+        reasons.append('measurement contains errors or unknown records')
     files = [r['path'] for r in manifest['files']]
     pairs = manifest['options']['pairs']
     if (isinstance(pairs, bool) or not isinstance(pairs, int) or pairs < 1
@@ -157,6 +160,9 @@ def score_records(records: list[dict[str, Any]], references: dict[str, str] | No
             reasons.append('duplicate, foreign or invalid measurement run')
             continue
         by_key[key] = row
+        if any(row.get(k) != manifest['options'].get(k) or not row.get(k)
+               for k in ('device', 'compute_type')):
+            reasons.append('effective device/compute_type does not match requested measurement')
         if (not isinstance(row.get('kwargs'), list) or not row['kwargs']
                 or any(not isinstance(k, dict) or k.get('word_timestamps') is not row['setting']
                        for k in row['kwargs'])):
@@ -186,13 +192,36 @@ def score_records(records: list[dict[str, Any]], references: dict[str, str] | No
                     or not math.isfinite(x) or x <= 0 for x in numbers)
                     or not row.get('segments')):
                 invalid = True
+            previous_end = 0.
             for cue in row.get('segments', []):
                 bounds = [cue.get('start'), cue.get('end')]
                 if any(isinstance(x, bool) or not isinstance(x, (int, float))
                        or not math.isfinite(x) for x in bounds):
                     invalid = True
-                elif bounds[0] < 0 or bounds[1] <= bounds[0]:
+                elif bounds[0] < previous_end or bounds[1] <= bounds[0]:
                     invalid = True
+                else:
+                    previous_end = bounds[1]
+                if row['setting']:
+                    words = cue.get('words')
+                    if not isinstance(words, list) or not words:
+                        invalid = True
+                        continue
+                    word_end = bounds[0]
+                    for word in words:
+                        if not isinstance(word, dict):
+                            invalid = True
+                            continue
+                        wb = [word.get('start'), word.get('end')]
+                        if any(isinstance(x, bool) or not isinstance(x, (int, float))
+                               or not math.isfinite(x) for x in wb):
+                            invalid = True
+                        elif (not isinstance(word_end, (int, float))
+                              or wb[0] < word_end or wb[1] <= wb[0]
+                              or not isinstance(bounds[1], (int, float)) or wb[1] > bounds[1]):
+                            invalid = True
+                        else:
+                            word_end = wb[1]
         if invalid:
             reasons.append(file + ': invalid resource measurement or cue bounds')
             continue
@@ -356,9 +385,10 @@ def run(args) -> int:
     options = {k: getattr(args, k) for k in ('model_dir', 'device', 'compute_type', 'language',
                                            'batch_size', 'no_vad', 'pairs')}
     options['warmup'] = not args.cold
+    root = Path(__file__).resolve().parents[1]
     manifest = {'type': 'manifest', 'files': files, 'options': options,
                 'model_files': {p.name: file_hash(p) for p in sorted(model.iterdir()) if p.is_file()},
-                'code': {name: file_hash(Path(name)) for name in (
+                'code': {name: file_hash(root / name) for name in (
                     'tools/word_timing_gate.py', 'core/backends/faster_whisper_be.py',
                     'core/transcriber.py', 'core/config.py', 'core/loop_guard.py', 'core/vad_window.py')}}
     manifest['id'] = hashlib.sha256(json.dumps(manifest, sort_keys=True).encode()).hexdigest()

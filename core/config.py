@@ -77,6 +77,7 @@ LEGACY_OUTPUT_FORMATS: tuple[str, ...] = ("srt", "json")
 # no window ever opened: alone they do not mean the install was set up before.
 _COUNTER_ONLY_KEYS = frozenset({
     "cloud_stt_minutes_used", "gcloud_stt_minutes_used", "gcloud_stt_minutes_month",
+    "word_timestamps_profile_default",
 })
 
 # The model a new install starts on (the Transcribe tab's "Balanced" accuracy): Large v3
@@ -2548,7 +2549,8 @@ def save_config(config: dict[str, Any]) -> None:
                     to_persist.pop("word_timestamps", None)
             if (on_disk is None and DEFAULT_CONFIG["word_timestamps"]
                     and not os.path.exists(path + ".corrupt")):
-                to_persist.setdefault("word_timestamps_profile_default", True)
+                to_persist.setdefault("word_timestamps_profile_default",
+                                      snapshot.get("word_timestamps", True) is True)
             # Don't persist an auto-derived model_path — it would harden
             # into an explicit override that defeats hub_folder. See
             # _persistable_model_path for the full rationale.

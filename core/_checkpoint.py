@@ -209,7 +209,7 @@ def config_for_resume(
     also carry the setting explicitly; it must still match the fingerprint.
     """
     saved = data.get("word_timestamps")
-    candidates = (saved,) if isinstance(saved, bool) else (False, True, None)
+    candidates = (saved, None) if isinstance(saved, bool) else (False, True, None)
     for value in candidates:
         candidate = dict(cfg)
         if value is None:

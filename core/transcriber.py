@@ -4045,7 +4045,9 @@ def resume_transcription(
         _note_run_identity(task)
         # A legacy missing key meant False even if this profile was created
         # under a newer default. Hash its original spelling, decode its value.
-        config["word_timestamps"] = bool(resume_config.get("word_timestamps", False))
+        saved_words = data.get("word_timestamps")
+        config["word_timestamps"] = (saved_words if isinstance(saved_words, bool)
+                                     else bool(resume_config.get("word_timestamps", False)))
         task.whisper_task = cp_task
         _checked_whisper_task(task, backend_for_check or "faster_whisper")
 

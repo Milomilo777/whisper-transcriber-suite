@@ -89,9 +89,8 @@ def test_resume_does_not_mask_other_setting_changes():
 
 
 def test_api_exposes_effective_default(monkeypatch):
-    from core import transcriber as tr
     from core.server.httpd import JobRequestHandler
-    monkeypatch.setitem(tr.config, 'word_timestamps', True)
+    monkeypatch.setattr(cfg, 'load_config', lambda **kw: {'word_timestamps': True})
     payload = JobRequestHandler._options_payload(object.__new__(JobRequestHandler))
     assert payload['defaults']['word_timestamps'] is True
     page = Path('core/server/static/index.html').read_text(encoding='utf-8')
@@ -100,7 +99,12 @@ def test_api_exposes_effective_default(monkeypatch):
 
 
 def test_web_does_not_submit_false_before_defaults_arrive():
+    import shutil
     import subprocess
+
+    node = shutil.which('node')
+    if node is None:
+        pytest.skip('Node.js is required to execute the web form')
     page = Path('core/server/static/index.html').read_text(encoding='utf-8')
     gather = page[page.index('  function gatherOptions()'):page.index('  function setSubmitStatus(')]
     script = '''const assert = require('node:assert/strict');
@@ -114,6 +118,6 @@ def test_web_does_not_submit_false_before_defaults_arrive():
       document.getElementById = () => ({checked: true});
       assert.equal(gatherOptions().word_timestamps, true);
     '''
-    completed = subprocess.run(['node', '-e', script], capture_output=True, text=True,
+    completed = subprocess.run([node, '-e', script], capture_output=True, text=True,
                                creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
     assert completed.returncode == 0, completed.stderr

@@ -874,10 +874,9 @@ def language_model_notes() -> dict[str, dict[str, Any]]:
 
 
 def _server_word_timestamps_default() -> bool:
-    from core import transcriber
-    from core.config import effective_word_timestamps
+    from core.config import effective_word_timestamps, load_config
 
-    return effective_word_timestamps(transcriber.config)
+    return effective_word_timestamps(load_config(fetch_online=False))
 
 
 # Per-job options the web may set. Each entry is (key, kind) where kind drives

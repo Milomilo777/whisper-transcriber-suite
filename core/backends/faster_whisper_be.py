@@ -44,8 +44,9 @@ class WhisperModel(_WhisperModel):
         self, segments, tokenizer, encoder_output, num_frames,
         prepend_punctuations, append_punctuations, last_speech_timestamp,
     ):
-        raw = [(segment, segment["start"], segment["end"])
-               for group in segments for segment in group]
+        raw = [[(segment, segment["start"], segment["end"])
+                for segment in group] for group in segments]
+        failed = False
         try:
             result = super().add_word_timestamps(
                 segments, tokenizer, encoder_output, num_frames,
@@ -56,13 +57,41 @@ class WhisperModel(_WhisperModel):
             # its consumer. Restore the whole call, including earlier groups.
             logger.warning("Word alignment index error; retaining decoded text with raw segment bounds.",
                            exc_info=True)
-            for segment, start, end in raw:
+            failed = True
+            result = last_speech_timestamp
+        for group, original in zip(segments, raw):
+            if not (failed or any(s["end"] <= s["start"] for s, _, _ in original)):
+                continue
+            # Restore the whole decode group. Upstream get_end searches words
+            # across the group before falling back to the last segment end;
+            # keeping earlier aligned words would seek back into emitted audio.
+            logger.warning("Word alignment unusable; retaining the decode group with raw segment bounds.")
+            restored = []
+            pending = []
+            for segment, start, end in original:
+                if end < start:
+                    raise RuntimeError("Cannot preserve decoded text: invalid raw segment bounds")
                 segment.update(start=start, end=end, words=[])
-            return last_speech_timestamp
-        for segment, start, end in raw:
-            if segment["end"] <= segment["start"] and end > start:
-                logger.warning("Word alignment collapsed a segment; retaining decoded text with raw bounds.")
-                segment.update(start=start, end=end, words=[])
+                if end == start:
+                    pending.extend(segment["tokens"])
+                    continue
+                segment["tokens"] = pending + segment["tokens"]
+                pending = []
+                if restored and start < restored[-1]["end"]:
+                    restored[-1]["tokens"].extend(segment["tokens"])
+                    restored[-1]["end"] = max(restored[-1]["end"], end)
+                else:
+                    restored.append(segment)
+            if not restored and pending:
+                raise RuntimeError("Cannot preserve decoded text: no positive raw segment bounds")
+            if pending:
+                restored[-1]["tokens"].extend(pending)
+            # Batched forward has decoded text before this seam; sequential
+            # generation decodes afterwards. Keep both representations equal.
+            for segment in restored:
+                if "text" in segment:
+                    segment["text"] = tokenizer.decode(segment["tokens"])
+            group[:] = restored
         return result
 
 

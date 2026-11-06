@@ -148,7 +148,9 @@ def snapshot(cfg: Mapping[str, Any]) -> dict[str, Any]:
     A value that cannot be sent as JSON is skipped (the worker then keeps its
     own value for that key) instead of failing the whole dispatch.
     """
-    out: dict[str, Any] = {"word_timestamps": effective_word_timestamps(cfg)}
+    out: dict[str, Any] = {}
+    if "word_timestamps" not in cfg:
+        out["word_timestamps"] = effective_word_timestamps(cfg)
     for key in PER_TASK_KEYS:
         if key in cfg:
             value = cfg[key]
