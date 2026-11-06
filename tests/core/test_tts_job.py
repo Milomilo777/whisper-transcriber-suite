@@ -396,7 +396,10 @@ def test_sweep_keeps_unfinished_jobs_longer(tmp_path, monkeypatch, small_pieces)
         job = tts_job.Job(root, name * 4, "kokoro", ["Hello there."])
         _write_wav(str(job.piece_path(0)), 1.0)
         job.record(0, 1.0)
-        for p in (job.progress_path, job.parts_dir, job.folder):
+        lock = tts_job._JobLock(job.folder / tts_job.LOCK_FILE)
+        lock.acquire()
+        lock.release()
+        for p in [*job.folder.rglob('*'), job.folder]:
             os.utime(p, (when, when))
         return job.folder
 
@@ -404,10 +407,15 @@ def test_sweep_keeps_unfinished_jobs_longer(tmp_path, monkeypatch, small_pieces)
     swept = unfinished("bbbb", ancient)     # 40 days: swept
     session = root / "20260101-000000"      # an ordinary 10-day-old session dir
     session.mkdir(parents=True)
+    lock = tts_job._JobLock(session / tts_job.LOCK_FILE)
+    lock.acquire()
+    lock.release()
+    os.utime(lock.path, (old, old))
     os.utime(session, (old, old))
     voice_clone.sweep_old_session_dirs()
     assert kept.exists()
-    assert not swept.exists() and not session.exists()
+    assert list(swept.iterdir()) == [swept / tts_job.LOCK_FILE]
+    assert list(session.iterdir()) == [session / tts_job.LOCK_FILE]
 
 
 # ------------------------------------------------------------------ limits

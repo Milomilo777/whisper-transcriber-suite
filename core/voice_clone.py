@@ -29,7 +29,6 @@ import os
 import re
 import stat
 import time
-import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
@@ -119,7 +118,9 @@ def sweep_old_session_dirs(max_age_days: float = SCRATCH_MAX_AGE_DAYS) -> None:
     ``tts_job.UNFINISHED_MAX_AGE_DAYS`` after its last finished piece, so
     a job someone continues now and then is never swept from under them.
     Only recognised scratch names are eligible; held job locks, symlinks
-    and Windows junctions are left alone.
+    and Windows junctions are left alone. Cleanup retains the stable lock file
+    and its directory. Legacy folders receive a lock and a full retention
+    period before deletion is attempted.
     """
     import shutil
 
@@ -153,12 +154,23 @@ def sweep_old_session_dirs(max_age_days: float = SCRATCH_MAX_AGE_DAYS) -> None:
                 continue
             # Share the job's OS lock before touching any saved work.
             lock_path = entry / tts_job.LOCK_FILE
-            if lock_path.is_symlink() or (
-                lock_path.exists() and getattr(lock_path.lstat(), "st_file_attributes", 0)
-                & stat.FILE_ATTRIBUTE_REPARSE_POINT
-            ):
+            try:
+                lock_info = lock_path.lstat()
+            except FileNotFoundError:
+                # Establish a stable lock inode, but never delete work on the
+                # pass that creates it: its mtime cannot distinguish our own
+                # creation from another process refreshing the folder.
+                lock = tts_job._JobLock(lock_path)
+                try:
+                    lock.acquire()
+                except tts_job.JobBusy:
+                    continue
+                lock.release()
                 continue
-            lock_existed = lock_path.exists()
+            if (not stat.S_ISREG(lock_info.st_mode)
+                    or getattr(lock_info, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT
+                    or lock_info.st_mtime >= limit):
+                continue
             lock = tts_job._JobLock(lock_path)
             try:
                 lock.acquire()
@@ -167,33 +179,45 @@ def sweep_old_session_dirs(max_age_days: float = SCRATCH_MAX_AGE_DAYS) -> None:
             try:
                 # Recheck the entry and progress after obtaining exclusive use.
                 current_info = _scratch_dir_stat(entry)
-                if current_info is None or current_info.st_ino != info.st_ino:
+                if (current_info is None or current_info.st_ino != info.st_ino
+                        or current_info.st_dev != info.st_dev):
                     continue
-                # Creating a missing lock changes the directory's own mtime;
-                # an existing lock does not. Preserve newly refreshed jobs.
-                if lock_existed and current_info.st_mtime >= limit:
+                if current_info.st_mtime >= limit:
                     continue
                 if tts_job.is_unfinished_job_dir(entry):
                     progress = entry / tts_job.PARTS_DIR / tts_job.PROGRESS_FILE
                     if progress.stat().st_mtime >= unfinished_cutoff:
                         continue
-                if os.name == "nt":
-                    # Windows keeps the open lock file in place. Delete data
-                    # while locked; after release only remove the lock and an
-                    # EMPTY directory. A newly acquired lock prevents unlink.
-                    shutil.rmtree(entry, ignore_errors=True)
-                else:
-                    # POSIX permits renaming a folder with an open lock. A
-                    # new job can then start at the original path safely.
-                    quarantine = root / (".sweep-" + uuid.uuid4().hex)
-                    entry.rename(quarantine)
+                # Check descendants without following reparse points. Recent
+                # file writes need not update the session directory's mtime.
+                children = []
+                pending = [entry]
+                safe = True
+                while pending and safe:
+                    for child in pending.pop().iterdir():
+                        child_info = child.lstat()
+                        if (stat.S_ISLNK(child_info.st_mode) or
+                                getattr(child_info, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT):
+                            safe = False
+                            break
+                        if child_info.st_mtime >= limit:
+                            safe = False
+                            break
+                        if child.parent == entry and child != lock_path:
+                            children.append(child)
+                        if stat.S_ISDIR(child_info.st_mode):
+                            pending.append(child)
+                if not safe:
+                    continue
+                # Delete only while holding the job's stable lock. Never
+                # unlink it or rename the directory, even after release.
+                for child in children:
+                    if child.is_dir():
+                        shutil.rmtree(child)
+                    else:
+                        child.unlink()
             finally:
                 lock.release()
-            if os.name == "nt":
-                lock_path.unlink()
-                entry.rmdir()
-            else:
-                shutil.rmtree(quarantine, ignore_errors=True)
         except OSError:
             continue
 

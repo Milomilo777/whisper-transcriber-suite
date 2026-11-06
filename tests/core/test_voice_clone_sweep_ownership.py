@@ -49,9 +49,15 @@ def test_all_created_folder_families_are_swept(root):
     with no_piece.claimed():
         pass
     for folder in [legacy, current, unfinished.folder, finished.folder, no_piece.folder]:
+        with_lock = tts_job._JobLock(folder / tts_job.LOCK_FILE)
+        with_lock.acquire()
+        with_lock.release()
         _age(folder)
     voice_clone.sweep_old_session_dirs()
-    assert list(root.iterdir()) == []
+    # Stable locks survive cleanup so a concurrent claimant never locks an
+    # unlinked inode. All saved data still has to be removed.
+    assert len(list(root.iterdir())) == 5
+    assert all(list(p.iterdir()) == [p / tts_job.LOCK_FILE] for p in root.iterdir())
 
 
 @pytest.mark.parametrize("unfinished", [False, True])
@@ -103,9 +109,13 @@ def test_reparse_point_is_never_removed_or_traversed(root, monkeypatch):
 def test_stale_cleanup_quarantine_is_swept(root):
     folder = root / (".sweep-" + "a" * 32)
     folder.mkdir()
+    (folder / 'old.wav').write_bytes(b'old')
+    lock = tts_job._JobLock(folder / tts_job.LOCK_FILE)
+    lock.acquire()
+    lock.release()
     _age(folder)
     voice_clone.sweep_old_session_dirs()
-    assert not folder.exists()
+    assert list(folder.iterdir()) == [folder / tts_job.LOCK_FILE]
 
 
 def _link_directory(target, link):

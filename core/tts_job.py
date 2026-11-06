@@ -290,7 +290,36 @@ class _JobLock:
 
     def acquire(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        fh = open(self.path, "a+b")  # noqa: SIM115 - held open on purpose
+        if sys.platform == "win32":
+            # Open the reparse point itself, so even a dangling link swapped
+            # in after the caller's lstat cannot create a file at its target.
+            import ctypes
+            from ctypes import wintypes
+            import msvcrt
+
+            kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+            kernel.CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
+            kernel.CreateFileW.restype = wintypes.HANDLE
+            kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+            kernel.GetFileInformationByHandleEx.argtypes = [wintypes.HANDLE, ctypes.c_int,
+                ctypes.c_void_p, wintypes.DWORD]
+            handle = kernel.CreateFileW(str(self.path), 0xC0000000, 3, None, 4, 0x00200000, None)
+            if handle == wintypes.HANDLE(-1).value:
+                raise ctypes.WinError(ctypes.get_last_error())
+            try:
+                attributes = (wintypes.DWORD * 2)()
+                if not kernel.GetFileInformationByHandleEx(handle, 9, attributes, ctypes.sizeof(attributes)):
+                    raise ctypes.WinError(ctypes.get_last_error())
+                if attributes[0] & 0x400:
+                    raise OSError("Job lock is a reparse point")
+                fd = msvcrt.open_osfhandle(int(handle), os.O_RDWR | os.O_BINARY)
+            except BaseException:
+                kernel.CloseHandle(handle)
+                raise
+        else:
+            fd = os.open(self.path, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)
+        fh = os.fdopen(fd, "r+b")  # noqa: SIM115 - held open on purpose
         try:
             if sys.platform == "win32":
                 import msvcrt

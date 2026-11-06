@@ -212,11 +212,16 @@ def test_sweep_old_session_dirs_removes_only_aged_out_dirs(monkeypatch, tmp_path
     (fresh_dir / "sample_1.wav").write_bytes(b"\x00")
 
     old_time = time.time() - 30 * 86400
-    os.utime(old_dir, (old_time, old_time))
+    from core import tts_job
+    lock = tts_job._JobLock(old_dir / tts_job.LOCK_FILE)
+    lock.acquire()
+    lock.release()
+    for path in [*old_dir.iterdir(), old_dir]:
+        os.utime(path, (old_time, old_time))
 
     voice_clone.sweep_old_session_dirs(max_age_days=7.0)
 
-    assert not old_dir.exists()
+    assert list(old_dir.iterdir()) == [old_dir / tts_job.LOCK_FILE]
     assert fresh_dir.exists()
 
 
