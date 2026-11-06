@@ -175,7 +175,7 @@ def test_registry_and_documentation_are_identical():
     assert registry["version"] == 2
     doc = (ROOT / "docs" / "CONFIG.md").read_text(encoding="utf-8")
     table = doc.split("| Failure clue field | Allowed values |", 1)[1].split("\n\n", 1)[0]
-    rows = {name: re.findall(r"`([^`]+)`", text) for name, text in
+    rows = {name: re.findall(r"`([^`]+)`", text.replace(r"\|", "|")) for name, text in
             re.findall(r"\| `([^`]+)` \| ([^\n]+?) \|", table)}
     assert set(rows) == set(registry["fields"])
     for field, spec in registry["fields"].items():

@@ -66,7 +66,8 @@ logger = logging.getLogger(__name__)
 
 # Fields the PHP endpoint records (form_submitted toggles the insert).
 _FORM_FLAG = "form_submitted"
-_ERROR_LOCK = threading.Lock()
+_ERROR_LOCK = threading.RLock()
+_CONSENT_GENERATION = 0
 _SESSION_ERRORS: dict[str, int] = {}
 
 # ISO 3166-1 alpha-2 country code shape.
@@ -352,14 +353,44 @@ def install_id_for(config: dict[str, Any]) -> str:
         return ""
 
 
+def _error_rate_path() -> Path:
+    from core.config import config_path as config_file
+
+    return Path(config_file()).with_name("telemetry-errors.json")
+
+
 def forget_install_id(config: dict[str, Any]) -> None:
     """Delete the stored install id when usage statistics are off.
 
     Call it right before saving a changed ``telemetry_opt_in``. Turning the
     switch on again then makes a new, unrelated id.
     """
-    if not bool(config.get("telemetry_opt_in", False)) and config.get("install_id"):
+    global _CONSENT_GENERATION
+    if bool(config.get("telemetry_opt_in", False)):
+        return
+    if "install_id" in config:
         config["install_id"] = ""
+    target = _error_rate_path()
+    with _ERROR_LOCK:
+        _CONSENT_GENERATION += 1
+        _SESSION_ERRORS.clear()
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            # Keep the non-identifying lock inode stable for other processes.
+            with target.with_suffix(".lock").open("a+b") as lock:
+                if lock.tell() == 0:
+                    lock.write(b"0")
+                    lock.flush()
+                lock.seek(0)
+                if sys.platform == "win32":
+                    import msvcrt
+                    msvcrt.locking(lock.fileno(), msvcrt.LK_LOCK, 1)
+                else:
+                    import fcntl
+                    fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+                target.unlink(missing_ok=True)
+        except OSError:
+            logger.warning("Could not erase local telemetry rate state", exc_info=True)
 
 
 def memory_class(value: int) -> str:
@@ -383,9 +414,7 @@ def limit_error_row(payload: dict[str, str], install_id: str, *, path: Path | No
     if payload.get("status") != "error":
         return dict(payload)
     try:
-        from core.config import config_path as config_file
-
-        target = path or Path(config_file()).with_name("telemetry-errors.json")
+        target = path or _error_rate_path()
         timestamp = time.time() if now is None else now
         fingerprint = payload.get("fingerprint", "")
         if not re.fullmatch(r"[0-9a-f]{12}", fingerprint) or not math.isfinite(timestamp):
@@ -422,18 +451,23 @@ def limit_error_row(payload: dict[str, str], install_id: str, *, path: Path | No
                         and isinstance(row.get("t"), (int, float)) and not isinstance(row["t"], bool)
                         and math.isfinite(row["t"]) and timestamp - row["t"] < 3600
                         and isinstance(row.get("fp"), str) and re.fullmatch(r"[0-9a-f]{12}", row["fp"])]
-                pending = state.get("pending", 0)
-                pending = min(10, pending) if isinstance(pending, int) and 0 <= pending else 0
+                raw_pending = state.get("pending", {})
+                if not isinstance(raw_pending, dict):
+                    raw_pending = {}
+                pending = {fp: min(10, value) for fp, value in list(raw_pending.items())[:32]
+                           if re.fullmatch(r"[0-9a-f]{12}", fp)
+                           and isinstance(value, int) and not isinstance(value, bool) and value >= 0}
                 duplicate = any(row["fp"] == fingerprint for row in sent)
                 admitted = not duplicate and len(sent) < 5
                 result = dict(payload)
                 result["session_error_bucket"] = "1" if count == 1 else "2-3" if count < 4 else "4-9" if count < 10 else "10+"
-                result["repeat_bucket"] = "0" if pending == 0 else "1-2" if pending < 3 else "3-9" if pending < 10 else "10+"
+                repeats = pending.get(fingerprint, 0)
+                result["repeat_bucket"] = "0" if repeats == 0 else "1-2" if repeats < 3 else "3-9" if repeats < 10 else "10+"
                 if admitted:
                     sent.append({"t": timestamp, "fp": fingerprint})
-                    pending = 0
-                elif duplicate:
-                    pending = min(10, pending + 1)
+                    pending.pop(fingerprint, None)
+                elif fingerprint in pending or len(pending) < 32:
+                    pending[fingerprint] = min(10, repeats + 1)
                 updated = {"install": install, "sent": sent, "pending": pending}
                 staged = target.with_name(target.name + "." + uuid.uuid4().hex + ".tmp")
                 try:
@@ -554,6 +588,7 @@ def post_stats_async(
     Never raises and never blocks the caller.
     """
     try:
+        generation = _CONSENT_GENERATION
         if not bool(config.get("telemetry_opt_in", False)):
             return False
         from core import offline
@@ -576,16 +611,25 @@ def post_stats_async(
             try:
                 from core.failure_clue import sanitise_clue
 
-                if not bool(config.get("telemetry_opt_in", False)) or offline.is_offline():
-                    return
-                closed = sanitise_clue(payload, status=payload.get("status"))
-                if not closed:
-                    return
-                if closed.get("status") == "error":
-                    closed = limit_error_row(closed, install_id_for(config))
-                    if closed is None:
+                # Serialize reservation and delivery with opt-out erasure.
+                # Once erasure returns no older local sender can recreate state.
+                with _ERROR_LOCK:
+                    if (generation != _CONSENT_GENERATION
+                            or not bool(config.get("telemetry_opt_in", False))
+                            or offline.is_offline()):
                         return
-                _post(url, closed, float(timeout))
+                    closed = sanitise_clue(payload, status=payload.get("status"))
+                    if not closed:
+                        return
+                    if closed.get("status") == "error":
+                        closed = limit_error_row(closed, install_id_for(config))
+                        if closed is None:
+                            return
+                    if not bool(config.get("telemetry_opt_in", False)):
+                        forget_install_id(config)
+                        return
+                    if generation == _CONSENT_GENERATION:
+                        _post(url, closed, float(timeout))
             except Exception:  # noqa: BLE001
                 logger.debug("Automatic stats unavailable", exc_info=True)
 

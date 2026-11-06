@@ -394,11 +394,12 @@ def test_rate_limit_persists_deduplicates_and_expires(tmp_path):
     assert admit("000000000000") is None
     importlib.reload(stats)  # A new process must not reset the quota or duplicates.
     assert admit("000000000000") is None
-    assert admit("000000000001")["repeat_bucket"] == "1-2"
+    assert admit("000000000001")["repeat_bucket"] == "0"
     for i in (2, 3, 4):
         assert admit(f"{i:012x}") is not None
     assert admit("000000000005") is None
-    assert admit("000000000000", 4601) is not None
+    assert admit("000000000000", 4601)["repeat_bucket"] == "1-2"
+    assert admit("000000000005", 4601)["repeat_bucket"] == "1-2"
     assert path.stat().st_size <= 16384
     assert install not in path.read_text()  # State stores a hash, not another copy of the id.
 
@@ -519,7 +520,7 @@ def test_registry_docs_contract():
     assert clue.registry()["fields"]["top_frame"]["function_pattern"] in doc
     assert "../core/telemetry_registry.json" in doc
     table = doc.split("| Failure clue field | Allowed values |", 1)[1].split("\n\n", 1)[0]
-    rows = {name: re.findall(r"`([^`]+)`", text) for name, text in
+    rows = {name: re.findall(r"`([^`]+)`", text.replace(r"\|", "|")) for name, text in
             re.findall(r"\| `([^`]+)` \| ([^\n]+?) \|", table)}
     assert set(rows) == set(clue.registry()["fields"])
     for name, spec in clue.registry()["fields"].items():

@@ -13,6 +13,7 @@ import shutil
 import subprocess
 import sys
 import time
+import uuid
 from pathlib import Path
 from types import TracebackType
 from typing import Any, Mapping
@@ -390,6 +391,11 @@ def context_clue(task: Any = None, *, device: str = "unknown", probe: bool = Tru
             result["elapsed_bucket"] = _bucket(time.time() - start, (
                 (10, "lt10s"), (60, "lt1m"), (300, "lt5m"), (1800, "lt30m"), (7200, "lt2h")))
         result["recovered"] = getattr(task, "_telemetry_recovery", "none")
+        if result["recovered"] in {"cpu_fallback", "cuda_batch_reduced", "retried_ok"}:
+            result["classifier_version"] = "2"
+            if _valid_value("run_id", result.get("run_id"), registry()["fields"]["run_id"]) is None:
+                result["run_id"] = uuid.uuid4().hex[:16]
+                task.run_id = result["run_id"]
         result["compute_type"] = getattr(task, "_failure_compute_type", None)
         settings = getattr(task, "_telemetry_settings", None) or getattr(task, "task_settings", None) or {}
         for field, key in (("diarization", "diarization_enabled"), ("vad", "vad_enabled")):
@@ -508,12 +514,16 @@ def parent_clue(site: str, *, device: str = "unknown", exit_code: Any = 0,
                            "exit_code": normalise_exit_code(exit_code),
                            "peak_mem_mb": log_memory_bucket(peak_memory_mb(pid)) if pid is not None else 0}
     for name in ("exception_family", "observed_code", "os_error", "top_frame", "shape_hash", "fingerprint",
-                 "last_stage", "recovered", "run_id"):
+                 "last_stage", "recovered", "run_id", "progress_pct", "elapsed_bucket",
+                 "gpu_vendor", "vram_bucket", "compute_type", "diarization", "vad", "language_mode",
+                 "input_kind", "input_container", "input_duration_bucket", "input_size_bucket",
+                 "disk_free_bucket", "ram_free_bucket", "build_kind"):
         if name in observed:
             row[name] = observed[name]
     if site == "parent.worker_exit":
         code = exit_observed_code(exit_code)
-        if code != "worker_exit_unclassified" or row.get("observed_code") == "none":
+        if (code != "worker_exit_unclassified" or row.get("observed_code") == "none") and not (
+                code == "killed_by_signal" and row.get("observed_code") not in {None, "none"}):
             row["observed_code"] = code
             row.pop("fingerprint", None)
     clean = sanitise_clue(row, status="error")
@@ -542,6 +552,8 @@ def stderr_clue(lines: list[str]) -> dict[str, str]:
     )}
     families.update(UnicodeEncodeError=UnicodeError, UnicodeDecodeError=UnicodeError)
     families["ConnectionResetError"] = ConnectionResetError
+    families["numpy._core._exceptions._ArrayMemoryError"] = MemoryError
+    families["numpy.core._exceptions._ArrayMemoryError"] = MemoryError
     start = next((i for i in range(len(tail) - 1, -1, -1)
                   if tail[i] == "Traceback (most recent call last):"), -1)
     if start >= 0 and len(tail) - start >= 3:
@@ -549,7 +561,7 @@ def stderr_clue(lines: list[str]) -> dict[str, str]:
         valid = True
         for line in tail[start + 1:-1]:
             match = re.fullmatch(
-                r'  File "([^"\r\n]+)", line ([0-9]{1,6}), in ([A-Za-z_<][A-Za-z0-9_.<>]{0,40})', line
+                r'  File "([^"\r\n]+)", line ([0-9]{1,6}), in ([A-Za-z_<][A-Za-z0-9_.<>]{0,255})', line
             )
             if match:
                 matches.append(match)
@@ -564,19 +576,21 @@ def stderr_clue(lines: list[str]) -> dict[str, str]:
             result.update(exception_family=exception_family(cls()),
                           shape_hash=shape_hash("" if issubclass(cls, OSError) else message))
             library = tokenizer = False
+            speech_collect = False
             for match in matches:
                 path = match[1].replace("\\", "/")
                 library |= bool(re.search(r'/(?:faster_whisper|ctranslate2|numpy)/(?:[A-Za-z0-9_]+/)*[A-Za-z0-9_]+\.py$', path))
                 tokenizer |= bool(re.search(r'/tokenizers/(?:[A-Za-z0-9_]+/)*[A-Za-z0-9_]+\.py$|/faster_whisper/tokenizer\.py$', path))
                 module = _module_for_file(match[1])
+                speech_collect |= module == "core.speech_collect" and match[3] == "gather_speech"
                 if module:
                     frame = f"{module}:{match[3]}:{match[2]}"
                     if _valid_value("top_frame", frame, registry()["fields"]["top_frame"]):
                         frames.append(frame)
             if issubclass(cls, (RuntimeError, MemoryError)):
-                if library:
+                if library or speech_collect:
                     for code, pattern in _PATTERNS:
-                        if pattern.fullmatch(message):
+                        if pattern.fullmatch(message) and (library or code == "numpy_alloc_failed"):
                             result["observed_code"] = code
                             break
                 if tokenizer and _TOKENIZER_PATTERN.fullmatch(message):
@@ -594,8 +608,10 @@ def stderr_clue(lines: list[str]) -> dict[str, str]:
         result.update(exception_family="RuntimeError", observed_code="ct2_bad_alloc")
     if frames:
         result["top_frame"] = frames[-1]
-        module, function, _ = frames[-1].split(":")
-        site = SITE_FRAMES.get((module, function), SITE_FRAMES.get((module, None), "other"))
+        site = "other"
+        for frame in frames:
+            module, function, _ = frame.split(":")
+            site = SITE_FRAMES.get((module, function), SITE_FRAMES.get((module, None), site))
         result["last_stage"] = _STAGES.get(site, "other")
     clean = sanitise_clue(result)
     clean["fingerprint"] = _fingerprint(clean, frames)

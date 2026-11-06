@@ -11,6 +11,7 @@ import core.live
 import core.offline
 import core.writers
 from gui import _build_argparser
+from tools.docs_check import _links
 
 
 DOCS_DIR = os.path.join(os.path.dirname(__file__), "..", "docs")
@@ -150,12 +151,11 @@ def _anchors(markdown: str) -> set[str]:
 
 def test_relative_links_and_anchors_between_docs(docs_by_file: dict[str, str]) -> None:
     """Every relative link in the documentation must resolve to a valid file and anchor."""
-    LINK_RE = re.compile(r"\]\(([^)\s]+)\)")
     for filename, content in docs_by_file.items():
         if filename in ("CHANGELOG.md", "DECISIONS.md"):
             continue
             
-        for target in LINK_RE.findall(content):
+        for target in _links(content):
             if target.startswith(("http://", "https://", "mailto:")):
                 continue
             path, _, anchor = target.partition("#")

@@ -568,14 +568,14 @@ means unavailable. Existing stored rows are unchanged. A row is limited to 64 re
 8 KiB after form encoding. The pattern type uses full matching and a maximum character length;
 hex means exactly the stated number of lower-case hexadecimal characters. The top_frame pattern also
 requires a module in the [generated registry list](../core/telemetry_registry.json) and a function matching
-`^[A-Za-z_][A-Za-z0-9_.<>]{0,40}$` (the registry's function_pattern).
+`^(?=.{1,41}$)(?:[A-Za-z_][A-Za-z0-9_]*(?:[.](?:<locals>[.])?(?:[A-Za-z_][A-Za-z0-9_]*|<(?:lambda|listcomp|dictcomp|setcomp|genexpr)>))*|<(?:module|lambda|listcomp|dictcomp|setcomp|genexpr)>)$` (the registry's function_pattern).
 
 | Failure clue field | Allowed values |
 |---|---|
 | `failure_site` | `worker.decode`, `worker.vad`, `worker.features`, `worker.language`, `worker.segments`, `worker.postprocess`, `worker.output`, `worker.prepare`, `worker.model`, `parent.watchdog`, `parent.worker_exit`, `other` |
 | `exception_family` | `MemoryError`, `RuntimeError`, `OSError`, `PermissionError`, `FileNotFoundError`, `TimeoutError`, `ValueError`, `TypeError`, `KeyError`, `IndexError`, `UnicodeError`, `AssertionError`, `subprocess.TimeoutExpired`, `subprocess.CalledProcessError`, `av.InvalidDataError`, `other` |
 | `observed_code` | `numpy_alloc_failed`, `ct2_bad_alloc`, `cuda_out_of_memory`, `cublas_missing`, `cudnn_missing`, `av_invalid_data`, `no_audio_stream`, `probe_timeout`, `disk_full`, `access_denied`, `file_not_found`, `none`, `native_access_violation`, `dll_not_found`, `illegal_instruction`, `stack_overflow`, `killed_by_signal`, `worker_exit_unclassified`, `model_load_failed`, `tokenizer_error`, `network_reset`, `ffmpeg_missing`, `codec_unsupported`, `corrupt_media` |
-| `classifier_version` | `2` |
+| `classifier_version` | `1`, `2` |
 | `os_error` | integer `0` to `4294967295`, step `1` |
 | `exit_code` | integer `-2147483648` to `4294967295`, step `1` |
 | `device` | `cpu`, `cuda`, `mps`, `mlx`, `unknown` |
@@ -605,7 +605,7 @@ requires a module in the [generated registry list](../core/telemetry_registry.js
 | `build_kind` | `installer`, `portable`, `onefile`, `source`, `other` |
 | `form_submitted` | `1` |
 | `model` | pattern `^[A-Za-z0-9_./:-]{0,128}$`, maximum length `128` |
-| `language` | pattern `^[a-z]{0,3}$`, maximum length `3` |
+| `language` | pattern `^(?:[a-z]{0,3}\|auto)$`, maximum length `4` |
 | `audio_duration` | pattern `^[0-9]{1,9}[.][0-9]{3}$`, maximum length `13` |
 | `transcription_time` | pattern `^[0-9]{1,9}[.][0-9]{3}$`, maximum length `13` |
 | `status` | `finished`, `error`, `cancelled`, `done` |
@@ -614,7 +614,7 @@ requires a module in the [generated registry list](../core/telemetry_registry.js
 | `country` | pattern `^[A-Z]{0,2}$`, maximum length `2` |
 | `platform_system` | `Windows`, `Darwin`, `Linux`, `FreeBSD`, `OpenBSD`, `NetBSD`, `other` |
 | `platform_release` | pattern `^[0-9A-Za-z ._()+#/-]{0,128}$`, maximum length `128` |
-| `platform_version` | pattern `^[0-9A-Za-z ._()+#/-]{0,128}$`, maximum length `128` |
+| `platform_version` | pattern `^(?:[0-9]+(?:[.][0-9]+){1,3}\|Darwin Kernel Version [0-9]+(?:[.][0-9]+){2}: (?:Mon\|Tue\|Wed\|Thu\|Fri\|Sat\|Sun),? (?:Jan\|Feb\|Mar\|Apr\|May\|Jun\|Jul\|Aug\|Sep\|Oct\|Nov\|Dec) [ 0-9][0-9]? [0-9]{2}:[0-9]{2}:[0-9]{2} (?:UTC\|GMT\|PST\|PDT\|[+-][0-9]{4}) [0-9]{4}; root:xnu-[0-9.]+(?:~[0-9]+)?/RELEASE_(?:ARM64_T[0-9]+\|X86_64)\|#[0-9]+(?:~[0-9.]+-Ubuntu)? SMP(?: PREEMPT(?:_DYNAMIC\|_RT)?)? (?:(?:Mon\|Tue\|Wed\|Thu\|Fri\|Sat\|Sun),? (?:Jan\|Feb\|Mar\|Apr\|May\|Jun\|Jul\|Aug\|Sep\|Oct\|Nov\|Dec) [ 0-9][0-9]? [0-9]{2}:[0-9]{2}:[0-9]{2} (?:UTC\|GMT\|PST\|PDT\|[+-][0-9]{4}) [0-9]{4}\|Debian [0-9.]+-[0-9]+ [(][0-9]{4}-[0-9]{2}-[0-9]{2}[)]))$`, maximum length `256` |
 | `platform_machine` | pattern `^[A-Za-z0-9_-]{0,32}$`, maximum length `32` |
 | `platform_processor` | pattern `^[A-Za-z0-9 ,._()@+-]{0,128}$`, maximum length `128` |
 | `cpu_count` | integer `0` to `8192`, step `1` |
