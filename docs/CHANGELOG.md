@@ -5,6 +5,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 ## [Unreleased]
 
 ### Added
+- `CODEX.md`, `.codex/config.toml` and a `critic` agent: Codex defaults (`gpt-6.1-sol`, medium effort) and a two-round review workflow.
 
 - Automatic failure statistics include closed error codes, coarse run context, random run ids and hashes of permitted technical material, with no message text or private input details. Persistent hourly limits suppress repeated failures, and finished runs record automatic recovery.
 - **Open transcript on the Download Videos tab**: a finished row that was transcribed after download has an Open transcript button and menu entry (text first, then subtitles); the video's own Open button is unchanged.

@@ -1,0 +1,10 @@
+# Project defaults for Codex (owner 2026-11-09): one model, medium effort, for the main agent and
+# every subagent; up to 6 parallel subagent threads.
+model = "gpt-6.1-sol"
+model_reasoning_effort = "medium"
+
+[agents]
+enabled = true
+max_concurrent_threads_per_session = 6
+default_subagent_model = "gpt-6.1-sol"
+default_subagent_reasoning_effort = "medium"

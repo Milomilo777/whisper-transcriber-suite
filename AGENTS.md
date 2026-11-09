@@ -1,5 +1,7 @@
 # AGENTS.md — Whisper Transcriber Suite
 
+> **Codex:** read [`CODEX.md`](CODEX.md) right after this file — Codex model defaults and the two-round review workflow.
+
 Rules and commands for anyone changing this repository: human contributors and AI coding agents
 (Claude Code, Codex, Cursor, Copilot, …). `CLAUDE.md` only imports this file. If a document under
 `docs/` disagrees with this file, this file wins.
