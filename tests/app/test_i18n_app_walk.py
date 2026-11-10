@@ -200,6 +200,7 @@ def _openers(app: Any) -> list[tuple[str, Callable[[], Any]]]:
         ("statistics", app.show_statistics),
         ("search", app._open_search_dialog),
         ("advanced", app.open_advanced_dialog),
+        ("presets", app.open_presets_dialog),
         ("model advisor", app.open_model_advisor),
         ("quick start", lambda: QuickStartDialog(app, app.app_config, on_done=lambda _c: None)),
     ]

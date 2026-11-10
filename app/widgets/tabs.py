@@ -1566,6 +1566,9 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
         cta_row, text=_("Advanced settings…"),
         command=app.open_advanced_dialog,
     ).pack(side="right")
+    ttk.Button(
+        cta_row, text=_("Presets…"), command=app.open_presets_dialog,
+    ).pack(side="right", padx=(0, 8))
 
     # R3: GPU/CPU device badge — primary placement, next to the CTA so users
     # see it where they start a job. Driven by app.device_badge_var (set in

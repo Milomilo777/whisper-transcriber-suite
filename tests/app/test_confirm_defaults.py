@@ -23,6 +23,8 @@ DESTRUCTIVE = {
     ("app/app.py", "'Cancel download?'"): "no",
     ("app/dialogs/transcript_viewer.py", "'Discard changes?'"): "no",
     ("app/dialogs/transcript_viewer.py", "'Transcript changed on disk'"): "no",   # overwrite
+    ("app/dialogs/presets.py", "'Replace preset?'"): "no",
+    ("app/dialogs/presets.py", "'Delete preset?'"): "no",
     ("app/services/integrations_service.py", "'Replace .otr file?'"): "cancel",   # Yes replaces
 }
 

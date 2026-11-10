@@ -5,6 +5,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 ## [Unreleased]
 
 ### Added
+
+- **Named transcription presets**: save, apply and delete local bundles of transcription options, language and catalog Whisper models from the Transcribe tab. Credentials, folders, hardware and network preferences stay separate.
 - `CODEX.md`, `.codex/config.toml` and a `critic` agent: Codex defaults (`gpt-6.1-sol`, medium effort) and a two-round review workflow.
 
 - Automatic failure statistics include closed error codes, coarse run context, random run ids and hashes of permitted technical material, with no message text or private input details. Persistent hourly limits suppress repeated failures, and finished runs record automatic recovery.

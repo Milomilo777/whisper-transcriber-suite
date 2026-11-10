@@ -1133,6 +1133,10 @@
    "Advanced settings…"
   ],
   [
+   ".!frame.!frame4.!button4",
+   "Presets…"
+  ],
+  [
    ".!frame.!labelframe2.!frame.!label",
    "Last result"
   ],
@@ -2363,6 +2367,10 @@
    "Advanced settings…"
   ],
   [
+   ".!frame2.!frame4.!button4",
+   "Presets…"
+  ],
+  [
    ".!frame2.!labelframe2.!frame.!label",
    "Last result"
   ],
@@ -3587,6 +3595,10 @@
   [
    ".!frame3.!frame4.!button3",
    "Advanced settings…"
+  ],
+  [
+   ".!frame3.!frame4.!button4",
+   "Presets…"
   ],
   [
    ".!frame3.!labelframe2.!frame.!label",

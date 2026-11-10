@@ -3210,6 +3210,11 @@ class App(tk.Tk):
         self._sync_offline_menu()
         self._apply_update_setting()
 
+    def open_presets_dialog(self) -> None:
+        from app.dialogs.presets import PresetsDialog
+
+        self.wait_window(PresetsDialog(self))
+
     def _confirm_backend_switch(
         self,
         parent: "tk.Misc | None" = None,
