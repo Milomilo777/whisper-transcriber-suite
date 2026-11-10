@@ -118,7 +118,7 @@ def test_check_date_matches_site(page, site_section):
 
 
 def test_wts_version_matches_code(page):
-    glance = _row(page, "Latest stable version")
+    glance = _row(page, "Source version")
     assert glance[1].startswith(f"v{core.__version__} "), glance[1]
     assert f"| Version {core.__version__} |" in page
 

@@ -54,7 +54,10 @@ without bumping the version". Short version:
 
 ## Step 1 — Bump the version
 
-Bump `pyproject.toml` from the `*-dev` suffix to the release number.
+Set the release number consistently in `pyproject.toml`, `core/__init__.py`,
+`installer_embed.iss` (`MyAppVersion`) and `installer.iss` (`AppVersion` and
+`OutputBaseFilename`). The PyInstaller specifications derive their version from
+these sources. Keep historical release links and download badges intact.
 
 ```
 - version = "0.8.0-dev"
@@ -75,8 +78,9 @@ In `docs/CHANGELOG.md`:
 
 ## Step 3 — Write release notes
 
-Write the release notes as the body of the GitHub release (they are no
-longer kept as files in the repository). Sections to include:
+Prepare release notes locally before publication; an unpublished candidate may
+keep its draft under `docs/releases/`. After explicit owner approval, use the
+reviewed notes as the GitHub release body. Sections to include:
 
 * **What's new** — user-facing additions.
 * **What changed** — behaviour changes (incl. silent ones).
@@ -123,7 +127,25 @@ build, run the freshly built installer or app on real data, not only the tests:
   before tagging (a red run means a site changed; update the pin first).
 - The latest `model-links-weekly.yml` run is green (no dead model link ships).
 
-## Step 5 — Build the three deliverables
+## Step 5 — Build the two shipped Windows deliverables
+
+The published Windows deliverables are the Standard installer and a Portable ZIP
+of the same embed tree. Build from committed source after the validation gate:
+
+```cmd
+python tools\fetch_windows_build_deps.py --check
+build_embed_installer.bat
+"%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe" installer_embed.iss
+python -c "import shutil; shutil.make_archive(r'dist_installer\WhisperTranscriberSuite-Portable-Windows-vX.Y.Z', 'zip', r'embed_build')"
+```
+
+Preserve an existing build tree before running the builder, which replaces
+`embed_build`. Verify the tree with `tools/check_embed_tree.py` before smoke
+tests create bytecode, and record artifact SHA-256 hashes. See `docs/BUILD.md`
+for pinned dependencies and isolated Inno Setup installation.
+
+The following older onefile/Compact commands maintain the optional pipelines;
+these are not published deliverables:
 
 From the repo root, in order:
 
@@ -158,9 +180,11 @@ specs read the version from `pyproject.toml` automatically.
 
 This is the test that catches release blockers. Do not skip.
 
-For EACH of the three deliverables:
+For EACH shipped deliverable:
 
-1. **Fresh user profile** — delete (or rename):
+1. **Fresh user profile** — use an isolated test profile and install directory.
+   If existing test data must move, back it up or rename it first; never delete
+   the owner's only copy of settings, transcripts or model files. Historical paths:
    * `%LOCALAPPDATA%\WhisperTranscriberSuite\`
    * The previous version's install directory under
      `C:\Program Files\WhisperTranscriberSuite\`

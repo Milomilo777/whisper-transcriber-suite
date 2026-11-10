@@ -12,6 +12,8 @@ fits into one of five buckets.
 
 ## Reference
 
+- [BOARD.md](BOARD.md) — current work, release checks and session RESUME
+- [RELEASE_2.4.0_PLAN.md](RELEASE_2.4.0_PLAN.md) — candidate scope and dated competitor watch
 - [CHANGELOG.md](CHANGELOG.md) — version history
 - [COMPARISON.md](COMPARISON.md) — compared with Subtitle Edit, Vibe, Buzz, noScribe and aTrain, with a source for every fact
 - [DECISIONS.md](DECISIONS.md) — why non-obvious design choices were made
@@ -23,6 +25,9 @@ fits into one of five buckets.
 
 ## Per-feature
 
+- [FEATURE_240_PRESETS.md](FEATURE_240_PRESETS.md) — named local transcription presets
+- [FEATURE_240_SUBTITLE_QC.md](FEATURE_240_SUBTITLE_QC.md) — advisory subtitle findings in the editor
+- [FEATURE_240_DOWNLOAD_RATE.md](FEATURE_240_DOWNLOAD_RATE.md) — supported download bandwidth limits
 - [auto-subtitles-feature.md](auto-subtitles-feature.md) — the auto-subtitles feature
 - [CLOUD_STT.md](CLOUD_STT.md) — optional Gemini-API cloud backend (paste a key)
 - [CLOUD_STT_GOOGLE.md](CLOUD_STT_GOOGLE.md) — optional Google Cloud Speech-to-Text backend (service-account JSON, batch mode)

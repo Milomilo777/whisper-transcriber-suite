@@ -36,6 +36,7 @@ Step-by-step guides: [YouTube video to text](https://whisper-transcriber-suite.c
 
 ## Contents
 
+- [Prepared for 2.4.0 (unpublished)](#prepared-for-240-unpublished)
 - [Who it is for](#who-it-is-for) · [What's new in 2.2](#whats-new-in-22) · [Quick start](#quick-start) · [Features](#features)
 - [Try it in your browser (no install)](#try-it-in-your-browser-no-install)
 - [Speech engines and models](#speech-engines-and-models) · [Accuracy and speed](#accuracy-and-speed) · [Languages](#languages)
@@ -76,6 +77,27 @@ Typical uses:
 <div align="center">
 <img src="docs/img/screenshot-transcribe.png" alt="The Transcribe tab: a drop target, language and accuracy pickers, speaker-label and word-timestamp options" width="80%">
 </div>
+
+## Prepared for 2.4.0 (unpublished)
+
+The 2.4.0 candidate adds three desktop workflow improvements alongside the
+reliability fixes in the [changelog](docs/CHANGELOG.md):
+
+- **Named transcription presets:** save a language, catalog Whisper model and
+  recognition/output options under a name, then apply them from **Transcribe →
+  Presets…**. Credentials, folders and network settings stay outside presets.
+  [Preset guide](docs/FEATURE_240_PRESETS.md).
+- **Subtitle quality panel:** inspect reading speed, line length, timing and
+  overlap findings in the transcript editor; select a finding to reveal its cue.
+  General and CJK reading profiles are advisory and never change the transcript.
+  [Quality guide](docs/FEATURE_240_SUBTITLE_QC.md).
+- **Download speed limit:** choose whole KiB/s in **Download Videos → More
+  options**, with unlimited transfers by default. Supported yt-dlp transfers use
+  the limit; ffmpeg-based transfers can exceed it.
+  [Bandwidth guide](docs/FEATURE_240_DOWNLOAD_RATE.md).
+
+This candidate has not been published. The download links below still refer to
+the latest public release. Preparation status: [work board](docs/BOARD.md).
 
 ## What's new in 2.2
 

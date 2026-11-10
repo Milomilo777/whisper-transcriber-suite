@@ -30,10 +30,26 @@ Effort labels: **XS** under an hour · **S** half a day · **M** one to three da
 
 ## Open items
 
+### Prepared for 2.4.0 (not published)
+
+- **2.10 Named presets:** a local manager saves and applies allowlisted
+  transcription options, language and catalog Whisper model choices. Output
+  folders and custom model paths are deliberately excluded. See
+  [the preset guide](FEATURE_240_PRESETS.md).
+- **4.6 Subtitle linter:** the editor exposes the existing quality engine as an
+  advisory report with cue navigation and explicit general/CJK reading profiles.
+  See [the quality guide](FEATURE_240_SUBTITLE_QC.md).
+- **3.8 Rate limit, first part:** a per-task yt-dlp speed limit is exposed in the
+  Download tab. Scheduling remains open. See
+  [the bandwidth guide](FEATURE_240_DOWNLOAD_RATE.md).
+
+The live acceptance and remaining release checks are on [BOARD.md](BOARD.md).
+
 ### Transcription (Phase 2)
 
-- **2.10 Named presets** (M). Only the built-in "noisy audio" preset exists. Save a named bundle of settings
-  (model, VAD, prompt and hotwords, output formats, output folder) and apply it with one click.
+- **2.10 Named presets** (M). Implemented in the unpublished 2.4.0 candidate:
+  save and apply model, VAD, prompt, hotwords and output-format choices.
+  Output folders remain separate from presets. See the prepared section above.
 - **2.11 Automatic subtitle line splitting** (M). Raw segments are often too long for screen subtitles. A
   post-processor that uses word timestamps to emit blocks within common limits (about 42 characters a line,
   2 lines, 17 characters a second, at least 0.83 s on screen). `core/subtitle_qc.py` already measures these
@@ -49,7 +65,8 @@ Effort labels: **XS** under an hour · **S** half a day · **M** one to three da
   with a preview of the full command.
 - **3.7 Parallel downloads** (S). Downloads run one at a time; a `parallel_downloads` setting (default 1) would
   allow 2-3 for users with the bandwidth. (`parallel_workers` already covers transcription.)
-- **3.8 Rate limit and scheduler** (S + M). Expose `--limit-rate`, and "start the queue at HH:MM".
+- **3.8 Rate limit and scheduler** (S + M). Rate limiting is implemented in the
+  unpublished 2.4.0 candidate; "start the queue at HH:MM" remains open.
 - **3.9 Simple mode** (S). URL plus one quality choice (Best / 720p / 480p / Audio only) for new users.
 - **3.6 Basic-auth fields** (XS). Cookies from the browser ship; user name and password fields for the rare site
   that needs them do not.
@@ -58,9 +75,9 @@ Effort labels: **XS** under an hour · **S** half a day · **M** one to three da
 
 - **4.3 Gap and silence panel** (M). A sortable list of silences longer than N seconds; click to jump, and a
   "remove dead air" command that shifts later timestamps. Useful for podcasts and lectures.
-- **4.6 Subtitle linter in the editor** (S). `core/subtitle_qc.py` checks characters per second, line length,
-  gaps and minimum duration (with CJK limits) but is used only by tests; show its findings as badges in the
-  editor.
+- **4.6 Subtitle linter in the editor** (S). Implemented in the unpublished
+  2.4.0 candidate: the Subtitle Quality panel exposes reading speed, line length,
+  gaps, duration and timing findings, with selectable CJK profiles.
 
 ### Power features (Phase 5)
 

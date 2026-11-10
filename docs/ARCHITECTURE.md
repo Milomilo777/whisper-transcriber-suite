@@ -64,6 +64,7 @@ app/
 └── theme/                  design tokens, colours, per-OS window chrome
 core/
 ├── config.py               load_config / save_config, DEFAULT_CONFIG, platform folders
+├── presets.py              allowlisted local transcription bundles; dialogs/presets.py applies them
 ├── task.py                 TranscriptionTask (the transcription queue item)
 ├── task_settings.py        per-task options snapshot sent to the worker
 ├── worker.py               worker subprocess entry point, JSON stdio protocol

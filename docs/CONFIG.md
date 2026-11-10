@@ -63,6 +63,20 @@ reading and saving are built to never lose a setting (`core.config`):
   (the saved choice was lost), and the next save writes all three explicitly. Work offline then
   shows in the window title and the File menu, so it can be turned off again.
 
+## Named presets and download bandwidth (2.4.0 candidate)
+
+**Transcribe → Presets…** stores named, allowlisted transcription options in
+`presets.json` beside `config.json`. Applying one saves the selected options
+without changing credentials, folders, hardware or network/privacy preferences.
+See [the preset guide](FEATURE_240_PRESETS.md) for the exact scope.
+
+`download_rate_limit_kib` is a local-only integer, default `0` (unlimited).
+**Download Videos → More options → Speed limit (KiB/s)** accepts positive whole
+numbers or blank for unlimited. The value is captured by each queued task and
+converted to yt-dlp bytes/second. It does not cap model downloads, metadata
+requests or the whole PC, and ffmpeg-based transfers may exceed it. See
+[supported paths and validation](FEATURE_240_DOWNLOAD_RATE.md).
+
 ## Three-level merged configuration (P4-1)
 
 The effective config is merged from **three layers**, in priority order:
