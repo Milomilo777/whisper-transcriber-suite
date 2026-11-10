@@ -2040,6 +2040,20 @@ def build_download_tab(app: "App", parent: ttk.Frame) -> None:
           "it holds your log-ins."),
     ).pack(side="left", padx=(6, 0))
 
+    rate_row = ttk.Frame(more.body)
+    rate_row.pack(fill="x", pady=(8, 0))
+    ttk.Label(rate_row, text=_("Speed limit (KiB/s)")).pack(side="left")
+    saved_rate = app.app_config.get("download_rate_limit_kib", 0)
+    app.download_rate_limit_var = tk.StringVar(value=str(saved_rate) if saved_rate else "")
+    ttk.Entry(rate_row, textvariable=app.download_rate_limit_var, width=12).pack(side="left", padx=(6, 0))
+    ttk.Button(rate_row, text=_("Apply"), command=app._save_download_rate_limit).pack(side="left", padx=(6, 0))
+    ttk.Label(
+        more.body, text=_("Blank = unlimited; 1024 KiB/s = 1 MiB/s. Time ranges and some live streams cannot be limited."),
+        foreground=tokens.themed(tokens.TEXT_MUTED),
+    ).pack(anchor="w", pady=(2, 0))
+    if saved_rate:
+        more.set_open(True, remember=False)
+
     # --- Optional time-range slice (v1.0.3) -------------------------------
     # Two short Entry widgets inside a LabelFrame, plus a tiny hint label
     # below. Pre-filled with "0:00:00" so the user edits a real value

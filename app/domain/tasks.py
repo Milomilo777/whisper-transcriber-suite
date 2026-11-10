@@ -28,7 +28,9 @@ class VideoDownloadTask:
         caption_only: bool = False,
         caption_kind: str = "",
         make_subbed_video: bool = False,
+        download_rate_limit_kib: int = 0,
     ) -> None:
+        self.download_rate_limit_kib = download_rate_limit_kib
         self.url = url
         self.folder = folder
         self.format_label = format_label

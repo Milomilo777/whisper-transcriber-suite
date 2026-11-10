@@ -105,6 +105,8 @@ DEFAULT_CONFIG = {
     "parallel_workers": 0,
     "download_folder": "",
     "download_subtitles_enabled": False,
+    # Maximum yt-dlp bandwidth in KiB/s; 0 leaves downloads unlimited.
+    "download_rate_limit_kib": 0,
     "download_subtitle_lang": "Automatic",
     # A download to be transcribed, of a video that already has subtitles in the
     # chosen language: "ask" shows the question, "captions" always takes the
@@ -643,6 +645,7 @@ LOCAL_ONLY_KEYS: frozenset[str] = frozenset({
     "yt_dlp_update_mode",
     "last_yt_dlp_update_check",
     "auto_update_yt_dlp",
+    "download_rate_limit_kib",
 })
 
 
@@ -2182,6 +2185,11 @@ def load_config(*, fetch_online: bool = True) -> dict[str, Any]:
     # Coerce / drop wrong-type values for keys that ship a default —
     # e.g. parallel_workers="many" survives the merge and downstream
     # int() crashes later. Drop the bad value (restore default).
+    try:
+        validate_download_rate_limit(merged.get("download_rate_limit_kib"))
+    except ValueError:
+        logger.warning("Invalid download speed limit; restoring unlimited downloads")
+        merged["download_rate_limit_kib"] = 0
     for k, default in DEFAULT_CONFIG.items():
         if k not in merged:
             continue
@@ -2503,8 +2511,30 @@ def _apply_leaf_change(target: dict[str, Any], path: tuple[str, ...], value: Any
         node[path[-1]] = copy.deepcopy(value)
 
 
+def validate_download_rate_limit(value: object) -> int:
+    """Validate a persisted KiB/s limit; zero means unlimited."""
+    if type(value) is not int or not 0 <= value <= 2_147_483_647:
+        raise ValueError("Download speed must be a whole KiB/s value from 1 to 2147483647, or blank for unlimited.")
+    return value
+
+
+def parse_download_rate_limit(raw: str) -> int:
+    """Parse the Download tab field without accepting flags, units or fractions."""
+    text = raw.strip()
+    if not text:
+        return 0
+    if len(text) > 10 or not text.isascii() or not text.isdecimal():
+        raise ValueError("Enter a whole number of KiB/s, or leave blank for unlimited.")
+    value = validate_download_rate_limit(int(text))
+    if value == 0:
+        raise ValueError("Leave the speed limit blank for unlimited, or enter at least 1 KiB/s.")
+    return value
+
+
 def save_config(config: dict[str, Any]) -> None:
     """Write ``config`` to config.json; raises ConfigSaveError when it cannot.
+
+    An invalid download speed limit raises ValueError before any write.
 
     A dict from ``load_config`` (a LoadedConfig) writes only what it changed
     since it was loaded or last saved (per leaf of a nested object, see
@@ -2522,6 +2552,7 @@ def save_config(config: dict[str, Any]) -> None:
         # What this save sends: the dict can change on another thread while
         # the save runs, and only what was written may become the baseline.
         snapshot = copy.deepcopy(dict(config))
+        validate_download_rate_limit(snapshot.get("download_rate_limit_kib", 0))
         baseline = config._config_baseline if isinstance(config, LoadedConfig) else None
         path = config_path()
         directory = os.path.dirname(path) or "."

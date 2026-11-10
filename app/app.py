@@ -83,6 +83,7 @@ from core._proc import kill_download_tree
 from core.config import (
     _PROJECT_KEY_RANGES,
     load_config,
+    parse_download_rate_limit,
     log_effective_stats_url,
     save_config,
     webhook_secret_from_input,
@@ -1170,6 +1171,7 @@ class App(tk.Tk):
     video_format_combo: "ttk.Combobox"
     output_format_var: tk.StringVar
     output_format_combo: "ttk.Combobox"
+    download_rate_limit_var: tk.StringVar
     download_subtitles_var: tk.BooleanVar
     subtitle_lang_var: tk.StringVar
     subtitle_lang_combo: "ttk.Combobox"
@@ -2147,6 +2149,16 @@ class App(tk.Tk):
         except Exception as e:  # noqa: BLE001
             logger.exception("Failed to persist cleared recent-files list")
             self.log(f"Could not save cleared recent list: {e}")
+
+    def _save_download_rate_limit(self) -> None:
+        """Apply the Download tab speed preference only after strict validation."""
+        try:
+            rate = parse_download_rate_limit(self.download_rate_limit_var.get())
+        except ValueError as error:
+            messagebox.showwarning(_("Invalid download speed"), str(error), parent=self)
+            return
+        self.app_config["download_rate_limit_kib"] = rate
+        self._save_download_prefs()
 
     def _save_download_prefs(self) -> None:
         """Write the Download tab's remembered state (the "More options" disclosure) to disk."""

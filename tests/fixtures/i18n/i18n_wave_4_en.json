@@ -4349,6 +4349,18 @@
    " ⓘ "
   ],
   [
+   ".!frame5.!frame.!disclosure.!frame.!frame2.!label",
+   "Speed limit (KiB/s)"
+  ],
+  [
+   ".!frame5.!frame.!disclosure.!frame.!frame2.!button",
+   "Apply"
+  ],
+  [
+   ".!frame5.!frame.!disclosure.!frame.!label",
+   "Blank = unlimited; 1024 KiB/s = 1 MiB/s. Time ranges and some live streams cannot be limited."
+  ],
+  [
    ".!frame5.!frame.!disclosure.!frame.!labelframe.!frame.!label",
    "Time range (optional)"
   ],

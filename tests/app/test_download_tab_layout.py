@@ -43,3 +43,30 @@ def test_the_download_action_bar_sits_above_the_table(tmp_path):
         assert int(app.download_tree.cget("height")) <= 5
     finally:
         app.destroy()
+
+
+def test_saved_speed_limit_is_visible_in_download_options(tmp_path):
+    try:
+        root = tk.Tk()
+        root.destroy()
+    except tk.TclError:
+        pytest.skip("No display available for Tkinter tests")
+    settings = dict(DEFAULT_CONFIG, download_rate_limit_kib=256)
+    with patch("core.config.user_config_dir", return_value=tmp_path / "c"), \
+         patch("core.config.user_data_dir", return_value=tmp_path / "d"), \
+         patch("core.config.user_cache_dir", return_value=tmp_path / "k"), \
+         patch("core.stats.post_stats_async", return_value=False), \
+         patch("app.app.load_config", return_value=settings), \
+         patch("app.app.save_config") as save:
+        app = App()
+        try:
+            app.withdraw()
+            app.update_idletasks()
+            assert app.download_rate_limit_var.get() == "256"
+            assert app.download_more_options.body.winfo_manager()
+            app.download_rate_limit_var.set("1024")
+            app._save_download_rate_limit()
+            assert app.app_config["download_rate_limit_kib"] == 1024
+            save.assert_called()
+        finally:
+            app.destroy()

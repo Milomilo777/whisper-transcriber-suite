@@ -6,6 +6,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- Download Videos has a remembered optional speed limit in KiB/s, with unlimited downloads by default. Audio, video and caption downloads pass the limit to yt-dlp; the UI explains protocol limitations.
+
 - **Named transcription presets**: save, apply and delete local bundles of transcription options, language and catalog Whisper models from the Transcribe tab. Credentials, folders, hardware and network preferences stay separate.
 - `CODEX.md`, `.codex/config.toml` and a `critic` agent: Codex defaults (`gpt-6.1-sol`, medium effort) and a two-round review workflow.
 

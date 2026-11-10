@@ -115,7 +115,7 @@ from app.domain.cookies import (
 )
 from app.domain.languages import subtitle_lang_patterns
 from core import burn_subs, yt_dlp_update
-from core.config import save_config
+from core.config import save_config, parse_download_rate_limit, validate_download_rate_limit
 from core.integrations import smtv as smtv_mod
 from core.watcher import is_download_intermediate
 
@@ -520,6 +520,9 @@ def build_subtitle_command(
     output = os.path.join(task.folder, stem + ".%(ext)s")
     sub_langs = subtitle_lang_patterns(lang)
     command = [yt_dlp_path]
+    rate = validate_download_rate_limit(getattr(task, "download_rate_limit_kib", 0))
+    if rate:
+        command.extend(["--limit-rate", str(rate * 1024)])
     if bin_path:
         command += ["--ffmpeg-location", bin_path]
     command += ["--newline", *_YT_DLP_UTF8_ARGS]
@@ -669,6 +672,9 @@ def build_download_command(
         task.folder, title_template(task.folder, clip_tag) + clip_tag + ".%(ext)s"
     )
     command = [yt_dlp_path]
+    rate = validate_download_rate_limit(getattr(task, "download_rate_limit_kib", 0))
+    if rate:
+        command.extend(["--limit-rate", str(rate * 1024)])
     if bin_path:
         command += ["--ffmpeg-location", bin_path]
     # ``-c`` / ``--continue`` so a resumed download (R2 stop-and-continue
@@ -1381,6 +1387,17 @@ class DownloadService:
         from app.domain.tasks import VideoDownloadTask
 
         app = self.app
+        rate_var = app.__dict__.get("download_rate_limit_var")
+        try:
+            rate = (
+                parse_download_rate_limit(rate_var.get()) if rate_var is not None
+                else validate_download_rate_limit(
+                    app.__dict__.get("app_config", {}).get("download_rate_limit_kib", 0)
+                )
+            )
+        except ValueError as error:
+            messagebox.showwarning(_("Invalid download speed"), str(error), parent=app)
+            return
         url = smtv_mod.clean_url(app.download_url_var.get())
         folder = app.download_folder_var.get().strip()
         mode = app.download_mode_var.get()
@@ -1452,6 +1469,13 @@ class DownloadService:
             else None
         )
         is_smtv = smtv_episode is not None
+        if is_smtv and rate:
+            messagebox.showwarning(
+                _("Speed limit unavailable"),
+                _("This site uses a direct downloader that cannot apply the speed limit. Clear the speed limit to download this link."),
+                parent=app,
+            )
+            return
 
         # An audio format is only required when audio is actually downloaded:
         #   * "Audio" mode (audio-only output) always needs one;
@@ -1486,6 +1510,7 @@ class DownloadService:
                 parent=app,
             )
             return
+        app.app_config["download_rate_limit_kib"] = rate
         app.app_config["download_folder"] = folder
         title = app.current_video_title or url
         subtitles_enabled = app.download_subtitles_var.get()
@@ -1581,6 +1606,13 @@ class DownloadService:
             if section_end is not None and section_end >= probed_duration:
                 section_end = None
         any_range = section_start is not None or section_end is not None
+        if any_range and rate and not is_smtv:
+            app.download_events.put((
+                "log", None,
+                "This time range uses ffmpeg, which cannot apply the download speed limit; "
+                "the transfer may exceed the selected limit. Clear Start and End to limit the full download.",
+            ))
+            format_label += " (time range: speed limit unavailable)"
 
         # Decorate the visible title with the trim badge so the
         # Queue tab's File column shows the user what slice is
@@ -1619,6 +1651,7 @@ class DownloadService:
                 # SMTV ignores the slice at run-time but we still
                 # store the values so .time_range_label() and any
                 # later inspection see what the user asked for.
+                download_rate_limit_kib=rate,
                 section_start=section_start,
                 section_end=section_end,
                 make_subbed_video=make_subbed,
@@ -1684,6 +1717,17 @@ class DownloadService:
         from app.domain.tasks import VideoDownloadTask
 
         app = self.app
+        rate_var = app.__dict__.get("download_rate_limit_var")
+        try:
+            rate = (
+                parse_download_rate_limit(rate_var.get()) if rate_var is not None
+                else validate_download_rate_limit(
+                    app.__dict__.get("app_config", {}).get("download_rate_limit_kib", 0)
+                )
+            )
+        except ValueError as error:
+            messagebox.showwarning(_("Invalid download speed"), str(error), parent=app)
+            return
         url = smtv_mod.clean_url(app.download_url_var.get())
         folder = app.download_folder_var.get().strip()
         if not url:
@@ -1734,6 +1778,7 @@ class DownloadService:
                 parent=app,
             )
             return
+        app.app_config["download_rate_limit_kib"] = rate
         app.app_config["download_folder"] = folder
         try:
             save_config(app.app_config)
@@ -1752,6 +1797,7 @@ class DownloadService:
             subtitles_enabled=True,
             subtitle_lang=lang_code_csv,
             detected_language=app.current_video_language,
+            download_rate_limit_kib=rate,
             caption_only=True,
             caption_kind=kind,
         )
