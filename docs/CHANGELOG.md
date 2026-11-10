@@ -6,6 +6,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- **Subtitle Quality panel**: review reading speed, line length, timing, overlaps and repeated cues with explicit language profiles. Select a finding to reveal its exact cue and seek media; checks refresh after edits and never alter the transcript.
+
 - Download Videos has a remembered optional speed limit in KiB/s, with unlimited downloads by default. Audio, video and caption downloads pass the limit to yt-dlp; the UI explains protocol limitations.
 
 - **Named transcription presets**: save, apply and delete local bundles of transcription options, language and catalog Whisper models from the Transcribe tab. Credentials, folders, hardware and network preferences stay separate.

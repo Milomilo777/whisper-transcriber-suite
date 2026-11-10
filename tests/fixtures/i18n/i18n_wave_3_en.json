@@ -139,6 +139,10 @@
    "AI Tools"
   ],
   [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook:.!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame4",
+   "Subtitle Quality"
+  ],
+  [
    ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame.!label",
    "Media"
   ],
@@ -239,6 +243,50 @@
    "Copy result"
   ],
   [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame4.!label",
+   "Review findings; edit cues with the transcript tools. Checks never change or save your transcript."
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame4.!label2",
+   "Reading profile"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame4.!combobox:values",
+   "Transcript language"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame4.!combobox:values",
+   "General"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame4.!combobox:values",
+   "Chinese"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame4.!combobox:values",
+   "Japanese"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame4.!combobox:values",
+   "Korean"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame4.!combobox:values",
+   "Cantonese"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame4.!label3",
+   "Unknown language (general): 20.0 characters/s, 42 characters/line, 2 lines; duration 0.833–7.0s, gap ≥ 0.083s. Advisory defaults."
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame4.!label4",
+   "Findings: 2; affected cues: 2. Errors: 0; warnings: 2."
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame4.!label5",
+   "Select a finding to show its cue and seek media."
+  ],
+  [
    ".!transcriptviewer.!frame.!panedwindow.!frame.!treeview:heading:time",
    "Time"
   ],
@@ -257,6 +305,18 @@
   [
    ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame2.!treeview:heading:title",
    "Title"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame4.!frame.!treeview:heading:cue",
+   "Cue"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame4.!frame.!treeview:heading:level",
+   "Severity"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame4.!frame.!treeview:heading:finding",
+   "Finding"
   ],
   [
    "help_icon#0",
@@ -627,6 +687,10 @@
    "AI Tools"
   ],
   [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook:.!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame4",
+   "Subtitle Quality"
+  ],
+  [
    ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame.!label",
    "Media"
   ],
@@ -727,6 +791,50 @@
    "Copy result"
   ],
   [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame4.!label",
+   "Review findings; edit cues with the transcript tools. Checks never change or save your transcript."
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame4.!label2",
+   "Reading profile"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame4.!combobox:values",
+   "Transcript language"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame4.!combobox:values",
+   "General"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame4.!combobox:values",
+   "Chinese"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame4.!combobox:values",
+   "Japanese"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame4.!combobox:values",
+   "Korean"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame4.!combobox:values",
+   "Cantonese"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame4.!label3",
+   "Unknown language (general): 20.0 characters/s, 42 characters/line, 2 lines; duration 0.833–7.0s, gap ≥ 0.083s. Advisory defaults."
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame4.!label4",
+   "Findings: 2; affected cues: 2. Errors: 0; warnings: 2."
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame4.!label5",
+   "Select a finding to show its cue and seek media."
+  ],
+  [
    ".!transcriptviewer2.!frame.!panedwindow.!frame.!treeview:heading:time",
    "Time"
   ],
@@ -745,6 +853,18 @@
   [
    ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame2.!treeview:heading:title",
    "Title"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame4.!frame.!treeview:heading:cue",
+   "Cue"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame4.!frame.!treeview:heading:level",
+   "Severity"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame4.!frame.!treeview:heading:finding",
+   "Finding"
   ],
   [
    "help_icon#0",

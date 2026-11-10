@@ -55,7 +55,7 @@ from app.widgets.platform import (
     is_darwin, open_async, open_file, open_folder, reveal_label,
 )
 from app.widgets.tooltip import help_icon
-from core import subtitle_edit
+from core import subtitle_edit, subtitle_qc
 from core.media_types import MEDIA_EXTENSIONS
 from core.paths import path_key
 from core.search import find_folded_span, folded_contains, replace_folded
@@ -337,6 +337,12 @@ def _seg_float(seg: dict[str, Any], key: str, default: float = 0.0) -> float:
     if not math.isfinite(value):
         return default
     return value
+
+
+def _cue_seek_seconds(seg: dict[str, Any]) -> float | None:
+    """Only send valid, signed 64-bit millisecond times to the media player."""
+    start = _seg_float(seg, "start", math.nan)
+    return start if math.isfinite(start) and 0 <= start < (2**63 - 1) / 1000 else None
 
 
 def _fmt_hms_ms(seconds: float) -> str:
@@ -996,11 +1002,120 @@ class TranscriptViewer(tk.Toplevel):
         self._right_notebook.add(media_tab, text=_("Media"))
         self._right_notebook.add(chapters_tab, text=_("Chapters"))
         self._right_notebook.add(ai_tab, text=_("AI Tools"))
+        quality_tab = ttk.Frame(self._right_notebook, padding=6)
+        self._right_notebook.add(quality_tab, text=_("Subtitle Quality"))
+        self._build_quality_panel(quality_tab)
         # Right-to-left interface: first tab at the right (the tabs are never picked by index).
         rtl_layout.mirror_notebook(self._right_notebook)
         self._build_media_panel(media_tab)
         self._build_chapters_panel(chapters_tab)
         self._build_ai_panel(ai_tab)
+
+    def _build_quality_panel(self, parent: ttk.Frame) -> None:
+        """Advisory report only: checking never changes cues or blocks saving."""
+        self._qc_issues: list[subtitle_qc.QcIssue] = []
+        self._qc_snapshot: Any = None
+        self._qc_profiles = {
+            _("Transcript language"): None, _("General"): "en",
+            _("Chinese"): "zh", _("Japanese"): "ja", _("Korean"): "ko",
+            _("Cantonese"): "yue",
+        }
+        ttk.Label(parent, text=_("Review findings; edit cues with the transcript tools. "
+                               "Checks never change or save your transcript."),
+                  wraplength=px(340)).pack(fill="x", pady=(0, 8))
+        ttk.Label(parent, text=_("Reading profile")).pack(anchor="w")
+        self._qc_language_var = tk.StringVar(value=_("Transcript language"))
+        profile = ttk.Combobox(parent, textvariable=self._qc_language_var,
+                               values=list(self._qc_profiles), state="readonly")
+        profile.pack(fill="x")
+        profile.bind("<<ComboboxSelected>>", lambda _event: self._refresh_quality())
+        self._qc_limits_var = tk.StringVar()
+        ttk.Label(parent, textvariable=self._qc_limits_var, wraplength=px(340)).pack(
+            fill="x", pady=6)
+        self._qc_summary_var = tk.StringVar()
+        ttk.Label(parent, textvariable=self._qc_summary_var, wraplength=px(340)).pack(fill="x")
+        frame = ttk.Frame(parent)
+        frame.pack(fill="both", expand=True, pady=6)
+        frame.columnconfigure(0, weight=1)
+        frame.rowconfigure(0, weight=1)
+        self._qc_tree = ttk.Treeview(frame, columns=("cue", "level", "finding"),
+                                     show="headings", selectmode="browse", height=9)
+        for key, title, width in (("cue", _("Cue"), 45), ("level", _("Severity"), 75),
+                                  ("finding", _("Finding"), 240)):
+            self._qc_tree.heading(key, text=title)
+            self._qc_tree.column(key, width=px(width), minwidth=px(40),
+                                 stretch=key == "finding")
+        self._qc_tree.grid(row=0, column=0, sticky="nsew")
+        scroll = ttk.Scrollbar(frame, orient="vertical", command=self._qc_tree.yview)
+        scroll.grid(row=0, column=1, sticky="ns")
+        horizontal = ttk.Scrollbar(frame, orient="horizontal", command=self._qc_tree.xview)
+        horizontal.grid(row=1, column=0, sticky="ew")
+        self._qc_tree.configure(yscrollcommand=scroll.set, xscrollcommand=horizontal.set)
+        self._qc_detail_var = tk.StringVar(value=_("Select a finding to show its cue and seek media."))
+        ttk.Label(parent, textvariable=self._qc_detail_var, wraplength=px(340)).pack(fill="x")
+        self._qc_tree.bind("<<TreeviewSelect>>", self._on_qc_select)
+
+    def _refresh_quality(self) -> None:
+        if not hasattr(self, "_qc_tree"):
+            return  # lightweight viewer doubles do not build the panel
+        profile = self._qc_profiles.get(self._qc_language_var.get())
+        language = profile or _language_code(self.language)
+        # Match the editor's defensive text display, without changing the original data.
+        cues = [{"start": seg.get("start"), "end": seg.get("end"),
+                 "text": _seg_text(seg)} for seg in self.segments]
+        snapshot = (language, cues)
+        if snapshot == self._qc_snapshot:
+            return  # search filtering does not rerun checks or erase the selection
+        self._qc_snapshot = snapshot
+        limits = subtitle_qc.limits_for_language(language)
+        self._qc_limits_var.set(_(
+            "{language}: {cps} characters/s, {chars} characters/line, {lines} lines; "
+            "duration {minimum}–{maximum}s, gap ≥ {gap}s. Advisory defaults.",
+            language=language or _("Unknown language (general)"), cps=limits.max_cps,
+            chars=limits.max_line_chars, lines=limits.max_lines, minimum=limits.min_duration,
+            maximum=limits.max_duration, gap=limits.min_gap))
+        self._qc_issues = subtitle_qc.check_segments(cues, limits=limits)
+        self._qc_tree.delete(*self._qc_tree.get_children())
+        errors = sum(issue.severity == "error" for issue in self._qc_issues)
+        if not cues:
+            summary = _("No cues to check.")
+        elif not self._qc_issues:
+            summary = _("No findings with this profile.")
+        else:
+            summary = _("Findings: {findings}; affected cues: {cues}. Errors: {errors}; warnings: {warnings}.",
+                        findings=len(self._qc_issues), cues=len({i.index for i in self._qc_issues}),
+                        errors=errors, warnings=len(self._qc_issues) - errors)
+        self._qc_summary_var.set(summary)
+        self._qc_detail_var.set(_("Select a finding to show its cue and seek media."))
+        for row, issue in enumerate(self._qc_issues):
+            self._qc_tree.insert("", "end", iid=str(row), values=(
+                issue.index + 1, _("Error") if issue.severity == "error" else _("Warning"),
+                issue.message))
+
+    def _on_qc_select(self, _event: tk.Event | None) -> None:
+        selected = self._qc_tree.selection()
+        if not selected:
+            return
+        try:
+            issue = self._qc_issues[int(selected[0])]
+        except (ValueError, IndexError):
+            return
+        idx = issue.index
+        if not 0 <= idx < len(self.segments):
+            return
+        start = _cue_seek_seconds(self.segments[idx])
+        self._qc_detail_var.set(_("Cue {cue} at {time}: {message}",
+                                  cue=idx + 1, time=(_fmt_hms_ms(start) if start is not None else
+                                                    _("invalid or out of range")), message=issue.message))
+        item = str(idx)
+        if not self.tree.exists(item):
+            self.search_var.set("")
+        self.tree.selection_set(item)
+        self.tree.focus(item)
+        self.tree.see(item)
+        if start is not None:
+            self._seek_to(start)
+        self._set_active_segment(idx)
 
     def _build_media_panel(self, parent: ttk.Frame) -> None:
         ttk.Label(parent, text=_("Media"), font=("TkDefaultFont", 10, "bold")).pack(
@@ -1817,6 +1932,7 @@ class TranscriptViewer(tk.Toplevel):
                 tags=tags,
             )
         self._refresh_caption()
+        self._refresh_quality()
 
     def _refilter(self) -> None:
         self._populate_listbox()
@@ -1852,7 +1968,9 @@ class TranscriptViewer(tk.Toplevel):
         except ValueError:
             return
         seg = self.segments[idx]
-        self._seek_to(_seg_float(seg, "start"))
+        start = _cue_seek_seconds(seg)
+        if start is not None:
+            self._seek_to(start)
         self._set_active_segment(idx)
 
     def _on_segment_double_click(self, _event: tk.Event) -> None:
@@ -3328,6 +3446,7 @@ def open_viewer(
         if alive:
             if language and not existing.language:
                 existing.language = language
+                existing._refresh_quality()
             existing.deiconify()
             existing.lift()
             existing.focus_force()

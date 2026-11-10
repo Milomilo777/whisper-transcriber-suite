@@ -1397,3 +1397,108 @@ def test_strip_fillers_tidies_unspaced_dash_pair():
     assert _strip_fillers("hello–um–world", pat) == "hello–world"
     # The documented spaced-hyphen case still works.
     assert _strip_fillers("so - um - then", pat) == "so - then"
+
+
+def test_quality_panel_refresh_select_and_non_destructive(tmp_path):
+    from app.dialogs.transcript_viewer import TranscriptViewer
+
+    segments = [
+        {"start": 9.125, "end": 9.5, "text": "A caption that is much too fast to read."},
+        {"start": 9.25, "end": 12.0, "text": "Second cue"},
+    ]
+    path = tmp_path / "quality.json"
+    original = json.dumps(segments)
+    path.write_text(original, encoding="utf-8")
+    root = tk.Tk()
+    root.withdraw()
+    viewer = TranscriptViewer(root, str(path), language="en")
+    try:
+        assert any(issue.code == "overlap" and issue.index == 1 for issue in viewer._qc_issues)
+        target = next(str(i) for i, issue in enumerate(viewer._qc_issues) if issue.code == "overlap")
+        viewer.search_var.set("too fast")
+        seeks = []
+        viewer._seek_to = seeks.append
+        viewer._qc_tree.selection_set(target)
+        viewer._on_qc_select(None)
+        assert viewer.tree.selection() == ("1",)
+        assert viewer.tree.focus() == "1"
+        assert seeks[-1] == 9.25
+        assert viewer.segments == segments
+        assert not viewer._dirty
+        assert path.read_text(encoding="utf-8") == original
+        from app.dialogs.transcript_viewer import EditTimestampDialog
+        edit = EditTimestampDialog(viewer, 1)
+        edit.start_var.set("10.0")
+        edit._save()
+        assert not any(issue.code == "overlap" for issue in viewer._qc_issues)
+    finally:
+        viewer.destroy()
+        root.destroy()
+
+
+def test_quality_language_thresholds_and_empty_state(tmp_path):
+    from app.dialogs.transcript_viewer import TranscriptViewer
+
+    path = tmp_path / "language.json"
+    path.write_text(json.dumps([{"start": 0, "end": 2, "text": "x" * 18}]), encoding="utf-8")
+    root = tk.Tk()
+    root.withdraw()
+    viewer = TranscriptViewer(root, str(path), language="ja-JP")
+    try:
+        assert any(issue.code == "line_too_long" for issue in viewer._qc_issues)
+        viewer._qc_language_var.set("General")
+        viewer._refresh_quality()
+        assert viewer._qc_issues == []
+        assert "No findings" in viewer._qc_summary_var.get()
+        viewer.segments = []
+        viewer._populate_listbox()
+        assert "No cues" in viewer._qc_summary_var.get()
+    finally:
+        viewer.destroy()
+        root.destroy()
+
+
+
+def test_quality_report_handles_malformed_fields_without_rewriting(tmp_path):
+    from app.dialogs.transcript_viewer import TranscriptViewer
+
+    segments = [{"start": "invalid", "end": None, "text": {"foreign": "shape"}},
+                {"start": 1, "end": 2, "text": None}]
+    path = tmp_path / "malformed.json"
+    original = json.dumps(segments)
+    path.write_text(original, encoding="utf-8")
+    root = tk.Tk()
+    root.withdraw()
+    viewer = TranscriptViewer(root, str(path))
+    try:
+        assert any(issue.code == "bad_timing" for issue in viewer._qc_issues)
+        assert sum(issue.code == "empty_text" for issue in viewer._qc_issues) == 2
+        assert viewer.segments == segments
+        assert path.read_text(encoding="utf-8") == original
+        assert not viewer._dirty
+    finally:
+        viewer.destroy()
+        root.destroy()
+
+
+@pytest.mark.parametrize("start", [None, "invalid", -1, 1e308])
+def test_quality_select_invalid_timing_reveals_cue_without_seek(tmp_path, start):
+    from app.dialogs.transcript_viewer import TranscriptViewer
+
+    path = tmp_path / "invalid-timing.json"
+    path.write_text(json.dumps([{"start": start, "end": start, "text": "x"}]), encoding="utf-8")
+    root = tk.Tk()
+    root.withdraw()
+    viewer = TranscriptViewer(root, str(path))
+    try:
+        seeks = []
+        viewer._seek_to = seeks.append
+        viewer._qc_tree.selection_set("0")
+        viewer._on_qc_select(None)
+        viewer.update()
+        assert viewer.tree.selection() == ("0",)
+        assert seeks == []
+        assert "invalid or out of range" in viewer._qc_detail_var.get()
+    finally:
+        viewer.destroy()
+        root.destroy()
