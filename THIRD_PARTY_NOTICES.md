@@ -18,7 +18,7 @@ every Python package ships inside the distribution under
 | **CPython** (embeddable runtime) | PSF License Agreement | The `python\` folder in the distribution. |
 | **FFmpeg** (`ffmpeg.exe`, `ffprobe.exe`) | GPL-3.0-or-later (the bundled builds are configured with `--enable-gpl --enable-version3` and include libx264/libx265) | Used for audio/video decode, slicing, subtitle burn-in. Windows: the gyan.dev "essentials" build pinned in `platform/windows/build-deps.json`; macOS: the evermeet.cx (Intel) and martin-riedl.de (Apple Silicon) static builds pinned in `platform/macos/pyinstaller/fetch_mac_binaries.sh`. GPL obligations (license text + source availability) apply; see "FFmpeg corresponding source" below. |
 | **Microsoft Visual C++ runtime** (`msvcp140.dll`, `msvcp140_1.dll`, `vcruntime140.dll`, `vcruntime140_1.dll` in `python\`) | Microsoft Software License Terms (Visual Studio "Distributable Code"); not covered by this project's BSD licence | Unmodified Microsoft files, deployed app-local so the app starts on a PC without the Visual C++ Redistributable. See "Microsoft Visual C++ runtime" below. |
-| **yt-dlp** (`yt-dlp.exe`) | Unlicense (public domain) | Video downloads. |
+| **yt-dlp** (bundled Windows/macOS distributions) | GPL-3.0-or-later (combined PyInstaller distribution) | Video downloads. yt-dlp itself remains under the Unlicense; bundled third-party components have their own terms. See [upstream licensing](https://github.com/yt-dlp/yt-dlp/tree/2026.10.26#licensing) and the [compiled third-party licenses](https://github.com/yt-dlp/yt-dlp/blob/2026.10.26/THIRD_PARTY_LICENSES.txt). |
 | **Deno** (`deno.exe`) | MIT | JavaScript runtime that yt-dlp uses for YouTube. |
 
 ### Microsoft Visual C++ runtime

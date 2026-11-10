@@ -26,9 +26,10 @@ No tag or public release has been created.
 | 240-02 Editor subtitle quality | Integrated, reviewed twice | Real GUI, 91 focused tests and combined gate passed |
 | 240-03 Download speed limit | Integrated, reviewed twice | Real download, 104 focused, 36 regression and combined gate passed |
 | 240-04 Integration | Passed | Type gate 0/0/0; full desktop suite 13,914 passed, 75 skipped |
-| 240-05 Release preparation | Source and notes prepared | Build Windows installer and Portable ZIP; matching FFmpeg source verified |
+| 240-05 Release preparation | First Windows candidate verified | Rebuild after the verified downloader pin refresh; matching FFmpeg source retained |
 | 240-07 Localization | Pending | Translate new labels and obtain independent language review |
 | 240-08 Service compatibility | Offline checks passed | 142 service and 3 backup tests passed; verify live compatibility before publication |
+| 240-09 Downloader refresh | Integrated, reviewed twice | yt-dlp 2026.10.26 pins, compatibility and real transfer verified; fresh regression gate passed: 13,914 tests, 75 skipped |
 | 240-06 Final release checks | Pending | Installed real-file transcription, microphone, upgrade/uninstall; report limits |
 | WATCH-01 Filename reuse | Backlog | Reproduce a concrete similarly named input failure before changing code |
 | WATCH-02 Diarization memory | Backlog | Measure long recordings with existing memory fixes |
@@ -61,4 +62,10 @@ zero failures**. It runs the same selection as `python -m pytest tests/
 the eight real-model cases passed separately using existing weights.
 The initial run exposed a missing generated module-list update; the corrected
 registry passed its full 55-test module and the fresh combined gate.
-Built-runtime checks remain pending.
+The first Portable candidate passed its built-runtime check: all 212 app/core
+modules imported, Tcl/Tk started, tools and diarization assets passed. A real
+spoken file also produced SRT/JSON/TXT and a persisted finished history entry
+with the packaged interpreter. That unpublished candidate is preserved while
+the downloader is refreshed to the verified stable 2026.10.26. Its pin, command
+and runtime checks passed 171 tests; the fresh combined gate passed with the
+same 13,914 tests and 75 skips. The final Windows rebuild remains.
