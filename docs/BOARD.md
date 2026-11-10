@@ -26,7 +26,7 @@ No tag or public release has been created.
 | 240-02 Editor subtitle quality | Integrated, reviewed twice | Real GUI, 91 focused tests and combined gate passed |
 | 240-03 Download speed limit | Integrated, reviewed twice | Real download, 104 focused, 36 regression and combined gate passed |
 | 240-04 Integration | Passed | Type gate 0/0/0; full desktop suite 13,914 passed, 75 skipped |
-| 240-05 Release preparation | First Windows candidate verified | Rebuild after the verified downloader pin refresh; matching FFmpeg source retained |
+| 240-05 Release preparation | Installer built; Portable verified | Final installer and Portable ZIP ready locally; matching FFmpeg source retained |
 | 240-07 Localization | Pending | Translate new labels and obtain independent language review |
 | 240-08 Service compatibility | Offline checks passed | 142 service and 3 backup tests passed; verify live compatibility before publication |
 | 240-09 Downloader refresh | Integrated, reviewed twice | yt-dlp 2026.10.26 pins, compatibility and real transfer verified; fresh regression gate passed: 13,914 tests, 75 skipped |
@@ -65,7 +65,12 @@ registry passed its full 55-test module and the fresh combined gate.
 The first Portable candidate passed its built-runtime check: all 212 app/core
 modules imported, Tcl/Tk started, tools and diarization assets passed. A real
 spoken file also produced SRT/JSON/TXT and a persisted finished history entry
-with the packaged interpreter. That unpublished candidate is preserved while
-the downloader is refreshed to the verified stable 2026.10.26. Its pin, command
+with the packaged interpreter. That unpublished candidate remains preserved. The downloader was refreshed to the verified stable 2026.10.26. Its pin, command
 and runtime checks passed 171 tests; the fresh combined gate passed with the
-same 13,914 tests and 75 skips. The final Windows rebuild remains.
+same 13,914 tests and 75 skips. The final Windows rebuild completed from committed
+source. Its transferred Portable ZIP matched the build hash and passed a fresh
+desktop runtime check, including the exact downloader version, all 212 modules,
+Tcl/Tk, bundled tools and assets. Real spoken-file transcription passed with the
+final packaged interpreter and persisted its finished history entry. Final
+documentation/packaging checks passed 86 tests. Installer upgrade/uninstall and
+installed-build hardware checks remain pending; no publication has occurred.
