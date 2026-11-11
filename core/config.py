@@ -2251,6 +2251,13 @@ def load_config(*, fetch_online: bool = True) -> dict[str, Any]:
                 k, type(merged[k]).__name__, type(default).__name__, default,
             )
             merged[k] = json.loads(json.dumps(default))
+    # Advanced settings converts formats to a set; nested JSON values must
+    # not prevent the user from opening it to repair their settings.
+    formats = merged["output_formats"]
+    cleaned_formats = [value for value in formats if isinstance(value, str)]
+    if len(cleaned_formats) != len(formats):
+        logger.warning("Invalid output format entries; keeping valid choices")
+        merged["output_formats"] = cleaned_formats or list(DEFAULT_CONFIG["output_formats"])
     from .backends import mlx_whisper_be as _mlx
 
     _mlx.resolve_engine_choice(merged, baseline)
