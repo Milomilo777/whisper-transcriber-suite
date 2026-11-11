@@ -728,7 +728,7 @@ def reindex_all_history(
                 if isinstance(paths, str):
                     try:
                         paths = json.loads(paths)
-                    except json.JSONDecodeError:
+                    except (ValueError, RecursionError):
                         paths = []
                 if not isinstance(paths, (list, tuple)):
                     paths = []  # a damaged cell parsed to a bare scalar

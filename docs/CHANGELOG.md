@@ -12,6 +12,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 - Transcription endpoints stay within decoded audio, including time ranges, resumed work and output rounding. Timing that cannot be represented safely retains decoded text and word data for recovery.
 - History remains readable when an optional metadata field exceeds the JSON nesting limit, preserving access to healthy entries.
+- Search rebuilding continues past history metadata that exceeds JSON nesting or integer limits.
 - Completed transcripts can be recovered after a worker exit when earlier numbered outputs were removed. Recovery uses a single fresh, complete output set and preserves files when names or source ownership are ambiguous.
 - Output failures retain the underlying permission or storage error in failure diagnostics. Persistent destination errors stop promptly, while filename collisions, transient access denials and successfully written formats keep their existing protections.
 
