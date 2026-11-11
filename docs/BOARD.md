@@ -52,6 +52,7 @@ No tag or public release has been created.
 | REL-03 Weekly research | Partial; held | Selected primary-source corrections verified; remaining research and applicability checks are open |
 | REL-04 Gate discrepancy | Partial; held | Terminal-decoder fixture isolation committed; remaining host-sensitive failures are unresolved |
 | REL-05 Transcription endpoints | Implemented; verification pending | [Endpoint bounds](FIX_TRANSCRIPTION_ENDPOINT_BOUNDS.md); full gate and real long-file rerun pending |
+| REL-06 Recovery and settings | Implemented; joint verification pending | History and search tolerate malformed metadata; settings retain valid output formats; explicit preset models replace Accuracy intent; Linux updates stop after a failed pull |
 
 Output-cause and audio-slice-cause fixes are included in this development
 snapshot. Worker-exit recovery has independent approval for its exact
