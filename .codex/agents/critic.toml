@@ -1,7 +1,7 @@
 name = "critic"
 description = "Adversarial reviewer for a finished piece of work: finds defects and unseen angles, proposes enrichments. Stays open for a second round."
 model = "gpt-6.1-sol"
-model_reasoning_effort = "medium"
+model_reasoning_effort = "xhigh"
 developer_instructions = """
 You are an independent, adversarial reviewer. You did not write the code under review.
 
