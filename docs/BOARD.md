@@ -1,6 +1,7 @@
 # Work board and RESUME
 
-Updated: 2026-11-10. Release target: 2.4.0. Branch: `release/2.4.0`.
+Updated: 2026-11-11. Release target: 2.4.0. This development snapshot includes
+post-candidate reliability fixes; release validation remains separate.
 
 ## Owner questions / release boundary
 
@@ -14,6 +15,13 @@ Updated: 2026-11-10. Release target: 2.4.0. Branch: `release/2.4.0`.
 - Microphone hardware validation remains pending.
 
 ## RESUME
+
+Read the [reliability step log](RELIABILITY_STATUS_2026-11-11.md);
+its proposals and synthetic reproductions are not completed fixes.
+
+The [worker-exit recovery record](FIX_WORKER_EXIT_OUTPUT_RECOVERY.md)
+describes the recovery rules, limitations and regression commands.
+New investigations must record their own baseline and verification.
 
 Read [the dated scope proposal](RELEASE_2.4.0_PLAN.md), then this board.
 Start by checking git status and live lane progress; preserve unrelated untracked
@@ -33,9 +41,23 @@ No tag or public release has been created.
 | 240-06 Final release checks | Pending | Installed real-file transcription, microphone, upgrade/uninstall; report limits |
 | WATCH-01 Filename reuse | Backlog | Reproduce a concrete similarly named input failure before changing code |
 | WATCH-02 Diarization memory | Backlog | Measure long recordings with existing memory fixes |
-| WATCH-03 Weekly comparison | Next week | Check only changes since November 10; supplement with separate research when available |
+| WATCH-03 Weekly comparison | See REL-03 | Review November 4–11 changes; supplement with independent research |
 
-## Validation evidence
+## Reliability follow-up
+
+| Card | Status | Next action / acceptance |
+|---|---|---|
+| REL-01 Preparation cause evidence | Audited | Existing reviewed implementation retained; no duplicate fix required |
+| REL-02 Error prioritization | Assessed; implementation held | Source-stream consistency reproduced with real codecs; preprocessing, retry and checkpoint compatibility still require implementation and validation |
+| REL-03 Weekly research | Partial; held | Selected primary-source corrections verified; remaining research and applicability checks are open |
+| REL-04 Gate discrepancy | Partial; held | Terminal-decoder fixture isolation committed; remaining host-sensitive failures are unresolved |
+
+Output-cause and audio-slice-cause fixes are included in this development
+snapshot. Worker-exit recovery has independent approval for its exact
+implementation; its regression tests cover real writers and worker exits.
+These checks do not complete release hardware validation or authorize publication.
+
+## Release-candidate evidence before the reliability follow-up
 
 Record final commands, counts and review findings here as work lands. Artifact
 hashes, machine-specific paths, access details and raw logs belong in ignored

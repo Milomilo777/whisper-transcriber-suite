@@ -414,6 +414,8 @@ def test_decoder_error_mid_file_keeps_the_decoded_segments(t, monkeypatch, tmp_p
     from core import _checkpoint
     from core.task import TranscriptionTask
 
+    # Exercise a terminal decoder error without real CUDA recovery or weights.
+    monkeypatch.setattr(t, "device", "cpu")
     audio = tmp_path / "lecture.wav"
     audio.write_bytes(b"\0" * 16)
 

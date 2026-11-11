@@ -1369,6 +1369,7 @@ def _write_outputs(
     template = str(config.get("output_filename_template") or "{base}.{ext}")
     written: list[str] = []
     write_errors: list[str] = []
+    last_write_error: Exception | None = None
     available = supported_formats()
     # Not list()-ed: a malformed override must reach the TypeError guard
     # below instead of raising here, so the value stays typed as Any.
@@ -1467,26 +1468,39 @@ def _write_outputs(
     # FileExistsError and moves to the next index. Only placeholders THIS
     # call created are ever removed again.
     claimed: set[str] = set()
+    claim_permission_failures = 0
 
     def _claim(path: str) -> bool:
-        """True only when *path* is ours (placeholder created exclusively).
-
-        Fails CLOSED: any failure, a taken name or a transient error such as
-        a PermissionError from a scanner, means "not ours" and the caller
-        moves to the next index. Nothing is ever published to a name this
-        run did not claim."""
+        """Claim exclusively; retry collisions and one transient access denial."""
+        nonlocal claim_permission_failures
         out_dir = os.path.dirname(path)
         if out_dir and not os.path.isdir(out_dir):
             try:
                 os.makedirs(out_dir, exist_ok=True)
-            except OSError:
-                pass
+            except OSError as exc:
+                # An existing file in the parent path is not a collision
+                # with the final output name; changing its index cannot help.
+                raise RuntimeError("Could not create the output directory.") from exc
         try:
             fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o666)
-        except OSError:
+        except FileExistsError:
             return False
-        os.close(fd)
+        except PermissionError as exc:
+            # Windows can deny an existing destination rather than report
+            # EEXIST. Never publish to a name we failed to claim. One retry
+            # also permits a transient scanner denial on an absent name.
+            if os.path.lexists(path):
+                return False
+            claim_permission_failures += 1
+            if claim_permission_failures < 2:
+                return False
+            raise RuntimeError("Could not create an output file.") from exc
+        except OSError as exc:
+            # Changing the collision index cannot fix a full disk or an
+            # invalid destination. Keep the OS identity for failure clues.
+            raise RuntimeError("Could not create an output file.") from exc
         claimed.add(path)
+        os.close(fd)
         return True
 
     def _release(path: str) -> None:
@@ -1497,47 +1511,38 @@ def _write_outputs(
             except OSError:
                 pass
 
-    index = 0
-    while True:
-        candidates = [_final_path(f, p, index) for f, p in indexed_planned]
-        if want_sidecar:
-            candidates.append(
-                _indexed_sidecar_path(
-                    base, index, template=template, lang=lang,
-                    speaker_count=speaker_count,
-                )
-            )
-        taken = False
-        for cand in candidates:
-            if not _claim(cand):
-                taken = True
-                break
-        if not taken:
-            break
-        for cand in candidates:
-            _release(cand)
-        if index >= 10000:
-            raise RuntimeError(
-                "Could not claim a free output file name next to "
-                f"{base!r}; nothing was written."
-            )
-        index += 1
-
     try:
+        index = 0
+        while True:
+            candidates = [_final_path(f, p, index) for f, p in indexed_planned]
+            if want_sidecar:
+                candidates.append(
+                    _indexed_sidecar_path(
+                        base, index, template=template, lang=lang,
+                        speaker_count=speaker_count,
+                    )
+                )
+            taken = False
+            for cand in candidates:
+                if not _claim(cand):
+                    taken = True
+                    break
+            if not taken:
+                break
+            for cand in candidates:
+                _release(cand)
+            if index >= 10000:
+                raise RuntimeError(
+                    "Could not claim a free output file name next to "
+                    f"{base!r}; nothing was written."
+                )
+            index += 1
+
         for fmt_name, rendered in planned:
             path = (
                 rendered if fmt_name == "smtv_docx"
                 else _final_path(fmt_name, rendered, index)
             )
-            # Honour template-supplied subdirectories. Defensive: only
-            # makedirs when the dirname is non-empty and differs from the
-            # source folder we're already writing into.
-            out_dir = os.path.dirname(path)
-            if out_dir and not os.path.isdir(out_dir):
-                try:
-                    os.makedirs(out_dir, exist_ok=True)
-                except OSError:
-                    pass
             # Unique .part suffix per pid + thread so two parallel
             # workers transcribing the SAME source file don't race-write
             # to the same .part path (Windows treats the second open as
@@ -1550,6 +1555,12 @@ def _write_outputs(
                 f"{path}.{os.getpid()}-{threading.get_ident()}.part"
             )
             try:
+                # Directory preparation belongs to this format's error
+                # boundary, so a failure keeps its original OS cause and
+                # cannot prevent another format from being saved.
+                out_dir = os.path.dirname(path)
+                if out_dir and not os.path.isdir(out_dir):
+                    os.makedirs(out_dir, exist_ok=True)
                 if fmt_name == "smtv_docx":
                     # Special case: the SMTV writer needs the detected
                     # language + work title beyond the frozen 2-arg writer
@@ -1592,6 +1603,7 @@ def _write_outputs(
                 # on to the next format.
                 logger.warning("output format %r failed: %s", fmt_name, e)
                 write_errors.append(f"{fmt_name}: {e}")
+                last_write_error = e
                 continue
             written.append(path)
         # Requested known formats, but every writer failed (disk full, all
@@ -1601,7 +1613,7 @@ def _write_outputs(
             raise RuntimeError(
                 "All output writers failed; last error: "
                 + (write_errors[-1] if write_errors else "unknown")
-            )
+            ) from last_write_error
         # Auto-chapter sidecar: same set, same index. A sidecar failure is
         # non-fatal (chapters are an optional extra, never worth failing the
         # transcript over) — _write_chapter_sidecar returns None on error.
@@ -3838,6 +3850,8 @@ def _slice_audio_from(
         err = (result.stderr or b"").decode("utf-8", "replace").strip()[:400]
         raise RuntimeError(
             f"ffmpeg slice failed (exit={result.returncode}): {err or 'no output'}"
+        ) from subprocess.CalledProcessError(
+            result.returncode, cmd, output=result.stdout, stderr=result.stderr,
         )
     return str(slice_path)
 

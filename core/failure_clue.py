@@ -458,11 +458,16 @@ def worker_clue(exc: BaseException, task: Any = None, *, site: str | None = None
     try:
         failure_site = site or site_from_traceback(exc.__traceback__, getattr(task, "_failure_site", "other"))
         origin = exc
-        if failure_site in {"worker.model", "worker.prepare"}:
+        if failure_site in {"worker.model", "worker.prepare", "worker.output"}:
             seen = {id(origin)}
             while True:
+                # An output OSError is the failed I/O operation. An older
+                # handled lookup in its context must not replace that cause.
+                if failure_site == "worker.output" and isinstance(origin, OSError):
+                    break
                 nxt = getattr(origin, "__cause__", None)
-                if nxt is None and not getattr(origin, "__suppress_context__", False):
+                if (nxt is None and failure_site != "worker.output"
+                        and not getattr(origin, "__suppress_context__", False)):
                     nxt = getattr(origin, "__context__", None)
                 if nxt is None or id(nxt) in seen or len(seen) >= 16:
                     break

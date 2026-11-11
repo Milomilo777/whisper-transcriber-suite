@@ -4,6 +4,15 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Documentation
+
+- Record the reliability investigation checkpoint, distinguishing reviewed fixes from held reproductions and remaining runtime validation.
+
+### Fixed
+
+- Completed transcripts can be recovered after a worker exit when earlier numbered outputs were removed. Recovery uses a single fresh, complete output set and preserves files when names or source ownership are ambiguous.
+- Output failures retain the underlying permission or storage error in failure diagnostics. Persistent destination errors stop promptly, while filename collisions, transient access denials and successfully written formats keep their existing protections.
+
 ## [2.4.0] - 2026-11-10
 
 ### Added
@@ -19,6 +28,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Failed audio slicing retains the ffmpeg process exception for preparation diagnostics without changing partial-file cleanup, error messages or resume fallback.
 - Turning off usage statistics erases local error-rate history and prevents an older pending sender from recreating it. Recovered runs retain their random run identifiers, specific native failure clues survive parent reporting, and suppressed-repeat counts stay with their own error fingerprint.
 - Collapsed word alignment restores consistent raw segment groups without replaying an earlier cue, and batched fallback preserves merged text. Word-timestamp profile choices survive resume and saves, and web defaults come from the saved profile.
 - Voice scratch cleanup retains stable lock files and checks recent file activity before deleting old data under the job lock. Download recovery preserves combining marks when matching non-Latin filenames.

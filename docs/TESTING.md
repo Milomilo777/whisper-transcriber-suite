@@ -34,6 +34,10 @@ at a glance whether the project is still green.
 
 ## What the test files are
 
+Fake-decoder tests must select their intended device explicitly. A terminal
+decoder-error test uses CPU state so host GPU detection cannot trigger real
+model recovery; CUDA recovery has separate tests with replacement models faked.
+
 - **`tests\` (everything except `tests\smoke\`)** — *hermetic* unit
   tests. No Whisper model, no network, no GUI window. Fast (seconds).
   These are the ones `run_tests.bat` runs. An autouse fixture in

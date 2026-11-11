@@ -8,10 +8,13 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
+import re
 import subprocess
 import sys
 import threading
+import time
 import unicodedata
 from collections import deque
 from queue import Empty
@@ -175,12 +178,113 @@ def _same_set(first: list[str], second: list[str]) -> bool:
     return True
 
 
-def _newest_output_set(paths: list[str], source: str | None = None) -> list[str]:
-    """The last ``name (N).ext`` set the writer would have produced for *paths*.
+def _writer_input_stems(output_stem: str) -> list[tuple[str, str]]:
+    """Invert one writer suffix/index step, without stripping literal input names recursively."""
+    bases = [(output_stem, "")]
+    match = re.search(r" \(([1-9][0-9]{0,4})\)$", output_stem)
+    if match and int(match.group(1)) <= 10000:
+        bases.append((output_stem[:match.start()], match.group(0)))
+    candidates: list[tuple[str, str]] = []
+    for base, index in bases:
+        candidates.append((base, base + index))
+        if base.casefold().endswith(TRANSLATED_SUFFIX.casefold()):
+            origin = base[:-len(TRANSLATED_SUFFIX)]
+            candidates.append((origin, origin + TRANSLATED_SUFFIX + index))
+    return candidates
 
-    ``core.transcriber._write_outputs`` keeps earlier runs' files and writes a re-run
-    as ``name (1).srt`` + ``name (1).json`` (one shared index), so the files a crashed
-    re-run left are the highest-numbered set, not the plain names.
+
+def _existing_output_indices(paths: list[str], source: str | None) -> tuple[list[int], set[int]]:
+    """Recognised writer indices, including sets beyond a deleted earlier set."""
+    from core.watcher import is_media_file
+
+    folders: dict[str, list[tuple[re.Pattern[str], str]]] = {}
+    stem_patterns: set[str] = set()
+    for path in paths:
+        folder, name = os.path.split(path)
+        stem, ext = os.path.splitext(unicodedata.normalize("NFC", os.path.normcase(name)))
+        stem_pattern = re.escape(stem) + r"(?: \(([1-9][0-9]{0,4})\))?"
+        stem_patterns.add(stem_pattern)
+        # Ancestors can own a literal numbered/translated input's unindexed outputs.
+        # This is only a scan prefilter; ownership is checked per candidate below.
+        stem_patterns.update(re.escape(origin) for origin, _ in _writer_input_stems(stem))
+        pattern = re.compile(
+            stem_pattern + re.escape(ext), re.IGNORECASE,
+        )
+        folders.setdefault(folder or ".", []).append((pattern, path))
+    if source:
+        name = unicodedata.normalize("NFC", os.path.normcase(os.path.basename(source)))
+        stem_patterns.add(re.escape(os.path.splitext(name)[0]))
+    neighbour_patterns = [re.compile(pattern, re.IGNORECASE) for pattern in stem_patterns]
+    indices: set[int] = set()
+    neighbours: dict[tuple[str, str], list[str]] = {}
+    def stem_key(stem_path: str) -> tuple[str, str]:
+        # Only a lookup prefilter: native file identity decides case aliases below.
+        folder, name = os.path.split(os.path.abspath(stem_path))
+        return unicodedata.normalize("NFC", folder).casefold(), unicodedata.normalize("NFC", name).casefold()
+    source_key = os.path.normcase(os.path.abspath(source)) if source else None
+    source_ext = os.path.splitext(source)[1].lower() if source else None
+    for folder, patterns in folders.items():
+        with os.scandir(folder) as entries:
+            for entry in entries:
+                name = unicodedata.normalize("NFC", os.path.normcase(entry.name))
+                for pattern, expected_path in patterns:
+                    match = pattern.fullmatch(name)
+                    if match:
+                        index = int(match.group(1) or 0)
+                        if index <= 10000:  # Same final index the writer can claim.
+                            candidate = _indexed_path(expected_path, index)
+                            if os.path.basename(candidate) != entry.name:
+                                try:
+                                    if not os.path.samefile(candidate, entry.path):
+                                        continue
+                                except FileNotFoundError:
+                                    continue
+                            indices.add(index)
+                if (source
+                        and (is_media_file(entry.name) or os.path.splitext(entry.name)[1].lower() == source_ext)
+                        and any(pattern.fullmatch(os.path.splitext(name)[0]) for pattern in neighbour_patterns)):
+                    if (os.path.normcase(os.path.abspath(entry.path)) != source_key
+                            and entry.is_file() and not _same_file(entry.path, source)):
+                        key = stem_key(os.path.splitext(entry.path)[0])
+                        neighbours.setdefault(key, []).append(entry.path)
+    def has_neighbour(stem_path: str) -> bool:
+        for other in neighbours.get(stem_key(stem_path), []):
+            if os.path.abspath(os.path.splitext(other)[0]) == os.path.abspath(stem_path):
+                return True
+            try:
+                if os.path.samefile(stem_path + os.path.splitext(other)[1], other):
+                    return True
+            except FileNotFoundError:
+                continue
+        return False
+    common = {os.path.splitext(p)[0] for p in paths}
+    if source:
+        common.add(os.path.splitext(source)[0])
+    if any(has_neighbour(stem) for stem in common):
+        return sorted(indices), set(indices)
+    conflicts: set[int] = set()
+    for index in indices:
+        for path in paths:
+            candidate = _indexed_path(path, index)
+            stem, ext = os.path.splitext(candidate)
+            for origin, rendered in _writer_input_stems(stem):
+                if has_neighbour(origin) and (
+                    rendered == stem or _same_file(rendered + ext, candidate)
+                ):
+                    conflicts.add(index)
+                    break
+            if index in conflicts:
+                break
+    return sorted(indices), conflicts
+
+
+def _newest_output_set(
+    paths: list[str], source: str | None = None, *, not_before: float | None = None,
+) -> list[str]:
+    """Identify a recoverable output set from the expected filename plan.
+
+    The writer keeps earlier files and uses one shared index across formats.
+    It reuses deleted index slots, so index order alone does not identify a run.
 
     NTFS and ext4 keep NFC and NFD file names apart. Only the file name is re-spelled
     (the folder is never changed) and ONE spelling is used for every format. An alternate
@@ -188,8 +292,19 @@ def _newest_output_set(paths: list[str], source: str | None = None) -> list[str]
     *source* (it would own those outputs). Spellings that are the same physical files
     (macOS) count once. If two different spellings both have files the set is
     ambiguous: an empty list is returned so the caller records a failure rather than a
-    wrong transcript. Returns *paths* unchanged when none of the plain names exists.
+    wrong transcript. The legacy fallback returns *paths* unchanged when none
+    of the plain names exists.
+    With a run timestamp, all recognised indices are considered, including gaps.
+    Exactly one set may have recent activity. A partial or ambiguous fresh set
+    must not fall back to a different run's complete files. Without a timestamp,
+    the legacy contiguous-index fallback is retained.
     """
+    if not_before is not None and (
+        not math.isfinite(not_before)
+        or len({os.path.normcase(p) for p in paths}) != len(paths)
+    ):
+        return []
+    not_after = time.time() + 2.0 if not_before is not None else None
     forms: list[Literal["NFC", "NFD"] | None] = [None, "NFC", "NFD"]
     spellings: list[list[str]] = []
     for form in forms:
@@ -202,6 +317,38 @@ def _newest_output_set(paths: list[str], source: str | None = None) -> list[str]
             spellings.append(spelled)
     found: list[tuple[int, list[str]]] = []
     for spelled in spellings:
+        if not_before is not None:
+            indices, conflicts = _existing_output_indices(spelled, source)
+            fresh: tuple[int, list[str]] | None = None
+            for index in indices:
+                candidate = [_indexed_path(p, index) for p in spelled]
+                active = False
+                for path in candidate:
+                    try:
+                        stamp = os.path.getmtime(path)
+                        if not math.isfinite(stamp) or (not_after is not None and stamp > not_after):
+                            return []
+                        if stamp >= not_before:
+                            active = True
+                    except FileNotFoundError:
+                        continue
+                if active:
+                    if index in conflicts:
+                        return []  # Another input can own this same output namespace.
+                    if fresh is not None:
+                        return []  # No reported paths identify which run owns these files.
+                    fresh = (index + 1, candidate)
+            if fresh is not None:
+                if not all(os.path.isfile(p) for p in fresh[1]):
+                    return []
+                chosen = fresh
+            elif indices:
+                return []
+            else:
+                continue
+            if not any(i == chosen[0] and _same_set(chosen[1], other) for i, other in found):
+                found.append(chosen)
+            continue
         index = 0
         while index < 10000 and any(_path_exists(_indexed_path(p, index)) for p in spelled):
             index += 1
@@ -210,7 +357,7 @@ def _newest_output_set(paths: list[str], source: str | None = None) -> list[str]
             if not any(i == index and _same_set(newest, other) for i, other in found):
                 found.append((index, newest))
     if not found:
-        return paths
+        return paths if not_before is None else []
     if len(found) > 1:
         return []
     return found[0][1]
@@ -1248,6 +1395,11 @@ class TranscriptionService:
             file_path = getattr(task, "file_path", None)
             if not file_path:
                 return False
+            settings = getattr(task, "task_settings", None)
+            if isinstance(settings, dict) and (
+                settings.get("output_filename_template") or "{base}.{ext}"
+            ) != "{base}.{ext}":
+                return False  # Custom names require the worker's authoritative paths.
             base = os.path.splitext(file_path)[0]
             if getattr(task, "whisper_task", "") == "translate":
                 base += TRANSLATED_SUFFIX
@@ -1257,7 +1409,10 @@ class TranscriptionService:
             # The on-disk extension, not the format key ("elan" writes ".eaf").
             from core.writers import extension_for
             paths = [f"{base}.{extension_for(str(fmt))}" for fmt in formats]
-            paths = _newest_output_set(paths, file_path)
+            run_start = getattr(task, "start_time", 0.0)
+            paths = _newest_output_set(
+                paths, file_path, not_before=run_start - 2.0 if run_start else None,
+            )
 
         no_speech = bool(getattr(task, "no_speech", False))
         if not paths:
