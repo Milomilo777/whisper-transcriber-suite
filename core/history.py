@@ -754,6 +754,6 @@ def _row_to_dict(row: sqlite3.Row, json_fields: tuple[str, ...]) -> dict[str, An
         if raw:
             try:
                 out[key] = json.loads(raw)
-            except (TypeError, ValueError):
+            except (TypeError, ValueError, RecursionError):
                 pass
     return out
