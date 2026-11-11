@@ -21,6 +21,9 @@ class TranscriptionTask:
         self._telemetry_gpu_vendor: str = "unknown"
         self._failure_compute_type: str | None = None
         self._input_duration: float | None = None
+        # Sample-derived end on the source timeline; format duration is only
+        # a progress estimate and must not truncate the decoder's audio.
+        self._audio_end: float | None = None
         # Frozen wall-clock for a terminal task. Set once by the
         # service / app cancel path when the task transitions to
         # finished / cancelled / error. Without this the Elapsed

@@ -866,6 +866,164 @@ def _segment_to_dict(seg: Any, want_words: bool) -> dict[str, Any]:
     return payload
 
 
+class _TimingBoundsError(RuntimeError):
+    """Decoded text has no valid timing inside the known audio extent."""
+
+
+def _positive_duration(value: Any) -> float | None:
+    if isinstance(value, bool):
+        return None
+    try:
+        duration = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return duration if math.isfinite(duration) and duration > 0 else None
+
+
+def _pcm_duration(path: str) -> float | None:
+    """Verify the final PCM frame, without decoding another whole input."""
+    import wave
+
+    try:
+        with wave.open(path, "rb") as source:
+            frames = source.getnframes()
+            width = source.getnchannels() * source.getsampwidth()
+            if source.getcomptype() != "NONE" or frames <= 0 or width <= 0:
+                return None
+            source.setpos(frames - 1)
+            if len(source.readframes(1)) != width:
+                return None  # A declared duration is not proof of complete samples.
+            return _positive_duration(frames / source.getframerate())
+    except (OSError, EOFError, ValueError, wave.Error):
+        return None
+
+
+def _remember_audio_end(
+    task: TranscriptionTask, path: str, info: Any = None, *, offset: float = 0.0,
+) -> None:
+    # faster-whisper's duration is decoded sample count / sample rate BEFORE
+    # VAD. duration_after_vad is on a condensed timeline and is never used.
+    pcm_end = _pcm_duration(path)
+    duration = _positive_duration(getattr(info, "duration", None)) or pcm_end
+    if duration is not None and pcm_end is not None:
+        duration = min(duration, pcm_end)  # Resampling can add a fractional frame.
+    end = offset + duration if duration is not None else None
+    source_end = (pcm_end if os.path.abspath(path) == os.path.abspath(task.file_path)
+                  else _pcm_duration(task.file_path))
+    if end is not None and source_end is not None:
+        end = min(end, source_end)
+    requested_end = _positive_duration(task.clip_end)
+    if end is not None and requested_end is not None and requested_end > offset:
+        end = min(end, requested_end)
+    task._audio_end = end
+
+
+def _keep_timing_recovery(source: str, segments: list[dict[str, Any]], reason: str) -> str:
+    """Publish a new, durable raw record; never replace a checkpoint/output."""
+    import json
+    import tempfile
+
+    descriptor, name = tempfile.mkstemp(prefix="timing-", suffix=".tmp",
+                                         dir=_checkpoint.partials_dir())
+    final = str(Path(name).with_suffix(".timing-recovery.json"))
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            json.dump({"source_path": source, "segments": segments, "reason": reason},
+                      handle, ensure_ascii=True)
+            _checkpoint._flush_to_disk(handle)
+        os.replace(name, final)
+    finally:
+        _remove_quietly(name)
+    return final
+
+
+def _cap_segment(segment: dict[str, Any], audio_end: float) -> dict[str, Any]:
+    result = dict(segment)
+
+    def interval(item: dict[str, Any], *, word: bool = False) -> dict[str, Any]:
+        out = dict(item)
+        start, end = float(item.get("start", 0.0)), float(item.get("end", 0.0))
+        if (not math.isfinite(start) or not math.isfinite(end) or start < 0
+                or start >= audio_end or end < start):
+            raise _TimingBoundsError("Decoded timing is outside the audio; the text was preserved.")
+        out["end"] = min(end, audio_end)
+        return out
+
+    # Adapted from whisper.cpp (https://github.com/ggml-org/whisper.cpp/pull/4137)
+    # — bound model timestamps by actual audio length, not predicted token ends.
+    result = interval(result)
+    if isinstance(result.get("words"), list):
+        result["words"] = [interval(word, word=True) for word in result["words"]]
+    return result
+
+
+def _enforce_audio_end(
+    task: TranscriptionTask, segments: list[dict[str, Any]],
+    *, recovery: Callable[[], list[dict[str, Any]]] | None = None,
+) -> None:
+    end = _positive_duration(getattr(task, "_audio_end", None))
+    if end is None:
+        return
+    try:
+        # Build each replacement before publishing it, so a rejected word
+        # cannot mutate away the original decoded text or timing evidence.
+        bounded = [_cap_segment(segment, end) for segment in segments]
+        segments[:] = bounded
+    except (ValueError, TypeError, OverflowError, _TimingBoundsError) as error:
+        kept = _keep_timing_recovery(task.file_path, recovery() if recovery else segments, str(error))
+        raise _TimingBoundsError(f"{error} Recovery data: {kept}") from error
+
+
+def _segments_for_writer(
+    segments: list[dict[str, Any]], audio_end: float | None, fmt_name: str,
+) -> list[dict[str, Any]]:
+    end = _positive_duration(audio_end)
+    if end is None:
+        return segments
+    bounded = [_cap_segment(segment, end) for segment in segments]
+    if fmt_name in {"json", "txt"}:
+        return bounded
+    scale = {"ass": 100, "lrc": 100, "inqscribe": 100,
+             "smtv_docx": 10, "express_scribe": 1}.get(fmt_name, 1000)
+    last_tick = math.floor(end * scale)
+    limit = last_tick / scale
+    intervals = {"srt", "vtt", "ass", "tsv", "elan"}
+
+    def quantize(item: dict[str, Any], *, interval: bool) -> dict[str, Any]:
+        out = dict(item)
+        start, finish = float(item["start"]), float(item["end"])
+        out["start"], out["end"] = min(start, limit), min(finish, limit)
+        if interval:
+            end_tick = min(round(finish * scale), last_tick)
+            start_tick = min(round(start * scale), last_tick)
+            if end_tick <= start_tick:
+                # Preserve native tiny/zero-cue repair away from EOF. SRT/VTT
+                # may display it for one second or merge it with the next cue;
+                # the other interval formats already allow a zero tick.
+                if ((fmt_name in {"srt", "vtt"} and start_tick + 1000 <= last_tick)
+                        or (fmt_name not in {"srt", "vtt"} and start_tick < last_tick)):
+                    return out
+                start_tick = math.floor(start * scale)
+                if end_tick <= start_tick:
+                    if fmt_name in {"srt", "vtt"} and start_tick < last_tick:
+                        out["end"] = limit  # Bound the existing display-time repair.
+                        return out
+                    raise _TimingBoundsError("This format cannot represent the final timing inside the audio.")
+                out["start"] = start_tick / scale
+        return out
+
+    result = []
+    for segment in bounded:
+        item = quantize(segment, interval=fmt_name in intervals)
+        if isinstance(item.get("words"), list):
+            # VTT renders word starts only; ASS already gives a zero-length
+            # word its minimum karaoke tick. Neither needs a new fatal rule.
+            item["words"] = [quantize(word, interval=False)
+                             for word in item["words"]]
+        result.append(item)
+    return result
+
+
 def _guarded_segment_to_dict(
     seg: Any, want_words: bool, stats: _loop_guard.LoopGuardStats
 ) -> dict[str, Any]:
@@ -1150,6 +1308,7 @@ def _write_periodic_checkpoint(
             transcription_completed=transcription_completed,
             languages=list(mixed_language_pair(task) or ()) or None,
             word_timestamps=effective_word_timestamps(config),
+            audio_end=getattr(task, "_audio_end", None),
         )
         task.checkpoint_failures = 0
     except Exception as e:  # noqa: BLE001
@@ -1178,7 +1337,13 @@ def _save_partial_subtitles(
     path = os.path.splitext(task.file_path)[0] + ".partial.srt"
     part = f"{path}.{os.getpid()}.part"
     try:
-        text = get_writer("srt")(segments, task.file_path)
+        _enforce_audio_end(task, segments)
+        try:
+            bounded = _segments_for_writer(segments, getattr(task, "_audio_end", None), "srt")
+        except _TimingBoundsError as error:
+            kept = _keep_timing_recovery(task.file_path, segments, str(error))
+            raise _TimingBoundsError(f"{error} Recovery data: {kept}") from error
+        text = get_writer("srt")(bounded, task.file_path)
         with open(part, "w", encoding="utf-8", newline="\n") as f:
             f.write(text)
             _checkpoint._flush_to_disk(f)
@@ -1341,6 +1506,7 @@ def _write_outputs(
     lang: str = "",
     speaker_count: int = 0,
     chapters: list[dict[str, Any]] | None = None,
+    audio_end: float | None = None,
 ) -> list[str]:
     """Write each requested format atomically.
 
@@ -1368,6 +1534,7 @@ def _write_outputs(
     """
     template = str(config.get("output_filename_template") or "{base}.{ext}")
     written: list[str] = []
+    timing_recovery: str | None = None
     write_errors: list[str] = []
     last_write_error: Exception | None = None
     available = supported_formats()
@@ -1459,6 +1626,13 @@ def _write_outputs(
     # outputs, so it takes part in the collision probe too: a re-run must
     # not leave its chapters at the previous run's name while the
     # transcripts move to " (1)".
+    if chapters and _positive_duration(audio_end) is not None:
+        try:
+            chapters = _segments_for_writer(chapters, audio_end, "json")
+        except _TimingBoundsError as error:
+            kept = _keep_timing_recovery(audio_path, chapters, str(error))
+            logger.warning("Automatic chapter timing could not be represented; recovery data: %s", kept)
+            chapters = []
     want_sidecar = bool(chapters)
     #
     # The index is CLAIMED, not just probed: every indexed name is created
@@ -1555,6 +1729,12 @@ def _write_outputs(
                 f"{path}.{os.getpid()}-{threading.get_ident()}.part"
             )
             try:
+                try:
+                    format_segments = _segments_for_writer(segments_data, audio_end, fmt_name)
+                except _TimingBoundsError as error:
+                    if timing_recovery is None:
+                        timing_recovery = _keep_timing_recovery(audio_path, segments_data, str(error))
+                    raise _TimingBoundsError(f"{error} Recovery data: {timing_recovery}") from error
                 # Directory preparation belongs to this format's error
                 # boundary, so a failure keeps its original OS cause and
                 # cannot prevent another format from being saved.
@@ -1569,7 +1749,7 @@ def _write_outputs(
                     # the ISO code threaded in via ``lang``.
                     from .writers import smtv_docx_writer
                     payload_b = smtv_docx_writer.write_bytes(
-                        segments_data,
+                        format_segments,
                         audio_path,
                         language=lang,
                         work_title=os.path.basename(base),
@@ -1578,12 +1758,12 @@ def _write_outputs(
                         fb.write(payload_b)
                         _checkpoint._flush_to_disk(fb)
                 elif is_binary(fmt_name):
-                    payload_b = get_binary_writer(fmt_name)(segments_data, audio_path)
+                    payload_b = get_binary_writer(fmt_name)(format_segments, audio_path)
                     with open(part_path, "wb") as fb:
                         fb.write(payload_b)
                         _checkpoint._flush_to_disk(fb)
                 else:
-                    payload_s = get_writer(fmt_name)(segments_data, audio_path)
+                    payload_s = get_writer(fmt_name)(format_segments, audio_path)
                     with open(part_path, "w", encoding="utf-8", newline="\n") as fs:
                         fs.write(payload_s)
                         _checkpoint._flush_to_disk(fs)
@@ -2983,6 +3163,7 @@ def transcribe(
     # blank the identity stored in its checkpoints.
     _protect_existing_checkpoint(task, log_cb)
     _note_run_identity(task)
+    task._audio_end = None
     # Wrap the per-file work in ``_runtime_overrides_scope`` so any
     # ``.whisperproject.json`` mutation of the module-level ``config``
     # is reverted before the next file runs (audit P0-6). The scope
@@ -3169,6 +3350,7 @@ def transcribe(
                 return
             raise
         _clue_phase(task, "worker.segments")
+        _remember_audio_end(task, audio_path, info, offset=_ts_offset)
         if _ts_offset:
             segments = _shift_segments(segments, _ts_offset)
 
@@ -3290,9 +3472,10 @@ def transcribe(
                 if progress_cb:
                     progress_cb(percent)
 
-                segments_data.append(
-                    _guarded_segment_to_dict(seg, want_words, _guard_stats)
-                )
+                segments_data.append(_guarded_segment_to_dict(seg, want_words, _guard_stats))
+                bounded = [segments_data[-1]]
+                _enforce_audio_end(task, bounded, recovery=lambda: segments_data)
+                segments_data[-1] = bounded[0]
                 segments_since_checkpoint += 1
 
                 now = time.time()
@@ -3306,7 +3489,7 @@ def transcribe(
                     _write_periodic_checkpoint(
                         task,
                         segments_data,
-                        float(seg.end),
+                        float(segments_data[-1]["end"]),
                         detected_lang_so_far,
                         lang_prob_so_far,
                         log_cb,
@@ -3322,6 +3505,7 @@ def transcribe(
                     detected_lang_so_far, float(getattr(info, "duration", 0.0) or 0.0), log_cb,
                     before_piece=lambda: _wait_while_paused(task, meter),
                 )
+                _enforce_audio_end(task, segments_data)
         except BaseException:
             # A decoder error mid-file: keep what was decoded since the last
             # periodic checkpoint before the error reaches the worker.
@@ -3376,6 +3560,7 @@ def transcribe(
             return
 
         _note_no_speech(task, segments_data, log_cb)
+        _enforce_audio_end(task, segments_data)
         _clue_phase(task, "worker.output")
         written = _write_outputs(
             base,
@@ -3385,6 +3570,7 @@ def transcribe(
             lang=_task_output_lang(task, detected_lang),
             speaker_count=speaker_count,
             chapters=getattr(task, "_chapters_for_writer", None) or [],
+            audio_end=getattr(task, "_audio_end", None),
         )
         # Hand the real written paths to the UI (history + Last-result
         # card) so it never has to re-derive names from config — that
@@ -3511,6 +3697,7 @@ def _transcribe_via_alt_backend(
         transient=bool(slice_to_clean),
         log_cb=log_cb,
     )
+    _remember_audio_end(task, transcribe_path, offset=clip_start_s if is_clipped else 0.0)
 
     from .backends.base import PartialResultError
 
@@ -3579,6 +3766,7 @@ def _transcribe_via_alt_backend(
             task.detected_language = lang_info.language
             task.language_probability = lang_info.probability
 
+    _enforce_audio_end(task, segments_data)
     if task.cancelled:
         # Alt-backend gives us the segments list as a single return —
         # if it returned a partial on cancellation, persist what we
@@ -3635,6 +3823,7 @@ def _transcribe_via_alt_backend(
         return
 
     _note_no_speech(task, segments_data, log_cb)
+    _enforce_audio_end(task, segments_data)
     _clue_phase(task, "worker.output")
     written = _write_outputs(
         base,
@@ -3644,6 +3833,7 @@ def _transcribe_via_alt_backend(
         lang=detected_lang,
         speaker_count=speaker_count,
         chapters=getattr(task, "_chapters_for_writer", None) or [],
+        audio_end=getattr(task, "_audio_end", None),
     )
     task.output_paths = list(written)
     _record_transcript_stats(task, segments_data)
@@ -3868,6 +4058,7 @@ def _write_resumed_outputs(
     _clue_phase(task, "worker.output")
     base = _task_output_base(task)
     _note_no_speech(task, segments, log_cb)
+    _enforce_audio_end(task, segments)
     written = _write_outputs(
         base,
         segments,
@@ -3876,6 +4067,7 @@ def _write_resumed_outputs(
         lang=_task_output_lang(task, detected_lang),
         speaker_count=speaker_count,
         chapters=getattr(task, "_chapters_for_writer", None) or [],
+        audio_end=getattr(task, "_audio_end", None),
     )
     task.output_paths = list(written)
     _record_transcript_stats(task, segments)
@@ -4056,6 +4248,16 @@ def resume_transcription(
             log(f"Resume: checkpoint invalid ({reason}); deleting partial.", log_cb)
             _checkpoint.delete_checkpoint(task.file_path)
             return False
+        source_end = _pcm_duration(task.file_path)
+        saved_end = data.get("audio_end")
+        if saved_end is not None and (
+            isinstance(saved_end, bool) or not isinstance(saved_end, (int, float))
+            or _positive_duration(saved_end) is None
+            or (source_end is not None and saved_end > source_end + 1e-9)
+        ):
+            _keep_checkpoint_aside(task, "the saved audio extent is invalid", log_cb)
+            return False
+        task._audio_end = _positive_duration(saved_end) or source_end
         _note_run_identity(task)
         # A legacy missing key meant False even if this profile was created
         # under a newer default. Hash its original spelling, decode its value.
@@ -4091,6 +4293,7 @@ def resume_transcription(
             # an earlier run died in them (e.g. a native diarisation crash).
             # Redo only the post steps and write the outputs.
             done_segments = list(data.get("segments") or [])
+            _enforce_audio_end(task, done_segments)
             done_language = cp_language
             log(
                 f"Resume: transcription already complete ({len(done_segments)} "
@@ -4273,6 +4476,8 @@ def resume_transcription(
                 new_segments_iter, info = runner.transcribe(
                     transcribe_slice, **transcribe_kwargs
                 )
+            _remember_audio_end(task, transcribe_slice, info, offset=last_end_time)
+            _enforce_audio_end(task, prior_segments)
             # Same repetition-loop guard as transcribe(), on the tail's own
             # timeline (shifted below). The last checkpointed line seeds its
             # text; its times are on the other timeline, so the first tail
@@ -4361,6 +4566,9 @@ def resume_transcription(
                         except (TypeError, ValueError):
                             continue
                 new_segments_data.append(d)
+                bounded = [d]
+                _enforce_audio_end(task, bounded, recovery=lambda: prior_segments + new_segments_data)
+                new_segments_data[-1] = bounded[0]
 
                 if progress_cb:
                     # d["end"] is on the original timeline; scale against the

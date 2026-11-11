@@ -51,6 +51,7 @@ No tag or public release has been created.
 | REL-02 Error prioritization | Assessed; implementation held | Source-stream consistency reproduced with real codecs; preprocessing, retry and checkpoint compatibility still require implementation and validation |
 | REL-03 Weekly research | Partial; held | Selected primary-source corrections verified; remaining research and applicability checks are open |
 | REL-04 Gate discrepancy | Partial; held | Terminal-decoder fixture isolation committed; remaining host-sensitive failures are unresolved |
+| REL-05 Transcription endpoints | Implemented; verification pending | [Endpoint bounds](FIX_TRANSCRIPTION_ENDPOINT_BOUNDS.md); full gate and real long-file rerun pending |
 
 Output-cause and audio-slice-cause fixes are included in this development
 snapshot. Worker-exit recovery has independent approval for its exact

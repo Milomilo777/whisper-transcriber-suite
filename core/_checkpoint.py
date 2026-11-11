@@ -561,6 +561,7 @@ def write_checkpoint(
     transcription_completed: bool = False,
     languages: list[str] | None = None,
     word_timestamps: bool | None = None,
+    audio_end: float | None = None,
 ) -> Path:
     """Atomically persist a checkpoint.
 
@@ -614,6 +615,8 @@ def write_checkpoint(
     }
     if word_timestamps is not None:
         payload["word_timestamps"] = bool(word_timestamps)
+    if audio_end is not None:
+        payload["audio_end"] = audio_end
 
     path = checkpoint_path(abs_path)
     # A fixed ".tmp" name let two writers for the same source (two app
