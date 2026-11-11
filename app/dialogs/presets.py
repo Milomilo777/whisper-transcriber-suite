@@ -52,6 +52,9 @@ def apply_settings(app: App, settings: dict[str, Any]) -> None:
     app.app_config.update(candidate)
     if isinstance(app.app_config, LoadedConfig) and isinstance(candidate, LoadedConfig):
         app.app_config._config_baseline = candidate._config_baseline
+    if slug is not None:
+        # An explicit model replaces the previous Accuracy-level intent.
+        app._accuracy_picked_level = None
     # Idle workers snapshot configuration at spawn. Retire them for the next run.
     app.transcription_service.stop_all()
     for key, variable in (
