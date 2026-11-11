@@ -10,7 +10,7 @@ cd "$REPO_ROOT"
 
 if [ -e .git ]; then
   echo "[whisper] updating source (git pull)…"
-  git pull --ff-only || echo "[whisper] git pull skipped/failed — update the source manually if needed."
+  git pull --ff-only
 fi
 
 if [ -x "$VENV/bin/python" ]; then

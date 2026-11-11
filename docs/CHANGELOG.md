@@ -15,6 +15,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Search rebuilding continues past history metadata that exceeds JSON nesting or integer limits.
 - Malformed output-format entries no longer prevent Advanced settings from opening. Valid choices are retained; an entirely invalid list uses defaults.
 - Applying a preset with an explicit model clears the previous Accuracy selection, so later language changes retain the preset model.
+- The Linux source updater stops when Git cannot update the source, before changing installed dependencies.
 - Completed transcripts can be recovered after a worker exit when earlier numbered outputs were removed. Recovery uses a single fresh, complete output set and preserves files when names or source ownership are ambiguous.
 - Output failures retain the underlying permission or storage error in failure diagnostics. Persistent destination errors stop promptly, while filename collisions, transient access denials and successfully written formats keep their existing protections.
 
