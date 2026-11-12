@@ -21,6 +21,7 @@ import os
 import re
 import sys
 import threading
+import uuid
 import zipfile
 import zlib
 from contextlib import contextmanager
@@ -240,10 +241,12 @@ def write_atomically(
     With ``expect_stamp`` the target is checked once more right before the move and left
     alone (``ChangedWhileBuilding``) when someone changed it while ``data`` was being built.
     """
-    part = f"{path}.{os.getpid()}.part"
+    part = os.path.join(os.path.dirname(os.path.abspath(path)), f".viewer-{uuid.uuid4().hex}.part")
+    created = False
     try:
         from core import _checkpoint
-        with open(part, "wb") as f:
+        with open(part, "xb") as f:
+            created = True
             f.write(data)
             _checkpoint._flush_to_disk(f)
         if expect_stamp is not None and (
@@ -251,8 +254,9 @@ def write_atomically(
         ):
             raise ChangedWhileBuilding(path)
         os.replace(part, path)
+        created = False
     finally:
-        if os.path.exists(part):
+        if created:
             try:
                 os.unlink(part)
             except OSError:

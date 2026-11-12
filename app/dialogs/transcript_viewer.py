@@ -2243,18 +2243,9 @@ class TranscriptViewer(tk.Toplevel):
             # Fall back to a stdlib json.dumps if the project import
             # ever fails in a stripped-down environment.
             payload_s = json.dumps(self.segments, indent=2, ensure_ascii=False) + "\n"
-        part = self.json_path + ".part"
         try:
-            from core import _checkpoint
-            with open(part, "w", encoding="utf-8", newline="\n") as f:
-                f.write(payload_s)
-                _checkpoint._flush_to_disk(f)
-            os.replace(part, self.json_path)
+            _write_text_atomically(self.json_path, payload_s)
         except Exception as e:  # noqa: BLE001
-            try:
-                os.unlink(part)
-            except OSError:
-                pass
             show_error(
                 self, _("Save failed"),
                 _("Could not write your changes to the transcript file."),
