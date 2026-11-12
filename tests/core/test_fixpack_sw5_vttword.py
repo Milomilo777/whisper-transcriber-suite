@@ -34,7 +34,8 @@ def test_vtt_writer_tolerates_non_string_word_text():
     body = vtt.write(segs)  # must not raise
     assert body.startswith("WEBVTT\n")
     # The numeric word text is coerced to its string form; nothing dropped.
-    assert "<00:00:00.000><c>42</c>" in body
+    assert "<c>42</c>" in body
+    assert "<00:00:00.000>" not in body
 
 
 def test_vtt_writer_non_string_word_text_with_good_neighbour():
@@ -51,7 +52,8 @@ def test_vtt_writer_non_string_word_text_with_good_neighbour():
         }
     ]
     body = vtt.write(segs)  # must not raise
-    assert "<00:00:02.000><c>hi</c>" in body
+    assert "<c>hi</c>" in body
+    assert "<00:00:02.000>" not in body
     assert "<00:00:02.500><c>7</c>" in body
 
 

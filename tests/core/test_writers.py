@@ -108,7 +108,8 @@ def test_vtt_writer_starts_with_header(segments):
 
 def test_vtt_writer_emits_karaoke_when_words_present(segments):
     body = vtt.write(segments)
-    assert "<00:00:01.500><c>Second</c>" in body
+    assert "<c>Second</c> <00:00:02.000><c>line</c>" in body
+    assert "<00:00:01.500>" not in body  # A cue-start marker is invalid WebVTT.
 
 
 def test_tsv_writer_has_header_row(segments):
@@ -470,8 +471,9 @@ def test_vtt_writer_tolerates_word_start_none():
     }]
     body = vtt.write(segs)  # must not raise
     assert body.startswith("WEBVTT\n")
-    # The None-start word falls back to the segment start (2.0s).
-    assert "<00:00:02.000><c>hi</c>" in body
+    # The None-start word is active at the cue start without an invalid marker.
+    assert "<c>hi</c>" in body
+    assert "<00:00:02.000>" not in body
     assert "<00:00:02.500><c>there</c>" in body
 
 

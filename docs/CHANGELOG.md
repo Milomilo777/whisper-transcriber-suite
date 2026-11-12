@@ -14,6 +14,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Keep WebVTT karaoke markers strictly inside their final cue and in increasing order. Invalid markers are omitted while all words, spacing and speaker labels remain available.
 - Keep JSON word timestamps inside their segment, including when Whisper alignment extends the last word beyond the cue. Malformed segment times are normalized to a nonnegative, ordered interval without changing transcript text or word confidence.
 - Closing a transcript viewer or exiting asks before abandoning an active AI task whose later response might fail to save. Discard choices apply only to that task, and results completed during the question are checked separately.
 - When all requested output writers fail, an earlier allocation failure remains visible even if a later writer reports a disk error. Recovery avoids allocating another full transcript copy after that failure.

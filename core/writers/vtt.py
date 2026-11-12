@@ -1,8 +1,8 @@
 """WebVTT ``.vtt`` writer.
 
 If a segment has a ``words`` list that still spells its ``text``, emit a
-karaoke-style cue with each word wrapped in ``<HH:MM:SS.ms><c>word</c>``
-markers — the convention recognised by browsers when shown via
+karaoke-style cue with each word wrapped in a ``<c>word</c>`` span and
+valid in-cue ``<HH:MM:SS.ms>`` activation markers, recognised by browsers via
 ``<track>``. A segment whose text was edited after transcription (the
 words no longer match) is written from ``text``.
 
@@ -10,6 +10,8 @@ words no longer match) is written from ``text``.
 are written as character references, so the cue reads back exactly.
 """
 from __future__ import annotations
+
+import re
 
 from .base import (
     coerce_seconds,
@@ -55,6 +57,25 @@ def _karaoke_payload(seg: dict) -> str:
     return "".join(parts)
 
 
+def _valid_cue_timestamps(text: str, start_ms: int, end_ms: int) -> str:
+    # WebVTT 4.2.2: internal timestamps are strictly increasing and strictly
+    # inside the final cue, including after prepare_cues merges bad cues.
+    # https://www.w3.org/TR/webvtt1/#webvtt-cue-timestamp
+    # Keep every word and class span; omit an unusable activation marker.
+    previous = start_ms
+
+    def marker(match: re.Match[str]) -> str:
+        nonlocal previous
+        hours, minutes, seconds, milliseconds = map(int, match.groups())
+        stamp = ((hours * 60 + minutes) * 60 + seconds) * 1000 + milliseconds
+        if previous < stamp < end_ms:
+            previous = stamp
+            return match.group(0)
+        return ""
+
+    return re.sub(r"<(\d{2,}):([0-5]\d):([0-5]\d)\.(\d{3})>", marker, text)
+
+
 def write(segments: list[dict], audio_path: str = "") -> str:
     def render_text(seg: dict) -> str:
         payload = _karaoke_payload(seg)
@@ -69,6 +90,6 @@ def write(segments: list[dict], audio_path: str = "") -> str:
         out.append(
             f"{fmt_vtt_time(start_ms / 1000)} --> {fmt_vtt_time(end_ms / 1000)}"
         )
-        out.append(text)
+        out.append(_valid_cue_timestamps(text, start_ms, end_ms))
         out.append("")
     return "\n".join(out)

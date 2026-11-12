@@ -233,6 +233,21 @@ def test_actual_decoder_duration_wins_over_container_estimate(endpoint_case, mon
     assert_written_bound(case, task, 2.14, case.duration)
 
 
+def test_real_vtt_writer_retains_internal_marker_after_endpoint_cap(endpoint_case, monkeypatch):
+    from core.convert import parse_to_segments
+
+    case = endpoint_case
+    install_model(monkeypatch, [Segment(2.14, 3.12,
+                                       words=[Word(2.24, 3.12, "last words")])], duration=case.duration)
+    task = output_task(case)
+    task.output_formats = ["vtt"]
+    tr.transcribe(task)
+    body = Path(task.output_paths[0]).read_text(encoding="utf-8")
+    assert "<00:00:02.240><c>last words</c>" in body
+    parsed = parse_to_segments(task.output_paths[0])
+    assert len(parsed) == 1 and 2.14 < 2.24 < parsed[0]["end"] <= case.duration
+
+
 @pytest.mark.parametrize("fmt", tr.supported_formats())
 @pytest.mark.parametrize("duration", [2.488, 39817 / 16000, 47993 / 16000])
 @pytest.mark.parametrize("near_end", [False, True])
@@ -270,8 +285,12 @@ def test_every_real_writer_keeps_serialized_timestamps_inside_audio(
         assert all(0 <= item["start"] < item["end"] <= duration for item in parsed)
         assert all(word["end"] <= duration for item in parsed for word in item.get("words", []))
         if fmt == "vtt":
-            inline = re.findall(r"<(\d+:\d\d:\d\d\.\d+)>", path.read_text(encoding="utf-8"))
-            assert inline and all(_clock_seconds(value) <= duration for value in inline)
+            body = path.read_text(encoding="utf-8")
+            inline = re.findall(r"<(\d+:\d\d:\d\d\.\d+)>", body)
+            # This word starts at cue start, where WebVTT forbids a marker.
+            # The word remains visible; an internal-marker control is above.
+            assert not inline
+            assert "<c>last words</c>" in body
     elif fmt in {"docx", "smtv_docx"}:
         from docx import Document
 
