@@ -10,7 +10,7 @@ with the same loop-recovery decision for normal and resumed tasks. Empty clip
 ranges retain the decoded prefix and continue through the remaining audio;
 malformed clip arguments remain available for decoder validation.
 
-The combined source passed **14,290 tests, 75 skipped, zero failures**. It
+The combined source passed **14,299 tests, 75 skipped, zero failures**. It
 includes format identity for API outputs, bounded ASS karaoke timing, and four
 native Tk preset tests covering explicit models, settings-only presets and
 failed saves. The type gate reports
