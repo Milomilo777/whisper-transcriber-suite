@@ -84,6 +84,42 @@ def test_existing_profile_does_not_resurrect_old_history(dirs):
     assert history_rows(source) == [("synthetic-legacy.wav", "finished")]
 
 
+def test_missing_config_migration_merges_wal_history_without_replacing_new_rows(dirs):
+    """Application import safely handles a reinstall's missing settings file.
+
+    Keep the source open so its newest committed row remains in WAL; a raw
+    main-file copy cannot preserve this state and the destination's newer row.
+    """
+    new, old = dirs
+    (old["config"] / "config.json").write_text('{"theme":"dark"}', encoding="utf-8")
+    destination = new["data"] / "history.db"
+    source = old["data"] / "history.db"
+    with HistoryDB(destination) as current:
+        current.insert_transcription("newer.wav")
+    with HistoryDB(source) as legacy:
+        with sqlite3.connect(source) as connection:
+            assert connection.execute("PRAGMA wal_checkpoint(TRUNCATE)").fetchone() == (0, 0, 0)
+        legacy.insert_transcription("committed-in-wal.wav")
+        wal = Path(str(source) + "-wal")
+        assert wal.is_file() and wal.stat().st_size > 0
+        raw_copy = old["data"] / "main-file-only.db"
+        raw_copy.write_bytes(source.read_bytes())
+        with sqlite3.connect(raw_copy) as connection:
+            assert connection.execute("SELECT file_path FROM transcriptions").fetchall() == []
+        cfg.migrate_legacy_app_data()
+        with sqlite3.connect(destination) as connection:
+            assert set(connection.execute("SELECT file_path FROM transcriptions")) == {
+                ("newer.wav",), ("committed-in-wal.wav",),
+            }
+        with sqlite3.connect(source) as connection:
+            assert connection.execute("SELECT file_path FROM transcriptions").fetchall() == [
+                ("committed-in-wal.wav",)]
+    cfg._legacy_migration_done = False
+    cfg.migrate_legacy_app_data()
+    with sqlite3.connect(destination) as connection:
+        assert connection.execute("SELECT COUNT(*) FROM transcriptions").fetchone() == (2,)
+
+
 def test_successful_migration_copies_real_history_without_changing_source(dirs):
     new, old = dirs
     (old["config"] / "config.json").write_text('{"theme":"dark"}', encoding="utf-8")

@@ -7,6 +7,8 @@ a marker left by an older install when the user upgrades.
 import os
 import re
 
+import pytest
+
 _ISS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "installer_embed.iss")
 
 
@@ -54,7 +56,9 @@ def test_old_version_is_removed_only_after_the_wizard():
     prepare = _function(code, "PrepareToInstall")
     assert "RunOldUninstaller(ThisAppId()" in prepare
     assert "RunOldUninstaller(OldAppId" in prepare
-    assert prepare.index("MigrateOldAppData()") < prepare.index("RunOldUninstaller(OldAppId")
+    # Legacy profile import belongs to the app's staged/SQLite migration.
+    # The installer only removes the predecessor after the wizard completes.
+    assert "MigrateOldAppData" not in prepare
     # The only Exec of an uninstaller is the checked one.
     assert code.count("Exec(") == 1 and "Exec(" in _function(code, "RunOldUninstaller")
 
@@ -106,6 +110,26 @@ def _both_installers():
     for name in ("installer_embed.iss", "installer.iss"):
         with open(os.path.join(_ROOT, name), encoding="utf-8") as fh:
             yield name, fh.read()
+
+
+@pytest.mark.parametrize("name,text", list(_both_installers()))
+def test_installers_leave_profile_import_to_application(name, text):
+    """Raw installer copies can overwrite newer databases and omit WAL rows.
+
+    The application owns staged settings copies and SQLite history merging;
+    installation must not bypass that path when config.json is missing.
+    """
+    code = _section(text, "Code")
+    assert "CopyFile(" not in code, name
+    assert "MigrateOldAppData" not in code, name
+
+
+@pytest.mark.parametrize("name,text", list(_both_installers()))
+def test_uninstall_preserves_profile_settings(name, text):
+    code = _section(text, "Code")
+    uninstall = _function(code, "CurUninstallStepChanged")
+    assert not re.search(r"DeleteFile\(\s*ConfigPath\s*\)", uninstall, re.I), name
+    assert not re.search(r"(?im)^.*(?:Name:|Source:).*\{localappdata\}.*config\.json", text), name
 
 
 def test_uninstall_never_deletes_the_whole_model_folder():

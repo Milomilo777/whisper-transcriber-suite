@@ -63,6 +63,10 @@ or from the desktop icon if you ticked the box. Uninstall from
 **Settings → Apps → Whisper Transcriber Suite → Uninstall** or from the
 folder's `unins000.exe`.
 
+Uninstall keeps your settings and history for reinstalls and Portable copies.
+Legacy profiles are imported by the application on first launch, preserving
+newer history entries and committed SQLite journal data.
+
 ### First launch — common to both methods
 
 #### ⚠️ SmartScreen warning

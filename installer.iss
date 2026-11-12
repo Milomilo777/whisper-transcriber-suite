@@ -97,45 +97,21 @@ begin
 end;
 
 // --------------------------------------------------------------------
-//  One-time migration from the predecessor product ("Whisper Project",
-//  AppId OldAppId) — identical logic to installer_embed.iss. See that
-//  file for the full rationale; this script keeps a copy so the two
-//  installers stay self-contained (Inno has no [Include]).
+//  Remove the predecessor product ("Whisper Project", AppId OldAppId).
+//  Profile import belongs to the application, which can stage settings
+//  and merge SQLite history without replacing newer rows.
 // --------------------------------------------------------------------
 
 const
   OldAppId = '{734B46B9-5E70-4C4E-8833-0A7506A64376}';
 
-procedure MigrateOldAppData();
+procedure RemoveOldProduct();
 var
-  OldDataDir, NewDataDir, UninstString: String;
-  DataFiles: TArrayOfString;
-  i: Integer;
+  UninstString: String;
   ResultCode: Integer;
 begin
-  OldDataDir := ExpandConstant('{localappdata}\WhisperProject');
-  NewDataDir := ExpandConstant('{localappdata}\WhisperTranscriberSuite');
-  // Gate on the NEW config.json specifically -- see installer_embed.iss
-  // for the full rationale (a real install test on 2026-08-23 found
-  // that gating on the bare folder's existence let a stray empty
-  // new-name folder from an unrelated earlier run silently skip a
-  // real migration). Copy only the small settings/history files
-  // directly with FileCopy, not the whole tree with xcopy -- Cache\
-  // can hold several GB of models and Logs\ hundreds of small debug
-  // logs, and neither is needed: config.json's hub_folder value still
-  // resolves to the OLD, still-on-disk model cache either way.
-  if DirExists(OldDataDir) and not FileExists(NewDataDir + '\config.json') then begin
-    if not DirExists(NewDataDir) then
-      ForceDirectories(NewDataDir);
-    DataFiles := ['config.json', 'history.db', 'hardware.json', 'search.db'];
-    for i := 0 to GetArrayLength(DataFiles) - 1 do begin
-      if FileExists(OldDataDir + '\' + DataFiles[i]) then begin
-        if not CopyFile(OldDataDir + '\' + DataFiles[i], NewDataDir + '\' + DataFiles[i], False) then
-          Log('Could not migrate ' + DataFiles[i] + ' from ' + OldDataDir);
-      end;
-    end;
-    Log('Migrated settings/history from ' + OldDataDir + ' to ' + NewDataDir);
-  end;
+  // The application owns retryable settings and SQLite profile migration.
+  // Never replace profile files during installation.
   UninstString := GetUninstallStringForAppId(OldAppId);
   if UninstString = '' then
     Exit;
@@ -158,7 +134,7 @@ begin
                 SW_HIDE, ewWaitUntilTerminated, ResultCode) then
       Log('Could not run the previous version''s uninstaller: ' + UninstString);
   end else begin
-    MigrateOldAppData();
+    RemoveOldProduct();
   end;
 end;
 

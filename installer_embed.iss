@@ -196,60 +196,15 @@ end;
 
 // --------------------------------------------------------------------
 //  One-time migration from the predecessor product ("Whisper Project",
-//  AppId OldAppId) to this one (the 2026-08-23 rebrand). Copies -- NEVER
-//  moves -- the old per-user data folder to the new APP_NAME location,
-//  then silently removes the old product via its own uninstaller: same
-//  "no need to uninstall first" experience as a same-product upgrade,
-//  just crossing the rename. The old %LOCALAPPDATA%\WhisperProject\
-//  folder is deliberately left behind afterwards -- if the copy step
-//  has a bug, the user's settings/history/model cache are never at
-//  risk, just briefly duplicated. Safe to delete by hand once the new
-//  app is confirmed working. Idempotent: skips the copy if the new
-//  folder already exists (e.g. this ran on a previous attempt).
+//  AppId OldAppId) to this one (the 2026-08-23 rebrand).
+//  The application imports legacy settings and databases on first launch:
+//  it stages settings and merges SQLite history without replacing newer rows.
+//  The installer only removes the old product; it never copies profile files.
+//  The old profile stays available for the application's retryable migration.
 // --------------------------------------------------------------------
 
 const
   OldAppId = '{734B46B9-5E70-4C4E-8833-0A7506A64376}';
-
-procedure MigrateOldAppData();
-var
-  OldDataDir, NewDataDir: String;
-  DataFiles: TArrayOfString;
-  i: Integer;
-begin
-  OldDataDir := ExpandConstant('{localappdata}\WhisperProject');
-  NewDataDir := ExpandConstant('{localappdata}\WhisperTranscriberSuite');
-  // Gate on the NEW config.json specifically, not just the folder's
-  // existence: a bare folder (Cache\/Logs\ with no config.json) can
-  // already exist from an unrelated early code path -- e.g. the
-  // Portable build was run once before this installer -- and gating
-  // on DirExists alone would then skip a real migration and silently
-  // strand the user's actual settings/history in the old folder
-  // (caught by an install test on 2026-08-23: a prior direct launch
-  // had created an empty new-name folder, and the old guard treated
-  // that as "already migrated").
-  if DirExists(OldDataDir) and not FileExists(NewDataDir + '\config.json') then begin
-    if not DirExists(NewDataDir) then
-      ForceDirectories(NewDataDir);
-    // Copy only the small, meaningful settings/history files directly
-    // with FileCopy -- NOT the whole tree. A real install test on
-    // 2026-08-23 found Cache\ can hold several GB of downloaded
-    // Whisper models and Logs\ can hold hundreds of small per-run
-    // worker debug logs; shelling out to xcopy for the full tree took
-    // long enough to look hung. Neither is needed anyway: config.json
-    // is copied as-is, so its hub_folder value (default or custom)
-    // still resolves to the OLD, still-on-disk Cache\models -- the
-    // model cache is transparently reused with zero copying.
-    DataFiles := ['config.json', 'history.db', 'hardware.json', 'search.db'];
-    for i := 0 to GetArrayLength(DataFiles) - 1 do begin
-      if FileExists(OldDataDir + '\' + DataFiles[i]) then begin
-        if not CopyFile(OldDataDir + '\' + DataFiles[i], NewDataDir + '\' + DataFiles[i], False) then
-          Log('Could not migrate ' + DataFiles[i] + ' from ' + OldDataDir);
-      end;
-    end;
-    Log('Migrated settings/history from ' + OldDataDir + ' to ' + NewDataDir);
-  end;
-end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 begin
@@ -264,7 +219,6 @@ begin
   if GetUninstallString() <> '' then
     Result := RunOldUninstaller(ThisAppId(), 'the previous version')
   else begin
-    MigrateOldAppData();
     Result := RunOldUninstaller(OldAppId, 'the old Whisper Project app');
   end;
 end;
@@ -386,7 +340,7 @@ end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
-  HubFolder, AppFolder, Msg, MarkerPath, ConfigPath: string;
+  HubFolder, AppFolder, Msg, MarkerPath: string;
 begin
   // Remove the optional-feature marker (created post-install when the
   // user opted out of Clone Your Voice). [UninstallDelete] also covers
@@ -405,7 +359,7 @@ begin
   // delete a multi-GB model hub folder in that unattended path.
   if UninstallSilent() then
     Exit;
-  // Read hub_folder out of config.json BEFORE deleting it below.
+  // Read the saved hub location; settings remain available after uninstall.
   HubFolder := ExtractHubFolder();
   AppFolder := ExpandConstant('{app}');
   if (HubFolder <> '') and DirExists(HubFolder) and not IsPathInside(HubFolder, AppFolder) then begin
@@ -421,11 +375,6 @@ begin
                mbInformation, MB_OK);
     end;
   end;
-  // A real, interactive uninstall also clears the per-user config.json
-  // (NOT during the silent upgrade step above, which would otherwise
-  // wipe hub_folder/API keys/preferences on every single in-place
-  // upgrade — see InitializeSetup).
-  ConfigPath := ExpandConstant('{localappdata}\WhisperTranscriberSuite\config.json');
-  if FileExists(ConfigPath) then
-    DeleteFile(ConfigPath);
+  // Keep settings and history for reinstalls and Portable installations.
+  // Profile migration belongs to the application, never the installer.
 end;
