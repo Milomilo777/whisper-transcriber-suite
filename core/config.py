@@ -789,6 +789,32 @@ def config_path() -> str:
     return str(user_config_dir() / "config.json")
 
 
+def _copy_legacy_settings(source: str | Path, destination: str | Path) -> None:
+    """Publish a complete legacy settings copy or leave the target missing."""
+    staged = None
+    try:
+        fd, staged = tempfile.mkstemp(
+            prefix=".migration-", suffix=".tmp",
+            dir=os.path.dirname(destination) or ".",
+        )
+        with os.fdopen(fd, "r+b") as copied:
+            shutil.copy2(source, staged)
+            copied.flush()
+            os.fsync(copied.fileno())
+        _replace_with_retry(staged, os.fspath(destination))
+        staged = None
+    finally:
+        if staged is not None:
+            try:
+                # copy2 may have copied a read-only flag onto our staging file.
+                os.chmod(staged, 0o600)
+                os.unlink(staged)
+            except FileNotFoundError:
+                pass
+            except OSError:
+                logger.exception("Could not remove staged legacy settings")
+
+
 def migrate_config_location() -> str:
     """Move a legacy next-to-source config.json into the platformdirs path.
 
@@ -818,7 +844,7 @@ def migrate_config_location() -> str:
 
     if not os.path.exists(new_path):
         try:
-            shutil.copy2(legacy, new_path)
+            _copy_legacy_settings(legacy, new_path)
             logger.info("Migrated legacy config.json from %s to %s", legacy, new_path)
         except OSError as e:
             logger.error("Failed to migrate legacy config: %s", e)
@@ -919,7 +945,10 @@ def migrate_legacy_app_data() -> None:
                 continue
             try:
                 dst.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(src, dst)
+                if src == legacy_config:
+                    _copy_legacy_settings(src, dst)
+                else:
+                    shutil.copy2(src, dst)
                 logger.info("Migrated %s -> %s", src, dst)
             except OSError as e:
                 logger.warning("Could not migrate %s: %s", src, e)
@@ -1706,9 +1735,22 @@ def _privacy_evidence_lost() -> bool:
     A damaged config.json was kept as ``.corrupt``: a switch absent from the
     current file is then read closed until the user saves a choice again. An
     older ``.bak`` is not the user's current choice (it is the generation
-    before the last save), so it does not count.
+    before the last save), so it does not count. A pending legacy transfer also
+    closes switches while the current file is missing; a genuine fresh install
+    or an explicit isolated profile retains its normal defaults.
     """
-    return os.path.exists(config_path() + ".corrupt")
+    path = config_path()
+    if os.path.exists(path + ".corrupt"):
+        return True
+    if os.path.exists(path) or _profile_root() is not None:
+        return False
+    if os.path.exists(_legacy_config_path()):
+        return True
+    try:
+        legacy = _legacy_app_dirs()
+        return bool(legacy and (legacy["config"] / "config.json").is_file())
+    except Exception:  # noqa: BLE001 - profile discovery must not break launch
+        return False
 
 
 def _closed_switches(data: dict[str, Any]) -> dict[str, Any]:
@@ -1822,8 +1864,8 @@ def update_config(fn: Callable[[dict[str, Any]], None]) -> dict[str, Any]:
     load_config, save_config or update_config (RuntimeError). Returns the
     dict written. Raises ConfigBusyError when another process holds the
     lock past ``_LOCK_DEADLINE_SECONDS``, and ConfigSaveError when the file
-    cannot be read right now, is damaged with no usable backup (writing
-    would drop the other settings) or cannot be replaced.
+    cannot be read right now, is damaged with no usable backup, has pending
+    legacy settings (a partial write would drop them), or cannot be replaced.
     """
     _check_not_in_update_fn("update_config")
     with _SAVE_LOCK:
@@ -1835,6 +1877,10 @@ def update_config(fn: Callable[[dict[str, Any]], None]) -> dict[str, Any]:
                 if os.path.exists(path + ".corrupt"):
                     raise ConfigSaveError(
                         0, f"{path} is damaged and has no usable backup; not changing it",
+                    )
+                if _privacy_evidence_lost():
+                    raise ConfigSaveError(
+                        0, f"{path} has pending legacy settings; not replacing them with a partial update",
                     )
                 data = {}
                 if DEFAULT_CONFIG["word_timestamps"]:
