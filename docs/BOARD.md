@@ -1,6 +1,21 @@
 # Work board and RESUME
 
-Updated: 2026-11-11. Release target: 2.4.0. This development snapshot includes
+Updated: 2026-11-12. Release target: 2.4.0.
+
+
+## Current CUDA recovery checkpoint
+
+VAD-disabled CUDA requests use sequential decoding on the selected GPU model,
+with the same loop-recovery decision for normal and resumed tasks. Empty clip
+ranges retain the decoded prefix and continue through the remaining audio;
+malformed clip arguments remain available for decoder validation.
+
+The combined source passed **14,207 tests, 75 skipped, zero failures**, plus
+260 focused routing, recovery and endpoint checks. The type gate reports
+0 errors, 0 warnings and 0 informations; the documented docs check passes.
+Both source-review rounds are closed. Final committed-source GPU acceptance
+remains pending. Earlier sections retain evidence for their named snapshots.
+
 post-candidate reliability fixes; release validation remains separate.
 
 ## Owner questions / release boundary

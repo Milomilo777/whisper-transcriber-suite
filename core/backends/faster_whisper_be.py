@@ -194,8 +194,8 @@ class WhisperDecode:
                             options["language"] = language
                     source = audio
                     if cursor > 0:
-                        if kwargs.get("clip_timestamps") is not None:
-                            clips = kwargs["clip_timestamps"]
+                        clips = kwargs.get("clip_timestamps")
+                        if clips is not None and not (isinstance(clips, (str, list)) and len(clips) == 0):
                             stamps = [float(t) for t in (clips.split(",") if isinstance(clips, str) else clips)]
                             relative = []
                             for i in range(0, len(stamps), 2):
