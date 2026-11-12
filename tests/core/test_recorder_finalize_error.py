@@ -40,6 +40,9 @@ def test_wav_close_error_is_reported_without_truncating_captured_audio(
         def stop_stream(self):
             pass
 
+        def get_read_available(self):
+            return 1024
+
         def close(self):
             pass
 
@@ -142,6 +145,7 @@ def test_partial_first_write_and_close_failure_never_trigger_empty_fallback(tmp_
     else:
         stream = types.SimpleNamespace(
             read=lambda size, **kwargs: b"\x01\x02" * size,
+            get_read_available=lambda: 1024,
             stop_stream=lambda: None, close=lambda: None,
         )
         audio = types.SimpleNamespace(
