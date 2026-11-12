@@ -521,7 +521,7 @@ class ModelDownloader:
             folder.mkdir(parents=True, exist_ok=True)
             busy = ("This file is already being downloaded (another window of the app?); "
                     "wait for that download to finish.")
-            with verified.exclusive_lock(folder / ".model-download.lock", busy):
+            with verified.exclusive_lock(folder / ".model-download.lock", busy, strict=True):
                 return self._download(repo, folder, entry, cancel_event)
         except _Cancelled:
             return False

@@ -230,7 +230,7 @@ def download_verified(
     dest.parent.mkdir(parents=True, exist_ok=True)
     busy = ("This file is already being downloaded (another window of the app?); "
             "wait for that download to finish.")
-    with exclusive_lock(dest.with_name(dest.name + ".lock"), busy):
+    with exclusive_lock(dest.with_name(dest.name + ".lock"), busy, strict=True):
         if is_verified(dest, size, sha256):  # the lock holder before us finished it
             return dest
         part = part_path(dest)

@@ -172,7 +172,7 @@ def test_a_second_download_of_the_same_file_is_refused_while_one_runs(server, tm
     assert dest.read_bytes() == PAYLOAD
 
 
-def test_a_file_system_without_locks_goes_on_without_one(server, tmp_path, monkeypatch):
+def test_a_file_system_without_locks_preserves_shared_resume_bytes(server, tmp_path, monkeypatch):
     import errno
 
     def no_locks(*a):
@@ -185,8 +185,13 @@ def test_a_file_system_without_locks_goes_on_without_one(server, tmp_path, monke
         import fcntl
         monkeypatch.setattr(fcntl, "flock", no_locks)
     dest = tmp_path / "f.bin"
-    _get(server, dest)
-    assert dest.read_bytes() == PAYLOAD
+    part = vd.part_path(dest)
+    prefix = PAYLOAD[:1000]
+    part.write_bytes(prefix)
+    with pytest.raises(vd.DownloadError, match="lock"):
+        _get(server, dest)
+    assert part.read_bytes() == prefix and not dest.exists()
+    assert server.state.requests == 0
 
 
 def test_a_scanner_holding_the_file_is_waited_out(server, tmp_path, monkeypatch):
