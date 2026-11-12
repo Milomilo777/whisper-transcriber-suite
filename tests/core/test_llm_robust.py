@@ -249,8 +249,11 @@ def test_each_model_download_uses_its_own_part_file(tmp_path, monkeypatch):
 
 def test_only_old_part_files_are_cleaned_up(tmp_path, monkeypatch):
     dest = tmp_path / "model.gguf"
-    old = tmp_path / "model.gguf.111-aaaa.part"
-    young = tmp_path / "model.gguf.222-bbbb.part"
+    from core import _proc
+
+    monkeypatch.setattr(_proc, "pid_may_be_alive", lambda pid: pid != 111)
+    old = tmp_path / "model.gguf.111-aaaaaaaa.part"
+    young = tmp_path / "model.gguf.222-bbbbbbbb.part"
     for p in (old, young):
         p.write_bytes(b"x")
     long_ago = time.time() - 2 * llm._STALE_PART_AGE_S
@@ -523,3 +526,80 @@ def test_a_batch_waits_out_one_503_retry_after_in_total(monkeypatch):
     out = llm.translate_segments(_runner(), [{"text": t} for t in "ab"], failed=failed)
     assert sleeps == [5.0]                      # the second item does not wait again
     assert out[0] == "ok" and out[1] == "" and failed == [1]
+
+
+# --- stale model partials must belong to a confirmed stopped producer --------
+
+def _aged_model_part(tmp_path, suffix):
+    part = tmp_path / ("model.gguf" + suffix)
+    part.write_bytes(b"retained model bytes")
+    old = time.time() - 2 * llm._STALE_PART_AGE_S
+    os.utime(part, (old, old))
+    return part
+
+
+def test_old_model_partial_of_live_process_is_retained(tmp_path):
+    part = _aged_model_part(tmp_path, f".{os.getpid()}-aaaaaaaa.part")
+    llm._remove_stale_parts(tmp_path / "model.gguf")
+    assert part.read_bytes() == b"retained model bytes"
+
+
+@pytest.mark.parametrize("suffix", [".part", ".notes.part", ".123-short.part", ".0-aaaaaaaa.part"])
+def test_old_model_partial_with_unknown_owner_is_retained(tmp_path, suffix):
+    part = _aged_model_part(tmp_path, suffix)
+    llm._remove_stale_parts(tmp_path / "model.gguf")
+    assert part.read_bytes() == b"retained model bytes"
+
+
+def test_model_partial_uncertain_owner_is_retained(tmp_path, monkeypatch):
+    from core import _proc
+
+    part = _aged_model_part(tmp_path, ".98765-aaaaaaaa.part")
+    monkeypatch.setattr(_proc, "pid_may_be_alive", lambda pid: True)
+    llm._remove_stale_parts(tmp_path / "model.gguf")
+    assert part.read_bytes() == b"retained model bytes"
+
+
+def test_young_model_partial_does_not_require_owner_probe(tmp_path, monkeypatch):
+    from core import _proc
+
+    part = tmp_path / "model.gguf.98765-aaaaaaaa.part"
+    part.write_bytes(b"new download")
+
+    def unexpected(pid):
+        raise AssertionError("fresh partial must not need a process lookup")
+
+    monkeypatch.setattr(_proc, "pid_may_be_alive", unexpected)
+    llm._remove_stale_parts(tmp_path / "model.gguf")
+    assert part.read_bytes() == b"new download"
+
+
+def test_other_cleanup_cannot_delete_completed_download_before_publication(tmp_path, monkeypatch):
+    from core import _checkpoint
+
+    dest = tmp_path / "model.gguf"
+    monkeypatch.setattr(llm, "is_model_present", lambda p=None: False)
+    monkeypatch.setattr(llm.offline, "require_online", lambda *args: None)
+    monkeypatch.setattr(llm.urllib.request, "urlopen", lambda *args, **kwargs: _DownloadResp(lambda: None))
+    flush, replace = _checkpoint._flush_to_disk, llm.os.replace
+    closed_before_cleanup = []
+
+    def age_after_flush(stream):
+        flush(stream)
+        old = time.time() - 2 * llm._STALE_PART_AGE_S
+        os.utime(stream.name, (old, old))
+
+    def concurrent_cleanup_then_publish(source, target):
+        # The downloader already closed its descriptor. Another window's
+        # cleanup can run here on Windows as well as POSIX.
+        with open(source, "r+b"):
+            closed_before_cleanup.append(True)
+        llm._remove_stale_parts(dest)
+        return replace(source, target)
+
+    monkeypatch.setattr(_checkpoint, "_flush_to_disk", age_after_flush)
+    monkeypatch.setattr(llm.os, "replace", concurrent_cleanup_then_publish)
+    assert llm.download_default_model(dest=dest) == str(dest)
+    assert closed_before_cleanup == [True]
+    assert dest.read_bytes() == b"abcdef"
+    assert not list(tmp_path.glob("*.part"))

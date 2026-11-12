@@ -139,17 +139,22 @@ def is_model_present(path: Path | None = None) -> bool:
         return False
 
 
-# A partial download older than this is an abandoned one (a crash); a younger
-# one may belong to a download running right now.
+# Minimum cleanup age. A producer can still be alive after this interval.
 _STALE_PART_AGE_S = 6 * 60 * 60.0
 
 
 def _remove_stale_parts(dest: Path) -> None:
-    """Delete abandoned ``<model>.gguf*.part`` files next to ``dest``."""
+    """Delete old owned partials only after their local producer is confirmed gone."""
+    from core._proc import pid_may_be_alive
+
     cutoff = time.time() - _STALE_PART_AGE_S
+    pattern = re.compile(re.escape(dest.name) + r"\.([1-9][0-9]*)-[0-9a-f]{8}\.part")
     for part in dest.parent.glob(dest.name + "*.part"):
+        owner = pattern.fullmatch(part.name)
+        if owner is None:
+            continue  # Older/foreign names do not prove that their writer stopped.
         try:
-            if part.stat().st_mtime < cutoff:
+            if part.stat().st_mtime < cutoff and not pid_may_be_alive(int(owner[1])):
                 part.unlink()
         except OSError:
             pass

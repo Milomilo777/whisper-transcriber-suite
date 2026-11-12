@@ -17,6 +17,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Closing a transcript viewer or exiting asks before abandoning an active AI task whose later response might fail to save. Discard choices apply only to that task, and results completed during the question are checked separately.
 - When all requested output writers fail, an earlier allocation failure remains visible even if a later writer reports a disk error. Recovery avoids allocating another full transcript copy after that failure.
 
+- Preserve active or unknown-owner AI model downloads during stale-file cleanup. An old partial is removed only when its named producer is confirmed stopped, preventing loss just before a download is finalized.
 
 - Keep saved hardware preferences after temporary read failures. Only malformed data is treated as corrupt, so a later read can recover the existing choice.
 
