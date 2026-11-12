@@ -433,6 +433,16 @@ def _load_whisper_model_self_healing(
     return model
 
 
+def _whisper_has_segmentation(options: dict[str, Any]) -> bool:
+    """Whether a request supplies VAD or clips for batched decoding."""
+    clips = options.get("clip_timestamps")
+    empty_clips = clips is None or (
+        isinstance(clips, (str, list)) and len(clips) == 0
+    )
+    # Preserve malformed values so the decoder can reject them.
+    return bool(options.get("vad_filter", True)) or not empty_clips
+
+
 def _whisper_runner(
     task: TranscriptionTask, *, batched: bool = False,
     log_cb: Callable[[str], None] | None = None,
@@ -447,7 +457,11 @@ def _whisper_runner(
     def current(options: dict[str, Any]) -> Any:
         model = slot.model if slot is not None else MODEL
         pipeline = slot.pipeline if slot is not None else PIPELINE
-        if not batched or pipeline is None:
+        # Long audio needs VAD or explicit clips in the batched engine.
+        without_segmentation = not _whisper_has_segmentation(options)
+        if without_segmentation:
+            options.pop("clip_timestamps", None)
+        if not batched or pipeline is None or without_segmentation:
             options.pop("batch_size", None)
             runner = model
         else:
@@ -3247,7 +3261,7 @@ def transcribe(
         # used for a clipped task, so it falls back to the plain model
         # (still fast for a short slice).
         clip = _clip_timestamps_arg(task)
-        use_batched = base_pipeline and clip is None
+        use_batched = base_pipeline and clip is None and _whisper_has_segmentation(transcribe_kwargs)
         runner = _whisper_runner(task, batched=use_batched, log_cb=log_cb)
         if use_batched:
             transcribe_kwargs["batch_size"] = int(config.get("batch_size", 16))
@@ -4458,8 +4472,9 @@ def resume_transcription(
             if cp_language and not pair:
                 transcribe_kwargs["language"] = cp_language
 
-            runner = _whisper_runner(task, batched=PIPELINE is not None, log_cb=log_cb)
-            if PIPELINE is not None:
+            use_batched = PIPELINE is not None and _whisper_has_segmentation(transcribe_kwargs)
+            runner = _whisper_runner(task, batched=use_batched, log_cb=log_cb)
+            if use_batched:
                 transcribe_kwargs["batch_size"] = int(config.get("batch_size", 16))
 
             def _save_before_retry() -> None:
@@ -4487,7 +4502,7 @@ def resume_transcription(
                 new_segments_iter,
                 limit=_loop_guard.repeat_limit(config),
                 restart=(
-                    None if PIPELINE is not None else _loop_guard_restart(
+                    None if use_batched else _loop_guard_restart(
                         runner, transcribe_slice, transcribe_kwargs, 0.0,
                         cp_language or str(getattr(info, "language", "") or ""),
                         guard_tmp,

@@ -10,6 +10,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Long CUDA transcriptions with VAD disabled use sequential GPU decoding, preserving whole-file coverage and repetition-loop recovery. Malformed clip values are retained for validation.
 - Transcription endpoints stay within decoded audio, including time ranges, resumed work and output rounding. Timing that cannot be represented safely retains decoded text and word data for recovery.
 - History remains readable when an optional metadata field exceeds the JSON nesting limit, preserving access to healthy entries.
 - Search rebuilding continues past history metadata that exceeds JSON nesting or integer limits.
