@@ -25,7 +25,7 @@ import weakref
 import urllib.error
 import urllib.request
 
-from core import distribution, download_guard, offline
+from core import download_guard, offline
 from core._proc import kill_download_tree, new_session_kwargs
 from core.download_guard import DownloadRefused
 from core.js_runtime import (
@@ -563,6 +563,10 @@ def write_subtitle_extra_formats(
       * an SMTV transcription ``.docx`` (via ``smtv_docx_writer``, when
         python-docx is available).
 
+    Existing companion files may contain manual edits: keep them and use a
+    new filename, including when another export completes during rendering.
+    Complete payloads use the converter's exclusive publication path.
+
     Returns the list of extra paths actually written. Never raises: each
     format is best-effort and a failure (missing optional dependency,
     unparseable subtitle, disk error) is swallowed so the caller's
@@ -595,7 +599,7 @@ def write_subtitle_extra_formats(
     # Express Scribe .txt
     try:
         out = _convert.convert_file(
-            sub_path, "express_scribe", f"{base}.txt", segments=segments,
+            sub_path, "express_scribe", segments=segments,
         )
         written.append(out)
     except (OSError, _convert.ConvertError) as e:
@@ -628,9 +632,7 @@ def write_subtitle_extra_formats(
             except OSError:
                 pass
         otr_path = f"{base}.otr"
-        with open(otr_path, "w", encoding="utf-8", newline="\n") as f:
-            f.write(otr_text)
-        written.append(otr_path)
+        written.append(_convert._publish_new_output(otr_path, otr_text.encode("utf-8")))
     except (OSError, ValueError, TypeError, json.JSONDecodeError) as e:
         # TypeError included: a non-serialisable segment field raises it
         # from the json writer, and this function is documented to
@@ -645,10 +647,8 @@ def write_subtitle_extra_formats(
             segments, sub_path, language=language, work_title=work_title,
         )
         docx_path = f"{base}.smtv.docx"
-        with open(docx_path, "wb") as f:
-            f.write(payload)
-        written.append(docx_path)
-    except (RuntimeError, OSError) as e:
+        written.append(_convert._publish_new_output(docx_path, payload))
+    except (RuntimeError, OSError, _convert.ConvertError) as e:
         logger.info("SMTV docx export for %s skipped: %s", sub_path, e)
 
     return written
@@ -1186,19 +1186,6 @@ class DownloadService:
     def __init__(self, app: "App") -> None:
         self.app = app
 
-    def _refused_store_policy(self, task: "VideoDownloadTask | None" = None) -> bool:
-        """Fail excluded or unreadable policy through the existing error path."""
-        generation = getattr(task, "_run_generation", 0)
-        try:
-            distribution.require_feature("media_download")
-        except (distribution.StoreFeatureUnavailable, distribution.StoreBuildError) as error:
-            if task is None:
-                self.app.log(str(error))
-            else:
-                self._post_terminal("error", task, str(error), generation)
-            return True
-        return False
-
     def _cookies_setting(self, force_no_cookies: bool = False) -> str | None:
         """The log-in cookies setting a command is built with: None when a retry forbids them,
         "" when this run already found them unreadable."""
@@ -1395,8 +1382,6 @@ class DownloadService:
 
     def enqueue_from_form(self) -> None:
         """Read the download tab form, validate, build a task, and enqueue."""
-        if self._refused_store_policy():
-            return
         from tkinter import messagebox
         from app.domain.languages import SUBTITLE_LANGUAGES, resolve_caption_kind
         from app.domain.tasks import VideoDownloadTask
@@ -1726,8 +1711,6 @@ class DownloadService:
         resolved language, so the "no captions found" branch below should
         be rare -- it's a defensive re-check, not the primary UX path.
         """
-        if self._refused_store_policy():
-            return
         from tkinter import messagebox
 
         from app.domain.languages import SUBTITLE_LANGUAGES, resolve_caption_kind
@@ -1875,8 +1858,6 @@ class DownloadService:
         return True
 
     def _run_task(self, task: "VideoDownloadTask") -> None:
-        if self._refused_store_policy(task):
-            return
         app = self.app
         if self._refused_offline(task):
             return
@@ -3491,7 +3472,7 @@ class DownloadService:
             ):
                 # No "Update it" bar here (the macOS app's yt-dlp cannot
                 # update itself), so say what does help.
-                msg += "  — " + yt_dlp_update.outdated_hint()
+                msg += "  — " + yt_dlp_update.OUTDATED_HINT
             self._post_terminal("error", task, msg, run_generation)
             if yt_dlp_update.should_offer_update(reason):
                 self._offer_yt_dlp_update(reason)

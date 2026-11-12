@@ -16,6 +16,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 
 - Interrupted pre-rebrand history transfers retry after settings have been saved, merging old and new jobs without replacing current settings. SQLite snapshots retain committed WAL rows, and transactional import receipts prevent duplicate records or reimporting completed transfers.
+- Automatic subtitle companion exports preserve earlier TXT, oTranscribe and Word files, including manual edits and concurrent exports. Each successful export reports its actual saved filename; a failed write leaves existing companions intact.
 
 - Store builds exclude the cached diarization download archive while retaining the extracted ONNX models needed at runtime.
 - Live transcription uses separate chunk files and respects saved-file protection during cleanup. A transcript saved with a chunk-style filename, or onto an active chunk, survives later transcription and session cleanup.
