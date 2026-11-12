@@ -29,8 +29,11 @@ import math
 import os
 import re
 import sqlite3
+import tempfile
+import time
 import unicodedata
 from bisect import bisect_left, bisect_right
+from contextlib import closing
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -47,6 +50,54 @@ SEARCH_DB_NAME = "search.db"
 
 def search_db_path() -> Path:
     return user_data_dir() / SEARCH_DB_NAME
+
+
+def copy_legacy_index(source: Path, destination: Path) -> bool:
+    """Publish a coherent legacy SQLite snapshot only into an unused index path.
+
+    Source WAL/SHM files must never be copied independently, including beside
+    an existing destination. A failed snapshot stays private and is removed;
+    a concurrent index creator wins without losing its own data. Return False
+    when a destination already exists, so a completed migration never imports
+    old rows again after the user rebuilds or clears the index.
+    """
+    from ._checkpoint import _strict_sync
+    from .history import _read_only_uri
+
+    if os.path.lexists(destination):
+        return False
+    for suffix in ("-wal", "-shm", "-journal"):
+        if os.path.lexists(str(destination) + suffix):
+            raise FileExistsError(f"Search index sidecar already exists: {destination}{suffix}")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix=".search-migration-", dir=destination.parent) as folder:
+        staged = Path(folder) / "snapshot.db"
+        deadline = time.monotonic() + 5.0
+
+        def check_deadline(_status: int, _remaining: int, _total: int) -> None:
+            if time.monotonic() >= deadline:
+                raise TimeoutError("Legacy search snapshot timed out")
+
+        with closing(sqlite3.connect(_read_only_uri(str(source.absolute())), uri=True,
+                                     timeout=0.2)) as original:
+            with closing(sqlite3.connect(staged)) as snapshot:
+                original.backup(snapshot, pages=64, progress=check_deadline, sleep=0.02)
+                if snapshot.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
+                    raise sqlite3.DatabaseError("Legacy search index is damaged")
+                snapshot.execute("PRAGMA journal_mode=DELETE")
+        with staged.open("r+b") as stream:
+            _strict_sync(stream)
+        try:
+            if os.name == "nt":
+                os.rename(staged, destination)  # Windows rename refuses replacement.
+            else:
+                # Same-filesystem hard link publishes the complete file without
+                # replacing a concurrent creator. Unsupported filesystems fail
+                # safely; the application can rebuild its derived search index.
+                os.link(staged, destination)
+        except FileExistsError:
+            return False
+    return True
 
 
 # ---------------------------------------------------------------- availability

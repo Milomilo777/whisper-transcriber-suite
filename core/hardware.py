@@ -35,6 +35,7 @@ import os
 import re
 import sys
 import threading
+import tempfile
 import time
 from dataclasses import dataclass, asdict
 from pathlib import Path
@@ -1049,9 +1050,9 @@ def save_hardware_choice(
     }
     path = hardware_json_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = Path(str(path) + ".tmp")
+    fd, tmp = tempfile.mkstemp(prefix=".hardware-", suffix=".tmp", dir=path.parent)
     try:
-        with open(tmp, "w", encoding="utf-8") as f:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
             json.dump(payload, f, indent=2, ensure_ascii=False)
             f.write("\n")
             f.flush()
@@ -1075,7 +1076,8 @@ def load_hardware_choice() -> dict[str, Any] | None:
 
     A bad file is renamed to ``.corrupt`` so the auto-probe path can
     recreate it cleanly on the next wizard run, mirroring the
-    config.json corruption handling.
+    config.json corruption handling. An I/O failure retains the file so a
+    later read can recover the saved choice.
     """
     path = hardware_json_path()
     if not path.exists():
@@ -1085,7 +1087,10 @@ def load_hardware_choice() -> dict[str, Any] | None:
             data = json.load(f)
         if not isinstance(data, dict):
             raise ValueError("hardware.json is not a JSON object")
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError) as e:
+    except OSError as e:
+        logger.warning("Could not read hardware settings %s (%s); retaining file", path, e)
+        return None
+    except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as e:
         logger.exception("Could not read %s (%s); ignoring", path, e)
         try:
             os.replace(path, str(path) + ".corrupt")

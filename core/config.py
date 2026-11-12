@@ -790,8 +790,10 @@ def config_path() -> str:
     return str(user_config_dir() / "config.json")
 
 
-def _copy_legacy_settings(source: str | Path, destination: str | Path) -> None:
-    """Publish a complete legacy settings copy or leave the target missing."""
+def _copy_legacy_settings(
+    source: str | Path, destination: str | Path, *, replace: bool = True,
+) -> None:
+    """Publish a complete copy; optional no-replace mode preserves current data."""
     staged = None
     try:
         fd, staged = tempfile.mkstemp(
@@ -802,8 +804,22 @@ def _copy_legacy_settings(source: str | Path, destination: str | Path) -> None:
             shutil.copy2(source, staged)
             copied.flush()
             os.fsync(copied.fileno())
-        _replace_with_retry(staged, os.fspath(destination))
-        staged = None
+        if replace:
+            _replace_with_retry(staged, os.fspath(destination))
+            staged = None
+        elif sys.platform == "win32":
+            try:
+                os.rename(staged, destination)
+            except FileExistsError:
+                return  # A new choice saved during the copy wins.
+            staged = None
+        else:
+            # Fail safely on filesystems without hard links: a direct copy
+            # would expose partial settings after an interrupted write.
+            try:
+                os.link(staged, destination)
+            except FileExistsError:
+                return
     finally:
         if staged is not None:
             try:
@@ -871,7 +887,6 @@ def migrate_config_location() -> str:
 # Linux users silently started on an empty profile: no settings, no
 # history, and every already-downloaded model reported "not downloaded".
 LEGACY_APP_NAME = "WhisperProject"
-_LEGACY_DATA_FILES = ("history.db", "hardware.json", "search.db")
 # Large, non-configurable model / recording caches. Moved (one atomic
 # same-volume rename each), never copied -- a copy of several GB would
 # stall launch. A folder that already exists under the new name is left
@@ -903,17 +918,19 @@ def _set_local_hub_folder(value: str) -> None:
     update_config(lambda local: local.__setitem__("hub_folder", value))
 
 
-def _legacy_history_intent(legacy: dict[str, Path], new_config: Path) -> tuple[Path, dict[str, Any]] | None:
-    """Only a migration begun before config creation may import old history."""
-    marker = new_config.with_name("legacy-history-migration.json")
-    source = legacy["data"] / "history.db"
+def _legacy_database_intent(
+    legacy: dict[str, Path], new_config: Path, database: str = "history.db",
+) -> tuple[Path, dict[str, Any]] | None:
+    """Only a transfer begun before config creation may import an old data file."""
+    marker = new_config.with_name(f"legacy-{Path(database).stem}-migration.json")
+    source = legacy["data"] / database
     source_key = os.path.normcase(os.path.abspath(source))
     if marker.exists():
         intent = json.loads(marker.read_text(encoding="utf-8"))
         if not isinstance(intent, dict) or intent.get("version") != 1 or (
             intent.get("source") != source_key or type(intent.get("complete")) is not bool
         ):
-            raise ValueError("Invalid legacy history migration receipt; not importing")
+            raise ValueError("Invalid legacy database migration receipt; not importing")
         return marker, intent
     if new_config.exists() or not source.is_file():
         return None
@@ -928,9 +945,10 @@ def migrate_legacy_app_data() -> None:
     Runs once per process from ``load_config``. Never deletes anything
     from the old profile, and every step is individually best-effort:
 
-    1. No new config.json yet -> copy settings/hardware/search. Record history
-       migration intent first, then merge a consistent SQLite snapshot. An
+    1. No new config.json yet -> copy settings/hardware. Record pending data
+       transfers first, then import consistent SQLite snapshots. An
        interrupted import retries even after settings or new jobs were saved.
+       An existing search index is retained without adding old SQLite sidecars.
     2. Hub still at the new, model-less default while the old hub has
        models -> point ``hub_folder`` at the old hub (no multi-GB copy).
        Independent of step 1, so it also rescues a profile that a
@@ -953,28 +971,39 @@ def migrate_legacy_app_data() -> None:
     if legacy_config.is_file():
         try:
             with _SAVE_LOCK, _config_file_lock(str(new_config)):
-                history_intent = _legacy_history_intent(legacy, new_config)
+                history_intent = _legacy_database_intent(legacy, new_config)
+                search_intent = _legacy_database_intent(legacy, new_config, "search.db")
+                hardware_intent = _legacy_database_intent(legacy, new_config, "hardware.json")
                 if not new_config.exists():
-                    copies = [(legacy_config, new_config)] + [
-                        (legacy["data"] / name, user_data_dir() / name)
-                        for name in _LEGACY_DATA_FILES if name != "history.db"
-                    ]
-                    # History uses a SQLite snapshot; search remains rebuildable.
-                    for suffix in ("-wal", "-shm"):
-                        copies.append((legacy["data"] / ("search.db" + suffix),
-                                       user_data_dir() / ("search.db" + suffix)))
-                    for src, dst in copies:
-                        if not src.is_file() or dst.exists():
-                            continue
+                    try:
+                        new_config.parent.mkdir(parents=True, exist_ok=True)
+                        _copy_legacy_settings(legacy_config, new_config)
+                        logger.info("Migrated %s -> %s", legacy_config, new_config)
+                    except OSError as error:
+                        logger.warning("Could not migrate %s: %s", legacy_config, error)
+                if hardware_intent is not None:
+                    marker, intent = hardware_intent
+                    if not intent["complete"]:
                         try:
-                            dst.parent.mkdir(parents=True, exist_ok=True)
-                            if src == legacy_config:
-                                _copy_legacy_settings(src, dst)
-                            else:
-                                shutil.copy2(src, dst)
-                            logger.info("Migrated %s -> %s", src, dst)
-                        except OSError as e:
-                            logger.warning("Could not migrate %s: %s", src, e)
+                            destination = user_data_dir() / "hardware.json"
+                            if not destination.exists():
+                                destination.parent.mkdir(parents=True, exist_ok=True)
+                                _copy_legacy_settings(legacy["data"] / "hardware.json", destination,
+                                                      replace=False)
+                            _write_disk_dict(str(marker), {**intent, "complete": True})
+                        except OSError as error:
+                            logger.warning("Could not migrate pre-rebrand hardware choice: %s", error)
+                if search_intent is not None:
+                    marker, intent = search_intent
+                    if not intent["complete"]:
+                        try:
+                            from .search import copy_legacy_index
+
+                            copy_legacy_index(legacy["data"] / "search.db",
+                                              user_data_dir() / "search.db")
+                            _write_disk_dict(str(marker), {**intent, "complete": True})
+                        except (OSError, ValueError, sqlite3.Error) as error:
+                            logger.warning("Could not migrate pre-rebrand search index: %s", error)
                 if history_intent is not None:
                     marker, intent = history_intent
                     if not intent["complete"]:
@@ -984,7 +1013,7 @@ def migrate_legacy_app_data() -> None:
                                               user_data_dir() / "history.db", intent["source"])
                         _write_disk_dict(str(marker), {**intent, "complete": True})
         except (OSError, ValueError, sqlite3.Error) as error:
-            logger.warning("Could not finish pre-rebrand history migration: %s", error)
+            logger.warning("Could not finish pre-rebrand data migration: %s", error)
 
     try:
         from .hub import default_hub_folder
@@ -1725,16 +1754,18 @@ def _write_disk_dict(path: str, data: dict[str, Any]) -> None:
     if os.path.abspath(path) == os.path.abspath(config_path()) and not os.path.exists(path):
         # A previous launch may have run out of space before recording intent.
         # Even an explicit settings save must not make that look like a profile
-        # whose history transfer was already completed. Marker writes use a
+        # whose database transfers were already completed. Marker writes use a
         # different path, so the intent's atomic publication cannot recurse.
         try:
             legacy = _legacy_app_dirs()
             if legacy and (legacy["config"] / "config.json").is_file():
-                _legacy_history_intent(legacy, Path(path))
+                _legacy_database_intent(legacy, Path(path))
+                _legacy_database_intent(legacy, Path(path), "search.db")
+                _legacy_database_intent(legacy, Path(path), "hardware.json")
         except (OSError, ValueError) as error:
             raise ConfigSaveError(
                 getattr(error, "errno", 0) or 0,
-                f"Could not record pending legacy history; settings were not saved: {error}",
+                f"Could not record pending legacy data; settings were not saved: {error}",
             ) from error
     directory = os.path.dirname(path) or "."
     fd, tmp_path = tempfile.mkstemp(prefix=".config-", suffix=".tmp", dir=directory)

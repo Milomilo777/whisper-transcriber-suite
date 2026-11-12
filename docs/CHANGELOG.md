@@ -18,7 +18,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - When all requested output writers fail, an earlier allocation failure remains visible even if a later writer reports a disk error. Recovery avoids allocating another full transcript copy after that failure.
 
 
+- Keep saved hardware preferences after temporary read failures. Only malformed data is treated as corrupt, so a later read can recover the existing choice.
 
+- Retry interrupted pre-rebrand hardware-choice transfers after settings were created. Copies are published only when complete and never overwrite a newly saved hardware choice.
+- Isolate hardware-preference save staging files so overlapping saves cannot remove or replace each other's in-progress file. Pre-existing temporary copies are left untouched.
 
 
 - Keep completed AI responses protected when exiting the whole app, including after a transcript edit was already saved or deliberately discarded. The same unsaved-response confirmation is used when closing its viewer; results completed during exit questions are checked again without repeating an unchanged result question.
@@ -28,6 +31,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Keep temporary audio slices while their worker process is alive, even during long transcriptions. Startup cleanup removes an aged slice only after confirming its owner has exited; unknown owners are retained.
 - Keep timing-recovery transcripts during startup cleanup. Only files matching checkpoint, scratch and temporary-slice names expire; unrelated files and recovery records are retained.
 - Try to keep a separate recovery JSON when completed transcription outputs cannot be saved, including time-range runs. The error shows the path after recovery succeeds; requested export failures are still reported as errors.
+- Preserve committed search entries during profile upgrades with a consistent SQLite snapshot. Interrupted transfers retry safely, and existing indexes never receive sidecar files from the old profile.
 - Real disk-sync errors stop output and checkpoint publication, preserving the previous saved version instead of reporting success after a storage failure. Filesystems that explicitly do not support syncing remain usable.
 
 
