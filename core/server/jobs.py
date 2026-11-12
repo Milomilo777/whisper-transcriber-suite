@@ -77,6 +77,24 @@ def _same_output_contents(source: str, destination: str) -> bool:
                 == hashlib.file_digest(kept, "sha256").digest())
 
 
+def _relative_output_path(directory: str, path: str, *, resolve_links: bool = True) -> str | None:
+    """A confined non-root path; lexical-only mode records aliases for retention."""
+    try:
+        root = os.path.normcase(os.path.abspath(directory))
+        target = os.path.normcase(os.path.abspath(path))
+        if target == root or os.path.commonpath([root, target]) != root:
+            return None
+        if resolve_links:
+            real_root = os.path.normcase(os.path.realpath(root))
+            real_target = os.path.normcase(os.path.realpath(target))
+            if os.path.commonpath([real_root, real_target]) != real_root:
+                return None
+        # Preserve the actual spelling in the receipt; only comparisons fold case.
+        return os.path.relpath(os.path.abspath(path), os.path.abspath(directory)).replace(os.sep, "/")
+    except (OSError, ValueError):
+        return None
+
+
 def _copy_output_atomic(source: str, destination: str) -> None:
     fd, staging = tempfile.mkstemp(prefix=".server-output-", suffix=".tmp",
                                    dir=os.path.dirname(destination))
@@ -566,7 +584,6 @@ class JobManager:
           file ``X.<ext>`` beside it: a run that died before it could settle.
           A lone ``big.partial.srt`` is a client's upload, not a partial.
         """
-        work = os.path.normcase(os.path.abspath(work_dir))
         media = (os.path.normcase(os.path.abspath(job.media_path))
                  if job is not None and job.media_path else "")
         found: dict[str, str] = {}
@@ -575,7 +592,7 @@ class JobManager:
             if not path or not os.path.isfile(path):
                 return
             key = os.path.normcase(os.path.abspath(path))
-            if os.path.dirname(key) != work or (key == media and not is_output):
+            if _relative_output_path(work_dir, path) is None or (key == media and not is_output):
                 return
             found.setdefault(key, path)
 
@@ -590,8 +607,7 @@ class JobManager:
         if _KEEP_FILE in names:
             listed = _read_keep_list(os.path.join(work_dir, _KEEP_FILE))
             for name in listed or []:
-                if name in names:
-                    add(os.path.join(work_dir, name))
+                add(os.path.join(work_dir, *name.split("/")))
         if job is None:
             for name in names:
                 if not name.lower().endswith(_PARTIAL_SUFFIX):
@@ -610,19 +626,31 @@ class JobManager:
             self._outputs_root, os.path.basename(os.path.normpath(work_dir))[:12])
         saved = True
         keep = os.path.join(work_dir, _KEEP_FILE)
-        if os.path.exists(keep) and _read_keep_list(keep) is None:
-            # The list of unsaved files cannot be trusted (cut short or
-            # damaged): unreadable never means "nothing to protect".
-            logger.error("server: the keep list of job folder %s is "
-                         "unreadable; the folder is kept",
-                         os.path.basename(work_dir))
-            saved = False
+        if os.path.exists(keep):
+            listed = _read_keep_list(keep)
+            # A missing, escaped or unreadable named result is uncertainty,
+            # not proof that every result has already been copied elsewhere.
+            if listed is None or any(
+                _relative_output_path(work_dir, os.path.join(work_dir, *name.split("/"))) is None
+                or not os.path.isfile(os.path.join(work_dir, *name.split("/")))
+                for name in listed
+            ):
+                logger.error("server: the keep list of job folder %s is "
+                             "unreadable or unresolved; the folder is kept",
+                             os.path.basename(work_dir))
+                saved = False
         for src in self._protected_files(work_dir, job):
-            dest = os.path.join(dest_dir, os.path.basename(src))
+            relative = _relative_output_path(work_dir, src)
+            if relative is None:
+                saved = False
+                continue
+            dest = os.path.join(dest_dir, *relative.split("/"))
             try:
+                if _relative_output_path(self._outputs_root, dest) is None:
+                    raise OSError("Output archive path escapes its directory")
                 if os.path.isfile(dest) and _same_output_contents(src, dest):
                     continue
-                os.makedirs(dest_dir, exist_ok=True)
+                os.makedirs(os.path.dirname(dest), exist_ok=True)
                 _copy_output_atomic(src, dest)
             except OSError as e:
                 logger.warning("server: could not keep %s: %s",
@@ -637,11 +665,15 @@ class JobManager:
         otherwise grow six-fold. If even this write fails, the names go to
         the log at error level, the last trace of where the results are.
         """
-        names = sorted({os.path.basename(p) for p in paths})
+        names = sorted({relative for path in paths
+                        if (relative := _relative_output_path(job.work_dir, path, resolve_links=False)) is not None})
+        # Flat lists keep their original encoding. A versioned object for
+        # nested paths makes older readers fail closed and retain the folder.
+        receipt: Any = {"version": 1, "paths": names} if any("/" in name for name in names) else names
         try:
             with open(os.path.join(job.work_dir, _KEEP_FILE), "w",
                       encoding="utf-8") as f:
-                json.dump(names, f, ensure_ascii=False)
+                json.dump(receipt, f, ensure_ascii=False)
         except OSError as e:
             logger.error(
                 "server: could not write the keep list of job %s (%s); "
@@ -1116,9 +1148,7 @@ class JobManager:
                              job.job_id)
             kept = [p for _fmt, p in job.outputs]
         # A path still inside the job folder is a copy that failed.
-        work = os.path.normcase(os.path.abspath(job.work_dir))
-        unsaved = [p for p in kept
-                   if os.path.normcase(os.path.dirname(os.path.abspath(p))) == work]
+        unsaved = [p for p in kept if _relative_output_path(job.work_dir, p, resolve_links=False) is not None]
         if unsaved:
             logger.error("server: %d result file(s) of job %s have no copy "
                          "outside the job folder", len(unsaved), job.job_id)
@@ -1391,8 +1421,11 @@ class JobManager:
         paths: list[str] = []
         for _fmt, src in job.outputs:
             try:
-                os.makedirs(dest_dir, exist_ok=True)
-                dest = os.path.join(dest_dir, os.path.basename(src))
+                relative = _relative_output_path(job.work_dir, src) or os.path.basename(src)
+                dest = os.path.join(dest_dir, *relative.split("/"))
+                if _relative_output_path(self._outputs_root, dest) is None:
+                    raise OSError("Output archive path escapes its directory")
+                os.makedirs(os.path.dirname(dest), exist_ok=True)
                 _copy_output_atomic(src, dest)
                 paths.append(dest)
             except OSError as e:
@@ -1835,11 +1868,12 @@ def _parse_marker(text: str) -> tuple[int, str, float] | None:
 
 
 def _read_keep_list(path: str) -> list[str] | None:
-    """The plain file names in a keep list, or None if it cannot be trusted.
+    """Legacy basenames or versioned relative paths; None means uncertainty.
 
     None (missing content, cut short, not UTF-8, not a list, over the size
     limit) must be treated as "protect everything": a truncated list is not
-    an empty one. Individual entries that are not plain names are ignored.
+    an empty one. Legacy list entries that are not plain names are ignored;
+    versioned receipts require every relative path to be valid.
     """
     try:
         with open(path, "rb") as f:
@@ -1849,6 +1883,18 @@ def _read_keep_list(path: str) -> list[str] | None:
         data = json.loads(raw.decode("utf-8"))
     except (OSError, ValueError):  # UnicodeDecodeError is a ValueError
         return None
+    if isinstance(data, dict):
+        if type(data.get("version")) is not int or data["version"] != 1 or not isinstance(data.get("paths"), list):
+            return None
+        result: list[str] = []
+        for name in data["paths"]:
+            if not isinstance(name, str) or not name or "\0" in name or os.path.isabs(name) or os.path.splitdrive(name)[0]:
+                return None
+            parts = name.replace(os.sep, "/").split("/")
+            if any(part in ("", ".", "..") for part in parts) or os.path.normcase(parts[-1]) in (os.path.normcase(_JOB_DIR_MARKER), os.path.normcase(_KEEP_FILE)):
+                return None
+            result.append("/".join(parts))
+        return result
     if not isinstance(data, list):
         return None
     return [n for n in data
