@@ -13,6 +13,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Record the reliability investigation checkpoint, distinguishing reviewed fixes from held reproductions and remaining runtime validation.
 
 ### Fixed
+- Reserve telemetry error quotas through exclusive, synced temporary files so an existing scratch file is preserved and a failed write suppresses the send.
 - Preserve API outputs in subfolders when an archive copy fails, including across server restarts. Retained copies keep their relative folders so same-named outputs cannot replace each other.
 
 

@@ -410,7 +410,41 @@ def test_rate_limit_corruption_and_io_failure_never_raise(tmp_path, monkeypatch)
     row = {"status": "error", "fingerprint": "0123456789ab"}
     assert stats.limit_error_row(row, "install", path=path, now=1000) is not None
     monkeypatch.setattr(Path, "replace", lambda *a: (_ for _ in ()).throw(OSError("full")))
+    monkeypatch.setattr(os, "replace", lambda *a: (_ for _ in ()).throw(OSError("full")))
     assert stats.limit_error_row(row, "other-install", path=path, now=1001) is None
+
+
+def test_rate_limit_preserves_an_existing_staging_file(tmp_path, monkeypatch):
+    path = tmp_path / "telemetry-errors.json"
+    identity = SimpleNamespace(hex="0" * 32)
+    foreign = path.with_name(path.name + "." + identity.hex + ".tmp")
+    foreign.write_bytes(b"another writer's unfinished state")
+    monkeypatch.setattr(stats.uuid, "uuid4", lambda: identity)
+    row = {"status": "error", "fingerprint": "0123456789ab"}
+
+    assert stats.limit_error_row(row, "install", path=path, now=1000) is not None
+    assert foreign.read_bytes() == b"another writer's unfinished state"
+    assert len(json.loads(path.read_text())["sent"]) == 1
+
+
+@pytest.mark.parametrize("operation", ["fsync", "replace"])
+def test_rate_limit_failed_publication_preserves_state(tmp_path, monkeypatch, operation):
+    path = tmp_path / "telemetry-errors.json"
+    row = {"status": "error", "fingerprint": "0123456789ab"}
+    assert stats.limit_error_row(row, "install", path=path, now=1000) is not None
+    before = path.read_bytes()
+
+    def fail(*args, **kwargs):
+        raise OSError(errno.ENOSPC, "Synthetic full disk")
+
+    monkeypatch.setattr(os, operation, fail)
+    if operation == "replace":
+        monkeypatch.setattr(Path, "replace", fail)
+    assert stats.limit_error_row(row, "other-install", path=path, now=1001) is None
+    assert path.read_bytes() == before
+    assert sorted(p.name for p in tmp_path.iterdir()) == [
+        "telemetry-errors.json", "telemetry-errors.lock",
+    ]
 
 
 def test_rate_limit_survives_real_process_restarts(tmp_path):

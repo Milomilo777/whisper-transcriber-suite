@@ -469,15 +469,10 @@ def limit_error_row(payload: dict[str, str], install_id: str, *, path: Path | No
                 elif fingerprint in pending or len(pending) < 32:
                     pending[fingerprint] = min(10, repeats + 1)
                 updated = {"install": install, "sent": sent, "pending": pending}
-                staged = target.with_name(target.name + "." + uuid.uuid4().hex + ".tmp")
-                try:
-                    with staged.open("w", encoding="utf-8") as stream:
-                        json.dump(updated, stream, separators=(",", ":"))
-                        stream.flush()
-                        os.fsync(stream.fileno())
-                    staged.replace(target)
-                finally:
-                    staged.unlink(missing_ok=True)
+                # Exclusive staging cannot overwrite another writer's scratch
+                # file; publish the reservation before allowing a network send.
+                from core.config import _write_text_atomic
+                _write_text_atomic(target, json.dumps(updated, separators=(",", ":")))
                 return result if admitted else None
     except Exception:  # noqa: BLE001 - a broken state store must not affect a job
         logger.debug("Error row suppressed: rate state unavailable", exc_info=True)
