@@ -4264,10 +4264,9 @@ def resume_transcription(
     required instead. Caller (the worker) handles the False case by
     falling back to a fresh ``transcribe(task)``.
 
-    Only the default ``faster_whisper`` backend supports resume —
-    alt backends return False so the worker re-runs from scratch.
-    The slicing strategy assumes the WhisperModel.transcribe API
-    surface; backends that don't share it would need their own slicer.
+    Partial decoding supports only the default ``faster_whisper`` backend;
+    other backends need their own slicer. A completed transcript can resume
+    post-processing and output writing without another decoder call.
     """
     _remember_task_device(task)
     _clue_phase(task, "worker.prepare")
@@ -4368,7 +4367,10 @@ def resume_transcription(
         config["word_timestamps"] = (saved_words if isinstance(saved_words, bool)
                                      else bool(resume_config.get("word_timestamps", False)))
         task.whisper_task = cp_task
-        _checked_whisper_task(task, backend_for_check or "faster_whisper")
+        # A completed translation already contains English text; the current
+        # decoder's translation capability matters only if more ASR is needed.
+        if data.get("transcription_completed") is not True:
+            _checked_whisper_task(task, backend_for_check or "faster_whisper")
 
         cp_language = str(data.get("language") or "")
         try:

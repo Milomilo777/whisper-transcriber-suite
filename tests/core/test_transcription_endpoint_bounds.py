@@ -784,3 +784,82 @@ def test_legacy_task_checkpoint_without_optional_bound_retains_text(endpoint_cas
     assert saved is not None
     assert saved["segments"] == segments
     assert "audio_end" not in saved
+
+
+@pytest.mark.parametrize("change", [
+    {"device": "cpu"}, {"compute_type": "int8"}, {"batch_size": 1},
+    {"device": "cpu", "compute_type": "int8", "batch_size": 1},
+])
+def test_completed_gpu_checkpoint_exports_after_settings_change_without_decode(endpoint_case, monkeypatch, change):
+    case = endpoint_case
+    tr.config.update(device="cuda", compute_type="float16", batch_size=8)
+    task = output_task(case)
+    tr._remember_audio_end(task, str(case.audio))
+    segments = [{"start": 0.2, "end": 2.4, "text": "saved tail", "words": []}]
+    tr._write_periodic_checkpoint(task, segments, 2.4, "en", 0.9, None,
+                                  transcription_completed=True)
+    saved = cp.load_checkpoint(str(case.audio))
+    assert saved and saved["transcription_completed"] is True
+    tr.config.update(change)
+
+    def refuse(*_a, **_k):
+        raise AssertionError("A complete checkpoint must not slice or decode audio again")
+
+    monkeypatch.setattr(tr, "_slice_audio_from", refuse)
+    monkeypatch.setattr(tr, "_whisper_runner", refuse)
+    resumed = output_task(case)
+    assert tr.resume_transcription(resumed) is True
+    assert len(resumed.output_paths) == 3
+    assert case.writes[-1] == segments
+    for name in resumed.output_paths:
+        assert "saved tail" in Path(name).read_text(encoding="utf-8")
+    assert not cp.checkpoint_path(str(case.audio)).exists()
+
+
+@pytest.mark.parametrize("backend,model", [("nvidia_asr", "parakeet"), ("faster_whisper", "large-v3-turbo")])
+def test_completed_translation_exports_with_current_incompatible_decoder(endpoint_case, monkeypatch, backend, model):
+    case = endpoint_case
+    tr.config.update(model={"name": "small"}, whisper_model="small", transcribe_backend="faster_whisper")
+    task = output_task(case)
+    task.whisper_task = "translate"
+    tr._remember_audio_end(task, str(case.audio))
+    segments = [{"start": 0.2, "end": 2.4, "text": "saved English translation", "words": []}]
+    tr._write_periodic_checkpoint(task, segments, 2.4, "fa", 0.9, None,
+                                  transcription_completed=True)
+    tr.config.update(model={"name": model}, whisper_model=model, transcribe_backend=backend)
+
+    def refuse(*_a, **_k):
+        raise AssertionError("A completed translation must not decode or slice again")
+
+    monkeypatch.setattr(tr, "_slice_audio_from", refuse)
+    monkeypatch.setattr(tr, "_whisper_runner", refuse)
+    resumed = output_task(case)
+    assert tr.resume_transcription(resumed) is True
+    assert resumed.whisper_task == "translate"
+    assert case.writes[-1] == segments
+    assert len(resumed.output_paths) == 3
+    assert all(".en-translated." in Path(path).name for path in resumed.output_paths)
+    assert all("saved English translation" in Path(path).read_text(encoding="utf-8")
+               for path in resumed.output_paths)
+
+
+@pytest.mark.parametrize("phase", ["post", "write"])
+def test_changed_settings_completed_checkpoint_survives_post_or_output_failure(endpoint_case, monkeypatch, phase):
+    case = endpoint_case
+    task = output_task(case)
+    tr.config.update(device="cuda", compute_type="float16")
+    tr._remember_audio_end(task, str(case.audio))
+    segments = [{"start": 0.2, "end": 2.4, "text": "irreplaceable text", "words": []}]
+    tr._write_periodic_checkpoint(task, segments, 2.4, "en", 0.9, None,
+                                  transcription_completed=True)
+    path = cp.checkpoint_path(str(case.audio))
+    original = path.read_bytes()
+    tr.config.update(device="cpu", compute_type="int8")
+
+    def fail(*_a, **_k):
+        raise OSError("synthetic post/output failure")
+
+    monkeypatch.setattr(tr, "_run_post_pipeline" if phase == "post" else "_write_outputs", fail)
+    with pytest.raises(OSError, match="synthetic post/output failure"):
+        tr.resume_transcription(output_task(case))
+    assert path.read_bytes() == original

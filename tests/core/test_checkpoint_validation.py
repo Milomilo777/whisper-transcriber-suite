@@ -120,3 +120,22 @@ def test_backend_model_and_config_mismatch_are_rejected(source, override, needle
 def test_segments_must_be_a_list(source, segments):
     reason = _validate(_payload(source, segments=segments))
     assert reason == "checkpoint segments field is not a list"
+
+
+@pytest.mark.parametrize("changed", [
+    {"backend": "other"}, {"model_name": "other"}, {"config_fingerprint": "other"},
+])
+def test_completed_checkpoint_reuses_text_despite_decoder_setting_changes(source, changed):
+    assert _validate(_payload(source, transcription_completed=True,
+                              segments=[{"start": 0, "end": 1, "text": "saved"}], **changed)) == ""
+
+
+@pytest.mark.parametrize("completed", [False, None, "true", 1])
+def test_only_explicit_completed_flag_can_bypass_decoder_compatibility(source, completed):
+    reason = _validate(_payload(source, transcription_completed=completed, config_fingerprint="other"))
+    assert "config changed" in reason
+
+
+def test_completed_checkpoint_still_requires_matching_media_and_segment_list(source):
+    assert "size has changed" in _validate(_payload(source, transcription_completed=True, source_size=1))
+    assert "segments field is not a list" in _validate(_payload(source, transcription_completed=True, segments=None))
