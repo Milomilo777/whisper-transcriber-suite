@@ -36,6 +36,7 @@ import array
 import logging
 import os
 import queue
+import tempfile
 import threading
 import time
 import wave
@@ -358,12 +359,17 @@ class RateConverter:
 def write_wav(path: str, pcm: bytes, sample_rate: int) -> str:
     """Write mono int16 PCM to ``path`` as a WAV. Returns ``path``."""
     Path(path).parent.mkdir(parents=True, exist_ok=True)
-    with wave.open(path, "wb") as wf:
+    _write_pcm_wav(path, pcm, sample_rate)
+    return path
+
+
+def _write_pcm_wav(target: Any, pcm: bytes, sample_rate: int) -> None:
+    """Write the same PCM header to a path or an already-owned file handle."""
+    with wave.open(target, "wb") as wf:
         wf.setnchannels(1)
         wf.setsampwidth(SAMPLE_WIDTH_BYTES)
         wf.setframerate(int(sample_rate))
         wf.writeframes(pcm)
-    return path
 
 
 # ----------------------------------------------------------------- events
@@ -470,6 +476,7 @@ class LiveSession:
     #: Files the caller saved the transcript to. A session artifact that is
     #: (or resolves to) one of them is never deleted by the cleanup.
     _protected: list = field(default_factory=list, repr=False)
+    _artifact_lock: Any = field(default_factory=threading.RLock, repr=False)
     _discarded_chunks: int = 0
     #: time.monotonic() of start(), of the last block and of the last
     #: block holding any non-zero sample (0.0 = never).
@@ -727,7 +734,7 @@ class LiveSession:
             return ""
         for name in names:
             if name.startswith("chunk-") and name.endswith(".wav"):
-                _remove_quietly(os.path.join(work, name))
+                self._remove_own(os.path.join(work, name))
         if self.unsaved_text:
             # Finished sentences exist that are not saved anywhere yet: the
             # window holds them, and this audio + journal is the only other
@@ -864,10 +871,23 @@ class LiveSession:
         if self._discard.is_set():
             self._discarded_chunks += 1
             return
-        path = os.path.join(self.work_dir, f"chunk-{seq:06d}.wav")
+        path = ""
         try:
-            write_wav(path, pcm, rate)
+            with self._artifact_lock:
+                Path(self.work_dir).mkdir(parents=True, exist_ok=True)
+                fd, path = tempfile.mkstemp(
+                    prefix=f"chunk-{seq:06d}-", suffix=".wav", dir=self.work_dir,
+                )
+                with os.fdopen(fd, "wb") as output:
+                    _write_pcm_wav(output, pcm, rate)
+                    output.flush()
+                    identity = os.fstat(output.fileno())
+                stamp = os.stat(path)
+                if (stamp.st_dev, stamp.st_ino) != (identity.st_dev, identity.st_ino):
+                    raise OSError("Live chunk was replaced before transcription")
         except OSError as e:
+            if path:
+                self.protect_path(path)
             self._chunk_failed(f"Chunk write failed: {e}")
             return
         try:
@@ -883,7 +903,19 @@ class LiveSession:
             self._chunk_failed(str(e))
             return
         finally:
-            _remove_quietly(path)
+            try:
+                current = os.stat(path)
+            except FileNotFoundError:
+                pass
+            except OSError:
+                self.protect_path(path)
+            else:
+                if (current.st_dev, current.st_ino, current.st_size, current.st_mtime_ns) != (
+                    stamp.st_dev, stamp.st_ino, stamp.st_size, stamp.st_mtime_ns,
+                ):
+                    # A Save may replace the file while the model reads it.
+                    self.protect_path(path)
+            self._remove_own(path)
         self._consecutive_errors = 0
         text, language = _result_text(result)
         if not text:
@@ -900,25 +932,37 @@ class LiveSession:
             language=language,
         ))
 
-    def protect_path(self, path: str) -> None:
+    def protect_path(self, path: str) -> bool:
         """Never delete ``path`` (or the same file under another name).
 
         The user may save the transcript onto this session's own journal or
         audio file, or onto an alias of it; that file is then the saved copy.
+
+        Returns True only when this call adds a new protection.
         """
-        if path and path not in self._protected:
-            self._protected.append(path)
+        with self._artifact_lock:
+            if path and path not in self._protected:
+                self._protected.append(path)
+                return True
+        return False
+
+    def unprotect_path(self, path: str) -> None:
+        """Undo a new reservation after a failed Save, leaving older ones alone."""
+        with self._artifact_lock:
+            if path in self._protected:
+                self._protected.remove(path)
 
     def is_idle(self) -> bool:
         """True when neither capture nor transcription can produce more text."""
         return not self._threads_alive()
 
     def _remove_own(self, path: str) -> None:
-        for saved in self._protected:
-            if _same_file(saved, path):
-                logger.info("Keeping %s: the transcript was saved to it", path)
-                return
-        _remove_quietly(path)
+        with self._artifact_lock:
+            for saved in self._protected:
+                if _same_file(saved, path):
+                    logger.info("Keeping %s: the transcript was saved to it", path)
+                    return
+            _remove_quietly(path)
 
     @property
     def unsaved_text(self) -> bool:

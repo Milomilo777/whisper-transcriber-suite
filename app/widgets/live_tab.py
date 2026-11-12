@@ -1581,6 +1581,33 @@ def _session_aliases(app: Any, path: str) -> list[tuple[Any, str]]:
     return aliases
 
 
+def _reserve_save_target(app: Any, path: str) -> list[tuple[Any, str]]:
+    """Keep cleanup from deleting this Save's target while it is being written."""
+    sessions = [getattr(app, "live_session", None)]
+    sessions.extend(session for session, _mark in getattr(app, "_live_held", []) or [])
+    reservations = []
+    for session in sessions:
+        protect = getattr(session, "protect_path", None)
+        undo = getattr(session, "unprotect_path", None)
+        if not callable(protect) or not callable(undo):
+            continue
+        if protect(path) is True:
+            reservations.append((session, path))
+        # Replacing a hard link breaks its relationship with the original.
+        # Reserve matching session artifacts before that relationship is lost.
+        for artifact in (
+            getattr(session, "journal_path", ""), getattr(session, "recording_path", ""),
+        ):
+            if not artifact:
+                continue
+            try:
+                if os.path.samefile(path, artifact) and protect(artifact) is True:
+                    reservations.append((session, artifact))
+            except OSError:
+                pass
+    return reservations
+
+
 def _save(app: Any) -> bool:
     """Ask for a file and save the transcript. True once it is on disk."""
     body = _transcript_text(app)
@@ -1599,10 +1626,13 @@ def _save(app: Any) -> bool:
     )
     if not path:
         return False
+    reservations = _reserve_save_target(app, path)
     aliases = _session_aliases(app, path)
     try:
         _save_text_atomically(path, body + "\n")
     except OSError as e:
+        for session, reserved_path in reservations:
+            session.unprotect_path(reserved_path)
         show_error(app, _("Could not save the transcript"),
                    _("Writing {file} failed.", file=os.path.basename(path)), detail=str(e))
         return False
