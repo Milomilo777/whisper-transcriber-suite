@@ -121,6 +121,25 @@ class InputDevice:
     default_samplerate: float
 
 
+def _check_mic_host(sd: Any, info: Any) -> None:
+    """Require an input whose host implements the recorder's blocking reads."""
+    if int(info.get("max_input_channels", 0)) <= 0:
+        raise ValueError("The selected device has no microphone input")
+    host_index = info.get("hostapi")
+    if type(host_index) is not int or host_index < 0:
+        raise ValueError("The selected microphone has no valid host API")
+    name = sd.query_hostapis(host_index).get("name")
+    if not isinstance(name, str) or not name.strip():
+        raise ValueError("The selected microphone host API could not be identified")
+    # Adapted from PortAudio (https://github.com/PortAudio/portaudio/blob/v19.7.0/src/hostapi/dsound/pa_win_ds.c) — exclude its unimplemented blocking read path.
+    # WDM-KS also rejects blocking streams; callback capture is a different API.
+    if name in ("Windows DirectSound", "Windows WDM-KS"):
+        raise RecorderUnavailable(
+            f"{name} does not support this microphone recording mode."
+            " Choose the same microphone's Windows WASAPI or MME entry."
+        )
+
+
 def list_mic_devices() -> list[InputDevice]:
     """Enumerate available microphone input devices.
 
@@ -137,6 +156,7 @@ def list_mic_devices() -> list[InputDevice]:
                 channels = int(info.get("max_input_channels", 0))
                 if channels <= 0:
                     continue
+                _check_mic_host(sd, info)
                 out.append(InputDevice(
                     index=idx,
                     name=str(info.get("name", f"Device {idx}")),
@@ -145,7 +165,7 @@ def list_mic_devices() -> list[InputDevice]:
                         info.get("default_samplerate", SAMPLE_RATE)
                     ),
                 ))
-            except (TypeError, ValueError):
+            except Exception:  # bad or unsupported metadata affects this entry only
                 # One malformed entry (a driver reporting None for a
                 # numeric field — seen on hot-unplug/virtual-cable
                 # devices) must not hide every other working device.
@@ -217,6 +237,7 @@ class Recorder:
     _frames: list[bytes] = field(default_factory=list, repr=False)
     _stop_event: threading.Event = field(default_factory=threading.Event, repr=False)
     _thread: Optional[threading.Thread] = field(default=None, repr=False)
+    _mic_device_index: Optional[int] = field(default=None, init=False, repr=False)
     _started_at: float = 0.0
     _stopped_at: float = 0.0
     _wrote_wave: bool = False
@@ -238,6 +259,22 @@ class Recorder:
         if self.mode == "mic":
             if not mic_available():
                 raise RecorderUnavailable(mic_availability_reason())
+            try:
+                import sounddevice as sd  # type: ignore[import-not-found]
+                info = sd.query_devices(self.device_index, kind="input")
+                _check_mic_host(sd, info)
+                selected = info.get("index")
+                if type(selected) is not int or selected < 0:
+                    raise ValueError("The selected microphone index could not be verified")
+                # Pin the actual input default so a later default change cannot
+                # switch devices between validation, stream open and rate retry.
+                self._mic_device_index = selected
+            except RecorderUnavailable:
+                raise
+            except Exception as error:
+                raise RecorderUnavailable(
+                    f"Could not verify the selected microphone: {_mic_error_message(error)}"
+                ) from error
             target = self._mic_loop
         elif self.mode == "loopback":
             if not loopback_available():
@@ -373,16 +410,16 @@ class Recorder:
                 "dtype": "int16",
                 "blocksize": 1024,
             }
-            if self.device_index is not None:
-                stream_kwargs["device"] = self.device_index
+            selected = self._mic_device_index if self._mic_device_index is not None else self.device_index
+            if selected is not None:
+                stream_kwargs["device"] = selected
             opening = True
             try:
                 opened = sd.RawInputStream(**stream_kwargs)
             except Exception as first:  # noqa: BLE001
-                # The picker lists every host API's entry for a device,
-                # and WASAPI/WDM-KS entries only open at the device's own
+                # Some supported entries only open at the device's own
                 # rate. Retry once at that rate; the live engine resamples.
-                native = _device_default_rate(sd, self.device_index)
+                native = _device_default_rate(sd, selected)
                 if not native or native == int(stream_kwargs["samplerate"]):
                     raise
                 logger.info("Mic refused %s Hz (%s); opening at its native %s Hz",

@@ -82,13 +82,14 @@ def test_list_mic_devices_filters_zero_input_channels(monkeypatch):
     monkeypatch.setattr(rec, "mic_available", lambda: True)
     fake_sd = types.ModuleType("sounddevice")
     fake_sd.query_devices = lambda: [  # type: ignore[attr-defined]
-        {"name": "Microphone", "max_input_channels": 2,
+        {"name": "Microphone", "hostapi": 0, "max_input_channels": 2,
          "default_samplerate": 48000.0},
-        {"name": "Speakers", "max_input_channels": 0,
+        {"name": "Speakers", "hostapi": 0, "max_input_channels": 0,
          "default_samplerate": 48000.0},
-        {"name": "USB Mic", "max_input_channels": 1,
+        {"name": "USB Mic", "hostapi": 0, "max_input_channels": 1,
          "default_samplerate": 44100.0},
     ]
+    fake_sd.query_hostapis = lambda index: {"name": "MME"}  # type: ignore[attr-defined]
     monkeypatch.setitem(sys.modules, "sounddevice", fake_sd)
     devices = rec.list_mic_devices()
     assert len(devices) == 2
@@ -107,13 +108,14 @@ def test_list_mic_devices_skips_one_malformed_entry_not_the_whole_list(monkeypat
     monkeypatch.setattr(rec, "mic_available", lambda: True)
     fake_sd = types.ModuleType("sounddevice")
     fake_sd.query_devices = lambda: [  # type: ignore[attr-defined]
-        {"name": "Microphone", "max_input_channels": 2,
+        {"name": "Microphone", "hostapi": 0, "max_input_channels": 2,
          "default_samplerate": 48000.0},
-        {"name": "Virtual Cable", "max_input_channels": 2,
+        {"name": "Virtual Cable", "hostapi": 0, "max_input_channels": 2,
          "default_samplerate": None},  # malformed: float(None) raises
-        {"name": "USB Mic", "max_input_channels": 1,
+        {"name": "USB Mic", "hostapi": 0, "max_input_channels": 1,
          "default_samplerate": 44100.0},
     ]
+    fake_sd.query_hostapis = lambda index: {"name": "MME"}  # type: ignore[attr-defined]
     monkeypatch.setitem(sys.modules, "sounddevice", fake_sd)
     devices = rec.list_mic_devices()
     names = {d.name for d in devices}

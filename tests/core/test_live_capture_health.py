@@ -43,8 +43,12 @@ def _fake_sd(monkeypatch, factory, default_rate: float = 48_000.0):
     fake.RawInputStream = factory  # type: ignore[attr-defined]
     fake.PortAudioError = _PortAudioError  # type: ignore[attr-defined]
     fake.query_devices = (  # type: ignore[attr-defined]
-        lambda device=None, kind=None: {"default_samplerate": default_rate}
+        lambda device=None, kind=None: {
+            "default_samplerate": default_rate, "max_input_channels": 1,
+            "hostapi": 0, "index": 0 if device is None else device,
+        }
     )
+    fake.query_hostapis = lambda index: {"name": "MME"}  # type: ignore[attr-defined]
     monkeypatch.setitem(sys.modules, "sounddevice", fake)
     monkeypatch.setattr(rec, "mic_available", lambda: True)
     return fake

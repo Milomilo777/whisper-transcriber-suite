@@ -47,6 +47,11 @@ def _install(monkeypatch, stream):
     monkeypatch.setattr(rec, "mic_available", lambda: True)
     fake_sd = types.ModuleType("sounddevice")
     fake_sd.RawInputStream = lambda **kw: stream  # type: ignore[attr-defined]
+    fake_sd.query_devices = lambda device=None, kind=None: {  # type: ignore[attr-defined]
+        "index": 0 if device is None else device, "hostapi": 0,
+        "max_input_channels": 1, "default_samplerate": 16000,
+    }
+    fake_sd.query_hostapis = lambda index: {"name": "MME"}  # type: ignore[attr-defined]
     monkeypatch.setitem(sys.modules, "sounddevice", fake_sd)
 
 

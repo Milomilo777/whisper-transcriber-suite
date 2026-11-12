@@ -51,7 +51,8 @@ def _capture_failure(monkeypatch, tmp_path, error, *, platform_name="nt", native
     def query_devices(device=None, kind=None):
         if device is None and kind is None:
             return [dict(info) for info in devices]
-        return dict(devices[4 if device is None else device])
+        index = 4 if device is None else device
+        return {**devices[index], "index": index}
 
     fake.RawInputStream = cannot_open  # type: ignore[attr-defined]
     fake.PortAudioError = PortAudioError  # type: ignore[attr-defined]
@@ -162,6 +163,10 @@ def test_destination_permission_error_is_not_microphone_privacy(monkeypatch, tmp
 
     fake = types.ModuleType("sounddevice")
     fake.RawInputStream = lambda **kwargs: OpenInput()
+    fake.query_devices = lambda device=None, kind=None: {
+        "index": 0, "hostapi": 0, "max_input_channels": 1,
+    }
+    fake.query_hostapis = lambda index: {"name": "MME"}
     monkeypatch.setitem(sys.modules, "sounddevice", fake)
 
     def denied_output(self, rate):
@@ -192,6 +197,10 @@ def test_input_read_permission_error_keeps_microphone_guidance(monkeypatch, tmp_
 
     fake = types.ModuleType("sounddevice")
     fake.RawInputStream = lambda **kwargs: OpenInput()
+    fake.query_devices = lambda device=None, kind=None: {
+        "index": 0, "hostapi": 0, "max_input_channels": 1,
+    }
+    fake.query_hostapis = lambda index: {"name": "MME"}
     monkeypatch.setitem(sys.modules, "sounddevice", fake)
     fake_os = types.ModuleType("os")
     fake_os.__dict__.update(vars(os))
