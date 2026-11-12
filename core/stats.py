@@ -70,6 +70,7 @@ _ERROR_LOCK = threading.RLock()
 _CONSENT_LOCK = threading.Lock()  # Memory only: never hold across I/O.
 _CONSENT_GENERATION = 0
 _SESSION_ERRORS: dict[str, int] = {}
+TELEMETRY_NOTICE_VERSION = 2
 _ERASURE_DONE = threading.Event()
 _ERASURE_DONE.set()
 _ERASURE_PENDING: tuple[Path, Path, threading.Event] | None = None
@@ -437,9 +438,25 @@ def _erase_local_state() -> None:
             done.set()
 
 
+def telemetry_notice_seen(config: dict[str, Any]) -> bool:
+    """A local disclosure marker; a new schema requires showing the bar again."""
+    return type(config.get("telemetry_notice_version")) is int and config["telemetry_notice_version"] == TELEMETRY_NOTICE_VERSION
+
+
+def consent_generation() -> int:
+    """Memory-only epoch for optional senders to discard pre-opt-out work."""
+    with _CONSENT_LOCK:
+        return _CONSENT_GENERATION
+
+
+def automatic_stats_allowed(config: dict[str, Any]) -> bool:
+    """The usage switch alone cannot disclose an expanded automatic payload."""
+    return bool(config.get("telemetry_opt_in", False)) and telemetry_notice_seen(config)
+
+
 def diagnostics_enabled(config: dict[str, Any]) -> bool:
     """Do not collect diagnostics while off or while older state is being erased."""
-    return bool(config.get("telemetry_opt_in", True)) and _ERASURE_DONE.is_set()
+    return automatic_stats_allowed(config) and _ERASURE_DONE.is_set()
 
 
 def _saved_consent_allows(path: Path) -> bool:
@@ -448,7 +465,8 @@ def _saved_consent_allows(path: Path) -> bool:
         with path.open("r", encoding="utf-8") as stream:
             raw = stream.read(1024 * 1024 + 1)
         saved = json.loads(raw) if len(raw) <= 1024 * 1024 else None
-        return isinstance(saved, dict) and saved.get("telemetry_opt_in", True) is True
+        return (isinstance(saved, dict) and saved.get("telemetry_opt_in", True) is True
+                and telemetry_notice_seen(saved))
     except FileNotFoundError:
         return True  # A new install has no saved override of the default.
     except (OSError, ValueError, UnicodeError):
@@ -647,7 +665,7 @@ def post_stats_async(
     try:
         with _CONSENT_LOCK:
             generation, erased = _CONSENT_GENERATION, _ERASURE_DONE
-        if not bool(config.get("telemetry_opt_in", False)):
+        if not automatic_stats_allowed(config):
             return False
         from core import offline
         if offline.is_offline():
@@ -676,7 +694,7 @@ def post_stats_async(
                     return
                 with _ERROR_LOCK:
                     if (generation != _CONSENT_GENERATION
-                            or not bool(config.get("telemetry_opt_in", False))
+                            or not automatic_stats_allowed(config)
                             or offline.is_offline()):
                         return
                     closed = sanitise_clue(payload, status=payload.get("status"))
@@ -692,7 +710,7 @@ def post_stats_async(
                     return
                 with _CONSENT_LOCK:
                     admitted = (generation == _CONSENT_GENERATION
-                                and bool(config.get("telemetry_opt_in", False))
+                                and automatic_stats_allowed(config)
                                 and not offline.is_offline())
                 if admitted:
                     _post(url, closed, float(timeout))

@@ -519,6 +519,7 @@ It binds **loopback (`127.0.0.1`) by default** — no Windows firewall prompt
 | `install_id` | string | `""` | A random UUID4 that tags the usage-statistics rows so the maintainer can count distinct installs (one person transcribing thousands of clips is one install, not many users). Created the first time a row is sent, stored here, never derived from the hardware, the user name, paths or the network. Turning `telemetry_opt_in` off deletes it; turning it on again makes a new, unrelated id. Not sent in problem reports. Local-only (`core.config.LOCAL_ONLY_KEYS`). |
 | `diagnostic_offer` | bool | `true` | Allows the quiet offer to send technical details of an unexplained failure (see Changelog). "Don't ask again" sets it to false. Local only. |
 | `diagnostic_offer_last` | number | `0` | Time of the last offer, so it appears at most once a day. Local only. |
+| `telemetry_notice_version` | int | `0` | Local disclosure marker. Automatic statistics, optional launch/crash telemetry and diagnostic collection remain paused until the current notice has been displayed and saved. Remote config cannot set this marker. |
 
 What is sent (built by `core.stats.build_stats_payload`, posted by `core.stats.post_stats_async` on a daemon thread with a 5 s timeout; every error is swallowed, so stats never block or crash a transcription):
 
@@ -552,6 +553,12 @@ starting with statistics off retries cleanup. The non-identifying lock file is r
 Enabling statistics again waits for pending cleanup before a new automatic row is prepared. Senders also check a
 saved opt-out before delivery to catch an older preference in another running instance. The saved preference check
 is best effort; it cannot cancel a request that has already passed its last check.
+
+New installations and existing profiles receive the same quiet disclosure bar for the expanded 2.4 payload.
+It does not take keyboard focus or block transcription. The bar describes the data, preserves the current on/off
+choice, and offers a direct off button. A hidden or minimized launch and a setup dialog do not count as disclosure;
+automatic senders wait until the bar is viewable and its marker is saved. If saving fails, automatic telemetry
+stays paused and the bar offers a retry. A saved off choice is never turned on by this notice.
 
 Diagnostic message filtering removes quoted spans before vocabulary matching. Because unquoted paths can contain
 spaces, a path-bearing token also removes the rest of its line. Review the displayed details before sending them;

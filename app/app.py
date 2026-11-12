@@ -40,7 +40,7 @@ from app.domain.task_outputs import (
     task_transcript_json,
 )
 from app.domain.tasks import TranscriptionTask, VideoDownloadTask
-from app.observability import init_sentry, send_launch_ping_async
+from app.observability import clear_telemetry, configure_telemetry, init_sentry, send_launch_ping_async
 from app.services.download_service import DownloadService
 from app.services.format_service import FormatService
 from app.services.integrations_service import IntegrationsService
@@ -1408,8 +1408,11 @@ class App(tk.Tk):
         if offline.is_offline():
             self.title(_("{title} — Work offline", title=self._base_title))
         setup_logging(self.app_config.get("log_level", "INFO"))
-        init_sentry()
-        send_launch_ping_async()
+        # Optional telemetry starts only after the local disclosure is visible.
+        self._telemetry_config_provider = lambda: self.app_config
+        configure_telemetry(self._telemetry_config_provider)
+        self.bind("<Destroy>", lambda event: clear_telemetry(self._telemetry_config_provider)
+                  if event.widget is self else None, add="+")
         self._ui_logger = get_ui_logger()
         logger.info("App startup; theme=%s", self.app_config.get("theme", "dark"))
         log_effective_stats_url(self.app_config)
@@ -1613,6 +1616,15 @@ class App(tk.Tk):
         # either changed since they were recorded (after an app update);
         # local only, and a no-op until the copy exists.
         self.after(6000, self._refresh_yt_dlp_versions)
+
+        from app.services.telemetry_notice import TelemetryNotice
+        self.telemetry_notice = TelemetryNotice(self, on_ready=self._start_optional_telemetry)
+        self.telemetry_notice.start()
+
+    def _start_optional_telemetry(self) -> None:
+        """Called after the current disclosure, or its saved marker, is available."""
+        init_sentry()
+        send_launch_ping_async()
 
     def _sweep_partials_at_startup(self) -> None:
         """Off-thread best-effort cleanup of the partials/ checkpoint dir."""

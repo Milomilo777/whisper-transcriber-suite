@@ -253,6 +253,17 @@ def show_update_command(parent: tk.Misc, *, version: str, command: str) -> tk.To
     return top
 
 
+class TelemetryBar(_QuietBar):
+    """Usage-statistics disclosure; presenting it never takes keyboard focus."""
+
+    def __init__(self, master: tk.Misc, *, on_keep: Callable[[], None], on_off: Callable[[], None]) -> None:
+        super().__init__(master)
+        self.keep_button = ttk.Button(self._button_row, text=_("Got it"), command=on_keep)
+        self.keep_button.pack(side="left", padx=(6, 0))
+        self.off_button = ttk.Button(self._button_row, text=_("Turn off statistics"), command=on_off)
+        self.off_button.pack(side="left", padx=(6, 0))
+
+
 class DiagnosticBar(_QuietBar):
     """The offer to send technical details of a failure: Show details / Send / Not now / Don't ask again.
 

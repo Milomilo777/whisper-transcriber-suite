@@ -342,7 +342,7 @@ def test_download_origin_is_kept_when_worker_only_knows_a_file(monkeypatch):
     task.status = "error"
     task.source_download = SimpleNamespace()
     task.failure_clue = {"input_kind": "file"}
-    service = TranscriptionService(SimpleNamespace(app_config={"telemetry_opt_in": True}))
+    service = TranscriptionService(SimpleNamespace(app_config={"telemetry_opt_in": True, "telemetry_notice_version": 2}))
     service._engine_snapshot = lambda: {"spawn_backend": "faster_whisper", "model_name": "large-v3"}
     posted = []
     monkeypatch.setattr(stats, "post_stats_async", lambda config, row: posted.append(row))
@@ -371,7 +371,7 @@ def test_post_gate_runs_limiter_off_thread_and_revalidates(monkeypatch, tmp_path
 
     monkeypatch.setattr(stats, "limit_error_row", limit)
     monkeypatch.setattr(stats, "_post", sent)
-    cfg = {"telemetry_opt_in": True, "stats_url": "https://example.invalid/stats",
+    cfg = {"telemetry_opt_in": True, "telemetry_notice_version": 2, "stats_url": "https://example.invalid/stats",
            "install_id": "00000000-0000-4000-8000-000000000000"}
     row = stats.build_stats_payload(model="large-v3", language="en", audio_duration=0,
                                     transcription_time=0, status="error")

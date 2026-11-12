@@ -25,7 +25,7 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setattr(diagnostic, "log_path", lambda: tmp_path / "diagnostics.jsonl")
     monkeypatch.setattr(mod.offline, "is_offline", lambda cfg=None: bool((cfg or {}).get("work_offline")))
     shown, scheduled = [], []
-    cfg = {"telemetry_opt_in": True, "diagnostic_offer": True, "diagnostic_offer_last": 0.0,
+    cfg = {"telemetry_opt_in": True, "telemetry_notice_version": 2, "diagnostic_offer": True, "diagnostic_offer_last": 0.0,
            "stats_url": "https://example.test/stats", "work_offline": False}
     app = SimpleNamespace(app_config=cfg, _closing=False, busy=False,
                           after=lambda ms, fn: scheduled.append(fn), _jobs_active=lambda: app.busy)

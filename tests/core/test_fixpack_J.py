@@ -229,7 +229,7 @@ def test_http_and_https_are_accepted(monkeypatch, good_url):
         seen["url"] = url
 
     monkeypatch.setattr(stats, "_post", fake_post)
-    cfg = {"telemetry_opt_in": True, "stats_url": good_url}
+    cfg = {"telemetry_opt_in": True, "telemetry_notice_version": 2, "stats_url": good_url}
     assert stats.post_stats_async(cfg, _payload(), timeout=1.0) is True
     import time as _t
     for _ in range(50):

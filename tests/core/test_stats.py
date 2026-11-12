@@ -272,7 +272,7 @@ def test_no_post_when_telemetry_off(monkeypatch):
 
 def test_no_post_when_no_url(monkeypatch):
     monkeypatch.setattr(stats, "_post", lambda *a, **k: None)
-    cfg = {"telemetry_opt_in": True, "stats_url": ""}
+    cfg = {"telemetry_opt_in": True, "telemetry_notice_version": 2, "stats_url": ""}
     assert stats.post_stats_async(cfg, _payload()) is False
 
 
@@ -284,7 +284,7 @@ def test_posts_when_opted_in(monkeypatch):
         calls["payload"] = payload
 
     monkeypatch.setattr(stats, "_post", fake_post)
-    cfg = {"telemetry_opt_in": True, "stats_url": "https://example.com/s.php"}
+    cfg = {"telemetry_opt_in": True, "telemetry_notice_version": 2, "stats_url": "https://example.com/s.php"}
     started = stats.post_stats_async(cfg, _payload(), timeout=1.0)
     assert started is True
     # The POST runs on a daemon thread — give it a moment to land.
@@ -299,7 +299,7 @@ def test_posts_when_opted_in(monkeypatch):
 
 def test_no_post_with_empty_payload(monkeypatch):
     monkeypatch.setattr(stats, "_post", lambda *a, **k: None)
-    cfg = {"telemetry_opt_in": True, "stats_url": "https://example.com/s.php"}
+    cfg = {"telemetry_opt_in": True, "telemetry_notice_version": 2, "stats_url": "https://example.com/s.php"}
     assert stats.post_stats_async(cfg, {}) is False
 
 

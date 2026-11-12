@@ -482,6 +482,8 @@ DEFAULT_CONFIG = {
     #     default only activates the stats_url POST.
     "minimise_to_tray": False,
     "telemetry_opt_in": True,
+    # Locally saved only after the current usage-statistics disclosure is visible.
+    "telemetry_notice_version": 0,
     #   install_id — random UUID4 that tags usage-stats rows so distinct installs can be
     #     counted (core.stats.install_id_for). "" until the first row is sent; deleted when
     #     telemetry_opt_in is turned off. Local only.
@@ -622,6 +624,7 @@ LOCAL_ONLY_KEYS: frozenset[str] = frozenset({
     "ui_language",
     "ui_language_hint_done",
     "telemetry_opt_in",
+    "telemetry_notice_version",
     "install_id",
     "work_offline",
     "tts_no_text_limit",

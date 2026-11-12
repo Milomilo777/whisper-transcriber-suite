@@ -114,12 +114,12 @@ def test_only_requests_with_a_destination_count_as_not_sent(monkeypatch):
     from core import stats
 
     offline.set_offline(True)
-    monkeypatch.setattr(cfg, "load_config", lambda *a, **k: {"telemetry_opt_in": True})
+    monkeypatch.setattr(cfg, "load_config", lambda *a, **k: {"telemetry_opt_in": True, "telemetry_notice_version": 2})
     monkeypatch.delenv("SENTRY_DSN", raising=False)
     monkeypatch.delenv("WHISPER_TELEMETRY_URL", raising=False)
     obs.init_sentry()
     obs.send_launch_ping_async()
-    stats.post_stats_async({"telemetry_opt_in": True, "stats_url": ""}, {})
+    stats.post_stats_async({"telemetry_opt_in": True, "telemetry_notice_version": 2, "stats_url": ""}, {})
     assert offline.activity().counts[offline.SKIPPED] == 0
     monkeypatch.setenv("SENTRY_DSN", "https://dummy-credential-A@example.invalid/1")
     monkeypatch.setenv("WHISPER_TELEMETRY_URL", "https://example.invalid/ping")
@@ -143,7 +143,7 @@ def test_automatic_requests_count_as_skipped_while_offline():
     offline.set_offline(True)
     assert updates.check_for_update() is None
     assert stats.post_stats_async(
-        {"telemetry_opt_in": True, "stats_url": "https://x.invalid"}, {}
+        {"telemetry_opt_in": True, "telemetry_notice_version": 2, "stats_url": "https://x.invalid"}, {}
     ) is False
     features = [e.feature for e in offline.activity().events if e.kind == offline.SKIPPED]
     assert features == ["the update check", "usage statistics"]

@@ -269,7 +269,9 @@ def test_init_sentry_scrubs_every_event(obs, monkeypatch):
     monkeypatch.setitem(sys.modules, "sentry_sdk", fake_mod)
 
     assert obs.init_sentry() is True
-    assert captured["before_send"] is obs.scrub_sentry_event
+    assert captured["before_send"].func is obs._before_sentry_event
+    event = _sentry_event()
+    assert captured["before_send"](event, {}) == obs.scrub_sentry_event(event, {})
     assert captured["include_local_variables"] is False
     assert captured["max_breadcrumbs"] == 0
     assert captured["send_default_pii"] is False
@@ -293,7 +295,8 @@ class Capture(Transport):
                 EVENTS.append(item.payload.json)
 
 sys.path.insert(0, sys.argv[2])
-from app.observability import _sentry_options
+from app.observability import _sentry_options, configure_telemetry
+configure_telemetry(lambda: {"telemetry_opt_in": True, "telemetry_notice_version": 2})
 opts = _sentry_options("https://key@example.invalid/1")
 if sys.argv[1] == "plain":
     opts = {"dsn": opts["dsn"], "send_default_pii": False}

@@ -438,6 +438,7 @@ a = Analysis(
         'app.mac_native',
         'app.desktop_alert',
         'app.services.voice_clone_service',
+        'app.services.telemetry_notice',
         'app.theme',
         'app.theme.icons',
         'app.theme.tokens',

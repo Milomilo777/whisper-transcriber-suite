@@ -44,7 +44,7 @@ def test_usage_statistics_are_not_posted(offline_on, monkeypatch):
 
     monkeypatch.setattr(stats.threading, "Thread", _boom)
     monkeypatch.setattr(stats.urllib.request, "urlopen", _boom)
-    config = {"telemetry_opt_in": True, "stats_url": "https://example.invalid/stats.php"}
+    config = {"telemetry_opt_in": True, "telemetry_notice_version": 2, "stats_url": "https://example.invalid/stats.php"}
     assert stats.post_stats_async(config, {"model": "tiny"}) is False
 
 
@@ -61,7 +61,7 @@ def test_usage_statistics_still_post_while_online(monkeypatch):
             pass
 
     monkeypatch.setattr(stats.threading, "Thread", _T)
-    config = {"telemetry_opt_in": True, "stats_url": "https://example.invalid/stats.php"}
+    config = {"telemetry_opt_in": True, "telemetry_notice_version": 2, "stats_url": "https://example.invalid/stats.php"}
     assert stats.post_stats_async(config, {"model": "tiny"}) is True
     assert started == ["stats-post"]
 
@@ -70,7 +70,7 @@ def test_crash_reports_and_launch_ping_count_as_off(offline_on, monkeypatch):
     import core.config as cfg
     from app import observability
 
-    monkeypatch.setattr(cfg, "load_config", lambda **_k: {"telemetry_opt_in": True})
+    monkeypatch.setattr(cfg, "load_config", lambda **_k: {"telemetry_opt_in": True, "telemetry_notice_version": 2})
     assert observability._telemetry_opted_in() is False
     offline.set_offline(False)
     assert observability._telemetry_opted_in() is True
@@ -605,7 +605,11 @@ def test_app_takes_the_switch_from_the_config_before_crash_reports_start():
     src = inspect.getsource(App.__init__)
     load = src.index("self.app_config = load_config()")
     switch = src.index("offline.set_offline(offline.flag_from(self.app_config))")
-    assert load < switch < src.index("init_sentry()") < src.index("send_launch_ping_async()")
+    assert load < switch < src.index("self.telemetry_notice.start()")
+    assert "on_ready=self._start_optional_telemetry" in src
+    assert "init_sentry()" not in src and "send_launch_ping_async()" not in src
+    deferred = inspect.getsource(App._start_optional_telemetry)
+    assert deferred.index("init_sentry()") < deferred.index("send_launch_ping_async()")
 
 
 def test_every_entry_point_installs_the_backstop():

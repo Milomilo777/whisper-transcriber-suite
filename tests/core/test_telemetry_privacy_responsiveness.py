@@ -24,7 +24,7 @@ def isolated(tmp_path, monkeypatch):
 
 def test_opt_out_returns_while_actual_sender_is_blocked(monkeypatch):
     entered, release, finished = threading.Event(), threading.Event(), threading.Event()
-    cfg = {"telemetry_opt_in": True, "stats_url": "https://example.invalid/v1/runs"}
+    cfg = {"telemetry_opt_in": True, "telemetry_notice_version": 2, "stats_url": "https://example.invalid/v1/runs"}
 
     def blocked(*args):
         entered.set()
@@ -123,7 +123,7 @@ def test_saved_opt_out_blocks_another_stale_config_copy(monkeypatch, tmp_path):
         finished.set()
 
     monkeypatch.setattr(stats, "_post", posted)
-    cfg = {"telemetry_opt_in": True, "stats_url": "https://example.invalid/v1/runs"}
+    cfg = {"telemetry_opt_in": True, "telemetry_notice_version": 2, "stats_url": "https://example.invalid/v1/runs"}
     row = stats.build_stats_payload(model="base", language="en", audio_duration=1,
                                     transcription_time=1, status="finished")
     stats.post_stats_async(cfg, row)
@@ -145,7 +145,7 @@ def test_failed_diagnostic_send_does_not_claim_nothing_was_lost(monkeypatch):
 def test_cancelled_reservation_never_reaches_the_network(monkeypatch):
     entered, release, finished = threading.Event(), threading.Event(), threading.Event()
     calls = []
-    cfg = {"telemetry_opt_in": True, "stats_url": "https://example.invalid/v1/runs",
+    cfg = {"telemetry_opt_in": True, "telemetry_notice_version": 2, "stats_url": "https://example.invalid/v1/runs",
            "install_id": "00000000-0000-4000-8000-000000000000"}
 
     def reserve(row, *args):
@@ -185,7 +185,7 @@ def test_reenable_waits_for_old_cleanup_before_new_state(monkeypatch, tmp_path):
 
     monkeypatch.setattr(Path, "unlink", blocked)
     monkeypatch.setattr(stats, "_post", lambda *args: sent.set())
-    cfg = {"telemetry_opt_in": False, "stats_url": "https://example.invalid/v1/runs"}
+    cfg = {"telemetry_opt_in": False, "telemetry_notice_version": 2, "stats_url": "https://example.invalid/v1/runs"}
     stats.forget_install_id(cfg)
     assert entered.wait(2)
     try:
@@ -261,7 +261,7 @@ def test_opt_out_during_final_disk_read_invalidates_send(monkeypatch, reenable):
     monkeypatch.setattr(stats.threading, "Thread", tracked)
     monkeypatch.setattr(stats, "_saved_consent_allows", consent)
     monkeypatch.setattr(stats, "_post", lambda *args: calls.append(args))
-    cfg = {"telemetry_opt_in": True, "stats_url": "https://example.invalid/v1/runs"}
+    cfg = {"telemetry_opt_in": True, "telemetry_notice_version": 2, "stats_url": "https://example.invalid/v1/runs"}
     row = stats.build_stats_payload(model="base", language="en", audio_duration=1,
                                     transcription_time=1, status="finished")
     assert stats.post_stats_async(cfg, row)
