@@ -51,10 +51,13 @@ the writer itself); Tk-free. The two public seams are pure and testable:
 from __future__ import annotations
 
 import html
+import errno
+import hashlib
 import json
 import logging
 import os
 import re
+import stat
 import uuid
 from pathlib import Path
 from typing import Any
@@ -900,9 +903,13 @@ def convert_file(
     (e.g. re-emitting an .srt as .srt in place) the path is suffixed with
     ``.converted`` to avoid clobbering the source. When that default target
     already exists it is kept and the output goes to ``name (1).ext`` (the
-    first free name) unless *overwrite* is True; an explicit *out_path* is
-    always the caller's choice. The file is written to a temp sibling and
-    moved into place, so a failed write never leaves a truncated target.
+    first free name) unless *overwrite* is True. Automatically chosen names
+    are installed without replacing existing files; a same-input fallback is also
+    automatic. An explicit different *out_path* is the caller's choice.
+    Complete bytes are staged beside the target before publication. Existing
+    targets survive failed writes. On POSIX filesystems without hard links,
+    automatic output uses exclusive copying; a failed copy can leave a new
+    partial file, which is retained rather than risking another writer's output.
 
     *segments*, when given, is used as-is instead of re-parsing *in_path* --
     lets a caller parse once (optionally running it through
@@ -929,11 +936,11 @@ def convert_file(
         )
 
     target = out_path or _default_out_path(in_path, fmt)
+    automatic = out_path is None
     if _same_file(target, in_path):
         base, ext = os.path.splitext(target)
         target = f"{base}.converted{ext}"
-    if out_path is None and not overwrite and os.path.exists(target):
-        target = _free_out_path(target)
+        automatic = True
 
     parent = os.path.dirname(os.path.abspath(target))
     if parent:
@@ -949,49 +956,137 @@ def convert_file(
         payload = smtv_docx_writer.write_bytes(
             segments, in_path, language="", work_title=Path(in_path).stem
         )
-        _replace_atomically(target, payload)
-        return target
-
-    # No media file is known here: the transcript's own name would land in
-    # the .otr "media" field, the ELAN media link and the Markdown title.
-    body = _writers.get_writer(fmt)(segments, "")
-    # Written byte-for-byte as UTF-8 with the writers' own '\n' line endings
-    # (matching transcriber.py and _checkpoint.py); text mode would turn
-    # them into '\r\n' on Windows, diverging documented-stable formats
-    # (SRT, TSV) by OS.
-    _replace_atomically(target, body.encode("utf-8"))
+    else:
+        # No media file is known here: do not invent a media link or title.
+        body = _writers.get_writer(fmt)(segments, "")
+        # Preserve the writers' UTF-8 bytes and LF line endings on every OS.
+        payload = body.encode("utf-8")
+    if automatic and not overwrite:
+        return _publish_new_output(target, payload)
+    _replace_atomically(target, payload)
     return target
 
 
-def _free_out_path(path: str) -> str:
-    """``name (1).ext``, ``name (2).ext``, ... — the first name not on disk."""
-    root, ext = os.path.splitext(path)
-    n = 1
-    while os.path.exists(f"{root} ({n}){ext}"):
-        n += 1
-    return f"{root} ({n}){ext}"
+_IS_WINDOWS = os.name == "nt"
+_LINK_UNAVAILABLE = {errno.EPERM, errno.EXDEV, errno.ENOSYS, errno.ENOTSUP, errno.EOPNOTSUPP}
 
 
-def _replace_atomically(target: str, payload: bytes) -> None:
-    """Write *payload* to a temp sibling of *target*, then move it into place."""
+def _remove_staging(path: str) -> None:
+    try:
+        os.unlink(path)
+    except OSError:
+        pass
+
+
+def _stage_output(target: str, payload: bytes) -> str:
     tmp = os.path.join(
         os.path.dirname(os.path.abspath(target)), f".convert-{uuid.uuid4().hex}.part",
     )
     created = False
     try:
         from core import _checkpoint
-        with open(tmp, "xb") as fb:
+        with open(tmp, "xb") as stream:
             created = True
-            fb.write(payload)
-            _checkpoint._flush_to_disk(fb)
-        os.replace(tmp, target)
-        created = False
+            stream.write(payload)
+            _checkpoint._flush_to_disk(stream)
+        return tmp
+    except BaseException:
+        if created:
+            _remove_staging(tmp)
+        raise
+
+
+def _copied_output_matches(path: str, owned: os.stat_result, expected: bytes) -> bool:
+    try:
+        fd = os.open(path, os.O_RDONLY | getattr(os, "O_BINARY", 0)
+                     | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0))
+    except FileNotFoundError:
+        return False
+    except OSError as error:
+        if error.errno == errno.ELOOP:
+            return False
+        raise
+    with os.fdopen(fd, "rb") as stream:
+        current = os.fstat(stream.fileno())
+        if not stat.S_ISREG(current.st_mode) or (
+            current.st_dev, current.st_ino,
+        ) != (owned.st_dev, owned.st_ino):
+            return False
+        digest = hashlib.sha256()
+        for chunk in iter(lambda: stream.read(1 << 20), b""):
+            digest.update(chunk)
+        return digest.digest() == expected
+
+
+def _copy_new_output(staged: str, target: str) -> None:
+    """Fallback for a filesystem without hard links: create only a NEW file.
+
+    A failed copy may leave its new partial file; it is never unlinked through
+    this public name, which another writer may already have replaced. The
+    input is preserved for retry.
+    """
+    from core._checkpoint import _strict_sync
+
+    digest = hashlib.sha256()
+    with open(staged, "rb") as source:
+        fd = os.open(target, os.O_CREAT | os.O_EXCL | os.O_WRONLY | getattr(os, "O_BINARY", 0), 0o666)
+        with os.fdopen(fd, "wb") as output:
+            for chunk in iter(lambda: source.read(1 << 20), b""):
+                output.write(chunk)
+                digest.update(chunk)
+            _strict_sync(output)
+            owned = os.fstat(output.fileno())
+    if not _copied_output_matches(target, owned, digest.digest()):
+        raise FileExistsError(target)
+
+
+def _install_new_output(staged: str, target: str) -> bool:
+    """Install without replacing anything. Return whether staging was moved."""
+    if _IS_WINDOWS:
+        # Unlike POSIX rename, Windows rename always refuses an existing target.
+        os.rename(staged, target)
+        return True
+    try:
+        os.link(staged, target)
+    except OSError as error:
+        if error.errno not in _LINK_UNAVAILABLE:
+            raise
+        _copy_new_output(staged, target)
+    return False
+
+
+def _publish_new_output(path: str, payload: bytes) -> str:
+    staged = _stage_output(path, payload)
+    moved = False
+    root, ext = os.path.splitext(path)
+    target, number, collisions = path, 0, 0
+    try:
+        while True:
+            if os.path.lexists(target):
+                number += 1
+                target = f"{root} ({number}){ext}"
+                continue
+            try:
+                moved = _install_new_output(staged, target)
+                return target
+            except FileExistsError:
+                collisions += 1
+                if collisions >= 16:
+                    raise ConvertError("Conversion output kept changing; try a different output folder.")
+                number += 1
+                target = f"{root} ({number}){ext}"
     finally:
-        # Best-effort cleanup only: if the replace already failed, a failing
-        # unlink (AV / indexer holding the .part) must not replace the error
-        # the caller actually needs to see.
-        try:
-            if created:
-                os.unlink(tmp)
-        except OSError:
-            pass
+        if not moved:
+            _remove_staging(staged)
+
+
+def _replace_atomically(target: str, payload: bytes) -> None:
+    """Replace an explicitly chosen output with complete staged bytes."""
+    staged = _stage_output(target, payload)
+    moved = False
+    try:
+        os.replace(staged, target)
+        moved = True
+    finally:
+        if not moved:
+            _remove_staging(staged)

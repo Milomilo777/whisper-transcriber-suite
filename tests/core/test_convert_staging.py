@@ -101,3 +101,15 @@ def test_exclusive_creation_collision_preserves_foreign_staging(tmp_path, monkey
         convert._replace_atomically(str(target), b"new transcript")
     assert target.read_bytes() == b"previous transcript"
     assert foreign.read_bytes() == b"other writer's recoverable transcript"
+
+
+def test_default_output_staging_collision_preserves_foreign_file(tmp_path, monkeypatch):
+    source = tmp_path / "input.srt"
+    source.write_text("1\n00:00:00,000 --> 00:00:01,000\nwords\n\n", encoding="utf-8")
+    foreign = tmp_path / ".convert-fixed.part"
+    foreign.write_bytes(b"other writer's recoverable transcript")
+    monkeypatch.setattr(convert.uuid, "uuid4", lambda: SimpleNamespace(hex="fixed"))
+    with pytest.raises(FileExistsError):
+        convert.convert_file(str(source), "txt")
+    assert not source.with_suffix(".txt").exists()
+    assert foreign.read_bytes() == b"other writer's recoverable transcript"
