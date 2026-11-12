@@ -208,35 +208,25 @@ def test_recovery_survives_garbage_file_without_crashing(tmp_path):
         db.close()
 
 
-def test_recovery_survives_os_replace_failure(tmp_path, monkeypatch):
-    """If os.replace of the corrupt main DB fails (e.g. Windows file lock),
-    recovery must NOT reopen the still-corrupt file and crash __init__ — it
-    deletes it in place and creates a clean DB instead."""
+def test_recovery_preserves_corruption_without_replacing_original(tmp_path, monkeypatch):
+    """Recovery archives bytes before isolation; it must not rely on a rename."""
     path = tmp_path / "history.db"
     _corrupt_file(path)
-
+    damaged = path.read_bytes()
     real_replace = os.replace
-    state = {"failed": False}
 
-    def flaky_replace(src, dst, *a, **k):
-        # Fail only on the main-db move; let the (already-removed) sidecar
-        # moves behave normally.
-        if str(src) == str(path) and not state["failed"]:
-            state["failed"] = True
-            raise OSError("simulated Windows lock on history.db")
-        return real_replace(src, dst, *a, **k)
+    def forbid_main_replace(src, dst, *args, **kwargs):
+        if str(src) == str(path):
+            pytest.fail("Recovery must archive before isolating the original")
+        return real_replace(src, dst, *args, **kwargs)
 
-    monkeypatch.setattr(os, "replace", flaky_replace)
-
-    db = HistoryDB(path)  # must not raise DatabaseError
-    try:
-        assert state["failed"], "test did not exercise the os.replace failure"
-        rid = db.insert_transcription("/tmp/a.wav")
-        assert rid > 0
-        # The corrupt file was deleted in place; the new DB lives at path.
-        assert path.exists()
-    finally:
-        db.close()
+    monkeypatch.setattr(os, "replace", forbid_main_replace)
+    with HistoryDB(path) as db:
+        assert db.insert_transcription("/tmp/a.wav") > 0
+        archives = list(tmp_path.glob("history.db.corrupt.*"))
+        assert len(archives) == 1
+        assert archives[0].read_bytes() == damaged
+        assert path.read_bytes() != damaged
 
 
 # ---------------------------------------------------------------------------

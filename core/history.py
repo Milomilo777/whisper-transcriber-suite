@@ -12,6 +12,8 @@ from __future__ import annotations
 import errno
 import json
 import logging
+import os
+import shutil
 import sqlite3
 import sys
 import threading
@@ -19,6 +21,8 @@ import time
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterable
+from urllib.parse import quote
+from urllib.request import pathname2url
 
 from .config import user_data_dir
 
@@ -73,6 +77,16 @@ CREATE INDEX IF NOT EXISTS idx_transcriptions_status ON transcriptions(status);
 
 def default_db_path() -> Path:
     return user_data_dir() / "history.db"
+
+
+def _read_only_uri(path: str) -> str:
+    # Python 3.11's pathname2url drops the UNC root of extended UNC paths.
+    if path.upper().startswith("\\\\?\\UNC\\"):
+        path = "\\\\" + path[8:]
+    if path.startswith("\\\\"):
+        # Keep SQLite's empty-authority UNC form across Python URL converters.
+        return "file:////" + quote(path[2:].replace("\\", "/"), safe="/") + "?mode=ro"
+    return "file:" + pathname2url(path) + "?mode=ro"
 
 
 def _archive_stamp() -> str:
@@ -151,10 +165,6 @@ class HistoryDB:
         # raises sqlite3.ProgrammingError (silently swallowed by
         # the callers' broad `except Exception`), so the entire
         # history is empty in real usage.
-        self._conn = sqlite3.connect(
-            str(self.path), check_same_thread=False
-        )
-        self._conn.row_factory = sqlite3.Row
         # Module-level write lock (see _WRITE_LOCK) — the Python
         # connection object is not thread-safe for concurrent write
         # attempts; the lock gives us deterministic queue + commit
@@ -164,11 +174,21 @@ class HistoryDB:
         # Open lock file while this object holds the app-instance lock
         # (see claim_instance_lock); None otherwise.
         self._instance_lock: Any = None
+        if self.path.exists():
+            # Closing a writable connection after NOTADB can delete a hot WAL
+            # without checkpointing it. Inspect existing files read-only first.
+            self._conn = sqlite3.connect(
+                _read_only_uri(str(self.path.resolve())),
+                uri=True, check_same_thread=False,
+            )
+            self._conn.row_factory = sqlite3.Row
+            try:
+                self._check_integrity_or_recover()
+            finally:
+                self.close()
+        self._conn = sqlite3.connect(str(self.path), check_same_thread=False)
+        self._conn.row_factory = sqlite3.Row
         self._setup_pragmas()
-        # Integrity check on open (audit D6) — a crash-corrupted DB
-        # is detected up front and renamed aside so the user gets
-        # a fresh-but-empty history instead of a launch crash.
-        self._check_integrity_or_recover()
         try:
             with self._conn:
                 self._conn.executescript(SCHEMA)
@@ -270,8 +290,9 @@ class HistoryDB:
 
     def _check_integrity_or_recover(self) -> None:
         """Run ``PRAGMA integrity_check``. On a non-``ok`` result, close the
-        connection, move the DB aside to ``history.db.corrupt.<timestamp>``
-        (see :func:`_unique_archive_path`), and recreate it fresh. The
+        read-only connection, archive the DB and its sidecars to
+        ``history.db.corrupt.<timestamp>`` (see :func:`_unique_archive_path`),
+        then recreate it fresh. The
         user loses history but the app launches; trade-off chosen over a
         launch crash.
 
@@ -325,58 +346,68 @@ class HistoryDB:
         self._recover_corrupt_db(result)
 
     def _recover_corrupt_db(self, reason: str) -> None:
-        """Move the corrupt DB (and its WAL/SHM sidecars) aside and reopen a
-        fresh one. Never raises — the goal is to always leave ``self._conn``
-        pointing at a usable, clean database so __init__ can build the schema.
+        """Archive the corrupt DB and sidecars before replacing any originals.
+
+        On failure raise DatabaseError; callers can disable history while its
+        original files or a complete durable archive remain available to repair.
         """
         logger.debug("history.db recovery starting (reason=%s)", reason)
+        if not self.claim_instance_lock() or self._instance_lock is None:
+            raise sqlite3.DatabaseError(
+                "Cannot preserve damaged history while another instance owns "
+                "it or its instance lock is unavailable."
+            )
         try:
             self._conn.close()
         except sqlite3.Error:
             pass
-        import os as _os
         # Never overwrite an earlier archive: a second corruption must not
         # cost the user the first damaged copy (it may still be salvageable).
         corrupt_path = _unique_archive_path(str(self.path))
-        moved_main = False
+        copied: list[str] = []
         try:
-            _os.replace(str(self.path), corrupt_path)
-            moved_main = True
-            logger.warning(
-                "history.db was corrupt (%s); moved aside to %s, starting "
-                "a fresh history.", reason, corrupt_path,
-            )
-        except OSError as e:
-            logger.error("Could not move corrupt history.db aside: %s", e)
-        # WAL mode was enabled before the integrity check, so the
-        # ``-wal`` / ``-shm`` sidecars exist next to the corrupt DB. If
-        # they are left behind, SQLite may try to recover/checkpoint them
-        # into the fresh DB (salt/checksum mismatch can re-introduce
-        # malformed frames). Move them aside with the corrupt main file,
-        # or delete them when that is not possible.
-        for ext in ("-wal", "-shm"):
-            side = str(self.path) + ext
-            try:
-                if moved_main:
-                    _os.replace(side, corrupt_path + ext)
-                else:
-                    _os.unlink(side)
-            except OSError:
+            from ._checkpoint import _strict_sync
+
+            for ext in ("", "-wal", "-shm"):
                 try:
-                    _os.unlink(side)
+                    source = open(str(self.path) + ext, "rb")
+                except FileNotFoundError:
+                    if ext:
+                        continue
+                    raise
+                destination = corrupt_path + ext
+                with source:
+                    with open(destination, "xb") as archive:
+                        copied.append(destination)
+                        shutil.copyfileobj(source, archive)
+                        _strict_sync(archive)
+        except OSError as e:
+            for destination in copied:
+                try:
+                    os.unlink(destination)
                 except OSError:
-                    pass
-        # If the main DB could NOT be moved aside (e.g. a Windows file
-        # lock on os.replace), do not leave the still-corrupt file in
-        # place: reopening it would hand every later statement "file is
-        # not a database". Delete it in place so a clean DB is created.
-        if not moved_main:
+                    logger.exception("Could not remove incomplete history archive %s", destination)
+            raise sqlite3.DatabaseError(
+                "Could not preserve damaged history; its original files "
+                "have been left in place."
+            ) from e
+        # Every file is now archived durably. Keep the original main until its
+        # sidecars are gone so a failed isolation cannot attach an old WAL to a
+        # newly created database. The archived group is never removed here.
+        for ext in ("-wal", "-shm", ""):
             try:
-                _os.unlink(str(self.path))
+                os.unlink(str(self.path) + ext)
+            except FileNotFoundError:
+                continue
             except OSError as e:
-                logger.error(
-                    "Could not delete corrupt history.db in place: %s", e
-                )
+                raise sqlite3.DatabaseError(
+                    f"History is preserved at {corrupt_path}, but its original "
+                    "files could not be isolated safely."
+                ) from e
+        logger.warning(
+            "history.db was corrupt (%s); archived to %s, starting a fresh history.",
+            reason, corrupt_path,
+        )
         # Reopen fresh.
         self._conn = sqlite3.connect(
             str(self.path), check_same_thread=False
