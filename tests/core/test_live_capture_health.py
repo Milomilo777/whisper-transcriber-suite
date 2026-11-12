@@ -378,10 +378,16 @@ def test_kept_recording_survives_and_is_returned(tmp_path):
 def test_recording_is_not_touched_while_capture_still_runs(tmp_path):
     s = _session_with_files(tmp_path, keep=False)
     s.defer_s = 0.3
-    s._recorder = types.SimpleNamespace(is_running=lambda: True, last_error=None)  # type: ignore[assignment]
-    assert s.finish_recording() == ""
-    time.sleep(0.8)  # past the deferral: the thread never ended, so keep
-    assert os.path.isfile(s.recording_path), "deleted under a live capture thread"
+    running = {"value": True}
+    s._recorder = types.SimpleNamespace(  # type: ignore[assignment]
+        is_running=lambda: running["value"], last_error=None)
+    try:
+        assert s.finish_recording() == ""
+        time.sleep(0.8)  # past the deferral: the thread never ended, so keep
+        assert os.path.isfile(s.recording_path), "deleted under a live capture thread"
+    finally:
+        running["value"] = False
+        assert _wait(lambda: not os.path.exists(s.work_dir))
 
 
 def test_cleanup_waits_for_a_slow_capture_thread_then_runs(tmp_path):

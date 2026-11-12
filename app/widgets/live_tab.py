@@ -1216,12 +1216,16 @@ def _protect_saved(app: Any, session: Any) -> None:
         protect(path)
 
 
-def _release_one(app: Any, session: Any) -> None:
+def _release_one(app: Any, session: Any, *, discard: bool = False) -> bool:
+    if not discard and getattr(session, "unreported_text_events", 0):
+        app.log(f"Live: text that could not reach the window remains in {session.work_dir} (live-journal.txt; the session audio is next to it)")
+        return False
     _protect_saved(app, session)
     session.transcript_saved = True
     kept = _finish_recording(session, bool(getattr(session, "keep_recording", False)))
     if kept:
         app.log(f"Live: the session audio was kept at {kept}{_incomplete_note(session)}")
+    return True
 
 
 def _release_saved(app: Any) -> None:
@@ -1232,25 +1236,25 @@ def _release_saved(app: Any) -> None:
     saved = int(getattr(app, "_live_saved_count", 0) or 0)
     still: list[tuple[Any, int]] = []
     for session, mark in held:
-        if mark <= saved:
-            _release_one(app, session)
-        else:
+        if mark > saved or not _release_one(app, session):
             still.append((session, mark))
     app._live_held = still
 
 
-def _release_all(app: Any) -> None:
-    """The user chose not to save: let go of every held session."""
+def _release_all(app: Any, *, discard: bool = True) -> None:
+    """Release held sessions, retaining unseen text unless explicitly discarded."""
     held = getattr(app, "_live_held", None) or []
-    app._live_held = []
-    for session, _mark in held:
-        _release_one(app, session)
+    app._live_held = [
+        (session, mark) for session, mark in held
+        if not _release_one(app, session, discard=discard)
+    ]
 
 
 def _stopped(app: Any, kept: str = "") -> None:
     session = app.live_session
     # Drain whatever the tail produced before dropping the session.
-    _poll_once(app)
+    while _poll_once(app):
+        pass
     if session is not None:
         _hold_session(app, session)
     app.live_session = None
@@ -1321,14 +1325,18 @@ def stop_live_session(app: Any) -> None:
         forced = bool(unsaved and not saved and not keep)
         keep = keep or forced
         text_safe = not (unsaved and not saved)
+    discard = bool(getattr(app, "_live_exit_discard", False))
     if text_safe:
-        _release_all(app)
+        _release_all(app, discard=discard)
     if session is not None:
         _protect_saved(app, session)
         # Still transcribing (a backlog at exit): a later sentence is in the
         # journal but not in the file just saved, so nothing may be released.
         session.transcript_saved = text_safe and (
-            settled or bool(getattr(app, "_live_exit_discard", False)))
+            settled or discard) and (
+                discard or not getattr(session, "unreported_text_events", 0))
+        if not discard and getattr(session, "unreported_text_events", 0):
+            app.log(f"Live: text that could not reach the window remains in {session.work_dir} (live-journal.txt; the session audio is next to it)")
         if not settled:
             try:
                 app.log(f"Live: the session was still transcribing at exit; its text and audio stay in {session.work_dir}")
@@ -1446,27 +1454,33 @@ def _fail_live(app: Any, reason: str) -> None:
     ))
 
 
-def _poll_once(app: Any) -> None:
+def _poll_once(app: Any) -> int:
     session = app.live_session
     if session is None:
-        return
+        return 0
     try:
         events = session.drain_events()
     except Exception:  # noqa: BLE001
         logger.exception("Draining live events failed")
-        return
+        return 0
     for ev in events:
-        if ev.kind == "text":
-            _append_line(app, ev.text)
-        elif ev.kind == "warning":
-            app.live_status_var.set(ev.detail)
-            app.log(f"Live: {ev.detail}")
-        elif ev.kind == "error":
-            app.log(f"Live error: {ev.detail}")
-        elif ev.kind == "fatal":
-            _fail_live(app, _("Transcription keeps failing: {error}", error=ev.detail))
-        elif ev.kind == "state" and ev.detail == "started":
-            app.live_status_var.set(_("Listening…"))
+        try:
+            if ev.kind == "text":
+                _append_line(app, ev.text)
+                acknowledge = getattr(session, "text_reported", None)
+                if callable(acknowledge):
+                    acknowledge()
+            elif ev.kind == "warning":
+                app.live_status_var.set(ev.detail)
+                app.log(f"Live: {ev.detail}")
+            elif ev.kind == "error":
+                app.log(f"Live error: {ev.detail}")
+            elif ev.kind == "fatal":
+                _fail_live(app, _("Transcription keeps failing: {error}", error=ev.detail))
+            elif ev.kind == "state" and ev.detail == "started":
+                app.live_status_var.set(_("Listening…"))
+        except Exception:  # noqa: BLE001 - one status callback must not lose later text
+            logger.exception("Could not dispatch live event %s", ev.kind)
     if getattr(app, "_live_draining", False):
         try:
             left = int(session.pending_chunks())
@@ -1478,6 +1492,7 @@ def _poll_once(app: Any) -> None:
                 "Microphone off — transcribing {n} remaining parts… (Discard rest to skip)",
                 left,
             ))
+    return len(events)
 
 
 def _append_line(app: Any, text: str) -> None:

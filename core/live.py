@@ -461,6 +461,8 @@ class LiveSession:
     _fatal_emitted: bool = False
     #: Text events produced so far (each was journaled before it was shown).
     _text_events: int = 0
+    #: Text events the UI acknowledged after appending their words.
+    _delivered_text_events: int = 0
     #: Chunks whose words never reached the transcript: failed (write or
     #: transcription) or thrown away by Discard rest. The session audio is
     #: then the only copy of those words and is kept.
@@ -924,6 +926,17 @@ class LiveSession:
         return self._text_events > 0 and not self.transcript_saved
 
     @property
+    def unreported_text_events(self) -> int:
+        """Finished sentences not collected by the UI; the journal holds them."""
+        return max(0, self._text_events - self._delivered_text_events)
+
+    def text_reported(self) -> None:
+        """Acknowledge one text event only after its words reach the UI's list."""
+        self._delivered_text_events = min(
+            self._text_events, self._delivered_text_events + 1,
+        )
+
+    @property
     def incomplete_reason(self) -> str:
         """Why the transcript lacks words that the session audio still has.
 
@@ -1002,9 +1015,10 @@ class LiveSession:
         out: list[LiveEvent] = []
         for _ in range(max(0, limit)):
             try:
-                out.append(self.events.get_nowait())
+                event = self.events.get_nowait()
             except queue.Empty:
                 break
+            out.append(event)
         return out
 
 

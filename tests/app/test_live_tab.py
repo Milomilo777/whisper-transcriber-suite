@@ -716,11 +716,17 @@ def test_a_fatal_event_stops_the_session_once(built, root, monkeypatch):
                         lambda *a, **kw: shown.append(kw.get("detail", "")))
     events = [LiveEvent(kind="fatal", detail="worker gone"),
               LiveEvent(kind="fatal", detail="worker gone")]
-    session = _health_session(drain_events=lambda limit=64: list(events))
+    def drain_events(limit=64):
+        batch = events[:limit]
+        del events[:limit]
+        return batch
+
+    session = _health_session(drain_events=drain_events)
     _listening(built, session)
 
     live_tab._poll(built)
     _drain_posted(built, root, lambda: built.live_session is None)
+    assert events == []
     assert len(shown) == 1 and "worker gone" in shown[0]
     assert session.calls.count("capture") == 1
 
