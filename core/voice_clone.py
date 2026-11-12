@@ -309,7 +309,7 @@ def trim_reference_sample(
     path: str, output_path: str, max_seconds: float = MAX_REFERENCE_SECONDS,
 ) -> None:
     """Cut *path* down to its first *max_seconds* seconds via the bundled
-    ffmpeg, writing the result to *output_path*.
+    ffmpeg, writing decoded PCM audio to a WAV *output_path*.
 
     Used instead of relying on OmniVoice's own undocumented internal
     truncation for an over-length reference clip: this makes the cut
@@ -331,7 +331,9 @@ def trim_reference_sample(
         dir=os.path.dirname(output_path) or None,
     )
     os.close(fd)
-    cmd = [ffmpeg, "-y", "-v", "error", "-i", path, "-t", str(max_seconds), "-c", "copy", tmp_out]
+    # Decode reference audio: stream-copy retains whole packets past the limit
+    # and can put compressed audio inside the .wav that the tab expects.
+    cmd = [ffmpeg, "-y", "-v", "error", "-i", path, "-t", str(max_seconds), "-c:a", "pcm_s16le", tmp_out]
     kwargs: dict = {
         **_UTF8, "stdin": subprocess.DEVNULL, "capture_output": True, "text": True, "timeout": 60,
     }
