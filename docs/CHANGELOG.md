@@ -18,6 +18,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - History recovery preserves committed WAL transactions alongside the damaged database. It checks existing files read-only and archives every file before removing originals; failed archiving leaves the originals available for repair.
 - Subtitle conversions use separate temporary files, preventing concurrent conversions from interfering with each other and allowing long output filenames. Failed staging never removes another writer's file.
 - Stopping live transcription drains all queued text before releasing the session. If the display queue dropped finished sentences, saving visible text keeps the journal and session audio for recovery until they are explicitly discarded.
+- Saving a live transcript publishes a complete temporary file before replacing an earlier save. Write, close, sync or replacement errors keep the previous transcript and the session's recovery files intact.
 - Voice-reference validation rejects duration-bearing files with no audio track, including video content using an audio filename.
 - Saving generated speech preserves an earlier destination file if copying or publishing the new WAV fails.
 - Server cleanup verifies archived transcript contents before removing the original. Failed archive copies preserve the previous output and the complete source for retry.

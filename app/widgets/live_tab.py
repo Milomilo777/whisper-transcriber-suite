@@ -23,6 +23,7 @@ import os
 import sys
 import time
 import tkinter as tk
+import uuid
 from tkinter import filedialog, ttk
 from typing import Any, Callable
 
@@ -1536,6 +1537,50 @@ def has_unsaved_transcript(app: Any) -> bool:
     )
 
 
+def _save_text_atomically(path: str, text: str) -> None:
+    """Publish the complete text without truncating an earlier saved file."""
+    staged = os.path.join(
+        os.path.dirname(os.path.abspath(path)), f".live-{uuid.uuid4().hex}.part",
+    )
+    created = False
+    try:
+        from core._checkpoint import _strict_sync
+
+        with open(staged, "x", encoding="utf-8") as fp:
+            created = True
+            fp.write(text)
+            _strict_sync(fp)
+        os.replace(staged, path)
+        created = False
+    finally:
+        if created:
+            try:
+                os.unlink(staged)
+            except OSError:
+                logger.warning("Could not remove live transcript staging file %s", staged)
+
+
+def _session_aliases(app: Any, path: str) -> list[tuple[Any, str]]:
+    """Remember session files aliased by the target before replacement breaks the link."""
+    sessions = [getattr(app, "live_session", None)]
+    sessions.extend(session for session, _mark in getattr(app, "_live_held", []) or [])
+    aliases = []
+    for session in sessions:
+        if not callable(getattr(session, "protect_path", None)):
+            continue
+        for artifact in (
+            getattr(session, "journal_path", ""), getattr(session, "recording_path", ""),
+        ):
+            if not artifact:
+                continue
+            try:
+                if os.path.samefile(path, artifact):
+                    aliases.append((session, artifact))
+            except OSError:
+                pass
+    return aliases
+
+
 def _save(app: Any) -> bool:
     """Ask for a file and save the transcript. True once it is on disk."""
     body = _transcript_text(app)
@@ -1554,13 +1599,15 @@ def _save(app: Any) -> bool:
     )
     if not path:
         return False
+    aliases = _session_aliases(app, path)
     try:
-        with open(path, "w", encoding="utf-8") as fp:
-            fp.write(body + "\n")
+        _save_text_atomically(path, body + "\n")
     except OSError as e:
         show_error(app, _("Could not save the transcript"),
                    _("Writing {file} failed.", file=os.path.basename(path)), detail=str(e))
         return False
+    for session, artifact in aliases:
+        session.protect_path(artifact)
     app._live_saved_count = count
     _note_saved_path(app, path)
     app.log(f"Live transcript saved to {path}")
