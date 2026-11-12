@@ -924,3 +924,60 @@ def test_continued_job_without_a_speed_figure_offers_continue_not_measure(root, 
     assert _packed(app.vc_confirm_start_btn) and not _packed(app.vc_confirm_measure_btn)
     assert str(app.vc_confirm_start_btn.cget("text")) == "Continue the unfinished job"
     app.vc_confirm_cancel_btn.invoke()
+
+
+# Persian model advice is informational: opening the tab never fetches models.
+@pytest.mark.parametrize("stored, shown", [("Persian", "Persian"), ("Persian", "Farsi translated")])
+def test_persian_voice_recommendation_follows_stored_language(root, fakes, monkeypatch, stored, shown):
+    monkeypatch.setattr(vct, "_language_labels", lambda: {"": "Auto-detect", stored: shown, "English": "English"})
+    app = _build(root, fakes)
+    assert not app.vc_recommendation_frame.winfo_manager()
+    selected = app.vc_engine_value_var.get()
+    app.vc_lang_var.set(shown)
+    root.update_idletasks()
+    assert app.vc_recommendation_frame.winfo_manager() == "grid"
+    assert "First choice for Persian: Chatterbox Farsi" in app.vc_recommendation_title.cget("text")
+    assert "Non-commercial" in app.vc_recommendation_details.cget("text")
+    assert "Hugging Face" in app.vc_recommendation_details.cget("text")
+    assert "watermark" in app.vc_recommendation_details.cget("text")
+    assert "NVIDIA" in app.vc_recommendation_details.cget("text")
+    assert "CPU support is unverified" in app.vc_recommendation_details.cget("text")
+    assert "Powered by OncillaAI Chatterbox Farsi" in app.vc_recommendation_details.cget("text")
+    assert "Generate uses the engine selected above" in app.vc_recommendation_details.cget("text")
+    assert app.vc_engine_value_var.get() == selected
+    assert fakes["kokoro"] == [] and fakes["generate"] == []
+    app.vc_lang_var.set("English")
+    assert not app.vc_recommendation_frame.winfo_manager()
+    app.vc_lang_value_var.set("")
+    assert not app.vc_recommendation_frame.winfo_manager()
+
+
+def test_persian_recommendation_link_requires_explicit_click(root, fakes, monkeypatch):
+    import webbrowser
+    opened = []
+    monkeypatch.setattr(webbrowser, "open", lambda url: opened.append(url))
+    app = _build(root, fakes)
+    app.vc_lang_value_var.set("Persian")
+    assert opened == []
+    app.vc_recommendation_link.invoke()
+    assert opened == ["https://huggingface.co/mehdi-hf/chatterbox-farsi"]
+    assert fakes["kokoro"] == [] and fakes["generate"] == []
+
+
+
+def test_persian_recommendation_fits_visible_window_without_stealing_focus(root, fakes):
+    app = _build(root, fakes)
+    root.geometry("1000x720")
+    root.deiconify()
+    app.vc_text.focus_force()
+    root.update()
+    app.vc_lang_value_var.set("Persian")
+    root.update()
+    assert app.vc_recommendation_frame.winfo_viewable()
+    assert root.focus_get() is app.vc_text
+    for widget in (app.vc_recommendation_title, app.vc_recommendation_details,
+                   app.vc_recommendation_link, app.vc_text, app.vc_generate_btn):
+        assert widget.winfo_viewable()
+        assert widget.winfo_rooty() >= root.winfo_rooty()
+        assert widget.winfo_rooty() + widget.winfo_height() <= root.winfo_rooty() + root.winfo_height()
+    assert app.vc_text.winfo_height() >= 50

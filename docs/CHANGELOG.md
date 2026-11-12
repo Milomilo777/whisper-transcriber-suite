@@ -7,6 +7,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 ### Added
 
 - Show a one-time usage-statistics disclosure for new and upgraded profiles before automatic reporting starts. The quiet bar preserves the existing choice, offers a direct off button and keeps reporting paused when its state cannot be saved.
+- Selecting Persian for voice generation shows Chatterbox Farsi as the first recommendation, with its non-commercial license, hardware caveats and model-page link. It remains an external recommendation and does not change the selected generation engine.
+
 - Added a separate Windows Store payload and MSIX staging pipeline with channel-specific update guidance and writable application data. Retained download tools and copied package assets are validated before staging is published.
 
 ### Documentation
