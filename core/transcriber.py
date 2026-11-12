@@ -1030,8 +1030,8 @@ def _segments_for_writer(
     for segment in bounded:
         item = quantize(segment, interval=fmt_name in intervals)
         if isinstance(item.get("words"), list):
-            # VTT renders word starts only; ASS already gives a zero-length
-            # word its minimum karaoke tick. Neither needs a new fatal rule.
+            # VTT renders word starts only; ASS fits cumulative karaoke ticks
+            # inside its Dialogue. Zero-length words retain their text.
             item["words"] = [quantize(word, interval=False)
                              for word in item["words"]]
         result.append(item)

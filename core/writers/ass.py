@@ -144,24 +144,27 @@ def _karaoke_payload(seg: dict) -> str:
         return escape_ass_text(normalize_text(seg.get("text", "")))
 
     seg_start = coerce_seconds(seg.get("start"))
+    seg_end = max(seg_start, coerce_seconds(seg.get("end"), seg_start))
+    cursor_cs = round(seg_start * 100)
+    end_cs = round(seg_end * 100)
 
     parts: list[str] = []
-    cursor = seg_start
     emitted = False
     for w, token, space_before in tokens:
-        start = _coerce(w.get("start"), cursor)
+        start = _coerce(w.get("start"), cursor_cs / 100)
         end = _coerce(w.get("end"), start)
         if end < start:
             end = start
-        # Silence before this word belongs to this word's highlight.
-        lead_cs = max(0, int(round((start - cursor) * 100)))
-        dur_cs = max(1, int(round((end - start) * 100)))
+        # Quantize cumulative endpoints on the same grid as the Dialogue.
+        # Zero ticks retain short/overlapping words without extending the cue.
+        next_cs = min(end_cs, max(cursor_cs, round(min(end, seg_end) * 100)))
+        dur_cs = next_cs - cursor_cs
         # Separate words with a real space BEFORE the tag, so the
         # highlight boundary lands between words rather than inside one;
         # only where the text has a space (CJK words carry none).
         sep = " " if emitted and space_before else ""
-        parts.append(f"{sep}{{\\k{lead_cs + dur_cs}}}{escape_ass_text(token)}")
-        cursor = end
+        parts.append(f"{sep}{{\\k{dur_cs}}}{escape_ass_text(token)}")
+        cursor_cs = next_cs
         emitted = True
 
     if not emitted:

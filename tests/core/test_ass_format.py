@@ -334,3 +334,64 @@ def test_convert_ass_to_srt(tmp_path):
     body = open(out, encoding="utf-8").read()
     assert "-->" in body
     assert "Hello world" in body
+
+
+
+def _assert_karaoke_inside_dialogue(segment):
+    import copy
+    import re
+
+    before = copy.deepcopy(segment)
+    text = get_writer("ass")([segment], "")
+    line = next(line for line in text.splitlines() if line.startswith("Dialogue:"))
+    fields = line.split(",", 9)
+
+    def ticks(clock):
+        hour, minute, rest = clock.split(":")
+        second, cs = rest.split(".")
+        return ((int(hour) * 60 + int(minute)) * 60 + int(second)) * 100 + int(cs)
+
+    durations = [int(value) for value in re.findall(r"\{\\k(\d+)\}", fields[9])]
+    assert len(durations) == len(segment["words"])
+    assert sum(durations) <= ticks(fields[2]) - ticks(fields[1])
+    assert re.sub(r"\{\\k\d+\}", "", fields[9]) == segment["text"]
+    assert segment == before
+
+
+def test_zero_duration_leading_word_does_not_extend_actual_gpu_cue():
+    # Sanitized times from a real 600-second decode; the leading word is empty in time.
+    _assert_karaoke_inside_dialogue({
+        "start": 598.24, "end": 598.34, "text": "a b",
+        "words": [{"word": "a", "start": 598.24, "end": 598.24},
+                  {"word": "b", "start": 598.24, "end": 598.34}],
+    })
+
+
+@pytest.mark.parametrize("offset", [0, 12.004, 598.24])
+@pytest.mark.parametrize("count", [2, 3, 100])
+@pytest.mark.parametrize("duration", [.018, .03, 1.0])
+def test_karaoke_rounding_retains_every_word_inside_serialized_cue(offset, count, duration):
+    words = [{"word": f"w{i}", "start": offset + duration * i / count,
+              "end": offset + duration * (i + 1) / count} for i in range(count)]
+    _assert_karaoke_inside_dialogue({
+        "start": offset, "end": offset + duration,
+        "text": " ".join(word["word"] for word in words), "words": words,
+    })
+
+
+def test_karaoke_words_clipped_at_fractional_media_eof_keep_text():
+    from core.transcriber import _segments_for_writer
+
+    words = [{"word": letter, "start": .006 * i, "end": .006 * (i + 1)}
+             for i, letter in enumerate("abc")]
+    segment = {"start": 0, "end": .018, "text": "a b c", "words": words}
+    bounded = _segments_for_writer([segment], .018, "ass")
+    _assert_karaoke_inside_dialogue(bounded[0])
+
+
+def test_overlapping_word_intervals_do_not_accumulate_beyond_cue():
+    _assert_karaoke_inside_dialogue({
+        "start": 0, "end": 1, "text": "a b",
+        "words": [{"word": "a", "start": 0, "end": .8},
+                  {"word": "b", "start": .2, "end": 1}],
+    })
