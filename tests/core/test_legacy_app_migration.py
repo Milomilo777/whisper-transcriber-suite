@@ -2,11 +2,13 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 from pathlib import Path
 
 import pytest
 
 import core.config as cfg
+from core.history import HistoryDB
 
 
 @pytest.fixture
@@ -34,8 +36,10 @@ def _model(hub: Path, name: str = "models--Systran--faster-whisper-large-v3") ->
 def test_fresh_profile_copies_settings_and_reuses_old_hub(dirs):
     new, old = dirs
     (old["config"] / "config.json").write_text(json.dumps({"theme": "dark"}), "utf-8")
-    (old["data"] / "history.db").write_bytes(b"db")
-    (old["data"] / "history.db-wal").write_bytes(b"wal")
+    # A real SQLite database verifies semantic preservation; arbitrary "db"
+    # bytes must not be accepted as a successfully migrated history.
+    with HistoryDB(old["data"] / "history.db") as database:
+        database.insert_transcription("legacy.wav")
     _model(old["cache"] / "models")
     (old["cache"] / "llm").mkdir()
     (old["cache"] / "llm" / "m.gguf").write_bytes(b"g")
@@ -43,8 +47,8 @@ def test_fresh_profile_copies_settings_and_reuses_old_hub(dirs):
     config = cfg.load_config(fetch_online=False)
 
     assert config["theme"] == "dark"
-    assert (new["data"] / "history.db").read_bytes() == b"db"
-    assert (new["data"] / "history.db-wal").read_bytes() == b"wal"
+    with sqlite3.connect(new["data"] / "history.db") as connection:
+        assert connection.execute("SELECT file_path FROM transcriptions").fetchall() == [("legacy.wav",)]
     assert config["hub_folder"] == str(old["cache"] / "models")
     assert (new["cache"] / "llm" / "m.gguf").is_file()
     assert not (old["cache"] / "llm").exists()

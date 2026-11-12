@@ -10,15 +10,17 @@ small writes (insert / mark_finished / mark_interrupted) are fast enough.
 from __future__ import annotations
 
 import errno
+import heapq
 import json
 import logging
 import os
 import shutil
 import sqlite3
 import sys
+import tempfile
 import threading
 import time
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 from pathlib import Path
 from typing import Any, Iterable
 from urllib.parse import quote
@@ -77,6 +79,107 @@ CREATE INDEX IF NOT EXISTS idx_transcriptions_status ON transcriptions(status);
 
 def default_db_path() -> Path:
     return user_data_dir() / "history.db"
+
+
+def import_legacy_history(source: Path, destination: Path, source_key: str) -> None:
+    """Merge one legacy snapshot and its retry receipt in ONE transaction.
+
+    Never back up directly over the destination: it may already contain new
+    jobs. A read-only source connection includes committed WAL rows without
+    copying unrelated generations of the database and its sidecars.
+    """
+    if destination.exists() and os.path.samefile(source, destination):
+        raise ValueError("Legacy history source and destination are the same file")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix=".history-migration-", dir=destination.parent) as folder:
+        snapshot_path = Path(folder) / "snapshot.db"
+        deadline = time.monotonic() + 5
+
+        def check_deadline(_status: int, _remaining: int, _total: int) -> None:
+            if time.monotonic() >= deadline:
+                raise TimeoutError("Legacy history snapshot timed out")
+
+        with closing(sqlite3.connect(_read_only_uri(str(source)), uri=True)) as original:
+            with closing(sqlite3.connect(snapshot_path)) as snapshot:
+                original.backup(snapshot, pages=64, progress=check_deadline, sleep=0.02)
+                if snapshot.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
+                    raise sqlite3.DatabaseError("Legacy history snapshot is damaged")
+                _merge_legacy_history(snapshot, destination, source_key)
+
+
+def _free_legacy_id(snapshot: sqlite3.Connection, connection: sqlite3.Connection, table: str) -> int:
+    """Find a positive gap when the source already uses SQLite's largest ID."""
+    candidate = 1
+    for value in heapq.merge(
+        (row[0] for row in snapshot.execute(f'SELECT id FROM "{table}" ORDER BY id')),
+        (row[0] for row in connection.execute(f'SELECT id FROM "{table}" ORDER BY id')),
+    ):
+        if value < candidate:
+            continue
+        if value > candidate:
+            return candidate
+        candidate += 1
+    if candidate > (1 << 63) - 1:
+        raise ValueError("No available history IDs; keeping the source for retry")
+    return candidate
+
+
+def _merge_legacy_history(snapshot: sqlite3.Connection, destination: Path, source_key: str) -> None:
+    if not snapshot.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name IN ('downloads', 'transcriptions')"
+    ).fetchone():
+        raise ValueError("Legacy database has no history tables; keeping the source for retry")
+    with HistoryDB(destination) as database:
+        # The receipt must not outlive its imported rows after power failure.
+        database._conn.execute("PRAGMA synchronous=FULL")
+        with database._txn() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            connection.execute(
+                "CREATE TABLE IF NOT EXISTS legacy_history_imports (source TEXT PRIMARY KEY)"
+            )
+            if connection.execute(
+                "SELECT 1 FROM legacy_history_imports WHERE source=?", (source_key,),
+            ).fetchone():
+                return
+            for table in ("downloads", "transcriptions"):
+                schema = snapshot.execute(f'PRAGMA table_info("{table}")').fetchall()
+                columns = [row[1] for row in schema]
+                if not columns:
+                    continue
+                target_columns = {
+                    row[1] for row in connection.execute(f'PRAGMA table_info("{table}")')
+                }
+                id_columns = [row for row in schema if row[1] == "id"]
+                if not id_columns or str(id_columns[0][2]).upper() != "INTEGER" or (
+                    id_columns[0][5] != 1 or set(columns) - target_columns
+                    or any(row[5] and row[1] != "id" for row in schema)
+                    or snapshot.execute(
+                        f'SELECT 1 FROM "{table}" WHERE typeof(id) != \'integer\' LIMIT 1'
+                    ).fetchone() is not None
+                ):
+                    raise ValueError(f"Unsupported legacy {table} schema; keeping the source for retry")
+                names = ','.join('"' + name.replace('"', '""') + '"' for name in columns)
+                id_index = columns.index("id")
+                source_max = snapshot.execute(f'SELECT MAX(id) FROM "{table}"').fetchone()[0] or 0
+                target_max = connection.execute(f'SELECT MAX(id) FROM "{table}"').fetchone()[0] or 0
+                next_id = max(source_max, target_max, 0) + 1
+                for row in snapshot.execute(f'SELECT {names} FROM "{table}" ORDER BY id'):
+                    if connection.execute(
+                        f'SELECT 1 FROM "{table}" WHERE id=?', (row[id_index],),
+                    ).fetchone():
+                        replacement_id = next_id if next_id < (1 << 63) else _free_legacy_id(
+                            snapshot, connection, table,
+                        )
+                        values = tuple(replacement_id if i == id_index else value
+                                       for i, value in enumerate(row))
+                        next_id += 1
+                    else:
+                        values = row
+                    marks = ','.join('?' for _ in values)
+                    connection.execute(
+                        f'INSERT INTO "{table}" ({names}) VALUES ({marks})', values,
+                    )
+            connection.execute("INSERT INTO legacy_history_imports VALUES (?)", (source_key,))
 
 
 def _read_only_uri(path: str) -> str:

@@ -11,6 +11,7 @@ import math
 import os
 import re
 import shutil
+import sqlite3
 import sys
 import tempfile
 import threading
@@ -902,14 +903,34 @@ def _set_local_hub_folder(value: str) -> None:
     update_config(lambda local: local.__setitem__("hub_folder", value))
 
 
+def _legacy_history_intent(legacy: dict[str, Path], new_config: Path) -> tuple[Path, dict[str, Any]] | None:
+    """Only a migration begun before config creation may import old history."""
+    marker = new_config.with_name("legacy-history-migration.json")
+    source = legacy["data"] / "history.db"
+    source_key = os.path.normcase(os.path.abspath(source))
+    if marker.exists():
+        intent = json.loads(marker.read_text(encoding="utf-8"))
+        if not isinstance(intent, dict) or intent.get("version") != 1 or (
+            intent.get("source") != source_key or type(intent.get("complete")) is not bool
+        ):
+            raise ValueError("Invalid legacy history migration receipt; not importing")
+        return marker, intent
+    if new_config.exists() or not source.is_file():
+        return None
+    intent = {"version": 1, "source": source_key, "complete": False}
+    _write_disk_dict(str(marker), intent)
+    return marker, intent
+
+
 def migrate_legacy_app_data() -> None:
     """Carry data over from the pre-rebrand ``WhisperProject`` profile.
 
     Runs once per process from ``load_config``. Never deletes anything
     from the old profile, and every step is individually best-effort:
 
-    1. No new config.json yet -> copy config.json + history/hardware/search
-       files (same set as the installer's MigrateOldAppData).
+    1. No new config.json yet -> copy settings/hardware/search. Record history
+       migration intent first, then merge a consistent SQLite snapshot. An
+       interrupted import retries even after settings or new jobs were saved.
     2. Hub still at the new, model-less default while the old hub has
        models -> point ``hub_folder`` at the old hub (no multi-GB copy).
        Independent of step 1, so it also rescues a profile that a
@@ -929,29 +950,41 @@ def migrate_legacy_app_data() -> None:
 
     new_config = Path(config_path())
     legacy_config = legacy["config"] / "config.json"
-    if legacy_config.is_file() and not new_config.exists():
-        copies = [(legacy_config, new_config)] + [
-            (legacy["data"] / name, user_data_dir() / name)
-            for name in _LEGACY_DATA_FILES
-        ]
-        # SQLite sidecars hold not-yet-checkpointed rows.
-        for db in ("history.db", "search.db"):
-            for suffix in ("-wal", "-shm"):
-                copies.append(
-                    (legacy["data"] / (db + suffix), user_data_dir() / (db + suffix))
-                )
-        for src, dst in copies:
-            if not src.is_file() or dst.exists():
-                continue
-            try:
-                dst.parent.mkdir(parents=True, exist_ok=True)
-                if src == legacy_config:
-                    _copy_legacy_settings(src, dst)
-                else:
-                    shutil.copy2(src, dst)
-                logger.info("Migrated %s -> %s", src, dst)
-            except OSError as e:
-                logger.warning("Could not migrate %s: %s", src, e)
+    if legacy_config.is_file():
+        try:
+            with _SAVE_LOCK, _config_file_lock(str(new_config)):
+                history_intent = _legacy_history_intent(legacy, new_config)
+                if not new_config.exists():
+                    copies = [(legacy_config, new_config)] + [
+                        (legacy["data"] / name, user_data_dir() / name)
+                        for name in _LEGACY_DATA_FILES if name != "history.db"
+                    ]
+                    # History uses a SQLite snapshot; search remains rebuildable.
+                    for suffix in ("-wal", "-shm"):
+                        copies.append((legacy["data"] / ("search.db" + suffix),
+                                       user_data_dir() / ("search.db" + suffix)))
+                    for src, dst in copies:
+                        if not src.is_file() or dst.exists():
+                            continue
+                        try:
+                            dst.parent.mkdir(parents=True, exist_ok=True)
+                            if src == legacy_config:
+                                _copy_legacy_settings(src, dst)
+                            else:
+                                shutil.copy2(src, dst)
+                            logger.info("Migrated %s -> %s", src, dst)
+                        except OSError as e:
+                            logger.warning("Could not migrate %s: %s", src, e)
+                if history_intent is not None:
+                    marker, intent = history_intent
+                    if not intent["complete"]:
+                        from .history import import_legacy_history
+
+                        import_legacy_history(legacy["data"] / "history.db",
+                                              user_data_dir() / "history.db", intent["source"])
+                        _write_disk_dict(str(marker), {**intent, "complete": True})
+        except (OSError, ValueError, sqlite3.Error) as error:
+            logger.warning("Could not finish pre-rebrand history migration: %s", error)
 
     try:
         from .hub import default_hub_folder
@@ -1689,6 +1722,20 @@ def _write_disk_dict(path: str, data: dict[str, Any]) -> None:
     Raises ConfigSaveError when the file cannot be replaced; the temp file
     is removed on any failure. Call with ``_SAVE_LOCK`` held.
     """
+    if os.path.abspath(path) == os.path.abspath(config_path()) and not os.path.exists(path):
+        # A previous launch may have run out of space before recording intent.
+        # Even an explicit settings save must not make that look like a profile
+        # whose history transfer was already completed. Marker writes use a
+        # different path, so the intent's atomic publication cannot recurse.
+        try:
+            legacy = _legacy_app_dirs()
+            if legacy and (legacy["config"] / "config.json").is_file():
+                _legacy_history_intent(legacy, Path(path))
+        except (OSError, ValueError) as error:
+            raise ConfigSaveError(
+                getattr(error, "errno", 0) or 0,
+                f"Could not record pending legacy history; settings were not saved: {error}",
+            ) from error
     directory = os.path.dirname(path) or "."
     fd, tmp_path = tempfile.mkstemp(prefix=".config-", suffix=".tmp", dir=directory)
     try:
