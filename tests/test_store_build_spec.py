@@ -254,11 +254,15 @@ class StoreBuildTests(unittest.TestCase):
         keep_data = [(name, "fixture", "DATA") for name in (
             "docx/templates/default.docx", "docx/templates/default-settings.xml",
             "docx/templates/default-docx-template-old/keep.xml", "LICENSE", "THIRD_PARTY_NOTICES.md",
-            "core/writers/templates/document.docx")]
+            "core/writers/templates/document.docx", "bin/diarization/segmentation.onnx",
+            "bin/diarization/segmentation.int8.onnx", "bin/diarization/embedding.onnx",
+            "bin/diarization/segmentation.tar.bz2.metadata", "models/segmentation.tar.bz2")]
         unused_data = [(name, "fixture", "DATA") for name in (
             "docx/templates/default-docx-template/_rels/.rels",
             "docx/templates/default-docx-template/word/document.xml",
-            "docx\\templates\\default-docx-template\\[Content_Types].xml")]
+            "docx\\templates\\default-docx-template\\[Content_Types].xml",
+            "bin/diarization/segmentation.tar.bz2", "bin\\diarization\\segmentation.tar.bz2",
+            "BIN/DIARIZATION/SEGMENTATION.TAR.BZ2")]
         def analysis(*args, **kwargs):
             calls.append((args, kwargs))
             return SimpleNamespace(pure=[], scripts=[], binaries=[], datas=keep_data + unused_data)

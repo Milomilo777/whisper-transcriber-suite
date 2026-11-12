@@ -62,8 +62,11 @@ def Analysis(*args, **kwargs):
     # template is unused there and contains MSIX-reserved OPC relationship paths.
     # Filter after Analysis because the built-in docx hook adds these data files.
     _unused_docx_source = "docx/templates/default-docx-template/"
+    # Diarization loads the extracted ONNX models, not this download cache.
+    _unused_diarization_download = "bin/diarization/segmentation.tar.bz2"
     result.datas[:] = [entry for entry in result.datas
-                      if not entry[0].replace("\\", "/").casefold().startswith(_unused_docx_source)]
+                      if not entry[0].replace("\\", "/").casefold().startswith(_unused_docx_source)
+                      and entry[0].replace("\\", "/").casefold() != _unused_diarization_download]
     return result
 
 
