@@ -182,9 +182,7 @@ class FormatService:
         # Read on the Tk thread; the lookup thread only uses the copy.
         cookie_setting = str(self.app.app_config.get("cookies_from_browser", "") or "").strip()
         # "" once this run found the browser's cookies unreadable (the download service notes it).
-        cookie_args = cookies_from_browser_args(
-            private_cookies_copy(usable_cookie_value(self.app, cookie_setting))
-        )
+        cookie_value = usable_cookie_value(self.app, cookie_setting)
 
         def _probe(extra: list[str]) -> subprocess.CompletedProcess[str]:
             # Resolved here, on the lookup thread, after any running update of
@@ -233,6 +231,7 @@ class FormatService:
 
         def run() -> None:
             try:
+                cookie_args = cookies_from_browser_args(private_cookies_copy(cookie_value))
                 # Same browser cookies the download itself uses: without
                 # them a login-walled link (Instagram, Facebook, age-gated
                 # YouTube) failed the lookup even with cookies configured.

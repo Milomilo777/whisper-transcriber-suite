@@ -132,17 +132,31 @@ def private_cookies_copy(value: str | None) -> str:
     raw = (value or "").strip()
     if not is_cookies_file(raw):
         return raw
+    tmp = None
     try:
         fd, tmp = tempfile.mkstemp(prefix="wts-cookies-", suffix=".txt")
         os.close(fd)
         shutil.copyfile(raw, tmp)
-    except OSError:
-        return raw
+    except OSError as error:
+        if tmp is not None:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                _COPIES.append(tmp)  # retry cleanup when the app exits
+        raise OSError(error.errno, _(
+            "Could not create a private cookies file; the original file was not used."
+        )) from error
     _COPIES.append(tmp)
-    while len(_COPIES) > _MAX_COPIES:
+    for old in _COPIES[:-_MAX_COPIES]:
         try:
-            os.unlink(_COPIES.pop(0))
+            os.unlink(old)
+        except FileNotFoundError:
+            pass
         except OSError:
+            continue  # a locked copy still needs the exit cleanup attempt
+        try:
+            _COPIES.remove(old)
+        except ValueError:  # another copy worker already removed it
             pass
     return tmp
 

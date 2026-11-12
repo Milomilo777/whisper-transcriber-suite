@@ -257,6 +257,7 @@
   "Could not check this computer: {error}": "Could not check this computer: {error}",
   "Could not convert that .otr file to SRT.": "Could not convert that .otr file to SRT.",
   "Could not copy the sample clip into your data folder.": "Could not copy the sample clip into your data folder.",
+  "Could not create a private cookies file; the original file was not used.": "Could not create a private cookies file; the original file was not used.",
   "Could not create the oTranscribe (.otr) file.": "Could not create the oTranscribe (.otr) file.",
   "Could not download the '{model}' model ({error}). The Transcribe tab's model ({main_model}) understands English only, so it cannot stand in for it. Check the internet connection and press Start again, or pick another model in the Model list.": "Could not download the '{model}' model ({error}). The Transcribe tab's model ({main_model}) understands English only, so it cannot stand in for it. Check the internet connection and press Start again, or pick another model in the Model list.",
   "Could not download the model": "Could not download the model",
