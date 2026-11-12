@@ -686,9 +686,8 @@ def _validate_and_add_sample(app: Any, path: str) -> None:
         if issue is not None and issue.too_long:
             from core.voice_clone import session_work_dir, trim_reference_sample
 
-            trimmed_path = os.path.join(
-                session_work_dir(), "trimmed_" + os.path.basename(path)
-            )
+            name = os.path.splitext(os.path.basename(path))[0]
+            trimmed_path = os.path.join(session_work_dir(), "trimmed_" + name + ".wav")
             try:
                 trim_reference_sample(path, trimmed_path)
                 use_path = trimmed_path
