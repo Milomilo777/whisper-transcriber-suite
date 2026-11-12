@@ -3,20 +3,20 @@
 Updated: 2026-11-12. Release target: 2.4.0.
 
 
-## Current CUDA recovery checkpoint
+## Current integrated source checkpoint
 
 VAD-disabled CUDA requests use sequential decoding on the selected GPU model,
 with the same loop-recovery decision for normal and resumed tasks. Empty clip
 ranges retain the decoded prefix and continue through the remaining audio;
 malformed clip arguments remain available for decoder validation.
 
-The combined source passed **14,207 tests, 75 skipped, zero failures**, plus
-260 focused routing, recovery and endpoint checks. The type gate reports
+The combined source passed **14,290 tests, 75 skipped, zero failures**. It
+includes format identity for API outputs, bounded ASS karaoke timing, and four
+native Tk preset tests covering explicit models, settings-only presets and
+failed saves. The type gate reports
 0 errors, 0 warnings and 0 informations; the documented docs check passes.
-Both source-review rounds are closed. Final committed-source GPU acceptance
+Both CUDA source-review rounds are closed. Final committed-source GPU acceptance
 remains pending. Earlier sections retain evidence for their named snapshots.
-
-post-candidate reliability fixes; release validation remains separate.
 
 ## Owner questions / release boundary
 
@@ -66,8 +66,8 @@ No tag or public release has been created.
 | REL-02 Error prioritization | Assessed; implementation held | Source-stream consistency reproduced with real codecs; preprocessing, retry and checkpoint compatibility still require implementation and validation |
 | REL-03 Weekly research | Partial; held | Selected primary-source corrections verified; remaining research and applicability checks are open |
 | REL-04 Gate discrepancy | Partial; held | Terminal-decoder fixture isolation committed; remaining host-sensitive failures are unresolved |
-| REL-05 Transcription endpoints | Implemented; verification pending | [Endpoint bounds](FIX_TRANSCRIPTION_ENDPOINT_BOUNDS.md); full gate and real long-file rerun pending |
-| REL-06 Recovery and settings | Implemented; joint verification pending | History and search tolerate malformed metadata; settings retain valid output formats; explicit preset models replace Accuracy intent; Linux updates stop after a failed pull |
+| REL-05 Transcription endpoints | Source gate passed; hardware follow-up pending | [Endpoint bounds](FIX_TRANSCRIPTION_ENDPOINT_BOUNDS.md); committed-source GPU acceptance remains open |
+| REL-06 Recovery and settings | Joint source gate passed; platform acceptance open | History and search tolerate malformed metadata; settings retain valid output formats; explicit preset models replace Accuracy intent; Linux updates stop after a failed pull |
 
 Output-cause and audio-slice-cause fixes are included in this development
 snapshot. Worker-exit recovery has independent approval for its exact
