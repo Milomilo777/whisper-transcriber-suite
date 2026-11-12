@@ -622,6 +622,13 @@ viewer:
   `llama-cpp-python` package, which the installers do not include (`pip install llama-cpp-python` in a source
   install).
 
+Completed bilingual translations are saved before the viewer reports them. Recovery ZIPs remain in
+`translation-recovery/` under the application's data folder; each contains `translation.srt` and source
+information in `metadata.json`. If the output folder cannot be written, the error shows the recovery copy's
+path. Use the bilingual subtitle action again to retry saving the same result without another translation
+request. Recovery copies remain until you remove them yourself; an interrupted write can leave an incomplete
+ZIP. If both locations fail, the result stays in memory while the viewer remains open.
+
 ## From your phone, the local network and the API
 
 ### A transcription page for your network

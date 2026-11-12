@@ -31,6 +31,7 @@ to any common audio/video extension that lives next to the JSON.
 """
 from __future__ import annotations
 
+import copy
 import json
 import logging
 import math
@@ -1520,6 +1521,9 @@ class TranscriptViewer(tk.Toplevel):
 
     def _set_ai_buttons_busy(self, busy: bool) -> None:
         self._ai_busy = busy
+        self._bilingual_busy_state = None
+        if busy:
+            self._bilingual_worker_state = None
         state = ["disabled"] if busy else ["!disabled"]
         for b in (
             self._ai_summarise_btn, self._ai_actionitems_btn, self._ai_ask_btn,
@@ -1641,8 +1645,55 @@ class TranscriptViewer(tk.Toplevel):
             lambda runner: _with_trim_note(runner, runner.translate(text, target_language=lang)),
         )
 
+    def _launch_bilingual_worker(self, work: Callable[[threading.Event], None], name: str) -> None:
+        from core._threads import safe_thread
+
+        state = threading.Event()
+        state.set()
+        self._bilingual_worker_state = state
+        self._bilingual_busy_state = state
+
+        def run() -> None:
+            try:
+                work(state)
+            finally:
+                state.clear()
+
+        try:
+            safe_thread(run, name=name)
+        except BaseException:
+            state.clear()
+            self._set_ai_buttons_busy(False)
+            raise
+
+    def _post_bilingual_result(
+        self, state: threading.Event, segments: list[dict[str, Any]],
+        translations: list[str] | None, lang: str, error: str | None,
+    ) -> None:
+        def deliver() -> None:
+            if getattr(self, "_bilingual_worker_state", None) is state:
+                self._finish_bilingual_translate(segments, translations, lang, error)
+
+        self._post_to_main(deliver)
+
     def _run_bilingual_translate(self) -> None:
-        if self._ai_busy:
+        active = getattr(self, "_bilingual_worker_state", None)
+        if self._ai_busy or (active is not None and active.is_set()):
+            return
+        pending = getattr(self, "_pending_bilingual_save", None)
+        if pending is not None:
+            from core.writers import bilingual_srt as _bsrt
+
+            self._set_ai_buttons_busy(True)
+
+            def _retry(state: threading.Event) -> None:
+                result = _bsrt.retry_save(pending)
+                self._pending_bilingual_save = result if result.saved_path is None else None
+                TranscriptViewer._post_bilingual_result(
+                    self, state, result.segments, result, result.language, None,
+                )
+
+            TranscriptViewer._launch_bilingual_worker(self, _retry, "ai-bilingual-save-retry")
             return
         if not self.segments:
             notify(self, _("This transcript has no segments to translate."), "warning")
@@ -1669,45 +1720,59 @@ class TranscriptViewer(tk.Toplevel):
             parent=self,
         ):
             return
-        segments_snap = [dict(s) for s in self.segments]
-        self._bilingual_cancel = threading.Event()
+        segments_snap = copy.deepcopy(self.segments)
+        source_json = self.json_path
+        media_path = self.media_path or ""
+        base, _ext = os.path.splitext(source_json)
+        target_path = f"{base}.bilingual.{_bilingual_lang_slug(lang)}.srt"
+        cancel_event = threading.Event()
+        self._bilingual_cancel = cancel_event
         self._set_ai_buttons_busy(True)
         self._ai_cancel_btn.pack(side="left", padx=(6, 0))
         self._ai_progress_var.set(_("Loading AI model…"))
 
-        def _progress(done: int, total: int) -> None:
-            self._post_to_main(
-                lambda: self._ai_progress_var.set(
-                    _("Translating {done}/{total}…", done=done, total=total))
-            )
+        def _progress(done: int, total: int, state: threading.Event) -> None:
+            def update() -> None:
+                if getattr(self, "_bilingual_worker_state", None) is state and not self._closing:
+                    self._ai_progress_var.set(_("Translating {done}/{total}…", done=done, total=total))
 
-        def _worker() -> None:
+            try:
+                self._post_to_main(update)
+            except Exception:  # noqa: BLE001 - UI progress must not discard generated text
+                logger.debug("Bilingual progress delivery failed", exc_info=True)
+
+        def _worker(state: threading.Event) -> None:
             try:
                 runner, err = self._get_llm_runner()
                 if runner is None:
-                    self._post_to_main(
-                        lambda: self._finish_bilingual_translate(
-                            segments_snap, None, lang, err
-                        )
+                    TranscriptViewer._post_bilingual_result(
+                        self, state, segments_snap, None, lang, err,
                     )
                     return
                 from core import llm as _llm
                 translations = _llm.translate_segments(
                     runner, segments_snap, target_language=lang,
-                    progress_cb=_progress, cancel_event=self._bilingual_cancel,
+                    progress_cb=lambda done, total: _progress(done, total, state), cancel_event=cancel_event,
                 )
+                if translations is not None and not cancel_event.is_set():
+                    from core.writers import bilingual_srt as _bsrt
+
+                    translations = _bsrt.save_result(
+                        segments_snap, translations, source_json=source_json,
+                        language=lang, target=target_path, media_path=media_path,
+                    )
+                    # Plain Python state, not a Tk call: failed UI dispatch must
+                    # not be the only owner of an unsaved completed result.
+                    self._pending_bilingual_save = translations if translations.saved_path is None else None
                 error = None
             except Exception as e:  # noqa: BLE001
                 translations = None
                 error = str(e)
-            self._post_to_main(
-                lambda: self._finish_bilingual_translate(
-                    segments_snap, translations, lang, error
-                )
+            TranscriptViewer._post_bilingual_result(
+                self, state, segments_snap, translations, lang, error,
             )
 
-        from core._threads import safe_thread
-        safe_thread(_worker, name="ai-bilingual-translate")
+        TranscriptViewer._launch_bilingual_worker(self, _worker, "ai-bilingual-translate")
 
     def _cancel_bilingual_translate(self) -> None:
         if self._bilingual_cancel is not None:
@@ -1718,6 +1783,27 @@ class TranscriptViewer(tk.Toplevel):
         self, segments: "list[dict[str, Any]]",
         translations: "list[str] | None", lang: str, error: str | None,
     ) -> None:
+        from core.writers import bilingual_srt as _bsrt
+
+        cancelled = self._bilingual_cancel is not None and self._bilingual_cancel.is_set()
+        prepared = isinstance(translations, _bsrt.SavedBilingual)
+        build_failure: str | None = None
+        if translations is not None and not prepared and not cancelled:
+            # Legacy/direct callers keep the same list contract; the normal
+            # worker already persisted the result before scheduling this UI.
+            base, _ext = os.path.splitext(self.json_path)
+            try:
+                translations = _bsrt.save_result(
+                    segments, translations, source_json=self.json_path, language=lang,
+                    target=f"{base}.bilingual.{_bilingual_lang_slug(lang)}.srt",
+                    media_path=self.media_path or "",
+                )
+                prepared = True
+            except ValueError as build_error:
+                build_failure = str(build_error)
+                translations = None
+        if isinstance(translations, _bsrt.SavedBilingual):
+            self._pending_bilingual_save = translations if translations.saved_path is None else None
         if self._closing:
             return
         self._set_ai_buttons_busy(False)
@@ -1725,38 +1811,35 @@ class TranscriptViewer(tk.Toplevel):
             self._ai_cancel_btn.pack_forget()
         except Exception:  # noqa: BLE001
             pass
-        cancelled = self._bilingual_cancel is not None and self._bilingual_cancel.is_set()
         self._bilingual_cancel = None
         self._ai_progress_var.set("")
+        if build_failure is not None:
+            show_error(self, _("Save failed"), _("Could not build the bilingual subtitle."),
+                       detail=build_failure)
+            return
         if translations is None:
             if error:
                 messagebox.showinfo(_("Bilingual subtitle"), error, parent=self)
             return
-        if cancelled:
+        if cancelled and not prepared:
             messagebox.showinfo(
                 _("Bilingual subtitle"), _("Cancelled — no file was written."), parent=self,
             )
             return
-        from core.writers import bilingual_srt as _bsrt
-        try:
-            body = _bsrt.write(segments, translations, self.media_path or "")
-        except ValueError as e:
-            show_error(
-                self, _("Save failed"), _("Could not build the bilingual subtitle."),
-                detail=str(e),
-            )
-            return
-        base, _unused = os.path.splitext(self.json_path)
-        lang_slug = _bilingual_lang_slug(lang)
-        out_path = f"{base}.bilingual.{lang_slug}.srt"
-        try:
-            from core import convert
-
-            out_path = convert._publish_new_output(out_path, body.encode("utf-8"))
-        except Exception as e:  # noqa: BLE001
+        assert isinstance(translations, _bsrt.SavedBilingual)
+        out_path = translations.saved_path
+        if out_path is None:
+            detail = translations.error or "Bilingual output could not be saved"
+            if translations.recovery_path and _bsrt._valid_recovery(translations):
+                detail += "\n\n" + _("Recovery copy: {path}", path=translations.recovery_path)
+            else:
+                detail += "\n\n" + _("The translation is kept in memory. Click {action} to retry saving.",
+                                      action=_("Save bilingual subtitle…"))
+                if translations.recovery_error:
+                    detail += "\n" + translations.recovery_error
             show_error(
                 self, _("Save failed"), _("Could not write the bilingual subtitle file."),
-                detail=str(e),
+                detail=detail,
             )
             return
         translated_count = sum(1 for t in translations if t)
@@ -2862,6 +2945,8 @@ class TranscriptViewer(tk.Toplevel):
     # -- cleanup ---------------------------------------------------------
 
     def _on_close(self) -> None:
+        if not _confirm_bilingual_discard(self):
+            return
         if self._dirty:
             if not messagebox.askyesno(
                 _("Discard changes?"),
@@ -3294,6 +3379,27 @@ class FindReplaceDialog(tk.Toplevel):
         super().destroy()
 
 
+def _confirm_bilingual_discard(viewer: "TranscriptViewer") -> bool:
+    """Ask before closing the last in-memory copy of a completed translation."""
+    pending = getattr(viewer, "_pending_bilingual_save", None)
+    if pending is None or pending.saved_path is not None:
+        return True
+    from core.writers import bilingual_srt as _bsrt
+
+    if _bsrt._valid_recovery(pending):
+        return True
+    active = getattr(viewer, "_bilingual_worker_state", None)
+    if active is not None and not active.is_set() and (
+        getattr(viewer, "_bilingual_busy_state", None) is active
+    ):
+        viewer._set_ai_buttons_busy(False)
+    return messagebox.askyesno(
+        _("Discard changes?"),
+        _("A completed translation has not been saved. Close anyway?"),
+        parent=viewer, default="no",
+    )
+
+
 def _dirty_viewers() -> list["TranscriptViewer"]:
     """The open viewers that hold unsaved edits, in the order they were opened."""
     found: list[TranscriptViewer] = []
@@ -3322,6 +3428,21 @@ def confirm_unsaved_before_exit(skip: "Collection[TranscriptViewer]" = ()) -> bo
     as chosen. Nothing is asked when no viewer has unsaved edits. ``skip`` lists viewers
     already decided (discarded on purpose), which are not asked again.
     """
+    # Transcript Save/Discard decisions do not cover a separately completed
+    # translation. Recheck every live viewer even when its edits are in skip:
+    # a translation may have completed while another exit prompt was open.
+    for viewer in list(_OPEN_VIEWERS.values()):
+        try:
+            if viewer._closing or not viewer.winfo_exists():
+                continue
+            if not _confirm_bilingual_discard(viewer):
+                return False
+        except tk.TclError:
+            try:
+                if viewer.winfo_exists():
+                    return False
+            except tk.TclError:
+                pass
     dirty = [v for v in _dirty_viewers() if v not in skip]
     names = [os.path.normcase(os.path.basename(v.json_path)) for v in dirty]
     for viewer in dirty:

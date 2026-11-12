@@ -12,6 +12,13 @@ pass, from the transcript viewer's AI panel
 """
 from __future__ import annotations
 
+import copy
+import hashlib
+import json
+import os
+import tempfile
+import zipfile
+
 from .base import (
     coerce_seconds,
     escape_cue_separator,
@@ -65,3 +72,108 @@ def write(
         out.extend(lines)
         out.append("")
     return "\n".join(out)
+
+
+class SavedBilingual(list[str]):
+    """Translation list with the persisted result of its exact request."""
+
+    def __init__(self, segments: list[dict], translations: list[str], *, source_json: str,
+                 language: str, target: str, media_path: str = "") -> None:
+        super().__init__(translations)
+        self.segments = copy.deepcopy(segments)
+        self.source_json = os.path.abspath(source_json)
+        self.language = language
+        self.target = target
+        self.body = write(self.segments, self, media_path)
+        self.saved_path: str | None = None
+        self.recovery_path: str | None = None
+        self.error: str | None = None
+        self.recovery_error: str | None = None
+
+
+def _save_recovery(result: SavedBilingual) -> str:
+    """Strictly sync one self-contained, exclusively created recovery ZIP.
+
+    An interrupted write may leave an incomplete ZIP; only a successful close
+    and sync return a recovery path. Copies are never deleted or rotated.
+    """
+    from core import _checkpoint, config
+
+    folder = config.user_data_dir() / "translation-recovery"
+    folder.mkdir(mode=0o700, parents=True, exist_ok=True)
+    body = result.body.encode("utf-8")
+    metadata = {
+        "version": 1, "source_json": result.source_json, "language": result.language,
+        "translation_sha256": hashlib.sha256(body).hexdigest(),
+        "segments_sha256": hashlib.sha256(json.dumps(
+            result.segments, ensure_ascii=True, sort_keys=True,
+        ).encode("utf-8")).hexdigest(),
+    }
+    fd, path = tempfile.mkstemp(prefix="bilingual-", suffix=".zip", dir=folder)
+    # The descriptor is closed even when ZIP serialization or sync fails.
+    with os.fdopen(fd, "w+b") as stream:
+        with zipfile.ZipFile(stream, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            archive.writestr("translation.srt", body)
+            archive.writestr("metadata.json", json.dumps(metadata, ensure_ascii=True).encode("utf-8"))
+        _checkpoint._strict_sync(stream)
+    return path
+
+
+def _valid_recovery(result: SavedBilingual) -> bool:
+    if result.recovery_path is None:
+        return False
+    try:
+        with zipfile.ZipFile(result.recovery_path) as archive:
+            body = result.body.encode("utf-8")
+            if archive.getinfo("translation.srt").file_size != len(body) or (
+                archive.getinfo("metadata.json").file_size
+                > max(65536, 6 * (len(result.source_json) + len(result.language)) + 4096)
+            ):
+                return False
+            metadata = json.loads(archive.read("metadata.json"))
+            return (
+                archive.read("translation.srt") == body
+                and metadata["version"] == 1
+                and metadata["translation_sha256"] == hashlib.sha256(body).hexdigest()
+                and metadata["segments_sha256"] == hashlib.sha256(json.dumps(
+                    result.segments, ensure_ascii=True, sort_keys=True,
+                ).encode("utf-8")).hexdigest()
+                and metadata["source_json"] == result.source_json
+                and metadata["language"] == result.language
+            )
+    except Exception:  # noqa: BLE001 - a damaged/edited recovery copy cannot block saving
+        return False
+
+
+def retry_save(result: SavedBilingual) -> SavedBilingual:
+    """Retry file delivery without asking the translation provider again."""
+    from core import _checkpoint, convert
+
+    result.saved_path, result.error = None, None
+    if not _valid_recovery(result):
+        result.recovery_path = None
+        try:
+            result.recovery_path = _save_recovery(result)
+            result.recovery_error = None
+        except Exception as error:  # noqa: BLE001 - still try the user's output folder
+            result.recovery_error = str(error)
+    try:
+        output = convert._publish_new_output(result.target, result.body.encode("utf-8"))
+        # Ordinary converter writes tolerate fsync errors. This result can be
+        # expensive to reproduce: verify its actual bytes and strictly sync it
+        # before reporting that the destination is saved.
+        with open(output, "r+b") as stream:
+            if stream.read() != result.body.encode("utf-8"):
+                raise OSError("Bilingual output changed before delivery was verified")
+            _checkpoint._strict_sync(stream)
+        result.saved_path = output
+    except Exception as error:  # noqa: BLE001 - caller retains this object for retry
+        result.error = str(error)
+    return result
+
+
+def save_result(segments: list[dict], translations: list[str], *, source_json: str,
+                language: str, target: str, media_path: str = "") -> SavedBilingual:
+    """Save completed work before UI delivery; retain all recovery copies."""
+    return retry_save(SavedBilingual(segments, translations, source_json=source_json,
+                                    language=language, target=target, media_path=media_path))

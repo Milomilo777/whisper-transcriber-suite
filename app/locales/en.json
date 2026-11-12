@@ -41,6 +41,7 @@
   "6. Back here, click 'Browse...' and pick that downloaded .json file. Then click 'Test connection'.": "6. Back here, click 'Browse...' and pick that downloaded .json file. Then click 'Test connection'.",
   "A Microsoft Word document with the transcript text.": "A Microsoft Word document with the transcript text.",
   "A PDF of the transcript, ready to print or share.": "A PDF of the transcript, ready to print or share.",
+  "A completed translation has not been saved. Close anyway?": "A completed translation has not been saved. Close anyway?",
   "A desktop app that turns audio and video into subtitles on your own computer. Powered by OpenAI Whisper via faster-whisper. No account and no API key needed.": "A desktop app that turns audio and video into subtitles on your own computer. Powered by OpenAI Whisper via faster-whisper. No account and no API key needed.",
   "A download is running. Cancel it?": "A download is running. Cancel it?",
   "A download is running. Click Update it again when it has finished.": "A download is running. Click Update it again when it has finished.",
@@ -942,6 +943,7 @@
   "Record or load at least one reference clip first, or choose \"{design}\" / \"{auto}\".": "Record or load at least one reference clip first, or choose \"{design}\" / \"{auto}\".",
   "Recording failed": "Recording failed",
   "Recording... {seconds}s": "Recording... {seconds}s",
+  "Recovery copy: {path}": "Recovery copy: {path}",
   "Reduce background noise before transcribing": "Reduce background noise before transcribing",
   "Refine word timings with stable-ts (slower)": "Refine word timings with stable-ts (slower)",
   "Refresh": "Refresh",
@@ -1248,6 +1250,7 @@
   "The transcription engine or model could not start; try the file again.": "The transcription engine or model could not start; try the file again.",
   "The transcription stopped before it finished; try the file again.": "The transcription stopped before it finished; try the file again.",
   "The transcription stopped unexpectedly (exit code {code}); try the file again.": "The transcription stopped unexpectedly (exit code {code}); try the file again.",
+  "The translation is kept in memory. Click {action} to retry saving.": "The translation is kept in memory. Click {action} to retry saving.",
   "The tray icon libraries are missing.": "The tray icon libraries are missing.",
   "The video downloader may be out of date. An update (about {size} MB) often fixes failing YouTube downloads.": "The video downloader may be out of date. An update (about {size} MB) often fixes failing YouTube downloads.",
   "The voice engine stopped responding (no sign of life for {n} minute) and was stopped. Click Generate to try again; if it happens again, restart the app.": [

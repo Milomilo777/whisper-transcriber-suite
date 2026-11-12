@@ -114,5 +114,8 @@ def test_the_bilingual_file_is_flushed_to_disk_before_publication(tmp_path, dial
 
         monkeypatch.setattr(os, name, publish)
     _run(_viewer_standin(str(tmp_path / "talk.json")), "German", "Hallo")
-    assert events == ["fsync", "publish"]
+    # A recovery archive is also synced before the SRT. Its
+    # publication still follows its own payload sync; final delivery syncs the
+    # verified destination once more before the UI reports success.
+    assert events == ["fsync", "fsync", "publish", "fsync"]
     assert "Hallo" in (tmp_path / "talk.bilingual.german.srt").read_text(encoding="utf-8")
