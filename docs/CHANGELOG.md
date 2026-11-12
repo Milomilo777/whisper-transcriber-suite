@@ -10,6 +10,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Voice-reference validation rejects duration-bearing files with no audio track, including video content using an audio filename.
 - Saving generated speech preserves an earlier destination file if copying or publishing the new WAV fails.
 - Server cleanup verifies archived transcript contents before removing the original. Failed archive copies preserve the previous output and the complete source for retry.
 - Downloads and format lookup stop if a private cookies-file copy cannot be created, keeping the original file away from yt-dlp's cookie writer.

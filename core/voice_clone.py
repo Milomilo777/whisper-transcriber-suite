@@ -34,7 +34,7 @@ from pathlib import Path
 from typing import Callable
 
 from . import optional_deps, synthetic_audio
-from .transcriber import get_duration
+from .transcriber import get_duration, require_audio_stream
 # The length limits shared by both engines; MAX_TEXT_CHARS is re-exported
 # under its old name. One generate() call is one pass (MAX_PASS_CHARS).
 from .tts_plan import MAX_PASS_CHARS as MAX_PASS_CHARS
@@ -284,6 +284,12 @@ def validate_reference_sample(path: str) -> "ReferenceIssue | None":
         return ReferenceIssue(path, "File not found.", blocking=True)
     try:
         duration = get_duration(path)
+        try:
+            require_audio_stream(path)
+        except RuntimeError:
+            return ReferenceIssue(
+                path, "This reference file has no audio track.", blocking=True,
+            )
     except Exception as e:  # noqa: BLE001
         return ReferenceIssue(path, f"Could not read this audio file: {e}", blocking=True)
     if duration <= 0:

@@ -22,13 +22,19 @@ from core import voice_clone
 # ---------- validate_reference_sample ------------------------------------
 
 
+@pytest.fixture
+def reference_audio(monkeypatch):
+    """Duration-only unit cases use a synthetic successful stream probe."""
+    monkeypatch.setattr(voice_clone, "require_audio_stream", lambda path: None)
+
+
 def test_validate_reference_sample_missing_file():
     issue = voice_clone.validate_reference_sample("/nowhere/at/all.wav")
     assert issue is not None
     assert "not found" in issue.message.lower()
 
 
-def test_validate_reference_sample_blocking_classification(monkeypatch, tmp_path):
+def test_validate_reference_sample_blocking_classification(monkeypatch, tmp_path, reference_audio):
     issue = voice_clone.validate_reference_sample("/nowhere/at/all.wav")
     assert issue is not None
     assert issue.blocking is True
@@ -46,7 +52,7 @@ def test_validate_reference_sample_empty_path():
     assert issue is not None
 
 
-def test_validate_reference_sample_too_short(monkeypatch, tmp_path):
+def test_validate_reference_sample_too_short(monkeypatch, tmp_path, reference_audio):
     clip = tmp_path / "short.wav"
     clip.write_bytes(b"\x00")
     monkeypatch.setattr(voice_clone, "get_duration", lambda p: 1.0)
@@ -56,7 +62,7 @@ def test_validate_reference_sample_too_short(monkeypatch, tmp_path):
     assert issue.too_long is False  # nothing to auto-fix for "too short"
 
 
-def test_validate_reference_sample_too_long(monkeypatch, tmp_path):
+def test_validate_reference_sample_too_long(monkeypatch, tmp_path, reference_audio):
     clip = tmp_path / "long.wav"
     clip.write_bytes(b"\x00")
     monkeypatch.setattr(voice_clone, "get_duration", lambda p: 30.0)
@@ -66,7 +72,7 @@ def test_validate_reference_sample_too_long(monkeypatch, tmp_path):
     assert issue.too_long is True  # signals the caller can auto-trim
 
 
-def test_validate_reference_sample_good_length(monkeypatch, tmp_path):
+def test_validate_reference_sample_good_length(monkeypatch, tmp_path, reference_audio):
     clip = tmp_path / "good.wav"
     clip.write_bytes(b"\x00")
     monkeypatch.setattr(voice_clone, "get_duration", lambda p: 6.0)
@@ -84,6 +90,34 @@ def test_validate_reference_sample_unreadable_reports_issue_not_raise(monkeypatc
     issue = voice_clone.validate_reference_sample(str(clip))
     assert issue is not None
     assert "could not read" in issue.message.lower()
+
+
+def test_reference_without_audio_is_blocking(monkeypatch, tmp_path):
+    clip = tmp_path / "video.wav"
+    clip.write_bytes(b"synthetic container")
+    monkeypatch.setattr(voice_clone, "get_duration", lambda path: 4.0)
+
+    def no_audio(path):
+        raise RuntimeError("video.wav has no audio track, so there is nothing to transcribe.")
+
+    monkeypatch.setattr(voice_clone, "require_audio_stream", no_audio)
+    issue = voice_clone.validate_reference_sample(str(clip))
+    assert issue is not None and issue.blocking
+    assert issue.message == "This reference file has no audio track."
+
+
+def test_reference_stream_probe_error_is_reported(monkeypatch, tmp_path):
+    clip = tmp_path / "reference.wav"
+    clip.write_bytes(b"synthetic container")
+    monkeypatch.setattr(voice_clone, "get_duration", lambda path: 4.0)
+
+    def broken_probe(path):
+        raise ValueError("synthetic probe error")
+
+    monkeypatch.setattr(voice_clone, "require_audio_stream", broken_probe)
+    issue = voice_clone.validate_reference_sample(str(clip))
+    assert issue is not None and issue.blocking
+    assert "synthetic probe error" in issue.message
 
 
 # ---------- generate: input validation (no heavy import touched) --------
