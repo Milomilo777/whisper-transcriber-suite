@@ -38,12 +38,12 @@ def write(segments: list[dict], audio_path: str = "") -> str:
         # (e.g. a number) in "text"; ``(value or "").strip()`` raised
         # AttributeError on it and dropped the whole sidecar.
         raw_text = seg.get("text")
-        start = _safe_float(seg.get("start", 0.0))
+        start = max(0.0, _safe_float(seg.get("start", 0.0)))
         # A missing (or unusable) end falls back to the start, as in every
         # other writer; 0 made a negative-length segment.
         item: dict = {
             "start": start,
-            "end": _safe_float(seg.get("end", start), start),
+            "end": max(start, _safe_float(seg.get("end", start), start)),
             "text": ("" if raw_text is None else str(raw_text)).strip(),
         }
         speaker = seg.get("speaker")
@@ -64,22 +64,28 @@ def write(segments: list[dict], audio_path: str = "") -> str:
             # Carry through only dict word entries, mirroring convert's
             # _parse_json: a non-dict element or a non-list "words" value
             # from a hand-edited JSON raised and aborted the whole write.
-            coerced_words = [
-                {
-                    "start": _safe_float(w.get("start", item["start"]),
-                                         item["start"]),
-                    "end": _safe_float(w.get("end", item["end"]),
-                                       item["end"]),
+            coerced_words = []
+            for w in words:
+                if not isinstance(w, dict):
+                    continue
+                # Alignment may extend a word past its containing cue.
+                # Keep its label and confidence while bounding the clock.
+                word_start = min(item["end"], max(
+                    item["start"], _safe_float(w.get("start"), item["start"])
+                ))
+                word_end = min(item["end"], max(
+                    word_start, _safe_float(w.get("end"), item["end"])
+                ))
+                coerced_words.append({
+                    "start": word_start,
+                    "end": word_end,
                     # str-coerce like text / speaker / suspect_reason: a
                     # hand-edited JSON can put a number or null in the
                     # label, and downstream karaoke tools expect a string.
                     "word": ("" if w.get("word") is None
                              else str(w["word"])),
                     "probability": _safe_float(w.get("probability", 0.0)),
-                }
-                for w in words
-                if isinstance(w, dict)
-            ]
+                })
             if coerced_words:
                 item["words"] = coerced_words
         out.append(item)
