@@ -11,6 +11,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 ### Fixed
 
 - Saving generated speech preserves an earlier destination file if copying or publishing the new WAV fails.
+- Server cleanup verifies archived transcript contents before removing the original. Failed archive copies preserve the previous output and the complete source for retry.
 - Trimming voice references creates PCM WAV audio within the requested length, so the result passes its own duration check and compressed inputs remain usable.
 - ASS karaoke timing stays inside each cue when word times overlap, round to the same centisecond, or reach a fractional media endpoint. Zero-time syllables retain their text.
 - Long CUDA transcriptions with VAD disabled use sequential GPU decoding, preserving whole-file coverage and repetition-loop recovery. Malformed clip values are retained for validation.

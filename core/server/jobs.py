@@ -29,6 +29,7 @@ never the real model.
 from __future__ import annotations
 
 import inspect
+import hashlib
 import ipaddress
 import json
 import logging
@@ -39,6 +40,7 @@ import re
 import shutil
 import socket
 import subprocess
+import tempfile
 import threading
 import time
 import unicodedata
@@ -50,6 +52,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Protocol
 
 from core import __version__, offline
+from core._checkpoint import _strict_sync
 from core.config import (
     PROJECT_FILE_NAME,
     user_cache_dir,
@@ -64,6 +67,34 @@ from core.server.netguard import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _same_output_contents(source: str, destination: str) -> bool:
+    if os.path.getsize(source) != os.path.getsize(destination):
+        return False
+    with open(source, "rb") as original, open(destination, "rb") as kept:
+        return (hashlib.file_digest(original, "sha256").digest()
+                == hashlib.file_digest(kept, "sha256").digest())
+
+
+def _copy_output_atomic(source: str, destination: str) -> None:
+    fd, staging = tempfile.mkstemp(prefix=".server-output-", suffix=".tmp",
+                                   dir=os.path.dirname(destination))
+    try:
+        with os.fdopen(fd, "r+b") as kept:
+            shutil.copy2(source, staging)
+            _strict_sync(kept)
+        os.replace(staging, destination)
+        staging = None
+    finally:
+        if staging is not None:
+            try:
+                os.chmod(staging, 0o600)  # copy2 may have copied a read-only flag
+                os.unlink(staging)
+            except FileNotFoundError:
+                pass
+            except OSError:
+                logger.exception("server: could not remove staged output")
 
 
 # --- public types ------------------------------------------------------------
@@ -589,11 +620,10 @@ class JobManager:
         for src in self._protected_files(work_dir, job):
             dest = os.path.join(dest_dir, os.path.basename(src))
             try:
-                if (os.path.isfile(dest)
-                        and os.path.getsize(dest) == os.path.getsize(src)):
+                if os.path.isfile(dest) and _same_output_contents(src, dest):
                     continue
                 os.makedirs(dest_dir, exist_ok=True)
-                shutil.copy2(src, dest)
+                _copy_output_atomic(src, dest)
             except OSError as e:
                 logger.warning("server: could not keep %s: %s",
                                os.path.basename(src), e)
@@ -1359,7 +1389,7 @@ class JobManager:
             try:
                 os.makedirs(dest_dir, exist_ok=True)
                 dest = os.path.join(dest_dir, os.path.basename(src))
-                shutil.copy2(src, dest)
+                _copy_output_atomic(src, dest)
                 paths.append(dest)
             except OSError as e:
                 logger.warning("server: could not keep output %s of job %s: %s",
