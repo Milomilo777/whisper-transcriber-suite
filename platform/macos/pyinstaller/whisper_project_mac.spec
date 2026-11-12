@@ -611,6 +611,42 @@ a = Analysis(
     excludes=[],
     noarchive=False,
 )
+
+# Select the compatible source before COLLECT rewrites and signs the dylibs.
+# Analysis may flatten a shared name to a regular file, discarding Pillow's
+# newer copy; repairing only post-BUNDLE symlinks cannot fix that layout.
+def _compat_version(path):
+    out = _sp.run(['otool', '-L', path], capture_output=True, text=True, check=True).stdout
+    lines = out.splitlines()
+    m = _re.search(r'compatibility version ([\d.]+)', lines[1] if len(lines) > 1 else '')
+    return tuple(int(x) for x in m.group(1).split('.')) if m else (0,)
+
+
+
+def _select_compatible_dylibs(binary_toc, extra_paths):
+    candidates = {}
+    for _dest, src, kind in binary_toc:
+        if kind == 'BINARY' and src.endswith('.dylib') and os.path.isfile(src):
+            candidates.setdefault(os.path.basename(src), set()).add(src)
+    for src in extra_paths:
+        if src.endswith('.dylib') and os.path.isfile(src):
+            candidates.setdefault(os.path.basename(src), set()).add(src)
+    versions = {src: _compat_version(src) for paths in candidates.values() for src in paths}
+    selected = []
+    for dest, src, kind in binary_toc:
+        paths = candidates.get(os.path.basename(src), ()) if kind == 'BINARY' else ()
+        if src in versions and paths:
+            best = max(sorted(paths), key=lambda path: versions[path])
+            if versions[best] > versions[src]:
+                src = best
+        selected.append((dest, src, kind))
+    return selected
+
+
+a.binaries = _select_compatible_dylibs(
+    a.binaries, [src for src, _dest in collect_dynamic_libs('PIL')],
+)
+
 pyz = PYZ(a.pure)
 
 
@@ -812,11 +848,6 @@ for _name in _POST_COPY_BINS:
 import re as _re
 
 
-def _compat_version(path):
-    out = _subprocess.run(['otool', '-L', path], capture_output=True, text=True, check=True).stdout
-    lines = out.splitlines()
-    m = _re.search(r'compatibility version ([\d.]+)', lines[1] if len(lines) > 1 else '')
-    return tuple(int(x) for x in m.group(1).split('.')) if m else (0,)
 
 
 _fw_dir = os.path.join(_app_path, 'Contents', 'Frameworks')

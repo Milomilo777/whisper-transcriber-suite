@@ -14,6 +14,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- macOS packages select compatible shared libraries before bundling, so PDF export and tray images can load when Pillow and the audio decoder supply different liblzma versions.
 
 - Interrupted pre-rebrand history transfers retry after settings have been saved, merging old and new jobs without replacing current settings. SQLite snapshots retain committed WAL rows, and transactional import receipts prevent duplicate records or reimporting completed transfers.
 - Automatic subtitle companion exports preserve earlier TXT, oTranscribe and Word files, including manual edits and concurrent exports. Each successful export reports its actual saved filename; a failed write leaves existing companions intact.
