@@ -320,7 +320,7 @@ def write_page(
     title: str | None = None,
 ) -> str:
     """Write the page to *out_path* (UTF-8, ``\\n`` line ends, through a
-    ``.part`` file and ``os.replace`` so a failure never leaves half a page)
+    unique short temporary file and ``os.replace`` so a failure never leaves half a page)
     and return *out_path*.
 
     *audio*: ``"linked"`` links *audio_path* relative to the page (nothing
@@ -336,19 +336,9 @@ def write_page(
         segments, audio_href=href, title=title, chapters=chapters,
         language=language, footer=footer,
     )
-    part = out_path + ".part"
-    try:
-        from core import _checkpoint
-        with open(part, "w", encoding="utf-8", newline="\n") as f:
-            f.write(page)
-            _checkpoint._flush_to_disk(f)
-        os.replace(part, out_path)
-    except BaseException:
-        try:
-            os.remove(part)
-        except OSError:
-            pass
-        raise
+    from core import convert
+
+    convert._replace_atomically(out_path, page.encode("utf-8"))
     return out_path
 
 

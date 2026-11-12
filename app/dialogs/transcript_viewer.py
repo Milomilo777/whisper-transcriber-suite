@@ -1749,18 +1749,11 @@ class TranscriptViewer(tk.Toplevel):
         base, _unused = os.path.splitext(self.json_path)
         lang_slug = _bilingual_lang_slug(lang)
         out_path = f"{base}.bilingual.{lang_slug}.srt"
-        part = out_path + ".part"
         try:
-            from core import _checkpoint
-            with open(part, "w", encoding="utf-8", newline="\n") as f:
-                f.write(body)
-                _checkpoint._flush_to_disk(f)
-            os.replace(part, out_path)
+            from core import convert
+
+            out_path = convert._publish_new_output(out_path, body.encode("utf-8"))
         except Exception as e:  # noqa: BLE001
-            try:
-                os.unlink(part)
-            except OSError:
-                pass
             show_error(
                 self, _("Save failed"), _("Could not write the bilingual subtitle file."),
                 detail=str(e),

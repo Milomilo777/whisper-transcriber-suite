@@ -478,10 +478,16 @@ def _capture_ai_viewer(mp: pytest.MonkeyPatch, root: Any, tmp: Path, log: _Log,
         m.setattr(bilingual_srt, "write", bad_build)
         viewer._finish_bilingual_translate(viewer.segments, ["a", "b", "c"], "German", None)
     with mp.context() as m:
+        from core import convert
+
+        attempts: list[bool] = []
+
         def no_replace(*_a: Any) -> None:
+            attempts.append(True)
             raise OSError("disk full")
-        m.setattr(tv.os, "replace", no_replace)
+        m.setattr(convert, "_install_new_output", no_replace)
         viewer._finish_bilingual_translate(viewer.segments, ["a", "b", "c"], "German", None)
+        assert attempts, "publication fault must exercise the current writer"
     states["bilingual"] = progress + rows + log.take()
     root.app_config = {}
     _close(viewer)
@@ -583,6 +589,11 @@ def test_viewer_texts_are_translated_in_the_pseudo_locale(
     # Nothing the viewer wrote takes a translated word: file names and the saved JSON.
     written = sorted(p.relative_to(tmp_path).as_posix() for p in tmp_path.rglob("*") if p.is_file())
     assert written == WRITTEN_FILES
+    # Retrying translation preserves the first gapped file and saves a complete copy.
+    earlier = (tmp_path / "ai" / "demo.bilingual.german.srt").read_text(encoding="utf-8")
+    complete = (tmp_path / "ai" / "demo.bilingual.german (1).srt").read_text(encoding="utf-8")
+    assert "eins" in earlier and "zwei" not in earlier
+    assert "zwei" in complete
     saved = json.loads((tmp_path / "main" / "demo.json").read_text(encoding="utf-8"))
     assert [s.get("speaker") for s in saved] == ["Narrator", "Speaker 01", None]
     assert [s["text"] for s in saved] == ["Hello world", "Second segment", "Third with no speaker"]
@@ -590,7 +601,8 @@ def test_viewer_texts_are_translated_in_the_pseudo_locale(
 
 # Every file capture_viewer leaves behind, the same in every interface language.
 WRITTEN_FILES = [
-    "ai/demo.bilingual.german.srt", "ai/demo.json", "dict/demo.json",
+    "ai/demo.bilingual.german (1).srt", "ai/demo.bilingual.german.srt",
+    "ai/demo.json", "dict/demo.json",
     "main/demo.json", "main/demo.srt",
     "media/demo.chapters.json", "media/demo.json", "media/demo.mp4", "numbers/demo.json",
 ]
