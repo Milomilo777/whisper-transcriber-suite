@@ -57,7 +57,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Callable, Iterator
 
@@ -560,15 +560,15 @@ class LLMRunner:
     def action_items(self, transcript_text: str) -> list[str]:
         """Pull out action items as a JSON list of strings.
 
-        We ask the model for strict JSON; if parsing fails we return
-        an empty list rather than guessing — the UI surfaces that
-        as "no action items detected".
+        Only a valid empty array means no actions. Malformed replies raise
+        ActionItemsFormatError with the original text so callers can preserve
+        it instead of reporting a false empty result.
         """
         raw = self._chat(
             [{"role": "user", "content": _action_items_prompt(transcript_text)}],
             max_tokens=400,
         )
-        return _parse_json_list(raw)
+        return _parse_action_items(raw)
 
     def ask(self, transcript_text: str, question: str) -> str:
         return self._chat(
@@ -585,18 +585,17 @@ class LLMRunner:
         ))
 
 
-def _parse_json_list(raw: str) -> list[str]:
-    """Best-effort JSON-array parse of an LLM response.
+class ActionItemsFormatError(ValueError):
+    """The provider replied, but the task-list result is not trustworthy."""
+    def __init__(self, reply: str) -> None:
+        super().__init__("The AI reply was not a valid action-item list")
+        self.reply = reply
 
-    Strips common chat-style wrappers (markdown fences, leading
-    explanatory text) before parsing, and decodes only the first JSON
-    value that starts at the array bracket — a chatty model that appends
-    a sentence AFTER a perfectly good array (``["a"] Let me know…``)
-    used to make the whole response unparseable, silently turning real
-    action items into "none detected". Returns ``[]`` on any error.
-    """
+
+def _decode_json_list(raw: str) -> list[Any] | None:
+    """Decode the first array with legacy fence/prose tolerance; None is invalid."""
     if not raw:
-        return []
+        return None
     text = raw.strip()
     # Strip ```json ... ``` fences if present.
     if text.startswith("```"):
@@ -611,14 +610,30 @@ def _parse_json_list(raw: str) -> list[str]:
     # trailing prose after the array's closing bracket are both ignored.
     start = text.find("[")
     if start == -1:
-        return []
+        return None
     try:
         data, _end = json.JSONDecoder().raw_decode(text, start)
-    except json.JSONDecodeError:
-        return []
+    except (ValueError, RecursionError):
+        return None
     if not isinstance(data, list):
+        return None
+    return data
+
+
+def _parse_json_list(raw: str) -> list[str]:
+    """Legacy best-effort helper: coerce supported values, return [] on invalid input."""
+    data = _decode_json_list(raw)
+    if data is None:
         return []
     return [str(item) for item in data if isinstance(item, (str, int, float))]
+
+
+def _parse_action_items(raw: str) -> list[str]:
+    """Require all items to be nonblank strings; never silently drop reply data."""
+    data = _decode_json_list(raw)
+    if data is None or any(not isinstance(item, str) or not item.strip() for item in data):
+        raise ActionItemsFormatError(raw)
+    return data
 
 
 # ---------------------------------------------------------------- remote runner
@@ -994,7 +1009,7 @@ class RemoteLLMRunner:
             [{"role": "user", "content": _action_items_prompt(transcript_text)}],
             max_tokens=400,
         )
-        return _parse_json_list(raw)
+        return _parse_action_items(raw)
 
     def ask(self, transcript_text: str, question: str) -> str:
         return self._chat(
@@ -1145,3 +1160,66 @@ def _translate_segments(
             except Exception:  # noqa: BLE001
                 pass
     return out
+
+
+@dataclass(frozen=True)
+class SavedAIResult:
+    """Completed response and its profile-local, independently owned text copy."""
+    text: str
+    action: str
+    source_json: str
+    language: str | None = None
+    saved_path: str = ""
+    save_error: str = ""
+
+
+def _ai_result_payload(result: SavedAIResult) -> bytes:
+    header = (f"AI action: {result.action}\n"
+              f"Source transcript: {json.dumps(result.source_json, ensure_ascii=True)}\n"
+              f"Result language: {result.language or ''}\n\n")
+    return (header + result.text).encode("utf-8", errors="backslashreplace")
+
+
+def ai_result_is_saved(result: SavedAIResult) -> bool:
+    """An edited/deleted recovery copy is not proof that this response is saved."""
+    if not result.saved_path:
+        return False
+    try:
+        return Path(result.saved_path).read_bytes() == _ai_result_payload(result)
+    except (OSError, ValueError):
+        return False
+
+
+def retry_save_ai_result(result: SavedAIResult) -> SavedAIResult:
+    """Save text only; this function never builds or calls an AI provider."""
+    from .config import user_data_dir
+    from ._checkpoint import _strict_sync
+    from .convert import _publish_new_output
+
+    try:
+        payload = _ai_result_payload(result)
+        if ai_result_is_saved(result):
+            with open(result.saved_path, "r+b") as stream:
+                if stream.read() == payload:
+                    _strict_sync(stream)
+                    return replace(result, save_error="")
+        folder = user_data_dir() / "ai-results"
+        folder.mkdir(parents=True, exist_ok=True, mode=0o700)
+        label = {"Summarise": "summary", "Action items": "action-items",
+                 "Ask": "answer", "Translate": "translation"}.get(result.action, "result")
+        path = _publish_new_output(str(folder / f"{label}-{uuid.uuid4().hex}.txt"), payload)
+        # Retain the new artifact even if verification or sync fails. Never
+        # remove an edited copy, and never advertise a failed durability check.
+        with open(path, "r+b") as stream:
+            if stream.read() != payload:
+                raise OSError("Completed AI response copy could not be verified")
+            _strict_sync(stream)
+        return replace(result, saved_path=path, save_error="")
+    except Exception as error:  # Keep completed text available for a file-only retry.
+        return replace(result, saved_path="", save_error=str(error) or type(error).__name__)
+
+
+def save_ai_result(text: str, *, action: str, source_json: str,
+                   language: str | None = None) -> SavedAIResult:
+    """Persist a successful full response before posting it to the viewer."""
+    return retry_save_ai_result(SavedAIResult(text, action, source_json, language))

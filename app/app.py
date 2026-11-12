@@ -2750,6 +2750,9 @@ class App(tk.Tk):
                 self._exit_from_tray = False
                 return
 
+        # Keep exact response discard decisions only for this exit attempt.
+        # Transcript edit decisions remain separate from completed AI results.
+        result_decisions: dict[tuple[int, str], tuple[object, object, str]] = {}
         # Unsaved work is asked about after "exit anyway?" and before anything
         # irreversible, in this order: transcript viewers with unsaved edits
         # (Save / Discard / Cancel each; a Save must succeed), then the live
@@ -2759,7 +2762,7 @@ class App(tk.Tk):
         self._exit_prompt_open = True
         try:
             try:
-                keep_open = not confirm_unsaved_viewers_before_exit()
+                keep_open = not confirm_unsaved_viewers_before_exit(result_decisions=result_decisions)
             except Exception:  # noqa: BLE001
                 # Edits are at stake: an unexpected failure keeps the app open.
                 logger.exception("Transcript viewer exit check failed")
@@ -2789,7 +2792,7 @@ class App(tk.Tk):
         self._exit_prompt_open = True
         try:
             try:
-                if not confirm_unsaved_viewers_before_exit(decided):  # asks only if one is dirty
+                if not confirm_unsaved_viewers_before_exit(decided, result_decisions=result_decisions):
                     self._exit_from_tray = False
                     return
             except Exception:  # noqa: BLE001 - edits are at stake: stay open

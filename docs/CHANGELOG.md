@@ -14,6 +14,19 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Closing a transcript viewer or exiting asks before abandoning an active AI task whose later response might fail to save. Discard choices apply only to that task, and results completed during the question are checked separately.
+
+
+
+
+
+- Keep completed AI responses protected when exiting the whole app, including after a transcript edit was already saved or deliberately discarded. The same unsaved-response confirmation is used when closing its viewer; results completed during exit questions are checked again without repeating an unchanged result question.
+- Distinguish an invalid AI action-item reply from a valid empty list. Malformed, truncated or unsupported replies show a warning and keep the original response for review instead of reporting that no actions were found.
+- Preserve completed AI summaries, answers, action items and translation previews before UI delivery, including when the viewer closes or its callback is lost. Failed saves keep the response in memory for a file-only retry and warn before closing; provider calls are not repeated.
+- Restore the AI panel controls if its background thread cannot start. Summary, action-item, question and translation actions show their error and allow another attempt.
+
+
+
 - Hardware selection no longer feeds an endless Tk event loop. Re-probing has a bounded wait, keeps Cancel available, and ignores timed-out or cancelled results without silently saving a CPU preference.
 
 - macOS packages select compatible shared libraries before bundling, so PDF export and tray images can load when Pillow and the audio decoder supply different liblzma versions.

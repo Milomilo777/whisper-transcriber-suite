@@ -1524,6 +1524,7 @@ class TranscriptViewer(tk.Toplevel):
         self._bilingual_busy_state = None
         if busy:
             self._bilingual_worker_state = None
+            self._ai_worker_state = None
         state = ["disabled"] if busy else ["!disabled"]
         for b in (
             self._ai_summarise_btn, self._ai_actionitems_btn, self._ai_ask_btn,
@@ -1536,6 +1537,7 @@ class TranscriptViewer(tk.Toplevel):
 
     def _set_ai_result(self, text: str, language: str | None = None) -> None:
         """Show ``text`` in the result box; ``language`` is the result's, when known."""
+        self._ai_copy_text = text
         try:
             self._ai_result_text.configure(state="normal")
             self._ai_result_text.delete("1.0", "end")
@@ -1547,13 +1549,17 @@ class TranscriptViewer(tk.Toplevel):
 
     def _copy_ai_result(self) -> None:
         try:
-            text = self._ai_result_text.get("1.0", "end-1c")
+            text = getattr(self, "_ai_copy_text", None)
+            if text is None:
+                text = self._ai_result_text.get("1.0", "end-1c")
         except Exception:  # noqa: BLE001
             return
         self._copy_to_clipboard(text)
 
-    def _run_ai_task(self, label: str, work, language: str | None = None) -> None:
-        """Shared driver for the 3 simple (non-bilingual) AI actions.
+    def _run_ai_task(
+        self, label: str, work, language: str | None = None, *, _retry_result: Any = None,
+    ) -> None:
+        """Shared driver for the simple (non-bilingual) AI actions.
 
         ``label`` is the action's English name ("Summarise", "Action items", "Ask",
         "Translate"); the texts shown while it runs and when it fails are looked up in
@@ -1568,8 +1574,14 @@ class TranscriptViewer(tk.Toplevel):
         """
         if self._ai_busy:
             return
+        from core.llm import SavedAIResult, ai_result_is_saved, retry_save_ai_result, save_ai_result
+
+        pending = getattr(self, "_ai_pending_result", None)
+        retry = _retry_result if isinstance(_retry_result, SavedAIResult) else (
+            pending if isinstance(pending, SavedAIResult) and not ai_result_is_saved(pending) else None
+        )
         cfg = self._app_config()
-        if not cfg.get("ai_enabled", False):
+        if retry is None and not cfg.get("ai_enabled", False):
             notify(
                 self,
                 _("AI Layer is off — turn it on in Advanced Settings' AI "
@@ -1577,32 +1589,73 @@ class TranscriptViewer(tk.Toplevel):
                 "warning",
             )
             return
-        if not self.segments:
+        if retry is None and not self.segments:
             notify(self, _("This transcript has no segments to work with."), "warning")
             return
         busy_text, failed_text = _AI_TASK_TEXTS.get(label, (label + "…", label + " failed: {error}"))
         self._set_ai_buttons_busy(True)
-        self._set_ai_result(translate(busy_text))
+        self._set_ai_result(_("Saving…") if retry is not None else translate(busy_text))
+        source_json = str(getattr(self, "json_path", ""))
+        state = threading.Event()
+        state.set()
+        self._ai_worker_state = state
+
+        def post(result: Any, result_language: str | None = None) -> None:
+            def deliver() -> None:
+                if getattr(self, "_ai_worker_state", None) is state:
+                    self._finish_ai_task(result, result_language)
+            self._post_to_main(deliver)
 
         def _worker() -> None:
             try:
-                runner, err = self._get_llm_runner()
-                if runner is None:
-                    self._post_to_main(lambda: self._finish_ai_task(err))
+                try:
+                    if retry is not None:
+                        completed = retry_save_ai_result(retry)
+                    else:
+                        runner, err = self._get_llm_runner()
+                        if runner is None:
+                            post(err)
+                            return
+                        text = work(runner)
+                        completed = save_ai_result(text, action=label, source_json=source_json,
+                                                   language=language)
+                    # Plain Python state is set BEFORE delivery; a missing UI
+                    # callback cannot discard a response whose storage failed.
+                    if getattr(self, "_ai_worker_state", None) is state:
+                        self._ai_pending_result = completed
+                except Exception as error:  # Provider/build errors are not completed responses.
+                    post(translate(failed_text, error=error))
                     return
-                result = work(runner)
-            except Exception as e:  # noqa: BLE001
-                result = translate(failed_text, error=e)
-            self._post_to_main(lambda: self._finish_ai_task(result, language))
+                post(completed, completed.language)
+            finally:
+                state.clear()
 
         from core._threads import safe_thread
-        safe_thread(_worker, name=f"ai-{label.lower().replace(' ', '-')}")
+        try:
+            safe_thread(_worker, name=f"ai-{label.lower().replace(' ', '-')}")
+        except Exception as error:  # The thread never started; still on the UI thread.
+            state.clear()
+            self._finish_ai_task(translate(failed_text, error=error))
 
-    def _finish_ai_task(self, result: str, language: str | None = None) -> None:
+    def _finish_ai_task(self, result: Any, language: str | None = None) -> None:
         if self._closing:
             return
+        from core.llm import SavedAIResult
+
+        copy_text = result.text if isinstance(result, SavedAIResult) else str(result)
+        shown = copy_text
+        if isinstance(result, SavedAIResult):
+            self._ai_pending_result = result
+            if result.saved_path:
+                shown += "\n\n" + _("Recovery copy: {path}", path=result.saved_path)
+            else:
+                action = {"Summarise": _("Summarise"), "Action items": _("Action items"),
+                          "Ask": _("Ask"), "Translate": _("Translate (preview)")}.get(result.action, _("AI Tools"))
+                shown += "\n\n" + _("The result is kept in memory. Click {action} to retry saving.",
+                                      action=action)
         self._set_ai_buttons_busy(False)
-        self._set_ai_result(result, language)
+        self._set_ai_result(shown, language)
+        self._ai_copy_text = copy_text
 
     def _run_summarise(self) -> None:
         text = self._full_transcript_text()
@@ -1616,7 +1669,17 @@ class TranscriptViewer(tk.Toplevel):
         text = self._full_transcript_text()
 
         def work(runner: Any) -> str:
-            items = runner.action_items(text)
+            from core.llm import ActionItemsFormatError
+
+            try:
+                items = runner.action_items(text)
+            except ActionItemsFormatError as error:
+                # Preserve the actual reply through the same save-before-UI
+                # path as successful results; invalid is not proof of no tasks.
+                return _with_trim_note(runner, _(
+                    "The AI reply was not a valid action-item list. Original reply:\n{reply}",
+                    reply=error.reply,
+                ))
             return _with_trim_note(runner, "\n".join(f"- {i}" for i in items) if items else (
                 _("(no action items detected)")
             ))
@@ -1624,6 +1687,15 @@ class TranscriptViewer(tk.Toplevel):
         self._run_ai_task("Action items", work, self.language)
 
     def _run_ask(self) -> None:
+        from core.llm import SavedAIResult, ai_result_is_saved
+
+        pending = getattr(self, "_ai_pending_result", None)
+        if isinstance(pending, SavedAIResult) and not ai_result_is_saved(pending):
+            # A retry saves the previous answer; its question/source must not
+            # depend on what the user has edited since the provider completed.
+            self._run_ai_task("Ask", lambda runner: pending.text, pending.language,
+                              _retry_result=pending)
+            return
         question = (self._ai_question_var.get() or "").strip()
         if not question:
             notify(self, _("Type a question first."), "warning")
@@ -2945,7 +3017,8 @@ class TranscriptViewer(tk.Toplevel):
     # -- cleanup ---------------------------------------------------------
 
     def _on_close(self) -> None:
-        if not _confirm_bilingual_discard(self):
+        decisions: _ResultDiscardDecisions = {}
+        if not _confirm_completed_results(lambda: [self], decisions):
             return
         if self._dirty:
             if not messagebox.askyesno(
@@ -2955,6 +3028,9 @@ class TranscriptViewer(tk.Toplevel):
                 default="no",
             ):
                 return
+        # The edit prompt can run callbacks that finish another AI result.
+        if not _confirm_completed_results(lambda: [self], decisions):
+            return
         # Set the closing flag FIRST so any after()-loop tick in
         # flight (notably _update_position → _update_karaoke) sees
         # it and short-circuits before touching widgets.
@@ -3379,25 +3455,143 @@ class FindReplaceDialog(tk.Toplevel):
         super().destroy()
 
 
-def _confirm_bilingual_discard(viewer: "TranscriptViewer") -> bool:
-    """Ask before closing the last in-memory copy of a completed translation."""
+_ResultDiscardDecisions = dict[tuple[int, str], tuple[object, object, str]]
+
+
+def _result_discard_approved(
+    decisions: _ResultDiscardDecisions, viewer: "TranscriptViewer", kind: str,
+    pending: object, body: str,
+) -> bool:
+    approved = decisions.get((id(viewer), kind))
+    return approved is not None and approved[0] is viewer and approved[1] is pending and approved[2] == body
+
+
+def _ai_needs_discard(viewer: "TranscriptViewer", decisions: _ResultDiscardDecisions) -> bool:
+    from core.llm import SavedAIResult, ai_result_is_saved
+
+    pending = getattr(viewer, "_ai_pending_result", None)
+    return isinstance(pending, SavedAIResult) and not (
+        _result_discard_approved(decisions, viewer, "ai", pending, pending.text)
+        or ai_result_is_saved(pending)
+    )
+
+
+def _bilingual_needs_discard(viewer: "TranscriptViewer", decisions: _ResultDiscardDecisions) -> bool:
     pending = getattr(viewer, "_pending_bilingual_save", None)
     if pending is None or pending.saved_path is not None:
-        return True
+        return False
     from core.writers import bilingual_srt as _bsrt
 
-    if _bsrt._valid_recovery(pending):
+    return not (
+        _result_discard_approved(decisions, viewer, "bilingual", pending, getattr(pending, "body", ""))
+        or _bsrt._valid_recovery(pending)
+    )
+
+
+def _confirm_ai_discard(viewer: "TranscriptViewer", decisions: _ResultDiscardDecisions) -> bool:
+    """Record an explicit discard of this exact response for this exit attempt."""
+    from core.llm import SavedAIResult
+
+    pending = getattr(viewer, "_ai_pending_result", None)
+    if not isinstance(pending, SavedAIResult) or not _ai_needs_discard(viewer, decisions):
         return True
+    body = pending.text
+    state = getattr(viewer, "_ai_worker_state", None)
+    if state is not None and not state.is_set():
+        viewer._set_ai_buttons_busy(False)
+    answer = messagebox.askyesno(
+        _("Discard changes?"),
+        _("A completed AI result has not been saved. Close anyway?"),
+        parent=viewer, default="no",
+    )
+    if answer:
+        decisions[(id(viewer), "ai")] = (viewer, pending, body)
+    return answer
+
+
+def _confirm_bilingual_discard(viewer: "TranscriptViewer", decisions: _ResultDiscardDecisions) -> bool:
+    """Ask before closing the last in-memory copy of a completed translation."""
+    pending = getattr(viewer, "_pending_bilingual_save", None)
+    if not _bilingual_needs_discard(viewer, decisions):
+        return True
+    body = getattr(pending, "body", "")
     active = getattr(viewer, "_bilingual_worker_state", None)
     if active is not None and not active.is_set() and (
         getattr(viewer, "_bilingual_busy_state", None) is active
     ):
         viewer._set_ai_buttons_busy(False)
-    return messagebox.askyesno(
+    answer = messagebox.askyesno(
         _("Discard changes?"),
         _("A completed translation has not been saved. Close anyway?"),
         parent=viewer, default="no",
     )
+    if answer:
+        decisions[(id(viewer), "bilingual")] = (viewer, pending, body)
+    return answer
+
+
+def _undecided_running_results(
+    viewer: "TranscriptViewer", decisions: _ResultDiscardDecisions,
+) -> list[tuple[str, object]]:
+    running = []
+    for kind, name in (("ai-running", "_ai_worker_state"), ("bilingual-running", "_bilingual_worker_state")):
+        state = getattr(viewer, name, None)
+        if state is not None and state.is_set() and not _result_discard_approved(
+            decisions, viewer, kind, state, "",
+        ):
+            running.append((kind, state))
+    return running
+
+
+def _confirm_running_results(viewer: "TranscriptViewer", decisions: _ResultDiscardDecisions) -> bool:
+    # A response can finish after the final close check. Keep its owner alive
+    # unless the user explicitly accepts losing this exact in-flight task.
+    for kind, state in _undecided_running_results(viewer, decisions):
+        if not messagebox.askyesno(
+            _("Discard changes?"),
+            _("An AI task is still running. Close anyway? Its unsaved response may be lost."),
+            parent=viewer, default="no",
+        ):
+            return False
+        decisions[(id(viewer), kind)] = (viewer, state, "")
+    return True
+
+
+def _confirm_completed_results(
+    viewers: Callable[[], list["TranscriptViewer"]], decisions: _ResultDiscardDecisions,
+) -> bool:
+    """Repeat after modal prompts until every current memory-only result is decided."""
+    def live() -> list["TranscriptViewer"]:
+        found = []
+        for viewer in viewers():
+            try:
+                exists = getattr(viewer, "winfo_exists", None)
+                if viewer._closing or (callable(exists) and not exists()):
+                    continue
+            except tk.TclError:
+                continue
+            found.append(viewer)
+        return found
+
+    while True:
+        for viewer in live():
+            try:
+                if (not _confirm_ai_discard(viewer, decisions)
+                        or not _confirm_bilingual_discard(viewer, decisions)
+                        or not _confirm_running_results(viewer, decisions)):
+                    return False
+            except tk.TclError:
+                try:
+                    if viewer.winfo_exists():
+                        return False
+                except tk.TclError:
+                    pass
+        # A provider may have finished in an earlier viewer while a later
+        # viewer's modal question ran the event loop. Do not miss that result.
+        if not any(_ai_needs_discard(viewer, decisions) or _bilingual_needs_discard(viewer, decisions)
+                   or _undecided_running_results(viewer, decisions)
+                   for viewer in live()):
+            return True
 
 
 def _dirty_viewers() -> list["TranscriptViewer"]:
@@ -3418,31 +3612,26 @@ def dirty_viewers() -> list["TranscriptViewer"]:
     return _dirty_viewers()
 
 
-def confirm_unsaved_before_exit(skip: "Collection[TranscriptViewer]" = ()) -> bool:
+def confirm_unsaved_before_exit(
+    skip: "Collection[TranscriptViewer]" = (), *,
+    result_decisions: _ResultDiscardDecisions | None = None,
+) -> bool:
     """Exit hook: Save / Discard / Cancel for every viewer with unsaved edits.
 
     False means the exit is cancelled (or a save failed) and the app stays as it is.
     One question per viewer, each in front and naming its file: a combined list could not
     say which transcript a Save or Discard applies to. Edits are never touched until the
     user answers, so Cancel at a later viewer leaves an earlier one saved or still dirty,
-    as chosen. Nothing is asked when no viewer has unsaved edits. ``skip`` lists viewers
-    already decided (discarded on purpose), which are not asked again.
+    as chosen. Completed results without a saved copy are checked independently of
+    transcript edits. ``skip`` applies only to edits; ``result_decisions`` shares exact
+    result approvals between checks within one app-exit attempt.
     """
-    # Transcript Save/Discard decisions do not cover a separately completed
-    # translation. Recheck every live viewer even when its edits are in skip:
-    # a translation may have completed while another exit prompt was open.
-    for viewer in list(_OPEN_VIEWERS.values()):
-        try:
-            if viewer._closing or not viewer.winfo_exists():
-                continue
-            if not _confirm_bilingual_discard(viewer):
-                return False
-        except tk.TclError:
-            try:
-                if viewer.winfo_exists():
-                    return False
-            except tk.TclError:
-                pass
+    # Transcript-edit decisions and completed-result decisions are independent.
+    # App.on_exit shares the latter across its two passes for this one attempt.
+    decisions = result_decisions if result_decisions is not None else {}
+    viewers = lambda: list(_OPEN_VIEWERS.values())
+    if not _confirm_completed_results(viewers, decisions):
+        return False
     dirty = [v for v in _dirty_viewers() if v not in skip]
     names = [os.path.normcase(os.path.basename(v.json_path)) for v in dirty]
     for viewer in dirty:
@@ -3459,7 +3648,7 @@ def confirm_unsaved_before_exit(skip: "Collection[TranscriptViewer]" = ()) -> bo
                     return False
             except tk.TclError:
                 pass
-    return True
+    return _confirm_completed_results(viewers, decisions)
 
 
 EXIT_EXPORT_WAIT_S = 30.0

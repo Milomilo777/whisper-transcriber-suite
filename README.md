@@ -622,6 +622,16 @@ viewer:
   `llama-cpp-python` package, which the installers do not include (`pip install llama-cpp-python` in a source
   install).
 
+If the AI returns an invalid action-item list, the viewer shows a warning and preserves the original
+reply for review. Only a valid empty list is reported as no action items.
+
+Completed summaries, action items, answers and translation previews are saved as text files in
+`ai-results/` under the application's data folder before display. The result shows its saved path;
+**Copy** copies only the response text. These files remain after the viewer closes and are kept
+until you remove them. If saving fails, the result stays in memory; the next summary, answer,
+action-item or preview action retries saving it without making another provider request. Closing
+asks before discarding unsaved text or accepting the loss of a still-running task's response.
+
 Completed bilingual translations are saved before the viewer reports them. Recovery ZIPs remain in
 `translation-recovery/` under the application's data folder; each contains `translation.srt` and source
 information in `metadata.json`. If the output folder cannot be written, the error shows the recovery copy's
