@@ -80,14 +80,14 @@ def is_verified(path: Path, size: int, sha256: str) -> bool:
 
 
 @contextlib.contextmanager
-def exclusive_lock(path: Path, busy_message: str) -> Generator[None]:
+def exclusive_lock(path: Path, busy_message: str, *, strict: bool = False) -> Generator[None]:
     """Hold ``path`` (a lock file) against other threads and processes.
 
     Non-blocking: a held lock raises :class:`DownloadError` with
     ``busy_message`` at once, since the other holder is doing the same work
     right now. The OS drops the lock when its process dies, so a crash never
     leaves it held. A file system without locks (some network drives) goes
-    on without one, logged.
+    on without one, logged, unless ``strict`` requires confirmed ownership.
     """
     from .config import _lock_is_contended
 
@@ -106,6 +106,8 @@ def exclusive_lock(path: Path, busy_message: str) -> Generator[None]:
         except OSError as e:
             if _lock_is_contended(e):
                 raise DownloadError(busy_message) from e
+            if strict:
+                raise DownloadError(f"Could not lock model publication: {e}") from e
             logger.warning("Could not lock %s (%s); going on without the lock", path, e)
         try:
             yield

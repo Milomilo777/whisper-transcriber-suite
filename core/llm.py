@@ -245,7 +245,29 @@ def download_default_model(
             f"AI Layer model download truncated: got {bytes_done} of {total} "
             "bytes. Check your connection and try again."
         )
-    os.replace(part, dest)
+    from .verified_download import exclusive_lock
+
+    try:
+        with exclusive_lock(dest.with_name(dest.name + ".lock"),
+                            "The model is being published by another download. Try again shortly.",
+                            strict=True):
+            if cancel_event is not None and cancel_event.is_set():
+                raise RuntimeError("LLM download cancelled")
+            if is_model_present(dest):
+                try:
+                    os.unlink(part)
+                except OSError:
+                    pass
+                if log:
+                    log(f"LLM model already present at {dest}")
+                return str(dest)
+            os.replace(part, dest)
+    except BaseException:
+        try:
+            os.unlink(part)
+        except OSError:
+            pass
+        raise
     if log:
         elapsed = time.time() - started
         log(f"LLM model ready at {dest} (in {elapsed:.1f}s)")
