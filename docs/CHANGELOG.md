@@ -14,6 +14,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Stopping system-audio recording no longer waits for a silent output to resume playback. Loopback reads only available frames and closes its stream on the capture thread.
+
 - Closing a transcript viewer or exiting asks before abandoning an active AI task whose later response might fail to save. Discard choices apply only to that task, and results completed during the question are checked separately.
 - When all requested output writers fail, an earlier allocation failure remains visible even if a later writer reports a disk error. Recovery avoids allocating another full transcript copy after that failure.
 
