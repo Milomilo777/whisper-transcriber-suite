@@ -504,6 +504,8 @@
   "Hallucination detector — flags suspect segments in the viewer (red rows)": "Hallucination detector — flags suspect segments in the viewer (red rows)",
   "Hardware": "Hardware",
   "Hardware autodetect": "Hardware autodetect",
+  "Hardware check is still finishing. Choose CPU or close this window.": "Hardware check is still finishing. Choose CPU or close this window.",
+  "Hardware check timed out. Select CPU or try again.": "Hardware check timed out. Select CPU or try again.",
   "Hausa": "Hausa",
   "Have a GitHub account? Report it there": "Have a GitHub account? Report it there",
   "Hawaiian": "Hawaiian",

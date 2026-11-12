@@ -14,6 +14,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Hardware selection no longer feeds an endless Tk event loop. Re-probing has a bounded wait, keeps Cancel available, and ignores timed-out or cancelled results without silently saving a CPU preference.
+
 - macOS packages select compatible shared libraries before bundling, so PDF export and tray images can load when Pillow and the audio decoder supply different liblzma versions.
 
 - Interrupted pre-rebrand history transfers retry after settings have been saved, merging old and new jobs without replacing current settings. SQLite snapshots retain committed WAL rows, and transactional import receipts prevent duplicate records or reimporting completed transfers.

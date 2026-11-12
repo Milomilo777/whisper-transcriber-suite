@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import logging
 import threading
+import time
 import tkinter as tk
 from tkinter import messagebox, ttk
 from typing import TYPE_CHECKING, Callable, Optional
@@ -56,6 +57,8 @@ _CUDA_INFO_ROW = "cuda_unusable"
 
 class HardwareWizard(tk.Toplevel):
     """Modal wizard for picking the acceleration tier."""
+
+    PROBE_TIMEOUT_S = 60.0
 
     def __init__(self, master: "tk.Tk | tk.Toplevel", *, app: "App | None" = None) -> None:
         super().__init__(master)
@@ -89,6 +92,8 @@ class HardwareWizard(tk.Toplevel):
         # Kept so tests / callers can join the in-flight probe before
         # asserting on the populated tree (the probe runs off-thread).
         self._probe_thread: threading.Thread | None = None
+        self._probe_after_id: str | None = None
+        self._probe_deadline = 0.0
         # The worker thread stashes (seq, tiers) here under the lock; a
         # main-thread after()-poll picks it up. We deliberately do NOT call
         # self.after() from the worker thread — on Python 3.14 that raises
@@ -97,9 +102,9 @@ class HardwareWizard(tk.Toplevel):
         self._probe_result: (
             tuple[int, list[_hw.Tier], _hw.CudaStatus | None] | None
         ) = None
-        # Re-entrancy guard: True while we programmatically set the tree
-        # selection so _on_select ignores the event we caused (see
-        # _select_index — otherwise it feedback-loops forever).
+        # Guard synchronous callbacks during a programmatic selection.
+        # Queued TreeviewSelect events arrive after this resets, so their
+        # handler must never write the widget selection back to itself.
         self._selecting: bool = False
 
         self._build()
@@ -179,18 +184,23 @@ class HardwareWizard(tk.Toplevel):
         ``probe_tiers()`` does seconds-long first imports (ctranslate2 /
         onnxruntime / openvino / torch) and loads the CUDA runtime library
         (cuBLAS), which can BLOCK for many seconds on a broken CUDA stack.
-        Running that inline froze the UI ("Not Responding"). Mirror the
-        benchmark path: run on a daemon thread, then marshal the result back
-        to the Tk thread via App.post_to_main (with the no-app self.after(0)
-        fallback). A generation token guards against a stale probe landing
-        after a newer one (or after the wizard is destroyed).
+        A daemon thread stashes its result for a main-thread timer to poll.
+        A generation token rejects results after timeout or cancellation.
+        Do not start another native probe while an old one is still running.
         """
-        self._probe_seq += 1
-        seq = self._probe_seq
+        if self._probe_thread is not None and self._probe_thread.is_alive():
+            if not self._busy:
+                self.status_var.set(_(
+                    "Hardware check is still finishing. Choose CPU or close this window."
+                ))
+            return
+        with self._probe_lock:
+            self._probe_seq += 1
+            seq = self._probe_seq
+            self._probe_result = None
+        self._probe_deadline = time.monotonic() + self.PROBE_TIMEOUT_S
         self.status_var.set(_("Probing…"))
         self._set_buttons_enabled(False)
-        with self._probe_lock:
-            self._probe_result = None
         self._probe_thread = threading.Thread(
             target=self._reprobe_worker, args=(seq,), daemon=True,
         )
@@ -202,13 +212,16 @@ class HardwareWizard(tk.Toplevel):
         self._schedule_probe_poll()
 
     def _schedule_probe_poll(self) -> None:
+        if self._probe_after_id is not None:
+            return
         try:
-            self.after(50, self._poll_probe_result)
+            self._probe_after_id = self.after(50, self._poll_probe_result)
         except Exception:  # noqa: BLE001
             logger.exception("Probe poll failed to schedule")
 
     def _poll_probe_result(self) -> None:
         """Main-thread poll: apply the worker's result once it lands."""
+        self._probe_after_id = None
         try:
             if not self.winfo_exists():
                 return
@@ -218,10 +231,28 @@ class HardwareWizard(tk.Toplevel):
             pending = self._probe_result
             self._probe_result = None
         if pending is None:
-            # Still probing — re-arm unless a newer probe superseded us.
+            if time.monotonic() >= self._probe_deadline:
+                # A native call cannot safely be killed. Let it finish in
+                # the background, reject its result, and offer an explicit
+                # CPU choice without saving or silently pinning that choice.
+                with self._probe_lock:
+                    self._probe_seq += 1
+                    self._probe_result = None
+                self._tiers = [_hw.Tier("cpu_int8", "CPU int8", "cpu", "int8")]
+                self._cuda_status = None
+                self._selected_idx = -1
+                self._user_picked = False
+                self._refresh_tree()
+                self._update_cuda_line()
+                self._set_buttons_enabled(True)
+                self.status_var.set(_("Hardware check timed out. Select CPU or try again."))
+                return
             self._schedule_probe_poll()
             return
         seq, tiers, status = pending
+        if seq != self._probe_seq:
+            self._schedule_probe_poll()
+            return
         self._reprobe_done(seq, tiers, status)
 
     def _reprobe_worker(self, seq: int) -> None:
@@ -230,6 +261,9 @@ class HardwareWizard(tk.Toplevel):
         Must NOT touch Tk (no self.after / no widget calls) — the main-thread
         _poll_probe_result picks the stashed result up.
         """
+        with self._probe_lock:
+            if seq != self._probe_seq:
+                return
         # One CUDA check, shared by the tier list and the "needs setup" line,
         # so the two can't disagree and the (slow) chain runs once.
         status: _hw.CudaStatus | None
@@ -238,6 +272,9 @@ class HardwareWizard(tk.Toplevel):
         except Exception:  # noqa: BLE001
             logger.exception("CUDA status check failed")
             status = None
+        with self._probe_lock:
+            if seq != self._probe_seq:
+                return
         try:
             tiers = _hw.probe_tiers(status)
         except Exception as e:  # noqa: BLE001
@@ -247,7 +284,8 @@ class HardwareWizard(tk.Toplevel):
             except Exception:  # noqa: BLE001
                 tiers = []
         with self._probe_lock:
-            self._probe_result = (seq, tiers, status)
+            if seq == self._probe_seq:
+                self._probe_result = (seq, tiers, status)
 
     def _reprobe_done(
         self,
@@ -278,9 +316,8 @@ class HardwareWizard(tk.Toplevel):
             return
         recommended = _hw.first_supported_tier(self._tiers)
         # Pre-select the recommended tier so the user can just hit Save.
-        # set_widget_selection=False: we are inside an after()-driven refresh
-        # running under update()/mainloop(); a synchronous ttk selection_set
-        # here wedges. The ✓ column + _selected_idx convey the pick.
+        # Keep the automatic pick distinct from a user selection event.
+        # The ✓ column + _selected_idx convey it without changing focus.
         for idx, t in enumerate(self._tiers):
             if t.slug == recommended.slug:
                 self._select_index(idx, set_widget_selection=False)
@@ -371,21 +408,17 @@ class HardwareWizard(tk.Toplevel):
     def _select_index(self, idx: int, *, set_widget_selection: bool = True) -> None:
         """Mark tier ``idx`` as chosen (logical state + the ✓ column).
 
-        ``set_widget_selection`` also drives the Treeview's own selection +
-        focus. Skip it (pass False) when called from inside an after()-driven
-        refresh that itself runs under update()/mainloop(): calling ttk
-        ``selection_set`` from within the event dispatch wedges the ttk
-        ``_selection`` C call. The auto-pick after a re-probe therefore sets
-        only the logical state + checkmark; a real user click goes through
-        _on_select where the widget selection already happened.
+        ``set_widget_selection`` also drives the Treeview selection and
+        focus. Skip it in the selection event handler: selecting even the
+        same row queues another event on Tk 8.6. Automatic recommendations
+        also use only the logical state and checkmark, without marking a
+        user choice or moving keyboard focus.
         """
         if not (0 <= idx < len(self._tiers)):
             return
         self._selected_idx = idx
-        # selection_set/focus below fire <<TreeviewSelect>>, which calls
-        # _on_select, which calls back into _select_index. Without this guard
-        # that is an infinite feedback loop once a Tk event pump is running.
-        # Suppress our own programmatic selection event.
+        # Protect synchronous callbacks while updating the checkmarks.
+        # _on_select handles later queued events without reselecting.
         self._selecting = True
         try:
             for child in self.tree.get_children():
@@ -405,8 +438,9 @@ class HardwareWizard(tk.Toplevel):
         self._sync_save_button()
 
     def _on_select(self, _event: tk.Event) -> None:
-        # Ignore the <<TreeviewSelect>> we triggered ourselves from
-        # _select_index — otherwise the two re-enter each other forever.
+        # Tk 8.6 queues this event even for an unchanged selection. Do not
+        # reselect the row here: the synchronous guard is already reset
+        # when queued events arrive, creating an endless feedback loop.
         if getattr(self, "_selecting", False):
             return
         sel = self.tree.focus()
@@ -420,7 +454,7 @@ class HardwareWizard(tk.Toplevel):
                 self.status_var.set(self._cuda_status.summary())
             return
         self._user_picked = True
-        self._select_index(idx)
+        self._select_index(idx, set_widget_selection=False)
         if 0 <= idx < len(self._tiers):
             t = self._tiers[idx]
             if t.backend == "faster_whisper":
@@ -636,6 +670,15 @@ class HardwareWizard(tk.Toplevel):
             self.app.log(f"Could not restart the transcription worker: {e}")
 
     def _on_close(self) -> None:
+        with self._probe_lock:
+            self._probe_seq += 1
+            self._probe_result = None
+        if self._probe_after_id is not None:
+            try:
+                self.after_cancel(self._probe_after_id)
+            except tk.TclError:
+                pass
+            self._probe_after_id = None
         try:
             self.grab_release()
         except tk.TclError:

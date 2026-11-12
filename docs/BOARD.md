@@ -10,7 +10,7 @@ with the same loop-recovery decision for normal and resumed tasks. Empty clip
 ranges retain the decoded prefix and continue through the remaining audio;
 malformed clip arguments remain available for decoder validation.
 
-The combined source passed **14,690 tests, 75 skipped, zero failures**. It
+The combined source passed **14,707 tests, 75 skipped, zero failures**. It
 includes format identity for API outputs, bounded ASS karaoke timing, and four
 native Tk preset tests covering explicit models, settings-only presets and
 failed saves. The type gate reports
@@ -28,7 +28,7 @@ checks. Store distribution and certification are deferred beyond 2.4.0. Earlier 
 - Translation review and remaining native acceptance checks are listed in the ignored release record.
 - Tagging, public release and artifact uploads require maintainer approval.
 - Intel macOS tests exercised startup, tab navigation and all output formats after the shared-library packaging fix; a final committed-source DMG remains pending.
-- Recording transport was checked on real devices; complete Live/voice UI acceptance and the reported voice-runtime and hardware re-probe failures remain open.
+- Recording transport was checked on real devices; complete Live/voice UI acceptance and the reported voice-runtime failures remain open. Hardware re-probe passed real queued-event, timeout and cancellation regressions, plus native CUDA availability checks with a responsive event loop. Packaged transcription acceptance remains separate.
 
 ## RESUME
 
