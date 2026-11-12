@@ -123,11 +123,11 @@ def test_failed_editor_save_keeps_original_and_unsaved_edits(tmp_path, monkeypat
 def test_editor_save_supports_a_long_existing_filename(tmp_path, monkeypatch):
     from app.dialogs import transcript_viewer as viewer
 
+    # Exercise the basename limit even under a long Windows test directory.
+    if os.name == "nt":
+        tmp_path = Path("\\\\?\\" + str(tmp_path.resolve()))
     path = tmp_path / ("t" * 244 + ".json")
-    try:
-        path.write_bytes(b'[{"start":0,"end":1,"text":"original"}]')
-    except OSError:
-        pytest.skip("filesystem cannot create the long source filename")
+    path.write_bytes(b'[{"start":0,"end":1,"text":"original"}]')
     state, queued = editor(path, "saved edits")
     errors = []
     monkeypatch.setattr(viewer, "notify", lambda *args, **kwargs: None)

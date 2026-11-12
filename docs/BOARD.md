@@ -10,14 +10,17 @@ with the same loop-recovery decision for normal and resumed tasks. Empty clip
 ranges retain the decoded prefix and continue through the remaining audio;
 malformed clip arguments remain available for decoder validation.
 
-The combined source passed **14,349 tests, 75 skipped, zero failures**. It
+The combined source passed **14,550 tests, 75 skipped, zero failures**. It
 includes format identity for API outputs, bounded ASS karaoke timing, and four
 native Tk preset tests covering explicit models, settings-only presets and
 failed saves. The type gate reports
 0 errors, 0 warnings and 0 informations; the documented docs check passes.
 Voice references require a confirmed audio track and trim to bounded PCM WAV; failed exports, sample updates and recording writes preserve existing audio. Transcript saves use isolated staging, API output retention verifies bytes, and cookie-copy errors stop the downloader.
-Both CUDA source-review rounds are closed. Final committed-source GPU acceptance
-remains pending. Earlier sections retain evidence for their named snapshots.
+Both CUDA source-review rounds are closed. The committed ASR core passed two
+normal ten-minute CUDA tasks with word timing disabled and enabled. Each saved
+fifteen formats within the declared clock/structure checks. Packaged-artifact
+GPU acceptance remains pending. Store staging and channel guards passed hermetic
+checks; installed-package, identity, licensing and WACK acceptance remain open. Earlier sections retain evidence for their named snapshots.
 
 ## Owner questions / release boundary
 
