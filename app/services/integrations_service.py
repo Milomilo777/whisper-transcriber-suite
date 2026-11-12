@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 from app.domain.task_outputs import task_srt_output
 from app.i18n import _
 from app.widgets.error_dialog import show_error
+from core import convert
 from core.integrations.otranscribe import otr_to_srt, srt_to_otr
 
 if TYPE_CHECKING:
@@ -20,31 +21,13 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def _free_path(path: str) -> str:
-    """``name (1).ext``, ``name (2).ext``, ... — the first name not on disk."""
-    root, ext = os.path.splitext(path)
-    n = 1
-    while os.path.exists(f"{root} ({n}){ext}"):
-        n += 1
-    return f"{root} ({n}){ext}"
-
-
 def _write_text_atomic(path: str, text: str) -> None:
     """Write UTF-8 with LF line ends via a temp sibling + os.replace.
 
     A failed write leaves any existing file untouched instead of a
     truncated one; LF matches every other writer on every OS.
     """
-    tmp = f"{path}.{os.getpid()}.part"
-    try:
-        from core import _checkpoint
-        with open(tmp, "w", encoding="utf-8", newline="\n") as f:
-            f.write(text)
-            _checkpoint._flush_to_disk(f)
-        os.replace(tmp, path)
-    finally:
-        if os.path.exists(tmp):
-            os.unlink(tmp)
+    convert._replace_atomically(path, text.encode("utf-8"))
 
 
 class IntegrationsService:
@@ -70,6 +53,7 @@ class IntegrationsService:
             return
         # Beside the SRT the run really wrote ("name (1).otr" for a re-run).
         otr_path = os.path.splitext(srt_path)[0] + ".otr"
+        replace = False
         if os.path.exists(otr_path):
             # The user may have edited this file in oTranscribe; never
             # replace it without asking.
@@ -84,11 +68,13 @@ class IntegrationsService:
             )
             if choice is None:
                 return
-            if not choice:
-                otr_path = _free_path(otr_path)
+            replace = bool(choice)
         try:
             payload = srt_to_otr(srt_path, os.path.basename(task.file_path))
-            _write_text_atomic(otr_path, payload)
+            if replace:
+                _write_text_atomic(otr_path, payload)
+            else:
+                otr_path = convert._publish_new_output(otr_path, payload.encode("utf-8"))
         except Exception as e:  # noqa: BLE001
             logger.exception("Export to .otr failed")
             show_error(
@@ -119,7 +105,13 @@ class IntegrationsService:
             return
         try:
             text = otr_to_srt(otr_path)
-            _write_text_atomic(srt_path, text)
+            if convert._same_file(srt_path, otr_path):
+                # A mistaken Save As selection must not destroy the import.
+                srt_path = convert._publish_new_output(
+                    str(Path(srt_path).with_suffix(".converted.srt")), text.encode("utf-8"),
+                )
+            else:
+                _write_text_atomic(srt_path, text)
         except Exception as e:  # noqa: BLE001
             logger.exception("Import .otr → SRT failed")
             show_error(
