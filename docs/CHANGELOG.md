@@ -16,6 +16,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 - Interrupted legacy settings migration leaves no partial current config and retries safely, including pre-rebrand profiles. Failed transfers keep privacy switches closed and automatic partial updates cannot replace unreadable legacy choices; settings can still be explicitly saved.
 - History recovery preserves committed WAL transactions alongside the damaged database. It checks existing files read-only and archives every file before removing originals; failed archiving leaves the originals available for repair.
+- Subtitle conversions use separate temporary files, preventing concurrent conversions from interfering with each other and allowing long output filenames. Failed staging never removes another writer's file.
 - Voice-reference validation rejects duration-bearing files with no audio track, including video content using an audio filename.
 - Saving generated speech preserves an earlier destination file if copying or publishing the new WAV fails.
 - Server cleanup verifies archived transcript contents before removing the original. Failed archive copies preserve the previous output and the complete source for retry.

@@ -55,6 +55,7 @@ import json
 import logging
 import os
 import re
+import uuid
 from pathlib import Path
 from typing import Any
 from xml.etree import ElementTree as ET
@@ -973,19 +974,24 @@ def _free_out_path(path: str) -> str:
 
 def _replace_atomically(target: str, payload: bytes) -> None:
     """Write *payload* to a temp sibling of *target*, then move it into place."""
-    tmp = f"{target}.{os.getpid()}.part"
+    tmp = os.path.join(
+        os.path.dirname(os.path.abspath(target)), f".convert-{uuid.uuid4().hex}.part",
+    )
+    created = False
     try:
         from core import _checkpoint
-        with open(tmp, "wb") as fb:
+        with open(tmp, "xb") as fb:
+            created = True
             fb.write(payload)
             _checkpoint._flush_to_disk(fb)
         os.replace(tmp, target)
+        created = False
     finally:
         # Best-effort cleanup only: if the replace already failed, a failing
         # unlink (AV / indexer holding the .part) must not replace the error
         # the caller actually needs to see.
         try:
-            if os.path.exists(tmp):
+            if created:
                 os.unlink(tmp)
         except OSError:
             pass
