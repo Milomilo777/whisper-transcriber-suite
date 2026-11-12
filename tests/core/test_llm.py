@@ -111,7 +111,7 @@ def test_download_writes_atomically_via_part(tmp_path, monkeypatch):
     # Bypass the post-download size sanity check so the test isn't
     # forced to fabricate 100 MB of payload.
     monkeypatch.setattr(llm, "is_model_present", lambda path=None: False)
-    result = llm.download_default_model(dest=dest)
+    result = llm.download_default_model(url="https://models.example.invalid/custom", dest=dest)
     assert Path(result).exists()
     assert (tmp_path / "model.gguf").read_bytes()[:4] == b"GGUF"
     leftovers = [p.name for p in tmp_path.iterdir() if p.name.endswith(".part")]

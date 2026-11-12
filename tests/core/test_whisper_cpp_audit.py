@@ -46,7 +46,7 @@ def test_download_model_success(tmp_path, monkeypatch):
     monkeypatch.setattr(urllib.request, "urlopen", lambda url, timeout: FakeResponse())
     monkeypatch.setattr(wc.offline, "require_online", lambda *a: None)
 
-    path = wc.download_default_model(log=lambda m: logs.append(m), dest=dest)
+    path = wc.download_default_model(url="https://models.example.invalid/custom", log=lambda m: logs.append(m), dest=dest)
     assert path == str(dest)
     assert dest.exists()
     assert len(dest.read_bytes()) == 100
@@ -262,7 +262,7 @@ def test_cpp_download_preserves_an_older_fixed_partial(tmp_path, monkeypatch):
     older.write_bytes(original)
     monkeypatch.setattr(wc.offline, "require_online", lambda *args: None)
     monkeypatch.setattr(wc.urllib.request, "urlopen", lambda *args, **kwargs: _CppBytesResponse([b"new model"]))
-    assert wc.download_default_model(dest=dest) == str(dest)
+    assert wc.download_default_model(url="https://models.example.invalid/custom", dest=dest) == str(dest)
     assert dest.read_bytes() == b"new model" and older.read_bytes() == original
     assert list(tmp_path.glob("*.part")) == [older]
 
@@ -286,7 +286,7 @@ def test_cpp_download_never_places_model_inside_destination_directory(tmp_path, 
     monkeypatch.setattr(wc.offline, "require_online", lambda *args: None)
     monkeypatch.setattr(wc.urllib.request, "urlopen", response)
     with pytest.raises(OSError):
-        wc.download_default_model(dest=dest, log=logs.append)
+        wc.download_default_model(url="https://models.example.invalid/custom", dest=dest, log=logs.append)
     assert (dest / "retained.txt").read_bytes() == b"retained original"
     assert sorted(path.name for path in dest.iterdir()) == ["retained.txt"]
     assert not list(tmp_path.glob("*.part"))
@@ -331,11 +331,11 @@ def test_model_response_without_positive_length_must_not_install_empty_file(
     monkeypatch.setattr(wc.offline, "require_online", lambda *args: None)
     monkeypatch.setattr(wc.urllib.request, "urlopen", lambda *args, **kwargs: response)
     if payload:
-        assert wc.download_default_model(dest=dest, log=logs.append) == str(dest)
+        assert wc.download_default_model(url="https://models.example.invalid/custom", dest=dest, log=logs.append) == str(dest)
         assert dest.read_bytes() == payload
     else:
         with pytest.raises(RuntimeError, match="empty"):
-            wc.download_default_model(dest=dest, log=logs.append)
+            wc.download_default_model(url="https://models.example.invalid/custom", dest=dest, log=logs.append)
         assert dest.read_bytes() == original if existing else not dest.exists()
         assert not any("ready" in text.lower() or text.startswith("Done:") for text in logs)
     assert not list(tmp_path.glob("*.part"))

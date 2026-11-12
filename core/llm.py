@@ -47,6 +47,7 @@ import contextlib
 import datetime
 import email.utils
 import http.client
+import hashlib
 import json
 import logging
 import os
@@ -72,9 +73,10 @@ logger = logging.getLogger(__name__)
 DEFAULT_MODEL_NAME = "qwen2.5-1.5b-instruct-q4_k_m.gguf"
 DEFAULT_MODEL_URL = (
     "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/"
-    "resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf"
+    "resolve/91cad51170dc346986eccefdc2dd33a9da36ead9/qwen2.5-1.5b-instruct-q4_k_m.gguf"
 )
-DEFAULT_MODEL_SIZE_BYTES = 1_117_000_000  # ~1.04 GB; tolerance check only
+DEFAULT_MODEL_SIZE_BYTES = 1_117_320_736
+DEFAULT_MODEL_SHA256 = "6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e"
 
 # One-click remote preset (Advanced > AI). Groq serves an OpenAI-compatible API
 # and has a free tier. The model id must be one a free key can call: on 2026-10-26
@@ -195,6 +197,7 @@ def download_default_model(
     started = time.time()
     bytes_done = 0
     cancelled = False
+    digest = hashlib.sha256() if url == DEFAULT_MODEL_URL else None
     try:
         with urllib.request.urlopen(req, timeout=60) as r:
             total = int(r.headers.get("content-length") or 0)
@@ -207,8 +210,12 @@ def download_default_model(
                     chunk = r.read(chunk_size)
                     if not chunk:
                         break
+                    if digest is not None and bytes_done + len(chunk) > DEFAULT_MODEL_SIZE_BYTES:
+                        raise RuntimeError("AI Layer model exceeds its pinned size; it was not installed.")
                     f.write(chunk)
                     bytes_done += len(chunk)
+                    if digest is not None:
+                        digest.update(chunk)
                     if log and total:
                         pct = int(bytes_done / total * 100)
                         if pct % 5 == 0:
@@ -261,6 +268,10 @@ def download_default_model(
                 if log:
                     log(f"LLM model already present at {dest}")
                 return str(dest)
+            if digest is not None and (
+                bytes_done != DEFAULT_MODEL_SIZE_BYTES or digest.hexdigest() != DEFAULT_MODEL_SHA256
+            ):
+                raise RuntimeError("AI Layer model does not match its pinned size/checksum; it was not installed.")
             os.replace(part, dest)
     except BaseException:
         try:
