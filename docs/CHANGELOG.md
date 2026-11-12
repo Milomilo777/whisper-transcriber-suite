@@ -13,6 +13,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Record the reliability investigation checkpoint, distinguishing reviewed fixes from held reproductions and remaining runtime validation.
 
 ### Fixed
+- Support psutil 5.9 when locating offline AI server sockets and inspecting the app's open network connections.
 - Keep history results accessible after retrying an unsuccessful API output archive. Cleanup updates the saved paths before removing the originals, and retains them if history cannot be saved.
 - Preserve API outputs in subfolders when an archive copy fails, including across server restarts. Retained copies keep their relative folders so same-named outputs cannot replace each other.
 

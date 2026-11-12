@@ -682,7 +682,9 @@ class LocalLLMServer:
             # itself: the server is its child, so look at the whole tree.
             proc = psutil.Process(pid)
             for p in [proc, *proc.children(recursive=True)]:
-                for conn in p.net_connections(kind="tcp"):
+                # psutil 5.9 predates the net_connections() name.
+                read_connections = getattr(p, "net_connections", None) or getattr(p, "connections")
+                for conn in read_connections(kind="tcp"):
                     if conn.status == psutil.CONN_LISTEN and conn.laddr and conn.laddr.ip == LOOPBACK:
                         return int(conn.laddr.port)
         except Exception:  # noqa: BLE001 - not yet listening, or not readable
