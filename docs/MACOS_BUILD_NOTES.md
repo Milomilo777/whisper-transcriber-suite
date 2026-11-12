@@ -29,6 +29,14 @@ bash platform/macos/pyinstaller/builddmg.command                   # create-dmg,
 Release file name: `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` / `-arm64.dmg`.
 CI (`macos-app.yml`, manual dispatch) runs exactly these steps on both archs.
 
+The bundle verifier requires a build-host Python interpreter (optional third
+argument, default `python3`) to enumerate Mach-O candidates by their magic bytes.
+It includes suffix-less framework files without execute permission, rejects
+failed native inspections, reads minimum OS requirements from every binary
+slice, and rejects requirements above `LSMinimumSystemVersion`. Unknown binary
+types or missing version metadata fail verification. Run it on the final bundle;
+the hermetic inspector controls do not establish native app compatibility.
+
 ## Building with the repo-root spec on a Mac (the colleague's way)
 
 Also supported (restored 2026-09-27): the habit of the colleague who built the

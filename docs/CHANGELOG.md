@@ -13,6 +13,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Record the reliability investigation checkpoint, distinguishing reviewed fixes from held reproductions and remaining runtime validation.
 
 ### Fixed
+- Reject macOS bundles when binary inspection fails or a bundled binary requires a newer macOS version than declared. Verification includes framework binaries without an executable bit and checks all architecture slices.
 - Preserve API outputs in subfolders when an archive copy fails, including across server restarts. Retained copies keep their relative folders so same-named outputs cannot replace each other.
 
 

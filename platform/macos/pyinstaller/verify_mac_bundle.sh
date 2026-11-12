@@ -3,42 +3,102 @@
 # Fails (exit 1) if any Mach-O in the bundle:
 #   * links a library outside the bundle other than /usr/lib or /System, or
 #   * lacks an expected architecture (pass universal2 to require both).
-# Also prints the highest minimum-macOS found vs. the Info.plist
-# LSMinimumSystemVersion, and runs the bundled ffmpeg / yt-dlp / CLI once.
+# Also rejects minimum-macOS requirements above the Info.plist declaration,
+# and runs the bundled ffmpeg / yt-dlp / CLI once.
 #
-# Usage: bash platform/macos/pyinstaller/verify_mac_bundle.sh [app-path] [x86_64|arm64|universal2]
+# Usage: bash platform/macos/pyinstaller/verify_mac_bundle.sh [app-path] [x86_64|arm64|universal2] [python3]
 set -uo pipefail
 cd "$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/../../.." && pwd)"
 
 APP="${1:-dist/Whisper Transcriber Suite.app}"
 WANT="${2:-$(uname -m)}"
+VERIFY_PYTHON="${3:-python3}"
 [ -d "$APP" ] || { echo "error: $APP not found" >&2; exit 1; }
 
 n=0; bad=0; max="0.0"; maxfile=""
+version_greater() {
+  # Compare numeric components; 10.15 and 10.15.0 are the same OS version.
+  awk -v left="$1" -v right="$2" 'BEGIN {
+    split(left, a, /[.]/); split(right, b, /[.]/)
+    for (i=1; i<=3; i++) {
+      if ((a[i]+0) > (b[i]+0)) exit 0
+      if ((a[i]+0) < (b[i]+0)) exit 1
+    }
+    exit 1
+  }'
+}
+# Read magic bytes in one Python process: framework binaries need not have
+# an executable bit or extension. A failed traversal must not look empty.
+macho_list="$(mktemp)" || exit 1
+trap 'rm -f -- "$macho_list"' EXIT
+if ! "$VERIFY_PYTHON" platform/macos/pyinstaller/list_macho.py "$APP" >"$macho_list"; then
+  rm -f -- "$macho_list"
+  echo "error: could not enumerate bundle binaries" >&2
+  exit 1
+fi
 while IFS= read -r -d '' f; do
-  file "$f" | grep -q 'Mach-O' || continue
+  if ! description="$(file -b "$f")"; then
+    echo "FILE  $f: inspection failed"; bad=$((bad + 1)); continue
+  fi
+  if [[ "$description" != *Mach-O* ]]; then
+    # Java class files share CAFEBABE with universal Mach-O binaries.
+    [[ "$description" == *compiled\ Java\ class* ]] && continue
+    echo "TYPE  $f: unrecognized Mach-O candidate: $description"; bad=$((bad + 1)); continue
+  fi
   n=$((n + 1))
   rel="${f#"$APP"/}"
-  archs="$(lipo -archs "$f" 2>/dev/null)"
+  if ! archs="$(lipo -archs "$f" 2>&1)"; then
+    echo "LIPO  $rel: $archs"; bad=$((bad + 1)); continue
+  fi
   case "$WANT" in
     universal2) { [[ " $archs " == *" x86_64 "* ]] && [[ " $archs " == *" arm64 "* ]]; } || { echo "ARCH  $rel: $archs"; bad=$((bad + 1)); } ;;
     *) [[ " $archs " == *" $WANT "* ]] || { echo "ARCH  $rel: $archs"; bad=$((bad + 1)); } ;;
   esac
-  ext="$(otool -L "$f" 2>/dev/null | grep -v ':$' | grep -vE '@rpath|@loader_path|@executable_path|/usr/lib/|/System/Library/' || true)"
+  if ! links="$(otool -L "$f" 2>&1)" || [ -z "$links" ]; then
+    echo "OTOOL $rel: dependency inspection failed: $links"; bad=$((bad + 1)); continue
+  fi
+  ext="$(printf '%s\n' "$links" | grep -v ':$' | grep -vE '^[[:space:]]*(@rpath/|@loader_path/|@executable_path/|/usr/lib/|/System/Library/)' || true)"
   if [ -n "$ext" ]; then
     echo "DEP   $rel:"; echo "$ext"; bad=$((bad + 1))
   fi
-  m="$(otool -l "$f" | awk '/LC_BUILD_VERSION/{b=1} b&&/minos/{print $2; exit} /LC_VERSION_MIN_MACOSX/{v=1} v&&/ version/{print $2; exit}')"
-  if [ -n "$m" ] && [ "$(printf '%s\n%s\n' "$max" "$m" | sort -V | tail -1)" = "$m" ] && [ "$m" != "$max" ]; then
-    max="$m"; maxfile="$rel"
+  if ! loads="$(otool -l "$f" 2>&1)"; then
+    echo "OTOOL $rel: load-command inspection failed: $loads"; bad=$((bad + 1)); continue
   fi
-done < <(find "$APP" -type f \( -perm -u+x -o -name '*.dylib' -o -name '*.so' \) -print0)
+  # Read every slice, not only the first architecture in a universal binary.
+  mins="$(printf '%s\n' "$loads" | awk '
+    /^Load command / {b=0; v=0}
+    /cmd LC_BUILD_VERSION$/ {b=1}
+    b && /^[[:space:]]*minos / {print $2; b=0}
+    /cmd LC_VERSION_MIN_MACOSX$/ {v=1}
+    v && /^[[:space:]]*version / {print $2; v=0}')"
+  if [ -z "$mins" ]; then
+    echo "MINOS $rel: no macOS version could be verified"; bad=$((bad + 1)); continue
+  fi
+  if [ "$(wc -l <<<"$mins")" -lt "$(wc -w <<<"$archs")" ]; then
+    echo "MINOS $rel: not every architecture has a verified minimum"; bad=$((bad + 1))
+  fi
+  while IFS= read -r m; do
+    if ! [[ "$m" =~ ^[0-9]+(\.[0-9]+){1,2}$ ]]; then
+      echo "MINOS $rel: invalid version $m"; bad=$((bad + 1)); continue
+    fi
+    if version_greater "$m" "$max"; then
+      max="$m"; maxfile="$rel"
+    fi
+  done <<<"$mins"
+done <"$macho_list"
+rm -f -- "$macho_list"
+[ "$n" -gt 0 ] || { echo "error: no Mach-O files inspected"; bad=$((bad + 1)); }
 
 plist_min="$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$APP/Contents/Info.plist" 2>/dev/null)"
 echo "Mach-O files scanned : $n"
-echo "problems             : $bad"
 echo "highest minos        : $max  ($maxfile)"
 echo "LSMinimumSystemVersion: $plist_min"
+if ! [[ "$plist_min" =~ ^[0-9]+(\.[0-9]+){1,2}$ ]]; then
+  echo "MINOS invalid or unreadable Info.plist minimum"; bad=$((bad + 1))
+elif version_greater "$max" "$plist_min"; then
+  echo "MINOS $maxfile requires $max, above the declared $plist_min"; bad=$((bad + 1))
+fi
+echo "problems             : $bad"
 
 B="$APP/Contents/Frameworks/bin"
 v="$("$B/ffmpeg" -hide_banner -version 2>&1)" && echo "${v%%$'\n'*}" || { echo "ffmpeg FAILED: $v"; bad=$((bad + 1)); }
