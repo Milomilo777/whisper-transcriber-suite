@@ -1857,12 +1857,34 @@ def _save(app: Any) -> None:
     )
     if not dest:
         return
+    staging = None
     try:
         import shutil
-        shutil.copyfile(path, dest)
+        import tempfile
+        from core._checkpoint import _strict_sync
+
+        # A failed copy must not truncate an earlier export at the chosen path.
+        fd, staging = tempfile.mkstemp(
+            prefix=".voice-save-", suffix=".tmp",
+            dir=os.path.dirname(os.path.abspath(dest)),
+        )
+        os.close(fd)
+        shutil.copyfile(path, staging)
+        with open(staging, "r+b") as saved:
+            _strict_sync(saved)
+        os.replace(staging, dest)
+        staging = None
     except OSError as e:
         show_error(app, _("Could not save the file"), str(e))
         return
+    finally:
+        if staging is not None:
+            try:
+                os.unlink(staging)
+            except FileNotFoundError:
+                pass
+            except OSError:
+                logger.exception("Could not remove staged voice export")
     app.log(f"Voice-clone result saved to {dest}")
 
 
