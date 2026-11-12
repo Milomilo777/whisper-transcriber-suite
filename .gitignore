@@ -30,6 +30,7 @@ MANIFEST
 !whisper_project_onefile.spec
 !whisper_project_onedir.spec
 !platform/macos/pyinstaller/whisper_project_mac.spec
+!platform/windows/store/whisper_project_store.spec
 *.spec.bak
 
 # Virtual environments

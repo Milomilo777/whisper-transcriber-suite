@@ -4,6 +4,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+
+- Added a separate Windows Store payload and MSIX staging pipeline with channel-specific update guidance and writable application data. Retained download tools and copied package assets are validated before staging is published.
+
 ### Documentation
 
 - Record the reliability investigation checkpoint, distinguishing reviewed fixes from held reproductions and remaining runtime validation.

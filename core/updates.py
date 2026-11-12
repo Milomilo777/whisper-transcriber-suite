@@ -43,6 +43,7 @@ from datetime import date, timedelta
 from pathlib import Path
 from typing import Any, Mapping, MutableMapping, NamedTuple
 
+from core import distribution
 from core.verified_download import urlopen_https_only
 
 logger = logging.getLogger(__name__)
@@ -588,7 +589,9 @@ def automatic_check_enabled(
     config: Mapping[str, Any], environ: Mapping[str, str] | None = None,
 ) -> bool:
     """The quiet launch check and the passive signs run only when this is True."""
-    return bool(config.get("update_check_enabled", True)) and not disabled_by_environment(environ)
+    return (not distribution.is_store_build()
+            and bool(config.get("update_check_enabled", True))
+            and not disabled_by_environment(environ))
 
 
 def _as_int(value: object) -> int:
@@ -749,6 +752,8 @@ def check_for_update(timeout: int = _DEFAULT_TIMEOUT_S) -> UpdateInfo | None:
     gentle "couldn't reach the server" note. Work offline returns ``None``
     without a request (the Help menu item says so before it gets here).
     """
+    if distribution.is_store_build():
+        return None
     from core import offline
     if offline.is_offline():
         logger.info("Update check skipped: offline mode is on")

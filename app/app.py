@@ -7192,7 +7192,12 @@ class App(tk.Tk):
         """
         if self._closing:
             return
-        from core import updates as _updates
+        from core import distribution, updates as _updates
+
+        if distribution.is_store_build():
+            if manual:
+                notify(self, _("Check Microsoft Store for updates to this app."), "info")
+            return
 
         if info is None:
             if manual:
@@ -7484,7 +7489,7 @@ class App(tk.Tk):
             # download page).
             if not _inst_attr(self, "_yt_dlp_outdated_hint_shown") and yt_dlp_update.looks_outdated(reason):
                 self._yt_dlp_outdated_hint_shown = True
-                self.log("Note: " + yt_dlp_update.OUTDATED_HINT)
+                self.log("Note: " + yt_dlp_update.outdated_hint())
             return
         logger.info("Offering a yt-dlp update after: %s", reason)
         self._yt_dlp_offer_open = True

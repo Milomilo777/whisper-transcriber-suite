@@ -520,6 +520,7 @@ a = Analysis(
         'tiktoken',
         'core.burn_subs',
         'core.config',
+        'core.distribution',
         'core.presets',
         'core.completeness',
         'core.collapse_rescue',

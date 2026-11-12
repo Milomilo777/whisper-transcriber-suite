@@ -51,7 +51,7 @@ import weakref
 from dataclasses import dataclass, field
 from typing import Any, Callable, Protocol
 
-from core import __version__, offline
+from core import __version__, distribution, offline
 from core._checkpoint import _strict_sync
 from core.config import (
     PROJECT_FILE_NAME,
@@ -827,6 +827,10 @@ class JobManager:
                    language2: str = "",
                    language_model: tuple[str, str] = ("", "")) -> str:
         """Register a URL job; return job_id. Scheme is validated here."""
+        try:
+            distribution.require_feature("media_download")
+        except (distribution.StoreBuildError, distribution.StoreFeatureUnavailable) as exc:
+            raise ValueError(str(exc)) from exc
         if offline.is_offline():
             # Before is_safe_url, which looks the host name up.
             raise ValueError(offline.refused("a link job"))

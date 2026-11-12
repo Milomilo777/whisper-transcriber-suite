@@ -35,7 +35,7 @@ import zipfile
 from pathlib import Path
 from typing import Callable
 
-from . import offline
+from . import distribution, offline
 from .config import user_cache_dir
 from .paths import bundled_binary
 
@@ -260,6 +260,7 @@ def install_deno(
     for this machine, network, checksum mismatch). Serialised; a concurrent
     caller finds the finished install.
     """
+    distribution.require_feature("dynamic_runtime")
     asset = release_asset_name()
     if asset is None:
         raise RuntimeError(

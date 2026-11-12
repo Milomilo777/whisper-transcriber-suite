@@ -129,7 +129,7 @@
         "core.diagnostic_vocab",
         "core.diarization",
         "core.diarization_worker",
-        "core.download_guard",
+        "core.distribution", "core.download_guard",
         "core.failure_clue",
         "core.finish_hooks",
         "core.hallucination",

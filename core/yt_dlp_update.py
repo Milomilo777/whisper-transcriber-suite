@@ -249,6 +249,9 @@ def can_self_update(bundled: str | None = None) -> bool:
     Either the bundled yt-dlp is a single-file build we can copy, or this is a
     Mac that can install yt-dlp's folder build (``bootstrap_possible``).
     """
+    from core import distribution
+    if distribution.is_store_build():
+        return False
     path = bundled if bundled is not None else bundled_binary("yt-dlp")
     return _can_copy_bundled(path) or bootstrap_possible()
 
@@ -498,6 +501,9 @@ def refresh_state_if_stale(*, version_of: VersionOf | None = None) -> bool:
     """Re-ask the versions when a copy changed since the record (e.g. the app
     was updated with a newer bundled yt-dlp). Returns True when it did.
     Skipped while an update runs: the update records the versions itself."""
+    from core import distribution
+    if distribution.is_store_build():
+        return False
     with _cond:
         if _updating:
             return False
@@ -649,6 +655,14 @@ _UNSUPPORTED_TEXT = (
 )
 
 
+def outdated_hint() -> str:
+    """Keep Store download failures on their own distribution channel."""
+    from core import distribution
+    if distribution.is_store_build():
+        return "Check Microsoft Store for an updated version of this app, then retry."
+    return OUTDATED_HINT
+
+
 def update_cached_copy(
     *,
     log: Callable[[str], None] | None = None,
@@ -664,6 +678,9 @@ def update_cached_copy(
     (``_install_onedir``); every other system copies the bundled one.
     """
     global _updating
+    from core import distribution
+    if distribution.is_store_build():
+        return UpdateResult("unsupported", message=_UNSUPPORTED_TEXT)
     bundled = bundled_binary("yt-dlp")
     if not can_self_update(bundled):
         return UpdateResult("unsupported", message=_UNSUPPORTED_TEXT)

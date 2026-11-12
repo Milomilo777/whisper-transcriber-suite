@@ -28,7 +28,7 @@ from app.domain.cookies import (
     remember_cookie_failure,
     usable_cookie_value,
 )
-from core import offline, yt_dlp_update
+from core import distribution, offline, yt_dlp_update
 from core._proc import new_session_kwargs
 from core.integrations import smtv as smtv_mod
 from core.js_runtime import (
@@ -99,7 +99,34 @@ class FormatService:
     def __init__(self, app: "App") -> None:
         self.app = app
 
+    def _store_lookup_blocked(self) -> bool:
+        try:
+            distribution.require_feature("media_download")
+        except (distribution.StoreBuildError, distribution.StoreFeatureUnavailable) as exc:
+            app = self.app
+            if app.format_lookup_after:
+                app.after_cancel(app.format_lookup_after)
+            app.format_lookup_after = None
+            app.audio_format_map = {}
+            app.video_format_map = {}
+            app.audio_format_combo["values"] = []
+            app.video_format_combo["values"] = []
+            app.audio_format_var.set("")
+            app.video_format_var.set("")
+            app.current_video_title = ""
+            app.current_video_language = ""
+            app.current_video_caption_langs = {}
+            app.pending_link_start = ""
+            app.format_lookup_error = str(exc)
+            app.format_status_var.set(str(exc))
+            if hasattr(app, "update_caption_shortcut_state"):
+                app.update_caption_shortcut_state()
+            return True
+        return False
+
     def schedule_lookup(self) -> None:
+        if self._store_lookup_blocked():
+            return
         if self.app.format_lookup_after:
             self.app.after_cancel(self.app.format_lookup_after)
         # The link changed: the previous link's formats and error no longer apply. Without this,
@@ -119,6 +146,8 @@ class FormatService:
             self.app.update_caption_shortcut_state()
 
     def lookup_formats(self) -> None:
+        if self._store_lookup_blocked():
+            return
         url = smtv_mod.clean_url(self.app.download_url_var.get())
         self.app.format_lookup_after = None
         self.app.audio_format_map = {}

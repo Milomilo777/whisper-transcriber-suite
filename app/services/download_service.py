@@ -25,7 +25,7 @@ import weakref
 import urllib.error
 import urllib.request
 
-from core import download_guard, offline
+from core import distribution, download_guard, offline
 from core._proc import kill_download_tree, new_session_kwargs
 from core.download_guard import DownloadRefused
 from core.js_runtime import (
@@ -1186,6 +1186,19 @@ class DownloadService:
     def __init__(self, app: "App") -> None:
         self.app = app
 
+    def _refused_store_policy(self, task: "VideoDownloadTask | None" = None) -> bool:
+        """Fail excluded or unreadable policy through the existing error path."""
+        generation = getattr(task, "_run_generation", 0)
+        try:
+            distribution.require_feature("media_download")
+        except (distribution.StoreFeatureUnavailable, distribution.StoreBuildError) as error:
+            if task is None:
+                self.app.log(str(error))
+            else:
+                self._post_terminal("error", task, str(error), generation)
+            return True
+        return False
+
     def _cookies_setting(self, force_no_cookies: bool = False) -> str | None:
         """The log-in cookies setting a command is built with: None when a retry forbids them,
         "" when this run already found them unreadable."""
@@ -1382,6 +1395,8 @@ class DownloadService:
 
     def enqueue_from_form(self) -> None:
         """Read the download tab form, validate, build a task, and enqueue."""
+        if self._refused_store_policy():
+            return
         from tkinter import messagebox
         from app.domain.languages import SUBTITLE_LANGUAGES, resolve_caption_kind
         from app.domain.tasks import VideoDownloadTask
@@ -1711,6 +1726,8 @@ class DownloadService:
         resolved language, so the "no captions found" branch below should
         be rare -- it's a defensive re-check, not the primary UX path.
         """
+        if self._refused_store_policy():
+            return
         from tkinter import messagebox
 
         from app.domain.languages import SUBTITLE_LANGUAGES, resolve_caption_kind
@@ -1858,6 +1875,8 @@ class DownloadService:
         return True
 
     def _run_task(self, task: "VideoDownloadTask") -> None:
+        if self._refused_store_policy(task):
+            return
         app = self.app
         if self._refused_offline(task):
             return
@@ -3472,7 +3491,7 @@ class DownloadService:
             ):
                 # No "Update it" bar here (the macOS app's yt-dlp cannot
                 # update itself), so say what does help.
-                msg += "  — " + yt_dlp_update.OUTDATED_HINT
+                msg += "  — " + yt_dlp_update.outdated_hint()
             self._post_terminal("error", task, msg, run_generation)
             if yt_dlp_update.should_offer_update(reason):
                 self._offer_yt_dlp_update(reason)

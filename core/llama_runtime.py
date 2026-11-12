@@ -35,7 +35,7 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Callable
 
-from . import verified_download
+from . import distribution, verified_download
 from .config import user_cache_dir
 from .paths import resource_base
 
@@ -315,6 +315,7 @@ def install_runtime(
     for an archive that tries to escape its folder, and RuntimeError with a
     readable message otherwise. A failed install leaves no runtime folder.
     """
+    distribution.require_feature("dynamic_runtime")
     if asset is None:
         reason = unsupported_reason()
         if reason:
@@ -492,8 +493,10 @@ def ensure_vc_runtime(folder: Path) -> list[str]:
     Copies the app's own (Microsoft-signed, app-local) DLLs into ``folder``
     when they are newer than the system's, removes copies it made earlier
     that the system has since overtaken, and returns the DLLs neither side
-    has. Elsewhere: nothing to do, ``[]``.
+    has. Elsewhere: nothing to do, ``[]``. Store builds raise
+    ``StoreFeatureUnavailable`` before changing executable runtime files.
     """
+    distribution.require_feature("dynamic_runtime")
     if sys.platform != "win32":
         return []
     copies, missing = plan_vc_runtime(_system_dll_version, _file_version, _app_dll_dirs())

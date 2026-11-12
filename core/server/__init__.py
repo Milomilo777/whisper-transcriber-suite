@@ -232,6 +232,9 @@ def _download_url(url: str, dest_dir: str,
     flag stops it, ``max_bytes`` caps the file and ``timeout_s`` the total
     time, so one stalled or huge download cannot hold the single worker.
     """
+    from core import distribution
+
+    distribution.require_feature("media_download")
     from core._proc import kill_process_tree, new_session_kwargs
     from core.paths import bin_dir
 
