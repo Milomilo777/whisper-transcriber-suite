@@ -8,9 +8,11 @@ written next to its source file, so the clip is copied to the user data folder f
 from __future__ import annotations
 
 import logging
+import hashlib
 import os
 import shutil
 import sys
+import tempfile
 from pathlib import Path
 
 from core.config import user_data_dir
@@ -52,7 +54,7 @@ def prepare_working_copy() -> str | None:
     """Copy the clip into the user data folder and return that path.
 
     Returns None when the clip is missing from the install; raises ``OSError`` when the
-    copy cannot be written. An up-to-date copy (same size) is reused, so the transcripts
+    copy cannot be written. An up-to-date copy (same contents) is reused, so the transcripts
     next to it survive from one run to the next.
     """
     source = bundled_clip_path()
@@ -62,6 +64,27 @@ def prepare_working_copy() -> str | None:
     folder = samples_dir()
     folder.mkdir(parents=True, exist_ok=True)
     target = folder / SAMPLE_CLIP_NAME
-    if not target.is_file() or target.stat().st_size != os.path.getsize(source):
-        shutil.copyfile(source, target)
+    matches = False
+    if target.is_file() and target.stat().st_size == os.path.getsize(source):
+        with open(source, "rb") as bundled, target.open("rb") as existing:
+            matches = (hashlib.file_digest(bundled, "sha256").digest()
+                       == hashlib.file_digest(existing, "sha256").digest())
+    if not matches:
+        from core._checkpoint import _strict_sync
+
+        fd, staging = tempfile.mkstemp(prefix=".sample-", suffix=".part", dir=folder)
+        try:
+            with os.fdopen(fd, "r+b") as copied:
+                shutil.copyfile(source, staging)
+                _strict_sync(copied)
+            os.replace(staging, target)
+            staging = None
+        finally:
+            if staging is not None:
+                try:
+                    os.unlink(staging)
+                except FileNotFoundError:
+                    pass
+                except OSError:
+                    logger.exception("Could not remove staged sample clip")
     return str(target)
