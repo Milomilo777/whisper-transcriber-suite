@@ -34,6 +34,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Preserve committed search entries during profile upgrades with a consistent SQLite snapshot. Interrupted transfers retry safely, and existing indexes never receive sidecar files from the old profile.
 - Real disk-sync errors stop output and checkpoint publication, preserving the previous saved version instead of reporting success after a storage failure. Filesystems that explicitly do not support syncing remain usable.
 
+- The dedicated voice worker uses cached OmniVoice and Torch together when both are installed, avoiding an older host Torch taking priority. Other application processes retain their existing dependency order.
+- Windows voice workers initialize SciPy before their input reader starts, avoiding a native-library import stall while the command pipe remains open.
 - Reject unsupported blocking microphone host APIs and revalidate the selected input before opening an output file. The resolved default input stays pinned during native-rate retry.
 - Explain Windows microphone access denials while retaining the native error and keeping output-file permission failures separate.
 

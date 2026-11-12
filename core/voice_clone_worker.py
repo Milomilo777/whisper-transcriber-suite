@@ -61,6 +61,7 @@ mid-generation leaves no half-written piece.
 """
 from __future__ import annotations
 
+import importlib
 import json
 import logging
 import os
@@ -170,10 +171,30 @@ def main() -> int:
         # event (the protocol lives on stdout).
         pass
     try:
-        from .optional_deps import activate as _activate_extras
+        from .optional_deps import activate as _activate_extras, extras_dir
         _activate_extras()
+        # This dedicated process needs the runtime installed alongside
+        # OmniVoice, rather than an older host torch ahead of that cache.
+        # Keep the GUI/transcription process's bundled-first policy intact.
+        # Give the cache priority only when both primary packages exist.
+        runtime = extras_dir()
+        if all(os.path.isfile(os.path.join(runtime, name, "__init__.py"))
+               for name in ("omnivoice", "torch")):
+            sys.path[:] = [runtime] + [p for p in sys.path if p != runtime]
     except Exception:  # noqa: BLE001
         pass
+    if sys.platform == "win32":
+        # Adapted from MCP Python SDK (https://github.com/modelcontextprotocol/python-sdk/issues/2832) — pre-import before stdin reads.
+        # SciPy's Fortran DLL initialization can wait on the stdin pipe.
+        # Load it before another thread blocks reading that same pipe;
+        # no model is loaded here. Missing optional SciPy is harmless.
+        try:
+            importlib.import_module("scipy.linalg")
+        except Exception as e:  # noqa: BLE001
+            if not (isinstance(e, ModuleNotFoundError) and e.name == "scipy"):
+                logger.exception("Voice runtime initialization failed")
+                emit("model_error", message=f"Voice runtime initialization failed: {e}")
+                return 1
     logger.info("Voice-clone worker starting (pid=%d, priority %s)",
                 os.getpid(), _process_priority())
 
