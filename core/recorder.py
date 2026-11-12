@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import logging
 import os
+import stat
 import threading
 import time
 import wave
@@ -233,9 +234,9 @@ class Recorder:
         backend that ignored the stop event can still own the same WAV
         handle, and truncating it here would corrupt the partial take
         and create two writers. So we only fall back to the empty-file
-        writer once the thread has actually terminated. The read of
-        ``_wrote_wave`` is likewise gated on the thread being dead, which
-        removes the TOCTOU window where the loop is mid-close.
+        writer once the thread has actually terminated, and only for an
+        empty or missing file. A first write can partly reach disk before
+        raising, so its success flag alone cannot prove there is no audio.
         """
         self._stop_event.set()
         thread = self._thread
@@ -255,16 +256,25 @@ class Recorder:
         # one and avoids the two-writer corruption.
         if thread is not None and thread.is_alive():
             return self.output_path
-        if not self._wrote_wave or not os.path.isfile(self.output_path):
-            try:
-                self._finalize_wav()
-            except Exception as e:  # noqa: BLE001
-                # An unwritable output_path (read-only folder, disk
-                # full, parent is a file) must not turn a recoverable
-                # empty/no-capture take into stop() raising instead of
-                # returning a path, per this method's own contract.
-                self.last_error = str(e)
-                logger.exception("Writing the fallback empty WAV failed")
+        try:
+            info = os.stat(self.output_path)
+        except FileNotFoundError:
+            info = None
+        except OSError as error:
+            self.last_error = self.last_error or str(error) or type(error).__name__
+            logger.exception("Inspecting the recorded WAV failed")
+            return self.output_path
+        if info is not None and stat.S_ISREG(info.st_mode) and info.st_size > 0:
+            return self.output_path
+        try:
+            self._finalize_wav()
+        except Exception as e:  # noqa: BLE001
+            # An unwritable output_path (read-only folder, disk
+            # full, parent is a file) must not turn a recoverable
+            # empty/no-capture take into stop() raising instead of
+            # returning a path, per this method's own contract.
+            self.last_error = str(e)
+            logger.exception("Writing the fallback empty WAV failed")
         return self.output_path
 
     def _abort_stream(self) -> None:
@@ -323,6 +333,7 @@ class Recorder:
     def _mic_loop(self) -> None:
         wf: "wave.Wave_write | None" = None
         wrote_any_frames = False
+        reading = False
         try:
             import sounddevice as sd  # type: ignore[import-not-found]
             stream_kwargs: dict[str, Any] = {
@@ -364,13 +375,15 @@ class Recorder:
                 wf = self._open_wave(actual_rate)
                 self._stream = stream
                 while not self._stop_event.is_set():
+                    reading = True
                     data, _overflow = stream.read(1024)
+                    reading = False
                     block = bytes(data)
                     wf.writeframes(block)
                     wrote_any_frames = True
                     self._emit_frames(block, actual_rate)
         except Exception as e:  # noqa: BLE001
-            if self._stop_event.is_set():
+            if self._stop_event.is_set() and reading:
                 # stop() aborted a read that did not return: not a failure.
                 logger.info("Mic read ended by Stop: %s", e)
             else:
@@ -382,7 +395,8 @@ class Recorder:
                 try:
                     wf.close()
                     self._wrote_wave = True
-                except Exception:  # noqa: BLE001
+                except Exception as error:  # noqa: BLE001
+                    self.last_error = self.last_error or str(error) or type(error).__name__
                     logger.exception("Closing mic WAV failed")
                     if wrote_any_frames:
                         # Real audio already reached disk even though the
@@ -461,7 +475,8 @@ class Recorder:
                 try:
                     wf.close()
                     self._wrote_wave = True
-                except Exception:  # noqa: BLE001
+                except Exception as error:  # noqa: BLE001
+                    self.last_error = self.last_error or str(error) or type(error).__name__
                     logger.exception("Closing loopback WAV failed")
                     if wrote_any_frames:
                         self._wrote_wave = True

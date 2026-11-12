@@ -1231,6 +1231,7 @@
   "The page was saved to\n{path}\nbut could not be opened:\n{error}": "The page was saved to\n{path}\nbut could not be opened:\n{error}",
   "The preset's Whisper model is no longer in the model catalog.": "The preset's Whisper model is no longer in the model catalog.",
   "The previous voice-clone worker is still stopping; try again in a moment.": "The previous voice-clone worker is still stopping; try again in a moment.",
+  "The recording file was kept at:\n{path}\nIt may be incomplete.": "The recording file was kept at:\n{path}\nIt may be incomplete.",
   "The reference clips kept with the finished job for this text are back in the list: tick the permission box, then press Generate again.": "The reference clips kept with the finished job for this text are back in the list: tick the permission box, then press Generate again.",
   "The reference clips kept with the unfinished job for this text are back in the list: tick the permission box, then press Generate again.": "The reference clips kept with the unfinished job for this text are back in the list: tick the permission box, then press Generate again.",
   "The sample clip could not be found in this install.": "The sample clip could not be found in this install.",

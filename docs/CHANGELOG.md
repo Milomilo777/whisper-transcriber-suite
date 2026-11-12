@@ -15,6 +15,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Downloads and format lookup stop if a private cookies-file copy cannot be created, keeping the original file away from yt-dlp's cookie writer.
 - Concurrent application instances use separate temporary files when saving transcript edits, so one save cannot publish another instance's staged text.
 - The Try it now sample repairs damaged copies even when their size matches. Failed updates preserve the previous sample and its transcript files.
+- Stopping after a failed partial write no longer replaces captured audio with an empty WAV. Finalization and disk-write errors are reported, and voice-reference capture shows a recovery path for files it can locate instead of silently accepting an incomplete recording.
 - Trimming voice references creates PCM WAV audio within the requested length, so the result passes its own duration check and compressed inputs remain usable.
 - ASS karaoke timing stays inside each cue when word times overlap, round to the same centisecond, or reach a fractional media endpoint. Zero-time syllables retain their text.
 - Long CUDA transcriptions with VAD disabled use sequential GPU decoding, preserving whole-file coverage and repetition-loop recovery. Malformed clip values are retained for validation.

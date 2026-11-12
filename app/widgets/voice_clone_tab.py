@@ -786,6 +786,13 @@ def _finish_recording(app: Any) -> None:
         show_error(app, _("Recording failed"), str(e))
         app.vc_status_var.set(_("Idle."))
         return
+    recording_error = getattr(recorder, "last_error", None)
+    if recording_error:
+        detail = (_("The recording file was kept at:\n{path}\nIt may be incomplete.", path=path)
+                  if os.path.isfile(path) else "")
+        show_error(app, _("Recording failed"), str(recording_error), detail=detail)
+        app.vc_status_var.set(_("Idle."))
+        return
     _validate_and_add_sample(app, path)
 
 
