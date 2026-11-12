@@ -695,6 +695,12 @@ Behaviour to know:
   is never deleted until the results have been copied (a later start
   retries; the list of unsaved files in the folder is `.wts-keep`, and an
   unreadable list keeps the whole folder).
+  A guard is saved before transcription starts. After a late error or
+  cancellation, cleanup removes the folder only when every remaining result
+  has a verified copy; unreported files remain protected.
+  Unrecognized files, including per-job advanced-options files, keep an
+  uncertain folder available for manual inspection even after its known
+  outputs have been archived.
   Nested output folders retain their structure in these copies, so same-named
   files remain distinct. Retry information also preserves subfolder paths
   across server restarts.
