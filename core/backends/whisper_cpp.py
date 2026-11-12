@@ -14,7 +14,7 @@ from __future__ import annotations
 import logging
 import math
 import os
-import shutil
+import tempfile
 import threading
 import time
 import urllib.request
@@ -77,38 +77,32 @@ def download_default_model(
     dest: Path | None = None,
     chunk_size: int = 1 << 20,
 ) -> str:
-    """Download the default ggml model to ``model_dir()``.
+    """Download through a private staged file, then atomically publish the model.
 
-    Atomic: writes to ``<dest>.part`` and renames on success. If the
-    final file already exists with the expected non-zero size, the
-    download is skipped. Returns the absolute path on disk.
+    A complete pre-existing model is retained. Each attempt owns its staging
+    file, so a different window's failure cannot truncate or remove this one.
     """
     dest = dest if dest is not None else default_model_path()
+    if dest.is_dir():
+        raise IsADirectoryError(f"whisper.cpp model destination is a directory: {dest}")
     dest.parent.mkdir(parents=True, exist_ok=True)
     if dest.exists() and dest.stat().st_size > 100_000_000:  # ~100 MB sanity
         if log:
             log(f"whisper.cpp model already present at {dest}")
         return str(dest)
     offline.require_online("downloading the whisper.cpp model")
-    part = dest.with_suffix(dest.suffix + ".part")
-    if part.exists():
-        try:
-            part.unlink()
-        except OSError:
-            pass
-
     if log:
         log(f"Downloading {url} → {dest}")
 
+    fd, staged = tempfile.mkstemp(prefix=".whisper-cpp-", suffix=".part", dir=dest.parent)
     try:
-        # timeout= on urlopen bounds each blocking socket operation, so a
-        # stalled connection fails instead of hanging the download thread
-        # forever (mirrors core/llm.py's download).
-        with urllib.request.urlopen(url, timeout=60) as resp:  # noqa: S310 — known URL
-            total = int(resp.getheader("Content-Length") or 0)
-            downloaded = 0
-            last_pct = -1
-            with open(part, "wb") as fp:
+        with os.fdopen(fd, "wb") as fp:
+            # Bound each blocking socket operation as before. Closing either
+            # context on failure precedes cleanup, including on Windows.
+            with urllib.request.urlopen(url, timeout=60) as resp:  # noqa: S310 — known URL
+                total = int(resp.getheader("Content-Length") or 0)
+                downloaded = 0
+                last_pct = -1
                 while True:
                     chunk = resp.read(chunk_size)
                     if not chunk:
@@ -121,31 +115,25 @@ def download_default_model(
                             log(f"  {pct}% ({downloaded // (1 << 20)} / "
                                 f"{total // (1 << 20)} MB)")
                             last_pct = pct
-    except Exception:
-        # Network drop / timeout / HTTP error: never leave the ~1.1 GB
-        # partial file behind. The file handles are closed by the `with`
-        # blocks before this runs (Windows refuses to unlink open handles).
+            if not downloaded and not total:
+                raise RuntimeError("whisper.cpp model download is empty. Check your connection and try again.")
+            if total and downloaded != total:
+                raise RuntimeError(
+                    f"whisper.cpp model download truncated: got {downloaded} of "
+                    f"{total} bytes. Check your connection and try again."
+                )
+            from core import _checkpoint
+
+            _checkpoint._flush_to_disk(fp)
+        # Same-directory replacement cannot fall back to a partial copy or
+        # place a model inside a directory that appeared during download.
+        os.replace(staged, dest)
+    except BaseException:
         try:
-            part.unlink()
+            os.unlink(staged)
         except OSError:
             pass
         raise
-    # Completeness check: a server that closes the stream cleanly after
-    # sending fewer bytes than Content-Length would otherwise promote a
-    # truncated .part to the final model — which then fails to load deep
-    # inside pywhispercpp with a cryptic ggml parse error and is never
-    # re-fetched (the only later gate is exists() && size > 100 MB, which
-    # a half-finished ~1 GB file passes). Refuse the short read instead.
-    if total and downloaded != total:
-        try:
-            part.unlink()
-        except OSError:
-            pass
-        raise RuntimeError(
-            f"whisper.cpp model download truncated: got {downloaded} of "
-            f"{total} bytes. Check your connection and try again."
-        )
-    shutil.move(str(part), str(dest))
     if log:
         log(f"Done: {dest}")
     return str(dest)

@@ -15,6 +15,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 ### Fixed
 
 - Stopping system-audio recording no longer waits for a silent output to resume playback. Loopback reads only available frames and closes its stream on the capture thread.
+- Isolate simultaneous whisper.cpp model downloads so a failed attempt cannot corrupt another one. Models are synced and atomically installed before reporting ready; a destination directory is rejected and existing partial copies are preserved.
+- Reject empty AI Layer and whisper.cpp model downloads, including responses without a size header. A failed empty response keeps the previous file and never reports the model ready; cancelled downloads retain their cancellation message.
 
 - Closing a transcript viewer or exiting asks before abandoning an active AI task whose later response might fail to save. Discard choices apply only to that task, and results completed during the question are checked separately.
 - When all requested output writers fail, an earlier allocation failure remains visible even if a later writer reports a disk error. Recovery avoids allocating another full transcript copy after that failure.

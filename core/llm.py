@@ -213,6 +213,8 @@ def download_default_model(
                         pct = int(bytes_done / total * 100)
                         if pct % 5 == 0:
                             log(f"  …{pct}% ({bytes_done/1e9:.2f} / {total/1e9:.2f} GB)")
+                if not bytes_done and not total and not cancelled:
+                    raise RuntimeError("AI Layer model download is empty. Check your connection and try again.")
                 _checkpoint._flush_to_disk(f)
     except Exception:
         # File handle now closed by `with`; safe to unlink the
