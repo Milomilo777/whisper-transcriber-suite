@@ -14,6 +14,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Voice cloning transcribes the exact reference audio with an already installed multilingual model before loading the voice model. Changed references release the previous voice model first; unchanged references reuse their transcript without allocating a second model.
+- Frozen voice-reference audio stays in a locked application scratch folder. Forced worker exits leave recoverable files for the existing age-based cleanup, which preserves active jobs and original recordings.
+
 - Stopping system-audio recording no longer waits for a silent output to resume playback. Loopback reads only available frames and closes its stream on the capture thread.
 - Isolate simultaneous whisper.cpp model downloads so a failed attempt cannot corrupt another one. Models are synced and atomically installed before reporting ready; a destination directory is rejected and existing partial copies are preserved.
 - Reject empty AI Layer and whisper.cpp model downloads, including responses without a size header. A failed empty response keeps the previous file and never reports the model ready; cancelled downloads retain their cancellation message.

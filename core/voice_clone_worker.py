@@ -35,8 +35,8 @@ Commands (stdin):
 
 Events (stdout):
   - ``ready``                                   : process listening
-  - ``model_loading``                           : first generate call;
-                                                   loading OmniVoice (slow)
+  - ``model_loading``                           : preparing reference text
+                                                   or loading OmniVoice
   - ``model_ready``                             : model loaded, generating
   - ``model_error``    (message)                : model failed to load
   - ``started``        (id)                     : generation accepted
@@ -69,6 +69,7 @@ import queue
 import sys
 import threading
 import time
+from contextlib import nullcontext
 from typing import Any
 
 from ._proc import parent_alive, parent_identity, wait_parent_gone
@@ -221,9 +222,12 @@ def main() -> int:
 
     # The model is loaded lazily (see module docstring) via
     # voice_clone.load_model, which caches it at module level -- a
-    # session that generates several clips in this process only pays
-    # the multi-minute first load once.
+    # session reuses it until a new reference needs ASR. Reference ASR
+    # and OmniVoice never remain loaded together in this worker.
     model_loaded = False
+    # Reuse one owned folder across long-job pieces; each preparation holds
+    # its OS lock until generation finishes and removes its own frozen PCM.
+    reference_scratch: str | None = None
 
     emit("ready")
 
@@ -286,20 +290,38 @@ def main() -> int:
         if reader_done.is_set():
             _exit_if_orphaned(parent, "its input pipe is closed")
         emit("started", id=req_id)
+        model = None
         try:
-            if not model_loaded:
+            if reference_paths:
+                # Preparation can decode speech and invalidate the TTS cache.
+                # Tell the parent before either potentially slow operation.
                 emit("model_loading")
-                model = voice_clone.load_model(device)
-                model_loaded = True
-                emit("model_ready")
-            else:
-                model = voice_clone.load_model(device)
-            result = voice_clone.generate(
-                model, text, reference_paths, output_path,
-                consent_accepted=consent_accepted,
-                instruct=instruct, language=language, speed=speed,
-                consent_record=consent_record,
-            )
+                emit("log", message="Preparing reference audio and speech text.")
+                model_loaded = False
+                if consent_accepted and reference_scratch is None:
+                    reference_scratch = voice_clone.session_work_dir()
+            context = (voice_clone.prepare_reference(
+                reference_paths, consent_accepted=consent_accepted,
+                scratch_dir=reference_scratch,
+            ) if reference_paths else nullcontext(None))
+            with context as reference:
+                # A changed reference releases the module's TTS cache before
+                # ASR. No model from the previous command remains in this loop.
+                if not model_loaded:
+                    if not reference_paths:
+                        emit("model_loading")
+                    model_loaded = False
+                    model = voice_clone.load_model(device)
+                    model_loaded = True
+                    emit("model_ready")
+                else:
+                    model = voice_clone.load_model(device)
+                result = voice_clone.generate(
+                    model, text, reference_paths, output_path,
+                    consent_accepted=consent_accepted,
+                    instruct=instruct, language=language, speed=speed,
+                    consent_record=consent_record, prepared_reference=reference,
+                )
             emit(
                 "done", id=req_id, output_path=result.output_path,
                 audio_seconds=result.audio_seconds,
@@ -312,6 +334,9 @@ def main() -> int:
                 emit("model_error", message=str(e))
             emit("error", id=req_id, message=str(e))
         finally:
+            # Cache ownership is intentional; a loop-local reference would
+            # keep the previous TTS alive when next command unloads that cache.
+            model = None
             _busy.clear()
 
     heartbeat_stop.set()

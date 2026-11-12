@@ -24,14 +24,16 @@ is the parent-side client of that worker.
 """
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
 import re
 import stat
 import time
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
+from typing import Any, Callable, Iterator
 
 from . import optional_deps, synthetic_audio
 from .transcriber import get_duration, require_audio_stream
@@ -45,8 +47,8 @@ logger = logging.getLogger(__name__)
 FEATURE = "voice_clone"
 
 #: OmniVoice's own recommended reference-clip length. Outside this range
-#: the model still runs, but quality degrades (too short: not enough
-#: voice to clone; too long: the model truncates it anyway).
+#: the model still runs, but quality/speed may degrade (too short: not enough
+#: voice to clone; too long: a less predictable reference prompt).
 MIN_REFERENCE_SECONDS = 3.0
 MAX_REFERENCE_SECONDS = 10.0
 MAX_REFERENCE_SAMPLES = 3
@@ -304,8 +306,8 @@ def validate_reference_sample(path: str) -> "ReferenceIssue | None":
         return ReferenceIssue(
             path,
             f"Too long ({duration:.1f}s) -- clips over "
-            f"{MAX_REFERENCE_SECONDS:.0f}s are truncated by the model "
-            "anyway; trim it for a more predictable result.",
+            f"{MAX_REFERENCE_SECONDS:.0f}s exceed the recommended reference "
+            "length; trim it for more predictable speed and quality.",
             too_long=True,
         )
     return None
@@ -317,12 +319,10 @@ def trim_reference_sample(
     """Cut *path* down to its first *max_seconds* seconds via the bundled
     ffmpeg, writing decoded PCM audio to a WAV *output_path*.
 
-    Used instead of relying on OmniVoice's own undocumented internal
-    truncation for an over-length reference clip: this makes the cut
-    explicit and predictable (always the START of the clip) rather than
-    leaving it up to whatever the model does internally with the excess
-    audio. Raises ``RuntimeError`` on ffmpeg failure; never leaves a
-    partial ``output_path`` behind on failure.
+    The optional UI trim makes the cut explicit and predictable (always
+    the START of the clip). Generation preserves the supplied reference
+    clips, including their full combined length. Raises ``RuntimeError``
+    on ffmpeg failure; never leaves a partial ``output_path`` on failure.
     """
     import subprocess
     import tempfile
@@ -386,6 +386,182 @@ class GenerateResult:
 # practice, but cheap to allow correctly rather than silently ignore).
 _model_cache: dict[str, object] = {}
 
+# Keep only text, never an ASR/model object or reference file. Hash the frozen
+# audio bytes so overwriting a recorded sample cannot reuse its old transcript.
+_reference_text_cache: dict[str, str] = {}
+_REFERENCE_TEXT_CACHE_SIZE = 8
+
+
+@dataclass(frozen=True)
+class PreparedReference:
+    path: str
+    text: str
+    source_paths: tuple[str, ...]
+
+
+def release_models() -> None:
+    """Drop worker-owned OmniVoice models before reference ASR allocation.
+
+    Callers must first release their own model references. The worker keeps
+    models only in this cache between commands, including failed commands.
+    """
+    import gc
+
+    _model_cache.clear()
+    gc.collect()
+
+
+def _local_reference_models(settings: dict[str, Any]) -> Iterator[str]:
+    """Find complete local candidates without resolving/downloading Hub IDs."""
+    from . import hub, model_manager
+
+    catalog = [slug for slug, _ in model_manager.catalog_models(settings)]
+    selected = settings.get("model") or {}
+    name = selected.get("name", "") if isinstance(selected, dict) else ""
+    selected_slug = str(name)
+    for slug in catalog:
+        entry = model_manager.catalog_resolve_entry(settings, slug)
+        if entry and name in (slug, entry["name"]):
+            selected_slug = slug
+            break
+    candidates: list[Path] = []
+    configured = settings.get("model_path")
+    if configured and model_manager.is_english_only(settings, selected_slug) is not True:
+        # A custom name is not evidence of multilingual support. The loaded
+        # CTranslate2 model's own flag is checked before transcription below.
+        candidates.append(Path(str(configured)))
+    hub_folder = settings.get("hub_folder") or str(hub.default_hub_folder())
+    preferred = ["small", "base", "tiny",
+                 model_manager.multilingual_counterpart(settings, selected_slug)]
+    for slug in [selected_slug, *preferred, *catalog]:
+        if model_manager.is_english_only(settings, slug) is not False:
+            continue
+        entry = model_manager.catalog_resolve_entry(settings, slug)
+        if entry:
+            candidates.append(hub.model_folder_for(hub_folder, entry["name"]))
+    seen: set[str] = set()
+    for path in candidates:
+        identity = os.path.normcase(os.path.abspath(path))
+        if identity in seen:
+            continue
+        seen.add(identity)
+        try:
+            complete = hub.model_weights_present(path) and all(
+                (path / filename).is_file() and (path / filename).stat().st_size > 0
+                for filename in ("config.json", "tokenizer.json")
+            )
+        except OSError:
+            complete = False
+        if complete:
+            yield str(path.resolve())
+
+
+def _transcribe_reference(path: str) -> str:
+    """Consume local multilingual faster-whisper completely, then release it."""
+    import gc
+
+    from .config import load_config
+
+    candidates = list(_local_reference_models(load_config(fetch_online=False)))
+    missing = (
+        "Voice cloning needs an already installed local multilingual Whisper "
+        "model, including its config and tokenizer. Select an existing local "
+        "multilingual model in Settings or install one in Models, then retry. "
+        "Reference preparation never downloads a model."
+    )
+    if not candidates:
+        raise RuntimeError(missing)
+    from faster_whisper import WhisperModel  # noqa: PLC0415
+
+    failures: list[str] = []
+    for candidate in candidates:
+        model = None
+        segments = None
+        text = None
+        try:
+            # Supplying a complete local directory also avoids the tokenizer's
+            # pretrained-name fallback, which otherwise can access the network.
+            model = WhisperModel(candidate, device="cpu", compute_type="int8", local_files_only=True)
+            if getattr(model.model, "is_multilingual", None) is not True:
+                raise RuntimeError("The local reference ASR model is not multilingual.")
+            segments, _ = model.transcribe(
+                path, language=None, task="transcribe", beam_size=5,
+                vad_filter=True, condition_on_previous_text=False,
+            )
+            # faster-whisper returns a lazy iterator; decoding and its possible
+            # errors occur here, while the ASR model is still alive.
+            text = " ".join(segment.text.strip() for segment in segments).strip()
+        except Exception as error:  # noqa: BLE001 -- try another already-local model
+            failures.append(str(error))
+        finally:
+            segments = None
+            model = None
+            gc.collect()
+        if text is not None:
+            if not text:
+                # No speech is an input failure, not a reason to try every model.
+                raise RuntimeError("No speech was recognized in the reference audio. Record clear speech and retry.")
+            return text
+    raise RuntimeError(f"{missing} Local model error: {'; '.join(failures)}")
+
+
+@contextmanager
+def prepare_reference(
+    reference_paths: list[str], *, consent_accepted: bool,
+    scratch_dir: str | None = None,
+) -> Iterator[PreparedReference | None]:
+    """Freeze ordered audio and obtain its text BEFORE loading OmniVoice.
+
+    The returned reference is valid only inside this context. A new reference
+    unloads cached TTS before ASR; unchanged audio reuses a bounded text cache.
+    No-reference/design requests never inspect config or allocate an ASR model.
+    """
+    if not reference_paths:
+        yield None
+        return
+    if not consent_accepted:
+        raise ValueError("Consent not accepted; refusing to generate.")
+    from . import tts_job
+    from .config import user_cache_dir
+
+    sources = reference_paths[:MAX_REFERENCE_SAMPLES]
+    folder = Path(scratch_dir if scratch_dir is not None else session_work_dir())
+    root = user_cache_dir() / "voice_clone"
+    if (folder.parent.resolve() != root.resolve()
+            or _SCRATCH_DIR_NAME.fullmatch(folder.name) is None
+            or _scratch_dir_stat(root) is None or _scratch_dir_stat(folder) is None):
+        raise ValueError("Reference scratch must be an owned voice-clone session directory.")
+    # The sweeper shares this stable OS lock. A killed worker releases it,
+    # leaving its PCM eligible for the same retention policy as recordings.
+    lock = tts_job._JobLock(folder / tts_job.LOCK_FILE)
+    lock.acquire()
+    path = None
+    try:
+        path = _concat_references(sources, directory=str(folder))
+        hasher = hashlib.sha256()
+        with open(path, "rb") as audio:
+            for chunk in iter(lambda: audio.read(1024 * 1024), b""):
+                hasher.update(chunk)
+        digest = hasher.hexdigest()
+        text = _reference_text_cache.get(digest)
+        if text is None:
+            release_models()
+            text = _transcribe_reference(path)
+            if not text.strip():
+                raise RuntimeError("No speech was recognized in the reference audio.")
+            if len(_reference_text_cache) >= _REFERENCE_TEXT_CACHE_SIZE:
+                del _reference_text_cache[next(iter(_reference_text_cache))]
+            _reference_text_cache[digest] = text
+        yield PreparedReference(path, text, tuple(sources))
+    finally:
+        try:
+            if path is not None:
+                os.remove(path)
+        except OSError:
+            pass
+        finally:
+            lock.release()
+
 
 def load_model(device: str = "cpu") -> object:
     """Load (or return the cached) OmniVoice model for *device*.
@@ -429,6 +605,7 @@ def generate(
     language: "str | None" = None,
     speed: "float | None" = None,
     consent_record: bool = True,
+    prepared_reference: PreparedReference | None = None,
 ) -> GenerateResult:
     """Run one generation against an already-loaded *model* (see
     :func:`load_model`). Blocking; call off the Tk thread (this is what
@@ -441,9 +618,10 @@ def generate(
     optional in every mode.
 
     ``reference_paths`` -- OmniVoice's own API takes a single reference
-    clip; when more than one sample was recorded we concatenate them
-    into a single temp WAV first (more reference speech generally helps
-    similarity) rather than only ever using the first one.
+    clip. For cloning, enter :func:`prepare_reference` before loading the
+    model, and pass its result as ``prepared_reference``. This freezes the
+    ordered reference and transcribes it without overlapping ASR and TTS
+    allocations. Direct calls with an already-loaded model never allocate ASR.
 
     The finished WAV is tagged as AI-generated
     (:func:`core.synthetic_audio.tag_wav`), and a cloning run appends its
@@ -465,6 +643,13 @@ def generate(
             f"Text is {len(text)} characters; the limit for one "
             f"generation is {MAX_PASS_CHARS}."
         )
+    if reference_paths and (
+        prepared_reference is None
+        or prepared_reference.source_paths != tuple(reference_paths[:MAX_REFERENCE_SAMPLES])
+        or not prepared_reference.text.strip()
+        or not os.path.isfile(prepared_reference.path)
+    ):
+        raise ValueError("Enter prepare_reference before loading the voice model and pass its prepared_reference.")
     import soundfile as sf  # type: ignore[import-not-found] # noqa: PLC0415
 
     options: dict[str, object] = {}
@@ -473,70 +658,49 @@ def generate(
     if speed and abs(speed - 1.0) > 1e-3:
         options["speed"] = float(speed)
 
-    ref_path = reference_paths[0] if reference_paths else None
-    cleanup_ref_path: str | None = None
-    if len(reference_paths) > 1:
-        ref_path = _concat_references(reference_paths)
-        cleanup_ref_path = ref_path
+    ref_path = prepared_reference.path if reference_paths and prepared_reference else None
+    t0 = time.time()
+    if ref_path is not None and prepared_reference is not None:
+        audio = model.generate(text=text, ref_audio=ref_path, ref_text=prepared_reference.text, **options)  # type: ignore[attr-defined]
+    elif instruct:
+        audio = model.generate(text=text, instruct=instruct, **options)  # type: ignore[attr-defined]
+    else:
+        audio = model.generate(text=text, **options)  # type: ignore[attr-defined]
+    elapsed = time.time() - t0
+    rate = int(getattr(model, "sampling_rate", 0) or DEFAULT_SAMPLE_RATE)
+    if len(audio[0]) == 0:
+        # Never a 0-second file that the tab would report as done.
+        raise RuntimeError("OmniVoice produced no audio for this text.")
 
-    # ref_text="" opts out of OmniVoice's own auto-transcription of the
-    # reference clip (an internal, separate transformers-based Whisper
-    # model it would otherwise load just for this). We don't have a real
-    # transcript of the reference audio to offer instead -- reusing this
-    # app's own configured model would mean loading a SECOND heavy model
-    # in this same process, working against the memory problem rather
-    # than solving it. Cuts a real, measured OOM risk on a representative
-    # 17GB machine
-    # at some cost to cloning quality; revisit if that trade proves wrong
-    # in practice.
-    try:
-        t0 = time.time()
-        if ref_path is not None:
-            audio = model.generate(text=text, ref_audio=ref_path, ref_text="", **options)  # type: ignore[attr-defined]
-        elif instruct:
-            audio = model.generate(text=text, instruct=instruct, **options)  # type: ignore[attr-defined]
-        else:
-            audio = model.generate(text=text, **options)  # type: ignore[attr-defined]
-        elapsed = time.time() - t0
-        rate = int(getattr(model, "sampling_rate", 0) or DEFAULT_SAMPLE_RATE)
-        if len(audio[0]) == 0:
-            # Never a 0-second file that the tab would report as done.
-            raise RuntimeError("OmniVoice produced no audio for this text.")
-
-        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-        sf.write(output_path, audio[0], rate)
-        synthetic_audio.tag_wav(output_path)
-        warning = ""
-        if reference_paths and consent_record:
-            try:
-                # The clips actually fed to the model (_concat_references
-                # takes at most MAX_REFERENCE_SAMPLES).
-                synthetic_audio.append_consent_record(
-                    output_path, reference_paths[:MAX_REFERENCE_SAMPLES],
-                    consent_accepted=consent_accepted, engine="omnivoice",
-                )
-            except OSError as e:
-                # The clip is finished and tagged; failing the whole run
-                # (possibly an hour of CPU time) over a local log line
-                # would discard it, so report it as a warning instead.
-                logger.exception("Could not write the voice-clone consent record")
-                warning = f"The local consent record could not be saved: {e}"
-        audio_seconds = len(audio[0]) / rate
-        logger.info(
-            "voice_clone generate: %.2fs audio in %.1fs (RTF=%.2f)",
-            audio_seconds, elapsed, elapsed / max(audio_seconds, 0.01),
-        )
-        return GenerateResult(output_path=output_path, audio_seconds=audio_seconds,
-                              elapsed_seconds=elapsed, warning=warning)
-    finally:
-        if cleanup_ref_path is not None:
-            try:
-                os.remove(cleanup_ref_path)
-            except OSError:
-                pass
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    sf.write(output_path, audio[0], rate)
+    synthetic_audio.tag_wav(output_path)
+    warning = ""
+    if reference_paths and consent_record:
+        try:
+            # The clips actually fed to the model (_concat_references
+            # takes at most MAX_REFERENCE_SAMPLES).
+            synthetic_audio.append_consent_record(
+                output_path, reference_paths[:MAX_REFERENCE_SAMPLES],
+                consent_accepted=consent_accepted, engine="omnivoice",
+            )
+        except OSError as e:
+            # The clip is finished and tagged; failing the whole run
+            # (possibly an hour of CPU time) over a local log line
+            # would discard it, so report it as a warning instead.
+            logger.exception("Could not write the voice-clone consent record")
+            warning = f"The local consent record could not be saved: {e}"
+    audio_seconds = len(audio[0]) / rate
+    logger.info(
+        "voice_clone generate: %.2fs audio in %.1fs (RTF=%.2f)",
+        audio_seconds, elapsed, elapsed / max(audio_seconds, 0.01),
+    )
+    return GenerateResult(output_path=output_path, audio_seconds=audio_seconds,
+                          elapsed_seconds=elapsed, warning=warning)
 
 
-def _concat_references(paths: "list[str]") -> str:
+
+def _concat_references(paths: "list[str]", *, directory: str | None = None) -> str:
     """Concatenate up to MAX_REFERENCE_SAMPLES reference clips into one
     temp WAV via the bundled ffmpeg, so OmniVoice's single-reference API
     gets the benefit of every sample the user recorded."""
@@ -547,13 +711,16 @@ def _concat_references(paths: "list[str]") -> str:
     import subprocess  # noqa: PLC0415
 
     ffmpeg = bundled_binary("ffmpeg")
-    fd, out_path = tempfile.mkstemp(suffix=".wav", prefix="voice_clone_ref_")
+    fd, out_path = tempfile.mkstemp(
+        suffix=".wav", prefix="voice_clone_ref_",
+        dir=directory if directory is not None else session_work_dir(),
+    )
     os.close(fd)
     cmd = [ffmpeg, "-y", "-v", "error"]
     for p in paths[:MAX_REFERENCE_SAMPLES]:
         cmd += ["-i", p]
     n = min(len(paths), MAX_REFERENCE_SAMPLES)
-    cmd += ["-filter_complex", f"concat=n={n}:v=0:a=1", out_path]
+    cmd += ["-filter_complex", f"concat=n={n}:v=0:a=1", "-c:a", "pcm_s16le", out_path]
     kwargs: dict = {
         **_UTF8, "stdin": subprocess.DEVNULL, "capture_output": True, "text": True, "timeout": 60,
     }
