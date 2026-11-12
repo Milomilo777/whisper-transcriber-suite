@@ -1180,6 +1180,13 @@ class JobManager:
         never surfaced (job finished, outputs=[], ?fmt=smtv_docx -> 404).
         """
         written = getattr(task, "output_paths", None)
+        identities = getattr(written, "by_format", None)
+        if isinstance(written, list) and isinstance(identities, dict):
+            # Producer metadata survives custom names, aliases and failed writers.
+            requested = {key.lower() for key in job.formats}
+            return [(key, path) for key, path in identities.items()
+                    if key in requested and isinstance(path, str)
+                    and path in written and os.path.isfile(path)]
         if written:
             try:
                 from core.transcriber import _FMT_EXTENSIONS

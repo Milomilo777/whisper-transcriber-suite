@@ -1511,6 +1511,14 @@ def _smtv_output_path(base: str, lang: str) -> str:
     return os.path.join(directory, filename) if directory else filename
 
 
+class _WrittenOutputs(list[str]):
+    """Keep successful format identity for in-process consumers, alongside paths."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.by_format: dict[str, str] = {}
+
+
 def _write_outputs(
     base: str,
     segments_data: list[dict[str, Any]],
@@ -1547,7 +1555,7 @@ def _write_outputs(
     ``output_filename_template`` config key (default ``"{base}.{ext}"``).
     """
     template = str(config.get("output_filename_template") or "{base}.{ext}")
-    written: list[str] = []
+    written = _WrittenOutputs()
     timing_recovery: str | None = None
     write_errors: list[str] = []
     last_write_error: Exception | None = None
@@ -1800,6 +1808,7 @@ def _write_outputs(
                 last_write_error = e
                 continue
             written.append(path)
+            written.by_format[fmt_name] = path
         # Requested known formats, but every writer failed (disk full, all
         # writers broken) — surface it so the task doesn't report a silent
         # "wrote 0 files" success.
@@ -3589,7 +3598,7 @@ def transcribe(
         # Hand the real written paths to the UI (history + Last-result
         # card) so it never has to re-derive names from config — that
         # missed docx/pdf and the de-duped "name (1).srt" form.
-        task.output_paths = list(written)
+        task.output_paths = written
         _record_transcript_stats(task, segments_data)
         log(f"Wrote {len(written)} output file(s): {', '.join(os.path.basename(p) for p in written)}",
             log_cb)
@@ -3849,7 +3858,7 @@ def _transcribe_via_alt_backend(
         chapters=getattr(task, "_chapters_for_writer", None) or [],
         audio_end=getattr(task, "_audio_end", None),
     )
-    task.output_paths = list(written)
+    task.output_paths = written
     _record_transcript_stats(task, segments_data)
     log(
         f"Wrote {len(written)} output file(s): "
@@ -4083,7 +4092,7 @@ def _write_resumed_outputs(
         chapters=getattr(task, "_chapters_for_writer", None) or [],
         audio_end=getattr(task, "_audio_end", None),
     )
-    task.output_paths = list(written)
+    task.output_paths = written
     _record_transcript_stats(task, segments)
     log(
         f"Resume: wrote {len(written)} output file(s): "
