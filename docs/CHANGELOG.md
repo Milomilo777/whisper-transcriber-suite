@@ -13,6 +13,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Record the reliability investigation checkpoint, distinguishing reviewed fixes from held reproductions and remaining runtime validation.
 
 ### Fixed
+- Preserve API outputs in subfolders when an archive copy fails, including across server restarts. Retained copies keep their relative folders so same-named outputs cannot replace each other.
+
 
 - Voice cloning transcribes the exact reference audio with an already installed multilingual model before loading the voice model. Changed references release the previous voice model first; unchanged references reuse their transcript without allocating a second model.
 - Frozen voice-reference audio stays in a locked application scratch folder. Forced worker exits leave recoverable files for the existing age-based cleanup, which preserves active jobs and original recordings.

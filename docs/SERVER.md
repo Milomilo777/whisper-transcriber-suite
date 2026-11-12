@@ -695,6 +695,9 @@ Behaviour to know:
   is never deleted until the results have been copied (a later start
   retries; the list of unsaved files in the folder is `.wts-keep`, and an
   unreadable list keeps the whole folder).
+  Nested output folders retain their structure in these copies, so same-named
+  files remain distinct. Retry information also preserves subfolder paths
+  across server restarts.
 - **Upload size cap.** A single upload is capped (`--max-upload-mb`,
   default 512 MB, hard ceiling 4096 MB) and rejected with HTTP 413 before
   being buffered. An upload needs a `Content-Length` (chunked uploads get
