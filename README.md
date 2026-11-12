@@ -1212,8 +1212,8 @@ find it.
 ## How this project is built
 
 The maintainer develops it with heavy help from AI coding assistants (mainly Claude). Type checks
-and the unit tests must pass before each commit, and CI runs them again on Windows and Linux after
-every push. The [release checklist](docs/RELEASE_PROCESS.md) includes a manual install test on a
+and the unit tests must pass before each commit, and CI runs them again on Windows and Linux for mainline pushes and pull requests;
+release-branch pushes run Linux checks. The [release checklist](docs/RELEASE_PROCESS.md) includes a manual install test on a
 real machine. Commits no longer carry a line naming the AI model; older ones have an `Assisted-by:`
 or a `Co-Authored-By: Claude` line.
 

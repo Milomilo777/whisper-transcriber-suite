@@ -73,8 +73,8 @@ New code needs new tests in the same style as its neighbors (every
 
 The maintainer develops this project with heavy help from AI coding
 assistants (mainly Claude). Type checks and the unit tests must pass
-before each commit, and CI runs them again on Windows and Linux after
-every push. The release checklist
+before each commit, and CI runs them again on Windows and Linux for mainline pushes and pull requests;
+release-branch pushes run Linux checks. The release checklist
 ([docs/RELEASE_PROCESS.md](docs/RELEASE_PROCESS.md)) includes a manual
 install test on a real machine.
 

@@ -10,7 +10,7 @@ with the same loop-recovery decision for normal and resumed tasks. Empty clip
 ranges retain the decoded prefix and continue through the remaining audio;
 malformed clip arguments remain available for decoder validation.
 
-The combined source passed **14,587 tests, 75 skipped, zero failures**. It
+The combined source passed **14,690 tests, 75 skipped, zero failures**. It
 includes format identity for API outputs, bounded ASS karaoke timing, and four
 native Tk preset tests covering explicit models, settings-only presets and
 failed saves. The type gate reports
@@ -20,18 +20,15 @@ Both CUDA source-review rounds are closed. The committed ASR core passed two
 normal ten-minute CUDA tasks with word timing disabled and enabled. Each saved
 fifteen formats within the declared clock/structure checks. Packaged-artifact
 GPU acceptance remains pending. Store staging and channel guards passed hermetic
-checks; installed-package, identity, licensing and WACK acceptance remain open. Earlier sections retain evidence for their named snapshots.
+checks. Store distribution and certification are deferred beyond 2.4.0. Earlier sections retain evidence for their named snapshots.
 
-## Owner questions / release boundary
+## Release boundary
 
-- Keep this preparation local; branch publication has not been performed.
-- Required research and translation signoff remain pending. Operational access
-  details are in the ignored release record.
-- No decision is needed for the selected implementation scope.
-- Tagging, publication and release pushes wait for the owner's explicit approval.
-- macOS verification is pending; access and resource blockers are recorded in
-  ignored local release notes.
-- Microphone hardware validation remains pending.
+- Release-branch pushes run Linux CI; mainline pushes and pull requests retain Windows and Linux coverage.
+- Translation review and remaining native acceptance checks are listed in the ignored release record.
+- Tagging, public release and artifact uploads require maintainer approval.
+- Intel macOS tests exercised startup, tab navigation and all output formats after the shared-library packaging fix; a final committed-source DMG remains pending.
+- Recording transport was checked on real devices; complete Live/voice UI acceptance and the reported voice-runtime and hardware re-probe failures remain open.
 
 ## RESUME
 

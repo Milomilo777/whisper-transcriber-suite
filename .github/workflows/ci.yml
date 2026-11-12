@@ -1,17 +1,16 @@
 name: CI
 
-# Run on every push to any branch + every PR. The matrix targets
-# Windows because that is what we ship; Ubuntu is a sanity check
-# for the pure-Python core (download / writers / smtv / paths).
+# Run on master/release pushes and the PR branches below. Release pushes
+# use Ubuntu only; other events retain Windows and Ubuntu coverage.
 #
 # The compiled-exe smoke tests under tests/smoke/ are intentionally
-# excluded from CI — they need the 3 GB Whisper model + a real
+# excluded from CI â€” they need the 3 GB Whisper model + a real
 # video file + a built PyInstaller exe. CI only runs the hermetic
 # unit suite (tests/ minus tests/smoke/).
 
 on:
   push:
-    branches: [master]
+    branches: [master, "release/**"]
   pull_request:
     branches: [master, "release/**", "chore/**"]
 
@@ -33,7 +32,7 @@ jobs:
         run: python3 tools/check_repo_hygiene.py
 
   unit-tests:
-    name: ${{ matrix.os }} · Python ${{ matrix.python-version }}
+    name: ${{ matrix.os }} Â· Python ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
     # Backstop for a hung test slipping past pytest-timeout below (e.g. a
     # hang in the install step, or in pytest's own startup/collection
@@ -47,7 +46,7 @@ jobs:
       matrix:
         # Windows is the primary ship target. Ubuntu is a portable-
         # core sanity check (no tkinter UI, the smoke tests skip).
-        os: [windows-latest, ubuntu-latest]
+        os: ${{ fromJSON(github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/') && '["ubuntu-latest"]' || '["windows-latest","ubuntu-latest"]') }}
         python-version: ["3.11", "3.12"]
     steps:
       - name: Check out repository
@@ -68,7 +67,7 @@ jobs:
           # download responses; pyproject.toml lists it under the
           # `dev` extra, install explicitly here so the CI install
           # step is self-documenting. `pytest-timeout` enforces the
-          # per-test --timeout set in pyproject.toml's addopts — a
+          # per-test --timeout set in pyproject.toml's addopts â€” a
           # hung test fails with a thread dump instead of the whole
           # job riding out GitHub's multi-hour default timeout.
           pip install pytest pytest-cov pytest-timeout pyright responses hypothesis
@@ -87,23 +86,23 @@ jobs:
         run: python -m pyright app core
         continue-on-error: false
 
-      - name: Pytest (unit suite, no smoke) — Windows
+      - name: Pytest (unit suite, no smoke) â€” Windows
         if: runner.os == 'Windows'
         env:
-          # Make sure the live SMTV smokes skip — CI is offline-only
+          # Make sure the live SMTV smokes skip â€” CI is offline-only
           # from our test harness's point of view.
           WHISPER_OFFLINE_TESTS: "1"
         run: python -m pytest tests/ --ignore=tests/smoke -v
 
       # Ubuntu 3.12 runs the suite once, with coverage (the step below):
       # running it twice there took 28-31 minutes and hit timeout-minutes.
-      - name: Pytest (unit suite, no smoke) — Linux via xvfb
+      - name: Pytest (unit suite, no smoke) â€” Linux via xvfb
         if: runner.os == 'Linux' && matrix.python-version != '3.12'
         env:
           WHISPER_OFFLINE_TESTS: "1"
         run: xvfb-run -a python -m pytest tests/ --ignore=tests/smoke -v
 
-      - name: Pytest with coverage report — Linux 3.12
+      - name: Pytest with coverage report â€” Linux 3.12
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
         env:
           WHISPER_OFFLINE_TESTS: "1"
