@@ -34,6 +34,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Preserve committed search entries during profile upgrades with a consistent SQLite snapshot. Interrupted transfers retry safely, and existing indexes never receive sidecar files from the old profile.
 - Real disk-sync errors stop output and checkpoint publication, preserving the previous saved version instead of reporting success after a storage failure. Filesystems that explicitly do not support syncing remain usable.
 
+- Explain Windows microphone access denials while retaining the native error and keeping output-file permission failures separate.
 
 
 - Hardware selection no longer feeds an endless Tk event loop. Re-probing has a bounded wait, keeps Cancel available, and ignores timed-out or cancelled results without silently saving a CPU preference.

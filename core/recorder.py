@@ -160,6 +160,36 @@ def list_mic_devices() -> list[InputDevice]:
 # ---------------------------------------------------------------- recorder
 
 
+def _mic_error_message(error: BaseException) -> str:
+    """Keep native details and explain Windows microphone access denials."""
+    try:
+        detail = str(error)
+    except Exception:  # a disconnected host may fail while formatting its error
+        detail = type(error).__name__
+    if os.name != "nt":
+        return detail
+    denied = isinstance(error, PermissionError)
+    if not denied and len(error.args) > 2 and error.args[1] == -9999:
+        host_error = error.args[2]
+        if isinstance(host_error, tuple) and len(host_error) == 3:
+            host_index, code, _ = host_error
+            if (type(host_index) is int and host_index >= 0 and type(code) is int
+                    and code in (-2147024891, 0x80070005)):
+                try:
+                    import sounddevice as sd  # type: ignore[import-not-found]
+                    denied = (isinstance(error, sd.PortAudioError)
+                              and sd.query_hostapis(host_index)["name"] == "Windows WASAPI")
+                except Exception:
+                    pass
+    if denied:
+        detail += (
+            " Check Windows Settings > Privacy & security > Microphone"
+            " (Windows 10: Privacy > Microphone) and allow microphone access"
+            " for desktop apps."
+        )
+    return detail
+
+
 @dataclass
 class Recorder:
     """Owns a single recording session.
@@ -334,6 +364,7 @@ class Recorder:
         wf: "wave.Wave_write | None" = None
         wrote_any_frames = False
         reading = False
+        opening = False
         try:
             import sounddevice as sd  # type: ignore[import-not-found]
             stream_kwargs: dict[str, Any] = {
@@ -344,6 +375,7 @@ class Recorder:
             }
             if self.device_index is not None:
                 stream_kwargs["device"] = self.device_index
+            opening = True
             try:
                 opened = sd.RawInputStream(**stream_kwargs)
             except Exception as first:  # noqa: BLE001
@@ -370,6 +402,7 @@ class Recorder:
                 # for the same reasoning).
                 actual_rate = int(getattr(stream, "samplerate", self.sample_rate)) \
                     or self.sample_rate
+                opening = False
                 # Stream straight to disk — never buffer the whole take in
                 # memory (a multi-hour recording would OOM the app).
                 wf = self._open_wave(actual_rate)
@@ -387,7 +420,7 @@ class Recorder:
                 # stop() aborted a read that did not return: not a failure.
                 logger.info("Mic read ended by Stop: %s", e)
             else:
-                self.last_error = str(e)
+                self.last_error = _mic_error_message(e) if opening or reading else str(e)
                 logger.exception("Mic recording failed: %s", e)
         finally:
             self._stream = None
