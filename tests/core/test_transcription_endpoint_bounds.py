@@ -479,6 +479,114 @@ def test_rejected_later_segment_preserves_the_entire_original_record(endpoint_ca
     assert records[-1]["segments"] == original
 
 
+@pytest.mark.parametrize("resume", [False, True])
+@pytest.mark.parametrize("late_start,late_end", [(602.82, 604.48), (600.96, 601.96)])
+def test_native_late_cue_does_not_poison_valid_checkpoint(
+    endpoint_case, monkeypatch, resume, late_start, late_end,
+):
+    """Real decoder clocks reproduced with synthetic text and a 600 s PCM extent."""
+    case = endpoint_case
+    with wave.open(str(case.audio), "wb") as audio:
+        audio.setnchannels(1)
+        audio.setsampwidth(2)
+        audio.setframerate(16000)
+        audio.writeframes(b"\0\0" * (600 * 16000))
+    monkeypatch.setattr(tr, "get_duration", lambda path: 600.0)
+    # No periodic write: the exception handler must preserve even the newest
+    # valid segment, rather than relying on an older checkpoint's existence.
+    monkeypatch.setattr(tr, "_CHECKPOINT_EVERY_N_SEGMENTS", 10000)
+    monkeypatch.setattr(tr, "_CHECKPOINT_EVERY_N_SECONDS", float("inf"))
+    task = output_task(case)
+    offset = 1.0 if resume else 0.0
+    if resume:
+        tr._write_periodic_checkpoint(task, [{"start": 0, "end": 1, "text": "prior"}],
+                                      1, "en", 0.9, None)
+    install_model(monkeypatch, [Segment(598.0 - offset, 599.0 - offset, "valid tail", []),
+                               Segment(late_start - offset, late_end - offset,
+                                       "unplaced text", [Word(late_start - offset, late_end - offset)])],
+                  duration=600.0 - offset)
+    run = tr.resume_transcription if resume else tr.transcribe
+    with pytest.raises(RuntimeError, match="Decoded timing is outside"):
+        run(task)
+    checkpoint = json.loads(cp.checkpoint_path(str(case.audio)).read_text(encoding="utf-8"))
+    assert checkpoint["last_end_time"] == 599.0
+    assert [s["text"] for s in checkpoint["segments"]] == (
+        ["prior", "valid tail"] if resume else ["valid tail"])
+    assert not checkpoint["transcription_completed"]
+    recovery = [json.loads(path.read_text(encoding="utf-8"))
+                for path in cp.partials_dir().glob("*.timing-recovery.json")]
+    assert recovery[-1]["segments"][-1]["text"] == "unplaced text"
+    assert recovery[-1]["segments"][-1]["start"] == late_start
+    assert recovery[-1]["segments"][-1]["end"] == late_end
+    assert recovery[-1]["segments"][-1]["words"][0]["start"] == late_start
+    assert recovery[-1]["segments"][-1]["words"][0]["end"] == late_end
+    assert not task.output_paths
+
+
+@pytest.mark.parametrize("resume", [False, True])
+def test_bad_word_does_not_replace_valid_checkpoint(endpoint_case, monkeypatch, resume):
+    case = endpoint_case
+    task = output_task(case)
+    offset = 1.0 if resume else 0.0
+    if resume:
+        tr._write_periodic_checkpoint(task, [{"start": 0, "end": 1, "text": "prior"}],
+                                      1, "en", 0.9, None)
+    install_model(monkeypatch, [Segment(1.1 - offset, 1.5 - offset, "valid", []),
+                               Segment(2.0 - offset, 2.3 - offset, "bad word",
+                                       [Word(2.6 - offset, 3.0 - offset)])],
+                  duration=case.duration - offset)
+    with pytest.raises(RuntimeError, match="Decoded timing is outside"):
+        (tr.resume_transcription if resume else tr.transcribe)(task)
+    checkpoint = json.loads(cp.checkpoint_path(str(case.audio)).read_text(encoding="utf-8"))
+    assert checkpoint["last_end_time"] == 1.5
+    assert checkpoint["segments"][-1]["text"] == "valid"
+
+
+def test_rejected_rescue_keeps_first_pass_checkpoint(endpoint_case, monkeypatch):
+    task = output_task(endpoint_case)
+    install_model(monkeypatch, [Segment(0.2, 1.5, "first pass", [])])
+    monkeypatch.setattr(tr, "_rescue_collapsed", lambda *a, **kw: [
+        {"start": 2.6, "end": 3.0, "text": "unplaced rescue", "words": []}])
+    with pytest.raises(RuntimeError, match="Decoded timing is outside"):
+        tr.transcribe(task)
+    checkpoint = json.loads(cp.checkpoint_path(str(endpoint_case.audio)).read_text(encoding="utf-8"))
+    assert checkpoint["last_end_time"] == 1.5
+    assert checkpoint["segments"][0]["text"] == "first pass"
+    assert not checkpoint["transcription_completed"]
+    recovery = [json.loads(path.read_text(encoding="utf-8"))
+                for path in cp.partials_dir().glob("*.timing-recovery.json")]
+    assert recovery[-1]["segments"] == [
+        {"start": 2.6, "end": 3.0, "text": "unplaced rescue", "words": []}]
+
+
+def test_rejected_first_resume_cue_keeps_previous_checkpoint_bytes(endpoint_case, monkeypatch):
+    task = output_task(endpoint_case)
+    tr._write_periodic_checkpoint(task, [{"start": 0, "end": 1, "text": "prior"}],
+                                  1, "en", 0.9, None)
+    path = cp.checkpoint_path(str(endpoint_case.audio))
+    previous = path.read_bytes()
+    install_model(monkeypatch, [Segment(1.6, 2.0, "unplaced", [])],
+                  duration=endpoint_case.duration - 1.0)
+    with pytest.raises(RuntimeError, match="Decoded timing is outside"):
+        tr.resume_transcription(task)
+    assert path.read_bytes() == previous
+
+
+def test_recovery_write_failure_keeps_valid_prefix_checkpoint(endpoint_case, monkeypatch):
+    install_model(monkeypatch, [Segment(0.2, 1.5, "valid", []),
+                               Segment(2.6, 3.0, "unplaced", [])])
+
+    def disk_error(*args):
+        raise OSError("recovery storage unavailable")
+
+    monkeypatch.setattr(tr, "_keep_timing_recovery", disk_error)
+    with pytest.raises(OSError, match="recovery storage unavailable"):
+        tr.transcribe(output_task(endpoint_case))
+    checkpoint = json.loads(cp.checkpoint_path(str(endpoint_case.audio)).read_text(encoding="utf-8"))
+    assert checkpoint["last_end_time"] == 1.5
+    assert checkpoint["segments"][0]["text"] == "valid"
+
+
 def test_resampler_rounding_does_not_extend_the_original_pcm(endpoint_case, monkeypatch):
     from faster_whisper.audio import decode_audio
 

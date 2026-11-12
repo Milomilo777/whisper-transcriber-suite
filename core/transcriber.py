@@ -3571,10 +3571,13 @@ def transcribe(
                 if progress_cb:
                     progress_cb(percent)
 
-                segments_data.append(_guarded_segment_to_dict(seg, want_words, _guard_stats))
-                bounded = [segments_data[-1]]
-                _enforce_audio_end(task, bounded, recovery=lambda: segments_data)
-                segments_data[-1] = bounded[0]
+                decoded = _guarded_segment_to_dict(seg, want_words, _guard_stats)
+                bounded = [decoded]
+                # Publish to the resumable prefix only after validation. The
+                # raw recovery keeps the rejected cue; the exception handler
+                # must checkpoint only the already accepted text and cursor.
+                _enforce_audio_end(task, bounded, recovery=lambda: segments_data + [decoded])
+                segments_data.append(bounded[0])
                 segments_since_checkpoint += 1
 
                 now = time.time()
@@ -3599,12 +3602,13 @@ def transcribe(
             # ADR 0017: read collapsed windows and long silent-looking gaps again, whole-file
             # runs only, while the decoded input (a denoised temp file) still exists.
             if clip is None and segments_data and not task.cancelled:
-                segments_data = _rescue_collapsed(
+                rescued_segments = _rescue_collapsed(
                     task, segments_data, audio_path, transcribe_kwargs, want_words,
                     detected_lang_so_far, float(getattr(info, "duration", 0.0) or 0.0), log_cb,
                     before_piece=lambda: _wait_while_paused(task, meter),
                 )
-                _enforce_audio_end(task, segments_data)
+                _enforce_audio_end(task, rescued_segments)
+                segments_data = rescued_segments
         except BaseException:
             # A decoder error mid-file: keep what was decoded since the last
             # periodic checkpoint before the error reaches the worker.
@@ -4665,10 +4669,10 @@ def resume_transcription(
                             w["end"] = float(w.get("end", 0.0)) + last_end_time
                         except (TypeError, ValueError):
                             continue
-                new_segments_data.append(d)
                 bounded = [d]
-                _enforce_audio_end(task, bounded, recovery=lambda: prior_segments + new_segments_data)
-                new_segments_data[-1] = bounded[0]
+                _enforce_audio_end(task, bounded,
+                                   recovery=lambda: prior_segments + new_segments_data + [d])
+                new_segments_data.append(bounded[0])
 
                 if progress_cb:
                     # d["end"] is on the original timeline; scale against the

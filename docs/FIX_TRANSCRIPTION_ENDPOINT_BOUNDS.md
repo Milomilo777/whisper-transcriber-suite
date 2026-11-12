@@ -6,6 +6,8 @@ Segments and words are checked before periodic checkpoints and after post-proces
 
 Text and word labels are never discarded to fit an endpoint. A wholly out-of-range segment or word, or a cue too short for its format, is saved in a new durable recovery record before the timing error is reported. Existing checkpoints and completed output files are preserved. Reaching an endpoint never substitutes for exhausting the decoder iterator.
 
+Rejected decoder cues and rescue replacements do not enter the resumable prefix. On a timing error, the checkpoint retains the latest accepted segments and their cursor, while the separate recovery record retains the rejected text and original clocks. A recovery-write failure still leaves the accepted prefix eligible for checkpointing. This preserves recovery; it does not repair model predictions whose start lies outside the recording or report the failed run as complete.
+
 Validation uses all registered writers, fractional-sample endpoints, a long PCM input, clipped and resumed offsets, checkpoints, post-processing, container-duration discrepancies and recovery controls. Independent mutations must reject disabled checkpoint bounds and upward rounding at EOF. Actual long-file validation remains separate from hermetic tests.
 
 ```text
