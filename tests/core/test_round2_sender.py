@@ -11,6 +11,28 @@ import pytest
 from core import config, failure_clue as clue, stats
 
 
+@pytest.fixture
+def deferred_sends(monkeypatch):
+    """Queue HTTP senders while letting the owned erasure worker finish."""
+    targets = []
+    real_thread = stats.threading.Thread
+
+    class Deferred:
+        def __init__(self, target, **kwargs):
+            targets.append(target)
+
+        def start(self):
+            pass
+
+    def thread(*args, **kwargs):
+        if kwargs.get('name') == 'stats-erase':
+            return real_thread(*args, **kwargs)
+        return Deferred(*args, **kwargs)
+
+    monkeypatch.setattr(stats.threading, 'Thread', thread)
+    return targets
+
+
 @pytest.mark.parametrize('status', ['finished', 'done'])
 @pytest.mark.parametrize('recovery', ['cpu_fallback', 'cuda_batch_reduced', 'retried_ok'])
 def test_recovered_success_has_version_and_run_id(status, recovery):
@@ -87,25 +109,20 @@ def test_opt_out_forgets_disk_and_memory_even_without_current_id(tmp_path, monke
     assert path.exists() and stats._SESSION_ERRORS
     cfg = {'telemetry_opt_in': False, 'install_id': ''}
     stats.forget_install_id(cfg)
+    assert stats._ERASURE_DONE.wait(3), 'Owned erasure worker did not finish'
     assert not path.exists()
     assert not stats._SESSION_ERRORS
     # A stable non-identifying lock must not be unlinked under another holder.
     assert path.with_suffix('.lock').read_bytes() in (b'', b'0')
 
 
-def test_opt_out_during_sender_reservation_does_not_send_or_recreate_state(tmp_path, monkeypatch):
+def test_opt_out_during_sender_reservation_does_not_send_or_recreate_state(tmp_path, monkeypatch, deferred_sends):
     from core import offline
     monkeypatch.setattr(config, 'config_path', lambda: str(tmp_path / 'config.json'))
     monkeypatch.setattr(config, 'effective_stats_url', lambda cfg: 'https://example.invalid/stats')
     monkeypatch.setattr(offline, 'is_offline', lambda *a: False)
-    cfg = {'telemetry_opt_in': True, 'install_id': '00000000-0000-4000-8000-000000000000'}
-    targets = []
-    class Deferred:
-        def __init__(self, target, **kwargs):
-            targets.append(target)
-        def start(self):
-            pass
-    monkeypatch.setattr(stats.threading, 'Thread', Deferred)
+    cfg = {'telemetry_opt_in': True, 'telemetry_notice_version': 2,
+           'install_id': '00000000-0000-4000-8000-000000000000'}
     posts = []
     monkeypatch.setattr(stats, '_post', lambda *a: posts.append(a))
     reserve = stats.limit_error_row
@@ -115,13 +132,14 @@ def test_opt_out_during_sender_reservation_does_not_send_or_recreate_state(tmp_p
         return reserve(*args, **kwargs)
     monkeypatch.setattr(stats, 'limit_error_row', opt_out_then_reserve)
     assert stats.post_stats_async(cfg, {'status': 'error', 'fingerprint': 'a'*12})
-    targets[0]()
+    deferred_sends[0]()
+    assert stats._ERASURE_DONE.wait(3), 'Owned erasure worker did not finish'
     assert posts == []
     assert not (tmp_path/'telemetry-errors.json').exists()
     assert not stats._SESSION_ERRORS
 
 
-def test_reenable_does_not_send_rows_queued_before_opt_out(tmp_path, monkeypatch):
+def test_reenable_does_not_send_rows_queued_before_opt_out(tmp_path, monkeypatch, deferred_sends):
     from core import offline
 
     monkeypatch.setattr(config, 'config_path', lambda: str(tmp_path / 'config.json'))
@@ -129,24 +147,15 @@ def test_reenable_does_not_send_rows_queued_before_opt_out(tmp_path, monkeypatch
     monkeypatch.setattr(offline, 'is_offline', lambda *a: False)
     previous = '00000000-0000-4000-8000-000000000000'
     current = '00000000-0000-4000-8000-000000000001'
-    cfg = {'telemetry_opt_in': True, 'install_id': previous}
-    targets = []
+    cfg = {'telemetry_opt_in': True, 'telemetry_notice_version': 2, 'install_id': previous}
     posts = []
-
-    class Deferred:
-        def __init__(self, target, **kwargs):
-            targets.append(target)
-
-        def start(self):
-            pass
-
-    monkeypatch.setattr(stats.threading, 'Thread', Deferred)
     monkeypatch.setattr(stats, '_post', lambda _url, row, _timeout: posts.append(row))
     assert stats.post_stats_async(cfg, {'status': 'finished', 'install_id': previous})
     cfg['telemetry_opt_in'] = False
     stats.forget_install_id(cfg)
     cfg.update(telemetry_opt_in=True, install_id=current)
     assert stats.post_stats_async(cfg, {'status': 'finished', 'install_id': current})
-    for send in targets:
+    for send in deferred_sends:
         send()
+    assert stats._ERASURE_DONE.wait(3), 'Owned erasure worker did not finish'
     assert posts == [{'status': 'finished', 'install_id': current}]

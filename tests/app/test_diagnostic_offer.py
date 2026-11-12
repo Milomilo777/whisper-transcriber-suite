@@ -97,11 +97,10 @@ def test_only_one_offer_per_session(env):
     assert len(env.shown) == 1
 
 
-def test_the_local_file_is_written_even_when_nothing_is_offered(env):
+def test_statistics_off_does_not_collect_a_local_diagnostic_file(env):
     env.cfg["telemetry_opt_in"] = False
     env.offer.note(_task())
-    rows = (env.tmp / "diagnostics.jsonl").read_text(encoding="utf-8").splitlines()
-    assert len(rows) == 1 and json.loads(rows[0])["d"].startswith("E=ValueError")
+    assert not (env.tmp / "diagnostics.jsonl").exists()
 
 
 def test_no_record_means_nothing_happens(env):

@@ -39,8 +39,8 @@ def open_problem_report(parent: tk.Misc, config: dict[str, Any], github_url: str
         body, wraplength=460, justify="left",
         foreground=tokens.themed(tokens.TEXT_MUTED),
         text=_("Describe what you did and what happened. Your message is sent to the project with "
-               "the app version and your operating system only: no file names, no logs, no "
-               "settings. There is no reply; for a conversation, use GitHub."),
+               "the app version and your operating system. Do not include private information in your message. "
+               "No logs or settings are attached automatically. There is no reply; for a conversation, use GitHub."),
     ).grid(row=1, column=0, sticky="w", pady=(4, 8))
 
     text = tk.Text(body, width=60, height=8, wrap="word", undo=True)

@@ -71,6 +71,12 @@ def _isolate_user_dirs(tmp_path_factory, monkeypatch):
     for name in REAL_PLATFORMDIRS:
         monkeypatch.setattr(platformdirs, name, _fake(name))
     yield
+    # Opt-out cleanup owns captured paths, but must finish before a later test
+    # reloads its module globals or restores monkeypatched file operations.
+    stats_module = sys.modules.get("core.stats")
+    erased = getattr(stats_module, "_ERASURE_DONE", None)
+    if erased is not None:
+        assert erased.wait(5), "Telemetry erasure did not drain before profile teardown"
 
 # core.transcriber module globals that the real load paths mutate in place.
 _TRANSCRIBER_GLOBALS = (
@@ -139,7 +145,7 @@ def _reset_viewer_export_registry():
 
 
 @pytest.fixture(autouse=True)
-def _isolate_transcriber_globals():
+def _isolate_transcriber_globals(_isolate_user_dirs):
     """Snapshot core.transcriber module globals; restore them after the test."""
     try:
         import core.transcriber as _t

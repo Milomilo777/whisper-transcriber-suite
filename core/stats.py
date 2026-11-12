@@ -67,8 +67,13 @@ logger = logging.getLogger(__name__)
 # Fields the PHP endpoint records (form_submitted toggles the insert).
 _FORM_FLAG = "form_submitted"
 _ERROR_LOCK = threading.RLock()
+_CONSENT_LOCK = threading.Lock()  # Memory only: never hold across I/O.
 _CONSENT_GENERATION = 0
 _SESSION_ERRORS: dict[str, int] = {}
+_ERASURE_DONE = threading.Event()
+_ERASURE_DONE.set()
+_ERASURE_PENDING: tuple[Path, Path, threading.Event] | None = None
+_ERASURE_RUNNING = False
 
 # ISO 3166-1 alpha-2 country code shape.
 _ISO2_RE = re.compile(r"[A-Za-z]{2}")
@@ -360,37 +365,94 @@ def _error_rate_path() -> Path:
 
 
 def forget_install_id(config: dict[str, Any]) -> None:
-    """Delete the stored install id when usage statistics are off.
+    """Invalidate queued sends immediately and erase local state off the caller.
 
     Call it right before saving a changed ``telemetry_opt_in``. Turning the
-    switch on again then makes a new, unrelated id.
+    switch on again then makes a new, unrelated id. A request already admitted
+    for delivery cannot be recalled. Disk erasure is best effort.
     """
-    global _CONSENT_GENERATION
+    global _CONSENT_GENERATION, _ERASURE_DONE, _ERASURE_PENDING, _ERASURE_RUNNING
     if bool(config.get("telemetry_opt_in", False)):
         return
     if "install_id" in config:
         config["install_id"] = ""
-    target = _error_rate_path()
-    with _ERROR_LOCK:
+    from core.diagnostic import log_path
+
+    # Resolve the profile now; the daemon must not pick up another profile later.
+    target, diagnostic_path = _error_rate_path(), log_path()
+    with _CONSENT_LOCK:
         _CONSENT_GENERATION += 1
-        _SESSION_ERRORS.clear()
+        done = threading.Event()
+        if _ERASURE_PENDING is not None:
+            _ERASURE_PENDING[2].set()  # Superseded; its send generation is invalid.
+        _ERASURE_PENDING = (target, diagnostic_path, done)
+        _ERASURE_DONE = done
+        if _ERASURE_RUNNING:
+            return
+        _ERASURE_RUNNING = True
         try:
-            target.parent.mkdir(parents=True, exist_ok=True)
-            # Keep the non-identifying lock inode stable for other processes.
-            with target.with_suffix(".lock").open("a+b") as lock:
-                if lock.tell() == 0:
-                    lock.write(b"0")
-                    lock.flush()
-                lock.seek(0)
-                if sys.platform == "win32":
-                    import msvcrt
-                    msvcrt.locking(lock.fileno(), msvcrt.LK_LOCK, 1)
-                else:
-                    import fcntl
-                    fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
-                target.unlink(missing_ok=True)
-        except OSError:
+            threading.Thread(target=_erase_local_state, daemon=True, name="stats-erase").start()
+        except Exception:  # noqa: BLE001 - an unavailable thread cannot break Tk
+            _ERASURE_RUNNING = False
+            _ERASURE_PENDING = None
+            done.set()
+            logger.warning("Could not schedule local telemetry erasure", exc_info=True)
+
+
+def _erase_local_state() -> None:
+    """Drain one coalescing erasure queue; no older task can erase newer data."""
+    global _ERASURE_PENDING, _ERASURE_RUNNING
+    while True:
+        with _CONSENT_LOCK:
+            pending = _ERASURE_PENDING
+            _ERASURE_PENDING = None
+            if pending is None:
+                _ERASURE_RUNNING = False
+                return
+        target, diagnostic_path, done = pending
+        try:
+            with _ERROR_LOCK:
+                _SESSION_ERRORS.clear()
+                try:
+                    diagnostic_path.unlink(missing_ok=True)
+                except OSError:
+                    logger.warning("Could not erase local diagnostics", exc_info=True)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                # Keep the non-identifying lock inode stable for other processes.
+                with target.with_suffix(".lock").open("a+b") as lock:
+                    if lock.tell() == 0:
+                        lock.write(b"0")
+                        lock.flush()
+                    lock.seek(0)
+                    if sys.platform == "win32":
+                        import msvcrt
+                        msvcrt.locking(lock.fileno(), msvcrt.LK_NBLCK, 1)
+                    else:
+                        import fcntl
+                        fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    target.unlink(missing_ok=True)
+        except Exception:  # noqa: BLE001 - drain even after an I/O failure
             logger.warning("Could not erase local telemetry rate state", exc_info=True)
+        finally:
+            done.set()
+
+
+def diagnostics_enabled(config: dict[str, Any]) -> bool:
+    """Do not collect diagnostics while off or while older state is being erased."""
+    return bool(config.get("telemetry_opt_in", True)) and _ERASURE_DONE.is_set()
+
+
+def _saved_consent_allows(path: Path) -> bool:
+    """Recheck an explicit saved opt-out in another app instance, off the UI thread."""
+    try:
+        with path.open("r", encoding="utf-8") as stream:
+            raw = stream.read(1024 * 1024 + 1)
+        saved = json.loads(raw) if len(raw) <= 1024 * 1024 else None
+        return isinstance(saved, dict) and saved.get("telemetry_opt_in", True) is True
+    except FileNotFoundError:
+        return True  # A new install has no saved override of the default.
+    except (OSError, ValueError, UnicodeError):
+        return False  # Unreadable preferences must never become consent.
 
 
 def memory_class(value: int) -> str:
@@ -583,7 +645,8 @@ def post_stats_async(
     Never raises and never blocks the caller.
     """
     try:
-        generation = _CONSENT_GENERATION
+        with _CONSENT_LOCK:
+            generation, erased = _CONSENT_GENERATION, _ERASURE_DONE
         if not bool(config.get("telemetry_opt_in", False)):
             return False
         from core import offline
@@ -592,7 +655,8 @@ def post_stats_async(
             if str(config.get("stats_url") or "").strip():
                 offline.skipped("usage statistics")
             return False
-        from core.config import effective_stats_url
+        from core.config import config_path, effective_stats_url
+        consent_path = Path(config_path())
         url = str(effective_stats_url(config) or "").strip()
         if not url:
             return False
@@ -606,8 +670,10 @@ def post_stats_async(
             try:
                 from core.failure_clue import sanitise_clue
 
-                # Serialize reservation and delivery with opt-out erasure.
-                # Once erasure returns no older local sender can recreate state.
+                # A quick re-enable must not race older erasure. Only the
+                # daemon waits; sends from before opt-out become obsolete.
+                if not erased.wait(5.0) or not _saved_consent_allows(consent_path):
+                    return
                 with _ERROR_LOCK:
                     if (generation != _CONSENT_GENERATION
                             or not bool(config.get("telemetry_opt_in", False))
@@ -620,11 +686,16 @@ def post_stats_async(
                         closed = limit_error_row(closed, install_id_for(config))
                         if closed is None:
                             return
-                    if not bool(config.get("telemetry_opt_in", False)):
-                        forget_install_id(config)
-                        return
-                    if generation == _CONSENT_GENERATION:
-                        _post(url, closed, float(timeout))
+                # Never hold either state lock during the HTTP timeout. Recheck
+                # after reservation; requests already in flight may finish.
+                if not _saved_consent_allows(consent_path):
+                    return
+                with _CONSENT_LOCK:
+                    admitted = (generation == _CONSENT_GENERATION
+                                and bool(config.get("telemetry_opt_in", False))
+                                and not offline.is_offline())
+                if admitted:
+                    _post(url, closed, float(timeout))
             except Exception:  # noqa: BLE001
                 logger.debug("Automatic stats unavailable", exc_info=True)
 

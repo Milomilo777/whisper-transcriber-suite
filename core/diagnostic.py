@@ -44,6 +44,41 @@ KEEP_RECORDS = 30
 
 _TOKEN = re.compile(r"[A-Za-z][A-Za-z0-9]*|\d+")
 _MAX_NUMBER_DIGITS = 4
+_FILE_SUFFIX = re.compile(r"\.[A-Za-z][A-Za-z0-9]{0,9}$")
+
+
+def _without_private_spans(text: str) -> str:
+    """Strip quoted spans, then path-bearing tails, before vocabulary filtering.
+
+    Paths may contain spaces: sacrifice the rest of that line instead of
+    guessing where a private file name ends. The quote scan is linear, even
+    for unmatched quotes. Contraction apostrophes are not quote openers.
+    """
+    pairs = {'"': '"', "'": "'", "`": "`", "“": "”", "‘": "’", "«": "»"}
+    kept: list[str] = []
+    closing = ""
+    for index, char in enumerate(text[:16384]):
+        if closing:
+            if char == closing:
+                closing = ""
+            continue
+        contraction = (char == "'" and index and text[index - 1].isalnum()
+                       and re.match(r"(?:s|t|re|ve|d|ll|m)\b", text[index + 1:index + 5], re.IGNORECASE)
+                       and not re.search(r"\b(?:r|u|b|f|br|rb|fr|rf)$", text[max(0, index - 3):index], re.IGNORECASE))
+        if char in pairs and not contraction:
+            kept.append(" redactedspan ")
+            closing = pairs[char]
+        else:
+            kept.append(char)
+    lines = []
+    for line in "".join(kept).splitlines():
+        for token in re.finditer(r"\S+", line):
+            word = token.group()
+            if "/" in word or "\\" in word or _FILE_SUFFIX.search(word):
+                line = line[:token.start()] + " redactedspan "
+                break
+        lines.append(line)
+    return "\n".join(lines)
 
 
 def _top_package(module: str) -> str:
@@ -70,11 +105,11 @@ _NUMBER_CONTEXT = frozenset({"winerror", "errno", "error", "code", "status", "ex
 def message_shape(text: object) -> str:
     """*text* with every token outside the technical vocabulary replaced by ``*`` (see the module docstring).
 
-    Only letters and digits are ever looked at, so path separators, quotes, brackets and URL punctuation vanish
-    with the tokens they belonged to. Numbers become ``#`` unless one stands alone beside a context word (an error
+    Quoted spans and paths are removed before tokenization, even when their
+    words occur in the vocabulary. Numbers become ``#`` unless one stands alone beside a context word (an error
     code or a size). Consecutive ``*`` and ``#`` collapse. The result is lower case ASCII.
     """
-    tokens = _TOKEN.findall(str(text or ""))
+    tokens = _TOKEN.findall(_without_private_spans(str(text or "")))
     kinds = ["n" if t.isdigit() else "w" for t in tokens]
     out: list[str] = []
     for i, token in enumerate(tokens):

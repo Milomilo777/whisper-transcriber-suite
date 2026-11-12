@@ -11,7 +11,7 @@ Rules (each one is a test in ``tests/app/test_diagnostic_offer.py``):
 * at most one offer per session and one per 24 hours, and never while a job is running;
 * the same failure (same fingerprint) is never offered twice in a session; several different ones share one bar;
 * never while Work offline is on, when statistics are off, or after "Don't ask again";
-* the local file is written even when nothing is offered, so a person can attach it to a GitHub issue.
+* the local file is collected only while statistics are on.
 """
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ import time
 from typing import Any, Callable
 
 from app.i18n import _
-from core import diagnostic, offline
+from core import diagnostic, offline, stats
 from core import problem_report as pr
 from core._threads import safe_thread
 
@@ -42,10 +42,15 @@ class DiagnosticOffer:
         self._offered_this_session = False
         self._scheduled = False
         self._bar: Any = None
+        cfg = getattr(app, "app_config", {})
+        if cfg.get("telemetry_opt_in") is False:
+            stats.forget_install_id(cfg)  # Retry best-effort cleanup after a prior exit.
 
     # -- intake ---------------------------------------------------------------------------------------------
     def note(self, task: Any) -> None:
         """Called once for each task that ended in an error."""
+        if not stats.diagnostics_enabled(self.app.app_config):
+            return
         record = getattr(task, "failure_diag", None)
         if not record:
             return
@@ -125,8 +130,8 @@ class DiagnosticOffer:
         frame = ttk.Frame(top, padding=14)
         frame.pack(fill="both", expand=True)
         ttk.Label(frame, wraplength=520, justify="left",
-                  text=_("This is everything that would be sent, together with the app version and your "
-                         "operating system. It has no file names, folders, links or personal text.")).pack(anchor="w")
+                  text=_("These filtered technical details would be sent with the app version and your "
+                         "operating system. Review them before sending; choose Close to keep them private.")).pack(anchor="w")
         box = tk.Text(frame, width=70, height=min(10, 3 + 3 * len(self._pending)), wrap="word")
         box.insert("1.0", "\n\n".join(self.lines()))
         box.configure(state="disabled")
@@ -175,7 +180,7 @@ class DiagnosticOffer:
         from app.widgets.notice import notify
         try:
             notify(self.app, _("Thank you. The details were sent.") if ok
-                   else _("The details could not be sent. Nothing was lost."))
+                   else _("The details could not be sent. They will not be retried automatically."))
         except Exception:  # noqa: BLE001
             logger.debug("notice failed", exc_info=True)
 
