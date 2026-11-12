@@ -612,7 +612,15 @@ def test_viewer_ai_results_use_the_transcript_language_the_app_passed(
         assert "Microsoft JhengHei UI" in str(_font_of_line(viewer._ai_result_text, 1))
         # A translation is in the target language, not the transcript's: no regional guess.
         viewer._run_translate_preview()
-        assert viewer._ai_result_text.get("1.0", "end-1c") == "中文"
+        from app.i18n import _
+        from core.llm import ai_result_is_saved
+
+        result = viewer._ai_pending_result
+        assert result.text == "中文" and ai_result_is_saved(result)
+        assert viewer._ai_result_text.get("1.0", "end-1c") == (
+            "中文\n\n" + _("Recovery copy: {path}", path=result.saved_path)
+        )
+        assert viewer._ai_copy_text == "中文"
         assert _font_of_line(viewer._ai_result_text, 1) is None
     finally:
         viewer._on_close()

@@ -165,7 +165,9 @@ class HoldingModel:
 
 
 @pytest.mark.parametrize("mode", ["fresh", "resume", "complete", "language", "batched", "mixed"])
-def test_whisper_released_before_diarization_and_completion_saved(t, monkeypatch, tmp_path, mode):
+def test_whisper_released_before_diarization_and_completion_saved(
+    t, monkeypatch, tmp_path, mode, rescue_vad_import,
+):
     audio = tmp_path / "talk.wav"
     audio.write_bytes(b"audio")
     if mode in {"resume", "complete"}:

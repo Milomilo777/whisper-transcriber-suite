@@ -110,6 +110,6 @@ def test_the_viewer_close_prompt_passes_the_default_to_tk(monkeypatch: pytest.Mo
     seen: list[dict[str, Any]] = []
     monkeypatch.setattr(tv.messagebox, "askyesno",
                         lambda title, message, **kw: seen.append({"title": title, **kw}) or False)
-    fake = SimpleNamespace(_dirty=True)
+    fake = SimpleNamespace(_dirty=True, _closing=False)
     tv.TranscriptViewer._on_close(fake)  # type: ignore[arg-type]
     assert seen and seen[0]["default"] == "no" and seen[0]["title"] == "Discard changes?"

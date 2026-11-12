@@ -401,8 +401,28 @@ def _capture_ai_viewer(mp: pytest.MonkeyPatch, root: Any, tmp: Path, log: _Log,
     viewer.withdraw()
     log.take()
 
-    def result() -> str:
-        return log.norm(viewer._ai_result_text.get("1.0", "end-1c"))
+    def result(*, completed: bool = False) -> str:
+        text = viewer._ai_result_text.get("1.0", "end-1c")
+        record = getattr(viewer, "_ai_pending_result", None)
+        if completed:
+            assert isinstance(record, core.llm.SavedAIResult)
+            # Provider data remains the original capture; check the new dynamic
+            # archive notice separately, including its actual persisted copy.
+            assert core.llm.ai_result_is_saved(record)
+            footer = tv._("Recovery copy: {path}", path=record.saved_path)
+            assert text == record.text + "\n\n" + footer
+            from app import i18n
+            from tests.app.i18n_walk import is_pseudo_marked
+
+            if i18n.current_language() == i18n.PSEUDO_LOCALE:
+                assert is_pseudo_marked(footer)
+            else:
+                assert footer == f"Recovery copy: {record.saved_path}"
+            assert viewer._ai_copy_text == record.text
+            return log.norm(record.text)
+        return log.norm(text)
+
+    import core.llm
 
     rows: Rows = []
     viewer._run_summarise()  # the AI Layer is off
@@ -434,12 +454,13 @@ def _capture_ai_viewer(mp: pytest.MonkeyPatch, root: Any, tmp: Path, log: _Log,
         run()
         rows.append([f"busy:{name}", result()])
         _run_pending(pending)
-        rows.append([f"done:{name}", result()])
+        rows.append([f"done:{name}", result(completed=name != "summarise")])
     viewer._run_ask()  # no question typed
     viewer._ai_question_var.set("Who spoke?")
     viewer._run_ask()
     rows.append(["busy:ask", result()])
     _run_pending(pending)
+    result(completed=True)  # The Ask reply has the same archive/copy contract.
     rows += log.take()
     states["ai_tasks"] = rows
 

@@ -39,7 +39,7 @@ class Engine:
 
 
 @pytest.fixture
-def decode(monkeypatch, tmp_path):
+def decode(monkeypatch, tmp_path, rescue_vad_import):
     from core import _checkpoint as cp
 
     monkeypatch.setattr(cp, "user_data_dir", lambda: tmp_path)

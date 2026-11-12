@@ -39,3 +39,26 @@ def _default_offline_backend(monkeypatch):
         return
     if isinstance(getattr(_t, "config", None), dict):
         monkeypatch.setitem(_t.config, "transcribe_backend", "faster_whisper")
+
+
+@pytest.fixture
+def rescue_vad_import(monkeypatch):
+    """Scope the optional VAD import for tests that explicitly stub rescue speech.
+
+    Other test modules may install a bare faster_whisper stub at collection.
+    These tests exercise decode/retry/lifetime contracts without VAD inference.
+    """
+    import sys
+    import types
+
+    vad = types.ModuleType("faster_whisper.vad")
+    vad.VadOptions = lambda **kwargs: types.SimpleNamespace(**kwargs)
+
+    def unexpected_inference(*args, **kwargs):
+        raise AssertionError("this rescue test must not run VAD inference")
+
+    vad.get_speech_timestamps = unexpected_inference
+    monkeypatch.setitem(sys.modules, "faster_whisper.vad", vad)
+    parent = sys.modules.get("faster_whisper")
+    if parent is not None:
+        monkeypatch.setattr(parent, "vad", vad, raising=False)
