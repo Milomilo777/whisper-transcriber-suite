@@ -438,6 +438,10 @@ elsewhere can be converted too.
 - A failed job shows its reason when selected. A job with no speech says *no speech found*.
 - One transcription runs at a time on a CPU, two once a GPU is in use. Interrupted faster-whisper jobs resume from their last
   checkpoint.
+- If no requested transcription export can be saved, the app tries to keep a separate JSON
+  in its profile's `transcript-recovery` folder, including for time-range runs. When recovery
+  succeeds, the error gives its path; open that JSON in **Convert** to recreate the exports.
+  Recovery copies are kept until you remove them, and export failures still appear as errors.
 - Windows shows progress on the taskbar button; the Mac sends a notification when a job ends while the app is
   in the background.
 

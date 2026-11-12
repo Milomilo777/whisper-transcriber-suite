@@ -15,6 +15,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 ### Fixed
 
 - Closing a transcript viewer or exiting asks before abandoning an active AI task whose later response might fail to save. Discard choices apply only to that task, and results completed during the question are checked separately.
+- When all requested output writers fail, an earlier allocation failure remains visible even if a later writer reports a disk error. Recovery avoids allocating another full transcript copy after that failure.
 
 
 
@@ -24,6 +25,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Distinguish an invalid AI action-item reply from a valid empty list. Malformed, truncated or unsupported replies show a warning and keep the original response for review instead of reporting that no actions were found.
 - Preserve completed AI summaries, answers, action items and translation previews before UI delivery, including when the viewer closes or its callback is lost. Failed saves keep the response in memory for a file-only retry and warn before closing; provider calls are not repeated.
 - Restore the AI panel controls if its background thread cannot start. Summary, action-item, question and translation actions show their error and allow another attempt.
+- Keep temporary audio slices while their worker process is alive, even during long transcriptions. Startup cleanup removes an aged slice only after confirming its owner has exited; unknown owners are retained.
+- Keep timing-recovery transcripts during startup cleanup. Only files matching checkpoint, scratch and temporary-slice names expire; unrelated files and recovery records are retained.
+- Try to keep a separate recovery JSON when completed transcription outputs cannot be saved, including time-range runs. The error shows the path after recovery succeeds; requested export failures are still reported as errors.
+- Real disk-sync errors stop output and checkpoint publication, preserving the previous saved version instead of reporting success after a storage failure. Filesystems that explicitly do not support syncing remain usable.
 
 
 

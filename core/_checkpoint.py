@@ -13,8 +13,9 @@ file is never observable to the resume path.
 
 This module is intentionally tiny and self-contained: it imports
 nothing from ``core.transcriber`` to keep the dependency direction
-one-way (transcriber -> _checkpoint), and it uses no third-party
-modules so tests can exercise it without faster_whisper installed.
+one-way (transcriber -> _checkpoint). Checkpoint reads and writes need
+no ASR packages. Startup slice cleanup uses an optional process probe;
+an unavailable probe retains the file.
 """
 from __future__ import annotations
 
@@ -35,20 +36,20 @@ logger = logging.getLogger(__name__)
 
 
 def _flush_to_disk(f: Any) -> None:
-    """Flush and fsync a file, tolerating only fsync failures.
+    """Flush and fsync a file, tolerating only unsupported sync operations.
 
     Certain network shares, FUSE systems, or USB filesystems return
-    EINVAL/ENOTSUP for fsync. A failed durability sync must never discard
-    a transcript that was written successfully — but a failed FLUSH means
-    the data never reached the OS at all (a full disk raises ENOSPC at
-    flush time, not at write time, once the 8 KB text buffer spills), so
-    that error propagates and the caller counts the write as failed
-    instead of publishing an empty or truncated file.
+    EINVAL/ENOTSUP for fsync; those volumes remain usable. A genuine error
+    such as EIO or ENOSPC means the new bytes may not be durable even when
+    flush succeeded. Propagate it before publication so the previous saved
+    output/checkpoint survives and the caller cannot report a successful save.
     """
     f.flush()
     try:
         os.fsync(f.fileno())
     except OSError as e:
+        if e.errno not in _FSYNC_UNSUPPORTED:
+            raise
         logger.warning("Could not fsync file: %s", e)
 
 
@@ -68,6 +69,10 @@ _REPLACE_RETRY_SECONDS = 1.0
 # suffix=".tmp"). Anchored on the 40-hex key so an unrelated file such as
 # "report.json.notes.tmp" is never swept.
 _SCRATCH_NAME = re.compile(r"^[0-9a-f]{40}\.json\..+\.tmp$")
+# Sweep only names owned by checkpoint/slice writers. Recovery JSON and
+# unrelated files can share the directory and must never expire as partials.
+_CHECKPOINT_NAME = re.compile(r"[0-9a-f]{40}\.json")
+_SLICE_NAME = re.compile(r"[0-9a-f]{40}(?:\.(?P<pid>[0-9]+)(?:-[0-9]+)?)?\.slice\.wav")
 
 # Keys from the runtime ``config`` dict that materially affect what
 # Whisper produces. A change in any of these between checkpoint write
@@ -290,9 +295,8 @@ _FSYNC_UNSUPPORTED = frozenset(
 def _strict_sync(f: Any) -> None:
     """Flush and fsync ``f``; only "fsync unsupported" is tolerated.
 
-    The best-effort :func:`_flush_to_disk` is right for ordinary checkpoint
-    writes (the next write retries). A copy that authorises a fresh run to
-    replace the original must really be durable, so any other error raises.
+    This explicit spelling marks copies that authorise replacing an original.
+    Both sync helpers reject genuine storage errors before publication.
     """
     f.flush()
     try:
@@ -720,18 +724,20 @@ def sweep_partials(
 ) -> int:
     """Best-effort cleanup of the ``partials/`` dir. Returns files removed.
 
-    Removes (a) any ``*.slice.wav`` older than ``slice_max_age_minutes`` —
-    a resume slice is disposable and a live resume holds a fresh one, so an
-    older one is always an orphan from a killed worker; (b) checkpoint
+    Removes (a) owned ``<sha1>[.<pid>[-<thread>]].slice.wav`` files
+    older than ``slice_max_age_minutes`` whose owner PID is confirmed gone;
+    a live/unknown owner or a legacy slice without a PID is retained;
+    (b) checkpoint
     write scratch (``<sha1>.json.<random>.tmp`` as :func:`write_checkpoint`
-    names it with ``mkstemp``, and the older fixed ``*.json.tmp``) older
+    names it with ``mkstemp``, and the older fixed ``<sha1>.json.tmp``) older
     than the same short window — a
     worker killed mid-write leaves one behind, and it would otherwise never
     be reclaimed (only ``*.json``/``*.slice.wav`` were swept before); and
-    (c) checkpoint ``*.json`` older than ``max_age_days`` — a
+    (c) checkpoint ``<sha1>.json`` older than ``max_age_days`` — a
     cancelled-but-never-resumed or crashed-then-declined partial that would
     otherwise live (and hold its full captured-segments list, potentially
-    MBs) on disk forever.
+    MBs) on disk forever. Timing-recovery records and other names are
+    retained regardless of age: they may be the only surviving text.
 
     Intended to run once at startup. Never raises — a sweep failure must
     never block launch. ``max_age_days`` is generous so a partial the user
@@ -751,18 +757,29 @@ def sweep_partials(
     for p in entries:
         try:
             name = p.name
-            if name.endswith(".json.tmp") or _SCRATCH_NAME.match(name):
+            if (
+                name.endswith(".json.tmp") and _CHECKPOINT_NAME.fullmatch(name[:-4])
+            ) or _SCRATCH_NAME.fullmatch(name):
                 # Scratch from an interrupted checkpoint write. Only ever
                 # visible for the duration of one json.dump + os.replace,
                 # so anything this old is a dead worker's leftover.
                 if p.stat().st_mtime < slice_cutoff:
                     p.unlink()
                     removed += 1
-            elif name.endswith(".slice.wav"):
+            elif slice_name := _SLICE_NAME.fullmatch(name):
                 if p.stat().st_mtime < slice_cutoff:
+                    owner_pid = slice_name.group("pid")
+                    if owner_pid is None:
+                        continue  # Old hash-only names cannot identify a dead owner.
+                    try:
+                        from ._proc import pid_may_be_alive
+                        if pid_may_be_alive(int(owner_pid)):
+                            continue
+                    except Exception:  # noqa: BLE001 - unknown is not abandoned
+                        continue
                     p.unlink()
                     removed += 1
-            elif name.endswith(".json"):
+            elif _CHECKPOINT_NAME.fullmatch(name):
                 if p.stat().st_mtime < json_cutoff:
                     p.unlink()
                     removed += 1

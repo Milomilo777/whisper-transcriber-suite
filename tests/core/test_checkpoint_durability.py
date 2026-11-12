@@ -13,6 +13,7 @@ dir makes the read paths raise).
 from __future__ import annotations
 
 import copy
+import errno
 import json
 import os
 import sys
@@ -124,12 +125,45 @@ def test_flush_failure_propagates_instead_of_publishing(data_dir, source, monkey
         def fileno(self):
             return 1  # fsync on fd 1 may work or fail; flush raises first
 
-    # _flush_to_disk's contract: fsync problems are swallowed (exotic
-    # filesystems), but a failed flush means the data never reached the
-    # OS — that must propagate so the write counts as failed.
+    # Unsupported sync operations are tolerated, but a failed flush or genuine
+    # storage error must propagate rather than publishing an unsafe generation.
     fake = _DeadFlush()
     with pytest.raises(OSError):
         cp._flush_to_disk(fake)
+
+
+@pytest.mark.parametrize("code", [errno.EIO, errno.ENOSPC, errno.EROFS, None])
+def test_sync_failure_preserves_last_good_resume_checkpoint(data_dir, source, monkeypatch, code):
+    path = _write(source, segments=[{"start": 0, "end": 1, "text": "previous completed words"}])
+    previous = path.read_bytes()
+    attempted = []
+
+    def failed_sync(fd):
+        attempted.append(fd)
+        raise OSError(code, "synthetic checkpoint sync failure")
+
+    monkeypatch.setattr(cp.os, "fsync", failed_sync)
+    error = None
+    try:
+        _write(source, segments=[{"start": 0, "end": 2, "text": "next completed words"}])
+    except OSError as failure:
+        error = failure
+    assert attempted and path.read_bytes() == previous
+    assert error is not None and error.errno == code
+    assert load_checkpoint(str(source))["segments"][0]["text"] == "previous completed words"
+    assert not list(path.parent.glob("*.tmp"))
+
+
+@pytest.mark.parametrize("code", [errno.EINVAL, errno.ENOTSUP])
+def test_unsupported_sync_still_updates_the_resume_checkpoint(data_dir, source, monkeypatch, code):
+    _write(source, segments=[{"start": 0, "end": 1, "text": "previous words"}])
+
+    def unsupported(fd):
+        raise OSError(code, "synthetic unsupported sync")
+
+    monkeypatch.setattr(cp.os, "fsync", unsupported)
+    _write(source, segments=[{"start": 0, "end": 2, "text": "new completed words"}])
+    assert load_checkpoint(str(source))["segments"][0]["text"] == "new completed words"
 
 
 def test_validate_survives_junk_field_types(data_dir, source):

@@ -1,11 +1,11 @@
-"""Cross-platform process-tree termination.
+"""Cross-platform process lifetime and process-tree termination.
 
 ``Popen.terminate()`` / ``Popen.kill()`` only signal the immediate child.
 On Windows ``TerminateProcess`` does NOT cascade to descendants, so a
 worker's ffmpeg / ffprobe / demucs grandchildren (or yt-dlp's ffmpeg merge
 child) are orphaned when the parent is killed — they keep running, hold the
 source/output file handle open, burn CPU/RAM, and on CUDA can leave a stale
-GPU allocation. These helpers kill the WHOLE tree:
+GPU allocation. The termination helpers kill the WHOLE tree:
 
   * Windows — ``taskkill /T`` (optionally ``/F``) walks the PID tree.
   * POSIX   — ``os.killpg`` the process group (the caller must spawn the
@@ -321,3 +321,19 @@ def wait_parent_gone(
             return False
         _time.sleep(interval)
     return True
+
+
+def pid_may_be_alive(pid: int) -> bool:
+    """False only after a successful local read-only probe finds no such PID.
+
+    Cleanup callers must retain another worker's files when psutil is missing,
+    access is denied, or process lookup fails. Reused PIDs conservatively count
+    as alive; a delayed cleanup is preferable to interrupting another job.
+    """
+    if pid <= 0:
+        return True  # An invalid/unknown owner is not proof of an abandoned file.
+    try:
+        import psutil  # type: ignore[import-not-found] # noqa: PLC0415
+        return psutil.pid_exists(pid) is not False
+    except Exception:  # noqa: BLE001 - uncertainty must never authorize deletion
+        return True

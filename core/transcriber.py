@@ -1519,7 +1519,80 @@ class _WrittenOutputs(list[str]):
         self.by_format: dict[str, str] = {}
 
 
+def _caused_by_memory_error(error: BaseException) -> bool:
+    current: BaseException | None = error
+    seen: set[int] = set()
+    while current is not None and id(current) not in seen:
+        if isinstance(current, MemoryError):
+            return True
+        seen.add(id(current))
+        current = current.__cause__ or current.__context__
+    return False
+
+
 def _write_outputs(
+    base: str,
+    segments_data: list[dict[str, Any]],
+    audio_path: str,
+    formats: list[str] | None = None,
+    *,
+    lang: str = "",
+    speaker_count: int = 0,
+    chapters: list[dict[str, Any]] | None = None,
+    audio_end: float | None = None,
+) -> list[str]:
+    """Keep the completed transcript if normal output publication fails.
+
+    Recovery JSON is separate from successful outputs and whole-file resume
+    checkpoints, so a clipped run cannot replace another run's partial text.
+    The worker still reports the original failure with its OS cause and the
+    durable recovery location; a recovery file never makes the task a success.
+    """
+    try:
+        return _write_outputs_impl(
+            base, segments_data, audio_path, formats, lang=lang,
+            speaker_count=speaker_count, chapters=chapters, audio_end=audio_end,
+        )
+    except Exception as error:
+        # Per-format failures can wrap the backend's OOM in RuntimeError.
+        # Do not allocate another large representation anywhere in that chain.
+        if _caused_by_memory_error(error):
+            raise
+        try:
+            kept = _keep_output_recovery(audio_path, segments_data, lang, chapters, str(error))
+        except Exception as recovery_error:
+            logger.warning("Could not keep completed output recovery: %s", recovery_error)
+            raise error
+        raise RuntimeError(f"{error} Recovery data: {kept}") from (error.__cause__ or error)
+
+
+def _keep_output_recovery(
+    source: str, segments: list[dict[str, Any]], language: str,
+    chapters: list[dict[str, Any]] | None, reason: str,
+) -> str:
+    """Save an independently named JSON transcript; never rotate or remove it."""
+    import json
+    import uuid
+    from .convert import _publish_new_output
+
+    folder = _checkpoint.user_data_dir() / "transcript-recovery"
+    folder.mkdir(parents=True, exist_ok=True, mode=0o700)
+    target = folder / f"output-{uuid.uuid4().hex}.output-recovery.json"
+    payload = json.dumps({"source_path": source, "segments": segments,
+                          "language": language, "chapters": chapters or [], "reason": reason},
+                         ensure_ascii=True).encode("utf-8")
+    kept = _publish_new_output(str(target), payload)
+    # The general publisher tolerates unsupported fsync, but this final check
+    # must reject genuine storage errors before advertising the recovery copy.
+    # Keep the new artifact even if verification/sync fails; never delete text.
+    with open(kept, "r+b") as stream:
+        if stream.read() != payload:
+            raise OSError("Completed transcript recovery could not be verified")
+        _checkpoint._strict_sync(stream)
+    return kept
+
+
+def _write_outputs_impl(
     base: str,
     segments_data: list[dict[str, Any]],
     audio_path: str,
@@ -1559,6 +1632,7 @@ def _write_outputs(
     timing_recovery: str | None = None
     write_errors: list[str] = []
     last_write_error: Exception | None = None
+    allocation_error: Exception | None = None
     available = supported_formats()
     # Not list()-ed: a malformed override must reach the TypeError guard
     # below instead of raising here, so the value stays typed as Any.
@@ -1806,6 +1880,8 @@ def _write_outputs(
                 logger.warning("output format %r failed: %s", fmt_name, e)
                 write_errors.append(f"{fmt_name}: {e}")
                 last_write_error = e
+                if allocation_error is None and _caused_by_memory_error(e):
+                    allocation_error = e
                 continue
             written.append(path)
             written.by_format[fmt_name] = path
@@ -1816,7 +1892,7 @@ def _write_outputs(
             raise RuntimeError(
                 "All output writers failed; last error: "
                 + (write_errors[-1] if write_errors else "unknown")
-            ) from last_write_error
+            ) from (allocation_error if allocation_error is not None else last_write_error)
         # Auto-chapter sidecar: same set, same index. A sidecar failure is
         # non-fatal (chapters are an optional extra, never worth failing the
         # transcript over) — _write_chapter_sidecar returns None on error.
