@@ -13,6 +13,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Record the reliability investigation checkpoint, distinguishing reviewed fixes from held reproductions and remaining runtime validation.
 
 ### Fixed
+- Keep external custom model hubs when uninstalling, including shared model archives. Optional cleanup is limited to the default local app cache, rejects directory links and defaults to keeping models.
 - Preserve settings on uninstall and let the application import legacy profiles safely. Reinstalling no longer copies an old history database over newer entries when settings are missing.
 - Preserve API outputs in subfolders when an archive copy fails, including across server restarts. Retained copies keep their relative folders so same-named outputs cannot replace each other.
 

@@ -132,6 +132,31 @@ def test_uninstall_preserves_profile_settings(name, text):
     assert not re.search(r"(?im)^.*(?:Name:|Source:).*\{localappdata\}.*config\.json", text), name
 
 
+@pytest.mark.parametrize("name,text", list(_both_installers()))
+def test_model_cleanup_rechecks_private_cache_before_any_deletion(name, text):
+    code = _section(text, "Code")
+    cleanup = _function(code, "DeleteHubModels")
+    assert "CanDeletePrivateHub(HubFolder, PrivateCache)" in cleanup, name
+    assert cleanup.index("CanDeletePrivateHub") < cleanup.index("FindFirst("), name
+    assert cleanup.index("CanDeletePrivateHub") < cleanup.index("DelTree("), name
+
+
+@pytest.mark.parametrize("name,text", list(_both_installers()))
+def test_uninstall_never_offers_custom_hub_deletion(name, text):
+    code = _section(text, "Code")
+    uninstall = _function(code, "CurUninstallStepChanged")
+    assert "PrivateCache := ExpandConstant('{localappdata}\\WhisperTranscriberSuite\\Cache\\models')" in uninstall, name
+    assert "CanDeletePrivateHub(HubFolder, PrivateCache)" in uninstall, name
+    assert uninstall.index("CanDeletePrivateHub") < uninstall.index("MsgBox("), name
+    assert "DeleteHubModels(HubFolder, PrivateCache)" in uninstall, name
+
+
+@pytest.mark.parametrize("name,text", list(_both_installers()))
+def test_model_deletion_question_defaults_to_keep(name, text):
+    uninstall = _function(_section(text, "Code"), "CurUninstallStepChanged")
+    assert "MB_YESNO or MB_DEFBUTTON2" in uninstall, name
+
+
 def test_uninstall_never_deletes_the_whole_model_folder():
     """hub_folder is any folder the user picked (Documents, a drive root, ...), and
     only the model folders the app made in it are the app's to delete. A recursive
@@ -145,7 +170,7 @@ def test_uninstall_never_deletes_the_whole_model_folder():
         assert "'models--*'" in cleanup, name
         assert "DelTree(" in cleanup and "RemoveDir(HubFolder)" in cleanup, name
         assert cleanup.index("RemoveDir(HubFolder)") > cleanup.index("DelTree("), name
-        assert "DeleteHubModels(HubFolder)" in _function(code, "CurUninstallStepChanged"), name
+        assert "DeleteHubModels(HubFolder, PrivateCache)" in _function(code, "CurUninstallStepChanged"), name
 
 
 def test_build_script_parses_gui_py_independent_of_the_windows_code_page():
