@@ -13,13 +13,27 @@ Same-origin frames and ordinary non-browser clients retain their existing path.
 The server already disallows framing its index; this makes admission consistent
 with that boundary instead of allowing authentication side effects first.
 
-Foreign top-level document navigation can still submit a guessed query token.
-These attempts use a separate bounded authentication allowance, including the
-same IPv6 subnet and overflow protections. Repeated wrong document links can
-temporarily block other foreign document links from that address, while
-header-token clients retain their normal allowance. Valid shared links still
-work when their navigation allowance is available. This also isolates requests
-marked as prefetch; the transport tests do not assert browser prefetch behavior.
+Any URL-token request can submit a guessed password, including requests without
+Fetch Metadata on plain HTTP LAN addresses. All headerless token attempts now
+use one bounded query allowance. Header credentials use another allowance;
+changing metadata cannot select a fresh query budget. Both retain real IPv6
+subnet accounting and bounded overflow protection.
+
+The two credential channels have independent counts and trust. A scripted
+attacker can attempt both channels, so their combined budget is twice one
+channel's configured budget. This bounded tradeoff keeps browser URL guesses
+from locking out header-authenticated clients. Correct URL tokens refund the
+query allowance; correct headers refund the header allowance. A recently
+authenticated header client is not thereby exempt from query-channel subnet
+pressure. Valid session cookies retain the existing authenticated path.
+
+Repeated wrong links can block other URL-token links from the same address.
+Each lockout expires, but an attacker who resumes guessing after each expiry
+can sustain this denial; the address is forgotten after an idle period. A valid
+shared link works when its query allowance is available. Requests without any
+credential peek at both allowances and book no attempt. Transport tests cover
+missing metadata and requests marked as prefetch without claiming real-browser
+prefetch verification.
 
 The [web.dev Fetch Metadata guide](https://web.dev/articles/fetch-metadata)
 explains navigation/resource destinations and early rejection. This policy is

@@ -16,6 +16,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Record the reliability investigation checkpoint, distinguishing reviewed fixes from held reproductions and remaining runtime validation.
 
 ### Fixed
+- Keep URL-token guesses in one allowance even when browser metadata is absent, protecting header-authenticated API access on plain HTTP LAN connections as well. Correct URL tokens refund only their own allowance.
 - Rate-limit foreign document-link password guesses separately, so they cannot lock out header-authenticated API clients at the same address. Both allowances retain bounded host tables, IPv6 subnet limits and overflow protection.
 - Reject cross-site and same-site embedded browser navigations before checking API access passwords. External frames can no longer consume the local login allowance; shared document links and clients without destination metadata keep working.
 - Reserve telemetry error quotas through exclusive, synced temporary files so an existing scratch file is preserved and a failed write suppresses the send.

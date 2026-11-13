@@ -1219,8 +1219,8 @@ class JobHTTPServer(ThreadingHTTPServer):
         self.token = token
         # Slows down repeated wrong access passwords per client address.
         self.auth_throttle = AuthThrottle()
-        # A foreign page can navigate a window using the user's address.
-        # Keep those guesses bounded without locking out header-token clients.
+        # Browser URL-token requests can use the user's address even when
+        # Fetch Metadata is absent. Keep their allowance separate from headers.
         self.navigation_auth_throttle = AuthThrottle()
         # Signs the session cookies of clients that already logged in (they
         # are then independent of the per-address failure counts).
@@ -1738,17 +1738,13 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         who = self.client_address[0] if self.client_address else ""
         header = self.headers.get("X-Auth-Token") or self._bearer_token()
         query = route.query.get("token")
-        site = (self.headers.get("Sec-Fetch-Site") or "").strip().lower()
-        mode = (self.headers.get("Sec-Fetch-Mode") or "").strip().lower()
-        destination = (self.headers.get("Sec-Fetch-Dest") or "").strip().lower()
-        foreign_navigation = (not header and site in ("cross-site", "same-site")
-                              and mode == "navigate" and destination in ("", "document"))
         # Both limiters retain the real address, IPv6 subnet accounting and
-        # bounded overflow protection. Never namespace the address string.
-        throttle = srv.navigation_auth_throttle if foreign_navigation else srv.auth_throttle
+        # bounded overflow protection. Metadata cannot choose another budget;
+        # only the explicit header credential selects the header allowance.
+        throttle = srv.auth_throttle if header else srv.navigation_auth_throttle
         if not (header or query):
             # No password at all is not a guess: refuse, book nothing.
-            self._auth_wait = throttle.peek(who)
+            self._auth_wait = max(srv.auth_throttle.peek(who),srv.navigation_auth_throttle.peek(who))
             return False
         # Check the lockout AND book the attempt in one atomic step, before
         # comparing, so concurrent guesses cannot all slip past the limit.
