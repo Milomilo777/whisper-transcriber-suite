@@ -54,37 +54,39 @@ while IFS= read -r -d '' f; do
     universal2) { [[ " $archs " == *" x86_64 "* ]] && [[ " $archs " == *" arm64 "* ]]; } || { echo "ARCH  $rel: $archs"; bad=$((bad + 1)); } ;;
     *) [[ " $archs " == *" $WANT "* ]] || { echo "ARCH  $rel: $archs"; bad=$((bad + 1)); } ;;
   esac
-  if ! links="$(otool -L "$f" 2>&1)" || [ -z "$links" ]; then
-    echo "OTOOL $rel: dependency inspection failed: $links"; bad=$((bad + 1)); continue
-  fi
-  ext="$(printf '%s\n' "$links" | grep -v ':$' | grep -vE '^[[:space:]]*(@rpath/|@loader_path/|@executable_path/|/usr/lib/|/System/Library/)' || true)"
-  if [ -n "$ext" ]; then
-    echo "DEP   $rel:"; echo "$ext"; bad=$((bad + 1))
-  fi
-  if ! loads="$(otool -l "$f" 2>&1)"; then
-    echo "OTOOL $rel: load-command inspection failed: $loads"; bad=$((bad + 1)); continue
-  fi
-  # Read every slice, not only the first architecture in a universal binary.
-  mins="$(printf '%s\n' "$loads" | awk '
-    /^Load command / {b=0; v=0}
-    /cmd LC_BUILD_VERSION$/ {b=1}
-    b && /^[[:space:]]*minos / {print $2; b=0}
-    /cmd LC_VERSION_MIN_MACOSX$/ {v=1}
-    v && /^[[:space:]]*version / {print $2; v=0}')"
-  if [ -z "$mins" ]; then
-    echo "MINOS $rel: no macOS version could be verified"; bad=$((bad + 1)); continue
-  fi
-  if [ "$(wc -l <<<"$mins")" -lt "$(wc -w <<<"$archs")" ]; then
-    echo "MINOS $rel: not every architecture has a verified minimum"; bad=$((bad + 1))
-  fi
-  while IFS= read -r m; do
-    if ! [[ "$m" =~ ^[0-9]+(\.[0-9]+){1,2}$ ]]; then
-      echo "MINOS $rel: invalid version $m"; bad=$((bad + 1)); continue
+  # Inspect dependencies and metadata for every actual slice, including unused helpers.
+  # Compare deployment minima only for the requested application architectures.
+  for slice in $archs; do
+    if ! links="$(otool -L -arch "$slice" "$f" 2>&1)" || [ -z "$links" ]; then
+      echo "OTOOL $rel: dependency inspection failed: $links"; bad=$((bad + 1)); continue
     fi
-    if version_greater "$m" "$max"; then
-      max="$m"; maxfile="$rel"
+    ext="$(printf '%s\n' "$links" | grep -v ':$' | grep -vE '^[[:space:]]*(@rpath/|@loader_path/|@executable_path/|/usr/lib/|/System/Library/)' || true)"
+    if [ -n "$ext" ]; then
+      echo "DEP   $rel:"; echo "$ext"; bad=$((bad + 1))
     fi
-  done <<<"$mins"
+    if ! loads="$(otool -l -arch "$slice" "$f" 2>&1)"; then
+      echo "OTOOL $rel: load-command inspection failed: $loads"; bad=$((bad + 1)); continue
+    fi
+    # Each otool invocation selects its slice; its default is the host architecture.
+    mins="$(printf '%s\n' "$loads" | awk '
+      /^Load command / {b=0; v=0}
+      /cmd LC_BUILD_VERSION$/ {b=1}
+      b && /^[[:space:]]*minos / {print $2; b=0}
+      /cmd LC_VERSION_MIN_MACOSX$/ {v=1}
+      v && /^[[:space:]]*version / {print $2; v=0}')"
+    if [ -z "$mins" ]; then
+      echo "MINOS $rel: no macOS version could be verified"; bad=$((bad + 1)); continue
+    fi
+    while IFS= read -r m; do
+      if ! [[ "$m" =~ ^[0-9]+(\.[0-9]+){1,2}$ ]]; then
+        echo "MINOS $rel: invalid version $m"; bad=$((bad + 1)); continue
+      fi
+      if { [ "$WANT" = universal2 ] || [ "$slice" = "$WANT" ]; } && version_greater "$m" "$max"; then
+        max="$m"; maxfile="$rel [$slice]"
+      fi
+    done <<<"$mins"
+  done
+
 done <"$macho_list"
 rm -f -- "$macho_list"
 [ "$n" -gt 0 ] || { echo "error: no Mach-O files inspected"; bad=$((bad + 1)); }

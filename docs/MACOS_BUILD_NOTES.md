@@ -32,8 +32,10 @@ CI (`macos-app.yml`, manual dispatch) runs exactly these steps on both archs.
 The bundle verifier requires a build-host Python interpreter (optional third
 argument, default `python3`) to enumerate Mach-O candidates by their magic bytes.
 It includes suffix-less framework files without execute permission, rejects
-failed native inspections, reads minimum OS requirements from every binary
-slice, and rejects requirements above `LSMinimumSystemVersion`. Unknown binary
+failed native inspections and explicitly selects every binary slice for native
+dependency and minimum-OS checks. Only the requested application architectures
+contribute to the minimum compared with `LSMinimumSystemVersion`; an unused
+arm64 slice in an Intel helper does not raise the Intel minimum. Unknown binary
 types or missing version metadata fail verification. Run it on the final bundle;
 the hermetic inspector controls do not establish native app compatibility.
 

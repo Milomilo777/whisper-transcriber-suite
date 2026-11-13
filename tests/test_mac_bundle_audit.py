@@ -28,7 +28,8 @@ def scanner():
 def inspect_bundle(tmp_path, *, executable=True, minimum="10.15", tool_error="",
                    second_minimum="", foreign=False, architectures="x86_64",
                    description="Mach-O 64-bit executable x86_64", other_file=False,
-                   magic="cffaedfe", plist_min="10.15", legacy_minimum=False):
+                   magic="cffaedfe", plist_min="10.15", legacy_minimum=False,
+                   want="x86_64", foreign_arm64=False):
     bundle = tmp_path / "Example ü.app"
     # NTFS does not expose chmod's execute bit to Git Bash find. A .dylib
     # baseline is deliberately selected by the old scanner too; only the
@@ -50,15 +51,21 @@ def inspect_bundle(tmp_path, *, executable=True, minimum="10.15", tool_error="",
     bash = _find_bash()
     if bash is None:
         pytest.skip("a working Bash is required for the actual inspector loop")
-    loads = "Load command 0\n      cmd LC_BUILD_VERSION\n    minos " + minimum + "\n"
-    if second_minimum:
-        loads += "Load command 0\n      cmd LC_BUILD_VERSION\n    minos " + second_minimum + "\n"
-    if legacy_minimum:
-        loads = "Load command 0\n      cmd LC_VERSION_MIN_MACOSX\n  version " + minimum + "\n"
     dependency = "/opt/homebrew/lib/libbad.dylib" if foreign else "/usr/lib/libSystem.B.dylib"
+    # Native otool defaults to the host slice unless -arch selects another.
+    primary = ("Load command 0\n      cmd LC_VERSION_MIN_MACOSX\n  version " if legacy_minimum else "Load command 0\n      cmd LC_BUILD_VERSION\n    minos ") + minimum + "\n"
+    secondary = ("Load command 0\n      cmd LC_BUILD_VERSION\n    minos " + second_minimum + "\n") if second_minimum else ""
+    command = (
+        '  selected=x86_64\n  if [ "${2:-}" = -arch ]; then selected="$3"; fi\n'
+        '  if [ "$1" = -L ]; then\n'
+        + ('    if [ "$selected" = arm64 ]; then printf "fixture:\\n\\t/opt/homebrew/lib/libbad.dylib (compatibility version 1.0.0)\\n"; return; fi\n' if foreign_arm64 else '')
+        + f'    printf "fixture:\\n\\t{dependency} (compatibility version 1.0.0)\\n"\n'
+        "  elif [ \"$selected\" = arm64 ]; then\ncat <<'ARMLOADS'\n" + secondary + 'ARMLOADS\n'
+        "  else\ncat <<'INTELLOADS'\n" + primary + 'INTELLOADS\n  fi\n'
+    )
     script = tmp_path / "inspect.sh"
     script.write_text(
-        'set -uo pipefail\nAPP="$1"\nWANT=x86_64\nVERIFY_PYTHON="$2"\n'
+        f'set -uo pipefail\nAPP="$1"\nWANT={want}\nVERIFY_PYTHON="$2"\n'
         f'file() {{ if [ "{tool_error}" = file ]; then return 7; fi; '
         'if [[ "$2" == *Other.dylib ]]; then printf "Mach-O x86_64\\n"; '
         f'else printf "%s\\n" "{description}"; fi; }}\n'
@@ -66,9 +73,7 @@ def inspect_bundle(tmp_path, *, executable=True, minimum="10.15", tool_error="",
         f'printf "%s\\n" "{architectures}"; }}\n'
         'otool() {\n'
         f'  if [ "$1" = "{tool_error}" ]; then return 7; fi\n'
-        '  if [ "$1" = "-L" ]; then\n'
-        f'    printf "fixture:\\n\\t{dependency} (compatibility version 1.0.0, current version 1.0.0)\\n"\n'
-        '  else\ncat <<\'LOADS\'\n' + loads + 'LOADS\n  fi\n}\n'
+        + command + '}\n'
         + code + '\n[ "$bad" = 0 ]\n', encoding="utf-8", newline="\n",
     )
     return subprocess.run([bash, str(script), bundle.as_posix(), Path(sys.executable).as_posix()],
@@ -89,7 +94,8 @@ def test_framework_binary_without_execute_bit_is_inspected(tmp_path):
 
 @pytest.mark.parametrize("minimum,second", [("11.0", ""), ("10.13", "12.0")])
 def test_every_architecture_minimum_must_fit_plist(tmp_path, minimum, second):
-    result = inspect_bundle(tmp_path, minimum=minimum, second_minimum=second)
+    result = inspect_bundle(tmp_path, minimum=minimum, second_minimum=second,
+                            architectures="x86_64 arm64", want="universal2")
     assert result.returncode != 0, result.stdout + result.stderr
 
 
@@ -137,6 +143,30 @@ def test_compatible_two_slice_binary_passes(tmp_path):
     result = inspect_bundle(tmp_path, minimum="10.13", second_minimum="10.15",
                             architectures="x86_64 arm64")
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.parametrize("want,plist", [("x86_64", "10.15"), ("arm64", "11.0")])
+def test_native_slice_selection_matches_requested_os_target(tmp_path, want, plist):
+    result = inspect_bundle(tmp_path, minimum="10.15", second_minimum="11.0",
+                            architectures="x86_64 arm64",
+                            want=want, plist_min=plist)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_native_slice_universal_target_still_rejects_higher_minimum(tmp_path):
+    result = inspect_bundle(tmp_path, minimum="10.15", second_minimum="12.0",
+                            architectures="x86_64 arm64",
+                            want="universal2", plist_min="11.0")
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert "requires 12.0" in result.stdout
+
+
+def test_native_slice_foreign_dependency_on_nonhost_slice_is_not_hidden(tmp_path):
+    result = inspect_bundle(tmp_path, minimum="10.15", second_minimum="11.0",
+                            architectures="x86_64 arm64",
+                            foreign_arm64=True)
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert "/opt/homebrew/lib/libbad.dylib" in result.stdout
 
 
 def test_scanner_reads_all_magic_variants_without_resource_false_positives(tmp_path, scanner):
