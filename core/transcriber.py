@@ -1078,9 +1078,9 @@ def _capture_timing_tail(
         if chars >= _TIMING_TAIL_TEXT_CHARS:
             stopped = "text-limit"
             break
-    # The initial record is already durable. Avoid redundant files when the
-    # decoder ends immediately; otherwise record any bounded/incomplete capture.
-    if len(captured) == len(original) and stopped == "exhausted":
+    # The initial record already contains the full prefix. A stop reason alone
+    # belongs in the error message, not another full-transcript copy.
+    if len(captured) == len(original):
         return None, stopped
     kept = _keep_timing_recovery(task.file_path, captured,
                                  f"{reason}; additional tail capture: {stopped}")
@@ -1091,17 +1091,34 @@ def _enforce_decoded_audio_end(
     task: TranscriptionTask, bounded: list[dict[str, Any]], *,
     recovery: Callable[[], list[dict[str, Any]]], remaining: Iterator[Any],
     convert: Callable[[Any], dict[str, Any]],
+    runner: Any = None,
 ) -> None:
     try:
         # This writes the initial raw record BEFORE advancing the lazy decoder.
         _enforce_audio_end(task, bounded, recovery=recovery)
     except _TimingBoundsError as error:
-        kept, stopped = _capture_timing_tail(task, recovery(), remaining, convert, str(error))
+        retry_enabled = runner.retry_enabled if runner is not None else None
+        if runner is not None:
+            runner.retry_enabled = False
+        try:
+            kept, stopped = _capture_timing_tail(task, recovery(), remaining, convert, str(error))
+        except OSError as storage_error:
+            # Preserve the storage exception's type/errno/winerror for callers
+            # and classification, while exposing the record already on disk.
+            detail = f"{storage_error} Additional timing recovery failed. {error}"
+            if storage_error.errno is not None or getattr(storage_error, "winerror", None) is not None:
+                storage_error.strerror = detail
+            else:
+                storage_error.args = (detail,)
+            raise
+        finally:
+            if runner is not None:
+                runner.retry_enabled = retry_enabled
         if kept is not None:
             raise _TimingBoundsError(
                 f"{error} Additional timing recovery ({stopped}): {kept}"
             ) from error
-        raise
+        raise _TimingBoundsError(f"{error} Additional timing recovery: {stopped}; no extra cues.") from error
 
 
 def _segments_for_writer(
@@ -3625,6 +3642,7 @@ def transcribe(
             stats=_guard_stats,
             ticks=True,
             cancelled=lambda: bool(task.cancelled),
+            passthrough=lambda: not runner.retry_enabled,
         )
 
         segments_data: list[dict[str, Any]] = []
@@ -3695,6 +3713,7 @@ def transcribe(
                 _enforce_decoded_audio_end(
                     task, bounded, recovery=lambda: segments_data + [decoded], remaining=segments,
                     convert=lambda raw: _guarded_segment_to_dict(raw, want_words, _guard_stats),
+                    runner=runner,
                 )
                 segments_data.append(bounded[0])
                 segments_since_checkpoint += 1
@@ -4736,6 +4755,7 @@ def resume_transcription(
                 stats=guard_stats,
                 ticks=True,
                 cancelled=lambda: bool(task.cancelled),
+                passthrough=lambda: not runner.retry_enabled,
                 previous_text=(
                     str(prior_segments[-1].get("text", "") or "")
                     if prior_segments and isinstance(prior_segments[-1], dict)
@@ -4812,6 +4832,7 @@ def resume_transcription(
                 _enforce_decoded_audio_end(
                     task, bounded, recovery=lambda: prior_segments + new_segments_data + [d],
                     remaining=new_segments_iter, convert=_resume_segment,
+                    runner=runner,
                 )
                 new_segments_data.append(bounded[0])
 

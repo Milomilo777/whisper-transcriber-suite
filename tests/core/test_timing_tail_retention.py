@@ -69,7 +69,8 @@ def test_cancel_or_pause_does_not_advance_remaining_decoder(endpoint_case, flag)
         yield
     kept, stopped = tr._capture_timing_tail(task, [], refuse(), dict, "bad timing")
     assert stopped == flag
-    assert kept and json.loads(Path(kept).read_text(encoding="utf-8"))["segments"] == []
+    assert kept is None
+    assert not list(cp.partials_dir().glob("*.timing-recovery.json"))
 
 
 def test_segment_budget_bounds_remaining_decoder_steps(endpoint_case, monkeypatch):
@@ -93,7 +94,7 @@ def test_loop_guard_ticks_count_against_step_budget(endpoint_case, monkeypatch):
             yield tr._loop_guard.LoopGuardTick(end=float(n))
     record, stopped = capture(endpoint_case, remaining(), lambda value: pytest.fail("Tick is not transcript text"))
     assert stopped == "segment-limit" and observed == [0, 1]
-    assert [row["text"] for row in record["segments"]] == ["rejected"]
+    assert record is None
 
 
 def test_elapsed_budget_stops_between_decoder_steps(endpoint_case, monkeypatch):

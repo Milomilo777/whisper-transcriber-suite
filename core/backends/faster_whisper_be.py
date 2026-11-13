@@ -127,6 +127,7 @@ class WhisperDecode:
         self._recover = recover
         self._window_s = window_s
         self.before_retry: Callable[[], None] = lambda: None
+        self.retry_enabled = True
 
     def detect_language(self, **kwargs: Any) -> Any:
         while True:
@@ -134,7 +135,7 @@ class WhisperDecode:
                 return self._runner({}).detect_language(**kwargs)
             except RuntimeError as exc:
                 failure = _cuda_failure(exc)
-                if not self._is_cuda() or not failure:
+                if not self.retry_enabled or not self._is_cuda() or not failure:
                     raise
             self.before_retry()
             self._recover({}, failure == "out_of_memory")
@@ -150,7 +151,7 @@ class WhisperDecode:
                         return self._runner(options).transcribe(source, **options)
                 except RuntimeError as exc:
                     failure = _cuda_failure(exc)
-                    if not self._is_cuda() or not failure:
+                    if not self.retry_enabled or not self._is_cuda() or not failure:
                         raise
                     oom = failure == "out_of_memory"
                 self.before_retry()
@@ -179,7 +180,7 @@ class WhisperDecode:
                     except RuntimeError as exc:
                         failure = _cuda_failure(exc)
                         oom = failure == "out_of_memory"
-                        if not self._is_cuda() or not failure:
+                        if not self.retry_enabled or not self._is_cuda() or not failure:
                             raise
                     finally:
                         _close_iterator_quietly(iterator)

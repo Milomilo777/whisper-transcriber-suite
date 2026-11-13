@@ -258,6 +258,7 @@ def guard_repeats(
     previous_text: str = "",
     ticks: bool = False,
     cancelled: Callable[[], bool] | None = None,
+    passthrough: Callable[[], bool] | None = None,
 ) -> Iterator[Any]:
     """Yield *segments* with decoder loops contained and real repeats kept.
 
@@ -269,6 +270,8 @@ def guard_repeats(
     ``limit``; ``limit`` < 2 switches the guard off. ``previous_text`` is the
     line written just before these segments (a resumed run); its times are on
     another timeline, so the first copy here is never tight to it.
+    ``passthrough()`` switches a failed run to raw recovery: remaining cues
+    are yielded without filtering, buffering or another decoder restart.
     """
     stats = stats if stats is not None else LoopGuardStats()
     if limit < 2:
@@ -329,6 +332,11 @@ def guard_repeats(
     restart_at: float | None = None  # set until the restarted decode yields
     try:
         while True:
+            if passthrough is not None and passthrough():
+                yield from held
+                held = []
+                yield from it
+                return
             try:
                 seg = next(it)
             except StopIteration:

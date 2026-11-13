@@ -14,10 +14,18 @@ record. Those cues never enter a checkpoint or timed output. Capture stops on
 cancel/pause, a decoder/conversion error, 64 iterator steps, two elapsed seconds
 between steps, or 128 Ki characters of additional text. Loop-guard ticks count
 as steps; a final yielded cue is kept whole even if it exceeds the text budget.
-The record states whether the iterator exhausted or capture stopped early.
+The additional record states whether the iterator exhausted or capture stopped
+early. When no further cue is available, only the initial record is kept and
+the reported error includes the stop reason. Records are retained for manual
+recovery; repeating a failed attempt does not erase an earlier record.
 The elapsed check cannot preempt a native decoder call; the worker watchdog
-still handles a blocked call. A capture/storage failure does not replace
-already written recovery data or the valid prefix; storage errors propagate.
+still handles a blocked call. Capture disables CUDA retry and loop-guard restart
+for the failed run, and reads subsequent repeated cues without filtering them.
+It cannot reconstruct cues the guard had already dropped before the rejection.
+Pause ends this failed run's capture rather than waiting to resume it.
+A capture/storage failure does not replace already written recovery data or the
+valid prefix. Storage errors retain their operating-system classification and
+include the path of the initial record that was successfully saved.
 
 Validation uses all registered writers, fractional-sample endpoints, a long PCM input, clipped and resumed offsets, checkpoints, post-processing, container-duration discrepancies and recovery controls. Independent mutations must reject disabled checkpoint bounds and upward rounding at EOF. Actual long-file validation remains separate from hermetic tests.
 
