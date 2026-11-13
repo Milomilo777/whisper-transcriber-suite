@@ -844,3 +844,50 @@ def test_log_is_private_to_the_user(model, tmp_path):
     server = make(model, tmp_path)
     server.start()
     assert server.log_path.stat().st_mode & 0o077 == 0
+
+
+@pytest.mark.parametrize("modern", [False, True])
+@pytest.mark.parametrize("child_owns_socket", [False, True])
+def test_port_lookup_supports_legacy_and_current_psutil_apis(model, tmp_path, monkeypatch, modern, child_owns_socket):
+    from types import SimpleNamespace
+
+    seen = []
+    connection = SimpleNamespace(status=psutil.CONN_LISTEN,
+                                 laddr=SimpleNamespace(ip=lls.LOOPBACK, port=43210))
+
+    def process(pid, connections):
+        proc = SimpleNamespace(pid=pid)
+
+        def read(*, kind):
+            seen.append((pid, kind))
+            return connections
+
+        setattr(proc, "net_connections" if modern else "connections", read)
+        return proc
+
+    child = process(102, [connection] if child_owns_socket else [])
+    root = process(101, [] if child_owns_socket else [connection])
+    root.children = lambda recursive: [child]
+    monkeypatch.setattr(psutil, "Process", lambda pid: root)
+    server = make(model, tmp_path)
+    assert server._find_port(101) == 43210
+    assert seen == ([(101, "tcp"), (102, "tcp")] if child_owns_socket else [(101, "tcp")])
+
+
+def test_port_lookup_does_not_retry_denied_current_api_through_legacy(model, tmp_path, monkeypatch):
+    from types import SimpleNamespace
+
+    fallback_calls = []
+
+    def denied(*, kind):
+        raise psutil.AccessDenied(101)
+
+    def forbidden(*, kind):
+        fallback_calls.append(kind)
+        raise AssertionError("a denied current API must not select a second API")
+
+    proc = SimpleNamespace(pid=101, children=lambda recursive: [],
+                           net_connections=denied, connections=forbidden)
+    monkeypatch.setattr(psutil, "Process", lambda pid: proc)
+    assert make(model, tmp_path)._find_port(101) is None
+    assert fallback_calls == []

@@ -572,3 +572,54 @@ class B:
     def go(self): pass
 """)
     assert [q for q, _ in _functions(tree)] == ["A.go", "B.go"]
+
+
+@pytest.mark.parametrize("modern", [False, True])
+def test_connection_check_supports_legacy_and_current_psutil_apis(monkeypatch, modern):
+    import psutil
+    from types import SimpleNamespace
+
+    seen = []
+    outside = SimpleNamespace(status=psutil.CONN_ESTABLISHED, type=socket.SOCK_STREAM,
+                               laddr=SimpleNamespace(ip="127.0.0.1", port=43210),
+                               raddr=SimpleNamespace(ip="203.0.113.10", port=443))
+    loopback = SimpleNamespace(status=psutil.CONN_ESTABLISHED, type=socket.SOCK_STREAM,
+                                laddr=SimpleNamespace(ip="127.0.0.1", port=43211),
+                                raddr=SimpleNamespace(ip="127.0.0.1", port=43210))
+
+    def process(pid, connections):
+        proc = SimpleNamespace(pid=pid, name=lambda: "synthetic app")
+
+        def read(*, kind):
+            seen.append((pid, kind))
+            return connections
+
+        setattr(proc, "net_connections" if modern else "connections", read)
+        return proc
+
+    child = process(102, [outside])
+    root = process(101, [loopback])
+    root.children = lambda recursive: [child]
+    monkeypatch.setattr(psutil, "Process", lambda pid: root)
+    result = offline.poll_connections(101)
+    assert result.ok and result.processes == 2
+    assert len(result.outside) == 1 and result.outside[0].remote == "203.0.113.10:443"
+    assert result.outside[0].pid == 102 and not result.outside[0].incoming
+    assert seen == [(101, "inet"), (102, "inet")]
+
+
+def test_connection_check_does_not_retry_denied_current_api_through_legacy(monkeypatch):
+    import psutil
+    from types import SimpleNamespace
+
+    def denied(*, kind):
+        raise psutil.AccessDenied(101)
+
+    def forbidden(*, kind):
+        raise AssertionError("a denied current API must not select a second API")
+
+    proc = SimpleNamespace(pid=101, children=lambda recursive: [],
+                           net_connections=denied, connections=forbidden)
+    monkeypatch.setattr(psutil, "Process", lambda pid: proc)
+    result = offline.poll_connections(101)
+    assert not result.ok and "could not read process" in result.error

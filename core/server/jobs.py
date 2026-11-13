@@ -625,6 +625,7 @@ class JobManager:
         dest_dir = os.path.join(
             self._outputs_root, os.path.basename(os.path.normpath(work_dir))[:12])
         saved = True
+        relocated: dict[str, str] = {}
         keep = os.path.join(work_dir, _KEEP_FILE)
         if os.path.exists(keep):
             listed = _read_keep_list(keep)
@@ -648,13 +649,26 @@ class JobManager:
             try:
                 if _relative_output_path(self._outputs_root, dest) is None:
                     raise OSError("Output archive path escapes its directory")
-                if os.path.isfile(dest) and _same_output_contents(src, dest):
-                    continue
-                os.makedirs(os.path.dirname(dest), exist_ok=True)
-                _copy_output_atomic(src, dest)
+                if not (os.path.isfile(dest) and _same_output_contents(src, dest)):
+                    os.makedirs(os.path.dirname(dest), exist_ok=True)
+                    _copy_output_atomic(src, dest)
+                relocated[src] = dest
             except OSError as e:
                 logger.warning("server: could not keep %s: %s",
                                os.path.basename(src), e)
+                saved = False
+        if saved and relocated:
+            try:
+                from core.history import HistoryDB, default_db_path
+                path = default_db_path()
+                # Disabling NEW records does not invalidate rows an earlier
+                # server saved. An absent database needs no repair or creation.
+                if path.exists():
+                    with HistoryDB(path, recover_corrupt=False) as db:
+                        db.relocate_transcription_outputs(relocated)
+            except Exception as e:  # noqa: BLE001 - uncertainty keeps originals
+                logger.warning("server: kept original outputs: history paths "
+                               "could not be saved: %s", e)
                 saved = False
         return saved
 

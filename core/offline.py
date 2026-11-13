@@ -648,7 +648,9 @@ def poll_connections(root_pid: int | None = None) -> ConnectionCheck:
     looked = 0
     for proc in procs:
         try:
-            conns = proc.net_connections(kind="inet")
+            # psutil 5.9 predates the net_connections() name.
+            read_connections = getattr(proc, "net_connections", None) or getattr(proc, "connections")
+            conns = read_connections(kind="inet")
         except psutil.NoSuchProcess:
             continue  # ended between the listing and the look
         except (psutil.Error, OSError) as e:

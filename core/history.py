@@ -259,7 +259,8 @@ def _is_corruption_error(exc: sqlite3.Error) -> bool:
 
 
 class HistoryDB:
-    def __init__(self, path: str | Path | None = None) -> None:
+    def __init__(self, path: str | Path | None = None, *,
+                 recover_corrupt: bool = True) -> None:
         self.path: Path = Path(path) if path else default_db_path()
         self.path.parent.mkdir(parents=True, exist_ok=True)
         # check_same_thread=False — the transcription / download
@@ -277,7 +278,7 @@ class HistoryDB:
         # Open lock file while this object holds the app-instance lock
         # (see claim_instance_lock); None otherwise.
         self._instance_lock: Any = None
-        if self.path.exists():
+        if self.path.exists() or not recover_corrupt:
             # Closing a writable connection after NOTADB can delete a hot WAL
             # without checkpointing it. Inspect existing files read-only first.
             self._conn = sqlite3.connect(
@@ -286,7 +287,14 @@ class HistoryDB:
             )
             self._conn.row_factory = sqlite3.Row
             try:
-                self._check_integrity_or_recover()
+                if recover_corrupt:
+                    self._check_integrity_or_recover()
+                else:
+                    # Retention cleanup must not replace history with an empty
+                    # database and then delete files its archived rows named.
+                    row = self._conn.execute("PRAGMA integrity_check").fetchone()
+                    if row is None or str(row[0]).lower() != "ok":
+                        raise sqlite3.DatabaseError("History database requires recovery")
             finally:
                 self.close()
         self._conn = sqlite3.connect(str(self.path), check_same_thread=False)
@@ -715,6 +723,53 @@ class HistoryDB:
                     "persisted.", row_id, cur.rowcount,
                 )
             return cur.rowcount == 1
+
+    def relocate_transcription_outputs(self, replacements: dict[str, str]) -> int:
+        """Commit retained-file locations without changing completion metadata.
+
+        Cleanup may remove the old files only after this returns. Read and
+        rewrite under one writer transaction; page by row id to bound memory
+        without imposing the history viewer's 200-row limit.
+        """
+        if not replacements:
+            return 0
+        locations = {os.path.normcase(os.path.abspath(old)): new
+                     for old, new in replacements.items()}
+        changed = 0
+        with self._txn() as conn:
+            # A WAL commit must survive power loss before cleanup removes the
+            # old paths, even while another GUI connection keeps the WAL open.
+            conn.execute("PRAGMA synchronous=FULL")
+            conn.execute("BEGIN IMMEDIATE")
+            after: int | None = None
+            while True:
+                if after is None:
+                    rows = conn.execute(
+                        "SELECT id, output_paths FROM transcriptions ORDER BY id LIMIT 256"
+                    ).fetchall()
+                else:
+                    rows = conn.execute(
+                        "SELECT id, output_paths FROM transcriptions WHERE id > ? "
+                        "ORDER BY id LIMIT 256", (after,),
+                    ).fetchall()
+                if not rows:
+                    break
+                for row in rows:
+                    paths = json.loads(row["output_paths"]) if row["output_paths"] else []
+                    if not isinstance(paths, list):
+                        raise ValueError("History output paths are unreadable")
+                    updated: list[str] = []
+                    for path in paths:
+                        if not isinstance(path, str):
+                            raise ValueError("History output paths are unreadable")
+                        key = os.path.normcase(os.path.abspath(path))
+                        updated.append(locations.get(key, path))
+                    if updated != paths:
+                        conn.execute("UPDATE transcriptions SET output_paths=? WHERE id=?",
+                                     (json.dumps(updated), row["id"]))
+                        changed += 1
+                after = int(rows[-1]["id"])
+        return changed
 
     def list_transcriptions(self, limit: int = 200) -> list[dict[str, Any]]:
         # Serialise the read through _write_lock — see list_downloads().
