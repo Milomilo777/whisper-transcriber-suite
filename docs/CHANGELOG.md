@@ -4,6 +4,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Fixed
+
+- Requests with a foreign Origin must authenticate their header password. A valid session cookie or URL token no longer lets an incorrect header bypass this check.
+
 ### Added
 
 - Show a one-time usage-statistics disclosure for new and upgraded profiles before automatic reporting starts. The quiet bar preserves the existing choice, offers a direct off button and keeps reporting paused when its state cannot be saved.

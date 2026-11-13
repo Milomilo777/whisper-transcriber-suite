@@ -1721,8 +1721,11 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         if not srv.token:
             return True
         now = time.time()
+        own_origin = origin_allowed(
+            self.headers.get("Origin"), self.headers.get("Host"),
+            https=srv.ssl_context is not None)
         cookie = auth_session.from_cookie_header(self.headers.get("Cookie"))
-        if cookie:
+        if cookie and own_origin:
             left = auth_session.remaining(srv.session_key, srv.token, cookie,
                                           now=now)
             if left > 0:
@@ -1734,7 +1737,10 @@ class JobRequestHandler(BaseHTTPRequestHandler):
                 return True
         who = self.client_address[0] if self.client_address else ""
         header = self.headers.get("X-Auth-Token") or self._bearer_token()
-        query = route.query.get("token")
+        # A foreign Origin passes the browser guard only through a header.
+        # Authenticate that header itself, rather than a cookie or URL token
+        # that a browser can attach without knowing the header password.
+        query = route.query.get("token") if own_origin else None
         throttle = srv.auth_throttle
         if not (header or query):
             # No password at all is not a guess: refuse, book nothing.
