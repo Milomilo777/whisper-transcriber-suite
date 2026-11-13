@@ -16,7 +16,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Record the reliability investigation checkpoint, distinguishing reviewed fixes from held reproductions and remaining runtime validation.
 
 ### Fixed
-- Reject cross-site embedded browser navigations before checking API access passwords. External frames can no longer consume the local login allowance; shared document links and clients without destination metadata keep working.
+- Rate-limit foreign document-link password guesses separately, so they cannot lock out header-authenticated API clients at the same address. Both allowances retain bounded host tables, IPv6 subnet limits and overflow protection.
+- Reject cross-site and same-site embedded browser navigations before checking API access passwords. External frames can no longer consume the local login allowance; shared document links and clients without destination metadata keep working.
 - Reserve telemetry error quotas through exclusive, synced temporary files so an existing scratch file is preserved and a failed write suppresses the send.
 - Turning usage statistics off no longer waits for an in-flight request or local cleanup. Queued sends are invalidated, local diagnostic collection stops, and existing diagnostic and rate-limit files are erased in the background when accessible.
 - Filter quoted text and path-bearing spans before reducing error messages to technical vocabulary. Diagnostic and manual-report dialogs now explain what is sent and avoid promising that failed reports were retained.

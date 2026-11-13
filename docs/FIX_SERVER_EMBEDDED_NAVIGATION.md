@@ -13,6 +13,14 @@ Same-origin frames and ordinary non-browser clients retain their existing path.
 The server already disallows framing its index; this makes admission consistent
 with that boundary instead of allowing authentication side effects first.
 
+Foreign top-level document navigation can still submit a guessed query token.
+These attempts use a separate bounded authentication allowance, including the
+same IPv6 subnet and overflow protections. Repeated wrong document links can
+temporarily block other foreign document links from that address, while
+header-token clients retain their normal allowance. Valid shared links still
+work when their navigation allowance is available. This also isolates requests
+marked as prefetch; the transport tests do not assert browser prefetch behavior.
+
 The [web.dev Fetch Metadata guide](https://web.dev/articles/fetch-metadata)
 explains navigation/resource destinations and early rejection. This policy is
 stricter than its example's iframe allowance, consistent with this app's existing
@@ -24,3 +32,5 @@ Loopback HTTP regressions verify rejection without consuming an authentication
 attempt, followed by a valid login. Controls cover document links, omitted
 legacy metadata and same-origin frames. Responses include Vary on both accepted
 and rejected requests. These transport tests do not exercise a real browser.
+They also cover foreign POST bodies on both API endpoints, unknown destinations,
+header normalization, authentication-error Vary and the interim 100 response.

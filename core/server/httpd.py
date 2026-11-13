@@ -1219,6 +1219,9 @@ class JobHTTPServer(ThreadingHTTPServer):
         self.token = token
         # Slows down repeated wrong access passwords per client address.
         self.auth_throttle = AuthThrottle()
+        # A foreign page can navigate a window using the user's address.
+        # Keep those guesses bounded without locking out header-token clients.
+        self.navigation_auth_throttle = AuthThrottle()
         # Signs the session cookies of clients that already logged in (they
         # are then independent of the per-address failure counts).
         self.session_key = os.urandom(32)
@@ -1735,7 +1738,14 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         who = self.client_address[0] if self.client_address else ""
         header = self.headers.get("X-Auth-Token") or self._bearer_token()
         query = route.query.get("token")
-        throttle = srv.auth_throttle
+        site = (self.headers.get("Sec-Fetch-Site") or "").strip().lower()
+        mode = (self.headers.get("Sec-Fetch-Mode") or "").strip().lower()
+        destination = (self.headers.get("Sec-Fetch-Dest") or "").strip().lower()
+        foreign_navigation = (not header and site in ("cross-site", "same-site")
+                              and mode == "navigate" and destination in ("", "document"))
+        # Both limiters retain the real address, IPv6 subnet accounting and
+        # bounded overflow protection. Never namespace the address string.
+        throttle = srv.navigation_auth_throttle if foreign_navigation else srv.auth_throttle
         if not (header or query):
             # No password at all is not a guess: refuse, book nothing.
             self._auth_wait = throttle.peek(who)
