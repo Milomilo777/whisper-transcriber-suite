@@ -1794,16 +1794,10 @@ def _back_up_config(path: str) -> bool:
     backup. Goes through a temp file so a cut-off copy never leaves a torn
     ``.bak``. A failure is logged and returns False; a save goes ahead anyway.
     """
-    bak_tmp = path + ".bak.tmp"
     try:
-        shutil.copy2(path, bak_tmp)
-        os.replace(bak_tmp, path + ".bak")
+        _copy_legacy_settings(path, path + ".bak")
     except OSError as e:
         logger.warning("Could not back up config.json: %s", e)
-        try:
-            os.unlink(bak_tmp)
-        except OSError:
-            pass
         return False
     return True
 
@@ -1894,10 +1888,8 @@ def _recover_locked(path: str) -> tuple[str, dict[str, Any] | None, bool]:
                 logger.warning("Could not move the corrupt config aside: %s", e)
                 return "corrupt", None, True
             return "missing", None, True
-        corrupt_tmp = corrupt + ".tmp"
         try:
-            shutil.copy2(path, corrupt_tmp)
-            os.replace(corrupt_tmp, corrupt)
+            _copy_legacy_settings(path, corrupt)
         except OSError as e:
             logger.warning("Could not keep a copy of the corrupt config: %s", e)
             return "corrupt", _closed_switches(usable_bak), True

@@ -6,6 +6,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Preserve existing files beside settings backups and corrupt-config recovery by copying through an exclusively allocated temporary file; failed copies remove only their own scratch file.
+
 - Prevent repeated audio when optional word alignment misses a trailing decoded passage. Preserve usable alignment and avoid advancing through blank trailing text.
 
 - Transcription exports, partial subtitles and chapter sidecars preserve earlier files when a stale temporary filename is linked to another file.
