@@ -38,6 +38,13 @@ Fake-decoder tests must select their intended device explicitly. A terminal
 decoder-error test uses CPU state so host GPU detection cannot trigger real
 model recovery; CUDA recovery has separate tests with replacement models faked.
 
+`tests/core/test_private_partial_copy.py` checks download-prefix isolation when
+network storage reports an aliased file as having one link. It also exercises
+real process exits before and after prefix publication, active cleanup leases,
+copy cancellation, and exclusive publication without hardlink support. Run it
+on a writable network share with `--basetemp` to test native filesystem behavior;
+use a new, dedicated test directory because pytest clears its base directory.
+
 - **`tests\` (everything except `tests\smoke\`)** — *hermetic* unit
   tests. No Whisper model, no network, no GUI window. Fast (seconds).
   These are the ones `run_tests.bat` runs. An autouse fixture in

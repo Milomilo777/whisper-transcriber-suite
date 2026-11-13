@@ -14,6 +14,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Copy saved download prefixes into private files before resuming on network storage, where hardlink counts can be inaccurate. Interrupted preparation recovers the saved prefix without modifying another file that shares its original bytes.
+
 - Prevent resumable downloads from appending to or truncating another file through a linked partial or restart path. Validate the opened file before changing its contents while preserving ordinary resume and retry behavior.
 
 - Require confirmed filesystem locking before shared resumable file and model downloads. An unavailable lock now preserves saved prefixes and stops before network requests instead of allowing concurrent attempts to overwrite them.

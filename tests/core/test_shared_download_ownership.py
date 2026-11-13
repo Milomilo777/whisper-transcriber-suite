@@ -25,12 +25,15 @@ def target(request, tmp_path, monkeypatch):
             run = lambda: vd.download_verified(server.url(), dest, size=len(data),
                                               sha256=hashlib.sha256(data).hexdigest(), what="test model")
             requests = lambda: server.state.requests
+            ranges = lambda: list(server.state.ranges)
         else:
             server = stack.enter_context(Server(data=data))
             dest = tmp_path / "model.bin"
             run = lambda: downloader(server.url).download("fixture/tiny", tmp_path, entry(data))
             requests = lambda: len(server.gets) + len(server.heads)
-        yield SimpleNamespace(data=data, dest=dest, part=vd.part_path(dest), run=run, requests=requests)
+            ranges = lambda: [value for _, value in server.gets]
+        yield SimpleNamespace(data=data, dest=dest, part=vd.part_path(dest), run=run,
+                              requests=requests, ranges=ranges)
 
 
 def block_native_lock(monkeypatch, error_number):
