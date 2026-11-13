@@ -46,6 +46,7 @@ MIN_GAP_UNITS_PER_SPEECH_S = 0.3
 #: A rescue must add at least this many words and at least double the stretch's words.
 MIN_GAINED_UNITS = 5
 #: Upper bounds per file, so a long noisy recording cannot turn into a second full pass.
+#: MAX_SPANS limits speech checks; collapsed text takes priority over speculative gaps.
 MAX_SPANS = 20
 MAX_RESCUED_FRACTION = 0.3
 #: ... but a short file may always have this much read again (one lost window of a phone call).
@@ -198,10 +199,13 @@ def rescue(
     report.found = len(spans)
     budget = max(MAX_RESCUED_FRACTION * duration, MIN_BUDGET_S) if duration > 0 else float("inf")
     used = 0.0
-    # Pick in time order (only stretches with speech count against the budget), then read them
-    # from the last to the first so the earlier segment indexes stay valid while splicing.
+    # A collapsed segment is stronger evidence than an untranscribed gap.
+    # Keep speech checks bounded while preventing early silence from consuming
+    # every opportunity to recover a later collapsed window.
     chosen: list[tuple[Span, list[tuple[float, float]]]] = []
-    for span in spans[:MAX_SPANS]:
+    checked = 0
+    priority = sorted(spans, key=lambda span: (span.kind != "collapsed", span.start, span.first))
+    for span in priority:
         if cancelled():
             break
         length = span.end - span.start
@@ -210,11 +214,18 @@ def rescue(
             if span.kind == "collapsed":
                 report.kept.append((span.start, span.end, "too long to read again here"))
             continue
+        if checked >= MAX_SPANS:
+            report.kept.append((span.start, span.end, "the rescue speech-check limit was reached"))
+            continue
+        checked += 1
         speech = speech_in(span.start, span.end)
         if sum(b - a for a, b in speech) < MIN_SPEECH_S:
             continue  # music, silence or noise: nothing was lost
         used += length
         chosen.append((span, speech))
+    # Priority changes evaluation order, not splice order: old indexes are
+    # valid only while replacements run from the end of the original list.
+    chosen.sort(key=lambda item: (item[0].first, item[0].start, item[0].last))
     result = list(segments)
     for span, speech in reversed(chosen):
         if cancelled():
@@ -237,5 +248,5 @@ def rescue(
         else:
             report.kept.append((span.start, span.end, why))
     report.rescued.reverse()
-    report.kept.reverse()
+    report.kept.sort(key=lambda item: (item[0], item[1]))
     return result, report

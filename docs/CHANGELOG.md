@@ -53,6 +53,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Verify newly downloaded default whisper.cpp and AI Layer models against pinned sizes and SHA-256 checksums before installation, including responses without Content-Length. Oversized streams stop early and rejected attempts preserve existing files.
 - Preserve a model completed by another download while a slower response is still arriving. The cpp and GGUF downloaders now serialize publication, recheck the destination, and stop safely when publication locking is unavailable. GGUF cancellation is also checked after the final disk flush.
 - Apply the configured VAD window and speech threshold when checking transcript gaps for another decoding pass.
+- Check collapsed transcript windows before speculative gaps during the bounded rescue pass. Stretches left unchecked at the speech-check limit now produce a warning instead of silently appearing speechless.
 - Preserve API outputs in subfolders when an archive copy fails, including across server restarts. Retained copies keep their relative folders so same-named outputs cannot replace each other.
 
 
