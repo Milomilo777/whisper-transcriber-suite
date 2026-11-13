@@ -1219,6 +1219,9 @@ class JobHTTPServer(ThreadingHTTPServer):
         self.token = token
         # Slows down repeated wrong access passwords per client address.
         self.auth_throttle = AuthThrottle()
+        # Browser URL-token requests can use the user's address even when
+        # Fetch Metadata is absent. Keep their allowance separate from headers.
+        self.navigation_auth_throttle = AuthThrottle()
         # Signs the session cookies of clients that already logged in (they
         # are then independent of the per-address failure counts).
         self.session_key = os.urandom(32)
@@ -1741,10 +1744,13 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         # Authenticate that header itself, rather than a cookie or URL token
         # that a browser can attach without knowing the header password.
         query = route.query.get("token") if own_origin else None
-        throttle = srv.auth_throttle
+        # Both limiters retain the real address, IPv6 subnet accounting and
+        # bounded overflow protection. Metadata cannot choose another budget;
+        # only the explicit header credential selects the header allowance.
+        throttle = srv.auth_throttle if header else srv.navigation_auth_throttle
         if not (header or query):
             # No password at all is not a guess: refuse, book nothing.
-            self._auth_wait = throttle.peek(who)
+            self._auth_wait = max(srv.auth_throttle.peek(who),srv.navigation_auth_throttle.peek(who))
             return False
         # Check the lockout AND book the attempt in one atomic step, before
         # comparing, so concurrent guesses cannot all slip past the limit.
