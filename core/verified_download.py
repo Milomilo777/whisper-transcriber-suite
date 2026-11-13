@@ -560,12 +560,12 @@ def _fetch(
         offset = 0
     if offset == size:
         return True
-    # A network share may retain an aliased original while its private prefix
-    # is copied. Reserve both that prefix and the remaining transfer.
-    _check_free_space(part.parent, size)
     def check_cancel() -> None:
         raise_if_cancelled(cancel_event, what)
     prepared = prepare_part(part, offset, check_cancel=check_cancel)
+    # Prefix copying has its own check. Measure the remaining transfer after
+    # that temporary peak, when any retained alias is reflected in free space.
+    _check_free_space(part.parent, size - offset)
     headers = {"User-Agent": _USER_AGENT}
     if offset:
         headers["Range"] = f"bytes={offset}-"

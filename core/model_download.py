@@ -264,6 +264,7 @@ class ModelDownloader:
         self.allow_loopback_redirects = allow_loopback_redirects
         self._rate_clock: Callable[[], float] = time.monotonic
         self._rate: _MinimumRate | None = None
+        self._prepared_parts: dict[Path, tuple[int, int]] = {}
         self.probed: dict[str, bool] = {}
         self.unavailable: set[str] = set()
         self.tried: list[str] = []
@@ -366,11 +367,44 @@ class ModelDownloader:
         if offset > info.size:
             self._file_op(part.unlink, cancel)
             offset = 0
+            part_info = None
         if offset == info.size and part.exists():
             return None
-        mm._require_free_space(part.parent, info.size, "the model download")
-        prepared = self._file_op(
-            lambda: verified.prepare_part(part, offset, check_cancel=lambda: _check_cancel(cancel)), cancel)
+        identity = verified._part_identity(part_info) if part_info is not None else None
+        prepared = self._prepared_parts.get(part)
+        started = self._rate_clock()
+        try:
+            if prepared is not None and prepared == identity:
+                # SMB directory metadata can still describe a replaced path.
+                # Validate reuse against a read-only handle before trusting it.
+                with self._file_op(lambda: part.open("rb"), cancel) as saved:
+                    opened_identity = verified._part_identity(os.fstat(saved.fileno()))
+                if opened_identity != prepared:
+                    prepared = None
+                    self._prepared_parts.pop(part, None)
+                    part_info = verified.part_stat(part, recover=True)
+                    offset = part_info.st_size if part_info is not None else 0
+                    if offset > info.size:
+                        self._file_op(part.unlink, cancel)
+                        offset, part_info = 0, None
+                    if offset == info.size and part_info is not None:
+                        return None
+                    identity = (verified._part_identity(part_info)
+                                if part_info is not None else None)
+            if identity is None or prepared != identity:
+                prepared = self._file_op(
+                    lambda: verified.prepare_part(part, offset, check_cancel=lambda: _check_cancel(cancel)), cancel)
+                if prepared is not None:
+                    self._prepared_parts[part] = prepared
+                else:
+                    self._prepared_parts.pop(part, None)
+        finally:
+            if self._rate is not None:
+                # Local copying and file-lock waits are not network stalls.
+                self._rate.started += max(0.0, self._rate_clock() - started)
+        # Preparation checks its temporary prefix space separately. Recheck
+        # after it finishes, including when an aliased original retained bytes.
+        mm._require_free_space(part.parent, info.size - offset, "the model download")
         headers = {"Range": f"bytes={offset}-"} if offset else {}
         with self._open(url, headers, cancel) as response:
             target = part
@@ -417,6 +451,7 @@ class ModelDownloader:
         with contextlib.ExitStack() as stack:
             stream = self._file_op(
                 lambda: stack.enter_context(verified.open_part(target, offset, prepared=prepared)), cancel)
+            self._prepared_parts[target] = verified._part_identity(os.fstat(stream.fileno()))
             while True:
                 _check_cancel(cancel)
                 if self._rate is not None and done < info.size:
@@ -445,6 +480,10 @@ class ModelDownloader:
 
     def _transfer(self, url: str, part: Path, info: FileInfo,
                   cancel: threading.Event | None) -> str | None:
+        # Retain this file's owned inode across mirror retries, never old jobs
+        # or the completed restart scratch of a different file.
+        self._prepared_parts = ({part: self._prepared_parts[part]}
+                                if part in self._prepared_parts else {})
         retries = iter(self.retry_delays)
         stalls = restarts = failures = 0
         highest = part.stat().st_size if part.exists() else 0
@@ -551,6 +590,7 @@ class ModelDownloader:
 
     def _download(self, repo: str, folder: Path, entry: ManifestEntry,
                   cancel: threading.Event | None) -> bool:
+        self._prepared_parts.clear()
         missing = []
         needed = 0
         for name, info in entry.files.items():
@@ -563,7 +603,7 @@ class ModelDownloader:
                 continue
             part_info = verified.part_stat(part, recover=True)
             have = part_info.st_size if part_info is not None else 0
-            needed += 0 if have == info.size else info.size
+            needed += info.size - have if have <= info.size else info.size
             missing.append((name, info))
         if not missing:
             return True
