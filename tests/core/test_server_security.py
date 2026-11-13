@@ -684,3 +684,50 @@ def test_webhook_url_is_not_logged(caplog):
     assert redact_url("https://someone@hooks.example:8443/x/y?z=1") == (
         "https://hooks.example:8443/...")
     assert redact_url("not a url") == "<invalid URL>"
+
+
+@pytest.mark.parametrize("site", ["cross-site", "same-site"])
+@pytest.mark.parametrize("destination", ["iframe", "object", "embed"])
+def test_foreign_embedded_navigation_cannot_consume_auth_attempts(tmp_path, site, destination):
+    with _RunningServer(tmp_path, token=_SHARED) as srv:
+        statuses = [_request(srv, "GET", "/api/health?token=wrong-fixture-guess", headers={
+            "Sec-Fetch-Site": site, "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Dest": destination,
+        })[0] for _ in range(6)]
+        assert srv.server.auth_throttle.peek("127.0.0.1") == 0, statuses
+        assert statuses == [403]*6
+        status, _ = _request(srv, "GET", "/api/health", headers={"X-Auth-Token": _SHARED})
+        assert status == 200
+
+
+@pytest.mark.parametrize("site,destination", [
+    ("cross-site", "document"), ("same-site", "document"),
+    ("cross-site", None), ("same-site", None),
+    ("same-origin", "iframe"), ("none", "document"),
+])
+def test_document_links_legacy_metadata_and_own_frames_remain_allowed(tmp_path, site, destination):
+    with _RunningServer(tmp_path, token=_SHARED) as srv:
+        headers = {"Sec-Fetch-Site": site, "Sec-Fetch-Mode": "navigate"}
+        if destination is not None:
+            headers["Sec-Fetch-Dest"] = destination
+        denied, _ = _request(srv, "GET", "/api/health?token=wrong-fixture-guess", headers=headers)
+        assert denied == 401
+        status, _ = _request(srv, "GET", f"/api/health?token={_SHARED}", headers=headers)
+        assert status == 200
+
+
+@pytest.mark.parametrize("destination,status", [("document", 200), ("iframe", 403)])
+def test_browser_metadata_is_in_final_response_vary(tmp_path, destination, status):
+    with _RunningServer(tmp_path, token=_SHARED) as srv:
+        conn = http.client.HTTPConnection("127.0.0.1", srv.port, timeout=5)
+        try:
+            conn.request("GET", f"/?token={_SHARED}", headers={
+                "Sec-Fetch-Site": "cross-site", "Sec-Fetch-Mode": "navigate",
+                "Sec-Fetch-Dest": destination,
+            })
+            response = conn.getresponse()
+            response.read()
+            assert response.status == status
+            varied = {v.strip().lower() for v in (response.getheader("Vary") or "").split(',')}
+            assert {"sec-fetch-site", "sec-fetch-mode", "sec-fetch-dest"} <= varied
+        finally:
+            conn.close()
