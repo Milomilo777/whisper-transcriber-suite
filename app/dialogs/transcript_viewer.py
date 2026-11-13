@@ -41,6 +41,7 @@ import sys
 import threading
 import time
 import tkinter as tk
+from tkinter import font as tkfont
 from tkinter import filedialog, messagebox, simpledialog, ttk
 from typing import Any, Callable, Collection, Optional
 
@@ -1041,10 +1042,16 @@ class TranscriptViewer(tk.Toplevel):
         frame.rowconfigure(0, weight=1)
         self._qc_tree = ttk.Treeview(frame, columns=("cue", "level", "finding"),
                                      show="headings", selectmode="browse", height=9)
+        heading_font = tkfont.Font(
+            root=self._qc_tree,
+            font=ttk.Style(self._qc_tree).lookup("Treeview.Heading", "font") or "TkHeadingFont",
+        )
         for key, title, width in (("cue", _("Cue"), 45), ("level", _("Severity"), 75),
                                   ("finding", _("Finding"), 240)):
             self._qc_tree.heading(key, text=title)
-            self._qc_tree.column(key, width=px(width), minwidth=px(40),
+            heading_width = heading_font.measure(title) + px(16)
+            self._qc_tree.column(key, width=max(px(width), heading_width),
+                                 minwidth=max(px(40), heading_width),
                                  stretch=key == "finding")
         self._qc_tree.grid(row=0, column=0, sticky="nsew")
         scroll = ttk.Scrollbar(frame, orient="vertical", command=self._qc_tree.yview)
