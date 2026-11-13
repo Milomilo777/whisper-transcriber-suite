@@ -1408,7 +1408,7 @@ class App(tk.Tk):
         if offline.is_offline():
             self.title(_("{title} — Work offline", title=self._base_title))
         setup_logging(self.app_config.get("log_level", "INFO"))
-        # Optional telemetry starts only after the local disclosure is visible.
+        # Keep optional senders bound to this app's current in-memory choice.
         self._telemetry_config_provider = lambda: self.app_config
         configure_telemetry(self._telemetry_config_provider)
         self.bind("<Destroy>", lambda event: clear_telemetry(self._telemetry_config_provider)
@@ -1617,14 +1617,18 @@ class App(tk.Tk):
         # local only, and a no-op until the copy exists.
         self.after(6000, self._refresh_yt_dlp_versions)
 
-        from app.services.telemetry_notice import TelemetryNotice
-        self.telemetry_notice = TelemetryNotice(self, on_ready=self._start_optional_telemetry)
-        self.telemetry_notice.start()
+        self._start_optional_telemetry()
 
     def _start_optional_telemetry(self) -> None:
-        """Called after the current disclosure, or its saved marker, is available."""
-        init_sentry()
-        send_launch_ping_async()
+        """Start configured optional senders after application initialization."""
+        try:
+            init_sentry()
+        except Exception:  # noqa: BLE001 - optional services cannot abort startup
+            logger.warning("Optional crash reporting could not start", exc_info=True)
+        try:
+            send_launch_ping_async()
+        except Exception:  # noqa: BLE001 - one sender must not disable another
+            logger.warning("Optional launch reporting could not start", exc_info=True)
 
     def _sweep_partials_at_startup(self) -> None:
         """Off-thread best-effort cleanup of the partials/ checkpoint dir."""

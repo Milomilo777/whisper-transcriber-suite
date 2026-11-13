@@ -605,8 +605,8 @@ def test_app_takes_the_switch_from_the_config_before_crash_reports_start():
     src = inspect.getsource(App.__init__)
     load = src.index("self.app_config = load_config()")
     switch = src.index("offline.set_offline(offline.flag_from(self.app_config))")
-    assert load < switch < src.index("self.telemetry_notice.start()")
-    assert "on_ready=self._start_optional_telemetry" in src
+    assert load < switch < src.index("self._start_optional_telemetry()")
+    assert "on_ready=self._start_optional_telemetry" not in src
     assert "init_sentry()" not in src and "send_launch_ping_async()" not in src
     deferred = inspect.getsource(App._start_optional_telemetry)
     assert deferred.index("init_sentry()") < deferred.index("send_launch_ping_async()")

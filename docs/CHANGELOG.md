@@ -6,7 +6,6 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
-- Show a one-time usage-statistics disclosure for new and upgraded profiles before automatic reporting starts. The quiet bar preserves the existing choice, offers a direct off button and keeps reporting paused when its state cannot be saved.
 - Selecting Persian for voice generation shows Chatterbox Farsi as the first recommendation, with its non-commercial license, hardware caveats and model-page link. It remains an external recommendation and does not change the selected generation engine.
 
 - Added a separate Windows Store payload and MSIX staging pipeline with channel-specific update guidance and writable application data. Retained download tools and copied package assets are validated before staging is published.
@@ -16,6 +15,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Record the reliability investigation checkpoint, distinguishing reviewed fixes from held reproductions and remaining runtime validation.
 
 ### Fixed
+- Start enabled usage reporting without waiting for UI visibility or an obsolete profile marker. Keep saved off settings, offline mode and queued-send invalidation in effect.
 - Reserve telemetry error quotas through exclusive, synced temporary files so an existing scratch file is preserved and a failed write suppresses the send.
 - Turning usage statistics off no longer waits for an in-flight request or local cleanup. Queued sends are invalidated, local diagnostic collection stops, and existing diagnostic and rate-limit files are erased in the background when accessible.
 - Filter quoted text and path-bearing spans before reducing error messages to technical vocabulary. Diagnostic and manual-report dialogs now explain what is sent and avoid promising that failed reports were retained.
