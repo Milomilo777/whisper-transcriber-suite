@@ -24,6 +24,7 @@ server; whether it stores it is up to that server.
 from __future__ import annotations
 
 import hashlib
+from functools import partial
 import json
 import logging
 import os
@@ -35,13 +36,34 @@ import urllib.parse
 import urllib.request
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 logger = logging.getLogger(__name__)
 
 # Bumped whenever the launch-ping payload schema changes.
 _PAYLOAD_VERSION = 1
 _LAUNCH_PING_TIMEOUT_S = 4
+_CONFIG_PROVIDER: Callable[[], dict[str, Any]] | None = None
+
+
+def configure_telemetry(provider: Callable[[], dict[str, Any]]) -> None:
+    """Use the live app choice, including an opt-out whose disk save failed."""
+    global _CONFIG_PROVIDER
+    _CONFIG_PROVIDER = provider
+
+
+def clear_telemetry(provider: Callable[[], dict[str, Any]]) -> None:
+    """Do not retain a destroyed app or clear a different app's provider."""
+    global _CONFIG_PROVIDER
+    if _CONFIG_PROVIDER is provider:
+        _CONFIG_PROVIDER = None
+
+
+def _telemetry_config() -> dict[str, Any]:
+    if _CONFIG_PROVIDER is not None:
+        return _CONFIG_PROVIDER()
+    from core.config import load_config
+    return load_config(fetch_online=False)
 
 
 def _telemetry_opted_in() -> bool:
@@ -53,10 +75,10 @@ def _telemetry_opted_in() -> bool:
     """
     try:
         from core import offline
-        from core.config import load_config  # type: ignore[import-not-found]
         if offline.is_offline():
             return False
-        return bool(load_config().get("telemetry_opt_in", False))
+        from core.stats import automatic_stats_allowed
+        return automatic_stats_allowed(_telemetry_config())
     except Exception:  # noqa: BLE001
         return False
 
@@ -71,8 +93,8 @@ def _note_skipped_while_offline(what: str, configured: bool) -> None:
         return
     try:
         from core import offline
-        from core.config import load_config  # type: ignore[import-not-found]
-        if offline.is_offline() and bool(load_config().get("telemetry_opt_in", False)):
+        from core.stats import automatic_stats_allowed
+        if offline.is_offline() and automatic_stats_allowed(_telemetry_config()):
             offline.skipped(what)
     except Exception:  # noqa: BLE001
         logger.debug("could not note a skipped request", exc_info=True)
@@ -218,8 +240,17 @@ def _sentry_options(dsn: str) -> dict[str, Any]:
         "send_default_pii": False,
         "include_local_variables": False,
         "max_breadcrumbs": 0,
-        "before_send": scrub_sentry_event,
+        "before_send": partial(_before_sentry_event, provider=_CONFIG_PROVIDER),
     }
+
+
+def _before_sentry_event(event: dict[str, Any], hint: Any, *,
+                         provider: Callable[[], dict[str, Any]] | None = None) -> dict[str, Any] | None:
+    if _CONFIG_PROVIDER is not provider:
+        return None  # This client belonged to an app that closed or was replaced.
+    if not _telemetry_opted_in():
+        return None
+    return scrub_sentry_event(event, hint)
 
 
 def init_sentry() -> bool:
@@ -290,7 +321,14 @@ def send_launch_ping_async() -> None:
         "anonymised_id": _anonymised_id(),
     }
 
+    from core.stats import consent_generation
+    generation = consent_generation()
+    provider = _CONFIG_PROVIDER
+
     def _worker() -> None:
+        if (_CONFIG_PROVIDER is not provider or generation != consent_generation()
+                or not _telemetry_opted_in()):
+            return
         body = json.dumps(payload).encode("utf-8")
         req = urllib.request.Request(
             url,

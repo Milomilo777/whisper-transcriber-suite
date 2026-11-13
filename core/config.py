@@ -622,6 +622,7 @@ LOCAL_ONLY_KEYS: frozenset[str] = frozenset({
     "ui_language",
     "ui_language_hint_done",
     "telemetry_opt_in",
+    "telemetry_notice_version",  # Retired local key; ignored, never accepted remotely.
     "install_id",
     "work_offline",
     "tts_no_text_limit",

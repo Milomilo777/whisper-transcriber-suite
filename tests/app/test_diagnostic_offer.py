@@ -25,7 +25,7 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setattr(diagnostic, "log_path", lambda: tmp_path / "diagnostics.jsonl")
     monkeypatch.setattr(mod.offline, "is_offline", lambda cfg=None: bool((cfg or {}).get("work_offline")))
     shown, scheduled = [], []
-    cfg = {"telemetry_opt_in": True, "diagnostic_offer": True, "diagnostic_offer_last": 0.0,
+    cfg = {"telemetry_opt_in": True, "telemetry_notice_version": 2, "diagnostic_offer": True, "diagnostic_offer_last": 0.0,
            "stats_url": "https://example.test/stats", "work_offline": False}
     app = SimpleNamespace(app_config=cfg, _closing=False, busy=False,
                           after=lambda ms, fn: scheduled.append(fn), _jobs_active=lambda: app.busy)
@@ -97,11 +97,10 @@ def test_only_one_offer_per_session(env):
     assert len(env.shown) == 1
 
 
-def test_the_local_file_is_written_even_when_nothing_is_offered(env):
+def test_statistics_off_does_not_collect_a_local_diagnostic_file(env):
     env.cfg["telemetry_opt_in"] = False
     env.offer.note(_task())
-    rows = (env.tmp / "diagnostics.jsonl").read_text(encoding="utf-8").splitlines()
-    assert len(rows) == 1 and json.loads(rows[0])["d"].startswith("E=ValueError")
+    assert not (env.tmp / "diagnostics.jsonl").exists()
 
 
 def test_no_record_means_nothing_happens(env):

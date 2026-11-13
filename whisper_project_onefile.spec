@@ -238,6 +238,7 @@ a = Analysis(
         'app.services.subbed_video',
         'app.services.transcription_service',
         'app.services.voice_clone_service',
+        'app.services.telemetry_notice',
         'app.widgets.console',
         'app.widgets.hardware_wizard',
         'app.widgets.platform',

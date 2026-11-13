@@ -262,7 +262,7 @@ def test_memoized_cached_stats_expire_during_a_long_running_process(monkeypatch,
 def test_stats_post_rechecks_cache_age_without_config_reload(monkeypatch, tmp_path):
     from core import stats
 
-    use_local_file(monkeypatch, tmp_path, {})
+    use_local_file(monkeypatch, tmp_path, {"telemetry_notice_version": 2})
     cache = cfg.online_cache_path()
     cache.parent.mkdir(parents=True)
     now = time.time()

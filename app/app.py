@@ -40,7 +40,7 @@ from app.domain.task_outputs import (
     task_transcript_json,
 )
 from app.domain.tasks import TranscriptionTask, VideoDownloadTask
-from app.observability import init_sentry, send_launch_ping_async
+from app.observability import clear_telemetry, configure_telemetry, init_sentry, send_launch_ping_async
 from app.services.download_service import DownloadService
 from app.services.format_service import FormatService
 from app.services.integrations_service import IntegrationsService
@@ -1408,8 +1408,11 @@ class App(tk.Tk):
         if offline.is_offline():
             self.title(_("{title} — Work offline", title=self._base_title))
         setup_logging(self.app_config.get("log_level", "INFO"))
-        init_sentry()
-        send_launch_ping_async()
+        # Keep optional senders bound to this app's current in-memory choice.
+        self._telemetry_config_provider = lambda: self.app_config
+        configure_telemetry(self._telemetry_config_provider)
+        self.bind("<Destroy>", lambda event: clear_telemetry(self._telemetry_config_provider)
+                  if event.widget is self else None, add="+")
         self._ui_logger = get_ui_logger()
         logger.info("App startup; theme=%s", self.app_config.get("theme", "dark"))
         log_effective_stats_url(self.app_config)
@@ -1613,6 +1616,19 @@ class App(tk.Tk):
         # either changed since they were recorded (after an app update);
         # local only, and a no-op until the copy exists.
         self.after(6000, self._refresh_yt_dlp_versions)
+
+        self._start_optional_telemetry()
+
+    def _start_optional_telemetry(self) -> None:
+        """Start configured optional senders after application initialization."""
+        try:
+            init_sentry()
+        except Exception:  # noqa: BLE001 - optional services cannot abort startup
+            logger.warning("Optional crash reporting could not start", exc_info=True)
+        try:
+            send_launch_ping_async()
+        except Exception:  # noqa: BLE001 - one sender must not disable another
+            logger.warning("Optional launch reporting could not start", exc_info=True)
 
     def _sweep_partials_at_startup(self) -> None:
         """Off-thread best-effort cleanup of the partials/ checkpoint dir."""

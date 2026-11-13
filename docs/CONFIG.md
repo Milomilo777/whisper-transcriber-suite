@@ -545,6 +545,18 @@ The random install id is pseudonymous: it links rows from one installation, is n
 hardware information, and is deleted when usage statistics are switched off. The existing optional technical
 details offer still requires consent; its filtered message shape is never attached to an automatic row.
 
+Turning statistics off invalidates pending automatic rows immediately. A request already admitted for delivery may
+finish. Local diagnostic collection stops, and an application daemon attempts to erase `diagnostics.jsonl` and
+`telemetry-errors.json`; this disk work does not run on the UI thread. A locked or inaccessible file may remain;
+starting with statistics off retries cleanup. The non-identifying lock file is retained for process coordination.
+Enabling statistics again waits for pending cleanup before a new automatic row is prepared. Senders also check a
+saved opt-out before delivery to catch an older preference in another running instance. The saved preference check
+is best effort; it cannot cancel a request that has already passed its last check.
+
+Diagnostic message filtering removes quoted spans before vocabulary matching. Because unquoted paths can contain
+spaces, a path-bearing token also removes the rest of its line. Review the displayed details before sending them;
+manually typed problem reports can contain whatever the person types and must omit private information.
+
 All automatic fields, including the existing usage columns, are validated by the shared registry below.
 Unknown optional observations are omitted; explicitly unknown enum values remain unknown. No formatted
 traceback or exception text is sent. The innermost code location is taken from code objects in an exact,

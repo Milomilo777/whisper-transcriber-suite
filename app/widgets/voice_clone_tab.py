@@ -365,17 +365,37 @@ def build_voice_clone_tab(app: Any, parent: Any) -> None:
     )
     txt.grid(row=2, column=0, sticky="nsew", padx=15, pady=(0, 6))
     txt.columnconfigure(0, weight=1)
-    txt.rowconfigure(0, weight=1)
+    txt.rowconfigure(1, weight=1)
+    app.vc_recommendation_frame = ttk.Frame(txt)
+    app.vc_recommendation_frame.columnconfigure(0, weight=1)
+    app.vc_recommendation_frame.grid(row=0, column=0, columnspan=2, sticky="ew", padx=8, pady=(6, 0))
+    app.vc_recommendation_title = ttk.Label(
+        app.vc_recommendation_frame, wraplength=px(760),
+        text=_("First choice for Persian: Chatterbox Farsi, trained specifically for Persian speech."))
+    app.vc_recommendation_title.grid(row=0, column=0, sticky="w")
+    app.vc_recommendation_details = ttk.Label(
+        app.vc_recommendation_frame, wraplength=px(760),
+        text=_("Non-commercial only; accept the Hugging Face license before downloading. "
+               "Keep the watermark; public attribution: Powered by OncillaAI Chatterbox Farsi. "
+               "NVIDIA GPU recommended; CPU support is unverified and Apple MPS quality is lower. "
+               "External model recommendation; Generate uses the engine selected above."))
+    app.vc_recommendation_details.grid(row=1, column=0, sticky="w", pady=(2, 2))
+    app.vc_recommendation_link = ttk.Button(
+        app.vc_recommendation_frame, text=_("Model and license"),
+        command=_open_persian_voice_model)
+    app.vc_recommendation_link.grid(row=2, column=0, sticky="w")
+    _sync_voice_recommendation(app)
+    app.vc_lang_value_var.trace_add("write", lambda *_a: _sync_voice_recommendation(app))
     app.vc_text = tk.Text(txt, wrap="word", height=6, undo=True)
     script_fonts.use_text_font(app.vc_text)
-    app.vc_text.grid(row=0, column=0, sticky="nsew", padx=(8, 0), pady=(8, 4))
+    app.vc_text.grid(row=1, column=0, sticky="nsew", padx=(8, 0), pady=(8, 4))
     bar = ttk.Scrollbar(txt, orient="vertical", command=app.vc_text.yview)
-    bar.grid(row=0, column=1, sticky="ns", padx=(0, 8), pady=(8, 4))
+    bar.grid(row=1, column=1, sticky="ns", padx=(0, 8), pady=(8, 4))
     app.vc_text.configure(yscrollcommand=bar.set)
     app.vc_text.bind("<<Modified>>", lambda _e: _on_text_modified(app))
 
     opts = ttk.Frame(txt)
-    opts.grid(row=1, column=0, columnspan=2, sticky="ew", padx=8, pady=(0, 8))
+    opts.grid(row=2, column=0, columnspan=2, sticky="ew", padx=8, pady=(0, 8))
     app.vc_lang_label = ttk.Label(opts, text=_("Language:"))
     app.vc_lang_label.pack(side="left")
     app.vc_lang_combo = _combo(opts, app.vc_lang_var, list(_language_labels().values()), 18)
@@ -633,6 +653,20 @@ def _design_instruct(app: Any) -> str:
                           val(app.vc_pitch_var, _vc.DESIGN_PITCHES),
                           val(app.vc_accent_var, _vc.DESIGN_ACCENTS),
                           whisper=bool(app.vc_whisper_var.get()))
+
+
+def _open_persian_voice_model() -> None:
+    # Explicit user action only: no model/runtime install or license acceptance.
+    import webbrowser
+
+    webbrowser.open("https://huggingface.co/mehdi-hf/chatterbox-farsi")
+
+
+def _sync_voice_recommendation(app: Any) -> None:
+    if _language_code(app).split(",", 1)[0].split("-", 1)[0] == "fa":
+        app.vc_recommendation_frame.grid()
+    else:
+        app.vc_recommendation_frame.grid_remove()
 
 
 def _language_code(app: Any) -> str:
