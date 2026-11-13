@@ -245,17 +245,24 @@ class FontChain:
             return [("", text)] if text else []
         preferred = self._preferred(text)
         runs: list[list[str]] = []
+        by_name = {font.name: font for font in self.fonts}
         pending = ""
         for ch in text:
             if ch in _INVISIBLE:
                 continue
             if _is_attached(ch):
-                if runs:
-                    runs[-1][1] += ch
-                else:
-                    pending += ch
-                continue
-            font = self.font_for(ch, preferred) or base
+                current = by_name[runs[-1][0]] if runs else base
+                font = (self.font_for(ch, preferred)
+                        if not ch.isspace() and unicodedata.category(ch) != "Cf"
+                        and not current.covers(ord(ch)) else None)
+                if font is None:
+                    if runs:
+                        runs[-1][1] += ch
+                    else:
+                        pending += ch
+                    continue
+            else:
+                font = self.font_for(ch, preferred) or base
             if runs and runs[-1][0] == font.name:
                 runs[-1][1] += ch
             else:

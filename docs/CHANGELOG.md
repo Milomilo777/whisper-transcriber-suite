@@ -72,6 +72,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Preserve API outputs in subfolders when an archive copy fails, including across server restarts. Retained copies keep their relative folders so same-named outputs cannot replace each other.
 
 
+- Use an available fallback font for combining marks that the preceding font cannot draw, preventing missing-glyph boxes in mixed-script PDF transcripts.
+
 - Loopback recording stops promptly when system audio becomes silent, preserving captured audio and releasing the capture thread.
 
 - Keep WebVTT karaoke markers strictly inside their final cue and in increasing order. Invalid markers are omitted while all words, spacing and speaker labels remain available.
