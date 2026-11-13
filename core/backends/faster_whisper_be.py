@@ -119,12 +119,30 @@ class WhisperModel(_WhisperModel):
         frame_counts = num_frames if isinstance(num_frames, (list, tuple)) else [num_frames] * len(raw)
         batch = _batch_alignment.get()
         for index, (group, original) in enumerate(zip(segments, raw)):
-            if not (failed or any(s["end"] <= s["start"] for s, _, _ in original)):
+            unusable = failed or any(s["end"] <= s["start"] for s, _, _ in original)
+            # Sequential get_end prefers earlier aligned words to a later
+            # raw segment. Only text the caller will emit can require recovery.
+            text_tail = (next((i for i in range(len(group) - 1, -1, -1)
+                               if tokenizer.decode(group[i]["tokens"]).strip()), -1)
+                         if (not unusable and batch is None
+                             and any(segment.get("words") for segment in group)
+                             and any(not segment.get("words") for segment in group)) else -1)
+            unaligned_tail = (text_tail >= 0 and not group[text_tail].get("words")
+                              and any(segment.get("words") for segment in group[:text_tail]))
+            if not (unusable or unaligned_tail):
                 continue
             # Restore the whole decode group. Upstream get_end searches words
             # across the group before falling back to the last segment end;
             # keeping earlier aligned words would seek back into emitted audio.
             logger.warning("Word alignment unusable; retaining the decode group with fallback bounds.")
+            if unaligned_tail and text_tail + 1 < len(original):
+                # Fold non-emitting suffix tokens into the last spoken segment
+                # without advancing seek through their unused raw interval.
+                tail = original[text_tail][0]
+                tail["tokens"] = (list(tail["tokens"])
+                                  + [token for segment, _, _ in original[text_tail + 1:]
+                                     for token in segment["tokens"]])
+                original = original[:text_tail + 1]
             window = (_alignment_window(original, frame_counts[index],
                                         getattr(self, "frames_per_second", None))
                       if len(frame_counts) == len(raw) else None)

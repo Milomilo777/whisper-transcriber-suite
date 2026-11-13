@@ -6,6 +6,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Prevent repeated audio when optional word alignment misses a trailing decoded passage. Preserve usable alignment and avoid advancing through blank trailing text.
+
 - Transcription exports, partial subtitles and chapter sidecars preserve earlier files when a stale temporary filename is linked to another file.
 
 - Preserve literal markup and timecode-looking text when importing oTranscribe files, so format conversion does not silently remove or reinterpret transcript cues. OTR and Whisper JSON readers also accept UTF-16 and UTF-32 files.
