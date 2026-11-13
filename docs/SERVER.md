@@ -508,8 +508,8 @@ remain counted. A valid session cookie bypasses both comparison budgets.
 | Bound | Each channel | Both channels combined |
 | --- | --- | --- |
 | New host before its first lockout | 6 comparisons | 12 comparisons |
-| Untrusted IPv6 /64 per fixed 10-minute window | 50 comparisons | 100 comparisons |
-| Untrusted IPv6 /48 per fixed 10-minute window | 200 comparisons | 400 comparisons |
+| Tracked untrusted IPv6 /64 per fixed 10-minute window | 50 comparisons | 100 comparisons |
+| Tracked untrusted IPv6 /48 per fixed 10-minute window | 200 comparisons | 400 comparisons |
 | Unstored addresses sharing overflow per 10 minutes | 30 comparisons | 60 comparisons |
 
 Per channel, the first five wrong comparisons are free; the sixth comparison
@@ -528,12 +528,18 @@ lockout, otherwise 429 with the longer host wait as Retry-After.
 
 Each channel remembers at most 2048 hosts, 1024 /64 networks and 1024 /48
 allocations. The oldest idle host whose lockout has ended is dropped first;
-live network counters are never evicted. If a network table is full, untracked
-networks share that channel's overflow budget. Their admitted comparisons still
-count against any tracked /64 and /48 allowances. Expired counters make room
-without extending existing windows. If all stored hosts are locked, new
-addresses also share the overflow budget instead of being stored. A legitimate
-newcomer without a session cookie may be refused too.
+live network counters are never evicted. When the /64 table is full, a new
+subnet still uses its tracked /48 allowance, which bounds all its addresses
+together. If only the /48 table is full, the tracked /64 allowance remains in
+effect. These capacity fallbacks do not enforce a missing counter's configured
+budget, but they keep every available counter effective and continue per-host
+bookkeeping. If neither network tier can retain a counter, new networks share
+that channel's overflow budget. If all stored hosts are locked, a new address
+also uses overflow instead of displacing a locked host. Overflow is charged
+only once when these conditions overlap; exhausted known counters are checked
+first. Even a recently authenticated address without a session cookie can be
+refused in those shared-overflow cases. Expired counters make room without
+extending existing windows.
 The counts live in memory only, so a restart clears them. Behind a reverse proxy
 every client has the proxy's address, so one person's typos can lock out the
 others for a short time. This slows guessing down; it is not a replacement

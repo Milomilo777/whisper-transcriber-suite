@@ -10,7 +10,7 @@ Rules that keep the throttle from becoming a weapon:
 
 * One host's wrong passwords never lock another host out. A correct password
   from a host that is not itself locked works, whatever its neighbours did,
-  with one exception below.
+  subject to the shared network and capacity limits below.
 * An IPv6 attacker owns a whole /64 and can rotate addresses, so every host
   would otherwise get its own free comparisons. Each /64 therefore has a real
   budget of password comparisons per fixed window (``subnet_budget`` per
@@ -21,12 +21,13 @@ Rules that keep the throttle from becoming a weapon:
   the attacker cannot keep the pressure up beyond one window per budget.
   Routed allocations can contain many /64s: a separate /48 budget bounds
   rotation across them, with the same fixed-window and trusted-host rules.
-  Live /48 counters are never evicted. When their bounded table is full,
-  untracked prefixes share the existing overflow allowance instead.
+  Live /48 counters are never evicted. If one network table is full, the
+  other tier still checks and charges its own allowance. When neither tier
+  can retain a counter, new networks share the overflow allowance instead.
 * Evicting a table entry never helps an attacker: the oldest idle entry whose
   lockout has ended goes first, and the /64 counters are separate from the
-  host table. Live /64 counters are never evicted; when that table is full,
-  untracked networks use the shared overflow allowance too.
+  host table. Live /64 counters are never evicted. An untracked /64 still
+  uses its /48 allowance; per-host bookkeeping continues whenever possible.
 * When the host table is full of locked hosts, a new host cannot be stored
   (storing it would evict a locked entry, and evicting its own fresh entry
   would let it guess without limit). Such attempts share ONE bounded overflow
@@ -269,10 +270,11 @@ class AuthThrottle:
                     # Budget used up: refuse without booking, so the refusal
                     # neither counts nor extends the window.
                     return int(sub_entry[1] + self._window - now) + 1
-            if saturated or untracked_subnet or untracked_prefix:
-                # Exhausted subnet/prefix counters take precedence even when
-                # a host or network cannot be stored. Charge admitted attempts
-                # to those counters as well as the shared overflow allowance.
+            network_untracked = sub is not None and sub_entry is None and prefix_entry is None
+            if saturated or network_untracked:
+                # One tracked network tier still bounds rotating addresses.
+                # Reserve shared overflow for an unstorable host or a network
+                # with neither counter, after checking every available tier.
                 wait = self._overflow_admit(now)
                 if wait:
                     return wait
@@ -283,8 +285,9 @@ class AuthThrottle:
             if prefix is not None and prefix_entry is not None:
                 prefix_entry[0] += 1
                 self._prefixes[prefix] = prefix_entry
-            if saturated or untracked_subnet or untracked_prefix:
+            if saturated:
                 return 0
+            # Network-table pressure must not disable the per-host lockout.
             entry[0] += 1
             entry[2] = now
             over = int(entry[0]) - self._free

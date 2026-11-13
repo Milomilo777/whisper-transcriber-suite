@@ -81,7 +81,7 @@ def test_prefix_keys_keep_ipv4_and_distinct_allocations_separate():
 
 
 def test_live_prefix_counters_survive_table_churn():
-    throttle = AuthThrottle(clock=_Clock(), max_prefixes=2, prefix_budget=2,
+    throttle = AuthThrottle(clock=_Clock(), max_prefixes=2, max_subnets=2, prefix_budget=2,
                             overflow_budget=3)
     for allocation in ("1234", "1235"):
         for subnet in range(2):
@@ -96,7 +96,7 @@ def test_live_prefix_counters_survive_table_churn():
 
 def test_expired_prefixes_make_room_and_overflow_window_ends():
     clock = _Clock()
-    throttle = AuthThrottle(clock=clock, max_prefixes=1, prefix_budget=1,
+    throttle = AuthThrottle(clock=clock, max_prefixes=1, max_subnets=1, prefix_budget=1,
                             overflow_budget=1)
     assert throttle.admit(_address(0)) == 0
     assert throttle.admit(_address(0, allocation="1235")) == 0
@@ -156,7 +156,7 @@ def test_host_overflow_admissions_still_spend_the_known_prefix_budget():
 
 
 def test_concurrent_prefix_table_churn_stays_bounded():
-    throttle = AuthThrottle(clock=_Clock(), max_prefixes=2, overflow_budget=5)
+    throttle = AuthThrottle(clock=_Clock(), max_prefixes=2, max_subnets=2, overflow_budget=5)
     barrier = threading.Barrier(24)
     admitted = []
 
