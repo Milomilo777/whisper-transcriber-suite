@@ -6,6 +6,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Count every header and URL password candidate against its own authentication budget, including percent-decoded headers, and document the combined limits.
 - Keep live IPv6 subnet limits effective when the larger-prefix counter table fills. Shared overflow admission now checks and charges every available network counter before accepting a password comparison.
 
 - Keep live IPv6 subnet counters when their table fills. New untracked networks share the bounded overflow allowance instead of evicting counters and resetting password-guess limits.

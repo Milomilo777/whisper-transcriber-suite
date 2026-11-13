@@ -1219,8 +1219,8 @@ class JobHTTPServer(ThreadingHTTPServer):
         self.token = token
         # Slows down repeated wrong access passwords per client address.
         self.auth_throttle = AuthThrottle()
-        # Browser URL-token requests can use the user's address even when
-        # Fetch Metadata is absent. Keep their allowance separate from headers.
+        # URL-token guesses have an independent allowance, so they cannot
+        # consume the header-token channel's comparison budget.
         self.navigation_auth_throttle = AuthThrottle()
         # Signs the session cookies of clients that already logged in (they
         # are then independent of the per-address failure counts).
@@ -1744,26 +1744,41 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         # Authenticate that header itself, rather than a cookie or URL token
         # that a browser can attach without knowing the header password.
         query = route.query.get("token") if own_origin else None
-        # Both limiters retain the real address, IPv6 subnet accounting and
-        # bounded overflow protection. Metadata cannot choose another budget;
-        # only the explicit header credential selects the header allowance.
-        throttle = srv.auth_throttle if header else srv.navigation_auth_throttle
         if not (header or query):
             # No password at all is not a guess: refuse, book nothing.
-            self._auth_wait = max(srv.auth_throttle.peek(who),srv.navigation_auth_throttle.peek(who))
+            self._auth_wait = max(srv.auth_throttle.peek(who),
+                                  srv.navigation_auth_throttle.peek(who))
             return False
-        # Check the lockout AND book the attempt in one atomic step, before
-        # comparing, so concurrent guesses cannot all slip past the limit.
-        wait = throttle.admit(who)
-        if wait:
-            self._auth_wait = wait
+        candidates: list[tuple[AuthThrottle, str]] = []
+        if header:
+            candidates.append((srv.auth_throttle, header))
+            decoded = urllib.parse.unquote(header)
+            if decoded != header:
+                candidates.append((srv.auth_throttle, decoded))
+        if query:
+            candidates.append((srv.navigation_auth_throttle, query))
+        compared = False
+        waits: list[int] = []
+        for throttle, candidate in candidates:
+            # Every distinct password comparison needs its own atomic booking.
+            # A blocked header must not hide an independently admitted URL token.
+            wait = throttle.admit(who)
+            if wait:
+                waits.append(wait)
+                continue
+            compared = True
+            # Pass the already selected value in the non-decoding slot. Header
+            # decoding above is explicit, deduplicated and separately counted.
+            if token_ok(srv.token, None, candidate):
+                throttle.refund(who)
+                self._session_cookie = auth_session.issue(
+                    srv.session_key, srv.token, now=now)
+                return True
+        if not compared:
+            self._auth_wait = min(waits)
             return False
-        if token_ok(srv.token, header, query):
-            throttle.refund(who)
-            self._session_cookie = auth_session.issue(
-                srv.session_key, srv.token, now=now)
-            return True
-        locked = throttle.peek(who)
+        locked = max(srv.auth_throttle.peek(who),
+                     srv.navigation_auth_throttle.peek(who))
         if locked:
             logger.warning(
                 "server: %s sent too many wrong access passwords; "

@@ -23,7 +23,11 @@ The two credential channels have independent counts and trust. A scripted
 attacker can attempt both channels, so their combined budget is twice one
 channel's configured budget. This bounded tradeoff keeps browser URL guesses
 from locking out header-authenticated clients. Correct URL tokens refund the
-query allowance; correct headers refund the header allowance. A recently
+query allowance; correct headers refund the header allowance. Every compared
+candidate is separately charged, including a distinct percent-decoded header.
+A mixed request can use both channels; a blocked dummy header does not hide a
+valid query token. Only the matching channel is refunded, and an unneeded query
+is never compared after a successful header. A recently
 authenticated header client is not thereby exempt from query-channel subnet
 pressure. Valid session cookies retain the existing authenticated path.
 

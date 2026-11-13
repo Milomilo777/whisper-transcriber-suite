@@ -18,7 +18,7 @@ from tests.core.test_download_command import _task
 
 class _Handler(httpd.JobRequestHandler):
     """Drive the actual GET/POST/auth methods with byte streams, no socket."""
-    def __init__(self, method, path, throttle, password="bad", token="secret"):
+    def __init__(self, method, path, throttle, navigation, password="bad", token="secret"):
         self.command, self.path = method, path
         self.headers = {"Authorization": "Bearer " + password, "Content-Length": "2"}
         self.client_address = ("127.0.0.1", 0)
@@ -28,6 +28,7 @@ class _Handler(httpd.JobRequestHandler):
         self.response_headers = {}
         self.status = None
         self.service = SimpleNamespace(token=token, auth_throttle=throttle,
+            navigation_auth_throttle=navigation,
             session_key=b"k" * 32, ssl_context=None, manager=SimpleNamespace(),
             max_upload_bytes=1024)
 
@@ -65,12 +66,15 @@ def test_tripping_attempt_is_401_next_attempt_is_429(method, path, monkeypatch):
     monkeypatch.setattr(httpd, "token_ok", count)
     clock = [1000.0]
     throttle = AuthThrottle(free_attempts=0, base_delay=15, clock=lambda: clock[0])
-    tripping = _Handler(method, path, throttle)
+    navigation = AuthThrottle(free_attempts=0, base_delay=15, clock=lambda: clock[0])
+    tripping = _Handler(method, path, throttle, navigation)
     assert tripping.dispatch()[0] == 401
     assert tripping._auth_wait == 0 and len(compared) == 1
-    locked = _Handler(method, path, throttle)
+    assert len(navigation) == 0 and navigation.peek("127.0.0.1") == 0
+    locked = _Handler(method, path, throttle, navigation)
     status, body = locked.dispatch()
     assert status == 429 and len(compared) == 1
+    assert len(navigation) == 0 and navigation.peek("127.0.0.1") == 0
     assert int(locked.response_headers["Retry-After"]) == throttle.peek("127.0.0.1")
     if path == "/v1/audio/transcriptions":
         assert body["error"]["code"] == "rate_limit_exceeded"
@@ -79,7 +83,7 @@ def test_tripping_attempt_is_401_next_attempt_is_429(method, path, monkeypatch):
         assert tripping.rfile.tell() == locked.rfile.tell() == 2
         assert tripping.close_connection and locked.close_connection
     clock[0] += 100
-    correct = _Handler("GET", "/api/health", throttle, password="secret")
+    correct = _Handler("GET", "/api/health", throttle, navigation, password="secret")
     assert correct.dispatch()[0] == 200
     assert throttle.peek("127.0.0.1") == 0
 

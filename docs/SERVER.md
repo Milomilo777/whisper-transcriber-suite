@@ -490,43 +490,51 @@ it in one of three ways:
 Prefer a header for scripts. The comparison is constant-time, and the server
 log shows a query-string token as `token=[redacted]`.
 
-**Wrong passwords are slowed down.** The server counts password attempts
-per host (one IPv4 address, or one IPv6 address). The first 5 wrong ones are
-free; after that the host is refused with HTTP 429 and a `Retry-After` header
-for 15 seconds, doubling with every further attempt up to 15 minutes.
-Refused requests never extend the lockout. The check and the count happen in
-one step before the password is compared, so many parallel guesses get at most
-6 comparisons between them. While a host is locked out, even the right
-password from that host is refused, but the lockout always ends by itself,
-and a host that stops trying is forgotten after 30 minutes. A correct password
-from a host that is not itself locked works, whatever other hosts did, with the
-exception below: one host's wrong passwords never lock another out. Because an IPv6 attacker
-owns a whole /64 and can rotate addresses, each /64 also has a budget of 50
-password comparisons per fixed 10-minute window, shared by all its hosts (10,000
-guesses from as many addresses get 50 comparisons). When it is used up, hosts
-of that /64 are refused (429) until the window ends, except hosts that gave the
-right password in the last 30 minutes; refused requests are not counted and do
-not extend the window. So during an attack from your own /64 a host that has
-not logged in recently can be locked out for up to 10 minutes. A request with no
-password at all gets 401 and is not counted. Rotation across /64s within one
-routed /48 also shares a budget of 200 comparisons per fixed 10-minute window,
-with the same recent-login exemption and refund after a correct password.
-At most 1024 /48 counters are kept; live counters are never evicted. A new
-allocation arriving while that table is full shares the overflow budget below.
-At most 2048 hosts and 1024 /64
-networks are remembered (the oldest idle entry whose lockout has ended is dropped first, so flooding
-the host table does not free a locked host). Live /64 counters are never evicted,
-even if their allowance is only partly used. When that table is full, new
-untracked networks share the overflow budget too; their admitted comparisons
-still count against any tracked /64 and /48 allowances. A full /48 table also
-preserves the limits and accounting of any live /64 counter. Expired counters make room
-without extending the existing windows. If all 2048 stored hosts are locked at
-once, a new address is not stored; its attempts (and those of every other
-unstored address) share one overflow budget of 30 comparisons per 10 minutes for
-the whole server, so a full table cannot be used to guess without limit; during
-that state a legitimate newcomer without a session cookie can be refused too,
-even from an address that logged in recently. The
-counts live in memory only, so a restart clears them. Behind a reverse proxy
+**Wrong passwords are slowed down.** Header credentials and URL tokens have
+independent comparison budgets, counts and trusted-address records. Browser
+metadata does not select a budget. Prefer headers for scripts: wrong shared
+links can exhaust the query channel of another client at the same address,
+while header authentication remains available. Renewed guesses after each
+lockout can sustain that query-channel denial.
+
+Each distinct candidate is admitted atomically **before** its constant-time
+comparison. A percent-encoded header may represent two candidates (literal and
+decoded); each consumes one header comparison. A mixed header/query request also
+consumes one query comparison if that candidate is reached. A candidate blocked
+in one channel does not hide an admitted candidate in the other. On success,
+only the matching channel is refunded; wrong candidates in the other channel
+remain counted. A valid session cookie bypasses both comparison budgets.
+
+| Bound | Each channel | Both channels combined |
+| --- | --- | --- |
+| New host before its first lockout | 6 comparisons | 12 comparisons |
+| Untrusted IPv6 /64 per fixed 10-minute window | 50 comparisons | 100 comparisons |
+| Untrusted IPv6 /48 per fixed 10-minute window | 200 comparisons | 400 comparisons |
+| Unstored addresses sharing overflow per 10 minutes | 30 comparisons | 60 comparisons |
+
+Per channel, the first five wrong comparisons are free; the sixth comparison
+starts a 15-second lockout, doubling with further admitted wrong comparisons up
+to 15 minutes. Refused candidates never extend the lockout. Even a right password
+in the locked channel is refused until it expires; the other channel remains
+independent. A host that stops trying is forgotten after 30 minutes.
+
+An IPv6 /64 shares its channel's subnet budget across rotating host addresses;
+a separate /48 allowance also bounds rotation across the routed allocation.
+Once exhausted, that channel returns 429 until the window ends, except addresses
+that supplied a right password in that same channel in the last 30 minutes.
+Another channel's successful login does not grant that exemption. A request with
+no credential books nothing: it returns 401 when neither channel has a host
+lockout, otherwise 429 with the longer host wait as Retry-After.
+
+Each channel remembers at most 2048 hosts, 1024 /64 networks and 1024 /48
+allocations. The oldest idle host whose lockout has ended is dropped first;
+live network counters are never evicted. If a network table is full, untracked
+networks share that channel's overflow budget. Their admitted comparisons still
+count against any tracked /64 and /48 allowances. Expired counters make room
+without extending existing windows. If all stored hosts are locked, new
+addresses also share the overflow budget instead of being stored. A legitimate
+newcomer without a session cookie may be refused too.
+The counts live in memory only, so a restart clears them. Behind a reverse proxy
 every client has the proxy's address, so one person's typos can lock out the
 others for a short time. This slows guessing down; it is not a replacement
 for a long password, and an attacker who can use very many IPv6 networks is
