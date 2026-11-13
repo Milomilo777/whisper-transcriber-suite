@@ -35,6 +35,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Preserve further text from a lazy decoder after a rejected timestamp, within cancellation and capture limits. Keep this raw text separate from valid checkpoints and timed output.
 - Recover the valid prefix of older checkpoints whose saved cues or words extend past the audio. The full raw text is preserved first; unsafe or unsupported tails keep the original checkpoint aside instead of inventing timestamps or declaring completion.
 - Resume keeps a fully transcribed checkpoint usable after switching decoding settings, model or device. It writes the saved text through the normal post-processing and output path without decoding or billing the audio again; changed media still cannot reuse it.
+
+- Keep the latest valid transcription prefix when cancellation races a decoding or timing error. Fresh and resumed jobs save their accepted work before reporting the error.
 - Keep the last valid transcript and resume cursor when a decoder cue or rescue result has unusable timing. The rejected text and original clocks remain in a separate recovery record instead of making the normal checkpoint unusable.
 - Verify optimized macOS slices and macOS-specific version metadata, separate native-tool warnings from architecture names, and identify the slice in inspection failures. Thin-architecture minimum checks have direct regression coverage.
 - Inspect each macOS binary architecture explicitly instead of relying on the host slice. Check all slices for external dependencies and compare deployment minima for the requested application architecture.
