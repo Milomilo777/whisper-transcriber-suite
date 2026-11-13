@@ -6,6 +6,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Report every incompatible macOS bundle component in the final verification verdict, so one highest minimum cannot hide other files that also prevent support for the declared OS.
 - Size subtitle-quality columns for their translated headings and current font, so longer labels remain readable.
 - Count every header and URL password candidate against its own authentication budget, including percent-decoded headers, and document the combined limits.
 - Keep live IPv6 subnet limits effective when the larger-prefix counter table fills. Shared overflow admission now checks and charges every available network counter before accepting a password comparison.

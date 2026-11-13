@@ -15,7 +15,7 @@ WANT="${2:-$(uname -m)}"
 VERIFY_PYTHON="${3:-python3}"
 [ -d "$APP" ] || { echo "error: $APP not found" >&2; exit 1; }
 
-n=0; bad=0; max="0.0"; maxfile=""
+n=0; bad=0; max="0.0"; maxfile=""; minima_count=0
 version_greater() {
   # Compare numeric components; 10.15 and 10.15.0 are the same OS version.
   awk -v left="$1" -v right="$2" 'BEGIN {
@@ -31,7 +31,8 @@ version_greater() {
 # an executable bit or extension. A failed traversal must not look empty.
 macho_list="$(mktemp)" || exit 1
 native_error="$(mktemp)" || { rm -f -- "$macho_list"; exit 1; }
-trap 'rm -f -- "$macho_list" "$native_error"' EXIT
+minima_list="$(mktemp)" || { rm -f -- "$macho_list" "$native_error"; exit 1; }
+trap 'rm -f -- "$macho_list" "$native_error" "$minima_list"' EXIT
 if ! "$VERIFY_PYTHON" platform/macos/pyinstaller/list_macho.py "$APP" >"$macho_list"; then
   rm -f -- "$macho_list"
   echo "error: could not enumerate bundle binaries" >&2
@@ -89,6 +90,12 @@ while IFS= read -r -d '' f; do
       case "$WANT:$slice" in
         universal2:*|x86_64:x86_64|x86_64:x86_64h|arm64:arm64|arm64:arm64e)
           echo "MINOS-SLICE $rel [$slice]: $m"
+          # NUL fields retain spaces and newlines in bundle-relative paths.
+          if ! printf '%s\0%s\0%s\0' "$rel" "$slice" "$m" >>"$minima_list"; then
+            echo "MINOS $rel [$slice]: could not retain version metadata"; bad=$((bad + 1))
+          else
+            minima_count=$((minima_count + 1))
+          fi
           if version_greater "$m" "$max"; then
             max="$m"; maxfile="$rel [$slice]"
           fi ;;
@@ -106,8 +113,21 @@ echo "highest minos        : $max  ($maxfile)"
 echo "LSMinimumSystemVersion: $plist_min"
 if ! [[ "$plist_min" =~ ^[0-9]+(\.[0-9]+){1,2}$ ]]; then
   echo "MINOS invalid or unreadable Info.plist minimum"; bad=$((bad + 1))
-elif version_greater "$max" "$plist_min"; then
-  echo "MINOS $maxfile requires $max, above the declared $plist_min"; bad=$((bad + 1))
+else
+  # The maximum alone hides other incompatible components at or below it.
+  minima_read=0
+  if exec 9<"$minima_list"; then
+    while IFS= read -r -d '' rel <&9 && IFS= read -r -d '' slice <&9 && IFS= read -r -d '' m <&9; do
+      minima_read=$((minima_read + 1))
+      if version_greater "$m" "$plist_min"; then
+        echo "MINOS $rel [$slice] requires $m, above the declared $plist_min"; bad=$((bad + 1))
+      fi
+    done
+    exec 9<&-
+  fi
+  if [ "$minima_read" -ne "$minima_count" ]; then
+    echo "MINOS version metadata could not be read completely"; bad=$((bad + 1))
+  fi
 fi
 echo "problems             : $bad"
 

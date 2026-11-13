@@ -39,7 +39,9 @@ arm64 slice in an Intel helper does not raise the Intel minimum. Unknown binary
 types or missing version metadata fail verification. Unused slices still must
 have verified metadata and no external dependency. Optimized slices in the
 target CPU family contribute to its minimum; only macOS load-command platforms
-count, with every relevant slice minimum reported for diagnosis. Run it on the
+count, with every relevant slice minimum reported for diagnosis. The final verdict
+lists every file and slice above the declared minimum, including equal maxima.
+Run it on the
 final bundle; the hermetic inspector controls do not establish native app compatibility.
 
 ## Building with the repo-root spec on a Mac (the colleague's way)

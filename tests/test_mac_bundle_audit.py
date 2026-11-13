@@ -30,7 +30,8 @@ def inspect_bundle(tmp_path, *, executable=True, minimum="10.15", tool_error="",
                    description="Mach-O 64-bit executable x86_64", other_file=False,
                    magic="cffaedfe", plist_min="10.15", legacy_minimum=False,
                    want="x86_64", foreign_arm64=False, second_architecture="arm64",
-                   build_platform="1", extra_loads="", lipo_warning="", second_tool_error=""):
+                   build_platform="1", extra_loads="", lipo_warning="", second_tool_error="",
+                   other_minimum="", minima_failure=""):
     bundle = tmp_path / "Example ü.app"
     # NTFS does not expose chmod's execute bit to Git Bash find. A .dylib
     # baseline is deliberately selected by the old scanner too; only the
@@ -48,7 +49,9 @@ def inspect_bundle(tmp_path, *, executable=True, minimum="10.15", tool_error="",
     # come from the production script, with all its exit/error behavior intact.
     end_plist = text.index("\n", plist)
     end = text.index('\nB="$APP/Contents/Frameworks/bin"', end_plist)
-    code = text[start:plist] + f'plist_min="{plist_min}"\n' + text[end_plist:end]
+    failure = {'': '', 'remove': 'rm -f -- "$minima_list"\n',
+               'truncate': ': >"$minima_list"\n'}[minima_failure]
+    code = text[start:plist] + f'plist_min="{plist_min}"\n' + failure + text[end_plist:end]
     bash = _find_bash()
     if bash is None:
         pytest.skip("a working Bash is required for the actual inspector loop")
@@ -60,7 +63,9 @@ def inspect_bundle(tmp_path, *, executable=True, minimum="10.15", tool_error="",
         '  selected=x86_64\n  if [ "${2:-}" = -arch ]; then selected="$3"; fi\n'
         f'  if [[ " {architectures} " != *" $selected "* ]]; then return 9; fi\n'
         f'  if [ "$selected" = "{second_architecture}" ] && [ "$1" = "{second_tool_error}" ]; then return 7; fi\n'
-        '  if [ "$1" = -L ]; then\n'
+        + ("  if [ \"$1\" = -l ] && [[ \"$4\" == *Other.dylib ]]; then\ncat <<'OTHERLOADS'\n"
+           + primary.replace(minimum, other_minimum) + 'OTHERLOADS\nreturn\nfi\n' if other_minimum else '')
+        + '  if [ "$1" = -L ]; then\n'
         + ('    if [ "$selected" = arm64 ]; then printf "fixture:\\n\\t/opt/homebrew/lib/libbad.dylib (compatibility version 1.0.0)\\n"; return; fi\n' if foreign_arm64 else '')
         + f'    printf "fixture:\\n\\t{dependency} (compatibility version 1.0.0)\\n"\n'
         f"  elif [ \"$selected\" = {second_architecture} ]; then\ncat <<'ARMLOADS'\n" + secondary + 'ARMLOADS\n'
@@ -108,6 +113,39 @@ def test_compatible_system_linked_binary_passes(tmp_path, minimum):
     result = inspect_bundle(tmp_path, minimum=minimum)
     assert result.returncode == 0, result.stdout + result.stderr
     assert "Mach-O files scanned : 1" in result.stdout
+
+
+@pytest.mark.parametrize("minimum", ["11.0", "12.0"])
+def test_every_offending_file_is_reported_in_final_verdict(tmp_path, minimum):
+    result = inspect_bundle(tmp_path, minimum=minimum, other_file=True)
+    assert result.returncode != 0, result.stdout + result.stderr
+    findings = [line for line in result.stdout.splitlines()
+                if line.startswith("MINOS ") and "requires" in line]
+    assert len(findings) == 2, result.stdout
+    assert any("Library ü.dylib [x86_64]" in line for line in findings)
+    assert any("Other.dylib [x86_64]" in line for line in findings)
+    assert all(f"requires {minimum}, above the declared 10.15" in line for line in findings)
+
+
+@pytest.mark.parametrize('failure', ['remove', 'truncate'])
+def test_lost_minimum_records_cannot_make_incompatible_bundle_pass(tmp_path, failure):
+    result = inspect_bundle(tmp_path, minimum='12.0', minima_failure=failure)
+    assert result.returncode != 0, result.stdout + result.stderr
+
+
+def test_smaller_offending_component_is_not_hidden_by_maximum(tmp_path):
+    result = inspect_bundle(tmp_path, minimum='12.0', other_file=True, other_minimum='11.0')
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert 'Library ü.dylib [x86_64] requires 12.0' in result.stdout
+    assert 'Other.dylib [x86_64] requires 11.0' in result.stdout
+
+
+def test_both_offending_slices_are_reported(tmp_path):
+    result = inspect_bundle(tmp_path, minimum='12.0', second_minimum='12.1',
+                            architectures='x86_64 arm64', want='universal2')
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert '[x86_64] requires 12.0' in result.stdout
+    assert '[arm64] requires 12.1' in result.stdout
 
 
 def test_executable_foreign_dependency_is_still_rejected(tmp_path):
