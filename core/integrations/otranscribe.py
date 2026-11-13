@@ -82,13 +82,16 @@ def fmt_otr_time(seconds: float) -> str:
     return f"{m}:{sec:02}"
 
 
-def _fmt_srt_time(seconds: float) -> str:
+def _srt_milliseconds(seconds: float) -> int:
     try:
         total_ms = int(round(_safe_seconds(seconds) * 1000))
     except OverflowError:
         total_ms = 0
-    if total_ms < 0:
-        total_ms = 0
+    return max(0, total_ms)
+
+
+def _fmt_srt_time(seconds: float) -> str:
+    total_ms = _srt_milliseconds(seconds)
     h = total_ms // 3_600_000
     m = (total_ms % 3_600_000) // 60_000
     s = (total_ms % 60_000) // 1000
@@ -193,7 +196,8 @@ def whisper_json_to_otr(json_path: str, media_filename: str = "") -> str:
     """
     # utf-8-sig: a JSON saved by an editor that adds a BOM must load too
     # (the two sibling readers already accept one).
-    with open(json_path, "r", encoding="utf-8-sig") as f:
+    # The JSON decoder detects UTF-8/16/32 and optional byte-order marks.
+    with open(json_path, "rb") as f:
         data = json.load(f)
     if not isinstance(data, list):
         raise ValueError(
@@ -306,14 +310,14 @@ class _OtrParser(HTMLParser):
         self._flush()
 
 
-def otr_to_srt(otr_path: str) -> str:
-    """Read an .otr file at *otr_path* and return SRT text.
+def otr_to_segments(otr_path: str) -> list[dict]:
+    """Read an .otr file without interpreting its decoded text as subtitle syntax.
 
     End times are inferred:
       * for all but the last segment, end = next segment's start;
       * for the last segment, end = max(media_time, start + 5.0).
     """
-    with open(otr_path, "r", encoding="utf-8-sig") as f:
+    with open(otr_path, "rb") as f:
         payload = json.load(f)
     if not isinstance(payload, dict):
         raise ValueError(f"{otr_path} is not a JSON object")
@@ -333,7 +337,7 @@ def otr_to_srt(otr_path: str) -> str:
     parser.finalize()
     segments = [(s, b) for s, b in parser.segments if b]
 
-    out_lines = []
+    result: list[dict] = []
     for i, (start, body) in enumerate(segments):
         if i + 1 < len(segments):
             end = segments[i + 1][0]
@@ -341,8 +345,19 @@ def otr_to_srt(otr_path: str) -> str:
             end = max(media_time, start + 5.0)
         if end <= start:
             end = start + 5.0
-        out_lines.append(
-            f"{i + 1}\n{_fmt_srt_time(start)} --> {_fmt_srt_time(end)}\n"
-            f"{_no_lone_surrogates(body)}\n"
-        )
+        # Keep the importer's existing millisecond precision and overflow
+        # handling without routing any decoded body text through SRT.
+        result.append({"start": _srt_milliseconds(start) / 1000,
+                       "end": _srt_milliseconds(end) / 1000,
+                       "text": _no_lone_surrogates(body)})
+    return result
+
+
+def otr_to_srt(otr_path: str) -> str:
+    """Read an .otr file at *otr_path* and return SRT text."""
+    out_lines = [
+        f"{i + 1}\n{_fmt_srt_time(segment['start'])} --> {_fmt_srt_time(segment['end'])}\n"
+        f"{segment['text']}\n"
+        for i, segment in enumerate(otr_to_segments(otr_path))
+    ]
     return "\n".join(out_lines)

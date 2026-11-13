@@ -34,7 +34,7 @@ _TOKEN_POOL = [p for p in _POOL if not any(ch.isspace() for ch in p)]
 _EXT = {"elan": "eaf", "inqscribe": "inqscr"}
 # Start-time precision of each format, in seconds.
 _PRECISION = {"srt": 0.001, "vtt": 0.001, "tsv": 0.001, "json": 1e-9,
-              "ass": 0.01, "elan": 0.001, "inqscribe": 0.01}
+              "ass": 0.01, "elan": 0.001, "inqscribe": 0.01, "otr": 0.001}
 FORMATS = sorted(_PRECISION)
 RUNS = 300
 # SubRip has no escape syntax: text that is itself a formatting tag is read
@@ -132,6 +132,7 @@ def _old_strip_ass_markup(text: str) -> str:
     ("srt", "_SRT_TAG", re.compile(r"<[^>]+>")),
     ("ass", "_strip_ass_markup", _old_strip_ass_markup),
     ("inqscribe", "_unescape_inqscribe", lambda s: s),
+    ("otr", "_parse_otr", lambda path: convert._parse_cue_format(convert._otr.otr_to_srt(path), path)),
 ])
 def test_property_run_catches_a_broken_parser(fmt, attr, broken, tmp_path, monkeypatch):
     monkeypatch.setattr(convert, attr, broken)

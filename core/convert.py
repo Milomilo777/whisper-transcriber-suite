@@ -358,14 +358,9 @@ def _parse_tsv(text: str, path: str) -> list[dict]:
 
 
 def _parse_otr(path: str) -> list[dict]:
-    """Import an oTranscribe ``.otr`` by round-tripping through its SRT helper.
-
-    ``core.integrations.otranscribe.otr_to_srt`` already infers end times from
-    the next segment's start, so reusing it keeps a single source of truth for
-    that contract.
-    """
-    srt_text = _otr.otr_to_srt(path)
-    return _parse_cue_format(srt_text, path)
+    """Import decoded OTR text directly, preserving literal tags and timecodes."""
+    return [{**segment, "text": " ".join(segment["text"].split())}
+            for segment in _otr.otr_to_segments(path)]
 
 
 def _safe_fromstring(text: str) -> ET.Element:
