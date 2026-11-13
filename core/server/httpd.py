@@ -1584,6 +1584,8 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         if (self._status_code >= 200 and not self.close_connection
                 and self._srv.crowded()):
             self.send_header("Connection", "close")
+        if self._status_code >= 200:
+            self.send_header("Vary", "Sec-Fetch-Site, Sec-Fetch-Mode, Sec-Fetch-Dest")
         if self._status_code >= 200 and self._session_cookie:
             secure = "; Secure" if self._srv.ssl_context is not None else ""
             self.send_header(
@@ -1649,7 +1651,8 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         """Why this request must be refused as a browser attack, or "".
 
         Always: a subresource load from another site (``Sec-Fetch-Site``
-        cross-site / same-site on a non-navigation, e.g. a ``<script>`` tag)
+        cross-site / same-site outside a document navigation, including
+        ``<iframe>``, ``<object>`` and ``<embed>`` navigation)
         is refused, so another page cannot use the 200 / 401 answer to guess
         the password; following a shared link (a navigation) still works.
 
@@ -1668,7 +1671,11 @@ class JobRequestHandler(BaseHTTPRequestHandler):
         srv = self._srv
         site = (self.headers.get("Sec-Fetch-Site") or "").strip().lower()
         mode = (self.headers.get("Sec-Fetch-Mode") or "").strip().lower()
-        if site in ("cross-site", "same-site") and mode != "navigate":
+        destination = (self.headers.get("Sec-Fetch-Dest") or "").strip().lower()
+        # Adapted from web.dev (https://web.dev/articles/fetch-metadata) —
+        # distinguish document navigation from embedded resource navigation.
+        navigation = mode == "navigate" and destination in ("", "document")
+        if site in ("cross-site", "same-site") and not navigation:
             return "cross-site request refused"
         host = self.headers.get("Host")
         https = srv.ssl_context is not None

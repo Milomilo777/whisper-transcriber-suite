@@ -4,6 +4,13 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Fixed
+
+- Keep live IPv6 subnet limits effective when the larger-prefix counter table fills. Shared overflow admission now checks and charges every available network counter before accepting a password comparison.
+
+- Keep live IPv6 subnet counters when their table fills. New untracked networks share the bounded overflow allowance instead of evicting counters and resetting password-guess limits.
+- IPv6 password throttling now shares a bounded allowance across the /64 networks of a routed /48. Rotating subnets or overflowing the counter table no longer resets that allocation's guessing budget.
+
 ### Added
 
 - Selecting Persian for voice generation shows Chatterbox Farsi as the first recommendation, with its non-commercial license, hardware caveats and model-page link. It remains an external recommendation and does not change the selected generation engine.
@@ -18,6 +25,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Keep external custom model hubs when uninstalling, including shared model archives. Optional cleanup is limited to the default local app cache, rejects directory links and defaults to keeping models.
 - Preserve settings on uninstall and let the application import legacy profiles safely. Reinstalling no longer copies an old history database over newer entries when settings are missing.
 - Start enabled usage reporting without waiting for UI visibility or an obsolete profile marker. Keep saved off settings, offline mode and queued-send invalidation in effect.
+- Reject cross-site embedded browser navigations before checking API access passwords. External frames can no longer consume the local login allowance; shared document links and clients without destination metadata keep working.
 - Reserve telemetry error quotas through exclusive, synced temporary files so an existing scratch file is preserved and a failed write suppresses the send.
 - Turning usage statistics off no longer waits for an in-flight request or local cleanup. Queued sends are invalidated, local diagnostic collection stops, and existing diagnostic and rate-limit files are erased in the background when accessible.
 - Filter quoted text and path-bearing spans before reducing error messages to technical vocabulary. Diagnostic and manual-report dialogs now explain what is sent and avoid promising that failed reports were retained.

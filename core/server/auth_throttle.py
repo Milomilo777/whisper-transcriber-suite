@@ -19,9 +19,14 @@ Rules that keep the throttle from becoming a weapon:
   within the last ``trust_s`` seconds (they are not blocked by their subnet's
   pressure). Refused requests are not counted and never extend the window, so
   the attacker cannot keep the pressure up beyond one window per budget.
+  Routed allocations can contain many /64s: a separate /48 budget bounds
+  rotation across them, with the same fixed-window and trusted-host rules.
+  Live /48 counters are never evicted. When their bounded table is full,
+  untracked prefixes share the existing overflow allowance instead.
 * Evicting a table entry never helps an attacker: the oldest idle entry whose
   lockout has ended goes first, and the /64 counters are separate from the
-  host table.
+  host table. Live /64 counters are never evicted; when that table is full,
+  untracked networks use the shared overflow allowance too.
 * When the host table is full of locked hosts, a new host cannot be stored
   (storing it would evict a locked entry, and evicting its own fresh entry
   would let it guess without limit). Such attempts share ONE bounded overflow
@@ -36,7 +41,8 @@ Admission is atomic: :meth:`admit` checks the lockout AND books the attempt
 under one lock, before the password is compared, so N threads guessing at once
 get at most ``free_attempts + 1`` comparisons between them, not N.
 
-Memory is bounded (``max_hosts`` / ``max_subnets`` / ``max_trusted``).
+Memory is bounded (``max_hosts`` / ``max_subnets`` / ``max_prefixes`` /
+``max_trusted``).
 Thread-safe; the clock is injectable for tests.
 """
 from __future__ import annotations
@@ -56,6 +62,9 @@ MAX_DELAY_S = 900.0
 FORGET_AFTER_S = 1800.0
 MAX_HOSTS = 2048
 MAX_SUBNETS = 1024
+PREFIX_BUDGET = 200
+PREFIX_WINDOW_S = 600.0
+MAX_PREFIXES = 1024
 MAX_TRUSTED = 2048
 OVERFLOW_BUDGET = 30
 OVERFLOW_WINDOW_S = 600.0
@@ -84,6 +93,14 @@ def subnet_key(address: str) -> str | None:
     return None
 
 
+def prefix_key(address: str) -> str | None:
+    """The routed IPv6 /48; IPv4 (including mapped addresses) has no tier."""
+    ip = _parse(address)
+    if isinstance(ip, ipaddress.IPv6Address):
+        return str(ipaddress.ip_network(f"{ip}/48", strict=False))
+    return None
+
+
 class AuthThrottle:
     """Per-host count of password attempts with a growing lockout."""
 
@@ -96,6 +113,9 @@ class AuthThrottle:
                  forget_after: float = FORGET_AFTER_S,
                  max_hosts: int = MAX_HOSTS,
                  max_subnets: int = MAX_SUBNETS,
+                 prefix_budget: int = PREFIX_BUDGET,
+                 prefix_window: float = PREFIX_WINDOW_S,
+                 max_prefixes: int = MAX_PREFIXES,
                  max_trusted: int = MAX_TRUSTED,
                  overflow_budget: int = OVERFLOW_BUDGET,
                  overflow_window: float = OVERFLOW_WINDOW_S,
@@ -109,6 +129,9 @@ class AuthThrottle:
         self._forget = forget_after
         self._max_hosts = max(1, max_hosts)
         self._max_subnets = max(1, max_subnets)
+        self._prefix_budget = max(1, prefix_budget)
+        self._prefix_window = prefix_window
+        self._max_prefixes = max(1, max_prefixes)
         self._max_trusted = max(1, max_trusted)
         self._overflow_budget = max(1, overflow_budget)
         self._overflow_window = overflow_window
@@ -118,6 +141,8 @@ class AuthThrottle:
         self._hosts: OrderedDict[str, list[float]] = OrderedDict()
         # /64 key -> [comparisons in this window, window start]
         self._subnets: OrderedDict[str, list[float]] = OrderedDict()
+        # /48 key -> [comparisons in this window, window start]
+        self._prefixes: OrderedDict[str, list[float]] = OrderedDict()
         # [comparisons by unstored hosts in this window, window start]
         self._overflow: list[float] = [0.0, float("-inf")]
         # host key -> time of its last right password
@@ -144,20 +169,21 @@ class AuthThrottle:
                 victim = next(iter(self._hosts))
             del self._hosts[victim]
 
-    def _evict_subnets(self, now: float) -> None:
-        while len(self._subnets) > self._max_subnets:
-            victim = next((k for k, e in self._subnets.items()
-                           if now - e[1] >= self._window
-                           or e[0] < self._budget), None)
-            if victim is None:  # all exhausted: drop the oldest
-                victim = next(iter(self._subnets))
-            del self._subnets[victim]
-
     def _saturated(self, key: str, now: float) -> bool:
         """True when ``key`` is new and the table holds only locked hosts."""
         if key in self._hosts or len(self._hosts) < self._max_hosts:
             return False
         return not any(e[1] <= now for e in self._hosts.values())
+
+    def _overflow_admit(self, now: float) -> int:
+        """Book the shared allowance for an attempt we cannot safely track."""
+        ovf = self._overflow
+        if now - ovf[1] >= self._overflow_window:
+            ovf[0], ovf[1] = 0.0, now
+        if ovf[0] >= self._overflow_budget:
+            return int(ovf[1] + self._overflow_window - now) + 1
+        ovf[0] += 1
+        return 0
 
     def _is_trusted(self, key: str, now: float) -> bool:
         at = self._trusted.get(key)
@@ -195,6 +221,7 @@ class AuthThrottle:
         """
         key = host_key(address)
         sub = subnet_key(address)
+        prefix = prefix_key(address)
         now = self._clock()
         with self._lock:
             entry = self._live(key, now)
@@ -204,32 +231,60 @@ class AuthThrottle:
                     return int(remaining) + 1
             else:
                 entry = [0.0, 0.0, now]
-            if self._saturated(key, now):
-                # Not stored: share the bounded overflow limiter instead.
-                ovf = self._overflow
-                if now - ovf[1] >= self._overflow_window:
-                    ovf[0], ovf[1] = 0.0, now
-                # Trust belongs to an address, so it does not exempt anyone
-                # here: logged-in clients use their session cookie instead.
-                if ovf[0] >= self._overflow_budget:
-                    return int(ovf[1] + self._overflow_window - now) + 1
-                ovf[0] += 1
-                return 0
+            saturated = self._saturated(key, now)
+            trusted = self._is_trusted(key, now)
+            prefix_entry = None
+            untracked_prefix = False
+            if prefix is not None:
+                prefix_entry = self._prefixes.get(prefix)
+                if prefix_entry is not None and now - prefix_entry[1] >= self._prefix_window:
+                    prefix_entry = None
+                if prefix_entry is None:
+                    # Prune only expired counters: replacing a live counter
+                    # would let allocation churn reset its comparison budget.
+                    if prefix not in self._prefixes and len(self._prefixes) >= self._max_prefixes:
+                        for old, counter in list(self._prefixes.items()):
+                            if now - counter[1] >= self._prefix_window:
+                                del self._prefixes[old]
+                        untracked_prefix = len(self._prefixes) >= self._max_prefixes
+                    if not untracked_prefix:
+                        prefix_entry = [0.0, now]
+                if prefix_entry is not None and prefix_entry[0] >= self._prefix_budget and not trusted:
+                    return int(prefix_entry[1] + self._prefix_window - now) + 1
+            sub_entry = None
+            untracked_subnet = False
             if sub is not None:
                 sub_entry = self._subnets.get(sub)
                 if sub_entry is not None and now - sub_entry[1] >= self._window:
                     sub_entry = None  # a new window starts
                 if sub_entry is None:
-                    sub_entry = [0.0, now]
-                trusted = self._is_trusted(key, now)
-                if sub_entry[0] >= self._budget and not trusted:
+                    if sub not in self._subnets and len(self._subnets) >= self._max_subnets:
+                        for old, counter in list(self._subnets.items()):
+                            if now - counter[1] >= self._window:
+                                del self._subnets[old]
+                        untracked_subnet = len(self._subnets) >= self._max_subnets
+                    if not untracked_subnet:
+                        sub_entry = [0.0, now]
+                if sub_entry is not None and sub_entry[0] >= self._budget and not trusted:
                     # Budget used up: refuse without booking, so the refusal
                     # neither counts nor extends the window.
                     return int(sub_entry[1] + self._window - now) + 1
+            if saturated or untracked_subnet or untracked_prefix:
+                # Exhausted subnet/prefix counters take precedence even when
+                # a host or network cannot be stored. Charge admitted attempts
+                # to those counters as well as the shared overflow allowance.
+                wait = self._overflow_admit(now)
+                if wait:
+                    return wait
+            if sub is not None and sub_entry is not None:
                 sub_entry[0] += 1  # a trusted host is counted, never refused
                 self._subnets[sub] = sub_entry
                 self._subnets.move_to_end(sub)
-                self._evict_subnets(now)
+            if prefix is not None and prefix_entry is not None:
+                prefix_entry[0] += 1
+                self._prefixes[prefix] = prefix_entry
+            if saturated or untracked_subnet or untracked_prefix:
+                return 0
             entry[0] += 1
             entry[2] = now
             over = int(entry[0]) - self._free
@@ -242,9 +297,10 @@ class AuthThrottle:
 
     def refund(self, address: str) -> None:
         """The booked attempt was the right password: forget this host's count,
-        give its comparison back to its /64 and trust the host for a while."""
+        give its comparison back to its /64 and /48, and trust it for a while."""
         key = host_key(address)
         sub = subnet_key(address)
+        prefix = prefix_key(address)
         now = self._clock()
         with self._lock:
             self._hosts.pop(key, None)
@@ -252,6 +308,10 @@ class AuthThrottle:
                 sub_entry = self._subnets.get(sub)
                 if sub_entry is not None and sub_entry[0] > 0:
                     sub_entry[0] -= 1
+            if prefix is not None:
+                prefix_entry = self._prefixes.get(prefix)
+                if prefix_entry is not None and prefix_entry[0] > 0:
+                    prefix_entry[0] -= 1
             self._trusted[key] = now
             self._trusted.move_to_end(key)
             while len(self._trusted) > self._max_trusted:

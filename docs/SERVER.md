@@ -508,9 +508,19 @@ of that /64 are refused (429) until the window ends, except hosts that gave the
 right password in the last 30 minutes; refused requests are not counted and do
 not extend the window. So during an attack from your own /64 a host that has
 not logged in recently can be locked out for up to 10 minutes. A request with no
-password at all gets 401 and is not counted. At most 2048 hosts and 1024 /64
+password at all gets 401 and is not counted. Rotation across /64s within one
+routed /48 also shares a budget of 200 comparisons per fixed 10-minute window,
+with the same recent-login exemption and refund after a correct password.
+At most 1024 /48 counters are kept; live counters are never evicted. A new
+allocation arriving while that table is full shares the overflow budget below.
+At most 2048 hosts and 1024 /64
 networks are remembered (the oldest idle entry whose lockout has ended is dropped first, so flooding
-the table does not free a locked host). If all 2048 stored hosts are locked at
+the host table does not free a locked host). Live /64 counters are never evicted,
+even if their allowance is only partly used. When that table is full, new
+untracked networks share the overflow budget too; their admitted comparisons
+still count against any tracked /64 and /48 allowances. A full /48 table also
+preserves the limits and accounting of any live /64 counter. Expired counters make room
+without extending the existing windows. If all 2048 stored hosts are locked at
 once, a new address is not stored; its attempts (and those of every other
 unstored address) share one overflow budget of 30 comparisons per 10 minutes for
 the whole server, so a full table cannot be used to guess without limit; during
