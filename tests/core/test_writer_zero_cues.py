@@ -213,7 +213,7 @@ def test_valid_vtt_output_is_byte_identical():
             "end": 3.25,
             "text": "Second line",
             "words": [
-                {"start": 1.5, "end": 2.0, "word": "Second"},
+                {"start": 1.6, "end": 2.0, "word": "Second"},
                 {"start": 2.0, "end": 3.25, "word": "line"},
             ],
         },
@@ -223,7 +223,7 @@ def test_valid_vtt_output_is_byte_identical():
         "00:00:00.000 --> 00:00:01.500\n"
         "Hello world\n\n"
         "00:00:01.500 --> 00:00:03.250\n"
-        "<00:00:01.500><c>Second</c> <00:00:02.000><c>line</c>\n"
+        "<00:00:01.600><c>Second</c> <00:00:02.000><c>line</c>\n"
     )
     assert vtt.write(segments) == expected
 

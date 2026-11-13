@@ -31,9 +31,10 @@ def test_vtt_writer_tolerates_non_numeric_word_start():
     ]
     body = vtt.write(segs)  # must not raise
     assert body.startswith("WEBVTT\n")
-    # The bad-start word falls back to the segment start (2.0s); the good
-    # word keeps its own timestamp. Both survive — nothing is dropped.
-    assert "<00:00:02.000><c>hi</c>" in body
+    # The bad-start word is active at cue start without an invalid marker;
+    # the good word keeps its internal timestamp. Both words survive.
+    assert "<c>hi</c>" in body
+    assert "<00:00:02.000>" not in body
     assert "<00:00:02.500><c>there</c>" in body
 
 
