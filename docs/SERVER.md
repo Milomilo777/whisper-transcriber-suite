@@ -906,6 +906,11 @@ own page always sends the header. This is also what makes a reverse proxy
 work (it forwards its own name and an `https://` origin to the plain-HTTP
 server), so put a password on a server behind one.
 
+For a request with a foreign `Origin`, the header password itself must match.
+A valid session cookie or `?token=` value cannot substitute for that header.
+Same-origin requests and clients without an `Origin` keep their usual cookie
+and query-token authentication.
+
 ## Configuration
 
 Keys in `config.json` (see [CONFIG.md](CONFIG.md)) hold the defaults. The
