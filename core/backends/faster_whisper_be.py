@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import gc
 import logging
+import math
 import os
 import threading
 import time
@@ -30,6 +31,27 @@ from ..model_manager import DownloadCancelled, ensure_model
 from .base import Backend, LanguageInfo
 
 logger = logging.getLogger(__name__)
+
+
+def _alignment_window(original, frames, frames_per_second):
+    """Return the encoded frame window when its group metadata is usable."""
+    # Adapted from faster-whisper (https://github.com/SYSTRAN/faster-whisper/blob/v1.2.1/faster_whisper/transcribe.py) - use the decode-window seek and frame count.
+    if not original:
+        return None
+    seek = original[0][0].get("seek")
+    if any(segment.get("seek") != seek for segment, _, _ in original):
+        return None
+    if any(isinstance(value, bool) for value in (seek, frames, frames_per_second)):
+        return None
+    try:
+        seek, frames, rate = float(seek), float(frames), float(frames_per_second)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    if (not all(math.isfinite(value) for value in (seek, frames, rate))
+            or seek < 0 or frames <= 0 or rate <= 0):
+        return None
+    start, end = seek / rate, (seek + frames) / rate
+    return (start, end) if math.isfinite(end) and end > start else None
 
 
 class WhisperModel(_WhisperModel):
@@ -59,18 +81,27 @@ class WhisperModel(_WhisperModel):
                            exc_info=True)
             failed = True
             result = last_speech_timestamp
-        for group, original in zip(segments, raw):
+        frame_counts = num_frames if isinstance(num_frames, (list, tuple)) else [num_frames] * len(raw)
+        for index, (group, original) in enumerate(zip(segments, raw)):
             if not (failed or any(s["end"] <= s["start"] for s, _, _ in original)):
                 continue
             # Restore the whole decode group. Upstream get_end searches words
             # across the group before falling back to the last segment end;
             # keeping earlier aligned words would seek back into emitted audio.
-            logger.warning("Word alignment unusable; retaining the decode group with raw segment bounds.")
+            logger.warning("Word alignment unusable; retaining the decode group with fallback bounds.")
+            window = (_alignment_window(original, frame_counts[index],
+                                        getattr(self, "frames_per_second", None))
+                      if len(frame_counts) == len(raw) else None)
             restored = []
             pending = []
             for segment, start, end in original:
                 if end < start:
                     raise RuntimeError("Cannot preserve decoded text: invalid raw segment bounds")
+                if window is not None:
+                    if start >= window[1]:
+                        pending.extend(segment["tokens"])
+                        continue
+                    end = min(end, window[1])
                 segment.update(start=start, end=end, words=[])
                 if end == start:
                     pending.extend(segment["tokens"])
@@ -82,6 +113,15 @@ class WhisperModel(_WhisperModel):
                     restored[-1]["end"] = max(restored[-1]["end"], end)
                 else:
                     restored.append(segment)
+            if (not restored and pending and window is not None
+                    and any(end > start for _, start, end in original)):
+                # All predicted intervals can overshoot a short final window.
+                # Its actual encoded frames give a coarse segment bound;
+                # optional word timestamps remain unavailable.
+                segment = original[0][0]
+                segment.update(start=window[0], end=window[1], words=[], tokens=pending)
+                restored.append(segment)
+                pending = []
             if not restored and pending:
                 raise RuntimeError("Cannot preserve decoded text: no positive raw segment bounds")
             if pending:
