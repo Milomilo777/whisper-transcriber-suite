@@ -238,31 +238,36 @@ class FontChain:
         name = self.prefer.get(hint) if hint else None
         return next((f for f in self.fonts if f.name == name), None) if name else None
 
-    def split_runs(self, text: str) -> list[tuple[str, str]]:
+    def split_runs(self, text: str, *, visual_order: bool = False) -> list[tuple[str, str]]:
         """``[(font name, chunk), ...]`` covering *text* in order."""
         base = self.base
         if base is None:
             return [("", text)] if text else []
         preferred = self._preferred(text)
         runs: list[list[str]] = []
-        by_name = {font.name: font for font in self.fonts}
         pending = ""
-        for ch in text:
+        last_base = None
+        mark_bases = getattr(text, "mark_bases", {}) if visual_order else {}
+        for index, ch in enumerate(text):
             if ch in _INVISIBLE:
                 continue
             if _is_attached(ch):
-                current = by_name[runs[-1][0]] if runs else base
-                font = (self.font_for(ch, preferred)
-                        if not ch.isspace() and unicodedata.category(ch) != "Cf"
-                        and not current.covers(ord(ch)) else None)
-                if font is None:
-                    if runs:
-                        runs[-1][1] += ch
-                    else:
+                if ch.isspace() or unicodedata.category(ch) == "Cf":
+                    if not runs:
                         pending += ch
-                    continue
+                        continue
+                    font = last_base or base
+                else:
+                    # Resolved bidi identities distinguish RTL marks before
+                    # their base from LTR accents beside an RTL run.
+                    anchor = last_base or base
+                    base_index = mark_bases.get(index)
+                    if base_index is not None:
+                        anchor = self.font_for(text[base_index], preferred) or base
+                    font = anchor if anchor.covers(ord(ch)) else self.font_for(ch, preferred) or anchor
             else:
                 font = self.font_for(ch, preferred) or base
+                last_base = font
             if runs and runs[-1][0] == font.name:
                 runs[-1][1] += ch
             else:
@@ -272,7 +277,7 @@ class FontChain:
             runs.append([base.name, pending])
         return [(name, chunk) for name, chunk in runs]
 
-    def markup(self, text: str, bold: bool = False) -> str:
+    def markup(self, text: str, bold: bool = False, *, visual_order: bool = False) -> str:
         """reportlab paragraph markup for *text*: escaped, with a
         ``<font>`` tag around every run not in the base font.
 
@@ -284,7 +289,7 @@ class FontChain:
         base = self.base
         by_name = {f.name: f for f in self.fonts}
         out: list[str] = []
-        for name, chunk in self.split_runs(text):
+        for name, chunk in self.split_runs(text, visual_order=visual_order):
             if base is None or name == base.name:
                 out.append(xml_escape(chunk))
             else:

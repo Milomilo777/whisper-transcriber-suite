@@ -72,6 +72,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Preserve API outputs in subfolders when an archive copy fails, including across server restarts. Retained copies keep their relative folders so same-named outputs cannot replace each other.
 
 
+- Keep PDF combining marks with their available base font after right-to-left reordering, preserve leading-mark coverage, and prevent fallback marks from changing the following space's font.
+
 - Use an available fallback font for combining marks that the preceding font cannot draw, preventing missing-glyph boxes in mixed-script PDF transcripts.
 
 - Loopback recording stops promptly when system audio becomes silent, preserving captured audio and releasing the capture thread.

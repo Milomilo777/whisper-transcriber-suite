@@ -156,9 +156,9 @@ def write_bytes(segments: list[dict], audio_path: str = "") -> bytes:
             parts = []
             for text, bold in line:
                 if bold or bold_body:
-                    parts.append(f"<b>{markup(text, bold=True)}</b>")
+                    parts.append(f"<b>{markup(text, bold=True, visual_order=True)}</b>")
                 else:
-                    parts.append(markup(text))
+                    parts.append(markup(text, visual_order=True))
             rows.append("".join(parts))
         return "<br/>".join(rows), rtl
 

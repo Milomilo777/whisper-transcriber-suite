@@ -43,6 +43,17 @@ class Engine(NamedTuple):
     reorder: Callable[[str, str], str]  # (line, base "L"/"R") -> visual order
 
 
+class VisualText(str):
+    """Visual characters with the original base of each combining mark."""
+
+    mark_bases: dict[int, int]
+
+    def __new__(cls, text: str, mark_bases: dict[int, int]):
+        result = super().__new__(cls, text)
+        result.mark_bases = mark_bases
+        return result
+
+
 # Invisible characters the two packages mishandle (never drawn: pdf_fonts
 # drops them): the zero-width joiner, and the isolates LRI, RLI, FSI, PDI.
 _NO_ZWJ = {0x200D: None}
@@ -83,7 +94,7 @@ def _load() -> Engine | None:
         # arabic-reshaper; it mirrors brackets (UAX #9 rule L4) and leaves
         # combining marks before their base (no rule L3), which is where
         # reportlab needs them to sit on the letter.
-        from bidi.algorithm import get_display  # type: ignore[import-not-found]
+        from bidi import algorithm  # type: ignore[import-not-found]
     except (ImportError, OSError) as e:  # OSError: a native library that fails to load
         log.warning(
             "Arabic-script and Hebrew text is drawn unjoined and left to right "
@@ -108,11 +119,31 @@ def _load() -> Engine | None:
     def reorder(line: str, base: str) -> str:
         # The pure-Python algorithm has no isolates (UAX #9 6.3+) and
         # asserts on them; they are invisible and never drawn anyway.
-        out = get_display(
-            _scrub_unassigned(line).translate(_NO_ISOLATES), base_dir=base
-        )
-        # str in, str out; the stub's StrOrBytes covers the bytes overload
-        return out if isinstance(out, str) else out.decode("utf-8")
+        text = _scrub_unassigned(line).translate(_NO_ISOLATES)
+        # Adapted from python-bidi (https://github.com/MeirKriheli/python-bidi/blob/master/bidi/algorithm.py) - call the unchanged get_display phases while retaining original mark/base identities.
+        storage = algorithm.get_empty_storage()
+        storage["base_level"] = algorithm.PARAGRAPH_LEVELS[base]
+        storage["base_dir"] = base
+        algorithm.get_embedding_levels(text, storage, False, False)
+        anchor = None
+        for index, char in enumerate(storage["chars"]):
+            char["wts_index"] = index
+            category = unicodedata.category(char["ch"])
+            if category in ("Mn", "Mc", "Me"):
+                char["wts_base"] = anchor
+            elif category != "Cf":
+                anchor = index
+        for phase in (algorithm.explicit_embed_and_overrides,
+                      algorithm.resolve_weak_types, algorithm.resolve_neutral_types,
+                      algorithm.resolve_implicit_levels, algorithm.reorder_resolved_levels,
+                      algorithm.apply_mirroring):
+            phase(storage, False)
+        chars = storage["chars"]
+        positions = {char["wts_index"]: index for index, char in enumerate(chars)}
+        anchors = {index: positions[char["wts_base"]]
+                   for index, char in enumerate(chars)
+                   if char.get("wts_base") in positions}
+        return VisualText("".join(char["ch"] for char in chars), anchors)
 
     return Engine(reshape=reshape, reorder=reorder)
 
