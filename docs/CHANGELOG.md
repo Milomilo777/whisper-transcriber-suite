@@ -6,6 +6,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Cancel verified downloads while a server stops sending headers, body bytes or redirect data. Keep received prefixes resumable and release the connection even when an error traceback is retained.
 - Resume model downloads without charging local prefix-copy time as a network stall or recopying the same owned bytes on every retry. Check temporary copy space separately from the remaining download.
 - Translate new preset, subtitle-quality and diagnostics messages in eight languages, and distinguish saved presets from defaults in Greek.
 - Preserve per-host login limits when IPv6 counter tables fill. Use the remaining tracked network tier before shared overflow, so subnet-table pressure cannot lock unrelated allocations out.

@@ -23,20 +23,24 @@ from __future__ import annotations
 import contextlib
 import glob
 import hashlib
+import http.client
+import io
 import itertools
 import json
 import logging
 import os
 import re
 import shutil
+import socket
 import stat
 import sys
 import tempfile
 import threading
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import BinaryIO, Callable, Generator
+from typing import Any, BinaryIO, Callable, Generator
 
 from . import offline
 
@@ -411,6 +415,119 @@ def replace_with_retry(src: Path, dst: Path, attempts: int = 10, delay: float = 
             time.sleep(delay)
 
 
+class _ReadContext:
+    """Own only this verified request's readers, including failed redirects."""
+
+    def __init__(self, check_cancel: Callable[[], None], timeout: float):
+        self.check_cancel = check_cancel
+        self.timeout = timeout
+        self.readers: set[_PollingReader] = set()
+
+    def __enter__(self) -> _ReadContext:
+        return self
+
+    def __exit__(self, *_args: Any) -> None:
+        # open() can fail before yielding a response. Do not let a stored
+        # traceback retain its socket, or a cleanup error hide cancellation.
+        for reader in tuple(self.readers):
+            with contextlib.suppress(Exception):
+                reader.close()
+            with contextlib.suppress(Exception):
+                reader.sock.close()
+
+
+class _PollingReader(io.RawIOBase):
+    """Poll recv directly; retrying a timed-out SocketIO would poison it."""
+
+    def __init__(self, sock: Any, context: _ReadContext):
+        self.sock = sock
+        self.context = context
+        # Keep the transport alive when urllib closes its connection object.
+        # Never read through this SocketIO; it owns only a socket reference.
+        self.holder = sock.makefile("rb", buffering=0)
+        context.readers.add(self)
+
+    def readable(self) -> bool:
+        return True
+
+    def readinto(self, buffer: Any) -> int:
+        if self.closed:
+            raise ValueError("read of closed download")
+        if not len(buffer):
+            return 0
+        previous = self.sock.gettimeout()
+        deadline = time.monotonic() + self.context.timeout
+        try:
+            while True:
+                self.context.check_cancel()
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise TimeoutError("timed out waiting for download bytes")
+                self.sock.settimeout(min(0.1, remaining))
+                try:
+                    return self.sock.recv_into(buffer)
+                except socket.timeout:
+                    continue
+        finally:
+            # CONNECT's temporary response must leave the following TLS
+            # handshake with the original timeout, not our polling interval.
+            with contextlib.suppress(OSError):
+                self.sock.settimeout(previous)
+
+    def close(self) -> None:
+        if self.closed:
+            return
+        try:
+            self.holder.close()
+        finally:
+            self.context.readers.discard(self)
+            super().close()
+
+
+def _download_connection(base: Any, req: urllib.request.Request) -> Any:
+    context = getattr(req, "_verified_download_context", None)
+    if context is None:
+        return base  # Best-effort config/stats requests retain stdlib behavior.
+
+    class Response(http.client.HTTPResponse):
+        def __init__(self, sock: Any, *args: Any, **kwargs: Any):
+            super().__init__(sock, *args, **kwargs)
+            original = self.fp
+            raw = None
+            try:
+                raw = _PollingReader(sock, context)
+                self.fp = io.BufferedReader(raw)
+            except BaseException:
+                if raw is not None:
+                    raw.close()
+                self.close()
+                raise
+            finally:
+                if original is not None:
+                    original.close()
+
+    def connection(host: str, **kwargs: Any) -> http.client.HTTPConnection:
+        conn = base(host, **kwargs)
+        conn.response_class = Response
+        return conn
+
+    return connection
+
+
+class _DownloadHTTPHandler(urllib.request.HTTPHandler):
+    def http_open(self, req):  # noqa: ANN001
+        return self.do_open(_download_connection(http.client.HTTPConnection, req), req)
+
+
+class _DownloadHTTPSHandler(urllib.request.HTTPSHandler):
+    def https_open(self, req):  # noqa: ANN001
+        # Preserve the supplied trust context and stdlib proxy/CONNECT path.
+        kwargs: dict[str, Any] = {"context": getattr(self, "_context")}
+        if hasattr(self, "_check_hostname"):  # Removed by Python 3.12.
+            kwargs["check_hostname"] = getattr(self, "_check_hostname")
+        return self.do_open(_download_connection(http.client.HTTPSConnection, req), req, **kwargs)
+
+
 class _HttpsOnlyRedirects(urllib.request.HTTPRedirectHandler):
     """Follow redirects, but never from https to anything else."""
 
@@ -418,10 +535,14 @@ class _HttpsOnlyRedirects(urllib.request.HTTPRedirectHandler):
         if req.full_url.lower().startswith("https:") and not newurl.lower().startswith("https:"):
             raise urllib.error.HTTPError(
                 newurl, code, f"refused a redirect away from https to {newurl}", headers, fp)
-        return super().redirect_request(req, fp, code, msg, headers, newurl)
+        redirected = super().redirect_request(req, fp, code, msg, headers, newurl)
+        context = getattr(req, "_verified_download_context", None)
+        if redirected is not None and context is not None:
+            setattr(redirected, "_verified_download_context", context)
+        return redirected
 
 
-_opener = urllib.request.build_opener(_HttpsOnlyRedirects)
+_opener = urllib.request.build_opener(_HttpsOnlyRedirects, _DownloadHTTPHandler, _DownloadHTTPSHandler)
 
 
 def urlopen_https_only(req, timeout: float):  # noqa: ANN001
@@ -570,18 +691,24 @@ def _fetch(
     if offset:
         headers["Range"] = f"bytes={offset}-"
     req = urllib.request.Request(url, headers=headers)
+    context = _ReadContext(check_cancel, timeout)
+    setattr(req, "_verified_download_context", context)
     try:
-        with _opener.open(req, timeout=timeout) as r:
+        with context, _opener.open(req, timeout=timeout) as r:
             start = _resume_offset(r, offset)
             if offset and not start:
                 logger.info("Server ignored the resume range for %s; starting over", url)
             done = start
             last_pct = -1
+            # Return available payload before waiting for a full chunk, so a
+            # cancelled read keeps the prefix already received. Simple injected
+            # response doubles may only implement read().
+            read_chunk = getattr(r, "read1", r.read)
             with open_part(part, start, prepared=prepared) as f:
                 while True:
                     if cancel_event is not None and cancel_event.is_set():
                         raise DownloadCancelled(f"Cancelled {what}; it resumes next time.")
-                    chunk = r.read(chunk_size)
+                    chunk = read_chunk(chunk_size)
                     if not chunk:
                         break
                     if done + len(chunk) > size:
