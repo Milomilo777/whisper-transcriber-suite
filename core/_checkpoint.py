@@ -868,7 +868,8 @@ def validate_checkpoint(
     """Return "" if the checkpoint is usable, else a human reason.
 
     ``cfg_fingerprint`` is one fingerprint or the tuple of accepted ones
-    (:func:`accepted_fingerprints`).
+    (:func:`accepted_fingerprints`). A completed transcript needs no further
+    decoder work, so only its media identity and segment list must match.
 
     Caller is responsible for deleting the stale partial when the
     return value is non-empty.
@@ -876,6 +877,13 @@ def validate_checkpoint(
     problem = media_identity_problem(data)
     if problem:
         return problem
+    if data.get("transcription_completed") is True:
+        # No further decoding is needed: device/model/config differences
+        # cannot splice incompatible segments into this complete transcript.
+        # Media identity above and segment shape still gate reuse.
+        if not isinstance(data.get("segments"), list):
+            return "checkpoint segments field is not a list"
+        return ""
     if str(data.get("backend") or "") != backend:
         return (
             f"backend changed: checkpoint={data.get('backend')!r} "

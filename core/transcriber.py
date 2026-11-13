@@ -971,6 +971,46 @@ def _cap_segment(segment: dict[str, Any], audio_end: float) -> dict[str, Any]:
     return result
 
 
+def _recover_checkpoint_timing(
+    task: "TranscriptionTask", data: dict[str, Any],
+    log_cb: Callable[[str], None] | None,
+) -> tuple[dict[str, Any], bool]:
+    """Keep raw legacy timing before using only its verified valid prefix."""
+    end = _positive_duration(getattr(task, "_audio_end", None))
+    segments = data.get("segments")
+    if end is None or not isinstance(segments, list):
+        return data, False
+    prefix: list[dict[str, Any]] = []
+    reason = ""
+    for segment in segments:
+        try:
+            if not isinstance(segment, dict):
+                raise _TimingBoundsError("Saved checkpoint timing is not a segment mapping.")
+            words = segment.get("words")
+            if isinstance(words, list) and any(not isinstance(word, dict) for word in words):
+                raise _TimingBoundsError("Saved checkpoint timing contains a non-mapping word.")
+            prefix.append(_cap_segment(segment, end))
+        except (ValueError, TypeError, OverflowError, _TimingBoundsError) as error:
+            reason = str(error)
+            break
+    if not reason:
+        cursor = _cursor_or_none(data.get("last_end_time"))
+        if data.get("transcription_completed") is True or cursor is None or cursor <= end:
+            return data, False
+        reason = "Saved checkpoint cursor is outside the known audio extent."
+    # This strict durable write must succeed before a later checkpoint can
+    # replace the rejected cues. Preserve the entire list, including good
+    # segments after the first rejected one; never invent clocks for its text.
+    kept = _keep_timing_recovery(task.file_path, segments, reason)
+    recovered = dict(data)
+    recovered.update(segments=prefix, segment_count=len(prefix),
+                     last_end_time=max((float(s["end"]) for s in prefix), default=0.0),
+                     transcription_completed=False)
+    log(f"WARN: saved timing was outside the audio; the original text is kept at {kept}. "
+        "Resuming only the valid prefix.", log_cb)
+    return recovered, True
+
+
 def _enforce_audio_end(
     task: TranscriptionTask, segments: list[dict[str, Any]],
     *, recovery: Callable[[], list[dict[str, Any]]] | None = None,
@@ -986,6 +1026,115 @@ def _enforce_audio_end(
     except (ValueError, TypeError, OverflowError, _TimingBoundsError) as error:
         kept = _keep_timing_recovery(task.file_path, recovery() if recovery else segments, str(error))
         raise _TimingBoundsError(f"{error} Recovery data: {kept}") from error
+
+
+
+_TIMING_TAIL_SEGMENTS = 64
+_TIMING_TAIL_SECONDS = 2.0
+_TIMING_TAIL_TEXT_CHARS = 128 * 1024
+
+
+def _capture_timing_tail(
+    task: TranscriptionTask, original: list[dict[str, Any]], remaining: Iterator[Any],
+    convert: Callable[[Any], dict[str, Any]], reason: str,
+) -> tuple[str | None, str]:
+    """Keep a bounded further tail without admitting any cue to the checkpoint.
+
+    The time budget is checked between iterator steps; it cannot preempt a native
+    decoder call. The existing worker watchdog still owns a blocked decoder.
+    """
+    captured = list(original)
+    deadline = time.monotonic() + _TIMING_TAIL_SECONDS
+    chars = 0
+    stopped = "segment-limit"
+    for _ in range(_TIMING_TAIL_SEGMENTS):
+        if task.cancelled or task.paused:
+            stopped = "cancelled" if task.cancelled else "paused"
+            break
+        if time.monotonic() >= deadline:
+            stopped = "time-limit"
+            break
+        try:
+            segment = next(remaining)
+        except StopIteration:
+            stopped = "exhausted"
+            break
+        except Exception as error:  # noqa: BLE001 - preserve the original timing failure
+            stopped = f"decoder-error:{type(error).__name__}"
+            try:
+                if isinstance(error, RuntimeError):
+                    from .backends.faster_whisper_be import _cuda_failure
+                    category = _cuda_failure(error)
+                    if category:
+                        stopped += f"/{category}"
+                # Keep useful known categories without copying private paths or
+                # arbitrary decoder messages into the error or log breadcrumb.
+                logger.warning("Additional timing recovery stopped: %s", stopped)
+            except Exception:  # noqa: BLE001 - diagnostics cannot mask saved recovery
+                pass
+            break
+        if isinstance(segment, _loop_guard.LoopGuardTick):
+            continue
+        try:
+            raw = convert(segment)
+        except Exception as error:  # noqa: BLE001 - keep available text without inventing clocks
+            text = getattr(segment, "text", None)
+            if isinstance(text, str):
+                captured.append({"text": text, "timing_unavailable": True})
+            stopped = f"conversion-error:{type(error).__name__}"
+            break
+        captured.append(raw)
+        text = raw.get("text")
+        chars += len(text) if isinstance(text, str) else 0
+        if chars >= _TIMING_TAIL_TEXT_CHARS:
+            stopped = "text-limit"
+            break
+    # The initial record already contains the full prefix. A stop reason alone
+    # belongs in the error message, not another full-transcript copy.
+    if len(captured) == len(original):
+        return None, stopped
+    kept = _keep_timing_recovery(task.file_path, captured,
+                                 f"{reason}; additional tail capture: {stopped}")
+    return kept, stopped
+
+
+def _enforce_decoded_audio_end(
+    task: TranscriptionTask, bounded: list[dict[str, Any]], *,
+    recovery: Callable[[], list[dict[str, Any]]], remaining: Iterator[Any],
+    convert: Callable[[Any], dict[str, Any]],
+    runner: Any = None,
+) -> None:
+    try:
+        # This writes the initial raw record BEFORE advancing the lazy decoder.
+        _enforce_audio_end(task, bounded, recovery=recovery)
+    except _TimingBoundsError as error:
+        retry_enabled = runner.retry_enabled if runner is not None else None
+        if runner is not None:
+            runner.retry_enabled = False
+        try:
+            kept, stopped = _capture_timing_tail(task, recovery(), remaining, convert, str(error))
+        except OSError as storage_error:
+            # Preserve the storage exception's type/errno/winerror for callers
+            # and classification, while exposing the record already on disk.
+            if storage_error.errno is not None or getattr(storage_error, "winerror", None) is not None:
+                # OSError renders its own errno and filename around strerror.
+                # Reusing str(error) here would duplicate both wrappers.
+                storage_error.strerror = (
+                    f"{storage_error.strerror or ''} Additional timing recovery failed. {error}"
+                ).strip()
+            else:
+                storage_error.args = (f"{storage_error} Additional timing recovery failed. {error}",)
+            raise
+        finally:
+            if runner is not None:
+                runner.retry_enabled = retry_enabled
+        if kept is not None:
+            raise _TimingBoundsError(
+                f"{error} Additional timing recovery ({stopped}): {kept}"
+            ) from error
+        raise _TimingBoundsError(
+            f"{error} Additional timing recovery: {stopped}; no additional text was recovered."
+        ) from error
 
 
 def _segments_for_writer(
@@ -3509,6 +3658,7 @@ def transcribe(
             stats=_guard_stats,
             ticks=True,
             cancelled=lambda: bool(task.cancelled),
+            passthrough=lambda: not runner.retry_enabled,
         )
 
         segments_data: list[dict[str, Any]] = []
@@ -3571,10 +3721,17 @@ def transcribe(
                 if progress_cb:
                     progress_cb(percent)
 
-                segments_data.append(_guarded_segment_to_dict(seg, want_words, _guard_stats))
-                bounded = [segments_data[-1]]
-                _enforce_audio_end(task, bounded, recovery=lambda: segments_data)
-                segments_data[-1] = bounded[0]
+                decoded = _guarded_segment_to_dict(seg, want_words, _guard_stats)
+                bounded = [decoded]
+                # Publish to the resumable prefix only after validation. The
+                # raw recovery keeps the rejected cue; the exception handler
+                # must checkpoint only the already accepted text and cursor.
+                _enforce_decoded_audio_end(
+                    task, bounded, recovery=lambda: segments_data + [decoded], remaining=segments,
+                    convert=lambda raw: _guarded_segment_to_dict(raw, want_words, _guard_stats),
+                    runner=runner,
+                )
+                segments_data.append(bounded[0])
                 segments_since_checkpoint += 1
 
                 now = time.time()
@@ -3599,12 +3756,13 @@ def transcribe(
             # ADR 0017: read collapsed windows and long silent-looking gaps again, whole-file
             # runs only, while the decoded input (a denoised temp file) still exists.
             if clip is None and segments_data and not task.cancelled:
-                segments_data = _rescue_collapsed(
+                rescued_segments = _rescue_collapsed(
                     task, segments_data, audio_path, transcribe_kwargs, want_words,
                     detected_lang_so_far, float(getattr(info, "duration", 0.0) or 0.0), log_cb,
                     before_piece=lambda: _wait_while_paused(task, meter),
                 )
-                _enforce_audio_end(task, segments_data)
+                _enforce_audio_end(task, rescued_segments)
+                segments_data = rescued_segments
         except BaseException:
             # A decoder error mid-file: keep what was decoded since the last
             # periodic checkpoint before the error reaches the worker.
@@ -4260,10 +4418,9 @@ def resume_transcription(
     required instead. Caller (the worker) handles the False case by
     falling back to a fresh ``transcribe(task)``.
 
-    Only the default ``faster_whisper`` backend supports resume —
-    alt backends return False so the worker re-runs from scratch.
-    The slicing strategy assumes the WhisperModel.transcribe API
-    surface; backends that don't share it would need their own slicer.
+    Partial decoding supports only the default ``faster_whisper`` backend;
+    other backends need their own slicer. A completed transcript can resume
+    post-processing and output writing without another decoder call.
     """
     _remember_task_device(task)
     _clue_phase(task, "worker.prepare")
@@ -4357,6 +4514,20 @@ def resume_transcription(
             _keep_checkpoint_aside(task, "the saved audio extent is invalid", log_cb)
             return False
         task._audio_end = _positive_duration(saved_end) or source_end
+        data, timing_recovered = _recover_checkpoint_timing(task, data, log_cb)
+        if timing_recovered:
+            # Dropping an unplaced suffix makes this a partial transcript.
+            # Recheck compatibility: the completed-transcript exemption no
+            # longer permits decoding with a different model/settings/backend.
+            reason = _checkpoint.validate_checkpoint(
+                data, backend=backend_for_check, model_name=model_name, cfg_fingerprint=cfg_fp,
+            )
+            cursor = float(data["last_end_time"])
+            known_end = task._audio_end
+            if (reason or not data["segments"] or known_end is None or cursor >= known_end
+                    or (backend and backend != "faster_whisper")):
+                _keep_checkpoint_aside(task, reason or "the saved timing has no supported tail to resume", log_cb)
+                return False
         _note_run_identity(task)
         # A legacy missing key meant False even if this profile was created
         # under a newer default. Hash its original spelling, decode its value.
@@ -4364,7 +4535,10 @@ def resume_transcription(
         config["word_timestamps"] = (saved_words if isinstance(saved_words, bool)
                                      else bool(resume_config.get("word_timestamps", False)))
         task.whisper_task = cp_task
-        _checked_whisper_task(task, backend_for_check or "faster_whisper")
+        # A completed translation already contains English text; the current
+        # decoder's translation capability matters only if more ASR is needed.
+        if data.get("transcription_completed") is not True:
+            _checked_whisper_task(task, backend_for_check or "faster_whisper")
 
         cp_language = str(data.get("language") or "")
         try:
@@ -4597,6 +4771,7 @@ def resume_transcription(
                 stats=guard_stats,
                 ticks=True,
                 cancelled=lambda: bool(task.cancelled),
+                passthrough=lambda: not runner.retry_enabled,
                 previous_text=(
                     str(prior_segments[-1].get("text", "") or "")
                     if prior_segments and isinstance(prior_segments[-1], dict)
@@ -4635,6 +4810,19 @@ def resume_transcription(
                 log("Task cancelled during resume.", log_cb)
                 return True
 
+            def _resume_segment(raw: Any) -> dict[str, Any]:
+                d = _guarded_segment_to_dict(raw, want_words, guard_stats)
+                d["start"] = float(d.get("start", 0.0)) + last_end_time
+                d["end"] = float(d.get("end", 0.0)) + last_end_time
+                if want_words and isinstance(d.get("words"), list):
+                    for w in d["words"]:
+                        try:
+                            w["start"] = float(w.get("start", 0.0)) + last_end_time
+                            w["end"] = float(w.get("end", 0.0)) + last_end_time
+                        except (TypeError, ValueError):
+                            continue
+                return d
+
             for seg in new_segments_iter:
                 if _handle_resume_cancelled():
                     return True  # We "handled" the cancel cleanly.
@@ -4655,20 +4843,14 @@ def resume_transcription(
                             progress_cb(99)
                     continue
 
-                d = _guarded_segment_to_dict(seg, want_words, guard_stats)
-                d["start"] = float(d.get("start", 0.0)) + last_end_time
-                d["end"] = float(d.get("end", 0.0)) + last_end_time
-                if want_words and isinstance(d.get("words"), list):
-                    for w in d["words"]:
-                        try:
-                            w["start"] = float(w.get("start", 0.0)) + last_end_time
-                            w["end"] = float(w.get("end", 0.0)) + last_end_time
-                        except (TypeError, ValueError):
-                            continue
-                new_segments_data.append(d)
+                d = _resume_segment(seg)
                 bounded = [d]
-                _enforce_audio_end(task, bounded, recovery=lambda: prior_segments + new_segments_data)
-                new_segments_data[-1] = bounded[0]
+                _enforce_decoded_audio_end(
+                    task, bounded, recovery=lambda: prior_segments + new_segments_data + [d],
+                    remaining=new_segments_iter, convert=_resume_segment,
+                    runner=runner,
+                )
+                new_segments_data.append(bounded[0])
 
                 if progress_cb:
                     # d["end"] is on the original timeline; scale against the
