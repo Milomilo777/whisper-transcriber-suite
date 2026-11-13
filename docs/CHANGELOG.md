@@ -61,6 +61,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Stopping system-audio recording no longer waits for a silent output to resume playback. Loopback reads only available frames and closes its stream on the capture thread.
 - Isolate simultaneous whisper.cpp model downloads so a failed attempt cannot corrupt another one. Models are synced and atomically installed before reporting ready; a destination directory is rejected and existing partial copies are preserved.
 - Reject empty AI Layer and whisper.cpp model downloads, including responses without a size header. A failed empty response keeps the previous file and never reports the model ready; cancelled downloads retain their cancellation message.
+- Protect completed API output files when a crash or storage failure prevents writing their retry receipt. A retention guard now exists before transcription starts; late errors and cancellation collect saved outputs, and cleanup preserves any unaccounted-for files.
 - Support psutil 5.9 when locating offline AI server sockets and inspecting the app's open network connections.
 - Keep history results accessible after retrying an unsuccessful API output archive. Cleanup updates the saved paths before removing the originals, and retains them if history cannot be saved.
 - Preserve API outputs in subfolders when an archive copy fails, including across server restarts. Retained copies keep their relative folders so same-named outputs cannot replace each other.

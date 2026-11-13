@@ -11,6 +11,97 @@ from core.server import jobs as J
 
 
 @pytest.mark.parametrize("nested", [False, True])
+@pytest.mark.parametrize("outcome", ["error", "cancel", "collection-error"])
+def test_late_engine_exit_delivers_saved_results_and_persists_history(
+    tmp_path, monkeypatch, nested, outcome,
+):
+    """An abnormal terminal state must retain downloads and durable history."""
+    import http.client
+    import threading
+    import time
+    from core.server.httpd import JobHTTPServer
+
+    monkeypatch.setattr(history, "default_db_path", lambda: tmp_path / "history.db")
+    complete = {"srt": b"1\n00:00:00,000 --> 00:00:01,000\nComplete.\n",
+                "txt": b"Complete text.\n"}
+
+    def render(task, *args):
+        folder = Path(task.file_path).parent
+        if nested:
+            folder /= "captions"
+        folder.mkdir(parents=True, exist_ok=True)
+        paths = []
+        for fmt, content in complete.items():
+            path = folder / ("custom-name." + fmt)
+            path.write_bytes(content)
+            paths.append(str(path))
+        task.output_paths = paths
+        if outcome == "error":
+            raise RuntimeError("synthetic error after writing both outputs")
+        if outcome == "cancel":
+            task.cancelled = True
+
+    manager = J.JobManager(render, jobs_root=str(tmp_path / "jobs"),
+                           outputs_root=str(tmp_path / "outputs"), record_history=True)
+    real_collect = manager._collect_outputs
+    calls = []
+
+    def collect(job, task):
+        calls.append(True)
+        if outcome == "collection-error" and len(calls) == 1:
+            raise OSError("synthetic first collection error")
+        return real_collect(job, task)
+
+    monkeypatch.setattr(manager, "_collect_outputs", collect)
+    manager.start()
+    try:
+        job_id = manager.submit_upload("fixture.wav", b"RIFF0000", list(complete))
+        deadline = time.monotonic() + 5
+        job = None
+        while time.monotonic() < deadline:
+            job = manager.get(job_id)
+            if job is not None and job.status in J._TERMINAL:
+                break
+            time.sleep(0.01)
+        expected = J.STATUS_CANCELLED if outcome == "cancel" else J.STATUS_ERROR
+        assert job is not None and job.status == expected
+        for fmt, content in complete.items():
+            downloadable = manager.output_path(job_id, fmt)
+            assert downloadable is not None and Path(downloadable).read_bytes() == content
+        server = JobHTTPServer(("127.0.0.1", 0), manager, token="")
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            for fmt, content in complete.items():
+                connection = http.client.HTTPConnection("127.0.0.1", server.server_port, timeout=5)
+                try:
+                    connection.request("GET", f"/api/jobs/{job_id}/result?fmt={fmt}")
+                    response = connection.getresponse()
+                    assert response.status == 200 and response.read() == content
+                finally:
+                    connection.close()
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=5)
+        assert not thread.is_alive()
+        with history.HistoryDB() as saved:
+            rows = saved.list_transcriptions()
+        assert len(rows) == 1 and rows[0]["status"] == expected
+        archived = rows[0]["output_paths"]
+        assert len(archived) == len(complete)
+        assert {Path(path).suffix[1:]: Path(path).read_bytes() for path in archived} == complete
+        assert all(Path(path).is_relative_to(tmp_path / "outputs") for path in archived)
+    finally:
+        manager.stop()
+    assert manager._discard_dir(job.work_dir, job)
+    assert not Path(job.work_dir).exists()
+    with history.HistoryDB() as reopened:
+        assert reopened.list_transcriptions()[0] == rows[0]
+    assert all(Path(path).is_file() for path in archived)
+
+
+@pytest.mark.parametrize("nested", [False, True])
 @pytest.mark.parametrize("restart", [False, True])
 def test_cleanup_retry_relocates_real_history_before_removing_originals(tmp_path, monkeypatch, nested, restart):
     monkeypatch.setattr(history, "default_db_path", lambda: tmp_path / "history.db")

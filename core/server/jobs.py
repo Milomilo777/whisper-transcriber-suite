@@ -39,6 +39,7 @@ import queue
 import re
 import shutil
 import socket
+import stat
 import subprocess
 import tempfile
 import threading
@@ -605,7 +606,8 @@ class JobManager:
         except OSError:
             return list(found.values())
         if _KEEP_FILE in names:
-            listed = _read_keep_list(os.path.join(work_dir, _KEEP_FILE))
+            record = _read_keep_record(os.path.join(work_dir, _KEEP_FILE))
+            listed = record[0] if record is not None else None
             for name in listed or []:
                 add(os.path.join(work_dir, *name.split("/")))
         if job is None:
@@ -626,9 +628,12 @@ class JobManager:
             self._outputs_root, os.path.basename(os.path.normpath(work_dir))[:12])
         saved = True
         relocated: dict[str, str] = {}
+        uncertain = False
         keep = os.path.join(work_dir, _KEEP_FILE)
         if os.path.exists(keep):
-            listed = _read_keep_list(keep)
+            record = _read_keep_record(keep)
+            listed = record[0] if record is not None else None
+            uncertain = record[1] if record is not None else False
             # A missing, escaped or unreadable named result is uncertainty,
             # not proof that every result has already been copied elsewhere.
             if listed is None or any(
@@ -657,6 +662,10 @@ class JobManager:
                 logger.warning("server: could not keep %s: %s",
                                os.path.basename(src), e)
                 saved = False
+        if saved and uncertain:
+            # A late engine failure can precede result registration. Known
+            # copies do not justify deleting an unreported sibling.
+            saved = self._only_retained_files(work_dir, set(relocated))
         if saved and relocated:
             try:
                 from core.history import HistoryDB, default_db_path
@@ -672,7 +681,34 @@ class JobManager:
                 saved = False
         return saved
 
-    def _write_keep_file(self, job: Job, paths: list[str]) -> None:
+    def _only_retained_files(self, directory: str, retained: set[str]) -> bool:
+        """Prove an uncertain folder has no unaccounted-for files or links."""
+        accounted = {os.path.normcase(os.path.abspath(path)) for path in retained}
+        accounted.update(os.path.normcase(os.path.join(os.path.abspath(directory), name))
+                         for name in (_KEEP_FILE, _JOB_DIR_MARKER))
+        pending = [directory]
+        try:
+            root = os.lstat(directory)
+            if (os.path.islink(directory) or getattr(root, "st_file_attributes", 0)
+                    & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)):
+                return False
+            while pending:
+                with os.scandir(pending.pop()) as entries:
+                    for entry in entries:
+                        attributes = entry.stat(follow_symlinks=False)
+                        if (entry.is_symlink() or getattr(attributes, "st_file_attributes", 0)
+                                & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)):
+                            return False
+                        if entry.is_dir(follow_symlinks=False):
+                            pending.append(entry.path)
+                        elif (not entry.is_file(follow_symlinks=False)
+                              or os.path.normcase(os.path.abspath(entry.path)) not in accounted):
+                            return False
+        except OSError:
+            return False
+        return True
+
+    def _write_keep_file(self, job: Job, paths: list[str], *, uncertain: bool = False) -> None:
         """Record which files of the job folder still lack a durable copy.
 
         Written as real UTF-8 (not ``\\uXXXX`` escapes): Persian titles would
@@ -684,10 +720,14 @@ class JobManager:
         # Flat lists keep their original encoding. A versioned object for
         # nested paths makes older readers fail closed and retain the folder.
         receipt: Any = {"version": 1, "paths": names} if any("/" in name for name in names) else names
+        if uncertain:
+            # Older list/v1 readers reject v2 and keep the whole directory.
+            receipt = {"version": 2, "uncertain": True, "paths": names}
         try:
             with open(os.path.join(job.work_dir, _KEEP_FILE), "w",
                       encoding="utf-8") as f:
                 json.dump(receipt, f, ensure_ascii=False)
+                _strict_sync(f)
         except OSError as e:
             logger.error(
                 "server: could not write the keep list of job %s (%s); "
@@ -1058,6 +1098,8 @@ class JobManager:
     def _run_one(self, job: Job) -> None:
         history_db = None
         history_id = None
+        guard_created = False
+        task: _ServerTask | None = None
         started = time.time()
         try:
             if job.kind == "url":
@@ -1090,6 +1132,13 @@ class JobManager:
             # single-threaded worker stays race-free. The media lives in the
             # SAME work_dir, so find_project_file walks up to this file.
             self._write_override_file(job)
+            # An empty keep file means uncertainty to current and older
+            # readers. Persist it BEFORE the engine can produce irreplaceable
+            # results, even if a later receipt cannot be created or written.
+            with open(os.path.join(job.work_dir, _KEEP_FILE), "x",
+                      encoding="utf-8") as guard:
+                _strict_sync(guard)
+            guard_created = True
             self._set_status(job, STATUS_RUNNING)
             task = _ServerTask(job)
 
@@ -1108,14 +1157,17 @@ class JobManager:
             with self._lock:
                 cancelled = job.cancelled
                 job.settling = True  # from here a cancel() is refused
+            job.outputs = self._collect_outputs(job, task)
             if cancelled:
+                self._include_partial_output(job)
                 self._settle(job, STATUS_CANCELLED, history_db, history_id,
-                             time.time() - started, job.detected_language)
+                             time.time() - started, job.detected_language,
+                             guard_created=guard_created)
             else:
-                job.outputs = self._collect_outputs(job, task)
                 job.progress = 100
                 self._settle(job, STATUS_FINISHED, history_db, history_id,
-                             time.time() - started, job.detected_language)
+                             time.time() - started, job.detected_language,
+                             guard_created=guard_created)
             self._fire_webhook(job)
         except DownloadCancelled:
             self._set_status(job, STATUS_CANCELLED)
@@ -1126,14 +1178,26 @@ class JobManager:
             job.error = public_error_text(e)
             with self._lock:
                 job.settling = True
+            if task is not None:
+                try:
+                    job.outputs = self._collect_outputs(job, task)
+                except Exception:  # noqa: BLE001 - the guard retains uncertainty
+                    logger.exception("server: could not collect saved outputs of job %s", job.job_id)
             # A paid cloud run that died part-way left its finished text in
             # a partial subtitle file: offer it as the job's output.
-            partial = self._partial_file(job)
-            if partial:
-                job.outputs = [(PARTIAL_OUTPUT_KEY, partial)]
+            self._include_partial_output(job)
             self._settle(job, STATUS_ERROR, history_db, history_id,
-                         time.time() - started, job.language, error=str(e))
+                         time.time() - started, job.language, error=str(e),
+                         guard_created=guard_created)
             self._fire_webhook(job)
+
+    def _include_partial_output(self, job: Job) -> None:
+        partial = self._partial_file(job)
+        if partial:
+            key = os.path.normcase(os.path.abspath(partial))
+            job.outputs = [(fmt, path) for fmt, path in job.outputs
+                           if os.path.normcase(os.path.abspath(path)) != key]
+            job.outputs.append((PARTIAL_OUTPUT_KEY, partial))
 
     def _partial_file(self, job: Job) -> str:
         """Path of the ``<media>.partial.srt`` a failed cloud run kept, or ""."""
@@ -1143,7 +1207,8 @@ class JobManager:
         return path if os.path.isfile(path) else ""
 
     def _settle(self, job: Job, status: str, db: Any, rid: int | None,
-                duration_s: float, language: str, error: str = "") -> None:
+                duration_s: float, language: str, error: str = "", *,
+                guard_created: bool = False) -> None:
         """End a job: persist first, report second.
 
         Outputs are copied out of the temporary folder and the history row is
@@ -1163,10 +1228,14 @@ class JobManager:
             kept = [p for _fmt, p in job.outputs]
         # A path still inside the job folder is a copy that failed.
         unsaved = [p for p in kept if _relative_output_path(job.work_dir, p, resolve_links=False) is not None]
+        uncertain = guard_created and status != STATUS_FINISHED
         if unsaved:
             logger.error("server: %d result file(s) of job %s have no copy "
                          "outside the job folder", len(unsaved), job.job_id)
             job.warning = _UNSAVED_WARNING
+        if uncertain:
+            self._write_keep_file(job, [path for _, path in job.outputs], uncertain=True)
+        elif unsaved:
             self._write_keep_file(job, unsaved)
         try:
             self._finish_history(db, rid, job, duration_s, language,
@@ -1174,6 +1243,10 @@ class JobManager:
         except Exception:  # noqa: BLE001
             logger.exception("server: could not write history for job %s",
                              job.job_id)
+        if guard_created and not unsaved and not uncertain:
+            # All reported results have durable copies. A failed write leaves
+            # the guard unreadable, conservatively retaining the whole folder.
+            self._write_keep_file(job, [])
         # The input is expendable even when a copy failed: the outputs are
         # what matters, and they stay protected (keep list, folder kept).
         try:
@@ -1889,16 +1962,24 @@ def _read_keep_list(path: str) -> list[str] | None:
     an empty one. Legacy list entries that are not plain names are ignored;
     versioned receipts require every relative path to be valid.
     """
+    record = _read_keep_record(path)
+    return record[0] if record is not None and not record[1] else None
+
+
+def _read_keep_record(path: str) -> tuple[list[str], bool] | None:
+    """Read known paths while preserving v2's whole-folder uncertainty."""
     try:
         with open(path, "rb") as f:
             raw = f.read(_KEEP_LIST_MAX_BYTES + 1)
         if len(raw) > _KEEP_LIST_MAX_BYTES:
             return None
         data = json.loads(raw.decode("utf-8"))
-    except (OSError, ValueError):  # UnicodeDecodeError is a ValueError
+    except (OSError, ValueError, RecursionError):  # UnicodeDecodeError is a ValueError
         return None
     if isinstance(data, dict):
-        if type(data.get("version")) is not int or data["version"] != 1 or not isinstance(data.get("paths"), list):
+        if (type(data.get("version")) is not int or data["version"] not in (1, 2)
+                or not isinstance(data.get("paths"), list)
+                or (data["version"] == 2 and data.get("uncertain") is not True)):
             return None
         result: list[str] = []
         for name in data["paths"]:
@@ -1908,12 +1989,12 @@ def _read_keep_list(path: str) -> list[str] | None:
             if any(part in ("", ".", "..") for part in parts) or os.path.normcase(parts[-1]) in (os.path.normcase(_JOB_DIR_MARKER), os.path.normcase(_KEEP_FILE)):
                 return None
             result.append("/".join(parts))
-        return result
+        return result, data["version"] == 2
     if not isinstance(data, list):
         return None
-    return [n for n in data
+    return ([n for n in data
             if isinstance(n, str) and n and os.path.basename(n) == n
-            and n not in (".", "..", _JOB_DIR_MARKER, _KEEP_FILE)]
+            and n not in (".", "..", _JOB_DIR_MARKER, _KEEP_FILE)], False)
 
 
 def _marker_owner_state(text: str) -> str:

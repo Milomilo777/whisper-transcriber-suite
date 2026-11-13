@@ -823,6 +823,9 @@ def test_failed_keep_list_write_logs_the_unsaved_names(
     class _BlockKeep(JobManager):
         def _archive_outputs(self, job):
             # A directory in the keep list's place makes its write fail.
+            keep = os.path.join(job.work_dir, J._KEEP_FILE)
+            if os.path.isfile(keep):
+                os.unlink(keep)  # replace this job's new pre-transcription guard
             os.makedirs(os.path.join(job.work_dir, J._KEEP_FILE),
                         exist_ok=True)
             return super()._archive_outputs(job)
