@@ -1,6 +1,6 @@
 # Work board and RESUME
 
-Updated: 2026-11-12. Release target: 2.4.0.
+Updated: 2026-11-14. Release target: 2.4.0.
 
 
 ## Current integrated source checkpoint
@@ -10,7 +10,7 @@ with the same loop-recovery decision for normal and resumed tasks. Empty clip
 ranges retain the decoded prefix and continue through the remaining audio;
 malformed clip arguments remain available for decoder validation.
 
-The combined source passed **14,965 tests, 75 skipped, zero failures**. It
+The ASR source checkpoint `02b29281` passed **15,803 tests, 44 skipped, zero failures**. It
 includes format identity for API outputs, bounded ASS karaoke timing, and four
 native Tk preset tests covering explicit models, settings-only presets and
 failed saves. The type gate reports
@@ -21,6 +21,13 @@ normal ten-minute CUDA tasks with word timing disabled and enabled. Each saved
 fifteen formats within the declared clock/structure checks. Packaged-artifact
 GPU acceptance remains pending. Store staging and channel guards passed hermetic
 checks. Store distribution and certification are deferred beyond 2.4.0. Earlier sections retain evidence for their named snapshots.
+
+The candidate also repairs subtitle timing and bilingual cue identity, delayed
+telemetry identity writes, configuration backup staging, and Windows in-place upgrades. Native upgrade fixtures
+cover preservation of untracked files, historical shortcuts and deselected shell
+integration. Source-gate results and acceptance of a packaged artifact are tracked
+separately in the ignored release record; a focused fixture pass is not final
+installer or Portable acceptance.
 
 ## Release boundary
 

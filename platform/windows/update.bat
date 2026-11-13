@@ -14,7 +14,7 @@ REM  See core/updates.py and docs/INSTALL.md.
 REM
 REM  Usage:  double-click, or  platform\windows\update.bat
 REM ============================================================================
-setlocal EnableExtensions EnableDelayedExpansion
+setlocal EnableExtensions DisableDelayedExpansion
 
 REM %~dp0 ends with a backslash; ..\.. walks up to the repo root.
 set "SCRIPT_DIR=%~dp0"
@@ -24,7 +24,7 @@ pushd "%SCRIPT_DIR%..\.." || (
 )
 set "REPO_ROOT=%CD%"
 
-echo [whisper] repository: %REPO_ROOT%
+echo [whisper] repository: "%REPO_ROOT%"
 echo.
 
 REM --- Refuse to touch a packaged install -----------------------------------
@@ -61,13 +61,15 @@ REM --- 2. Pick an interpreter ------------------------------------------------
 REM A .venv next to the source wins, so the update lands in the same place
 REM a source install put the packages.
 set "PY="
+set "PY_ARGS="
 if exist "%REPO_ROOT%\.venv\Scripts\python.exe" (
     set "PY=%REPO_ROOT%\.venv\Scripts\python.exe"
     echo [whisper] using the project virtualenv: .venv
 ) else (
     where py >nul 2>&1
     if not errorlevel 1 (
-        set "PY=py -3"
+        set "PY=py"
+        set "PY_ARGS=-3"
     ) else (
         where python >nul 2>&1
         if not errorlevel 1 (
@@ -86,10 +88,10 @@ if not defined PY (
 
 REM --- 3. Refresh dependencies ----------------------------------------------
 echo [whisper] upgrading pip...
-%PY% -m pip install --upgrade pip wheel >nul 2>&1
+"%PY%" %PY_ARGS% -m pip install --upgrade pip wheel >nul 2>&1
 
 echo [whisper] installing/upgrading requirements...
-%PY% -m pip install --upgrade -r "%REPO_ROOT%\requirements.txt"
+"%PY%" %PY_ARGS% -m pip install --upgrade -r "%REPO_ROOT%\requirements.txt"
 if errorlevel 1 (
     echo [whisper] ERROR: dependency install failed - see the output above.
     popd
@@ -114,7 +116,7 @@ REM Import the app rather than only trusting pip's exit code: a resolver
 REM conflict can install "successfully" and still leave a tree that cannot
 REM start. Better to fail here than on the user's next launch.
 echo [whisper] verifying the install...
-%PY% -c "import core, sys; print('[whisper] core version', core.__version__); sys.exit(0)"
+"%PY%" %PY_ARGS% -c "import core, sys; print('[whisper] core version', core.__version__); sys.exit(0)"
 if errorlevel 1 (
     echo [whisper] ERROR: the app does not import after the update.
     echo           Fix the errors above before launching.
