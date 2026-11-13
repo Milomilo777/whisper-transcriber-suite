@@ -518,7 +518,8 @@ networks are remembered (the oldest idle entry whose lockout has ended is droppe
 the host table does not free a locked host). Live /64 counters are never evicted,
 even if their allowance is only partly used. When that table is full, new
 untracked networks share the overflow budget too; their admitted comparisons
-still count against any tracked /48 allowance. Expired counters make room
+still count against any tracked /64 and /48 allowances. A full /48 table also
+preserves the limits and accounting of any live /64 counter. Expired counters make room
 without extending the existing windows. If all 2048 stored hosts are locked at
 once, a new address is not stored; its attempts (and those of every other
 unstored address) share one overflow budget of 30 comparisons per 10 minutes for

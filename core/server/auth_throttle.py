@@ -234,6 +234,7 @@ class AuthThrottle:
             saturated = self._saturated(key, now)
             trusted = self._is_trusted(key, now)
             prefix_entry = None
+            untracked_prefix = False
             if prefix is not None:
                 prefix_entry = self._prefixes.get(prefix)
                 if prefix_entry is not None and now - prefix_entry[1] >= self._prefix_window:
@@ -245,10 +246,10 @@ class AuthThrottle:
                         for old, counter in list(self._prefixes.items()):
                             if now - counter[1] >= self._prefix_window:
                                 del self._prefixes[old]
-                        if len(self._prefixes) >= self._max_prefixes:
-                            return self._overflow_admit(now)
-                    prefix_entry = [0.0, now]
-                if prefix_entry[0] >= self._prefix_budget and not trusted:
+                        untracked_prefix = len(self._prefixes) >= self._max_prefixes
+                    if not untracked_prefix:
+                        prefix_entry = [0.0, now]
+                if prefix_entry is not None and prefix_entry[0] >= self._prefix_budget and not trusted:
                     return int(prefix_entry[1] + self._prefix_window - now) + 1
             sub_entry = None
             untracked_subnet = False
@@ -268,7 +269,7 @@ class AuthThrottle:
                     # Budget used up: refuse without booking, so the refusal
                     # neither counts nor extends the window.
                     return int(sub_entry[1] + self._window - now) + 1
-            if saturated or untracked_subnet:
+            if saturated or untracked_subnet or untracked_prefix:
                 # Exhausted subnet/prefix counters take precedence even when
                 # a host or network cannot be stored. Charge admitted attempts
                 # to those counters as well as the shared overflow allowance.
@@ -282,7 +283,7 @@ class AuthThrottle:
             if prefix is not None and prefix_entry is not None:
                 prefix_entry[0] += 1
                 self._prefixes[prefix] = prefix_entry
-            if saturated or untracked_subnet:
+            if saturated or untracked_subnet or untracked_prefix:
                 return 0
             entry[0] += 1
             entry[2] = now
