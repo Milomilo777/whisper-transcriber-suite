@@ -310,3 +310,17 @@ Output: `dist\WhisperTranscriberSuite\WhisperTranscriberSuite.exe`
 
 More detail: [docs/BUILD.md](BUILD.md)
 
+
+## Windows upgrades and retained files
+
+The installer upgrades the current product in place without running an older
+uninstaller. It preserves untracked additions under the installation directory,
+including custom files beside bundled assets and tools. Files at destinations
+shipped by the new package are updated normally.
+
+Historical uninstall logs can contain recursive deletion rules. New installs
+replace those logs with the current package's tracked-file list instead of
+carrying the old rules forward. Old-only program files, runtime caches and user
+additions can therefore remain after uninstall; remove retained files manually
+only after checking that you no longer need them. A differently named predecessor
+installation is also retained while the application imports its profile data.

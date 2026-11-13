@@ -10,6 +10,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 - Prevent a delayed telemetry identity write from restoring a revoked identifier or sending stale identifiers after statistics are switched off and on. Local model-path normalization runs on the background sender.
 
+- Windows upgrades preserve untracked files inside the installation folder and retire unsafe historical uninstall actions. Old installer shortcuts are removed only when their version, target and arguments match this application.
+
 - Preserve word timing when exporting segments without a usable end, sanitize speaker labels, and repair short bilingual subtitle cues without losing distinct original/translation pairs.
 
 - Prevent repeated audio when optional word alignment misses a trailing decoded passage. Preserve usable alignment and avoid advancing through blank trailing text.

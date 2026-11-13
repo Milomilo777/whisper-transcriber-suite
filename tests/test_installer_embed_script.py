@@ -47,20 +47,16 @@ def _function(code: str, name: str) -> str:
     return match.group(0)
 
 
-def test_old_version_is_removed_only_after_the_wizard():
-    """A cancelled wizard must leave the installed version alone: the old
-    uninstaller runs from PrepareToInstall (after Install was clicked), never
-    from InitializeSetup (before the first page)."""
+def test_upgrade_never_runs_a_historical_uninstaller():
+    """A previous uninstall log can recursively delete user-added content."""
     code = _section(_text(), "Code")
     assert "function InitializeSetup" not in code
     prepare = _function(code, "PrepareToInstall")
-    assert "RunOldUninstaller(ThisAppId()" in prepare
-    assert "RunOldUninstaller(OldAppId" in prepare
-    # Legacy profile import belongs to the app's staged/SQLite migration.
-    # The installer only removes the predecessor after the wizard completes.
+    assert "Result := '';" in prepare
+    assert "GetUninstallString()" in prepare
+    assert "GetUninstallStringForAppId(OldAppId)" in prepare
     assert "MigrateOldAppData" not in prepare
-    # The only Exec of an uninstaller is the checked one.
-    assert code.count("Exec(") == 1 and "Exec(" in _function(code, "RunOldUninstaller")
+    assert "Exec(" not in code
 
 
 def test_upgrade_keeps_the_previous_folder_and_tasks():
@@ -78,21 +74,12 @@ def test_app_id_lookup_expands_the_doubled_brace():
     assert code.count('SetupSetting("AppId")') == 1
 
 
-def test_old_uninstaller_result_is_checked_and_awaited():
-    run = _function(_section(_text(), "Code"), "RunOldUninstaller")
-    assert "ewWaitUntilTerminated" in run
-    assert "if ResultCode <> 0 then" in run
-    # The uninstaller relaunches itself from a temp copy: wait for its key
-    # and its exe to disappear, bounded, and report a timeout.
-    assert "UninstallKeyExists(AnAppId)" in run and "FileExists(UninstString)" in run
-    assert "Sleep(500)" in run and "for i := 1 to 360 do" in run
-    assert "did not finish within 3 minutes" in run
-    # windows-installer.yml greps the setup log for this line after an upgrade.
-    assert "Log('Removed ' + What);" in run
-    assert "RunOldUninstaller(ThisAppId(), 'the previous version')" in _function(
-        _section(_text(), "Code"), "PrepareToInstall")
-    # A missing uninstaller (broken old install) does not block the install.
-    assert run.index("if not FileExists(UninstString) then") < run.index("Exec(")
+def test_upgrade_retires_historical_recursive_delete_records():
+    """An in-place upgrade must not append old destructive uninstall actions."""
+    assert "UninstallLogMode=overwrite" in _section(_text(), "Setup")
+    section = _section(_text(), "UninstallDelete")
+    recursive = [line for line in section.splitlines() if line.startswith("Type: filesandordirs;")]
+    assert recursive == ['Type: filesandordirs; Name: "{app}\\__pycache__"']
 
 
 def test_clone_your_voice_task_and_marker_are_unchanged():
@@ -112,7 +99,7 @@ def _both_installers():
             yield name, fh.read()
 
 
-@pytest.mark.parametrize("name,text", list(_both_installers()))
+@pytest.mark.parametrize("name,text", list(_both_installers()), ids=["installer_embed.iss", "installer.iss"])
 def test_installers_leave_profile_import_to_application(name, text):
     """Raw installer copies can overwrite newer databases and omit WAL rows.
 
@@ -124,7 +111,7 @@ def test_installers_leave_profile_import_to_application(name, text):
     assert "MigrateOldAppData" not in code, name
 
 
-@pytest.mark.parametrize("name,text", list(_both_installers()))
+@pytest.mark.parametrize("name,text", list(_both_installers()), ids=["installer_embed.iss", "installer.iss"])
 def test_uninstall_preserves_profile_settings(name, text):
     code = _section(text, "Code")
     uninstall = _function(code, "CurUninstallStepChanged")
@@ -132,7 +119,7 @@ def test_uninstall_preserves_profile_settings(name, text):
     assert not re.search(r"(?im)^.*(?:Name:|Source:).*\{localappdata\}.*config\.json", text), name
 
 
-@pytest.mark.parametrize("name,text", list(_both_installers()))
+@pytest.mark.parametrize("name,text", list(_both_installers()), ids=["installer_embed.iss", "installer.iss"])
 def test_model_cleanup_rechecks_private_cache_before_any_deletion(name, text):
     code = _section(text, "Code")
     cleanup = _function(code, "DeleteHubModels")
@@ -141,7 +128,7 @@ def test_model_cleanup_rechecks_private_cache_before_any_deletion(name, text):
     assert cleanup.index("CanDeletePrivateHub") < cleanup.index("DelTree("), name
 
 
-@pytest.mark.parametrize("name,text", list(_both_installers()))
+@pytest.mark.parametrize("name,text", list(_both_installers()), ids=["installer_embed.iss", "installer.iss"])
 def test_uninstall_never_offers_custom_hub_deletion(name, text):
     code = _section(text, "Code")
     uninstall = _function(code, "CurUninstallStepChanged")
@@ -151,7 +138,7 @@ def test_uninstall_never_offers_custom_hub_deletion(name, text):
     assert "DeleteHubModels(HubFolder, PrivateCache)" in uninstall, name
 
 
-@pytest.mark.parametrize("name,text", list(_both_installers()))
+@pytest.mark.parametrize("name,text", list(_both_installers()), ids=["installer_embed.iss", "installer.iss"])
 def test_model_deletion_question_defaults_to_keep(name, text):
     uninstall = _function(_section(text, "Code"), "CurUninstallStepChanged")
     assert "MB_YESNO or MB_DEFBUTTON2" in uninstall, name

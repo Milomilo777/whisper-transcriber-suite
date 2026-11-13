@@ -159,22 +159,36 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'the installed tree imports a DLL it does not carry' }
           & (Join-Path $dir 'python\python.exe') tools\smoke_windows_install.py $dir $env:APP_VERSION
           if ($LASTEXITCODE -ne 0) { throw "smoke test failed ($LASTEXITCODE)" }
-          # Upgrade path: the same installer run over the installed copy must find it
-          # (by its real uninstall key), remove it after the wizard, then install again.
+          # Exercise real user additions during upgrade and eventual uninstall.
+          $sentinels = @('app', 'core', 'bin', 'assets', 'python', 'Lib') | ForEach-Object {
+            $folder = Join-Path $dir $_
+            New-Item -ItemType Directory -Force $folder | Out-Null
+            $path = Join-Path $folder 'user-preservation-fixture.txt'
+            [IO.File]::WriteAllText($path, 'synthetic user original')
+            $path
+          }
           $log2 = Join-Path $env:RUNNER_TEMP 'wts-upgrade.log'
           $p = Start-Process -FilePath $setup -Wait -PassThru -ArgumentList @(
             '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', "/DIR=$dir", "/LOG=$log2")
           if ($p.ExitCode -ne 0) { Get-Content $log2 -Tail 40; throw "upgrade install exited $($p.ExitCode)" }
-          if (-not (Select-String -Path $log2 -SimpleMatch 'Removed the previous version' -Quiet)) {
-            Get-Content $log2 -Tail 60; throw 'the upgrade did not remove the previous version first' }
+          if (-not (Select-String -Path $log2 -SimpleMatch 'Upgrade in place; existing user additions are preserved.' -Quiet)) {
+            Get-Content $log2 -Tail 60; throw 'the upgrade did not use the preserving in-place path' }
+          foreach ($path in $sentinels) {
+            if (-not (Test-Path $path) -or [IO.File]::ReadAllText($path) -ne 'synthetic user original') {
+              throw 'upgrade destroyed user additions' }
+          }
           & (Join-Path $dir 'python\python.exe') tools\smoke_windows_install.py $dir $env:APP_VERSION
           if ($LASTEXITCODE -ne 0) { throw "smoke test after the upgrade failed ($LASTEXITCODE)" }
           $p = Start-Process -FilePath (Join-Path $dir 'unins000.exe') -Wait -PassThru -ArgumentList @(
             '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART')
           if ($p.ExitCode -ne 0) { throw "silent uninstall exited $($p.ExitCode)" }
-          for ($i = 0; $i -lt 60 -and (Test-Path (Join-Path $dir 'python')); $i++) { Start-Sleep 2 }
-          if (Test-Path (Join-Path $dir 'python')) { throw 'uninstall left the python folder behind' }
-          Write-Host 'uninstall removed the app files'
+          for ($i = 0; $i -lt 60 -and (Test-Path (Join-Path $dir 'python\python.exe')); $i++) { Start-Sleep 2 }
+          if (Test-Path (Join-Path $dir 'python\python.exe')) { throw 'uninstall left the python folder behind' }
+          foreach ($path in $sentinels) {
+            if (-not (Test-Path $path) -or [IO.File]::ReadAllText($path) -ne 'synthetic user original') {
+              throw 'uninstall destroyed user additions' }
+          }
+          Write-Host 'uninstall removed tracked app files and preserved user additions'
 
       - name: Upload the installer and the Portable ZIP
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

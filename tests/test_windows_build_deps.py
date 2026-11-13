@@ -509,9 +509,11 @@ def test_workflow_smoke_tests_the_portable_tree_too():
 def test_workflow_tests_an_upgrade_over_the_installed_copy():
     text = _workflow()
     upgrade = text.index("$log2 = Join-Path $env:RUNNER_TEMP 'wts-upgrade.log'")
-    # Second silent install into the same folder, then the log must show that
-    # PrepareToInstall found and removed the first one, then the smoke test again.
-    assert "'Removed the previous version'" in text
+    # Second install must retain user additions and still run the import smoke.
+    assert "'Upgrade in place; existing user additions are preserved.'" in text
+    assert 'user-preservation-fixture.txt' in text
+    assert 'upgrade destroyed user additions' in text
+    assert 'uninstall destroyed user additions' in text
     assert text.index("unins000.exe") > upgrade
     assert text.count(r"tools\smoke_windows_install.py $dir $env:APP_VERSION") == 2
 

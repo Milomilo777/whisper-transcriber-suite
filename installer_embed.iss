@@ -48,6 +48,11 @@ UsePreviousTasks=yes
 ; create them.
 AppMutex=WhisperTranscriberSuiteRunning,Global\WhisperTranscriberSuiteRunning
 
+; Retire historical recursive-deletion records. Old-only packaged files may
+; remain; preserving unknown user additions takes priority over purging them.
+; https://jrsoftware.org/ishelp/topic_appendnotes.htm
+UninstallLogMode=overwrite
+
 [Files]
 ; embed_build\ already holds assets\ (icon, toolbar icons, sample clip), so
 ; the installer and the Portable ZIP ship the same files.
@@ -68,6 +73,9 @@ Name: "shellext"; Description: "Add 'Transcribe with Whisper Transcriber Suite' 
 Name: "voiceclone"; Description: "Install the Clone Your Voice / Text to Voice feature (downloads a ~2GB speech model on first use)"; GroupDescription: "Optional features:"; Flags: unchecked
 
 [Registry]
+; Retire this app-owned integration when an overlay upgrade deselects it.
+Root: HKCR; Subkey: "*\shell\WhisperTranscriberSuiteTranscribe"; ValueType: none; Flags: deletekey; Tasks: not shellext
+
 ; Same shell-extension hook as installer.iss, but the embedded
 ; layout points at pythonw.exe + gui.py instead of a frozen binary.
 ; pythonw is the windowless launcher so the CLI run from Explorer
@@ -81,15 +89,10 @@ Filename: "{app}\python\pythonw.exe"; Parameters: """{app}\gui.py"""; WorkingDir
 
 [UninstallDelete]
 ; Python writes __pycache__ trees at runtime; Inno doesn't track
-; files created after install, so sweep them on uninstall along
-; with anything else the user might have generated under {app}.
+; files created after install. Only sweep the root bytecode cache;
+; preserve untracked user files in application/runtime subdirectories.
+; https://jrsoftware.org/ishelp/topic_uninstalldeletesection.htm
 Type: filesandordirs; Name: "{app}\__pycache__"
-Type: filesandordirs; Name: "{app}\app"
-Type: filesandordirs; Name: "{app}\core"
-Type: filesandordirs; Name: "{app}\bin"
-Type: filesandordirs; Name: "{app}\assets"
-Type: filesandordirs; Name: "{app}\python"
-Type: filesandordirs; Name: "{app}\Lib"
 Type: files; Name: "{app}\gui.py"
 Type: files; Name: "{app}\sitecustomize.py"
 Type: files; Name: "{app}\no_voice_clone.flag"
@@ -100,25 +103,8 @@ Type: dirifempty; Name: "{app}"
 Type: files; Name: "{app}\no_tiling.flag"
 
 [Code]
-// --------------------------------------------------------------------
-//  Silently uninstall a previous version before installing this one.
-//
-//  AppId is stable across versions, so Inno's [Files] ignoreversion
-//  overwrite normally "upgrades in place" without the user uninstalling
-//  first. But that only OVERWRITES files still present in the new file
-//  list — a file removed between versions (a deleted module, a renamed
-//  asset) is never cleaned up and lingers forever. Running the previous
-//  version's own uninstaller first (silently, before any new files are
-//  copied) removes that whole class of leftovers while keeping the
-//  one-click "no need to uninstall first" experience intact.
-//
-//  It runs in PrepareToInstall, after the user clicked Install: a
-//  cancelled wizard leaves the old version untouched. By then the
-//  wizard has read the previous folder and task choices from the old
-//  uninstall key (UsePreviousAppDir / UsePreviousTasks), so removing
-//  that key no longer resets them.
-// --------------------------------------------------------------------
-
+// Read-only detection of an existing installation. Never invoke its
+// uninstaller during an upgrade: older versions delete user-added files.
 function UninstallKeyPath(AnAppId: String): String;
 begin
   Result := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\' + AnAppId + '_is1';
@@ -134,11 +120,6 @@ begin
   Result := UninstString;
 end;
 
-function UninstallKeyExists(AnAppId: String): Boolean;
-begin
-  Result := RegKeyExists(HKLM, UninstallKeyPath(AnAppId)) or
-            RegKeyExists(HKLM32, UninstallKeyPath(AnAppId));
-end;
 
 // The AppId as Windows stores it: SetupSetting returns the directive's raw
 // text with the doubled brace ("{{GUID}"); ExpandConstant turns it into
@@ -153,74 +134,111 @@ begin
   Result := GetUninstallStringForAppId(ThisAppId());
 end;
 
-// Runs the uninstaller registered for AnAppId silently and returns '' when
-// it finished, else the reason (shown by PrepareToInstall, which then stops
-// before any file is copied). An Inno uninstaller relaunches itself from a
-// temp copy and the first process exits at once, so ewWaitUntilTerminated
-// alone returns while files are still being deleted: wait until the
-// uninstall key and the uninstaller itself are gone (at most 3 minutes).
-function RunOldUninstaller(AnAppId, What: String): String;
-var
-  UninstString: String;
-  ResultCode, i: Integer;
-begin
-  Result := '';
-  UninstString := RemoveQuotes(GetUninstallStringForAppId(AnAppId));
-  if UninstString = '' then
-    Exit;
-  if not FileExists(UninstString) then begin
-    // A broken old install (uninstaller deleted by hand): install over it.
-    Log('Uninstaller of ' + What + ' not found: ' + UninstString);
-    Exit;
-  end;
-  if not Exec(UninstString, '/SILENT /NORESTART /SUPPRESSMSGBOXES', '',
-              SW_HIDE, ewWaitUntilTerminated, ResultCode) then begin
-    Result := 'Setup could not start the uninstaller of ' + What + ': ' +
-              SysErrorMessage(ResultCode);
-    Exit;
-  end;
-  if ResultCode <> 0 then begin
-    Result := 'Removing ' + What + ' failed (exit code ' + IntToStr(ResultCode) + ').';
-    Exit;
-  end;
-  for i := 1 to 360 do begin
-    if not UninstallKeyExists(AnAppId) and not FileExists(UninstString) then begin
-      Log('Removed ' + What);
-      Exit;
-    end;
-    Sleep(500);
-  end;
-  Result := 'Removing ' + What + ' did not finish within 3 minutes. ' +
-            'Restart Windows and run Setup again.';
-end;
-
 // --------------------------------------------------------------------
 //  One-time migration from the predecessor product ("Whisper Project",
 //  AppId OldAppId) to this one (the 2026-08-23 rebrand).
 //  The application imports legacy settings and databases on first launch:
 //  it stages settings and merges SQLite history without replacing newer rows.
-//  The installer only removes the old product; it never copies profile files.
+//  The installer retains the old product and never copies profile files.
 //  The old profile stays available for the application's retryable migration.
 // --------------------------------------------------------------------
 
 const
   OldAppId = '{734B46B9-5E70-4C4E-8833-0A7506A64376}';
 
+// Versioned shortcut maintenance.
+function ShortcutFileAttributes(PathName: String): Cardinal;
+  external 'GetFileAttributesW@kernel32.dll stdcall';
+function ShortcutDriveType(RootPath: String): Cardinal;
+  external 'GetDriveTypeW@kernel32.dll stdcall';
+
+function PlainShortcutFolder(Folder: String): Boolean;
+var
+  Current, Remaining, Part: String;
+  Separator: Integer;
+  Attributes: Cardinal;
+begin
+  Result := False;
+  Folder := RemoveBackslashUnlessRoot(ExpandFileName(Folder));
+  if (Length(Folder) < 4) or (Copy(Folder, 2, 2) <> ':\') then Exit;
+  if ShortcutDriveType(Copy(Folder, 1, 3)) <> 3 then Exit;
+  Current := Copy(Folder, 1, 3);
+  Remaining := Copy(Folder, 4, Length(Folder));
+  while Remaining <> '' do begin
+    Separator := Pos('\', Remaining);
+    if Separator = 0 then begin Part := Remaining; Remaining := ''; end
+    else begin
+      Part := Copy(Remaining, 1, Separator - 1);
+      Remaining := Copy(Remaining, Separator + 1, Length(Remaining));
+    end;
+    if Part = '' then Exit;
+    Current := AddBackslash(Current) + Part;
+    Attributes := ShortcutFileAttributes(Current);
+    if (Attributes = $FFFFFFFF) or ((Attributes and FILE_ATTRIBUTE_DIRECTORY) = 0) or
+       ((Attributes and $400) <> 0) then Exit;
+  end;
+  Result := True;
+end;
+
+procedure CleanupVersionedShortcutFolder(Folder: String);
+var
+  FindRec: TFindRec;
+  VersionText, LinkPath, Target, Arguments: String;
+  Version, CurrentVersion: Int64;
+  Shell, Shortcut: Variant;
+begin
+  // Retain unknown, redirected and custom links. Match both the historical
+  // installer filename and its exact embedded-app target and arguments.
+  if not PlainShortcutFolder(Folder) then Exit;
+  if not StrToVersion('{#MyAppVersion}', CurrentVersion) then Exit;
+  if FindFirst(AddBackslash(Folder) + 'Whisper Transcriber Suite *.lnk', FindRec) then begin
+    try
+      repeat
+        if (FindRec.Attributes and (FILE_ATTRIBUTE_DIRECTORY or $400)) = 0 then begin
+          VersionText := Copy(FindRec.Name, Length('Whisper Transcriber Suite ') + 1,
+            Length(FindRec.Name) - Length('Whisper Transcriber Suite ') - Length('.lnk'));
+          if StrToVersion(VersionText, Version) and
+             (ComparePackedVersion(Version, CurrentVersion) < 0) then begin
+            LinkPath := AddBackslash(Folder) + FindRec.Name;
+            try
+              Shell := CreateOleObject('WScript.Shell');
+              Shortcut := Shell.CreateShortcut(LinkPath);
+              Target := Shortcut.TargetPath;
+              Arguments := Shortcut.Arguments;
+              if (CompareText(ExpandFileName(Target), ExpandConstant('{app}\python\pythonw.exe')) = 0) and
+                 (CompareText(Arguments, '"' + ExpandConstant('{app}\gui.py') + '"') = 0) then begin
+                if not DeleteFile(LinkPath) then Log('Could not remove historical shortcut: ' + LinkPath);
+              end;
+            except
+              Log('Retained unreadable historical shortcut: ' + LinkPath);
+            end;
+          end;
+        end;
+      until not FindNext(FindRec);
+    finally
+      FindClose(FindRec);
+    end;
+  end;
+end;
+
+procedure CleanupVersionedShortcuts();
+begin
+  CleanupVersionedShortcutFolder(ExpandConstant('{group}'));
+  CleanupVersionedShortcutFolder(ExpandConstant('{commondesktop}'));
+end;
+// End versioned shortcut maintenance.
+
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 begin
-  // Same-product upgrade (a newer Whisper Transcriber Suite over an
-  // older one) takes priority. Only when there's no same-product
-  // predecessor do we check for the pre-rebrand "Whisper Project"
-  // product instead.
-  // /SUPPRESSMSGBOXES auto-answers any Pascal MsgBox in the OLD
-  // uninstaller too; CurUninstallStepChanged below skips the hub-folder
-  // deletion prompt entirely when UninstallSilent() is true, so a model
-  // hub OUTSIDE the install dir survives this automatic step either way.
-  if GetUninstallString() <> '' then
-    Result := RunOldUninstaller(ThisAppId(), 'the previous version')
-  else begin
-    Result := RunOldUninstaller(OldAppId, 'the old Whisper Project app');
-  end;
+  // Historical uninstallers recursively remove untracked user additions.
+  // Upgrade in place and let the application import legacy profile data.
+  Result := '';
+  if GetUninstallString() <> '' then begin
+    Log('Upgrade in place; existing user additions are preserved.');
+    CleanupVersionedShortcuts();
+  end
+  else if GetUninstallStringForAppId(OldAppId) <> '' then
+    Log('Previous product retained; profile migration runs on first launch.');
 end;
 
 // --------------------------------------------------------------------
@@ -407,10 +425,8 @@ begin
   end;
   if CurUninstallStep <> usPostUninstall then
     Exit;
-  // A silent uninstall only ever happens automatically, as the
-  // pre-install step above for an in-place upgrade — never touch the
-  // user's config.json (hub_folder, API keys, preferences) or ask to
-  // delete a multi-GB model hub folder in that unattended path.
+  // An unattended uninstall must not prompt to delete downloaded models.
+  // Keep settings, credentials and preferences for other app copies.
   if UninstallSilent() then
     Exit;
   // Read the saved hub location; settings remain available after uninstall.
@@ -426,7 +442,7 @@ begin
            HubFolder + #13#10 + #13#10 +
            'It may contain several gigabytes of downloaded Whisper models.' + #13#10 +
            'Do you want to delete the downloaded models in it as part of the uninstall?' + #13#10 +
-           'Choose No to keep models for reinstalls or other copies. Hubs outside the install folder are kept.';
+           'Choose No to keep models for reinstalls or other copies. Other model folders are kept.';
     if MsgBox(Msg, mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES then begin
       if not DeleteHubModels(HubFolder, PrivateCache) then
         MsgBox('Could not fully delete the models in ' + HubFolder + '.' + #13#10 +
