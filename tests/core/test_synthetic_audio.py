@@ -260,17 +260,17 @@ def test_voice_clone_with_reference_tags_and_records_consent(monkeypatch, tmp_pa
         r.write_bytes(f"reference {i}".encode())
         refs.append(str(r))
     combined = tmp_path / "combined.wav"
-
-    def fake_concat(paths):
-        combined.write_bytes(b"combined")
-        return str(combined)
-
-    monkeypatch.setattr(voice_clone, "_concat_references", fake_concat)
+    combined.write_bytes(b"combined")
+    prepared = voice_clone.PreparedReference(
+        str(combined), "reference speech", tuple(refs[:voice_clone.MAX_REFERENCE_SAMPLES]),
+    )
     out = tmp_path / "session" / "output.wav"
     model = _FakeModel()
-    voice_clone.generate(model, "hello", refs, str(out), consent_accepted=True)
+    voice_clone.generate(model, "hello", refs, str(out), consent_accepted=True,
+                         prepared_reference=prepared)
 
     assert model.calls[0]["ref_audio"] == str(combined)
+    assert model.calls[0]["ref_text"] == "reference speech"
     assert sa.read_info(out)["ICMT"] == sa.AI_COMMENT
     lines = consent_log.read_text(encoding="utf-8").splitlines()
     assert len(lines) == 1
@@ -365,7 +365,8 @@ def test_voice_clone_keeps_the_result_when_the_consent_log_fails(monkeypatch, tm
     out = tmp_path / "output.wav"
 
     result = voice_clone.generate(_FakeModel(), "hello", [str(ref)], str(out),
-                                  consent_accepted=True)
+                                  consent_accepted=True, prepared_reference=voice_clone.PreparedReference(
+                                      str(ref), "reference speech", (str(ref),)))
     assert result.output_path == str(out)
     assert "consent record could not be saved" in result.warning
     assert sa.read_info(out)["ICMT"] == sa.AI_COMMENT
@@ -376,7 +377,9 @@ def test_voice_clone_result_has_no_warning_normally(monkeypatch, tmp_path, conse
     ref = tmp_path / "ref.wav"
     ref.write_bytes(b"reference")
     result = voice_clone.generate(_FakeModel(), "hello", [str(ref)],
-                                  str(tmp_path / "o.wav"), consent_accepted=True)
+                                  str(tmp_path / "o.wav"), consent_accepted=True,
+                                  prepared_reference=voice_clone.PreparedReference(
+                                      str(ref), "reference speech", (str(ref),)))
     assert result.warning == ""
     assert consent_log.exists()
 

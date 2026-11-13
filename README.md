@@ -873,7 +873,8 @@ Every step, with screenshots of the warnings and fixes for common problems: [doc
   installer over the old one; settings, history and models are kept. For the Portable ZIP, replace the folder.
   **Help → Check for updates…** checks on demand.
 - **Uninstall:** Windows **Settings → Apps → Whisper Transcriber Suite → Uninstall**. It asks whether to
-  delete the downloaded models too. For the Portable ZIP, delete the folder. Settings and history stay in
+  delete models in the default local app cache; **No** is the default. Custom model hubs outside the installation folder are kept.
+  For the Portable ZIP, delete the folder. Settings and history stay in
   `%LOCALAPPDATA%\WhisperTranscriberSuite\` until you delete that folder.
 - **Start over:** run the app with `--safe-mode`; it backs up `config.json` and shows the first-run windows
   again.
@@ -1101,7 +1102,8 @@ version exists, and never downloads it by itself.
 
 ### How do I uninstall it?
 
-**Settings → Apps → Whisper Transcriber Suite → Uninstall** on Windows; it asks whether to delete the models too.
+**Settings → Apps → Whisper Transcriber Suite → Uninstall** on Windows; it offers to delete the default local
+model cache, with **No** selected. Custom model hubs outside the installation folder are kept.
 For the Portable ZIP, delete its folder.
 
 ### Can it reduce background noise?

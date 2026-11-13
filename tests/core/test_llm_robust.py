@@ -603,3 +603,46 @@ def test_other_cleanup_cannot_delete_completed_download_before_publication(tmp_p
     assert closed_before_cleanup == [True]
     assert dest.read_bytes() == b"abcdef"
     assert not list(tmp_path.glob("*.part"))
+
+
+@pytest.mark.parametrize("content_length", [None, "0"])
+@pytest.mark.parametrize("existing", [False, True])
+@pytest.mark.parametrize("payload", [b"", b"complete synthetic model"])
+def test_model_response_without_positive_length_must_not_install_empty_file(
+    tmp_path, monkeypatch, content_length, existing, payload,
+):
+    import io
+
+    dest = tmp_path / "downloaded-model.bin"
+    original = b"retained previous model"
+    if existing:
+        dest.write_bytes(original)
+    response = io.BytesIO(payload)
+    response.headers = {} if content_length is None else {"content-length": content_length}
+    response.getheader = lambda name: content_length
+    logs = []
+    monkeypatch.setattr(llm.offline, "require_online", lambda *args: None)
+    monkeypatch.setattr(llm.urllib.request, "urlopen", lambda *args, **kwargs: response)
+    if payload:
+        assert llm.download_default_model(dest=dest, log=logs.append) == str(dest)
+        assert dest.read_bytes() == payload
+    else:
+        with pytest.raises(RuntimeError, match="empty"):
+            llm.download_default_model(dest=dest, log=logs.append)
+        assert dest.read_bytes() == original if existing else not dest.exists()
+        assert not any("ready" in text.lower() or text.startswith("Done:") for text in logs)
+    assert not list(tmp_path.glob("*.part"))
+
+
+@pytest.mark.parametrize("content_length", [None, "0"])
+def test_cancelled_empty_model_download_keeps_cancellation_diagnostic(tmp_path, monkeypatch, content_length):
+    response = io.BytesIO(b"")
+    response.headers = {} if content_length is None else {"content-length": content_length}
+    cancel = threading.Event()
+    cancel.set()
+    monkeypatch.setattr(llm.offline, "require_online", lambda *args: None)
+    monkeypatch.setattr(llm.urllib.request, "urlopen", lambda *args, **kwargs: response)
+    dest = tmp_path / "cancelled-model.bin"
+    with pytest.raises(RuntimeError, match="cancelled"):
+        llm.download_default_model(dest=dest, cancel_event=cancel)
+    assert not dest.exists() and not list(tmp_path.glob("*.part"))

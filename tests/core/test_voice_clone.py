@@ -139,6 +139,11 @@ def test_generate_raises_on_text_too_long():
 def test_generate_without_reference_uses_design_or_auto(monkeypatch, tmp_path):
     calls: list[dict] = []
 
+    def unexpected_asr(path):
+        pytest.fail("No-reference modes must not prepare an ASR transcript")
+
+    monkeypatch.setattr(voice_clone, "_transcribe_reference", unexpected_asr)
+
     class FakeModel:
         def generate(self, **kw):
             calls.append(kw)

@@ -196,60 +196,15 @@ end;
 
 // --------------------------------------------------------------------
 //  One-time migration from the predecessor product ("Whisper Project",
-//  AppId OldAppId) to this one (the 2026-08-23 rebrand). Copies -- NEVER
-//  moves -- the old per-user data folder to the new APP_NAME location,
-//  then silently removes the old product via its own uninstaller: same
-//  "no need to uninstall first" experience as a same-product upgrade,
-//  just crossing the rename. The old %LOCALAPPDATA%\WhisperProject\
-//  folder is deliberately left behind afterwards -- if the copy step
-//  has a bug, the user's settings/history/model cache are never at
-//  risk, just briefly duplicated. Safe to delete by hand once the new
-//  app is confirmed working. Idempotent: skips the copy if the new
-//  folder already exists (e.g. this ran on a previous attempt).
+//  AppId OldAppId) to this one (the 2026-08-23 rebrand).
+//  The application imports legacy settings and databases on first launch:
+//  it stages settings and merges SQLite history without replacing newer rows.
+//  The installer only removes the old product; it never copies profile files.
+//  The old profile stays available for the application's retryable migration.
 // --------------------------------------------------------------------
 
 const
   OldAppId = '{734B46B9-5E70-4C4E-8833-0A7506A64376}';
-
-procedure MigrateOldAppData();
-var
-  OldDataDir, NewDataDir: String;
-  DataFiles: TArrayOfString;
-  i: Integer;
-begin
-  OldDataDir := ExpandConstant('{localappdata}\WhisperProject');
-  NewDataDir := ExpandConstant('{localappdata}\WhisperTranscriberSuite');
-  // Gate on the NEW config.json specifically, not just the folder's
-  // existence: a bare folder (Cache\/Logs\ with no config.json) can
-  // already exist from an unrelated early code path -- e.g. the
-  // Portable build was run once before this installer -- and gating
-  // on DirExists alone would then skip a real migration and silently
-  // strand the user's actual settings/history in the old folder
-  // (caught by an install test on 2026-08-23: a prior direct launch
-  // had created an empty new-name folder, and the old guard treated
-  // that as "already migrated").
-  if DirExists(OldDataDir) and not FileExists(NewDataDir + '\config.json') then begin
-    if not DirExists(NewDataDir) then
-      ForceDirectories(NewDataDir);
-    // Copy only the small, meaningful settings/history files directly
-    // with FileCopy -- NOT the whole tree. A real install test on
-    // 2026-08-23 found Cache\ can hold several GB of downloaded
-    // Whisper models and Logs\ can hold hundreds of small per-run
-    // worker debug logs; shelling out to xcopy for the full tree took
-    // long enough to look hung. Neither is needed anyway: config.json
-    // is copied as-is, so its hub_folder value (default or custom)
-    // still resolves to the OLD, still-on-disk Cache\models -- the
-    // model cache is transparently reused with zero copying.
-    DataFiles := ['config.json', 'history.db', 'hardware.json', 'search.db'];
-    for i := 0 to GetArrayLength(DataFiles) - 1 do begin
-      if FileExists(OldDataDir + '\' + DataFiles[i]) then begin
-        if not CopyFile(OldDataDir + '\' + DataFiles[i], NewDataDir + '\' + DataFiles[i], False) then
-          Log('Could not migrate ' + DataFiles[i] + ' from ' + OldDataDir);
-      end;
-    end;
-    Log('Migrated settings/history from ' + OldDataDir + ' to ' + NewDataDir);
-  end;
-end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 begin
@@ -264,7 +219,6 @@ begin
   if GetUninstallString() <> '' then
     Result := RunOldUninstaller(ThisAppId(), 'the previous version')
   else begin
-    MigrateOldAppData();
     Result := RunOldUninstaller(OldAppId, 'the old Whisper Project app');
   end;
 end;
@@ -354,16 +308,70 @@ begin
   Result := Pos(P, C) = 1;
 end;
 
-// Deletes the downloaded models in the hub folder: the `models--*` folders
-// (core.hub.model_folder_for), and the hub folder itself once that leaves it
-// empty. hub_folder is whatever folder the user picked (it can be Documents or
-// a drive root), so nothing else in it is ever touched. A link is skipped.
-// False when a model folder could not be removed.
-function DeleteHubModels(HubFolder: string): Boolean;
+// Native attributes identify links before descending through an ancestor.
+function HubCacheAttributes(PathName: string): Cardinal;
+  external 'GetFileAttributesW@kernel32.dll stdcall';
+function HubCacheDriveType(RootPath: string): Cardinal;
+  external 'GetDriveTypeW@kernel32.dll stdcall';
+
+function CanDeletePrivateHub(HubFolder, PrivateCache: string): Boolean;
+var
+  Hub, Expected, Current, Remaining, Part: string;
+  Separator: Integer;
+  Attributes: Cardinal;
+begin
+  Result := False;
+  if (Trim(HubFolder) = '') or (Trim(PrivateCache) = '') then
+    Exit;
+  try
+    Hub := RemoveBackslashUnlessRoot(ExpandFileName(HubFolder));
+    Expected := RemoveBackslashUnlessRoot(ExpandFileName(PrivateCache));
+    if CompareText(Hub, Expected) <> 0 then
+      Exit;
+    if (Length(Hub) < 4) or (Copy(Hub, 2, 2) <> ':\') then
+      Exit;
+    // A mapped/network/removable drive is not an app-owned local cache.
+    if HubCacheDriveType(Copy(Hub, 1, 3)) <> 3 then
+      Exit;
+    Current := Copy(Hub, 1, 3);
+    Remaining := Copy(Hub, 4, Length(Hub));
+    // Check top-down so a redirected parent is rejected before its target
+    // is traversed. Unknown attributes always keep the directory.
+    while Remaining <> '' do begin
+      Separator := Pos('\', Remaining);
+      if Separator = 0 then begin
+        Part := Remaining;
+        Remaining := '';
+      end else begin
+        Part := Copy(Remaining, 1, Separator - 1);
+        Remaining := Copy(Remaining, Separator + 1, Length(Remaining));
+      end;
+      if Part = '' then
+        Exit;
+      Current := AddBackslash(Current) + Part;
+      Attributes := HubCacheAttributes(Current);
+      if (Attributes = $FFFFFFFF) or
+         ((Attributes and FILE_ATTRIBUTE_DIRECTORY) = 0) or
+         ((Attributes and $400) <> 0) then
+        Exit;
+    end;
+    Result := True;
+  except
+    Result := False;
+  end;
+end;
+
+// Delete only models in the verified private application cache, after an
+// explicit interactive Yes. Custom hubs and redirected caches are retained.
+// Inno DelTree does not recurse into nested reparse-point directories.
+function DeleteHubModels(HubFolder, PrivateCache: string): Boolean;
 var
   FindRec: TFindRec;
   Root: string;
 begin
+  Result := False;
+  if not CanDeletePrivateHub(HubFolder, PrivateCache) then
+    Exit;
   Result := True;
   Root := AddBackslash(HubFolder);
   if FindFirst(Root + 'models--*', FindRec) then begin
@@ -386,7 +394,7 @@ end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
-  HubFolder, AppFolder, Msg, MarkerPath, ConfigPath: string;
+  HubFolder, PrivateCache, AppFolder, Msg, MarkerPath: string;
 begin
   // Remove the optional-feature marker (created post-install when the
   // user opted out of Clone Your Voice). [UninstallDelete] also covers
@@ -405,27 +413,27 @@ begin
   // delete a multi-GB model hub folder in that unattended path.
   if UninstallSilent() then
     Exit;
-  // Read hub_folder out of config.json BEFORE deleting it below.
+  // Read the saved hub location; settings remain available after uninstall.
   HubFolder := ExtractHubFolder();
+  PrivateCache := ExpandConstant('{localappdata}\WhisperTranscriberSuite\Cache\models');
+  if not CanDeletePrivateHub(HubFolder, PrivateCache) then begin
+    Log('Skipped optional model-hub cleanup: ' + HubFolder);
+    Exit;
+  end;
   AppFolder := ExpandConstant('{app}');
-  if (HubFolder <> '') and DirExists(HubFolder) and not IsPathInside(HubFolder, AppFolder) then begin
-    Msg := 'The Whisper model hub folder is located outside the install directory:' + #13#10 + #13#10 +
+  if not IsPathInside(HubFolder, AppFolder) then begin
+    Msg := 'The app''s local model cache is located at:' + #13#10 + #13#10 +
            HubFolder + #13#10 + #13#10 +
            'It may contain several gigabytes of downloaded Whisper models.' + #13#10 +
            'Do you want to delete the downloaded models in it as part of the uninstall?' + #13#10 +
-           'Other files in this folder are not touched.';
-    if MsgBox(Msg, mbConfirmation, MB_YESNO) = IDYES then begin
-      if not DeleteHubModels(HubFolder) then
+           'Choose No to keep models for reinstalls or other copies. Hubs outside the install folder are kept.';
+    if MsgBox(Msg, mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES then begin
+      if not DeleteHubModels(HubFolder, PrivateCache) then
         MsgBox('Could not fully delete the models in ' + HubFolder + '.' + #13#10 +
                'You can remove them manually with File Explorer.',
                mbInformation, MB_OK);
     end;
   end;
-  // A real, interactive uninstall also clears the per-user config.json
-  // (NOT during the silent upgrade step above, which would otherwise
-  // wipe hub_folder/API keys/preferences on every single in-place
-  // upgrade — see InitializeSetup).
-  ConfigPath := ExpandConstant('{localappdata}\WhisperTranscriberSuite\config.json');
-  if FileExists(ConfigPath) then
-    DeleteFile(ConfigPath);
+  // Keep settings and history for reinstalls and Portable installations.
+  // Profile migration belongs to the application, never the installer.
 end;

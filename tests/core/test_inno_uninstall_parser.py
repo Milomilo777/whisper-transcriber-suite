@@ -16,6 +16,7 @@ import re
 from pathlib import Path
 
 from core.config import save_config
+from tests.core.test_legacy_app_migration import dirs
 
 
 # --- Python mirror of the Pascal Script ---------------------------------------
@@ -232,52 +233,40 @@ def test_both_iss_files_reference_old_appid_for_migration():
         )
 
 
-def test_both_iss_files_have_data_migration_logic():
-    """MigrateOldAppData must exist, be called from InitializeSetup, copy
-    (not move) the known settings/history files from the old
-    %LOCALAPPDATA% folder to the new one via FileCopy -- NOT a whole-tree
-    xcopy, which a real install test on 2026-08-23 found could look hung
-    for minutes against a multi-GB model cache + hundreds of debug logs
-    -- and guard the copy so it never clobbers an already-migrated
-    folder."""
+def test_both_installers_leave_profile_import_to_the_application(dirs):
+    """A normal launch imports legacy data without replacing newer history."""
+    import sqlite3
+    from core import config as cfg
+    from core.history import HistoryDB
+
     repo_root = Path(__file__).resolve().parents[2]
     for name in ("installer.iss", "installer_embed.iss"):
         text = (repo_root / name).read_text(encoding="utf-8")
-        assert "procedure MigrateOldAppData();" in text, f"{name} missing MigrateOldAppData"
-        assert "MigrateOldAppData();" in text.split("procedure MigrateOldAppData();", 1)[1], (
-            f"{name} defines MigrateOldAppData but never calls it"
-        )
-        # Check the actual invocation pattern, not the bare word -- a
-        # comment explaining why xcopy is NOT used would otherwise
-        # itself trip this assertion.
-        assert "xcopy.exe" not in text, (
-            f"{name} still shells out to xcopy.exe for the whole data tree"
-        )
-        assert "CopyFile(" in text, f"{name} migration doesn't use CopyFile"
-        for expected_file in ("config.json", "history.db", "hardware.json", "search.db"):
-            assert f"'{expected_file}'" in text, (
-                f"{name} migration doesn't list {expected_file} among the files to copy"
-            )
-        assert "{localappdata}\\WhisperProject" in text, (
-            f"{name} migration doesn't read the OLD %LOCALAPPDATA% folder"
-        )
-        assert "{localappdata}\\WhisperTranscriberSuite" in text, (
-            f"{name} migration doesn't write the NEW %LOCALAPPDATA% folder"
-        )
-        # Idempotency guard: only copy when the NEW config.json doesn't
-        # exist yet. Gating on the bare folder (not just the file) would
-        # be wrong -- an empty new-name folder can already exist from an
-        # unrelated earlier run (e.g. the Portable build launched once
-        # before this installer) and would then wrongly look
-        # "already migrated," silently stranding the user's real old
-        # data (caught by a real install test on 2026-08-23).
-        assert "not FileExists(NewDataDir + '\\config.json')" in text, (
-            f"{name} migration must gate on the new config.json, not just DirExists(NewDataDir)"
-        )
-        # DirExists(NewDataDir) legitimately appears once more now, to
-        # ForceDirectories() the destination before FileCopy -- that's
-        # fine; only the outer gate (checked above) must NOT be based on
-        # bare directory existence.
+        assert "MigrateOldAppData" not in text
+        assert "CopyFile(" not in text
+        assert "xcopy.exe" not in text
+
+    new, old = dirs
+    settings = old["config"] / "config.json"
+    original = b'{"theme":"dark"}'
+    settings.write_bytes(original)
+    old_history = old["data"] / "history.db"
+    new_history = new["data"] / "history.db"
+    with HistoryDB(old_history) as source, HistoryDB(new_history) as destination:
+        source.insert_transcription("legacy.wav")
+        destination.insert_transcription("current.wav")
+        assert cfg.load_config(fetch_online=False)["theme"] == "dark"
+        assert settings.read_bytes() == original
+        with sqlite3.connect(new_history) as db:
+            assert set(db.execute("SELECT file_path FROM transcriptions").fetchall()) == {
+                ("legacy.wav",), ("current.wav",),
+            }
+        with sqlite3.connect(old_history) as db:
+            assert db.execute("SELECT file_path FROM transcriptions").fetchall() == [("legacy.wav",)]
+        cfg._legacy_migration_done = False
+        cfg.load_config(fetch_online=False)
+        with sqlite3.connect(new_history) as db:
+            assert db.execute("SELECT count(*) FROM transcriptions").fetchone() == (2,)
 
 
 def test_both_iss_files_config_json_path_uses_new_app_name():

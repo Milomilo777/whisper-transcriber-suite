@@ -138,14 +138,10 @@ win. Tuning lives in `core.live.SegmenterConfig`.
   Transcribe tab on the saved WAV for that.
 - **System audio is Windows-only** — macOS and Linux have no equivalent
   loopback device without a third-party virtual audio driver.
-- **System audio's first read can be slow if nothing is currently
-  playing.** Measured on real hardware (2026-08-14): capturing from a
-  silent output device, WASAPI's loopback endpoint took ~49 seconds to
-  deliver its first buffer, then read normally (well under a second
-  per chunk) for the rest of the session. This is an upstream WASAPI/
-  PyAudioWPatch characteristic, not something this app controls. In
-  the intended use (a meeting, video, or call already playing), the
-  render engine is already active and this has not been observed.
+- **System audio may deliver no frames while nothing is playing.**
+  The meter and transcription start when the output becomes active.
+  Stop remains responsive during silence and finalizes any audio
+  already captured.
 - Auto-detect can pick the wrong language on short chunks. Name the
   language when you know it.
 

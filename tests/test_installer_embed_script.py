@@ -7,6 +7,8 @@ a marker left by an older install when the user upgrades.
 import os
 import re
 
+import pytest
+
 _ISS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "installer_embed.iss")
 
 
@@ -54,7 +56,9 @@ def test_old_version_is_removed_only_after_the_wizard():
     prepare = _function(code, "PrepareToInstall")
     assert "RunOldUninstaller(ThisAppId()" in prepare
     assert "RunOldUninstaller(OldAppId" in prepare
-    assert prepare.index("MigrateOldAppData()") < prepare.index("RunOldUninstaller(OldAppId")
+    # Legacy profile import belongs to the app's staged/SQLite migration.
+    # The installer only removes the predecessor after the wizard completes.
+    assert "MigrateOldAppData" not in prepare
     # The only Exec of an uninstaller is the checked one.
     assert code.count("Exec(") == 1 and "Exec(" in _function(code, "RunOldUninstaller")
 
@@ -108,6 +112,51 @@ def _both_installers():
             yield name, fh.read()
 
 
+@pytest.mark.parametrize("name,text", list(_both_installers()))
+def test_installers_leave_profile_import_to_application(name, text):
+    """Raw installer copies can overwrite newer databases and omit WAL rows.
+
+    The application owns staged settings copies and SQLite history merging;
+    installation must not bypass that path when config.json is missing.
+    """
+    code = _section(text, "Code")
+    assert "CopyFile(" not in code, name
+    assert "MigrateOldAppData" not in code, name
+
+
+@pytest.mark.parametrize("name,text", list(_both_installers()))
+def test_uninstall_preserves_profile_settings(name, text):
+    code = _section(text, "Code")
+    uninstall = _function(code, "CurUninstallStepChanged")
+    assert not re.search(r"DeleteFile\(\s*ConfigPath\s*\)", uninstall, re.I), name
+    assert not re.search(r"(?im)^.*(?:Name:|Source:).*\{localappdata\}.*config\.json", text), name
+
+
+@pytest.mark.parametrize("name,text", list(_both_installers()))
+def test_model_cleanup_rechecks_private_cache_before_any_deletion(name, text):
+    code = _section(text, "Code")
+    cleanup = _function(code, "DeleteHubModels")
+    assert "CanDeletePrivateHub(HubFolder, PrivateCache)" in cleanup, name
+    assert cleanup.index("CanDeletePrivateHub") < cleanup.index("FindFirst("), name
+    assert cleanup.index("CanDeletePrivateHub") < cleanup.index("DelTree("), name
+
+
+@pytest.mark.parametrize("name,text", list(_both_installers()))
+def test_uninstall_never_offers_custom_hub_deletion(name, text):
+    code = _section(text, "Code")
+    uninstall = _function(code, "CurUninstallStepChanged")
+    assert "PrivateCache := ExpandConstant('{localappdata}\\WhisperTranscriberSuite\\Cache\\models')" in uninstall, name
+    assert "CanDeletePrivateHub(HubFolder, PrivateCache)" in uninstall, name
+    assert uninstall.index("CanDeletePrivateHub") < uninstall.index("MsgBox("), name
+    assert "DeleteHubModels(HubFolder, PrivateCache)" in uninstall, name
+
+
+@pytest.mark.parametrize("name,text", list(_both_installers()))
+def test_model_deletion_question_defaults_to_keep(name, text):
+    uninstall = _function(_section(text, "Code"), "CurUninstallStepChanged")
+    assert "MB_YESNO or MB_DEFBUTTON2" in uninstall, name
+
+
 def test_uninstall_never_deletes_the_whole_model_folder():
     """hub_folder is any folder the user picked (Documents, a drive root, ...), and
     only the model folders the app made in it are the app's to delete. A recursive
@@ -121,7 +170,7 @@ def test_uninstall_never_deletes_the_whole_model_folder():
         assert "'models--*'" in cleanup, name
         assert "DelTree(" in cleanup and "RemoveDir(HubFolder)" in cleanup, name
         assert cleanup.index("RemoveDir(HubFolder)") > cleanup.index("DelTree("), name
-        assert "DeleteHubModels(HubFolder)" in _function(code, "CurUninstallStepChanged"), name
+        assert "DeleteHubModels(HubFolder, PrivateCache)" in _function(code, "CurUninstallStepChanged"), name
 
 
 def test_build_script_parses_gui_py_independent_of_the_windows_code_page():

@@ -63,6 +63,14 @@ or from the desktop icon if you ticked the box. Uninstall from
 **Settings → Apps → Whisper Transcriber Suite → Uninstall** or from the
 folder's `unins000.exe`.
 
+Uninstall keeps your settings and history for reinstalls and Portable copies.
+Legacy profiles are imported by the application on first launch, preserving
+newer history entries and committed SQLite journal data.
+
+Model deletion is offered only for the default local application cache, with
+**No** selected by default. Custom model hubs outside the installation folder, network paths and caches
+reached through directory links are retained. Keep the local cache if another copy uses it.
+
 ### First launch — common to both methods
 
 #### ⚠️ SmartScreen warning

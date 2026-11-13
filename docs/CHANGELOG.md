@@ -13,6 +13,17 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Record the reliability investigation checkpoint, distinguishing reviewed fixes from held reproductions and remaining runtime validation.
 
 ### Fixed
+- Keep external custom model hubs when uninstalling, including shared model archives. Optional cleanup is limited to the default local app cache, rejects directory links and defaults to keeping models.
+- Preserve settings on uninstall and let the application import legacy profiles safely. Reinstalling no longer copies an old history database over newer entries when settings are missing.
+- Preserve API outputs in subfolders when an archive copy fails, including across server restarts. Retained copies keep their relative folders so same-named outputs cannot replace each other.
+
+
+- Voice cloning transcribes the exact reference audio with an already installed multilingual model before loading the voice model. Changed references release the previous voice model first; unchanged references reuse their transcript without allocating a second model.
+- Frozen voice-reference audio stays in a locked application scratch folder. Forced worker exits leave recoverable files for the existing age-based cleanup, which preserves active jobs and original recordings.
+
+- Stopping system-audio recording no longer waits for a silent output to resume playback. Loopback reads only available frames and closes its stream on the capture thread.
+- Isolate simultaneous whisper.cpp model downloads so a failed attempt cannot corrupt another one. Models are synced and atomically installed before reporting ready; a destination directory is rejected and existing partial copies are preserved.
+- Reject empty AI Layer and whisper.cpp model downloads, including responses without a size header. A failed empty response keeps the previous file and never reports the model ready; cancelled downloads retain their cancellation message.
 
 - Closing a transcript viewer or exiting asks before abandoning an active AI task whose later response might fail to save. Discard choices apply only to that task, and results completed during the question are checked separately.
 - When all requested output writers fail, an earlier allocation failure remains visible even if a later writer reports a disk error. Recovery avoids allocating another full transcript copy after that failure.

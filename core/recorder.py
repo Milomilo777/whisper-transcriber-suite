@@ -349,9 +349,9 @@ class Recorder:
 
         sounddevice's ``abort()`` is documented as safe to call while
         another thread is blocked in ``read()``: that read then raises.
-        A stream without ``abort`` (the WASAPI loopback one) is left alone:
-        closing it under a blocked read is not safe, and its capture thread
-        ends by itself when the next block arrives.
+        Loopback polls available frames and the stop event instead of
+        blocking on an idle output. Its native stream stays owned by the
+        capture thread; never close it concurrently with a read.
         """
         stream = self._stream
         abort = getattr(stream, "abort", None)
@@ -511,14 +511,15 @@ class Recorder:
                     # run before this try started, leaking the WASAPI
                     # stream handle on that failure.
                     wf = self._open_wave(actual_rate)
-                    # The FIRST stream.read() here can block far longer than
-                    # 1024 frames' worth of audio (~49s measured on real
-                    # hardware with a silent output device) -- WASAPI only
-                    # actively renders/delivers loopback data once something
-                    # is actually playing. Reads after the first are normal
-                    # (sub-second). See docs/LIVE.md's Limitations section.
+                    # Silent outputs may deliver no loopback packets. Poll
+                    # the nonblocking availability API so Stop can close the
+                    # stream on this thread without waiting for new playback.
                     while not self._stop_event.is_set():
-                        data = stream.read(1024, exception_on_overflow=False)
+                        available = stream.get_read_available()
+                        if available <= 0:
+                            self._stop_event.wait(0.01)
+                            continue
+                        data = stream.read(min(1024, available), exception_on_overflow=False)
                         mono = _downmix_to_mono_int16(data, channels)
                         wf.writeframes(mono)
                         wrote_any_frames = True
