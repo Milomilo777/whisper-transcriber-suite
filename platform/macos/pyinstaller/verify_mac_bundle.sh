@@ -30,7 +30,8 @@ version_greater() {
 # Read magic bytes in one Python process: framework binaries need not have
 # an executable bit or extension. A failed traversal must not look empty.
 macho_list="$(mktemp)" || exit 1
-trap 'rm -f -- "$macho_list"' EXIT
+native_error="$(mktemp)" || { rm -f -- "$macho_list"; exit 1; }
+trap 'rm -f -- "$macho_list" "$native_error"' EXIT
 if ! "$VERIFY_PYTHON" platform/macos/pyinstaller/list_macho.py "$APP" >"$macho_list"; then
   rm -f -- "$macho_list"
   echo "error: could not enumerate bundle binaries" >&2
@@ -47,8 +48,11 @@ while IFS= read -r -d '' f; do
   fi
   n=$((n + 1))
   rel="${f#"$APP"/}"
-  if ! archs="$(lipo -archs "$f" 2>&1)"; then
-    echo "LIPO  $rel: $archs"; bad=$((bad + 1)); continue
+  if ! archs="$(lipo -archs "$f" 2>"$native_error")"; then
+    echo "LIPO  $rel: $archs $(cat "$native_error")"; bad=$((bad + 1)); continue
+  fi
+  if [ -s "$native_error" ]; then
+    echo "LIPO  $rel: $(cat "$native_error")"
   fi
   case "$WANT" in
     universal2) { [[ " $archs " == *" x86_64 "* ]] && [[ " $archs " == *" arm64 "* ]]; } || { echo "ARCH  $rel: $archs"; bad=$((bad + 1)); } ;;
@@ -58,32 +62,37 @@ while IFS= read -r -d '' f; do
   # Compare deployment minima only for the requested application architectures.
   for slice in $archs; do
     if ! links="$(otool -L -arch "$slice" "$f" 2>&1)" || [ -z "$links" ]; then
-      echo "OTOOL $rel: dependency inspection failed: $links"; bad=$((bad + 1)); continue
+      echo "OTOOL $rel [$slice]: dependency inspection failed: $links"; bad=$((bad + 1)); continue
     fi
     ext="$(printf '%s\n' "$links" | grep -v ':$' | grep -vE '^[[:space:]]*(@rpath/|@loader_path/|@executable_path/|/usr/lib/|/System/Library/)' || true)"
     if [ -n "$ext" ]; then
-      echo "DEP   $rel:"; echo "$ext"; bad=$((bad + 1))
+      echo "DEP   $rel [$slice]:"; echo "$ext"; bad=$((bad + 1))
     fi
     if ! loads="$(otool -l -arch "$slice" "$f" 2>&1)"; then
-      echo "OTOOL $rel: load-command inspection failed: $loads"; bad=$((bad + 1)); continue
+      echo "OTOOL $rel [$slice]: load-command inspection failed: $loads"; bad=$((bad + 1)); continue
     fi
     # Each otool invocation selects its slice; its default is the host architecture.
     mins="$(printf '%s\n' "$loads" | awk '
-      /^Load command / {b=0; v=0}
-      /cmd LC_BUILD_VERSION$/ {b=1}
-      b && /^[[:space:]]*minos / {print $2; b=0}
+      /^Load command / {b=0; v=0; p=""}
+      /cmd LC_BUILD_VERSION$/ {b=1; p=""}
+      b && /^[[:space:]]*platform / {p=$2}
+      b && /^[[:space:]]*minos / {if (p == "1" || toupper(p) == "MACOS") print $2; b=0}
       /cmd LC_VERSION_MIN_MACOSX$/ {v=1}
       v && /^[[:space:]]*version / {print $2; v=0}')"
     if [ -z "$mins" ]; then
-      echo "MINOS $rel: no macOS version could be verified"; bad=$((bad + 1)); continue
+      echo "MINOS $rel [$slice]: no macOS version could be verified"; bad=$((bad + 1)); continue
     fi
     while IFS= read -r m; do
       if ! [[ "$m" =~ ^[0-9]+(\.[0-9]+){1,2}$ ]]; then
-        echo "MINOS $rel: invalid version $m"; bad=$((bad + 1)); continue
+        echo "MINOS $rel [$slice]: invalid version $m"; bad=$((bad + 1)); continue
       fi
-      if { [ "$WANT" = universal2 ] || [ "$slice" = "$WANT" ]; } && version_greater "$m" "$max"; then
-        max="$m"; maxfile="$rel [$slice]"
-      fi
+      case "$WANT:$slice" in
+        universal2:*|x86_64:x86_64|x86_64:x86_64h|arm64:arm64|arm64:arm64e)
+          echo "MINOS-SLICE $rel [$slice]: $m"
+          if version_greater "$m" "$max"; then
+            max="$m"; maxfile="$rel [$slice]"
+          fi ;;
+      esac
     done <<<"$mins"
   done
 

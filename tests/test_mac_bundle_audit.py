@@ -29,7 +29,8 @@ def inspect_bundle(tmp_path, *, executable=True, minimum="10.15", tool_error="",
                    second_minimum="", foreign=False, architectures="x86_64",
                    description="Mach-O 64-bit executable x86_64", other_file=False,
                    magic="cffaedfe", plist_min="10.15", legacy_minimum=False,
-                   want="x86_64", foreign_arm64=False):
+                   want="x86_64", foreign_arm64=False, second_architecture="arm64",
+                   build_platform="1", extra_loads="", lipo_warning="", second_tool_error=""):
     bundle = tmp_path / "Example ü.app"
     # NTFS does not expose chmod's execute bit to Git Bash find. A .dylib
     # baseline is deliberately selected by the old scanner too; only the
@@ -53,14 +54,16 @@ def inspect_bundle(tmp_path, *, executable=True, minimum="10.15", tool_error="",
         pytest.skip("a working Bash is required for the actual inspector loop")
     dependency = "/opt/homebrew/lib/libbad.dylib" if foreign else "/usr/lib/libSystem.B.dylib"
     # Native otool defaults to the host slice unless -arch selects another.
-    primary = ("Load command 0\n      cmd LC_VERSION_MIN_MACOSX\n  version " if legacy_minimum else "Load command 0\n      cmd LC_BUILD_VERSION\n    minos ") + minimum + "\n"
-    secondary = ("Load command 0\n      cmd LC_BUILD_VERSION\n    minos " + second_minimum + "\n") if second_minimum else ""
+    primary = ("Load command 0\n      cmd LC_VERSION_MIN_MACOSX\n  version " if legacy_minimum else f"Load command 0\n      cmd LC_BUILD_VERSION\n platform {build_platform}\n    minos ") + minimum + "\n" + extra_loads
+    secondary = (f"Load command 0\n      cmd LC_BUILD_VERSION\n platform {build_platform}\n    minos " + second_minimum + "\n") if second_minimum else ""
     command = (
         '  selected=x86_64\n  if [ "${2:-}" = -arch ]; then selected="$3"; fi\n'
+        f'  if [[ " {architectures} " != *" $selected "* ]]; then return 9; fi\n'
+        f'  if [ "$selected" = "{second_architecture}" ] && [ "$1" = "{second_tool_error}" ]; then return 7; fi\n'
         '  if [ "$1" = -L ]; then\n'
         + ('    if [ "$selected" = arm64 ]; then printf "fixture:\\n\\t/opt/homebrew/lib/libbad.dylib (compatibility version 1.0.0)\\n"; return; fi\n' if foreign_arm64 else '')
         + f'    printf "fixture:\\n\\t{dependency} (compatibility version 1.0.0)\\n"\n'
-        "  elif [ \"$selected\" = arm64 ]; then\ncat <<'ARMLOADS'\n" + secondary + 'ARMLOADS\n'
+        f"  elif [ \"$selected\" = {second_architecture} ]; then\ncat <<'ARMLOADS'\n" + secondary + 'ARMLOADS\n'
         "  else\ncat <<'INTELLOADS'\n" + primary + 'INTELLOADS\n  fi\n'
     )
     script = tmp_path / "inspect.sh"
@@ -70,7 +73,8 @@ def inspect_bundle(tmp_path, *, executable=True, minimum="10.15", tool_error="",
         'if [[ "$2" == *Other.dylib ]]; then printf "Mach-O x86_64\\n"; '
         f'else printf "%s\\n" "{description}"; fi; }}\n'
         f'lipo() {{ if [ "{tool_error}" = lipo ]; then return 7; fi; '
-        f'printf "%s\\n" "{architectures}"; }}\n'
+        f'printf "%s\\n" "{architectures}"; '
+        + (f'printf "%s\\n" "{lipo_warning}" >&2; ' if lipo_warning else '') + '}\n'
         'otool() {\n'
         f'  if [ "$1" = "{tool_error}" ]; then return 7; fi\n'
         + command + '}\n'
@@ -167,6 +171,70 @@ def test_native_slice_foreign_dependency_on_nonhost_slice_is_not_hidden(tmp_path
                             foreign_arm64=True)
     assert result.returncode != 0, result.stdout + result.stderr
     assert "/opt/homebrew/lib/libbad.dylib" in result.stdout
+
+
+@pytest.mark.parametrize("want,architectures,minimum,second,plist,offender", [
+    ("x86_64", "x86_64", "11.0", "", "10.15", "11.0"),
+    ("arm64", "arm64", "11.0", "12.0", "11.0", "12.0"),
+])
+def test_thin_target_rejects_its_own_higher_minimum(tmp_path, want, architectures, minimum, second, plist, offender):
+    result = inspect_bundle(tmp_path, want=want, architectures=architectures,
+                            minimum=minimum, second_minimum=second, plist_min=plist)
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert f"requires {offender}" in result.stdout
+
+
+@pytest.mark.parametrize("want,architectures,second_arch,minimum,plist", [
+    ("x86_64", "x86_64 x86_64h", "x86_64h", "10.15", "10.15"),
+    ("arm64", "arm64 arm64e", "arm64e", "11.0", "11.0"),
+])
+def test_subarchitecture_minimum_cannot_escape_target_family(tmp_path, want, architectures, second_arch, minimum, plist):
+    result = inspect_bundle(tmp_path, want=want, architectures=architectures,
+                            second_architecture=second_arch, minimum=minimum,
+                            second_minimum="12.0", plist_min=plist)
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert "requires 12.0" in result.stdout
+
+
+@pytest.mark.parametrize("platform", ["2", "6", "UNKNOWN", ""])
+def test_nonmac_or_missing_platform_cannot_supply_macos_minimum(tmp_path, platform):
+    result = inspect_bundle(tmp_path, minimum="9.0", build_platform=platform)
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert "no macOS version" in result.stdout
+
+
+@pytest.mark.parametrize("platform", ["MACOS", "macos"])
+def test_named_macos_platform_is_accepted(tmp_path, platform):
+    result = inspect_bundle(tmp_path, build_platform=platform)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_catalyst_minimum_does_not_replace_verified_macos_command(tmp_path):
+    result = inspect_bundle(tmp_path, minimum="10.15",
+                            extra_loads="Load command 1\n cmd LC_BUILD_VERSION\n platform 6\n minos 13.1\n")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "highest minos        : 10.15" in result.stdout
+
+
+def test_lipo_warning_is_not_treated_as_architecture_tokens(tmp_path):
+    result = inspect_bundle(tmp_path, lipo_warning="warning: synthetic lipo diagnostic")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "problems             : 0" in result.stdout
+
+
+def test_nonhost_load_failure_identifies_the_slice(tmp_path):
+    result = inspect_bundle(tmp_path, architectures="x86_64 arm64", second_minimum="11.0",
+                            second_tool_error="-l")
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert "[arm64]" in result.stdout and "load-command inspection failed" in result.stdout
+
+
+def test_all_requested_slice_minima_are_reported(tmp_path):
+    result = inspect_bundle(tmp_path, want="universal2", architectures="x86_64 arm64",
+                            minimum="11.0", second_minimum="12.0", plist_min="10.15")
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert "[x86_64]: 11.0" in result.stdout
+    assert "[arm64]: 12.0" in result.stdout
 
 
 def test_scanner_reads_all_magic_variants_without_resource_false_positives(tmp_path, scanner):
