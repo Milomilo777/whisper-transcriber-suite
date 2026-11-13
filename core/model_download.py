@@ -213,6 +213,7 @@ class _SocketReader(io.RawIOBase):
     def __init__(self, sock: Any, cancel: threading.Event | None,
                  idle_timeout: float, deadline: float | None, rate: _MinimumRate | None = None):
         self.sock = sock
+        self._socket_timeout = sock.gettimeout()
         self.holder = sock.makefile("rb", buffering=0)
         self.cancel = cancel
         self.idle_timeout = idle_timeout
@@ -243,8 +244,16 @@ class _SocketReader(io.RawIOBase):
             return count
 
     def close(self) -> None:
-        self.holder.close()
-        super().close()
+        if self.closed:
+            return
+        try:
+            # CONNECT closes its response before the connection begins TLS.
+            self.sock.settimeout(self._socket_timeout)
+        finally:
+            try:
+                self.holder.close()
+            finally:
+                super().close()
 
 
 class ModelDownloader:
