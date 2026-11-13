@@ -6,6 +6,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Translate new preset, subtitle-quality and diagnostics messages in eight languages, and distinguish saved presets from defaults in Greek.
 - Preserve per-host login limits when IPv6 counter tables fill. Use the remaining tracked network tier before shared overflow, so subnet-table pressure cannot lock unrelated allocations out.
 - Report every incompatible macOS bundle component in the final verification verdict, so one highest minimum cannot hide other files that also prevent support for the declared OS.
 - Size subtitle-quality columns for their translated headings and current font, so longer labels remain readable.
