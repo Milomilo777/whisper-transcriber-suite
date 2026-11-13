@@ -351,9 +351,11 @@ def _install_locked(
         size=asset.size, sha256=asset.sha256, what=_WHAT,
         progress_cb=progress_cb, cancel_event=cancel_event,
     )
+    verified_download.raise_if_cancelled(cancel_event, _WHAT)
     staging = Path(tempfile.mkdtemp(prefix=".staging-", dir=root))
     try:
         extract_archive(archive, staging / "x")
+        verified_download.raise_if_cancelled(cancel_event, _WHAT)
         top = _single_root(staging / "x")
         exe = top / server_exe_name()
         if not exe.is_file():
@@ -367,6 +369,7 @@ def _install_locked(
         missing = ensure_vc_runtime(top)
         if missing:
             logger.warning("llama.cpp runtime installed, but %s", vc_runtime_message(missing))
+        verified_download.raise_if_cancelled(cancel_event, _WHAT)
         _move_into_place(top, runtime_dir(), staging / "old")
     finally:
         shutil.rmtree(staging, ignore_errors=True)

@@ -59,6 +59,12 @@ class DownloadCancelled(DownloadError):
     """The cancel event was set; the ``.part`` file is kept for a resume."""
 
 
+def raise_if_cancelled(event: threading.Event | None, what: str) -> None:
+    """Honor cancellation at a safe download or installation boundary."""
+    if event is not None and event.is_set():
+        raise DownloadCancelled(f"Cancelled {what}; it resumes next time.")
+
+
 ProgressCallback = Callable[[int, int], None]
 
 
@@ -383,7 +389,8 @@ def open_part(path: Path, offset: int, *,
         yield stream
 
 
-def replace_with_retry(src: Path, dst: Path, attempts: int = 10, delay: float = 0.5) -> None:
+def replace_with_retry(src: Path, dst: Path, attempts: int = 10, delay: float = 0.5, *,
+                       check_cancel: Callable[[], None] | None = None) -> None:
     """``os.replace`` that waits out a Windows virus scanner holding a fresh file.
 
     Windows refuses to rename a file (or a folder holding one) that another
@@ -393,6 +400,8 @@ def replace_with_retry(src: Path, dst: Path, attempts: int = 10, delay: float = 
     import time
 
     for attempt in range(attempts):
+        if check_cancel is not None:
+            check_cancel()
         try:
             os.replace(src, dst)
             return
@@ -479,15 +488,21 @@ def download_verified(
     ``cancel_event`` is set, :class:`DownloadError` on any other failure,
     and ``core.offline.OfflineModeError`` while Work offline is on.
     """
+    def check_cancel() -> None:
+        raise_if_cancelled(cancel_event, what)
+    check_cancel()
     sha256 = sha256.lower()
     if is_verified(dest, size, sha256):
+        check_cancel()
         return dest
     offline.require_online(what)
     dest.parent.mkdir(parents=True, exist_ok=True)
     busy = ("This file is already being downloaded (another window of the app?); "
             "wait for that download to finish.")
     with exclusive_lock(dest.with_name(dest.name + ".lock"), busy, strict=True):
+        check_cancel()
         if is_verified(dest, size, sha256):  # the lock holder before us finished it
+            check_cancel()
             return dest
         part = part_path(dest)
 
@@ -500,20 +515,26 @@ def download_verified(
 
         resumed = part.is_file()
         fetch_whole_file()
-        if resumed and file_sha256(part) != sha256:
+        check_cancel()
+        resumed_hash = file_sha256(part) if resumed else None
+        check_cancel()
+        if resumed and resumed_hash != sha256:
             # The kept prefix may be from another file (an older pin, a server
             # that changed it): fetch the whole file once before giving up.
             logger.info("Resumed %s does not verify; downloading it again from the start", dest.name)
             _unlink(part)
             fetch_whole_file()
-        if file_sha256(part) != sha256:
+        check_cancel()
+        checksum = file_sha256(part)
+        check_cancel()
+        if checksum != sha256:
             _unlink(part)
             raise DownloadError(
                 f"The file for {what} does not match its pinned checksum; it was deleted, "
                 "not installed. Try again later."
             )
         try:
-            replace_with_retry(part, dest)
+            replace_with_retry(part, dest, check_cancel=check_cancel)
         except OSError as e:
             raise DownloadError(f"Could not save the file for {what}: {e}") from e
     logger.info("Downloaded and verified %s (%d bytes)", dest, size)
@@ -543,8 +564,7 @@ def _fetch(
     # is copied. Reserve both that prefix and the remaining transfer.
     _check_free_space(part.parent, size)
     def check_cancel() -> None:
-        if cancel_event is not None and cancel_event.is_set():
-            raise DownloadCancelled(f"Cancelled {what}; it resumes next time.")
+        raise_if_cancelled(cancel_event, what)
     prepared = prepare_part(part, offset, check_cancel=check_cancel)
     headers = {"User-Agent": _USER_AGENT}
     if offset:

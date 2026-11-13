@@ -14,6 +14,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Honor cancellation after a runtime download is flushed or verified, during publication retries, and before installing its extracted files. Verified bytes remain available for a retry without another download; already completed installations are preserved.
+
 - Copy saved download prefixes into private files before resuming on network storage, where hardlink counts can be inaccurate. Interrupted preparation recovers the saved prefix without modifying another file that shares its original bytes.
 
 - Prevent resumable downloads from appending to or truncating another file through a linked partial or restart path. Validate the opened file before changing its contents while preserving ordinary resume and retry behavior.
