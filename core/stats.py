@@ -72,7 +72,7 @@ _CONSENT_GENERATION = 0
 _SESSION_ERRORS: dict[str, int] = {}
 _ERASURE_DONE = threading.Event()
 _ERASURE_DONE.set()
-_ERASURE_PENDING: tuple[Path, Path, threading.Event] | None = None
+_ERASURE_PENDING: tuple[Path, Path, threading.Event, Path, set[str]] | None = None
 _ERASURE_RUNNING = False
 
 # ISO 3166-1 alpha-2 country code shape.
@@ -341,18 +341,39 @@ def install_id_for(config: dict[str, Any]) -> str:
     Never raises.
     """
     try:
-        if not bool(config.get("telemetry_opt_in", False)):
+        with _CONSENT_LOCK:
+            generation = _CONSENT_GENERATION
+            if not bool(config.get("telemetry_opt_in", False)):
+                return ""
+            current = config.get("install_id")
+            if _valid_install_id(current):
+                return str(current)
+        # UUID generation must not delay revocation. Discard work that was
+        # admitted before an off/on transition, even if consent is on again.
+        candidate = str(uuid.uuid4())
+        from core.config import _SAVE_LOCK, save_config
+
+        # Serialize publication/save with config-identity erasure. The consent
+        # lock only protects memory, never UUID generation or filesystem I/O.
+        with _SAVE_LOCK:
+            with _CONSENT_LOCK:
+                if (generation != _CONSENT_GENERATION
+                        or not bool(config.get("telemetry_opt_in", False))):
+                    return ""
+                current = config.get("install_id")
+                if _valid_install_id(current):
+                    return str(current)
+                config["install_id"] = candidate
+            try:
+                save_config(config)
+            except Exception as e:  # noqa: BLE001 - stats never break anything
+                logger.debug("install id not saved (kept for this run): %s", e)
+            with _CONSENT_LOCK:
+                if (generation == _CONSENT_GENERATION
+                        and bool(config.get("telemetry_opt_in", False))
+                        and config.get("install_id") == candidate):
+                    return candidate
             return ""
-        current = config.get("install_id")
-        if _valid_install_id(current):
-            return str(current)
-        config["install_id"] = str(uuid.uuid4())
-        try:
-            from core.config import save_config
-            save_config(config)
-        except Exception as e:  # noqa: BLE001 - stats never break anything
-            logger.debug("install id not saved (kept for this run): %s", e)
-        return str(config["install_id"])
     except Exception as e:  # noqa: BLE001
         logger.debug("install id unavailable (ignored): %s", e)
         return ""
@@ -372,20 +393,27 @@ def forget_install_id(config: dict[str, Any]) -> None:
     for delivery cannot be recalled. Disk erasure is best effort.
     """
     global _CONSENT_GENERATION, _ERASURE_DONE, _ERASURE_PENDING, _ERASURE_RUNNING
-    if bool(config.get("telemetry_opt_in", False)):
-        return
-    if "install_id" in config:
-        config["install_id"] = ""
+    with _CONSENT_LOCK:
+        if bool(config.get("telemetry_opt_in", False)):
+            return
+        old_id = config.get("install_id")
+        if "install_id" in config:
+            config["install_id"] = ""
+        _CONSENT_GENERATION += 1
     from core.diagnostic import log_path
+    from core.config import config_path
 
     # Resolve the profile now; the daemon must not pick up another profile later.
     target, diagnostic_path = _error_rate_path(), log_path()
+    saved_path = Path(config_path())
+    revoked = {str(old_id)} if _valid_install_id(old_id) else set()
     with _CONSENT_LOCK:
-        _CONSENT_GENERATION += 1
         done = threading.Event()
         if _ERASURE_PENDING is not None:
+            if _ERASURE_PENDING[3] == saved_path:
+                revoked.update(_ERASURE_PENDING[4])
             _ERASURE_PENDING[2].set()  # Superseded; its send generation is invalid.
-        _ERASURE_PENDING = (target, diagnostic_path, done)
+        _ERASURE_PENDING = (target, diagnostic_path, done, saved_path, revoked)
         _ERASURE_DONE = done
         if _ERASURE_RUNNING:
             return
@@ -399,6 +427,27 @@ def forget_install_id(config: dict[str, Any]) -> None:
             logger.warning("Could not schedule local telemetry erasure", exc_info=True)
 
 
+def _erase_saved_install_ids(path: Path, revoked: set[str]) -> None:
+    """Remove only revoked identities, ordered after admitted config saves.
+
+    Keep current settings and a newly enabled identity intact. Read the frozen
+    profile directly: the eraser must neither create nor repair a config file.
+    """
+    if not revoked:
+        return
+    from core.config import _SAVE_LOCK, _config_file_lock, _write_text_atomic
+
+    with _SAVE_LOCK, _config_file_lock(str(path)):
+        if not path.is_file():
+            return
+        with path.open("r", encoding="utf-8") as stream:
+            raw = stream.read(1024 * 1024 + 1)
+        saved = json.loads(raw) if len(raw) <= 1024 * 1024 else None
+        if isinstance(saved, dict) and saved.get("install_id") in revoked:
+            saved["install_id"] = ""
+            _write_text_atomic(path, json.dumps(saved, indent=2, ensure_ascii=False) + "\n")
+
+
 def _erase_local_state() -> None:
     """Drain one coalescing erasure queue; no older task can erase newer data."""
     global _ERASURE_PENDING, _ERASURE_RUNNING
@@ -409,7 +458,11 @@ def _erase_local_state() -> None:
             if pending is None:
                 _ERASURE_RUNNING = False
                 return
-        target, diagnostic_path, done = pending
+        target, diagnostic_path, done, saved_path, revoked = pending
+        try:
+            _erase_saved_install_ids(saved_path, revoked)
+        except Exception:  # noqa: BLE001 - still erase other local state
+            logger.warning("Could not erase the saved telemetry identity", exc_info=True)
         try:
             with _ERROR_LOCK:
                 _SESSION_ERRORS.clear()
@@ -677,6 +730,13 @@ def post_stats_async(
             return False
         if not isinstance(payload, dict) or not payload:
             return False
+        payload = dict(payload)  # Capture provenance before the caller can mutate it.
+
+        def identity_matches() -> bool:
+            return ("install_id" not in payload
+                    or (_valid_install_id(payload["install_id"])
+                        and payload["install_id"] == config.get("install_id")))
+
         def send() -> None:
             try:
                 from core.failure_clue import sanitise_clue
@@ -685,16 +745,21 @@ def post_stats_async(
                 # daemon waits; sends from before opt-out become obsolete.
                 if not erased.wait(5.0) or not _saved_consent_allows(consent_path):
                     return
+                # Model validation may inspect the filesystem. Keep it off
+                # the caller and outside both local-state locks.
+                if "model" in payload:
+                    payload["model"] = public_model_name(payload["model"])
                 with _ERROR_LOCK:
                     if (generation != _CONSENT_GENERATION
                             or not automatic_stats_allowed(config)
+                            or not identity_matches()
                             or offline.is_offline()):
                         return
                     closed = sanitise_clue(payload, status=payload.get("status"))
                     if not closed:
                         return
                     if closed.get("status") == "error":
-                        closed = limit_error_row(closed, install_id_for(config))
+                        closed = limit_error_row(closed, payload.get("install_id", ""))
                         if closed is None:
                             return
                 # Never hold either state lock during the HTTP timeout. Recheck
@@ -704,6 +769,7 @@ def post_stats_async(
                 with _CONSENT_LOCK:
                     admitted = (generation == _CONSENT_GENERATION
                                 and automatic_stats_allowed(config)
+                                and identity_matches()
                                 and not offline.is_offline())
                 if admitted:
                     _post(url, closed, float(timeout))
