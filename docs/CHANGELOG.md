@@ -8,6 +8,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 - Preserve literal markup and timecode-looking text when importing oTranscribe files, so format conversion does not silently remove or reinterpret transcript cues. OTR and Whisper JSON readers also accept UTF-16 and UTF-32 files.
 - Exclude local model-file writes and lock waits from network timeout and minimum-rate budgets, so a slow destination does not reject a healthy download mirror.
+- Honor download cancellation between checksum read blocks, retaining completed archive bytes for a retry without re-downloading them.
 - Restore the configured socket timeout after an HTTPS proxy CONNECT response, so a slow TLS handshake does not inherit the download reader's short polling interval.
 - Cancel verified downloads while a server stops sending headers, body bytes or redirect data. Keep received prefixes resumable and release the connection even when an error traceback is retained.
 - Resume model downloads without charging local prefix-copy time as a network stall or recopying the same owned bytes on every retry. Check temporary copy space separately from the remaining download.

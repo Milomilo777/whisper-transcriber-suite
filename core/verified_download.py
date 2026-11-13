@@ -77,20 +77,30 @@ def part_path(dest: Path) -> Path:
     return dest.with_name(dest.name + ".part")
 
 
-def file_sha256(path: Path, chunk_size: int = 1 << 20) -> str:
+def file_sha256(path: Path, chunk_size: int = 1 << 20, *,
+                check_cancel: Callable[[], None] | None = None) -> str:
+    """Hash a file, checking cancellation between bounded read blocks."""
     h = hashlib.sha256()
     with open(path, "rb") as f:
-        while chunk := f.read(chunk_size):
+        while True:
+            if check_cancel is not None:
+                check_cancel()
+            chunk = f.read(chunk_size)
+            if not chunk:
+                break
             h.update(chunk)
+    if check_cancel is not None:
+        check_cancel()
     return h.hexdigest()
 
 
-def is_verified(path: Path, size: int, sha256: str) -> bool:
+def is_verified(path: Path, size: int, sha256: str, *,
+                check_cancel: Callable[[], None] | None = None) -> bool:
     """True when ``path`` is a file of exactly ``size`` bytes with that SHA-256."""
     try:
         if not path.is_file() or path.stat().st_size != size:
             return False
-        return file_sha256(path) == sha256.lower()
+        return file_sha256(path, check_cancel=check_cancel) == sha256.lower()
     except OSError:
         return False
 
@@ -613,7 +623,7 @@ def download_verified(
         raise_if_cancelled(cancel_event, what)
     check_cancel()
     sha256 = sha256.lower()
-    if is_verified(dest, size, sha256):
+    if is_verified(dest, size, sha256, check_cancel=check_cancel):
         check_cancel()
         return dest
     offline.require_online(what)
@@ -622,7 +632,7 @@ def download_verified(
             "wait for that download to finish.")
     with exclusive_lock(dest.with_name(dest.name + ".lock"), busy, strict=True):
         check_cancel()
-        if is_verified(dest, size, sha256):  # the lock holder before us finished it
+        if is_verified(dest, size, sha256, check_cancel=check_cancel):  # the prior holder finished it
             check_cancel()
             return dest
         part = part_path(dest)
@@ -637,7 +647,7 @@ def download_verified(
         resumed = part.is_file()
         fetch_whole_file()
         check_cancel()
-        resumed_hash = file_sha256(part) if resumed else None
+        resumed_hash = file_sha256(part, check_cancel=check_cancel) if resumed else None
         check_cancel()
         if resumed and resumed_hash != sha256:
             # The kept prefix may be from another file (an older pin, a server
@@ -646,7 +656,7 @@ def download_verified(
             _unlink(part)
             fetch_whole_file()
         check_cancel()
-        checksum = file_sha256(part)
+        checksum = file_sha256(part, check_cancel=check_cancel)
         check_cancel()
         if checksum != sha256:
             _unlink(part)
