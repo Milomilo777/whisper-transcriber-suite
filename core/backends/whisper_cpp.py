@@ -11,6 +11,7 @@ ggml-large-v3-q5_0.bin`` and is downloaded on demand via
 """
 from __future__ import annotations
 
+import hashlib
 import logging
 import math
 import os
@@ -32,9 +33,11 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_MODEL_NAME = "ggml-large-v3-q5_0.bin"
 DEFAULT_MODEL_URL = (
-    "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/"
+    "https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1/"
     f"{DEFAULT_MODEL_NAME}"
 )
+DEFAULT_MODEL_SIZE_BYTES = 1_081_140_203
+DEFAULT_MODEL_SHA256 = "d75795ecff3f83b5faa89d1900604ad8c780abd5739fae406de19f23ecd98ad1"
 
 
 def model_dir() -> Path:
@@ -95,6 +98,7 @@ def download_default_model(
         log(f"Downloading {url} → {dest}")
 
     fd, staged = tempfile.mkstemp(prefix=".whisper-cpp-", suffix=".part", dir=dest.parent)
+    digest = hashlib.sha256() if url == DEFAULT_MODEL_URL else None
     try:
         with os.fdopen(fd, "wb") as fp:
             # Bound each blocking socket operation as before. Closing either
@@ -107,8 +111,12 @@ def download_default_model(
                     chunk = resp.read(chunk_size)
                     if not chunk:
                         break
+                    if digest is not None and downloaded + len(chunk) > DEFAULT_MODEL_SIZE_BYTES:
+                        raise RuntimeError("whisper.cpp model exceeds its pinned size; it was not installed.")
                     fp.write(chunk)
                     downloaded += len(chunk)
+                    if digest is not None:
+                        digest.update(chunk)
                     if total and log:
                         pct = int((downloaded / total) * 100)
                         if pct != last_pct and pct % 5 == 0:
@@ -140,6 +148,10 @@ def download_default_model(
                 if log:
                     log(f"whisper.cpp model already present at {dest}")
                 return str(dest)
+            if digest is not None and (
+                downloaded != DEFAULT_MODEL_SIZE_BYTES or digest.hexdigest() != DEFAULT_MODEL_SHA256
+            ):
+                raise RuntimeError("whisper.cpp model does not match its pinned size/checksum; it was not installed.")
             os.replace(staged, dest)
     except BaseException:
         try:

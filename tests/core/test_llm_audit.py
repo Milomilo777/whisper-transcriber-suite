@@ -33,7 +33,7 @@ def test_download_default_model_fsync_defect(monkeypatch, tmp_path):
     monkeypatch.setattr(urllib.request, "urlopen", mock_urlopen)
     
     dest = tmp_path / "model.gguf"
-    download_default_model(dest=dest)
+    download_default_model(dest=dest, url="https://models.example.invalid/custom")
     
     assert dest.exists()
     assert fsync_called, "os.fsync was not called before os.replace"

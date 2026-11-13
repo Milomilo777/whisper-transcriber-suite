@@ -240,7 +240,7 @@ def test_each_model_download_uses_its_own_part_file(tmp_path, monkeypatch):
         llm.urllib.request, "urlopen",
         lambda req, timeout=None: _DownloadResp(
             lambda: seen.append(sorted(os.listdir(tmp_path)))))
-    llm.download_default_model(dest=dest)
+    llm.download_default_model(url="https://models.example.invalid/custom", dest=dest)
     parts = [n for names in seen for n in names if n.endswith(".part")]
     assert parts and "model.gguf.part" not in parts
     assert dest.read_bytes() == b"abcdef"
@@ -599,7 +599,7 @@ def test_other_cleanup_cannot_delete_completed_download_before_publication(tmp_p
 
     monkeypatch.setattr(_checkpoint, "_flush_to_disk", age_after_flush)
     monkeypatch.setattr(llm.os, "replace", concurrent_cleanup_then_publish)
-    assert llm.download_default_model(dest=dest) == str(dest)
+    assert llm.download_default_model(url="https://models.example.invalid/custom", dest=dest) == str(dest)
     assert closed_before_cleanup == [True]
     assert dest.read_bytes() == b"abcdef"
     assert not list(tmp_path.glob("*.part"))
@@ -624,11 +624,11 @@ def test_model_response_without_positive_length_must_not_install_empty_file(
     monkeypatch.setattr(llm.offline, "require_online", lambda *args: None)
     monkeypatch.setattr(llm.urllib.request, "urlopen", lambda *args, **kwargs: response)
     if payload:
-        assert llm.download_default_model(dest=dest, log=logs.append) == str(dest)
+        assert llm.download_default_model(url="https://models.example.invalid/custom", dest=dest, log=logs.append) == str(dest)
         assert dest.read_bytes() == payload
     else:
         with pytest.raises(RuntimeError, match="empty"):
-            llm.download_default_model(dest=dest, log=logs.append)
+            llm.download_default_model(url="https://models.example.invalid/custom", dest=dest, log=logs.append)
         assert dest.read_bytes() == original if existing else not dest.exists()
         assert not any("ready" in text.lower() or text.startswith("Done:") for text in logs)
     assert not list(tmp_path.glob("*.part"))
