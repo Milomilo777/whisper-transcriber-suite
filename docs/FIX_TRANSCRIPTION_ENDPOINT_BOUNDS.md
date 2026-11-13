@@ -24,8 +24,12 @@ for the failed run, and reads subsequent repeated cues without filtering them.
 It cannot reconstruct cues the guard had already dropped before the rejection.
 Pause ends this failed run's capture rather than waiting to resume it.
 A capture/storage failure does not replace already written recovery data or the
-valid prefix. Storage errors retain their operating-system classification and
+valid prefix. Operating-system errors while saving additional text retain their classification and
 include the path of the initial record that was successfully saved.
+Other serialization failures remain programming errors. A stop without newly
+recoverable text is described as such even if the decoder yielded an unusable
+cue. Known CUDA failure categories remain visible without including arbitrary
+decoder messages or private paths in diagnostic breadcrumbs.
 
 Validation uses all registered writers, fractional-sample endpoints, a long PCM input, clipped and resumed offsets, checkpoints, post-processing, container-duration discrepancies and recovery controls. Independent mutations must reject disabled checkpoint bounds and upward rounding at EOF. Actual long-file validation remains separate from hermetic tests.
 

@@ -213,7 +213,7 @@ def test_repeated_empty_capture_creates_only_mandatory_record(endpoint_case):
     task.paused = True
     raw = [{"start": 2.6, "end": 3, "text": "rejected"}]
     for attempt in range(3):
-        with pytest.raises(tr._TimingBoundsError, match="paused; no extra cues"):
+        with pytest.raises(tr._TimingBoundsError, match="paused; no additional text was recovered"):
             tr._enforce_decoded_audio_end(task, list(raw), recovery=lambda: raw,
                                          remaining=iter([]), convert=dict)
         assert len(list(cp.partials_dir().glob("*.timing-recovery.json"))) == attempt + 1

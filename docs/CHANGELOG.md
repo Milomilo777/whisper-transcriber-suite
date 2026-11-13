@@ -13,6 +13,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Record the reliability investigation checkpoint, distinguishing reviewed fixes from held reproductions and remaining runtime validation.
 
 ### Fixed
+- Clarify secondary timing-recovery failures: avoid duplicate operating-system error prefixes, distinguish unrecoverable text from an empty decoder, and retain safe CUDA failure categories in diagnostics.
 - Stop CUDA retries and repetition restarts while collecting raw text after a timing error. Capture checks its limits between decoder steps, avoids duplicate records when no new cue arrives, and keeps the initial recovery path visible if saving additional text fails.
 - Preserve further text from a lazy decoder after a rejected timestamp, within cancellation and capture limits. Keep this raw text separate from valid checkpoints and timed output.
 - Recover the valid prefix of older checkpoints whose saved cues or words extend past the audio. The full raw text is preserved first; unsafe or unsupported tails keep the original checkpoint aside instead of inventing timestamps or declaring completion.

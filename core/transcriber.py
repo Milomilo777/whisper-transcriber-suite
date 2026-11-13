@@ -1061,6 +1061,17 @@ def _capture_timing_tail(
             break
         except Exception as error:  # noqa: BLE001 - preserve the original timing failure
             stopped = f"decoder-error:{type(error).__name__}"
+            try:
+                if isinstance(error, RuntimeError):
+                    from .backends.faster_whisper_be import _cuda_failure
+                    category = _cuda_failure(error)
+                    if category:
+                        stopped += f"/{category}"
+                # Keep useful known categories without copying private paths or
+                # arbitrary decoder messages into the error or log breadcrumb.
+                logger.warning("Additional timing recovery stopped: %s", stopped)
+            except Exception:  # noqa: BLE001 - diagnostics cannot mask saved recovery
+                pass
             break
         if isinstance(segment, _loop_guard.LoopGuardTick):
             continue
@@ -1105,11 +1116,14 @@ def _enforce_decoded_audio_end(
         except OSError as storage_error:
             # Preserve the storage exception's type/errno/winerror for callers
             # and classification, while exposing the record already on disk.
-            detail = f"{storage_error} Additional timing recovery failed. {error}"
             if storage_error.errno is not None or getattr(storage_error, "winerror", None) is not None:
-                storage_error.strerror = detail
+                # OSError renders its own errno and filename around strerror.
+                # Reusing str(error) here would duplicate both wrappers.
+                storage_error.strerror = (
+                    f"{storage_error.strerror or ''} Additional timing recovery failed. {error}"
+                ).strip()
             else:
-                storage_error.args = (detail,)
+                storage_error.args = (f"{storage_error} Additional timing recovery failed. {error}",)
             raise
         finally:
             if runner is not None:
@@ -1118,7 +1132,9 @@ def _enforce_decoded_audio_end(
             raise _TimingBoundsError(
                 f"{error} Additional timing recovery ({stopped}): {kept}"
             ) from error
-        raise _TimingBoundsError(f"{error} Additional timing recovery: {stopped}; no extra cues.") from error
+        raise _TimingBoundsError(
+            f"{error} Additional timing recovery: {stopped}; no additional text was recovered."
+        ) from error
 
 
 def _segments_for_writer(
