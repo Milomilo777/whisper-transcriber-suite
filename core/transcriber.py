@@ -27,12 +27,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Iterator
 
-from .backends.faster_whisper_be import WhisperModel
-
-try:  # 1.0.3+ ships this; older wheels do not
-    from faster_whisper import BatchedInferencePipeline  # type: ignore[attr-defined]
-except ImportError:  # pragma: no cover
-    BatchedInferencePipeline = None  # type: ignore[assignment]
+from .backends.faster_whisper_be import BatchedInferencePipeline, WhisperModel
 
 from . import _checkpoint
 from . import language_prior as _language_prior

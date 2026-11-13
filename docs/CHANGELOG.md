@@ -74,6 +74,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 - Keep PDF combining marks with their available base font after right-to-left reordering, preserve leading-mark coverage, and prevent fallback marks from changing the following space's font.
 
+- Bound failed word alignment by exact GPU chunk durations and finish the current decode window when retaining late text, preventing rounded tail timestamps and repeated tail decoding.
+
 - Keep decoded text within its audio window when optional word alignment fails near the end of a file, avoiding a transcription failure from predicted timestamps after the window.
 
 - Use an available fallback font for combining marks that the preceding font cannot draw, preventing missing-glyph boxes in mixed-script PDF transcripts.

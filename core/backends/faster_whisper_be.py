@@ -15,15 +15,16 @@ import os
 import threading
 import time
 from contextlib import nullcontext
+from contextvars import ContextVar
 from pathlib import Path
 from typing import Any, Callable
 
 from faster_whisper import WhisperModel as _WhisperModel
 
 try:  # 1.0.3+ ships this; older wheels do not
-    from faster_whisper import BatchedInferencePipeline  # type: ignore[attr-defined]
+    from faster_whisper import BatchedInferencePipeline as _BatchedInferencePipeline  # type: ignore[attr-defined]
 except ImportError:  # pragma: no cover
-    BatchedInferencePipeline = None  # type: ignore[assignment]
+    _BatchedInferencePipeline = None  # type: ignore[assignment]
 
 from .. import loop_guard, vad_window
 from ..config import load_config
@@ -31,6 +32,40 @@ from ..model_manager import DownloadCancelled, ensure_model
 from .base import Backend, LanguageInfo
 
 logger = logging.getLogger(__name__)
+
+# Chunk metadata uses the same speech-only timeline as batched alignment;
+# upstream restores VAD gaps afterwards. Keep the exact duration local to this
+# forward call without mutating the shared model or upstream rounded frames.
+_batch_alignment: ContextVar[Any] = ContextVar("batch_alignment", default=None)
+
+
+if _BatchedInferencePipeline is not None:
+    class BatchedInferencePipeline(_BatchedInferencePipeline):
+        """Pass exact chunk bounds to fallback without altering valid alignment."""
+
+        def forward(self, features, tokenizer, chunks_metadata, options):
+            token = _batch_alignment.set((self.model, chunks_metadata))
+            try:
+                return super().forward(features, tokenizer, chunks_metadata, options)
+            finally:
+                _batch_alignment.reset(token)
+else:  # pragma: no cover - compatibility with older faster-whisper wheels
+    BatchedInferencePipeline = None  # type: ignore[assignment]
+
+
+def _chunk_window(chunk):
+    start, duration = chunk.get("offset"), chunk.get("duration")
+    if any(isinstance(value, bool) for value in (start, duration)):
+        return None
+    try:
+        start, duration = float(start), float(duration)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    end = start + duration
+    if (not all(math.isfinite(value) for value in (start, duration, end))
+            or start < 0 or duration <= 0 or end <= start):
+        return None
+    return start, end
 
 
 def _alignment_window(original, frames, frames_per_second):
@@ -82,6 +117,7 @@ class WhisperModel(_WhisperModel):
             failed = True
             result = last_speech_timestamp
         frame_counts = num_frames if isinstance(num_frames, (list, tuple)) else [num_frames] * len(raw)
+        batch = _batch_alignment.get()
         for index, (group, original) in enumerate(zip(segments, raw)):
             if not (failed or any(s["end"] <= s["start"] for s, _, _ in original)):
                 continue
@@ -92,6 +128,10 @@ class WhisperModel(_WhisperModel):
             window = (_alignment_window(original, frame_counts[index],
                                         getattr(self, "frames_per_second", None))
                       if len(frame_counts) == len(raw) else None)
+            if batch is not None and batch[0] is self and len(batch[1]) == len(raw):
+                # Batched frame counts ceil(duration) to whole seconds. Only
+                # exact metadata can bound a short chunk or sub-frame offset.
+                window = _chunk_window(batch[1][index])
             restored = []
             pending = []
             for segment, start, end in original:
@@ -126,6 +166,10 @@ class WhisperModel(_WhisperModel):
                 raise RuntimeError("Cannot preserve decoded text: no positive raw segment bounds")
             if pending:
                 restored[-1]["tokens"].extend(pending)
+                if window is not None:
+                    # get_end controls the sequential decoder's next seek.
+                    # Late text already belongs to this completed window.
+                    restored[-1]["end"] = window[1]
             # Batched forward has decoded text before this seam; sequential
             # generation decodes afterwards. Keep both representations equal.
             for segment in restored:
