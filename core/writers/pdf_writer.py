@@ -193,7 +193,7 @@ def write_bytes(segments: list[dict], audio_path: str = "") -> bytes:
         # not — used to crash with AttributeError on int.
         raw_speaker = seg.get("speaker")
         speaker = (
-            replace_lone_surrogates(str(raw_speaker).strip())
+            normalize_text(raw_speaker)
             if raw_speaker not in (None, "") else ""
         )
         speaker = replace_missing_lookalikes(speaker, has_glyph)

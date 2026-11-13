@@ -56,8 +56,7 @@ def write(segments: list[dict], audio_path: str = "") -> str:
         # " ".join(...split()) also collapses a newline / tab inside a
         # hand-edited label, which would split the markdown line in two
         # (speaker_prefix does the same for the other line-based formats).
-        speaker = (" ".join(str(raw_speaker).split())
-                   if raw_speaker not in (None, "") else "")
+        speaker = normalize_text(raw_speaker)
         if speaker:
             lines.append(f"**{ts}** _{speaker}:_ {text}")
         else:

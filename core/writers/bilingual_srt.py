@@ -20,11 +20,11 @@ import tempfile
 import zipfile
 
 from .base import (
-    coerce_seconds,
     escape_cue_separator,
     fmt_srt_time,
     normalize_text,
     speaker_prefix,
+    prepare_cues,
 )
 
 
@@ -48,29 +48,26 @@ def write(
             f"translations length ({len(translations)}) must match "
             f"segments length ({len(segments)})"
         )
-    out: list[str] = []
-    i = 0
+    cues: list[dict] = []
     for seg, translated in zip(segments, translations):
-        original = escape_cue_separator(normalize_text(seg.get("text", "")))
-        translated_line = escape_cue_separator(normalize_text(translated or ""))
-        # An empty first line would end the cue in every SRT parser and
-        # lose the translation, so write only the lines that have text,
-        # and skip a cue with neither.
-        lines = [ln for ln in (original, translated_line) if ln]
+        original = normalize_text(seg.get("text", ""))
+        translated_line = normalize_text(translated or "")
+        lines = [escape_cue_separator(line) for line in (original, translated_line) if line]
         if not lines:
             continue
         lines[0] = escape_cue_separator(speaker_prefix(seg)) + lines[0]
-        # The viewer loads hand-edited JSON verbatim and passes it here;
-        # a malformed timestamp must clamp rather than abort the export
-        # (a missing "end" falls back to the start, an earlier end is
-        # clamped to the start).
-        start = coerce_seconds(seg.get("start"))
-        end = max(coerce_seconds(seg.get("end"), start), start)
-        i += 1
-        out.append(f"{i}")
-        out.append(f"{fmt_srt_time(start)} --> {fmt_srt_time(end)}")
-        out.extend(lines)
-        out.append("")
+        body = "\n".join(lines)
+        # Preserve the language boundary and source characters in identity;
+        # rendered/escaped text can make distinct source pairs look identical.
+        identity = json.dumps([original, translated_line], ensure_ascii=True)
+        cues.append({**seg, "text": identity, "_bilingual_body": body})
+    out: list[str] = []
+    for index, (start_ms, end_ms, body) in enumerate(
+        prepare_cues(cues, lambda cue: cue["_bilingual_body"]), start=1
+    ):
+        out.extend([str(index),
+                    f"{fmt_srt_time(start_ms / 1000)} --> {fmt_srt_time(end_ms / 1000)}",
+                    body, ""])
     return "\n".join(out)
 
 

@@ -241,7 +241,7 @@ def speaker_prefix(seg: dict) -> str:
         return ""
     # Collapse whitespace: a newline or tab in a hand-edited label would
     # split a line-based format (txt, lrc, tsv, srt) in two.
-    label = " ".join(replace_lone_surrogates(str(raw)).split())
+    label = normalize_text(raw)
     return f"{label}: " if label else ""
 
 
@@ -340,6 +340,7 @@ def prepare_cues(
         # A bad cue takes in whatever starts under 100 ms after it. It stays bad
         # until it takes in a valid cue, whose end it then keeps.
         merged = list(parts)
+        found_valid = False
         seen = {key for key, _text in merged}
         while i < len(cues) and cues[i][0] - start_ms < 100:
             next_start, next_end, next_parts = cues[i]
@@ -351,8 +352,9 @@ def prepare_cues(
             start_ms = min(start_ms, next_start)
             if next_end > next_start:
                 end_ms = next_end
+                found_valid = True
                 break
-        if end_ms <= start_ms:
+        if not found_valid:
             end_ms = start_ms + 1000
             if i < len(cues):
                 end_ms = min(end_ms, cues[i][0])

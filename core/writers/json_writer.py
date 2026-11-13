@@ -64,6 +64,14 @@ def write(segments: list[dict], audio_path: str = "") -> str:
             # Carry through only dict word entries, mirroring convert's
             # _parse_json: a non-dict element or a non-list "words" value
             # from a hand-edited JSON raised and aborted the whole write.
+            # A missing/collapsed segment end carries no usable upper bound.
+            # Preserve valid word clocks instead of clamping them all to start.
+            if item["end"] <= start:
+                item["end"] = max([start] + [
+                    max(start, _safe_float(w.get("start"), start),
+                        _safe_float(w.get("end"), start))
+                    for w in words if isinstance(w, dict)
+                ])
             coerced_words = []
             for w in words:
                 if not isinstance(w, dict):
@@ -74,7 +82,7 @@ def write(segments: list[dict], audio_path: str = "") -> str:
                     item["start"], _safe_float(w.get("start"), item["start"])
                 ))
                 word_end = min(item["end"], max(
-                    word_start, _safe_float(w.get("end"), item["end"])
+                    word_start, _safe_float(w.get("end", word_start), item["end"])
                 ))
                 coerced_words.append({
                     "start": word_start,
