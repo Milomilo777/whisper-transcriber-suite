@@ -25,7 +25,8 @@ Rules that keep the throttle from becoming a weapon:
   untracked prefixes share the existing overflow allowance instead.
 * Evicting a table entry never helps an attacker: the oldest idle entry whose
   lockout has ended goes first, and the /64 counters are separate from the
-  host table.
+  host table. Live /64 counters are never evicted; when that table is full,
+  untracked networks use the shared overflow allowance too.
 * When the host table is full of locked hosts, a new host cannot be stored
   (storing it would evict a locked entry, and evicting its own fresh entry
   would let it guess without limit). Such attempts share ONE bounded overflow
@@ -168,15 +169,6 @@ class AuthThrottle:
                 victim = next(iter(self._hosts))
             del self._hosts[victim]
 
-    def _evict_subnets(self, now: float) -> None:
-        while len(self._subnets) > self._max_subnets:
-            victim = next((k for k, e in self._subnets.items()
-                           if now - e[1] >= self._window
-                           or e[0] < self._budget), None)
-            if victim is None:  # all exhausted: drop the oldest
-                victim = next(iter(self._subnets))
-            del self._subnets[victim]
-
     def _saturated(self, key: str, now: float) -> bool:
         """True when ``key`` is new and the table holds only locked hosts."""
         if key in self._hosts or len(self._hosts) < self._max_hosts:
@@ -259,19 +251,26 @@ class AuthThrottle:
                 if prefix_entry[0] >= self._prefix_budget and not trusted:
                     return int(prefix_entry[1] + self._prefix_window - now) + 1
             sub_entry = None
+            untracked_subnet = False
             if sub is not None:
                 sub_entry = self._subnets.get(sub)
                 if sub_entry is not None and now - sub_entry[1] >= self._window:
                     sub_entry = None  # a new window starts
                 if sub_entry is None:
-                    sub_entry = [0.0, now]
-                if sub_entry[0] >= self._budget and not trusted:
+                    if sub not in self._subnets and len(self._subnets) >= self._max_subnets:
+                        for old, counter in list(self._subnets.items()):
+                            if now - counter[1] >= self._window:
+                                del self._subnets[old]
+                        untracked_subnet = len(self._subnets) >= self._max_subnets
+                    if not untracked_subnet:
+                        sub_entry = [0.0, now]
+                if sub_entry is not None and sub_entry[0] >= self._budget and not trusted:
                     # Budget used up: refuse without booking, so the refusal
                     # neither counts nor extends the window.
                     return int(sub_entry[1] + self._window - now) + 1
-            if saturated:
+            if saturated or untracked_subnet:
                 # Exhausted subnet/prefix counters take precedence even when
-                # a new host cannot be stored. Charge every admitted attempt
+                # a host or network cannot be stored. Charge admitted attempts
                 # to those counters as well as the shared overflow allowance.
                 wait = self._overflow_admit(now)
                 if wait:
@@ -280,11 +279,10 @@ class AuthThrottle:
                 sub_entry[0] += 1  # a trusted host is counted, never refused
                 self._subnets[sub] = sub_entry
                 self._subnets.move_to_end(sub)
-                self._evict_subnets(now)
             if prefix is not None and prefix_entry is not None:
                 prefix_entry[0] += 1
                 self._prefixes[prefix] = prefix_entry
-            if saturated:
+            if saturated or untracked_subnet:
                 return 0
             entry[0] += 1
             entry[2] = now

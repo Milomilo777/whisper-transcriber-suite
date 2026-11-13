@@ -6,6 +6,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Keep live IPv6 subnet counters when their table fills. New untracked networks share the bounded overflow allowance instead of evicting counters and resetting password-guess limits.
 - IPv6 password throttling now shares a bounded allowance across the /64 networks of a routed /48. Rotating subnets or overflowing the counter table no longer resets that allocation's guessing budget.
 
 ### Added
