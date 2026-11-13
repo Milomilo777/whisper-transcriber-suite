@@ -56,12 +56,14 @@ def test_ci_claim_matches_the_workflow() -> None:
     on_push = re.search(r"^on:\s*\n\s+push:\s*\n\s+branches:\s*\[([^\]]*)\]", ci, re.MULTILINE)
     assert on_push and "master" in on_push.group(1), "ci.yml no longer runs on a push to master"
     assert "release/**" in on_push.group(1), "release pushes must run CI"
+    assert "codex/integration-2.4.x" in on_push.group(1), "the integration candidate must run CI"
     matrix = re.search(r"^\s+os:\s*(.+)$", ci, re.MULTILINE)
     assert matrix, "ci.yml lost its OS matrix"
     expression = matrix.group(1)
     assert "fromJSON(" in expression
     assert "github.event_name == 'push'" in expression
     assert "startsWith(github.ref, 'refs/heads/release/')" in expression
+    assert "github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/release/') || github.ref == 'refs/heads/codex/integration-2.4.x')" in expression
     choices = [json.loads(value) for value in re.findall(r"'(\[[^']*\])'", expression)]
     assert choices == [["ubuntu-latest"], ["windows-latest", "ubuntu-latest"]]
     assert "macos-" not in ci

@@ -1,7 +1,7 @@
 name: CI
 
-# Run on master/release pushes and the PR branches below. Release pushes
-# use Ubuntu only; other events retain Windows and Ubuntu coverage.
+# Run on master/release/integration pushes and the PR branches below.
+# Release and integration pushes use Ubuntu only; other events keep both OSes.
 #
 # The compiled-exe smoke tests under tests/smoke/ are intentionally
 # excluded from CI â€” they need the 3 GB Whisper model + a real
@@ -10,7 +10,7 @@ name: CI
 
 on:
   push:
-    branches: [master, "release/**"]
+    branches: [master, "release/**", "codex/integration-2.4.x"]
   pull_request:
     branches: [master, "release/**", "chore/**"]
 
@@ -46,7 +46,7 @@ jobs:
       matrix:
         # Windows is the primary ship target. Ubuntu is a portable-
         # core sanity check (no tkinter UI, the smoke tests skip).
-        os: ${{ fromJSON(github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/') && '["ubuntu-latest"]' || '["windows-latest","ubuntu-latest"]') }}
+        os: ${{ fromJSON(github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/release/') || github.ref == 'refs/heads/codex/integration-2.4.x') && '["ubuntu-latest"]' || '["windows-latest","ubuntu-latest"]') }}
         python-version: ["3.11", "3.12"]
     steps:
       - name: Check out repository
