@@ -1246,11 +1246,13 @@ def _rescue_collapsed(
         kwargs.update(vad_filter=False, condition_on_previous_text=False)
         if not pair and language:
             kwargs["language"] = language
-        vad = VadOptions(max_speech_duration_s=cr.PIECE_MAX_S, min_silence_duration_ms=300)
+        vad = VadOptions(threshold=float(config.get("vad_threshold", 0.5)),
+                         max_speech_duration_s=cr.PIECE_MAX_S, min_silence_duration_ms=300)
 
         def speech_in(start: float, end: float) -> list[tuple[float, float]]:
             audio = _decode_window(audio_path, start, end)
-            runs = get_speech_timestamps(audio, vad) if len(audio) else []
+            with _vad_window.windowed_vad(_vad_window_seconds()):
+                runs = get_speech_timestamps(audio, vad) if len(audio) else []
             return [(start + r["start"] / cr.SAMPLE_RATE, start + r["end"] / cr.SAMPLE_RATE) for r in runs]
 
         def transcribe_piece(start: float, end: float) -> list[dict[str, Any]]:
