@@ -3611,8 +3611,9 @@ def transcribe(
                 segments_data = rescued_segments
         except BaseException:
             # A decoder error mid-file: keep what was decoded since the last
-            # periodic checkpoint before the error reaches the worker.
-            if segments_data and clip is None and not task.cancelled:
+            # periodic checkpoint before the error reaches the worker, including
+            # when cancellation arrived while that error was being raised.
+            if segments_data and clip is None:
                 _write_periodic_checkpoint(
                     task,
                     segments_data,
@@ -4707,8 +4708,9 @@ def resume_transcription(
                     last_checkpoint_time = now
                     segments_since_checkpoint = 0
         except BaseException:
-            # A decoder error mid-tail: keep what the tail decoded so far.
-            if new_segments_data and not task.cancelled:
+            # A decoder error mid-tail: keep the accepted tail even when
+            # cancellation arrived after its last yield.
+            if new_segments_data:
                 merged = prior_segments + new_segments_data
                 _write_periodic_checkpoint(
                     task,

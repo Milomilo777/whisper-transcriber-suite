@@ -13,6 +13,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Record the reliability investigation checkpoint, distinguishing reviewed fixes from held reproductions and remaining runtime validation.
 
 ### Fixed
+
+- Keep the latest valid transcription prefix when cancellation races a decoding or timing error. Fresh and resumed jobs save their accepted work before reporting the error.
 - Keep the last valid transcript and resume cursor when a decoder cue or rescue result has unusable timing. The rejected text and original clocks remain in a separate recovery record instead of making the normal checkpoint unusable.
 - Preserve API outputs in subfolders when an archive copy fails, including across server restarts. Retained copies keep their relative folders so same-named outputs cannot replace each other.
 
