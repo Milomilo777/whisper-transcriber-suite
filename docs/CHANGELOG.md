@@ -4,6 +4,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Fixed
+
+- IPv6 password throttling now shares a bounded allowance across the /64 networks of a routed /48. Rotating subnets or overflowing the counter table no longer resets that allocation's guessing budget.
+
 ### Added
 
 - Show a one-time usage-statistics disclosure for new and upgraded profiles before automatic reporting starts. The quiet bar preserves the existing choice, offers a direct off button and keeps reporting paused when its state cannot be saved.
