@@ -1,6 +1,7 @@
 """Sequential, pinned model downloads. Only verified bytes acquire a final name."""
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import http.client
 import io
@@ -360,7 +361,8 @@ class ModelDownloader:
 
     def _fetch(self, url: str, part: Path, info: FileInfo,
                cancel: threading.Event | None) -> str | None:
-        offset = part.stat().st_size if part.exists() else 0
+        part_info = verified.part_stat(part)
+        offset = part_info.st_size if part_info is not None else 0
         if offset > info.size:
             self._file_op(part.unlink, cancel)
             offset = 0
@@ -408,7 +410,8 @@ class ModelDownloader:
         response.download_reader.last_byte = time.monotonic()
         digest = hashlib.sha256() if offset == 0 else None
         done = offset
-        with self._file_op(lambda: open(target, "ab" if offset else "wb"), cancel) as stream:
+        with contextlib.ExitStack() as stack:
+            stream = self._file_op(lambda: stack.enter_context(verified.open_part(target, offset)), cancel)
             while True:
                 _check_cancel(cancel)
                 if self._rate is not None and done < info.size:
@@ -553,9 +556,8 @@ class ModelDownloader:
                 if not final.is_file():
                     raise mm.ModelDestinationNotWritable(folder)
                 continue
-            if part.is_symlink():
-                raise mm.ModelDestinationNotWritable(folder)
-            have = part.stat().st_size if part.exists() else 0
+            part_info = verified.part_stat(part)
+            have = part_info.st_size if part_info is not None else 0
             needed += info.size - have if have <= info.size else info.size
             missing.append((name, info))
         if not missing:
@@ -596,8 +598,9 @@ class ModelDownloader:
                 except _HostUnavailable as exc:
                     if exc.reject_bytes and part.exists():
                         if checkpoint:
-                            with self._file_op(lambda: part.open("r+b"), cancel) as stream:
-                                stream.truncate(min(checkpoint, part.stat().st_size))
+                            with contextlib.ExitStack() as stack:
+                                offset = min(checkpoint, part.stat().st_size)
+                                self._file_op(lambda: stack.enter_context(verified.open_part(part, offset)), cancel)
                         else:
                             self._file_op(part.unlink, cancel)
                     cause = str(exc)

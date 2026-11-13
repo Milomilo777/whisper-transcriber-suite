@@ -26,12 +26,13 @@ import logging
 import os
 import re
 import shutil
+import stat
 import sys
 import threading
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import Callable, Generator
+from typing import BinaryIO, Callable, Generator
 
 from . import offline
 
@@ -125,6 +126,40 @@ def exclusive_lock(path: Path, busy_message: str, *, strict: bool = False) -> Ge
                     pass
     finally:
         fh.close()
+
+
+def part_stat(path: Path) -> os.stat_result | None:
+    """Inspect a partial without following aliases into another file."""
+    try:
+        info = path.lstat()
+    except FileNotFoundError:
+        return None
+    if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1
+            or getattr(info, "st_file_attributes", 0)
+            & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)):
+        raise DownloadError("The saved partial is not a private regular file; use another download folder.")
+    return info
+
+
+@contextlib.contextmanager
+def open_part(path: Path, offset: int) -> Generator[BinaryIO, None, None]:
+    """Validate the open file before truncating or writing a resume prefix."""
+    before = part_stat(path)
+    if offset and (before is None or before.st_size < offset):
+        raise DownloadError("The saved partial changed before it could be resumed.")
+    # Neither mode truncates an existing target. Exclusive creation also
+    # refuses a link/file inserted after the missing-path check.
+    with open(path, "r+b" if before is not None else "x+b") as stream:
+        opened = os.fstat(stream.fileno())
+        current = part_stat(path)
+        identity = (opened.st_dev, opened.st_ino)
+        if (not stat.S_ISREG(opened.st_mode) or opened.st_nlink != 1 or not opened.st_ino
+                or current is None or identity != (current.st_dev, current.st_ino)
+                or (before is not None and identity != (before.st_dev, before.st_ino))):
+            raise DownloadError("The saved partial changed before it could be written.")
+        stream.seek(offset)
+        stream.truncate()
+        yield stream
 
 
 def replace_with_retry(src: Path, dst: Path, attempts: int = 10, delay: float = 0.5) -> None:
@@ -276,7 +311,8 @@ def _fetch(
     timeout: float,
 ) -> bool:
     """Bring ``part`` to ``size`` bytes. False = start over (the range was refused)."""
-    offset = part.stat().st_size if part.is_file() else 0
+    info = part_stat(part)
+    offset = info.st_size if info is not None else 0
     if offset > size:
         _unlink(part)
         offset = 0
@@ -294,9 +330,7 @@ def _fetch(
                 logger.info("Server ignored the resume range for %s; starting over", url)
             done = start
             last_pct = -1
-            with open(part, "r+b" if start else "wb") as f:
-                f.seek(start)
-                f.truncate()
+            with open_part(part, start) as f:
                 while True:
                     if cancel_event is not None and cancel_event.is_set():
                         raise DownloadCancelled(f"Cancelled {what}; it resumes next time.")
