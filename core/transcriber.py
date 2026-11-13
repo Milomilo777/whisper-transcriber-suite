@@ -1495,7 +1495,7 @@ def _save_partial_subtitles(
     reaches the caller.
     """
     path = os.path.splitext(task.file_path)[0] + ".partial.srt"
-    part = f"{path}.{os.getpid()}.part"
+    part: str | None = None
     try:
         _enforce_audio_end(task, segments)
         try:
@@ -1504,9 +1504,8 @@ def _save_partial_subtitles(
             kept = _keep_timing_recovery(task.file_path, segments, str(error))
             raise _TimingBoundsError(f"{error} Recovery data: {kept}") from error
         text = get_writer("srt")(bounded, task.file_path)
-        with open(part, "w", encoding="utf-8", newline="\n") as f:
-            f.write(text)
-            _checkpoint._flush_to_disk(f)
+        from .convert import _stage_output
+        part = _stage_output(path, text.encode("utf-8"))
         os.replace(part, path)
         log(
             f"Kept the {len(segments)} finished segment(s) in "
@@ -1514,10 +1513,11 @@ def _save_partial_subtitles(
             log_cb,
         )
     except Exception as e:  # noqa: BLE001
-        try:
-            os.unlink(part)
-        except OSError:
-            pass
+        if part is not None:
+            try:
+                os.unlink(part)
+            except OSError:
+                pass
         logger.warning("Could not save the partial subtitles: %s", e)
         log(f"WARN: could not save the partial subtitles: {e}", log_cb)
 
@@ -1751,7 +1751,7 @@ def _write_outputs_impl(
 ) -> list[str]:
     """Write each requested format atomically.
 
-    Each writer runs to a ``<path>.part`` first, then os.replace's onto
+    Each writer uses a fresh exclusive ``.part`` file, then os.replace's onto
     the final name. If anything raises mid-write — disk full, encoding
     crash, the process dying — the user is left with either the
     previous (intact) version of the file or nothing, never a half-
@@ -1766,9 +1766,9 @@ def _write_outputs_impl(
     the newly indexed transcript (and its sidecar overwrote the previous
     run's file at the un-indexed name).
 
-    Text formats go through ``open(..., "w", encoding="utf-8")``;
-    binary formats (``docx``) go through ``open(..., "wb")`` with
-    bytes payload from ``get_binary_writer``.
+    Text formats produce UTF-8 bytes without newline translation;
+    binary formats (``docx``) use the unchanged payload from
+    ``get_binary_writer``. Only an owned staging file is cleaned up.
 
     The final path is composed by expanding the
     ``output_filename_template`` config key (default ``"{base}.{ext}"``).
@@ -1959,17 +1959,9 @@ def _write_outputs_impl(
                 rendered if fmt_name == "smtv_docx"
                 else _final_path(fmt_name, rendered, index)
             )
-            # Unique .part suffix per pid + thread so two parallel
-            # workers transcribing the SAME source file don't race-write
-            # to the same .part path (Windows treats the second open as
-            # PermissionError because the first writer still holds the
-            # handle). os.replace onto the final path remains atomic;
-            # the last writer wins for the final file, which matches the
-            # POSIX "last writer wins" semantic that callers already
-            # expect for redundant parallel transcriptions.
-            part_path = (
-                f"{path}.{os.getpid()}-{threading.get_ident()}.part"
-            )
+            # A stale staging name can alias another transcript. Allocate
+            # exclusively, and only clean up a file this call created.
+            part_path: str | None = None
             try:
                 try:
                     format_segments = _segments_for_writer(segments_data, audio_end, fmt_name)
@@ -1990,32 +1982,26 @@ def _write_outputs_impl(
                     # adapter raises). work_title = source stem; language =
                     # the ISO code threaded in via ``lang``.
                     from .writers import smtv_docx_writer
-                    payload_b = smtv_docx_writer.write_bytes(
+                    payload = smtv_docx_writer.write_bytes(
                         format_segments,
                         audio_path,
                         language=lang,
                         work_title=os.path.basename(base),
                     )
-                    with open(part_path, "wb") as fb:
-                        fb.write(payload_b)
-                        _checkpoint._flush_to_disk(fb)
                 elif is_binary(fmt_name):
-                    payload_b = get_binary_writer(fmt_name)(format_segments, audio_path)
-                    with open(part_path, "wb") as fb:
-                        fb.write(payload_b)
-                        _checkpoint._flush_to_disk(fb)
+                    payload = get_binary_writer(fmt_name)(format_segments, audio_path)
                 else:
-                    payload_s = get_writer(fmt_name)(format_segments, audio_path)
-                    with open(part_path, "w", encoding="utf-8", newline="\n") as fs:
-                        fs.write(payload_s)
-                        _checkpoint._flush_to_disk(fs)
+                    payload = get_writer(fmt_name)(format_segments, audio_path).encode("utf-8")
+                from .convert import _stage_output
+                part_path = _stage_output(path, payload)
                 os.replace(part_path, path)
                 claimed.discard(path)
             except Exception as e:  # noqa: BLE001
-                try:
-                    os.unlink(part_path)
-                except OSError:
-                    pass
+                if part_path is not None:
+                    try:
+                        os.unlink(part_path)
+                    except OSError:
+                        pass
                 _release(path)
                 # Isolate per-format failures: one broken writer (a missing
                 # optional dependency, or a single format's encoding bug) must
@@ -2650,18 +2636,23 @@ def _write_chapter_sidecar(path: str, chapters: list[dict[str, Any]]) -> str | N
     if not chapters:
         return None
     import json as _json
-    part = f"{path}.{os.getpid()}-{threading.get_ident()}.part"
+    part: str | None = None
     try:
-        with open(part, "w", encoding="utf-8", newline="\n") as f:
-            _json.dump(chapters, f, indent=2, ensure_ascii=False)
-            f.write("\n")
-            _checkpoint._flush_to_disk(f)
+        from .convert import _stage_output_chunks
+
+        def chunks() -> Iterator[bytes]:
+            for piece in _json.JSONEncoder(indent=2, ensure_ascii=False).iterencode(chapters):
+                yield piece.encode("utf-8")
+            yield b"\n"
+
+        part = _stage_output_chunks(path, chunks())
         os.replace(part, path)
     except Exception:
-        try:
-            os.unlink(part)
-        except OSError:
-            pass
+        if part is not None:
+            try:
+                os.unlink(part)
+            except OSError:
+                pass
         return None
     return path
 

@@ -60,6 +60,7 @@ import re
 import stat
 import uuid
 from pathlib import Path
+from collections.abc import Iterable
 from typing import Any
 from xml.etree import ElementTree as ET
 
@@ -974,6 +975,10 @@ def _remove_staging(path: str) -> None:
 
 
 def _stage_output(target: str, payload: bytes) -> str:
+    return _stage_output_chunks(target, (payload,))
+
+
+def _stage_output_chunks(target: str, payload: Iterable[bytes]) -> str:
     tmp = os.path.join(
         os.path.dirname(os.path.abspath(target)), f".convert-{uuid.uuid4().hex}.part",
     )
@@ -982,7 +987,8 @@ def _stage_output(target: str, payload: bytes) -> str:
         from core import _checkpoint
         with open(tmp, "xb") as stream:
             created = True
-            stream.write(payload)
+            for chunk in payload:
+                stream.write(chunk)
             _checkpoint._flush_to_disk(stream)
         return tmp
     except BaseException:
