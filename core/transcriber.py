@@ -1028,6 +1028,82 @@ def _enforce_audio_end(
         raise _TimingBoundsError(f"{error} Recovery data: {kept}") from error
 
 
+
+_TIMING_TAIL_SEGMENTS = 64
+_TIMING_TAIL_SECONDS = 2.0
+_TIMING_TAIL_TEXT_CHARS = 128 * 1024
+
+
+def _capture_timing_tail(
+    task: TranscriptionTask, original: list[dict[str, Any]], remaining: Iterator[Any],
+    convert: Callable[[Any], dict[str, Any]], reason: str,
+) -> tuple[str | None, str]:
+    """Keep a bounded further tail without admitting any cue to the checkpoint.
+
+    The time budget is checked between iterator steps; it cannot preempt a native
+    decoder call. The existing worker watchdog still owns a blocked decoder.
+    """
+    captured = list(original)
+    deadline = time.monotonic() + _TIMING_TAIL_SECONDS
+    chars = 0
+    stopped = "segment-limit"
+    for _ in range(_TIMING_TAIL_SEGMENTS):
+        if task.cancelled or task.paused:
+            stopped = "cancelled" if task.cancelled else "paused"
+            break
+        if time.monotonic() >= deadline:
+            stopped = "time-limit"
+            break
+        try:
+            segment = next(remaining)
+        except StopIteration:
+            stopped = "exhausted"
+            break
+        except Exception as error:  # noqa: BLE001 - preserve the original timing failure
+            stopped = f"decoder-error:{type(error).__name__}"
+            break
+        if isinstance(segment, _loop_guard.LoopGuardTick):
+            continue
+        try:
+            raw = convert(segment)
+        except Exception as error:  # noqa: BLE001 - keep available text without inventing clocks
+            text = getattr(segment, "text", None)
+            if isinstance(text, str):
+                captured.append({"text": text, "timing_unavailable": True})
+            stopped = f"conversion-error:{type(error).__name__}"
+            break
+        captured.append(raw)
+        text = raw.get("text")
+        chars += len(text) if isinstance(text, str) else 0
+        if chars >= _TIMING_TAIL_TEXT_CHARS:
+            stopped = "text-limit"
+            break
+    # The initial record is already durable. Avoid redundant files when the
+    # decoder ends immediately; otherwise record any bounded/incomplete capture.
+    if len(captured) == len(original) and stopped == "exhausted":
+        return None, stopped
+    kept = _keep_timing_recovery(task.file_path, captured,
+                                 f"{reason}; additional tail capture: {stopped}")
+    return kept, stopped
+
+
+def _enforce_decoded_audio_end(
+    task: TranscriptionTask, bounded: list[dict[str, Any]], *,
+    recovery: Callable[[], list[dict[str, Any]]], remaining: Iterator[Any],
+    convert: Callable[[Any], dict[str, Any]],
+) -> None:
+    try:
+        # This writes the initial raw record BEFORE advancing the lazy decoder.
+        _enforce_audio_end(task, bounded, recovery=recovery)
+    except _TimingBoundsError as error:
+        kept, stopped = _capture_timing_tail(task, recovery(), remaining, convert, str(error))
+        if kept is not None:
+            raise _TimingBoundsError(
+                f"{error} Additional timing recovery ({stopped}): {kept}"
+            ) from error
+        raise
+
+
 def _segments_for_writer(
     segments: list[dict[str, Any]], audio_end: float | None, fmt_name: str,
 ) -> list[dict[str, Any]]:
@@ -3616,7 +3692,10 @@ def transcribe(
                 # Publish to the resumable prefix only after validation. The
                 # raw recovery keeps the rejected cue; the exception handler
                 # must checkpoint only the already accepted text and cursor.
-                _enforce_audio_end(task, bounded, recovery=lambda: segments_data + [decoded])
+                _enforce_decoded_audio_end(
+                    task, bounded, recovery=lambda: segments_data + [decoded], remaining=segments,
+                    convert=lambda raw: _guarded_segment_to_dict(raw, want_words, _guard_stats),
+                )
                 segments_data.append(bounded[0])
                 segments_since_checkpoint += 1
 
@@ -4695,6 +4774,19 @@ def resume_transcription(
                 log("Task cancelled during resume.", log_cb)
                 return True
 
+            def _resume_segment(raw: Any) -> dict[str, Any]:
+                d = _guarded_segment_to_dict(raw, want_words, guard_stats)
+                d["start"] = float(d.get("start", 0.0)) + last_end_time
+                d["end"] = float(d.get("end", 0.0)) + last_end_time
+                if want_words and isinstance(d.get("words"), list):
+                    for w in d["words"]:
+                        try:
+                            w["start"] = float(w.get("start", 0.0)) + last_end_time
+                            w["end"] = float(w.get("end", 0.0)) + last_end_time
+                        except (TypeError, ValueError):
+                            continue
+                return d
+
             for seg in new_segments_iter:
                 if _handle_resume_cancelled():
                     return True  # We "handled" the cancel cleanly.
@@ -4715,19 +4807,12 @@ def resume_transcription(
                             progress_cb(99)
                     continue
 
-                d = _guarded_segment_to_dict(seg, want_words, guard_stats)
-                d["start"] = float(d.get("start", 0.0)) + last_end_time
-                d["end"] = float(d.get("end", 0.0)) + last_end_time
-                if want_words and isinstance(d.get("words"), list):
-                    for w in d["words"]:
-                        try:
-                            w["start"] = float(w.get("start", 0.0)) + last_end_time
-                            w["end"] = float(w.get("end", 0.0)) + last_end_time
-                        except (TypeError, ValueError):
-                            continue
+                d = _resume_segment(seg)
                 bounded = [d]
-                _enforce_audio_end(task, bounded,
-                                   recovery=lambda: prior_segments + new_segments_data + [d])
+                _enforce_decoded_audio_end(
+                    task, bounded, recovery=lambda: prior_segments + new_segments_data + [d],
+                    remaining=new_segments_iter, convert=_resume_segment,
+                )
                 new_segments_data.append(bounded[0])
 
                 if progress_cb:

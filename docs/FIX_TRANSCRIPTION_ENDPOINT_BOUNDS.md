@@ -8,6 +8,17 @@ Text and word labels are never discarded to fit an endpoint. A wholly out-of-ran
 
 Rejected decoder cues and rescue replacements do not enter the resumable prefix. On a timing error, the checkpoint retains the latest accepted segments and their cursor, while the separate recovery record retains the rejected text and original clocks. A recovery-write failure still leaves the accepted prefix eligible for checkpointing. This preserves recovery; it does not repair model predictions whose start lies outside the recording or report the failed run as complete.
 
+After the initial raw record is durable, a rejected first-pass or resumed cue can
+capture further text from the same lazy decoder into an additional recovery
+record. Those cues never enter a checkpoint or timed output. Capture stops on
+cancel/pause, a decoder/conversion error, 64 iterator steps, two elapsed seconds
+between steps, or 128 Ki characters of additional text. Loop-guard ticks count
+as steps; a final yielded cue is kept whole even if it exceeds the text budget.
+The record states whether the iterator exhausted or capture stopped early.
+The elapsed check cannot preempt a native decoder call; the worker watchdog
+still handles a blocked call. A capture/storage failure does not replace
+already written recovery data or the valid prefix; storage errors propagate.
+
 Validation uses all registered writers, fractional-sample endpoints, a long PCM input, clipped and resumed offsets, checkpoints, post-processing, container-duration discrepancies and recovery controls. Independent mutations must reject disabled checkpoint bounds and upward rounding at EOF. Actual long-file validation remains separate from hermetic tests.
 
 ```text
