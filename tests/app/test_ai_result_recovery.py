@@ -97,13 +97,13 @@ def test_delayed_completion_cannot_unlock_newer_action(tmp_path, monkeypatch):
 
 def test_result_copy_excludes_configuration_and_credentials(tmp_path, monkeypatch):
     state = viewer()
-    state._app_config = lambda: {"ai_enabled": True, "llm_api_key": "synthetic-credential-not-for-storage"}
+    state._app_config = lambda: {"ai_enabled": True, "llm_api_key": "dummy-credential-not-for-storage"}
     state.json_path = "synthetic source.json"
     monkeypatch.setattr(config, "user_data_dir", lambda: tmp_path)
     monkeypatch.setattr(_threads, "safe_thread", lambda target, **kwargs: target())
     tv.TranscriptViewer._run_ai_task(state, "Ask", lambda runner: "safe synthetic answer")
     saved, = tmp_path.rglob("*.txt")
-    assert "synthetic-credential-not-for-storage" not in saved.read_text(encoding="utf-8")
+    assert "dummy-credential-not-for-storage" not in saved.read_text(encoding="utf-8")
     assert "synthetic source.json" in saved.read_text(encoding="utf-8")
 
 
