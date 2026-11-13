@@ -21,17 +21,22 @@ server and the UI.
 from __future__ import annotations
 
 import contextlib
+import glob
 import hashlib
+import itertools
+import json
 import logging
 import os
 import re
 import shutil
+import stat
 import sys
+import tempfile
 import threading
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import Callable, Generator
+from typing import BinaryIO, Callable, Generator
 
 from . import offline
 
@@ -43,6 +48,7 @@ _FREE_SPACE_MARGIN = 64 * 1024 * 1024
 # How many times one call starts over after the server ignored or refused
 # the resume range.
 _MAX_RESTARTS = 1
+_PART_WINDOWS = os.name == "nt"
 
 
 class DownloadError(RuntimeError):
@@ -51,6 +57,12 @@ class DownloadError(RuntimeError):
 
 class DownloadCancelled(DownloadError):
     """The cancel event was set; the ``.part`` file is kept for a resume."""
+
+
+def raise_if_cancelled(event: threading.Event | None, what: str) -> None:
+    """Honor cancellation at a safe download or installation boundary."""
+    if event is not None and event.is_set():
+        raise DownloadCancelled(f"Cancelled {what}; it resumes next time.")
 
 
 ProgressCallback = Callable[[int, int], None]
@@ -80,14 +92,14 @@ def is_verified(path: Path, size: int, sha256: str) -> bool:
 
 
 @contextlib.contextmanager
-def exclusive_lock(path: Path, busy_message: str) -> Generator[None]:
+def exclusive_lock(path: Path, busy_message: str, *, strict: bool = False) -> Generator[None]:
     """Hold ``path`` (a lock file) against other threads and processes.
 
     Non-blocking: a held lock raises :class:`DownloadError` with
     ``busy_message`` at once, since the other holder is doing the same work
     right now. The OS drops the lock when its process dies, so a crash never
     leaves it held. A file system without locks (some network drives) goes
-    on without one, logged.
+    on without one, logged, unless ``strict`` requires confirmed ownership.
     """
     from .config import _lock_is_contended
 
@@ -106,6 +118,8 @@ def exclusive_lock(path: Path, busy_message: str) -> Generator[None]:
         except OSError as e:
             if _lock_is_contended(e):
                 raise DownloadError(busy_message) from e
+            if strict:
+                raise DownloadError(f"Could not lock model publication: {e}") from e
             logger.warning("Could not lock %s (%s); going on without the lock", path, e)
         try:
             yield
@@ -125,7 +139,258 @@ def exclusive_lock(path: Path, busy_message: str) -> Generator[None]:
         fh.close()
 
 
-def replace_with_retry(src: Path, dst: Path, attempts: int = 10, delay: float = 0.5) -> None:
+def part_stat(path: Path, *, recover: bool = False) -> os.stat_result | None:
+    """Inspect a partial without following aliases into another file."""
+    if recover:
+        _sweep_private_parts(path)
+    try:
+        info = path.lstat()
+    except FileNotFoundError:
+        return None
+    if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1
+            or getattr(info, "st_file_attributes", 0)
+            & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)):
+        raise DownloadError("The saved partial is not a private regular file; use another download folder.")
+    return info
+
+
+def _part_identity(info: os.stat_result) -> tuple[int, int]:
+    if not stat.S_ISREG(info.st_mode) or not info.st_ino:
+        raise DownloadError("The partial file identity could not be verified.")
+    return info.st_dev, info.st_ino
+
+
+def _copy_prefix(source: BinaryIO, target: BinaryIO, size: int,
+                 check_cancel: Callable[[], None]) -> None:
+    while size:
+        check_cancel()
+        chunk = source.read(min(size, 1 << 20))
+        if not chunk:
+            raise DownloadError("The saved prefix changed while it was copied.")
+        target.write(chunk)
+        size -= len(chunk)
+    target.flush()
+    os.fsync(target.fileno())
+
+
+def _publish_part_exclusive(source: Path, target: Path,
+                            check_cancel: Callable[[], None], *,
+                            record_created: Callable[[tuple[int, int]], None] = lambda _: None,
+                            ) -> tuple[int, int]:
+    """Publish without replacing a file another writer inserted at target."""
+    identity = _part_identity(source.stat())
+    if _PART_WINDOWS:
+        os.rename(source, target)  # Windows rename refuses an existing target.
+    else:
+        try:
+            os.link(source, target)
+        except FileExistsError:
+            raise
+        except OSError:
+            # Filesystems without hardlinks still get exclusive publication.
+            size = source.stat().st_size
+            _check_free_space(target.parent, size)
+            with open(source, "rb") as reader, open(target, "x+b") as writer:
+                identity = _part_identity(os.fstat(writer.fileno()))
+                record_created(identity)
+                _copy_prefix(reader, writer, size, check_cancel)
+        source.unlink()
+    return identity
+
+
+def _record_private_state(folder: Path, record: dict) -> None:
+    # A forced exit must leave either the old or the complete new record.
+    pending = folder / "state.next"
+    with open(pending, "x", encoding="utf-8") as state:
+        json.dump(record, state)
+        state.flush()
+        os.fsync(state.fileno())
+    os.replace(pending, folder / "state.json")
+
+
+def _sweep_private_parts(path: Path) -> None:
+    """Recover or remove at most 32 confirmed, unlocked preparation records."""
+    pattern = glob.escape(f".{path.name[:64]}.private-") + "*"
+    for folder in itertools.islice(path.parent.glob(pattern), 32):
+        remove_folder = False
+        try:
+            info = folder.lstat()
+            if (not stat.S_ISDIR(info.st_mode) or folder.is_symlink()
+                    or getattr(info, "st_file_attributes", 0)
+                    & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)):
+                continue
+            pending = folder / "state.next"
+            state = pending if os.path.lexists(pending) else folder / "state.json"
+            if state.is_symlink() or state.stat().st_size > 4096:
+                continue
+            record = json.loads(state.read_text(encoding="utf-8"))
+            if (not isinstance(record, dict) or record.get("schema") != 1
+                    or record.get("part") != str(path.absolute())
+                    or type(record.get("offset")) is not int or record["offset"] < 0):
+                continue
+            old, private = tuple(record["old"]), tuple(record["private"])
+            published = tuple(record.get("published", private))
+            if any(len(value) != 2 or any(type(n) is not int for n in value)
+                   for value in (old, private, published)):
+                continue
+            lease = folder / "lease"
+            if lease.is_symlink():
+                continue
+            with exclusive_lock(lease, "Partial preparation is still active", strict=True):
+                if {p.name for p in folder.iterdir()} - {"prefix", "previous", "state.json", "state.next", "lease"}:
+                    continue
+                previous, prefix = folder / "previous", folder / "prefix"
+                files = [(p, expected) for p, expected in ((previous, old), (prefix, private))
+                         if os.path.lexists(p)]
+                if any(p.is_symlink() or _part_identity(p.lstat()) != expected for p, expected in files):
+                    continue
+                try:
+                    current = path.lstat()
+                except FileNotFoundError:
+                    current = None
+                if current is not None and (not stat.S_ISREG(current.st_mode)
+                        or getattr(current, "st_file_attributes", 0)
+                        & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)):
+                    continue
+                if current is None and previous.exists():
+                    def record_created(created: tuple[int, int]) -> None:
+                        record["published"] = created
+                        _record_private_state(folder, record)
+                    restored = _publish_part_exclusive(previous, path, lambda: None,
+                                                       record_created=record_created)
+                    current = part_stat(path)
+                    if current is None or _part_identity(current) != restored:
+                        continue
+                    old = restored
+                if current is None:
+                    continue
+                current_id = _part_identity(current)
+                if current_id not in (old, private, published):
+                    continue
+                if current_id == published and current.st_size < record["offset"]:
+                    # A no-hardlink filesystem can die during exclusive copy.
+                    # Only this recorded new inode may be repaired in place.
+                    saved = prefix if prefix.exists() else previous
+                    if not saved.exists() or saved.stat().st_size < record["offset"]:
+                        continue
+                    with open(saved, "rb") as reader, open(path, "r+b") as writer:
+                        if (_part_identity(os.fstat(writer.fileno())) != published
+                                or _part_identity(path.lstat()) != published):
+                            continue
+                        _copy_prefix(reader, writer, record["offset"], lambda: None)
+                for p, _ in files:
+                    p.unlink(missing_ok=True)
+                (folder / "state.json").unlink(missing_ok=True)
+                pending.unlink(missing_ok=True)
+                remove_folder = True
+            if remove_folder:
+                lease.unlink()
+                folder.rmdir()
+        except (OSError, ValueError, TypeError, KeyError, DownloadError):
+            # Unknown data and live leases are never cleanup permission.
+            continue
+
+
+def prepare_part(path: Path, offset: int, *,
+                 check_cancel: Callable[[], None] = lambda: None) -> tuple[int, int] | None:
+    """Detach an existing prefix before network I/O; link counts may lie."""
+    if offset < 0:
+        raise DownloadError("The saved partial has an invalid resume offset.")
+    _sweep_private_parts(path)
+    before = part_stat(path)
+    if offset and (before is None or before.st_size < offset):
+        raise DownloadError("The saved partial changed before it could be resumed.")
+    check_cancel()
+    if before is None:
+        return None
+    identity = _part_identity(before)
+    _check_free_space(path.parent, offset)
+    scratch = Path(tempfile.mkdtemp(prefix=f".{path.name[:64]}.private-", dir=path.parent))
+    snapshot, previous = scratch / "prefix", scratch / "previous"
+    moved = keep = False
+    lease = exclusive_lock(scratch / "lease", "Partial preparation is already active", strict=True)
+    lease.__enter__()
+    try:
+        with open(path, "rb") as reader, open(snapshot, "x+b") as writer:
+            opened = os.fstat(reader.fileno())
+            current = part_stat(path)
+            if (current is None or _part_identity(opened) != identity
+                    or _part_identity(current) != identity):
+                raise DownloadError("The saved partial changed before it could be copied.")
+            record = {"schema": 1, "part": str(path.absolute()), "old": identity,
+                      "private": _part_identity(os.fstat(writer.fileno())), "offset": offset}
+            _record_private_state(scratch, record)
+            def record_created(created: tuple[int, int]) -> None:
+                record["published"] = created
+                _record_private_state(scratch, record)
+            _copy_prefix(reader, writer, offset, check_cancel)
+            after = os.fstat(reader.fileno())
+            if (after.st_size, after.st_mtime_ns) != (before.st_size, before.st_mtime_ns):
+                raise DownloadError("The saved partial changed while it was copied.")
+        if offset == before.st_size:
+            os.utime(snapshot, ns=(before.st_atime_ns, before.st_mtime_ns))
+        check_cancel()
+        current = part_stat(path)
+        if current is None or _part_identity(current) != identity:
+            raise DownloadError("The saved partial changed before it could be detached.")
+        # Claim the old entry rather than overwriting it. A raced-in file is
+        # retained and restored without ever opening it for modification.
+        os.rename(path, previous)
+        moved = True
+        if _part_identity(previous.stat()) != identity:
+            raise DownloadError("The saved partial changed while it was detached.")
+        private = _publish_part_exclusive(snapshot, path, check_cancel, record_created=record_created)
+        current = part_stat(path)
+        if current is None or _part_identity(current) != private:
+            raise DownloadError("The private partial changed before it could be opened.")
+        return private
+    except BaseException:
+        if moved:
+            # Recovery itself can fail; preserve the claimed bytes first.
+            keep = True
+            if not os.path.lexists(path):
+                try:
+                    _publish_part_exclusive(previous, path, lambda: None, record_created=record_created)
+                except Exception:  # noqa: BLE001 - never erase a failed recovery
+                    pass
+            keep = previous.exists()
+            if keep:
+                logger.warning("The earlier saved partial is retained at %s", previous)
+        raise
+    finally:
+        lease.__exit__(None, None, None)
+        if not keep:
+            for owned in (snapshot, previous, scratch / "state.json", scratch / "state.next", scratch / "lease"):
+                try:
+                    owned.unlink(missing_ok=True)
+                except OSError:
+                    pass
+            try:
+                scratch.rmdir()
+            except OSError:
+                pass
+
+
+@contextlib.contextmanager
+def open_part(path: Path, offset: int, *,
+              prepared: tuple[int, int] | None = None) -> Generator[BinaryIO, None, None]:
+    """Write only a freshly owned inode, never a preexisting file's bytes."""
+    identity = prepared if prepared is not None else prepare_part(path, offset)
+    with open(path, "r+b" if identity is not None else "x+b") as stream:
+        opened = os.fstat(stream.fileno())
+        current = part_stat(path)
+        opened_identity = _part_identity(opened)
+        if (not stat.S_ISREG(opened.st_mode) or opened.st_nlink != 1 or not opened.st_ino
+                or current is None or opened_identity != _part_identity(current)
+                or (identity is not None and opened_identity != identity)):
+            raise DownloadError("The saved partial changed before it could be written.")
+        stream.seek(offset)
+        stream.truncate()
+        yield stream
+
+
+def replace_with_retry(src: Path, dst: Path, attempts: int = 10, delay: float = 0.5, *,
+                       check_cancel: Callable[[], None] | None = None) -> None:
     """``os.replace`` that waits out a Windows virus scanner holding a fresh file.
 
     Windows refuses to rename a file (or a folder holding one) that another
@@ -135,6 +400,8 @@ def replace_with_retry(src: Path, dst: Path, attempts: int = 10, delay: float = 
     import time
 
     for attempt in range(attempts):
+        if check_cancel is not None:
+            check_cancel()
         try:
             os.replace(src, dst)
             return
@@ -221,15 +488,21 @@ def download_verified(
     ``cancel_event`` is set, :class:`DownloadError` on any other failure,
     and ``core.offline.OfflineModeError`` while Work offline is on.
     """
+    def check_cancel() -> None:
+        raise_if_cancelled(cancel_event, what)
+    check_cancel()
     sha256 = sha256.lower()
     if is_verified(dest, size, sha256):
+        check_cancel()
         return dest
     offline.require_online(what)
     dest.parent.mkdir(parents=True, exist_ok=True)
     busy = ("This file is already being downloaded (another window of the app?); "
             "wait for that download to finish.")
-    with exclusive_lock(dest.with_name(dest.name + ".lock"), busy):
+    with exclusive_lock(dest.with_name(dest.name + ".lock"), busy, strict=True):
+        check_cancel()
         if is_verified(dest, size, sha256):  # the lock holder before us finished it
+            check_cancel()
             return dest
         part = part_path(dest)
 
@@ -242,20 +515,26 @@ def download_verified(
 
         resumed = part.is_file()
         fetch_whole_file()
-        if resumed and file_sha256(part) != sha256:
+        check_cancel()
+        resumed_hash = file_sha256(part) if resumed else None
+        check_cancel()
+        if resumed and resumed_hash != sha256:
             # The kept prefix may be from another file (an older pin, a server
             # that changed it): fetch the whole file once before giving up.
             logger.info("Resumed %s does not verify; downloading it again from the start", dest.name)
             _unlink(part)
             fetch_whole_file()
-        if file_sha256(part) != sha256:
+        check_cancel()
+        checksum = file_sha256(part)
+        check_cancel()
+        if checksum != sha256:
             _unlink(part)
             raise DownloadError(
                 f"The file for {what} does not match its pinned checksum; it was deleted, "
                 "not installed. Try again later."
             )
         try:
-            replace_with_retry(part, dest)
+            replace_with_retry(part, dest, check_cancel=check_cancel)
         except OSError as e:
             raise DownloadError(f"Could not save the file for {what}: {e}") from e
     logger.info("Downloaded and verified %s (%d bytes)", dest, size)
@@ -274,13 +553,19 @@ def _fetch(
     timeout: float,
 ) -> bool:
     """Bring ``part`` to ``size`` bytes. False = start over (the range was refused)."""
-    offset = part.stat().st_size if part.is_file() else 0
+    info = part_stat(part, recover=True)
+    offset = info.st_size if info is not None else 0
     if offset > size:
         _unlink(part)
         offset = 0
     if offset == size:
         return True
-    _check_free_space(part.parent, size - offset)
+    # A network share may retain an aliased original while its private prefix
+    # is copied. Reserve both that prefix and the remaining transfer.
+    _check_free_space(part.parent, size)
+    def check_cancel() -> None:
+        raise_if_cancelled(cancel_event, what)
+    prepared = prepare_part(part, offset, check_cancel=check_cancel)
     headers = {"User-Agent": _USER_AGENT}
     if offset:
         headers["Range"] = f"bytes={offset}-"
@@ -292,9 +577,7 @@ def _fetch(
                 logger.info("Server ignored the resume range for %s; starting over", url)
             done = start
             last_pct = -1
-            with open(part, "r+b" if start else "wb") as f:
-                f.seek(start)
-                f.truncate()
+            with open_part(part, start, prepared=prepared) as f:
                 while True:
                     if cancel_event is not None and cancel_event.is_set():
                         raise DownloadCancelled(f"Cancelled {what}; it resumes next time.")

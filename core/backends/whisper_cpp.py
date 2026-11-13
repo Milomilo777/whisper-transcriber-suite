@@ -127,7 +127,20 @@ def download_default_model(
             _checkpoint._flush_to_disk(fp)
         # Same-directory replacement cannot fall back to a partial copy or
         # place a model inside a directory that appeared during download.
-        os.replace(staged, dest)
+        from core.verified_download import exclusive_lock
+
+        with exclusive_lock(dest.with_name(dest.name + ".lock"),
+                            "The model is being published by another download. Try again shortly.",
+                            strict=True):
+            if dest.is_file() and dest.stat().st_size > 100_000_000:
+                try:
+                    os.unlink(staged)
+                except OSError:
+                    pass
+                if log:
+                    log(f"whisper.cpp model already present at {dest}")
+                return str(dest)
+            os.replace(staged, dest)
     except BaseException:
         try:
             os.unlink(staged)

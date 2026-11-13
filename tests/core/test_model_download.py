@@ -1397,7 +1397,7 @@ def test_r3_nonrename_access_denied_remains_folder_error(tmp_path, monkeypatch):
     original = builtins.open
 
     def denied(file, mode="r", *args, **kwargs):
-        if Path(file) == part and mode == "ab":
+        if Path(file) == part and mode == "r+b":
             error = PermissionError(errno.EACCES, "denied")
             error.winerror = 5
             raise error

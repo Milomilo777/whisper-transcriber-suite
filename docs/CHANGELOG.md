@@ -30,6 +30,15 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Verify optimized macOS slices and macOS-specific version metadata, separate native-tool warnings from architecture names, and identify the slice in inspection failures. Thin-architecture minimum checks have direct regression coverage.
 - Inspect each macOS binary architecture explicitly instead of relying on the host slice. Check all slices for external dependencies and compare deployment minima for the requested application architecture.
 - Reject macOS bundles when binary inspection fails or a bundled binary requires a newer macOS version than declared. Verification includes framework binaries without an executable bit and checks all architecture slices.
+
+- Honor cancellation after a runtime download is flushed or verified, during publication retries, and before installing its extracted files. Verified bytes remain available for a retry without another download; already completed installations are preserved.
+
+- Copy saved download prefixes into private files before resuming on network storage, where hardlink counts can be inaccurate. Interrupted preparation recovers the saved prefix without modifying another file that shares its original bytes.
+
+- Prevent resumable downloads from appending to or truncating another file through a linked partial or restart path. Validate the opened file before changing its contents while preserving ordinary resume and retry behavior.
+
+- Require confirmed filesystem locking before shared resumable file and model downloads. An unavailable lock now preserves saved prefixes and stops before network requests instead of allowing concurrent attempts to overwrite them.
+- Preserve a model completed by another download while a slower response is still arriving. The cpp and GGUF downloaders now serialize publication, recheck the destination, and stop safely when publication locking is unavailable. GGUF cancellation is also checked after the final disk flush.
 - Preserve API outputs in subfolders when an archive copy fails, including across server restarts. Retained copies keep their relative folders so same-named outputs cannot replace each other.
 
 
