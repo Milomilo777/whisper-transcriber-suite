@@ -542,6 +542,9 @@ def test_smtv_writer_stamps_modified_time_as_now():
     out_modified = Document(_io.BytesIO(payload)).core_properties.modified
     assert out_modified is not None
     assert out_modified != template_modified
+    # Older supported python-docx versions expose UTC dates without tzinfo.
+    if out_modified.tzinfo is None:
+        out_modified = out_modified.replace(tzinfo=datetime.timezone.utc)
     assert before - datetime.timedelta(seconds=5) <= out_modified <= after + datetime.timedelta(seconds=5)
 
 
