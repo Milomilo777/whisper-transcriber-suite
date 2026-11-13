@@ -971,6 +971,46 @@ def _cap_segment(segment: dict[str, Any], audio_end: float) -> dict[str, Any]:
     return result
 
 
+def _recover_checkpoint_timing(
+    task: "TranscriptionTask", data: dict[str, Any],
+    log_cb: Callable[[str], None] | None,
+) -> tuple[dict[str, Any], bool]:
+    """Keep raw legacy timing before using only its verified valid prefix."""
+    end = _positive_duration(getattr(task, "_audio_end", None))
+    segments = data.get("segments")
+    if end is None or not isinstance(segments, list):
+        return data, False
+    prefix: list[dict[str, Any]] = []
+    reason = ""
+    for segment in segments:
+        try:
+            if not isinstance(segment, dict):
+                raise _TimingBoundsError("Saved checkpoint timing is not a segment mapping.")
+            words = segment.get("words")
+            if isinstance(words, list) and any(not isinstance(word, dict) for word in words):
+                raise _TimingBoundsError("Saved checkpoint timing contains a non-mapping word.")
+            prefix.append(_cap_segment(segment, end))
+        except (ValueError, TypeError, OverflowError, _TimingBoundsError) as error:
+            reason = str(error)
+            break
+    if not reason:
+        cursor = _cursor_or_none(data.get("last_end_time"))
+        if data.get("transcription_completed") is True or cursor is None or cursor <= end:
+            return data, False
+        reason = "Saved checkpoint cursor is outside the known audio extent."
+    # This strict durable write must succeed before a later checkpoint can
+    # replace the rejected cues. Preserve the entire list, including good
+    # segments after the first rejected one; never invent clocks for its text.
+    kept = _keep_timing_recovery(task.file_path, segments, reason)
+    recovered = dict(data)
+    recovered.update(segments=prefix, segment_count=len(prefix),
+                     last_end_time=max((float(s["end"]) for s in prefix), default=0.0),
+                     transcription_completed=False)
+    log(f"WARN: saved timing was outside the audio; the original text is kept at {kept}. "
+        "Resuming only the valid prefix.", log_cb)
+    return recovered, True
+
+
 def _enforce_audio_end(
     task: TranscriptionTask, segments: list[dict[str, Any]],
     *, recovery: Callable[[], list[dict[str, Any]]] | None = None,
@@ -4360,6 +4400,20 @@ def resume_transcription(
             _keep_checkpoint_aside(task, "the saved audio extent is invalid", log_cb)
             return False
         task._audio_end = _positive_duration(saved_end) or source_end
+        data, timing_recovered = _recover_checkpoint_timing(task, data, log_cb)
+        if timing_recovered:
+            # Dropping an unplaced suffix makes this a partial transcript.
+            # Recheck compatibility: the completed-transcript exemption no
+            # longer permits decoding with a different model/settings/backend.
+            reason = _checkpoint.validate_checkpoint(
+                data, backend=backend_for_check, model_name=model_name, cfg_fingerprint=cfg_fp,
+            )
+            cursor = float(data["last_end_time"])
+            known_end = task._audio_end
+            if (reason or not data["segments"] or known_end is None or cursor >= known_end
+                    or (backend and backend != "faster_whisper")):
+                _keep_checkpoint_aside(task, reason or "the saved timing has no supported tail to resume", log_cb)
+                return False
         _note_run_identity(task)
         # A legacy missing key meant False even if this profile was created
         # under a newer default. Hash its original spelling, decode its value.

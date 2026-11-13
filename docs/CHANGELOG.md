@@ -13,6 +13,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Record the reliability investigation checkpoint, distinguishing reviewed fixes from held reproductions and remaining runtime validation.
 
 ### Fixed
+- Recover the valid prefix of older checkpoints whose saved cues or words extend past the audio. The full raw text is preserved first; unsafe or unsupported tails keep the original checkpoint aside instead of inventing timestamps or declaring completion.
 - Resume keeps a fully transcribed checkpoint usable after switching decoding settings, model or device. It writes the saved text through the normal post-processing and output path without decoding or billing the audio again; changed media still cannot reuse it.
 - Keep the last valid transcript and resume cursor when a decoder cue or rescue result has unusable timing. The rejected text and original clocks remain in a separate recovery record instead of making the normal checkpoint unusable.
 - Preserve API outputs in subfolders when an archive copy fails, including across server restarts. Retained copies keep their relative folders so same-named outputs cannot replace each other.
