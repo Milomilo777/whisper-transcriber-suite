@@ -457,10 +457,26 @@ class ModelDownloader:
         response.download_reader.last_byte = time.monotonic()
         digest = hashlib.sha256() if offset == 0 else None
         done = offset
-        with contextlib.ExitStack() as stack:
-            stream = self._file_op(
-                lambda: stack.enter_context(verified.open_part(target, offset, prepared=prepared)), cancel)
-            self._prepared_parts[target] = verified._part_identity(os.fstat(stream.fileno()))
+
+        @contextlib.contextmanager
+        def local_work() -> Iterator[None]:
+            idle_started = time.monotonic()
+            rate_started = self._rate_clock()
+            try:
+                yield
+            finally:
+                # Storage/lock waits are not evidence of a stalled mirror.
+                # Shift rather than reset: preserve time already spent reading.
+                response.download_reader.last_byte += max(0.0, time.monotonic() - idle_started)
+                if self._rate is not None:
+                    self._rate.started += max(0.0, self._rate_clock() - rate_started)
+
+        stack = contextlib.ExitStack()
+        try:
+            with local_work():
+                stream = self._file_op(
+                    lambda: stack.enter_context(verified.open_part(target, offset, prepared=prepared)), cancel)
+                self._prepared_parts[target] = verified._part_identity(os.fstat(stream.fileno()))
             while True:
                 _check_cancel(cancel)
                 if self._rate is not None and done < info.size:
@@ -475,14 +491,19 @@ class ModelDownloader:
                     self._rate.received += len(chunk)
                     if done + len(chunk) < info.size:
                         self._rate.check()
-                stream.write(chunk)
-                if digest is not None:
-                    digest.update(chunk)
+                with local_work():
+                    stream.write(chunk)
+                    if digest is not None:
+                        digest.update(chunk)
                 done += len(chunk)
                 if done == info.size:
                     response.download_reader.rate = None
-            stream.flush()
-            os.fsync(stream.fileno())
+            with local_work():
+                stream.flush()
+                os.fsync(stream.fileno())
+        finally:
+            with local_work():
+                stack.close()
         if done != info.size:
             raise _Retryable(f"download stopped early ({done} of {info.size} bytes)")
         return digest.hexdigest() if digest is not None else None
