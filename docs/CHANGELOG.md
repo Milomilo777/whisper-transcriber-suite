@@ -8,6 +8,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 - Fix the advertised Windows source-update command for shell metacharacters. Paths with paired percent markers stop with manual-update instructions instead of selecting an environment-expanded checkout.
 
+- Gate Windows installer builds on retired-source inventory and a pinned historical upgrade/uninstall test at the default installation path.
+
 - Preserve existing files beside settings backups and corrupt-config recovery by copying through an exclusively allocated temporary file; failed copies remove only their own scratch file.
 
 - Prevent a delayed telemetry identity write from restoring a revoked identifier or sending stale identifiers after statistics are switched off and on. Local model-path normalization runs on the background sender.

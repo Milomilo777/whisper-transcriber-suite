@@ -28,6 +28,8 @@ on:
       - tools/check_embed_tree.py
       - tools/build_manifest.py
       - tools/smoke_windows_install.py
+      - tools/smoke_windows_upgrade.py
+      - tools/check_installer_upgrade_files.py
       - .github/workflows/windows-installer.yml
       # What ships inside the build: a change here can break the install too.
       - gui.py
@@ -55,6 +57,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
 
       # Only runs the helper scripts; the shipped interpreter is the pinned
       # python-build-standalone release that build_embed_installer.bat unpacks.
@@ -74,6 +77,12 @@ jobs:
 
       # pwsh steps only fail on the last command's exit code, so every native
       # call below checks $LASTEXITCODE itself.
+      - name: Check retired packaged paths against the last release
+        shell: pwsh
+        run: |
+          python tools/check_installer_upgrade_files.py
+          if ($LASTEXITCODE -ne 0) { throw 'Overlay upgrade inventory guard failed; see retired paths or missing-history error' }
+
       - name: Fetch the pinned binaries into bin\
         shell: pwsh
         run: |
@@ -141,6 +150,16 @@ jobs:
           & embed_build\python\python.exe tools\smoke_windows_install.py (Resolve-Path embed_build).Path $env:APP_VERSION
           if ($LASTEXITCODE -ne 0) { throw "Portable smoke test failed ($LASTEXITCODE)" }
 
+      - name: Real v2.3.1 upgrade and uninstall at default Program Files
+        shell: pwsh
+        run: |
+          python tools/smoke_windows_upgrade.py `
+            --installer "dist_installer/WhisperTranscriberSuite-Installer-Windows-v$env:APP_VERSION.exe" `
+            --expected-version "$env:APP_VERSION" `
+            --work-dir "$env:RUNNER_TEMP/wts-historical-upgrade" `
+            --confirm-clean-machine
+          if ($LASTEXITCODE -ne 0) { throw 'Pinned historical upgrade/uninstall gate failed; see lifecycle logs' }
+
       - name: Smoke test (silent install, imports, bundled tools, upgrade, uninstall)
         shell: pwsh
         run: |
@@ -206,6 +225,9 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: windows-build-manifest-${{ github.sha }}
-          path: build-manifest/
+          path: |
+            build-manifest/
+            ${{ runner.temp }}/wts-historical-upgrade/*.json
+            ${{ runner.temp }}/wts-historical-upgrade/*.log
           retention-days: 7
           if-no-files-found: warn

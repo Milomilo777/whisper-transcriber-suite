@@ -5,6 +5,23 @@ test files are, and how to run the app.
 
 ## Run all checks (the everyday gate)
 
+The Windows installer workflow also runs a real historical upgrade gate at the
+default 64-bit Program Files location. `tools/smoke_windows_upgrade.py` verifies
+the published v2.3.1 installer against its pinned URL, size and SHA-256, installs
+it without `/DIR`, creates six hashed user-file sentinels, upgrades to the new
+build, and verifies them again after uninstall. It checks the installed versions,
+Start-menu/Desktop shortcuts and removal of tracked application files too.
+Run this only on a disposable, clean, already elevated Windows VM; existing
+installations, registrations, shortcuts and previous output directories are
+refused. `--baseline-installer` accepts an offline cached installer with the same
+pin checks. Failure details and process/Inno logs are retained in `--work-dir`
+and uploaded by CI, including when a prerequisite prevents the gate from running.
+A native timeout fails the gate, records that the VM must be discarded and skips
+subsequent installer steps; it does not claim that all timed-out descendants were
+cleaned up. The same workflow fetches complete release history and runs
+`tools/check_installer_upgrade_files.py` before building, failing on retired
+packaged source paths or unavailable release history.
+
 From the repo root, run:
 
 ```
