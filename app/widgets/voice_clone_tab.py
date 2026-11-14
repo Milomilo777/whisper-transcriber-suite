@@ -804,7 +804,8 @@ def _tick_recording(app: Any, seconds_left: int) -> None:
     recorder = app.vc_recorder
     if recorder is None or getattr(app, "vc_recording_stopping", False):
         return
-    app.vc_status_var.set(_("Recording... {seconds}s", seconds=seconds_left))
+    if not (app.vc_busy or app.vc_confirm_open):
+        app.vc_status_var.set(_("Recording... {seconds}s", seconds=seconds_left))
     if seconds_left <= 0:
         app.vc_recording_after_id = None
         _finish_recording(app)
@@ -828,7 +829,8 @@ def _poll_recording_stop(app: Any, recorder: Any) -> None:
         app.vc_recorder = None
         app.vc_recording_stopping = False
         _sync_lock(app)
-        if not (app.vc_busy or app.vc_confirm_open):
+        if (not (app.vc_busy or app.vc_confirm_open)
+                and app.vc_status_var.get() == _("Stopping...")):
             app.vc_status_var.set(_("Idle."))
 
     after_id = app.after(100, check)

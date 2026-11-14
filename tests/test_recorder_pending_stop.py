@@ -79,7 +79,8 @@ def controller(recording, monkeypatch):
         vc_busy=False, vc_confirm_open=False, vc_load_btn=Widget(), vc_remove_btn=Widget(),
         vc_consent_check=Widget(), vc_mode_radios=[], vc_design_widgets=[],
         vc_voice_combo=Widget(), vc_lang_combo=Widget(), vc_record_btn=Widget(),
-        vc_status_var=SimpleNamespace(set=statuses.append), after=after, after_cancel=cancel)
+        vc_status_var=SimpleNamespace(set=statuses.append, get=lambda: statuses[-1] if statuses else ''),
+        after=after, after_cancel=cancel)
     namespace = {'logger': logging.getLogger(__name__), 'os': __import__('os'),
         '_': lambda text, **kwargs: text.format(**kwargs),
         'show_error': lambda *args, **kwargs: errors.append((args, kwargs)),
@@ -233,8 +234,9 @@ def test_late_exit_preserves_active_job_status_and_lock(recording, controller, b
     assert recording.path.read_bytes() == recording.original
 
 
+@pytest.mark.parametrize('raises', [False, True])
 @pytest.mark.parametrize('exists', [True, False])
-def test_pending_stop_uses_existing_localized_body_and_diagnostic_detail(recording, controller, exists):
+def test_pending_stop_uses_existing_localized_body_and_diagnostic_detail(recording, controller, monkeypatch, exists, raises):
     if not exists:
         recording.path.unlink()  # Owned synthetic fixture only.
     messages = {
@@ -242,15 +244,67 @@ def test_pending_stop_uses_existing_localized_body_and_diagnostic_detail(recordi
         'The recording file was kept at:\n{path}\nIt may be incomplete.': 'localized retained file: {path}',
     }
     controller.namespace['_'] = lambda text, **kwargs: messages.get(text, text).format(**kwargs)
+    diagnostic = 'synthetic native stop failure'
+    if raises:
+        def failed_stop():
+            raise OSError(diagnostic)
+        monkeypatch.setattr(recording.recorder, 'stop', failed_stop)
     controller.call('_finish_recording')
+    diagnostic = diagnostic if raises else recording.recorder.last_error
     args, kwargs = controller.errors[0]
     assert args[1] == 'localized failure'
     assert args[2] == 'localized stopping'
-    assert recording.recorder.last_error not in args[2]
-    assert recording.recorder.last_error in kwargs['detail']
+    assert diagnostic not in args[2]
+    assert diagnostic in kwargs['detail']
     assert ('localized retained file' in kwargs['detail']) is exists
     assert controller.statuses[-1] == 'localized stopping'
     assert controller.app.vc_recorder is recording.recorder and not controller.added
+
+
+@pytest.mark.parametrize('busy,confirm', [(True, False), (False, True)])
+@pytest.mark.parametrize('seconds', [1, 0])
+def test_countdown_preserves_active_job_status_through_finish(recording, controller, busy, confirm, seconds):
+    controller.app.vc_busy, controller.app.vc_confirm_open = busy, confirm
+    controller.app.vc_status_var.set('Current job status')
+    controller.namespace['_tick_recording'](controller.app, seconds)
+    assert controller.statuses == ['Current job status']
+    if seconds == 0:
+        assert len(controller.errors) == 1 and not controller.added
+        recording.capture.alive = False
+        controller.callbacks.pop(controller.app.vc_recording_after_id)()
+        assert controller.statuses == ['Current job status']
+    else:
+        assert controller.delays == [1000]
+
+
+@pytest.mark.parametrize('raises', [False, True])
+@pytest.mark.parametrize('busy,confirm', [(False, False), (True, False), (False, True)])
+def test_completed_capture_failure_preserves_job_status_or_returns_idle(recording, controller, monkeypatch, busy, confirm, raises):
+    recording.capture.alive = False
+    controller.app.vc_busy, controller.app.vc_confirm_open = busy, confirm
+    controller.app.vc_status_var.set('Current job status')
+    if raises:
+        def failed_stop():
+            raise OSError('synthetic native stop failure')
+        monkeypatch.setattr(recording.recorder, 'stop', failed_stop)
+    else:
+        recording.recorder.last_error = 'original device error'
+    controller.call('_finish_recording')
+    assert controller.statuses[-1] == ('Current job status' if busy or confirm else 'Idle.')
+    assert len(controller.errors) == 1 and not controller.added
+    assert controller.app.vc_recorder is None and not controller.callbacks
+    assert recording.path.read_bytes() == recording.original
+
+
+@pytest.mark.parametrize('terminal', ['Saved output', 'Failed.', 'Cancelled.'])
+def test_late_exit_preserves_status_written_by_completed_job(recording, controller, terminal):
+    controller.call('_finish_recording')
+    controller.app.vc_status_var.set(terminal)
+    recording.capture.alive = False
+    controller.callbacks.pop(controller.app.vc_recording_after_id)()
+    assert controller.statuses[-1] == terminal
+    assert controller.app.vc_recorder is None and controller.app.vc_record_btn.state == 'normal'
+    assert not controller.added and recording.path.read_bytes() == recording.original
 
 
 @pytest.mark.parametrize('busy,confirm', [(True, False), (False, True)])
