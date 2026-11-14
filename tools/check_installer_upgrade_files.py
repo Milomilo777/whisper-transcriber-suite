@@ -35,12 +35,17 @@ def check(repo: Path) -> tuple[str, list[str]]:
             releases.append((tuple(int(part) for part in match.groups()), tag))
     if not releases:
         raise RuntimeError("No release tags available; fetch release tags before checking upgrades")
-    baseline = max(releases)[1]
-    # Disable rename detection: the old path remains on an existing install
-    # even if Git regards its replacement as a rename. Include worktree edits.
-    removed = _git(repo, "diff", "--no-ext-diff", "--no-renames", "--name-only",
-                   "-z", "--diff-filter=D", baseline, "--", *PACKAGED_PATHS)
-    return baseline, [name for name in removed.split("\0") if name]
+    # Every published stable version remains an upgrade source. A newer
+    # release (including a tag for the current tree) cannot erase the older
+    # installation's inventory. Disable rename detection for each baseline.
+    removed: set[str] = set()
+    baselines = [tag for _, tag in sorted(releases)]
+    for baseline in baselines:
+        names = _git(repo, "diff", "--no-ext-diff", "--no-renames", "--name-only",
+                     "-z", "--diff-filter=D", baseline, "--", *PACKAGED_PATHS)
+        removed.update(name for name in names.split("\0") if name)
+    return ", ".join(baselines), sorted(removed)
+
 
 
 def main() -> int:

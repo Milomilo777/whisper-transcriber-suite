@@ -61,16 +61,18 @@ def test_additions_and_removed_documentation_do_not_block(repo):
     assert "v2.3.1" in result.stdout
 
 
-def test_newest_numeric_release_is_the_baseline(repo):
+@pytest.mark.parametrize("later_tag", ["v2.10.0", "v2.4.0"])
+def test_older_release_retirements_survive_newer_or_current_version_tag(repo, later_tag):
     (repo / "app/old.py").unlink()
     git(repo, "add", "-A")
     git(repo, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
         "commit", "-qm", "Later release fixture")
-    git(repo, "tag", "v2.10.0")
+    git(repo, "tag", later_tag)
     git(repo, "tag", "v9.0.0-preview")
     result = check(repo)
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert "v2.10.0" in result.stdout
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "v2.3.1" in result.stdout
+    assert "app/old.py" in result.stdout
 
 
 def test_missing_release_history_fails_closed(repo):

@@ -6,6 +6,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Check retired packaged files against every stable release tag, so a newer tag cannot hide files left by an older installation.
+
 - Report a selected export format failing even when another format succeeds. Keep the saved files, complete recovery text and resume checkpoint instead of marking the job complete.
 
 - Fix the advertised Windows source-update command for shell metacharacters. Paths with paired percent markers stop with manual-update instructions instead of selecting an environment-expanded checkout.
