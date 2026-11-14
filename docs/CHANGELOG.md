@@ -4,6 +4,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+- Hardware checks and diagnostics use a disposable process so a stalled native
+  library cannot freeze the app. An inconclusive check does not save an automatic
+  CPU preference, and CPU fallback uses a supported precision.
+
 ### Fixed
 
 - Replace three retired modules left by older Windows installations with inert compatibility files. This removes their old executable behavior during an overlay upgrade while preserving neighboring user files.

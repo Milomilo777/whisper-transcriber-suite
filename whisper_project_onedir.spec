@@ -331,6 +331,7 @@ a = Analysis(
         'core.download_guard',
         'core.hallucination',
         'core.hardware',
+        'core.hardware_probe',
         'core.js_runtime',
         'core.loop_guard',
         'core.translate_task',

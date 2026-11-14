@@ -279,6 +279,9 @@ def test_hardware_wizard_constructs_without_crashing(monkeypatch, tmp_path):
         usable=False, gpu_present=False, reason="No NVIDIA CUDA GPU was found.",
     ))
 
+    monkeypatch.setattr(hw, "probe_hardware_snapshot", lambda: (
+        hw.probe_tiers(hw.cuda_status()), hw.cuda_status(),
+    ))
     from app.widgets.hardware_wizard import HardwareWizard
 
     root = tk.Tk()
@@ -372,6 +375,9 @@ def test_close_restores_the_masters_modal_grab(monkeypatch, tmp_path):
         usable=False, gpu_present=False, reason="No NVIDIA CUDA GPU was found.",
     ))
 
+    monkeypatch.setattr(hw, "probe_hardware_snapshot", lambda: (
+        hw.probe_tiers(hw.cuda_status()), hw.cuda_status(),
+    ))
     from app.widgets.hardware_wizard import HardwareWizard
 
     root = tk.Tk()

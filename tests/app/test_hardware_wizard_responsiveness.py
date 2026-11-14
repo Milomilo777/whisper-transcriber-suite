@@ -31,6 +31,9 @@ def window(monkeypatch, tmp_path):
         hw.Tier("cpu_int8", "CPU tier", "cpu", "int8"),
         hw.Tier("cuda_float16", "GPU tier", "cuda", "float16"),
     ])
+    monkeypatch.setattr(hw, "probe_hardware_snapshot", lambda: (
+        hw.probe_tiers(), hw.cuda_status(),
+    ))
     root = tk.Tk()
     root.withdraw()
     root.grab_set()

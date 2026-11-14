@@ -159,7 +159,7 @@ def apply_choice(config: dict[str, Any], choice: QuickStartChoice | None) -> Non
 
 
 def _probe_hardware() -> tuple[_hw.CudaStatus, int, float]:
-    return _hw.cuda_status(), _hw.physical_cpu_cores(), _hw.system_ram_gb()
+    return _hw.isolated_cuda_status(), _hw.physical_cpu_cores(), _hw.system_ram_gb()
 
 
 class QuickStartDialog(tk.Toplevel):

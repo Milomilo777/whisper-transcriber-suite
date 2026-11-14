@@ -103,7 +103,7 @@ class ModelAdvisorDialog(tk.Toplevel):
 
     def _check(self) -> None:
         try:
-            status = _hw.cuda_status()
+            status = _hw.isolated_cuda_status()
             force_cpu = _hw.cpu_forced(self.app.app_config)
             ram_gb = _hw.system_ram_gb()
             cores = _hw.physical_cpu_cores()

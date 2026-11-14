@@ -87,7 +87,7 @@ def test_system_ram_is_read():
 
 def test_dialog_shows_the_picks_and_applies_one(monkeypatch, tmp_path):
     tk = pytest.importorskip("tkinter")
-    monkeypatch.setattr(hw, "cuda_status", lambda: _gpu(8151))
+    monkeypatch.setattr(hw, "isolated_cuda_status", lambda: _gpu(8151))
     monkeypatch.setattr(hw, "device_choice_from_hardware_file", lambda: None)  # not this PC's file
     monkeypatch.setattr(mm, "model_downloaded", lambda cfg, slug: slug == "large-v3-turbo")
 
@@ -132,7 +132,7 @@ def _open_dialog(monkeypatch, tmp_path, status, config):
 
     from app.dialogs.model_advisor import ModelAdvisorDialog
 
-    monkeypatch.setattr(hw, "cuda_status", lambda: status)
+    monkeypatch.setattr(hw, "isolated_cuda_status", lambda: status)
     monkeypatch.setattr(hw, "device_choice_from_hardware_file", lambda: None)
     monkeypatch.setattr(mm, "model_downloaded", lambda cfg, slug: False)
     root = tk.Tk()

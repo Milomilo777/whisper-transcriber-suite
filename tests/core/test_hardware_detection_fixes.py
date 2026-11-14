@@ -162,7 +162,7 @@ def test_advisor_summary_says_when_the_cpu_is_forced():
 
 def test_diagnostics_print_survives_a_cp1252_stdout(monkeypatch):
     persian = "C:\\\u067e\u0648\u0634\u0647\\python.exe"  # a Persian folder name
-    monkeypatch.setattr(hw, "diagnostics_report", lambda: f"Python: {persian}")
+    monkeypatch.setattr(hw, "isolated_diagnostics_report", lambda: f"Python: {persian}")
     raw = io.BytesIO()
     fake = io.TextIOWrapper(raw, encoding="cp1252", errors="strict", write_through=True)
     monkeypatch.setattr(sys, "stdout", fake)

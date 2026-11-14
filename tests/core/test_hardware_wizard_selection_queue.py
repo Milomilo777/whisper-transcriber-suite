@@ -170,7 +170,7 @@ def test_late_old_worker_cannot_replace_current_result(monkeypatch):
     from app.widgets import hardware_wizard as ui
     current = (2, ["current tier"], None)
     fake = SimpleNamespace(_probe_seq=2, _probe_lock=threading.Lock(), _probe_result=current)
-    monkeypatch.setattr(ui._hw, "cuda_status", lambda: None)
+    monkeypatch.setattr(ui._hw, "probe_hardware_snapshot", lambda: ([], None))
     monkeypatch.setattr(ui._hw, "probe_tiers", lambda *_: ["obsolete tier"])
     HardwareWizard._reprobe_worker(fake, 1)
     assert fake._probe_result is current

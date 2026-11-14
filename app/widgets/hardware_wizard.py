@@ -232,9 +232,8 @@ class HardwareWizard(tk.Toplevel):
             self._probe_result = None
         if pending is None:
             if time.monotonic() >= self._probe_deadline:
-                # A native call cannot safely be killed. Let it finish in
-                # the background, reject its result, and offer an explicit
-                # CPU choice without saving or silently pinning that choice.
+                # The child probe has its own termination deadline. Reject
+                # any late delivery and require an explicit CPU choice.
                 with self._probe_lock:
                     self._probe_seq += 1
                     self._probe_result = None
@@ -264,25 +263,7 @@ class HardwareWizard(tk.Toplevel):
         with self._probe_lock:
             if seq != self._probe_seq:
                 return
-        # One CUDA check, shared by the tier list and the "needs setup" line,
-        # so the two can't disagree and the (slow) chain runs once.
-        status: _hw.CudaStatus | None
-        try:
-            status = _hw.cuda_status()
-        except Exception:  # noqa: BLE001
-            logger.exception("CUDA status check failed")
-            status = None
-        with self._probe_lock:
-            if seq != self._probe_seq:
-                return
-        try:
-            tiers = _hw.probe_tiers(status)
-        except Exception as e:  # noqa: BLE001
-            logger.exception("Hardware probe failed: %s", e)
-            try:
-                tiers = _hw._probe_cpu()
-            except Exception:  # noqa: BLE001
-                tiers = []
+        tiers, status = _hw.probe_hardware_snapshot()
         with self._probe_lock:
             if seq == self._probe_seq:
                 self._probe_result = (seq, tiers, status)
@@ -336,6 +317,7 @@ class HardwareWizard(tk.Toplevel):
             getattr(self, "reprobe_btn", None),
             getattr(self, "save_btn", None),
             getattr(self, "install_btn", None),
+            getattr(self, "diag_btn", None),
         ):
             if btn is None:
                 continue
@@ -441,7 +423,7 @@ class HardwareWizard(tk.Toplevel):
         # Tk 8.6 queues this event even for an unchanged selection. Do not
         # reselect the row here: the synchronous guard is already reset
         # when queued events arrive, creating an endless feedback loop.
-        if getattr(self, "_selecting", False):
+        if getattr(self, "_busy", False) or getattr(self, "_selecting", False):
             return
         sel = self.tree.focus()
         if not sel:
@@ -504,12 +486,14 @@ class HardwareWizard(tk.Toplevel):
 
     def _copy_diagnostics(self) -> None:
         """Copy a full GPU/CUDA report to the clipboard for a bug report."""
-        self.diag_btn.state(["disabled"])
+        if self._busy:
+            return
+        self._set_buttons_enabled(False)
         self.status_var.set(_("Collecting GPU diagnostics…"))
 
         def _done(report: object, error: object) -> None:
             try:
-                self.diag_btn.state(["!disabled"])
+                self._set_buttons_enabled(True)
             except tk.TclError:
                 return
             text = str(report) if error is None else f"Diagnostics failed: {error}"
@@ -525,7 +509,7 @@ class HardwareWizard(tk.Toplevel):
                 "log) — paste them into a GitHub issue."
             ))
 
-        self._run_in_background(_hw.diagnostics_report, _done)
+        self._run_in_background(_hw.isolated_diagnostics_report, _done)
 
     def _install_gpu_support(self) -> None:
         """pip-install NVIDIA cuBLAS (core.optional_deps 'cuda_runtime')."""
@@ -611,8 +595,7 @@ class HardwareWizard(tk.Toplevel):
         if (
             not self._user_picked
             and tier.device == "cpu"
-            and status is not None
-            and status.gpu_present
+            and (status is None or status.inconclusive or status.gpu_present)
         ):
             # Nothing was chosen and the only reason for CPU is that the GPU is
             # unusable right now. Saving "cpu" would pin it for good, so a later

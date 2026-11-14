@@ -5,6 +5,22 @@ Updated: 2026-11-14. Release target: 2.4.0.
 
 ## Current integrated source checkpoint
 
+The post-24c review fixes preserve incomplete exports and checkpoints, reject
+partial alignment, retain exact-EOF words, repair collapsed ASS cues, honor model
+download cancellation through locked cleanup, and reject revoked statistics
+identities from other instances. Blocked worker command writes have bounded
+background cancellation recovery. All stable release inventories are checked;
+three retired module slots are inert replacements in every package pipeline.
+
+Hardware UI probes now run in a disposable interpreter, preserve inconclusive
+results, and normalize GPU-only precision before a CPU fallback. The accepted
+hardware candidate passed 249 real GUI tests before composition; 72 focused
+windowless integration checks pass. Matching full and final installed/frozen
+artifact acceptance are still pending. The latest completed full gate belongs
+to `24c0b9a9`: 15,955 passed, 44 skipped, zero failed; it does not qualify these
+new commits. Earlier named checkpoints below retain their historical scope.
+
+
 VAD-disabled CUDA requests use sequential decoding on the selected GPU model,
 with the same loop-recovery decision for normal and resumed tasks. Empty clip
 ranges retain the decoded prefix and continue through the remaining audio;

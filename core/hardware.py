@@ -130,10 +130,9 @@ def _run_with_timeout(fn: Callable[[], _T], timeout: float, default: _T) -> _T:
     """Run ``fn`` on a daemon thread; ``default`` if it raises or overruns.
 
     Loading a GPU library or initialising the NVIDIA driver can block for a
-    long time inside the OS loader on a broken install. The caller must never
-    hang on that (the Hardware wizard and the worker's device pick both run
-    these probes), so an overrunning call is abandoned and reads as "not
-    available".
+    long time inside the OS loader on a broken install. This worker-local
+    helper only bounds calls that release the GIL; it cannot preempt native
+    code holding it. UI probes use core.hardware_probe's disposable process.
     """
     box: dict[str, Any] = {}
 
@@ -552,6 +551,7 @@ class CudaStatus:
     compute_types: tuple[str, ...] = ()
     missing_libs: tuple[str, ...] = ()
     can_install_runtime: bool = False
+    inconclusive: bool = False
 
     def summary(self) -> str:
         """One or two sentences for a status line or a log entry."""
@@ -574,7 +574,7 @@ def cuda_status() -> CudaStatus:
     except Exception as e:  # noqa: BLE001 -- a diagnostic must never raise
         logger.exception("CUDA status check failed")
         return CudaStatus(
-            usable=False, gpu_present=False,
+            usable=False, gpu_present=False, inconclusive=True,
             reason=f"The GPU check itself failed: {e}",
         )
 
@@ -585,7 +585,9 @@ def _cuda_status() -> CudaStatus:
             usable=False, gpu_present=False,
             reason="NVIDIA CUDA is not available on macOS.",
         )
-    driver = _run_with_timeout(_cuda_driver_info, _CUDA_DRIVER_PROBE_TIMEOUT_S, {})
+    driver = _run_with_timeout(_cuda_driver_info, _CUDA_DRIVER_PROBE_TIMEOUT_S, None)
+    driver_inconclusive = driver is None
+    driver = driver or {}
     gpus = list(driver.get("gpus") or [])
     first: dict[str, Any] = gpus[0] if gpus else {}
     cc = tuple(first.get("cc") or ())
@@ -604,10 +606,11 @@ def _cuda_status() -> CudaStatus:
     )
 
     try:
-        import ctranslate2  # type: ignore[import-not-found]
+        with gc_disabled_import():
+            import ctranslate2  # type: ignore[import-not-found]
     except Exception as e:  # noqa: BLE001
         return CudaStatus(
-            usable=False, gpu_present=bool(gpus),
+            usable=False, gpu_present=bool(gpus), inconclusive=True,
             reason=f"The transcription engine (CTranslate2) could not be loaded: {e}",
             fix="Reinstall the app.", **info,
         )
@@ -616,8 +619,9 @@ def _cuda_status() -> CudaStatus:
     if count <= 0:
         if not gpus:
             return CudaStatus(
-                usable=False, gpu_present=False,
-                reason="No NVIDIA CUDA GPU was found.", **info,
+                usable=False, gpu_present=False, inconclusive=driver_inconclusive,
+                reason=("The NVIDIA driver check did not finish." if driver_inconclusive
+                        else "No NVIDIA CUDA GPU was found."), **info,
             )
         needed = 11 if version and version < (4,) else 12
         if driver_version and driver_version // 1000 < needed:
@@ -643,7 +647,7 @@ def _cuda_status() -> CudaStatus:
         compute_types = tuple(sorted(ctranslate2.get_supported_compute_types("cuda")))
     except Exception as e:  # noqa: BLE001
         return CudaStatus(
-            usable=False, gpu_present=True,
+            usable=False, gpu_present=True, inconclusive=True,
             reason=f"The transcription engine found the GPU but could not query it: {e}",
             fix=driver_fix, device_count=count, **info,
         )
@@ -679,7 +683,7 @@ def _missing_runtime_status(
     required = _required_cuda_libs(version)
     if report is None:
         return CudaStatus(
-            usable=False, gpu_present=True,
+            usable=False, gpu_present=True, inconclusive=True,
             reason=(
                 "Loading the NVIDIA CUDA libraries did not finish in time "
                 "(an antivirus scan of the large cuBLAS files, or a broken "
@@ -1164,6 +1168,58 @@ def device_choice_from_hardware_file() -> tuple[str, str] | None:
     return device, compute_type
 
 
+def _cpu_compute_type(value: Any) -> str:
+    requested = str(value or "").strip() or "int8"
+    if requested in ("int8", "int8_float32", "float32", "auto", "default"):
+        return requested
+    try:
+        with gc_disabled_import():
+            import ctranslate2  # type: ignore[import-not-found]
+            supported = ctranslate2.get_supported_compute_types("cpu")
+        if requested in supported:
+            return requested
+    except Exception:  # noqa: BLE001 - a failed precision query must keep CPU usable
+        logger.debug("CPU compute types unavailable", exc_info=True)
+    return "int8"
+
+
+def isolated_cuda_status() -> CudaStatus:
+    from .hardware_probe import query
+    try:
+        return CudaStatus(**query("cuda")["cuda"])
+    except Exception:  # noqa: BLE001 - failure is unknown, not proof of CPU-only hardware
+        logger.warning("Isolated hardware check did not complete", exc_info=True)
+        return CudaStatus(False, False, reason="The hardware check did not complete.", inconclusive=True)
+
+
+def probe_hardware_snapshot() -> tuple[list[Tier], CudaStatus]:
+    from .hardware_probe import query
+    try:
+        result = query("snapshot")
+        status = CudaStatus(**result["cuda"])
+        tiers = [Tier(**item) for item in result["tiers"]]
+        if not tiers:
+            raise ValueError("Hardware probe returned no tiers")
+        return tiers, status
+    except Exception:  # noqa: BLE001 - no native fallback in the UI process
+        logger.warning("Isolated hardware probe did not complete", exc_info=True)
+        return [Tier("cpu_int8", "CPU int8", "cpu", "int8")], CudaStatus(
+            False, False, reason="The hardware check did not complete.", inconclusive=True,
+        )
+
+
+def isolated_diagnostics_report() -> str:
+    from .hardware_probe import query
+    try:
+        report = query("diagnostics")["report"]
+        if not isinstance(report, str):
+            raise ValueError("Invalid diagnostic report")
+        return report
+    except Exception:  # noqa: BLE001 - diagnostics must not freeze or close the app
+        logger.warning("Isolated diagnostics did not complete", exc_info=True)
+        return "Hardware diagnostics did not complete. The automatic device choice is unchanged."
+
+
 def tier_to_dict(tier: Tier) -> dict[str, Any]:
     """Dataclass → dict for tests and serialization."""
     return asdict(tier)
@@ -1205,7 +1261,7 @@ def detect_device_for(config: dict[str, Any]) -> tuple[str, str]:
         logger.info(
             "device_choice device=%s compute_type=%s source=config", dev, ct
         )
-        return dev, ct
+        return dev, _cpu_compute_type(ct) if dev == "cpu" else ct
     try:
         wizard_choice = device_choice_from_hardware_file()
         if wizard_choice is not None:
@@ -1213,7 +1269,7 @@ def detect_device_for(config: dict[str, Any]) -> tuple[str, str]:
                 "device_choice device=%s compute_type=%s source=hardware.json",
                 wizard_choice[0], wizard_choice[1],
             )
-            return wizard_choice
+            return (wizard_choice[0], _cpu_compute_type(wizard_choice[1])) if wizard_choice[0] == "cpu" else wizard_choice
     except Exception:
         logger.exception("device_choice_from_hardware_file probe raised")
     status = cuda_status()
@@ -1230,7 +1286,7 @@ def detect_device_for(config: dict[str, Any]) -> tuple[str, str]:
             "NVIDIA GPU found but CUDA is not usable, using the CPU: %s",
             status.summary(),
         )
-    ct = str(config.get("compute_type") or "").strip() or "int8"
+    ct = _cpu_compute_type(config.get("compute_type"))
     logger.info(
         "device_choice device=cpu compute_type=%s source=cpu_fallback", ct
     )
@@ -1727,7 +1783,7 @@ def main() -> None:
     reconfigure: Any = getattr(sys.stdout, "reconfigure", None)
     if reconfigure is not None:
         reconfigure(encoding="utf-8", errors="replace")
-    print(diagnostics_report())
+    print(isolated_diagnostics_report())
 
 
 if __name__ == "__main__":  # pragma: no cover - manual diagnostics entry point

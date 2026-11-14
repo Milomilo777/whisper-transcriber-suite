@@ -549,6 +549,11 @@ def main() -> int:
 
     # Worker mode is a special early branch — bypasses argparse so
     # we never break the spawn-contract.
+    if "--hardware-probe-worker" in sys.argv:
+        from core.hardware_probe import worker_main as _hardware_probe_main
+        sys.argv.remove("--hardware-probe-worker")
+        _hardware_probe_main()
+        return 0
     if "--worker" in sys.argv:
         from core.worker import main as _worker_main
         return _worker_main()

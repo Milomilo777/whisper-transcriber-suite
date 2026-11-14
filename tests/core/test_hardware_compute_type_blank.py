@@ -23,10 +23,11 @@ def test_an_explicit_device_never_gets_a_blank_compute_type(bad):
     assert got == ("cpu", "int8")
 
 
-def test_the_configured_compute_type_is_kept():
+@pytest.mark.parametrize("precision", ["float32", "int8", "int8_float32"])
+def test_the_configured_cpu_compatible_compute_type_is_kept(precision):
     assert hw.detect_device_for(
-        {"device": "cpu", "compute_type": "float16"}
-    ) == ("cpu", "float16")
+        {"device": "cpu", "compute_type": precision}
+    ) == ("cpu", precision)
 
 
 def test_the_cpu_fallback_never_gets_a_blank_compute_type(monkeypatch):

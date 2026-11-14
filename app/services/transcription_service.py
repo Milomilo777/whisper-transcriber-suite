@@ -732,7 +732,7 @@ class TranscriptionService:
         def _check() -> None:
             try:
                 from core import hardware as _hw
-                status = _hw.cuda_status()
+                status = _hw.isolated_cuda_status()
                 result["unusable"] = status.gpu_present and not status.usable
             except Exception:  # noqa: BLE001
                 result["unusable"] = False
