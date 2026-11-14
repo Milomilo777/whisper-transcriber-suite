@@ -953,7 +953,7 @@ def _cap_segment(segment: dict[str, Any], audio_end: float) -> dict[str, Any]:
         out = dict(item)
         start, end = float(item.get("start", 0.0)), float(item.get("end", 0.0))
         if (not math.isfinite(start) or not math.isfinite(end) or start < 0
-                or start >= audio_end or end < start):
+                or (start > audio_end if word else start >= audio_end) or end < start):
             raise _TimingBoundsError("Decoded timing is outside the audio; the text was preserved.")
         out["end"] = min(end, audio_end)
         return out
