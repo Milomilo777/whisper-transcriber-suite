@@ -40,6 +40,24 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _apply_done_metadata(task: Any, event: dict[str, Any]) -> None:
+    """Optional worker numbers must not prevent either completion path."""
+    try:
+        count = int(event.get("word_count") or 0)
+        # History binds counts as signed 64-bit SQLite integers.
+        task.word_count = count if 0 <= count < (1 << 63) else 0
+    except (TypeError, ValueError, OverflowError):
+        task.word_count = 0
+    try:
+        task.audio_duration = float(event.get("audio_duration") or 0.0)
+    except (TypeError, ValueError, OverflowError):
+        task.audio_duration = 0.0
+    try:
+        apply_final_speed(task, event)
+    except Exception:  # noqa: BLE001 - optional metadata cannot withhold saved work
+        logger.exception("Could not remember final speed; finishing saved task")
+
+
 def _remember_failure_clue(
     task: Any, worker: dict[str, Any], *, event: dict[str, Any] | None = None,
     site: str | None = None, exit_code: Any = 0, pid: int | None = None,
@@ -1451,13 +1469,8 @@ class TranscriptionService:
         if not complete:
             return False
         task.output_paths = paths
-        try:
-            task.word_count = int(event.get("word_count") or 0)
-            task.audio_duration = float(event.get("audio_duration") or 0.0)
-        except (TypeError, ValueError):
-            pass
+        _apply_done_metadata(task, event)
         task.no_speech = no_speech
-        apply_final_speed(task, event)
         word_count, _duration = self._derive_transcript_stats(task)
         import time as _time
         started = getattr(task, "start_time", None)
@@ -2046,20 +2059,7 @@ class TranscriptionService:
                             # Worker-computed transcript stats (absent from older
                             # workers) — the authoritative word count even when no
                             # machine-readable output format was selected.
-                            try:
-                                word_count = int(event.get("word_count") or 0)
-                                # History binds counts as signed 64-bit SQLite integers.
-                                worker["task"].word_count = (
-                                    word_count if 0 <= word_count < (1 << 63) else 0
-                                )
-                            except (TypeError, ValueError, OverflowError):
-                                worker["task"].word_count = 0
-                            try:
-                                worker["task"].audio_duration = float(
-                                    event.get("audio_duration") or 0.0
-                                )
-                            except (TypeError, ValueError, OverflowError):
-                                worker["task"].audio_duration = 0.0
+                            _apply_done_metadata(worker["task"], event)
                             worker["task"].no_speech = bool(event.get("no_speech"))
                             worker["task"].speaker_labels_failed = bool(
                                 event.get("speaker_labels_failed")
@@ -2069,10 +2069,6 @@ class TranscriptionService:
                                 worker["task"].failure_clue = sanitise_clue(event, status="finished")
                             except Exception:  # noqa: BLE001
                                 logger.debug("Could not remember recovery", exc_info=True)
-                            try:
-                                apply_final_speed(worker["task"], event)
-                            except Exception:  # noqa: BLE001 - optional metadata cannot withhold saved work
-                                logger.exception("Could not remember final speed; finishing saved task")
                             self.finish_task(worker)
                     else:
                         self.finish_task(worker)

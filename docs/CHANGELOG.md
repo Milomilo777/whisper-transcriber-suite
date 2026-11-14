@@ -17,6 +17,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Keep Quick start open when saving choices fails, without changing active settings or starting the sample. Explain language-specific model limits, and offer setup again after Close or Escape while keeping explicit Skip permanent.
 - Serialize legacy settings migration with settings saves, preserving newer choices and existing recovery backups when multiple instances start together.
 - Finish saved transcripts even when a worker reports malformed optional counts or speed metadata. Preserve the history update and release the queue slot before accepting another job.
+- Finish saved transcripts even when a worker reports malformed optional counts or speed metadata, including during app shutdown. Preserve the history update and release the queue slot before accepting another job.
 
 - Replace three retired modules left by older Windows installations with inert compatibility files. This removes their old executable behavior during an overlay upgrade while preserving neighboring user files.
 

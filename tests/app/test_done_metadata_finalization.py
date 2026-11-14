@@ -182,3 +182,45 @@ def test_late_cancel_keeps_complete_or_no_speech_result_with_bad_metadata(comple
     assert history.list_transcriptions()[0]["status"] == "finished"
     assert shown == [task] and output.read_bytes() == content
     assert task.output_paths == event["outputs"]
+
+
+@pytest.mark.parametrize("field,value", [
+    ("word_count", float("inf")), ("word_count", 10**400),
+    ("audio_duration", 10**400), ("speed_x", 10**400),
+    ("speed_audio_s", 10**400), ("speed_seconds", 10**400),
+], ids=["count-inf", "count-outside-history-range", "duration-overflow", "speed-overflow",
+        "speed-audio-overflow", "speed-seconds-overflow"])
+def test_shutdown_settlement_keeps_same_optional_metadata_boundary(completion, field, value):
+    _app, service, history, shown, new_job = completion
+    task, _worker, event, output, content = new_job()
+    event[field] = value
+    assert service._settle_one_done(history, task, json.loads(json.dumps(event))) is True
+    row = history.list_transcriptions()[0]
+    assert row["status"] == "finished" and row["output_paths"] == [str(output)]
+    assert output.read_bytes() == content and shown == []
+
+
+def test_shutdown_settlement_does_not_hide_actual_history_failure(completion, monkeypatch):
+    _app, service, history, _shown, new_job = completion
+    task, _worker, event, output, content = new_job()
+
+    def fail(*args, **kwargs):
+        raise sqlite3.OperationalError("synthetic actual terminal history failure")
+
+    monkeypatch.setattr(history, "mark_transcription_finished_after_exit", fail)
+    event["speed_x"] = 10**400
+    with pytest.raises(sqlite3.OperationalError, match="actual terminal history failure"):
+        service._settle_one_done(history, task, event)
+    assert history.list_transcriptions()[0]["status"] == "running"
+    assert output.read_bytes() == content
+
+
+def test_shutdown_event_drain_records_saved_result_with_invalid_count(completion):
+    app, service, history, shown, new_job = completion
+    task, worker, event, output, content = new_job()
+    event.update(word_count=float("inf"), _worker_id=worker["id"])
+    app.worker_events.put(event)
+    app.worker_events.put({"event": "worker_exit", "_worker_id": worker["id"]})
+    assert service.settle_done_on_exit(wait_s=0.5) == 1
+    assert history.list_transcriptions()[0]["status"] == "finished"
+    assert output.read_bytes() == content and shown == []
