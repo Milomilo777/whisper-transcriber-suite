@@ -443,7 +443,13 @@ def _workflow() -> str:
 def test_workflow_triggers_on_build_files_and_by_hand_only():
     text = _workflow()
     on = text.split("\non:\n", 1)[1].split("\npermissions:", 1)[0]
-    assert "branches: [master]" in on and "workflow_dispatch:" in on
+    events = re.findall(r"^  ([a-z_]+):", on, re.MULTILINE)
+    assert events == ["push", "workflow_dispatch"]
+    branch_rows = re.findall(r"^    branches: \[([^\]\n]+)\]$", on, re.MULTILINE)
+    assert len(branch_rows) == 1
+    branches = [branch.strip() for branch in branch_rows[0].split(",")]
+    assert len(branches) == 2 and set(branches) == {"master", "codex/integration-2.4.x"}
+    assert "workflow_dispatch:" in on
     assert "pull_request" not in on and "schedule" not in on
     for path in ("build_embed_installer.bat", "installer_embed.iss", "requirements.txt",
                  "platform/windows/build-deps.json", "tools/fetch_windows_build_deps.py",
