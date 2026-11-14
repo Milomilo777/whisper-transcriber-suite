@@ -828,7 +828,8 @@ def _poll_recording_stop(app: Any, recorder: Any) -> None:
         app.vc_recorder = None
         app.vc_recording_stopping = False
         _sync_lock(app)
-        app.vc_status_var.set(_("Idle."))
+        if not (app.vc_busy or app.vc_confirm_open):
+            app.vc_status_var.set(_("Idle."))
 
     after_id = app.after(100, check)
     app.vc_recording_after_id = after_id
@@ -842,14 +843,25 @@ def _finish_recording(app: Any) -> None:
     try:
         path = recorder.stop()
     except Exception as e:  # noqa: BLE001
-        if recorder.is_running():
+        pending = recorder.is_running()
+        if pending:
             _poll_recording_stop(app, recorder)
         else:
             app.vc_recorder = None
             app.vc_recording_stopping = False
         _sync_lock(app)
-        show_error(app, _("Recording failed"), str(e))
-        app.vc_status_var.set(_("Recording failed") if app.vc_recorder is not None else _("Idle."))
+        if pending:
+            path = recorder.output_path
+            kept = (_("The recording file was kept at:\n{path}\nIt may be incomplete.", path=path)
+                    if os.path.isfile(path) else "")
+            # Backend diagnostics stay in Details, not the translated primary message.
+            body = (_("Recording failed") if app.vc_busy or app.vc_confirm_open else _("Stopping..."))
+            show_error(app, _("Recording failed"), body,
+                       detail="\n\n".join(part for part in (str(e), kept) if part))
+        else:
+            show_error(app, _("Recording failed"), str(e))
+        if not (getattr(app, "vc_busy", False) or getattr(app, "vc_confirm_open", False)):
+            app.vc_status_var.set(_("Stopping...") if app.vc_recorder is not None else _("Idle."))
         return
     pending = recorder.is_running()
     if pending:
@@ -862,8 +874,15 @@ def _finish_recording(app: Any) -> None:
     if recording_error:
         detail = (_("The recording file was kept at:\n{path}\nIt may be incomplete.", path=path)
                   if os.path.isfile(path) else "")
-        show_error(app, _("Recording failed"), str(recording_error), detail=detail)
-        app.vc_status_var.set(_("Recording failed") if app.vc_recorder is not None else _("Idle."))
+        if pending:
+            # Keep authored backend reasons out of the localized message body.
+            body = (_("Recording failed") if app.vc_busy or app.vc_confirm_open else _("Stopping..."))
+            show_error(app, _("Recording failed"), body,
+                       detail="\n\n".join(part for part in (str(recording_error), detail) if part))
+        else:
+            show_error(app, _("Recording failed"), str(recording_error), detail=detail)
+        if not (getattr(app, "vc_busy", False) or getattr(app, "vc_confirm_open", False)):
+            app.vc_status_var.set(_("Stopping...") if app.vc_recorder is not None else _("Idle."))
         return
     if pending:
         return
@@ -1970,8 +1989,10 @@ def _save(app: Any) -> None:
 
 
 def stop_voice_clone_worker(app: Any) -> None:
-    """Tear the worker down on app exit or tab teardown. Safe when
-    nothing is running. Mirrors ``live_tab.stop_live_session``."""
+    """Tear down on committed app exit, without re-arming UI callbacks.
+
+    Safe when nothing is running; live capture keeps its ownership reference.
+    """
     after_id = getattr(app, "vc_recording_after_id", None)
     if after_id is not None:
         try:

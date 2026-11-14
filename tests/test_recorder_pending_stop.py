@@ -216,3 +216,50 @@ def test_stale_poll_cannot_release_a_new_owner_or_its_callback(recording, contro
     callback()
     assert controller.app.vc_recorder is new_owner
     assert controller.app.vc_recording_after_id == 'new-owner-timer'
+
+
+@pytest.mark.parametrize('busy,confirm', [(True, False), (False, True)])
+def test_late_exit_preserves_active_job_status_and_lock(recording, controller, busy, confirm):
+    controller.call('_finish_recording')
+    controller.app.vc_busy, controller.app.vc_confirm_open = busy, confirm
+    job_status = 'Generating piece 2' if busy else 'Confirm planned job'
+    controller.app.vc_status_var.set(job_status)
+    recording.capture.alive = False
+    controller.callbacks.pop(controller.app.vc_recording_after_id)()
+    assert controller.app.vc_recorder is None and not controller.app.vc_recording_stopping
+    assert controller.app.vc_record_btn.state == 'disabled'
+    assert controller.statuses[-1] == job_status
+    assert not controller.added and controller.stops == [True]
+    assert recording.path.read_bytes() == recording.original
+
+
+@pytest.mark.parametrize('exists', [True, False])
+def test_pending_stop_uses_existing_localized_body_and_diagnostic_detail(recording, controller, exists):
+    if not exists:
+        recording.path.unlink()  # Owned synthetic fixture only.
+    messages = {
+        'Recording failed': 'localized failure', 'Stopping...': 'localized stopping',
+        'The recording file was kept at:\n{path}\nIt may be incomplete.': 'localized retained file: {path}',
+    }
+    controller.namespace['_'] = lambda text, **kwargs: messages.get(text, text).format(**kwargs)
+    controller.call('_finish_recording')
+    args, kwargs = controller.errors[0]
+    assert args[1] == 'localized failure'
+    assert args[2] == 'localized stopping'
+    assert recording.recorder.last_error not in args[2]
+    assert recording.recorder.last_error in kwargs['detail']
+    assert ('localized retained file' in kwargs['detail']) is exists
+    assert controller.statuses[-1] == 'localized stopping'
+    assert controller.app.vc_recorder is recording.recorder and not controller.added
+
+
+@pytest.mark.parametrize('busy,confirm', [(True, False), (False, True)])
+def test_pending_stop_preserves_existing_job_status(recording, controller, busy, confirm):
+    controller.app.vc_busy, controller.app.vc_confirm_open = busy, confirm
+    controller.app.vc_status_var.set('Current job status')
+    controller.call('_finish_recording')
+    assert controller.statuses[-1] == 'Current job status'
+    assert controller.errors[0][0][2] == 'Recording failed'
+    assert recording.recorder.last_error in controller.errors[0][1]['detail']
+    assert controller.app.vc_record_btn.state == 'disabled'
+    assert controller.app.vc_recorder is recording.recorder and not controller.added
