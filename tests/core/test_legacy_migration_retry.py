@@ -162,3 +162,30 @@ def test_retry_recovers_old_rows_without_replacing_new_history(dirs, monkeypatch
     assert set(history_rows(new["data"] / "history.db")) == {
         ("synthetic-legacy.wav", "finished"), ("synthetic-new.wav", "finished"),
     }
+
+
+@pytest.mark.parametrize("settings_directory", [True, False])
+def test_history_only_legacy_profile_imports_without_settings(dirs, settings_directory):
+    new, old = dirs
+    source = make_legacy_history(old)
+    original = source.read_bytes()
+    assert not (old["config"] / "config.json").exists()
+    if not settings_directory:
+        old["config"].rmdir()
+    cfg.migrate_legacy_app_data()
+    destination = new["data"] / "history.db"
+    assert destination.is_file(), "Missing optional settings must not suppress legacy history"
+    assert history_rows(destination) == [("synthetic-legacy.wav", "finished")]
+    assert source.read_bytes() == original
+
+
+@pytest.mark.parametrize("artifact", ["config.json", "hardware.json"])
+def test_corrupt_legacy_settings_bytes_do_not_block_real_history(dirs, artifact):
+    new, old = dirs
+    (old["config"] / "config.json").write_text("{}", encoding="utf-8")
+    source = make_legacy_history(old)
+    target = old["config"] / artifact if artifact == "config.json" else old["data"] / artifact
+    target.write_bytes(b"\xff{not-json")
+    cfg.migrate_legacy_app_data()
+    assert history_rows(new["data"] / "history.db") == [("synthetic-legacy.wav", "finished")]
+    assert target.read_bytes() == b"\xff{not-json"

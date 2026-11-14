@@ -978,57 +978,56 @@ def migrate_legacy_app_data() -> None:
         legacy = _legacy_app_dirs()
     except Exception:  # noqa: BLE001
         return
-    if not legacy or not legacy["config"].is_dir():
+    if not legacy or not (legacy["config"].is_dir() or legacy["data"].is_dir()):
         return
 
     new_config = Path(config_path())
     legacy_config = legacy["config"] / "config.json"
-    if legacy_config.is_file():
-        try:
-            with _SAVE_LOCK, _config_file_lock(str(new_config)):
-                history_intent = _legacy_database_intent(legacy, new_config)
-                search_intent = _legacy_database_intent(legacy, new_config, "search.db")
-                hardware_intent = _legacy_database_intent(legacy, new_config, "hardware.json")
-                if not new_config.exists():
+    try:
+        with _SAVE_LOCK, _config_file_lock(str(new_config)):
+            history_intent = _legacy_database_intent(legacy, new_config)
+            search_intent = _legacy_database_intent(legacy, new_config, "search.db")
+            hardware_intent = _legacy_database_intent(legacy, new_config, "hardware.json")
+            if not new_config.exists() and legacy_config.is_file():
+                try:
+                    new_config.parent.mkdir(parents=True, exist_ok=True)
+                    _copy_legacy_settings(legacy_config, new_config)
+                    logger.info("Migrated %s -> %s", legacy_config, new_config)
+                except OSError as error:
+                    logger.warning("Could not migrate %s: %s", legacy_config, error)
+            if hardware_intent is not None:
+                marker, intent = hardware_intent
+                if not intent["complete"]:
                     try:
-                        new_config.parent.mkdir(parents=True, exist_ok=True)
-                        _copy_legacy_settings(legacy_config, new_config)
-                        logger.info("Migrated %s -> %s", legacy_config, new_config)
-                    except OSError as error:
-                        logger.warning("Could not migrate %s: %s", legacy_config, error)
-                if hardware_intent is not None:
-                    marker, intent = hardware_intent
-                    if not intent["complete"]:
-                        try:
-                            destination = user_data_dir() / "hardware.json"
-                            if not destination.exists():
-                                destination.parent.mkdir(parents=True, exist_ok=True)
-                                _copy_legacy_settings(legacy["data"] / "hardware.json", destination,
-                                                      replace=False)
-                            _write_disk_dict(str(marker), {**intent, "complete": True})
-                        except OSError as error:
-                            logger.warning("Could not migrate pre-rebrand hardware choice: %s", error)
-                if search_intent is not None:
-                    marker, intent = search_intent
-                    if not intent["complete"]:
-                        try:
-                            from .search import copy_legacy_index
-
-                            copy_legacy_index(legacy["data"] / "search.db",
-                                              user_data_dir() / "search.db")
-                            _write_disk_dict(str(marker), {**intent, "complete": True})
-                        except (OSError, ValueError, sqlite3.Error) as error:
-                            logger.warning("Could not migrate pre-rebrand search index: %s", error)
-                if history_intent is not None:
-                    marker, intent = history_intent
-                    if not intent["complete"]:
-                        from .history import import_legacy_history
-
-                        import_legacy_history(legacy["data"] / "history.db",
-                                              user_data_dir() / "history.db", intent["source"])
+                        destination = user_data_dir() / "hardware.json"
+                        if not destination.exists():
+                            destination.parent.mkdir(parents=True, exist_ok=True)
+                            _copy_legacy_settings(legacy["data"] / "hardware.json", destination,
+                                                  replace=False)
                         _write_disk_dict(str(marker), {**intent, "complete": True})
-        except (OSError, ValueError, sqlite3.Error) as error:
-            logger.warning("Could not finish pre-rebrand data migration: %s", error)
+                    except OSError as error:
+                        logger.warning("Could not migrate pre-rebrand hardware choice: %s", error)
+            if search_intent is not None:
+                marker, intent = search_intent
+                if not intent["complete"]:
+                    try:
+                        from .search import copy_legacy_index
+
+                        copy_legacy_index(legacy["data"] / "search.db",
+                                          user_data_dir() / "search.db")
+                        _write_disk_dict(str(marker), {**intent, "complete": True})
+                    except (OSError, ValueError, sqlite3.Error) as error:
+                        logger.warning("Could not migrate pre-rebrand search index: %s", error)
+            if history_intent is not None:
+                marker, intent = history_intent
+                if not intent["complete"]:
+                    from .history import import_legacy_history
+
+                    import_legacy_history(legacy["data"] / "history.db",
+                                          user_data_dir() / "history.db", intent["source"])
+                    _write_disk_dict(str(marker), {**intent, "complete": True})
+    except (OSError, ValueError, sqlite3.Error) as error:
+        logger.warning("Could not finish pre-rebrand data migration: %s", error)
 
     try:
         from .hub import default_hub_folder
