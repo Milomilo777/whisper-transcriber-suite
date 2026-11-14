@@ -29,7 +29,8 @@ def test_out_of_order_invalid_cues_do_not_inherit_an_unusable_end():
         {'start':5.,'end':5.,'text':'First'},
         {'start':.5,'end':.5,'text':'Second'},
         {'start':.7,'end':1.2,'text':'Third'}], lambda seg:seg['text'])
-    assert cues == [(500,700,'First Second'),(700,1200,'Third')]
+    # Keep the later point at its own time instead of merging it backwards.
+    assert cues == [(5000,6000,'First'),(500,700,'Second'),(700,1200,'Third')]
 
 
 def test_json_keeps_word_clocks_when_segment_end_is_missing():
