@@ -69,7 +69,7 @@ def main():
     output = Path(env["RUNNER_TEMP"]).resolve(strict=True) / "wts-altgr"
     output.mkdir(exist_ok=False)
     job = "wts-hosted-altgr-" + run_id + "-" + attempt
-    raw = workspace.parent / (job + ".altgr.json")
+    raw = output / "raw.json"
     if raw.exists():
         raise RuntimeError("Existing native receipt forbids replay")
     packet = workspace / "qa_native_packet"
@@ -206,8 +206,6 @@ def main():
                 identity["new_layout_unloaded"] = True
             except BaseException as error:
                 cleanup_errors.append(str(error))
-        if raw.is_file():
-            shutil.copyfile(raw, output / "raw.json")
         if cleanup_errors:
             identity.update(status="FAIL-CLEANUP", cleanup_errors=cleanup_errors)
             exit_code = 1

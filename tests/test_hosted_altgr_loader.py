@@ -2,6 +2,8 @@
 import ast
 import importlib.util
 from pathlib import Path
+import re
+from types import SimpleNamespace
 
 import pytest
 import yaml
@@ -121,7 +123,6 @@ def test_disposable_step_preserves_built_artifacts_and_timeout_evidence():
     upload = steps[names.index("Upload the build manifest")]
     assert upload["if"] == "always()"
     assert "${{ runner.temp }}/wts-altgr/**" in upload["with"]["path"]
-    assert "${{ github.run_id }}-${{ github.run_attempt }}.altgr.json" in upload["with"]["path"]
 
 
 def test_native_baseline_uses_same_separator_aware_mapping_rule():
@@ -132,3 +133,36 @@ def test_native_baseline_uses_same_separator_aware_mapping_rule():
     assert len(checks) == 1
     assert "value != expected" in ast.unparse(checks[0].test)
     assert "virtual_actions" in ast.unparse(checks[0].test)
+
+
+def require_uploadable_patterns(paths):
+    for line in paths.splitlines():
+        assert not {".", ".."}.intersection(re.split(r"[/\\]", line)), line
+
+
+def test_uploaded_evidence_has_no_forbidden_parent_path_components():
+    workflow = yaml.safe_load((ROOT / ".github/workflows/windows-installer.yml").read_text(encoding="utf-8"))
+    upload = next(step for step in workflow["jobs"]["build"]["steps"] if step["name"] == "Upload the build manifest")
+    require_uploadable_patterns(upload["with"]["path"])
+
+
+def test_parent_path_regression_control_is_rejected():
+    with pytest.raises(AssertionError):
+        require_uploadable_patterns("${{ github.workspace }}/../wts-hosted-altgr-123-1.altgr.json")
+
+
+def assignment(tree, name):
+    return next(n for n in ast.walk(tree) if isinstance(n, ast.Assign)
+                and any(isinstance(target, ast.Name) and target.id == name for target in n.targets))
+
+
+def test_native_probe_and_loader_write_same_always_uploaded_raw_file(tmp_path):
+    native = ast.parse((HELPERS / "test_altgr_acceptance.py").read_text(encoding="utf-8"))
+    loader = ast.parse((HELPERS / "hosted_altgr_loader.py").read_text(encoding="utf-8"))
+    env = {"RUNNER_TEMP": str(tmp_path)}
+    namespace = {"Path": Path, "os": SimpleNamespace(environ=env), "env": env}
+    exec(compile(ast.Module(body=[assignment(native, "output")], type_ignores=[]), "<actual-native-output>", "exec"), namespace)
+    native_output = namespace["output"]
+    exec(compile(ast.Module(body=[assignment(loader, "output"), assignment(loader, "raw")], type_ignores=[]), "<actual-loader-output>", "exec"), namespace)
+    assert native_output == namespace["raw"] == tmp_path / "wts-altgr" / "raw.json"
+    assert "shutil.copyfile(raw" not in (HELPERS / "hosted_altgr_loader.py").read_text(encoding="utf-8")

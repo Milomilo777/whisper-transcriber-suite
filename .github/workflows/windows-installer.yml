@@ -391,6 +391,5 @@ jobs:
             ${{ runner.temp }}/wts-inno-smoke/*.xml
             ${{ runner.temp }}/wts-inno-smoke/**/*.log
             ${{ runner.temp }}/wts-altgr/**
-            ${{ github.workspace }}/../wts-hosted-altgr-${{ github.run_id }}-${{ github.run_attempt }}.altgr.json
           retention-days: 7
           if-no-files-found: warn

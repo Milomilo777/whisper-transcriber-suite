@@ -19,7 +19,10 @@ def test_finite_native_altgr_acceptance(record_property):
     packet = Path(__file__).parent
     source = packet.parent
     plan = json.loads((packet / "plan.json").read_text())
-    output = source.parent / (plan["job"] + ".altgr.json")
+    # Write directly inside the always-uploaded runner-temp directory so a
+    # step timeout cannot leave the only receipt outside the artifact paths.
+    output = Path(os.environ["RUNNER_TEMP"]).resolve(strict=True) / "wts-altgr" / "raw.json"
+    assert output.parent.is_dir()
     process = psutil.Process()
     identity = (process.pid, process.create_time())
     data = {"head": plan["head"], "pid": identity[0], "created": identity[1], "status": "STARTED", "injected_events": 0, "observations": []}
