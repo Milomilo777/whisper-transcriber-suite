@@ -2441,7 +2441,9 @@ class TranscriptViewer(tk.Toplevel):
             # can still name every file that was waiting.
             if self not in _EXPORTING:
                 _EXPORTING.append(self)
-            self._export_remaining.update(names)
+            # The running pass holds its set's bound discard callback. Give
+            # a newer revision its own set so old progress cannot consume it.
+            self._export_remaining = set(names)
             self._export_pending = saved_json_text
             self._export_fast_done.clear()
             start = not self._export_running
