@@ -119,9 +119,13 @@ def show_error(
 
         toggle_btn = ttk.Button(toggle_row, text=_("Show details ▸"), command=_toggle)
         toggle_btn.pack(side="left")
-        ttk.Button(toggle_row, text=_("Copy details"), command=_copy_detail).pack(
-            side="left", padx=(8, 0)
-        )
+        copy_btn = ttk.Button(toggle_row, text=_("Copy details"), command=_copy_detail)
+        copy_btn.pack(side="left", padx=(8, 0))
+        # Invoke the focused detail action before the toplevel's default
+        # Return binding can dismiss the dialog (or a class binding repeats it).
+        for button in (toggle_btn, copy_btn):
+            for sequence in ("<Return>", "<KP_Enter>"):
+                button.bind(sequence, lambda _e, btn=button: (btn.invoke(), "break")[1])
 
     ok_btn = ttk.Button(body, text=_("OK"), command=_close)
     ok_btn.pack(anchor="e", pady=(14, 0))
