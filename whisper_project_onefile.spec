@@ -174,6 +174,8 @@ a = Analysis(
         *_rtl_datas,
     ],
     hiddenimports=[
+        # Inert replacements for retired source left by overlay upgrades.
+        'core.backends.parakeet', 'core.monitors', 'core.tiling',
         'core.server.mcp',
     'core.diarization_worker',
         *whisper_cpp_hidden,

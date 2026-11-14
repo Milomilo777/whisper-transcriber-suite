@@ -80,3 +80,37 @@ def test_missing_release_history_fails_closed(repo):
     result = check(repo)
     assert result.returncode == 2
     assert "release tags" in result.stderr
+
+
+@pytest.mark.parametrize("name", ["core/backends/parakeet.py", "core/monitors.py", "core/tiling.py"])
+def test_historical_retired_modules_ship_inert_overlay_replacements(name):
+    """Retired code must be replaced without deleting user additions."""
+    import ast
+    file = TOOL.parents[1] / name
+    assert file.is_file(), f"An upgrade would leave the historical implementation at {name}"
+    tree = ast.parse(file.read_text(encoding="utf-8"))
+    # These compatibility slots must not revive removed engines, windows,
+    # dependency imports or subprocesses when an old consumer imports them.
+    assert all(isinstance(node, (ast.Expr, ast.AnnAssign)) for node in tree.body)
+    assert not any(isinstance(node, (ast.Call, ast.Import, ast.ImportFrom)) for node in ast.walk(tree))
+
+
+@pytest.mark.parametrize("name", ["core/backends/parakeet.py", "core/monitors.py", "core/tiling.py"])
+@pytest.mark.parametrize("cache_mode", ["TIMESTAMP", "CHECKED_HASH"])
+def test_retired_cached_implementation_cannot_run_after_overlay(tmp_path, name, cache_mode):
+    import importlib.util
+    import py_compile
+    replacement = TOOL.parents[1] / name
+    installed = tmp_path / Path(name).name
+    installed.write_text('raise RuntimeError("retired implementation executed")\n', encoding="utf-8")
+    old = installed.stat()
+    py_compile.compile(str(installed), doraise=True,
+                       invalidation_mode=getattr(py_compile.PycInvalidationMode, cache_mode))
+    installed.write_bytes(replacement.read_bytes())
+    # Simulate an overlay preserving the old timestamp to the same second.
+    os.utime(installed, ns=(old.st_atime_ns, old.st_mtime_ns))
+    spec = importlib.util.spec_from_file_location("retired_overlay_fixture", installed)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert module.__all__ == ()

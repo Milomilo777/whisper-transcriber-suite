@@ -6,6 +6,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Replace three retired modules left by older Windows installations with inert compatibility files. This removes their old executable behavior during an overlay upgrade while preserving neighboring user files.
+
 - Stop a worker in the background when a blocked command pipe cannot accept Cancel within five seconds. Preserve its cancelled status and any existing resume checkpoint, without waiting on the window thread.
 
 - Recheck the saved statistics identity before sending from another running instance, so switching statistics off and on cannot reuse a revoked cached identifier.
