@@ -112,12 +112,26 @@ def test_non_windows_preserves_native_bindings(platform):
     ("Cyrillic_em", 86, "<<Paste>>"), ("Cyrillic_es", 67, "<<Copy>>"),
     ("Cyrillic_che", 88, "<<Cut>>"), ("Cyrillic_ef", 65, "selectall"),
 ])
-def test_windows_non_latin_shortcuts_remain_active(keysym, keycode, expected):
+@pytest.mark.parametrize("state", [0x0004, 0x0005, 0x000C, 0x000D])
+def test_windows_non_latin_shortcuts_remain_active(keysym, keycode, expected, state):
     handler = _installed("win32")
     field = _Entry()
     assert handler is not None
-    assert handler(SimpleNamespace(keysym=keysym, keycode=keycode, widget=field)) == "break"
+    assert handler(SimpleNamespace(keysym=keysym, keycode=keycode, widget=field, state=state)) == "break"
     assert field.calls == (["selectall", "icursor"] if expected == "selectall" else [expected])
+
+
+@pytest.mark.parametrize("keysym,keycode", [
+    ("U202F", 67), ("guillemotleft", 86), ("guillemotright", 88), ("U263A", 65),
+])
+@pytest.mark.parametrize("state", [0x20004, 0x20005, 0x2000C, 0x2000D])
+def test_windows_altgr_text_never_dispatches_clipboard_actions(keysym, keycode, state):
+    handler = _installed("win32")
+    field = _Entry()
+    before = (field.text, field.clipboard, field.selection)
+    assert handler is not None
+    result = handler(SimpleNamespace(keysym=keysym, keycode=keycode, widget=field, state=state))
+    assert (result, field.calls, (field.text, field.clipboard, field.selection)) == (None, [], before)
 
 
 @pytest.mark.parametrize("keysym,keycode", [
