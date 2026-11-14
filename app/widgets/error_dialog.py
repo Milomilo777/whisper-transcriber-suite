@@ -16,12 +16,41 @@ from app.theme import tokens
 _PREVIOUS_GRAB_ATTR = "_wts_error_previous_grab"
 
 
+def _unpost_combobox_grab(parent: tk.Misc) -> None:
+    """Finish a known ttk popdown's saved-grab restoration before replacing it."""
+    try:
+        holder = str(parent.tk.call("grab", "current", str(parent)))
+        if not holder or parent.tk.call("winfo", "class", holder) != "ComboboxPopdown":
+            return
+        combo_path = str(parent.tk.call("winfo", "parent", holder))
+        if (holder != combo_path + ".popdown"
+                or parent.tk.call("winfo", "class", combo_path) != "TCombobox"):
+            return
+        combo = parent.nametowidget(combo_path)
+        if isinstance(combo, ttk.Combobox) and str(combo) == combo_path:
+            parent.tk.call("ttk::combobox::Unpost", combo_path)
+            # Unmap may be delivered later. Consume its saved grab now;
+            # ttk::RestoreGrab removes the slot, so a later call is inert.
+            parent.tk.call("ttk::releaseGrab", holder)
+    except (tk.TclError, KeyError):
+        # Unknown raw grabs are neither repaired nor restored by this helper.
+        pass
+
+
 def show_error(
     parent: "tk.Tk | tk.Toplevel", title: str, message: str, detail: str | None = None,
 ) -> None:
+    # A popdown's later Unmap handler would otherwise restore its old grab
+    # over this error. Unpost only a validated, Python-owned ttk Combobox.
+    _unpost_combobox_grab(parent)
+    try:
+        parent_viewable = bool(parent.winfo_viewable())
+    except tk.TclError:
+        parent_viewable = False
     top = tk.Toplevel(parent)
     top.title(title)
-    top.transient(parent)
+    if parent_viewable:
+        top.transient(parent)
     top.resizable(False, False)
 
     # Tk keeps a single grab per display and does not stack them: the
@@ -154,20 +183,27 @@ def show_error(
 
     top.update_idletasks()
     try:
-        x = parent.winfo_rootx() + (parent.winfo_width() - top.winfo_width()) // 2
-        y = parent.winfo_rooty() + (parent.winfo_height() - top.winfo_height()) // 2
-        # Only clamp to a non-negative position when the parent itself is
-        # on the PRIMARY monitor -- winfo_screenwidth/height describe just
-        # that display, so clamping unconditionally would yank this dialog
-        # onto the wrong screen for a parent window living on a secondary
-        # monitor placed to the left of the primary (negative root
-        # coordinates). Same family of bug already fixed for tooltip.py's
-        # popup positioning; same fix shape.
-        screen_w = parent.winfo_screenwidth()
-        screen_h = parent.winfo_screenheight()
-        if 0 <= parent.winfo_rootx() < screen_w and 0 <= parent.winfo_rooty() < screen_h:
-            x = max(x, 0)
-            y = max(y, 0)
+        if parent_viewable:
+            x = parent.winfo_rootx() + (parent.winfo_width() - top.winfo_width()) // 2
+            y = parent.winfo_rooty() + (parent.winfo_height() - top.winfo_height()) // 2
+            # Only clamp to a non-negative position when the parent itself is
+            # on the PRIMARY monitor -- winfo_screenwidth/height describe just
+            # that display, so clamping unconditionally would yank this dialog
+            # onto the wrong screen for a parent window living on a secondary
+            # monitor placed to the left of the primary (negative root
+            # coordinates). Same family of bug already fixed for tooltip.py's
+            # popup positioning; same fix shape.
+            screen_w = parent.winfo_screenwidth()
+            screen_h = parent.winfo_screenheight()
+            if 0 <= parent.winfo_rootx() < screen_w and 0 <= parent.winfo_rooty() < screen_h:
+                x = max(x, 0)
+                y = max(y, 0)
+        else:
+            # A withdrawn/iconic owner hides its transients and may report
+            # minimized coordinates such as -32000. Keep the owner unchanged
+            # and show this independent error in the primary screen bounds.
+            x = max((top.winfo_screenwidth() - top.winfo_width()) // 2, 0)
+            y = max((top.winfo_screenheight() - top.winfo_height()) // 2, 0)
         # Always a literal "+": Tk reads "+-500" as a left edge at -500,
         # while "-500" means 500 px from the right edge -- a real trap
         # once x/y can legitimately be negative.

@@ -27,6 +27,8 @@ def display(monkeypatch):
                     self.fail_lookup = False
                     raise tk.TclError('synthetic unavailable grab query')
                 return self.holder
+            if args[:2] == ('winfo', 'class'):
+                return 'InertRawWindow'
             if args[:2] == ('grab', 'set'):
                 self.holder = args[-1]
                 return ''
@@ -56,6 +58,7 @@ def display(monkeypatch):
         def winfo_screenwidth(self): return 1920
         def winfo_screenheight(self): return 1080
         def winfo_exists(self): return self.alive
+        def winfo_viewable(self): return True
         def wm_geometry(self, value): self.geometry_value = value
         def bell(self): pass
         def clipboard_clear(self): pass
