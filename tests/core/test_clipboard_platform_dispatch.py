@@ -94,7 +94,7 @@ def test_x11_unrelated_ctrl_keys_leave_entry_and_clipboard_unchanged(keysym, key
     handler = _installed("linux")
     field = _Entry()
     before = (field.text, field.clipboard, field.selection)
-    event = SimpleNamespace(keysym=keysym, keycode=keycode, widget=field)
+    event = SimpleNamespace(keysym=keysym, keycode=keycode, widget=field, state=0x0004)
     result = handler(event) if handler else None
     assert (field.text, field.clipboard, field.selection) == before
     assert field.calls == []
@@ -112,7 +112,7 @@ def test_non_windows_preserves_native_bindings(platform):
     ("Cyrillic_em", 86, "<<Paste>>"), ("Cyrillic_es", 67, "<<Copy>>"),
     ("Cyrillic_che", 88, "<<Cut>>"), ("Cyrillic_ef", 65, "selectall"),
 ])
-@pytest.mark.parametrize("state", [0x0004, 0x0005, 0x000C, 0x000D])
+@pytest.mark.parametrize("state", [0x0004, 0x0005, 0x000C, 0x000D, 0x40004])
 def test_windows_non_latin_shortcuts_remain_active(keysym, keycode, expected, state):
     handler = _installed("win32")
     field = _Entry()
@@ -122,15 +122,15 @@ def test_windows_non_latin_shortcuts_remain_active(keysym, keycode, expected, st
 
 
 @pytest.mark.parametrize("keysym,keycode", [
-    ("U202F", 67), ("guillemotleft", 86), ("guillemotright", 88), ("U263A", 65),
+    ("Cyrillic_es", 67), ("Cyrillic_em", 86), ("Cyrillic_che", 88), ("Cyrillic_ef", 65),
 ])
-@pytest.mark.parametrize("state", [0x20004, 0x20005, 0x2000C, 0x2000D])
-def test_windows_altgr_text_never_dispatches_clipboard_actions(keysym, keycode, state):
+@pytest.mark.parametrize("state", [0x20004, 0x20005, 0x2000C, 0x2000D, 0x60004, 0x6000C])
+def test_windows_ctrl_alt_chords_that_produce_no_text_do_not_dispatch(keysym, keycode, state):
     handler = _installed("win32")
     field = _Entry()
     before = (field.text, field.clipboard, field.selection)
     assert handler is not None
-    result = handler(SimpleNamespace(keysym=keysym, keycode=keycode, widget=field, state=state))
+    result = handler(SimpleNamespace(keysym=keysym, keycode=keycode, widget=field, state=state, char=""))
     assert (result, field.calls, (field.text, field.clipboard, field.selection)) == (None, [], before)
 
 
@@ -143,6 +143,25 @@ def test_windows_native_and_unrelated_shortcuts_are_untouched(keysym, keycode):
     field = _Entry()
     before = (field.text, field.clipboard, field.selection)
     assert handler is not None
-    assert handler(SimpleNamespace(keysym=keysym, keycode=keycode, widget=field)) is None
+    assert handler(SimpleNamespace(keysym=keysym, keycode=keycode, widget=field, state=0x0004)) is None
     assert (field.text, field.clipboard, field.selection) == before
     assert field.calls == []
+
+
+def test_windows_nontext_ctrl_alt_persian_v_does_not_dispatch():
+    handler = _installed("win32")
+    field = _Entry()
+    before = (field.text, field.clipboard, field.selection)
+    assert handler is not None
+    assert handler(SimpleNamespace(keysym="\u0631", keycode=86, widget=field, state=0x20004, char="")) is None
+    assert field.calls == []
+    assert (field.text, field.clipboard, field.selection) == before
+
+
+@pytest.mark.parametrize("state", ["??", None, object(), 0.0])
+def test_windows_noninteger_state_keeps_regular_control_dispatch(state):
+    handler = _installed("win32")
+    field = _Entry()
+    assert handler is not None
+    assert handler(SimpleNamespace(keysym="\u0631", keycode=86, widget=field, state=state)) == "break"
+    assert field.calls == ["<<Paste>>"]
