@@ -134,3 +134,89 @@ source "$ENTRY" "$IMAGE" --no-gui'''+options+'\n'
  assert result.returncode!=0,result.stdout+result.stderr
  assert log.exists(),result.stdout+result.stderr
  assert log.read_text().splitlines()==[wanted or 'x86_64']
+
+
+@pytest.mark.parametrize('temporary_root',['plain','trailing','repeated','alias'])
+def test_copied_gui_matches_canonical_owned_process(tmp_path,temporary_root):
+ result=run_copied_gui_fixture(tmp_path,temporary_root)
+ assert result.returncode==0,result.stdout+result.stderr
+ assert 'OK   GUI started from the copy and is still running' in result.stdout
+ assert (tmp_path/'killed').read_text().splitlines()==['42424']
+
+
+@pytest.mark.parametrize('fresh_log,owned_process',[(False,True),(True,False)])
+def test_copied_gui_requires_both_fresh_log_and_owned_process(tmp_path,fresh_log,owned_process):
+ result=run_copied_gui_fixture(tmp_path,'trailing',fresh_log=fresh_log,owned_process=owned_process)
+ assert result.returncode!=0,result.stdout+result.stderr
+ assert 'FAIL GUI did not start from the copy' in result.stdout
+ assert 'OK   GUI started' not in result.stdout
+ assert (tmp_path/'diagnostic.called').exists()
+
+
+@pytest.mark.parametrize('failure',['missing-root','first-temp','second-temp'])
+def test_copied_gui_temp_failures_stop_before_launch(tmp_path,failure):
+ result=run_copied_gui_fixture(tmp_path,failure if failure=='missing-root' else 'plain',mktemp_failure=failure)
+ assert result.returncode!=0,result.stdout+result.stderr
+ assert not (tmp_path/'opened').exists()
+ assert not (tmp_path/'killed').exists()
+ assert not list((tmp_path/'real').glob('wts-*'))
+
+
+def run_copied_gui_fixture(tmp_path,temporary_root,*,fresh_log=True,owned_process=True,mktemp_failure='none'):
+ """Execute real temp setup, GUI proof and cleanup with controlled OS replies."""
+ bash=_find_bash()
+ if bash is None:pytest.skip('A working Bash is required')
+ script=(Path(__file__).resolve().parents[1]/'platform/macos/pyinstaller/test_dmg.sh').read_text()
+ setup=script[script.index('NAME="Whisper Transcriber Suite"'):script.index('\nCONTRACT=')]
+ gui=script[script.index('if [ "$GUI" = 1 ]; then\n  echo "== 3.'):script.index('\necho "== 4. detach"')]
+ (tmp_path/'real').mkdir()
+ if temporary_root=='alias':(tmp_path/'alias').symlink_to(tmp_path/'real',target_is_directory=True)
+ env=os.environ.copy()
+ env.update(TEMP_FIXTURE=str(tmp_path).replace('\\','/'),TMP_MODE=temporary_root,
+            FRESH_LOG=str(int(fresh_log)),OWNED_PROCESS=str(int(owned_process)),
+            FAIL_MKTEMP=mktemp_failure)
+ prelude='''set -uo pipefail
+BASE="$(cd -- "$TEMP_FIXTURE" && pwd -P)"
+case "$TMP_MODE" in
+  plain) TMPDIR="$BASE/real" ;;
+  trailing) TMPDIR="$BASE/real/" ;;
+  repeated) TMPDIR="$BASE//real///" ;;
+  alias) TMPDIR="$BASE/alias/" ;;
+  missing-root) TMPDIR="$BASE/missing" ;;
+esac
+HOME="$BASE/home"; export HOME TMPDIR
+GUI=1
+SCRIPT_DIR=unused-proof-fixture
+VERIFY_PYTHON=python_stub
+mkdir -p "$HOME/Library/Logs/WhisperTranscriberSuite"
+printf 'App startup old\\n' > "$HOME/Library/Logs/WhisperTranscriberSuite/app.log"
+open() {
+  printf called > "$BASE/opened"
+  ACTUAL_OWNED_ARGV="$(cd -- "$1" && pwd -P)/Contents/MacOS/Whisper Transcriber Suite"
+  if [ "$FRESH_LOG" = 1 ]; then printf 'App startup new\\n' >> "$HOME/Library/Logs/WhisperTranscriberSuite/app.log"; fi
+}
+pgrep() { [ "$OWNED_PROCESS" = 1 ] && [[ "$ACTUAL_OWNED_ARGV" =~ $2 ]] && printf '42424\\n'; }
+kill() { printf '%s\\n' "$1" >> "$BASE/killed"; OWNED_PROCESS=0; }
+sleep() { :; }
+hdiutil() { :; }
+python_stub() {
+  if [ "$1" = -c ]; then printf '1000\\n'; return 0; fi
+  if [ "$1" = - ]; then printf called > "$BASE/diagnostic.called"; return 0; fi
+  if [ "$2" = capture ]; then
+    printf '{}' > "$5"
+    [ "$OWNED_PROCESS" = 1 ]; return $?
+  fi
+  if [ "$2" = stop ]; then
+    if [ "$OWNED_PROCESS" = 1 ]; then printf '42424\\n' >> "$BASE/killed"; OWNED_PROCESS=0; fi
+    return 0
+  fi
+  return 2
+}
+mktemp() {
+  if [ "$FAIL_MKTEMP" = first-temp ]; then return 1; fi
+  if [ "$FAIL_MKTEMP" = second-temp ] && [[ "$2" = *wts-apps* ]]; then return 1; fi
+  command mktemp "$@"
+}
+'''
+ code=prelude+setup+'\nAPP="$DEST/$NAME.app"\nmkdir -p "$APP/Contents/MacOS"\n'+gui+'\n[ "$fail" = 0 ]\n'
+ return subprocess.run([bash,'-c',code],cwd=tmp_path,env=env,capture_output=True,text=True,timeout=15)

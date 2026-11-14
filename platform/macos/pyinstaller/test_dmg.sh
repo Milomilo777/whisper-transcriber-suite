@@ -30,16 +30,39 @@ esac
 [ -f "$DMG" ] || { echo "error: $DMG not found" >&2; exit 1; }
 NAME="Whisper Transcriber Suite"
 fail=0
-MNT="$(mktemp -d "${TMPDIR:-/tmp}/wts-dmg.XXXXXX")"
-DEST="$(mktemp -d "${TMPDIR:-/tmp}/wts-apps.XXXXXX")"
-cleanup() {
-  for own_pid in $(pgrep -f "$DEST/$NAME.app/Contents/MacOS/" || true); do
-    kill "$own_pid" 2>/dev/null || true
-  done
-  hdiutil detach "$MNT" -quiet 2>/dev/null || hdiutil detach "$MNT" -force -quiet 2>/dev/null || true
-  rm -rf "$DEST"; rmdir "$MNT" 2>/dev/null || true
+# LaunchServices reports the physical executable path. Resolve aliases such as
+# /var -> /private/var and trailing separators before creating owned paths.
+TMP_ROOT="$(cd -- "${TMPDIR:-/tmp}" && pwd -P)" || { echo "error: invalid temporary directory" >&2; exit 1; }
+MNT=""; DEST=""; GUI_STARTED=""; GUI_STOP_FAILED=0
+stop_copied_gui() {
+  [ -n "$GUI_STARTED" ] || return 0
+  [ "$GUI_STOP_FAILED" = 0 ] || return 1
+  local receipt="$DEST/gui-processes.json" capture_status=0
+  if [ ! -f "$receipt" ]; then
+    "$VERIFY_PYTHON" "$SCRIPT_DIR/copied_gui_process.py" capture "$DEST/$NAME.app/Contents/MacOS/$NAME" "$GUI_STARTED" "$receipt" || capture_status=$?
+    [ "$capture_status" -le 1 ] || return 1
+  fi
+  "$VERIFY_PYTHON" "$SCRIPT_DIR/copied_gui_process.py" stop "$DEST/$NAME.app/Contents/MacOS/$NAME" "$GUI_STARTED" "$receipt"
 }
-trap cleanup EXIT
+cleanup() {
+  local cleanup_status=0
+  if [ -n "$DEST" ]; then
+    if stop_copied_gui; then
+      rm -rf -- "$DEST"
+    else
+      echo "FAIL copied GUI cleanup unresolved; preserving $DEST" >&2
+      cleanup_status=1
+    fi
+  fi
+  if [ -n "$MNT" ]; then
+    hdiutil detach "$MNT" -quiet 2>/dev/null || hdiutil detach "$MNT" -force -quiet 2>/dev/null || true
+    rmdir "$MNT" 2>/dev/null || true
+  fi
+  return "$cleanup_status"
+}
+trap 'cleanup || exit 1' EXIT
+MNT="$(mktemp -d "${TMP_ROOT%/}/wts-dmg.XXXXXX")" || exit 1
+DEST="$(mktemp -d "${TMP_ROOT%/}/wts-apps.XXXXXX")" || exit 1
 
 CONTRACT="$SCRIPT_DIR/bundle_contract.py"
 if [ -z "$MANIFEST" ]; then
@@ -100,7 +123,8 @@ if [ "$GUI" = 1 ]; then
   echo "== 3. GUI launch from the copy (LaunchServices)"
   LOG_DIR="$HOME/Library/Logs/WhisperTranscriberSuite"
   before="$(grep -c 'App startup' "$LOG_DIR/app.log" 2>/dev/null || true)"
-  open "$APP"
+  GUI_STARTED="$("$VERIFY_PYTHON" -c 'import time; print(time.time())')" || exit 1
+  open "$APP" || exit 1
   ok=0
   for _ in $(seq 1 90); do
     now="$(grep -c 'App startup' "$LOG_DIR/app.log" 2>/dev/null || true)"
@@ -108,14 +132,37 @@ if [ "$GUI" = 1 ]; then
     sleep 1
   done
   sleep 5
-  if [ "$ok" = 1 ] && pgrep -f "$APP/Contents/MacOS/" >/dev/null; then
+  alive=0
+  if "$VERIFY_PYTHON" "$SCRIPT_DIR/copied_gui_process.py" capture "$APP/Contents/MacOS/$NAME" "$GUI_STARTED" "$DEST/gui-processes.json"; then alive=1; fi
+  if [ "$ok" = 1 ] && [ "$alive" = 1 ]; then
     echo "OK   GUI started from the copy and is still running"
   else
     echo "FAIL GUI did not start from the copy (or died)"; tail -30 "$LOG_DIR/app.log" 2>/dev/null || true; fail=1
+    # Paths and process identity only: never emit argv or environment values.
+    "$VERIFY_PYTHON" - "$APP/Contents/MacOS/$NAME" <<'PY' || true
+import json
+import os
+import sys
+print("GUI expected executable: " + os.path.realpath(sys.argv[1]))
+try:
+    import psutil
+    count = 0
+    for process in psutil.process_iter(["pid", "create_time", "exe", "status", "name"]):
+        info = process.info
+        if "whisper" not in (info.get("name") or "").lower():
+            continue
+        print("GUI candidate: " + json.dumps({key: info.get(key) for key in ("pid", "create_time", "exe", "status")}))
+        count += 1
+        if count >= 20:
+            break
+except Exception as error:
+    print("GUI process diagnostic unavailable: " + type(error).__name__)
+PY
   fi
-  for own_pid in $(pgrep -f "$APP/Contents/MacOS/" || true); do
-    kill "$own_pid" 2>/dev/null || true
-  done
+  if ! stop_copied_gui; then
+    echo "FAIL copied GUI cleanup unresolved" >&2
+    GUI_STOP_FAILED=1; fail=1
+  fi
   sleep 2
 else
   echo "== 3. GUI launch skipped (--no-gui)"
