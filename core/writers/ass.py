@@ -126,7 +126,7 @@ def _speaker_name(seg: dict) -> str:
     return normalize_text(raw).replace(",", ";")
 
 
-def _karaoke_payload(seg: dict) -> str:
+def _karaoke_payload(seg: dict, *, fill_end: bool = False) -> str:
     """Per-word ``{\\kNN}`` payload, or plain escaped text without words.
 
     ``\\k`` durations are in centiseconds and are *relative* — each tag
@@ -150,7 +150,7 @@ def _karaoke_payload(seg: dict) -> str:
 
     parts: list[str] = []
     emitted = False
-    for w, token, space_before in tokens:
+    for index, (w, token, space_before) in enumerate(tokens):
         start = _coerce(w.get("start"), cursor_cs / 100)
         end = _coerce(w.get("end"), start)
         if end < start:
@@ -158,6 +158,8 @@ def _karaoke_payload(seg: dict) -> str:
         # Quantize cumulative endpoints on the same grid as the Dialogue.
         # Zero ticks retain short/overlapping words without extending the cue.
         next_cs = min(end_cs, max(cursor_cs, round(min(end, seg_end) * 100)))
+        if fill_end and index == len(tokens) - 1:
+            next_cs = end_cs
         dur_cs = next_cs - cursor_cs
         # Separate words with a real space BEFORE the tag, so the
         # highlight boundary lands between words rather than inside one;
@@ -188,9 +190,19 @@ def write(segments: list[dict], audio_path: str = "") -> str:
             continue
         start = coerce_seconds(seg.get("start"))
         end = coerce_seconds(seg.get("end"), start)
-        if end < start:
-            end = start
-        payload = _karaoke_payload(seg)
+        start = max(0.0, start)
+        end = max(start, end)
+        start_cs, end_cs = round(start * 100), round(end * 100)
+        healed = end_cs <= start_cs
+        if healed:
+            # Keep the rounded end within the source extent whenever there
+            # is a preceding tick. At zero, one tick is the minimum display.
+            if end_cs > 0:
+                start_cs = end_cs - 1
+            else:
+                end_cs = 1
+        start, end = start_cs / 100, end_cs / 100
+        payload = _karaoke_payload(dict(seg, start=start, end=end), fill_end=healed)
         if not payload:
             continue
         out.append(

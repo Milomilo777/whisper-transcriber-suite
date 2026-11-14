@@ -395,3 +395,39 @@ def test_overlapping_word_intervals_do_not_accumulate_beyond_cue():
         "words": [{"word": "a", "start": 0, "end": .8},
                   {"word": "b", "start": .2, "end": 1}],
     })
+
+
+@pytest.mark.parametrize("start,end", [(0., 0.), (1., 1.), (1., 1.004), (1.005, 1.005)])
+@pytest.mark.parametrize("karaoke", [False, True])
+def test_subcentisecond_dialogue_retains_visible_duration(start, end, karaoke):
+    import re
+    seg = {"start": start, "end": end, "text": "short"}
+    if karaoke:
+        seg["words"] = [{"start": start, "end": end, "word": "short"}]
+    rendered = ass.write([seg])
+    line = next(line for line in rendered.splitlines() if line.startswith("Dialogue:"))
+    fields = line.split(",", 9)
+    def ticks(value):
+        h, m, seconds = value.split(":")
+        return round((int(h) * 3600 + int(m) * 60 + float(seconds)) * 100)
+    duration = ticks(fields[2]) - ticks(fields[1])
+    assert duration >= 1, line
+    assert "short" in fields[9]
+    if karaoke:
+        assert sum(map(int, re.findall(r"\\k(\d+)", fields[9]))) == duration
+
+
+@pytest.mark.parametrize("segment", [
+    {"start": 2., "text": "missing"},
+    {"start": -2., "end": -1., "text": "negative"},
+    {"start": 2., "end": 1., "text": "reversed"},
+    {"start": 1e308, "end": 1e308, "text": "extreme"},
+])
+def test_ass_heals_invalid_display_interval_without_mutating_input(segment):
+    from copy import deepcopy
+    before = deepcopy(segment)
+    line = next(row for row in ass.write([segment]).splitlines() if row.startswith("Dialogue:"))
+    fields = line.split(",", 9)
+    assert fields[1] != fields[2]
+    assert segment["text"] in fields[9]
+    assert segment == before

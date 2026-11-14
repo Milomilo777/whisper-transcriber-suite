@@ -6,6 +6,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Give collapsed ASS cues a positive centisecond display interval and keep karaoke timing on that same interval. Preserve the rounded end where possible.
+
 - Preserve a zero-length trailing word exactly at the audio end, while still rejecting segments or words outside the media bounds.
 
 - Finish cancelled model downloads promptly even if a scanner locks the restart file. Close the response first and clean up only the owned file without replacing the cancellation error.
