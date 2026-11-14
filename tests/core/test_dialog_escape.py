@@ -19,7 +19,7 @@ CASES = {
     "app/dialogs/caption_choice.py": "pick(CHOICE_CANCEL)",
     "app/dialogs/hub_setup.py": "self._on_cancel()",
     "app/dialogs/model_advisor.py": "self.destroy()",
-    "app/dialogs/quick_start.py": "self.skip()",
+    "app/dialogs/quick_start.py": "self.dismiss()",
     "app/dialogs/statistics.py": "top.destroy()",
     "app/widgets/hardware_wizard.py": "self._on_close()",
     "app/widgets/offline_status.py": "self.destroy()",

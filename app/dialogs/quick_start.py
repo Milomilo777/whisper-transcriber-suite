@@ -9,7 +9,8 @@ main-thread ``after`` poll picks the result up, as in ``model_advisor``.
 
 The window never touches the network: the model still downloads on the first
 transcription, after Finish. Skip keeps today's behaviour (the model-folder picker
-follows); Skip, Finish and closing the window all mean the window never shows again.
+follows); Skip and Finish mean the window never shows again. Closing or Escape
+leaves it available on the next launch.
 ``should_show`` is false for an existing install (see ``core.config.load_config``) and
 when ``quick_start_enabled`` is off.
 """
@@ -130,13 +131,24 @@ class QuickStartChoice:
         return _lm.quick_start_best(self.language, self.ram_gb) if self.mode == "best" else None
 
 
-def apply_choice(config: dict[str, Any], choice: QuickStartChoice | None) -> None:
+@dataclass(frozen=True)
+class QuickStartDismissed:
+    """The window closed without a persistent setup decision."""
+
+
+DISMISSED = QuickStartDismissed()
+QuickStartResult = QuickStartChoice | QuickStartDismissed | None
+
+
+def apply_choice(config: dict[str, Any], choice: QuickStartResult) -> None:
     """Write the outcome into ``config``; the caller saves it.
 
     ``None`` (Skip) only marks the window as done. Finish sets the model the same way
     the Transcribe tab's picker does, the download folder, and the default model
     folder when none is set (so a second first-run window does not follow).
     """
+    if isinstance(choice, QuickStartDismissed):
+        return
     config["quick_start_done"] = True
     if choice is None:
         return
@@ -163,14 +175,14 @@ def _probe_hardware() -> tuple[_hw.CudaStatus, int, float]:
 
 
 class QuickStartDialog(tk.Toplevel):
-    """Modal window; ``on_done`` gets a :class:`QuickStartChoice`, or ``None`` on Skip."""
+    """Modal window; Finish, Skip and temporary dismissal have distinct results."""
 
     def __init__(
         self,
         master: "tk.Misc",
         config: dict[str, Any],
         *,
-        on_done: Callable[[QuickStartChoice | None], None],
+        on_done: Callable[[QuickStartResult], bool | None],
         probe: Probe | None = None,
         on_try_sample: Callable[[], None] | None = None,
     ) -> None:
@@ -192,14 +204,14 @@ class QuickStartDialog(tk.Toplevel):
         self,
         master: "tk.Misc",
         config: dict[str, Any],
-        on_done: Callable[[QuickStartChoice | None], None],
+        on_done: Callable[[QuickStartResult], bool | None],
         probe: Probe | None,
     ) -> None:
         self.title(_("Quick start"))
         self.transient(master)  # type: ignore[arg-type]
         self.resizable(False, False)
-        self.protocol("WM_DELETE_WINDOW", self.skip)
-        self.bind("<Escape>", lambda _e: self.skip())  # as the close button
+        self.protocol("WM_DELETE_WINDOW", self.dismiss)
+        self.bind("<Escape>", lambda _e: self.dismiss())  # as the close button
         self._config = config
         self._on_done = on_done
         self._closed = False
@@ -215,6 +227,7 @@ class QuickStartDialog(tk.Toplevel):
         self.mode_var = tk.StringVar(master=self, value="fast")
         self.folder_var = tk.StringVar(master=self, value=default_output_folder(config))
         self.mode_detail_vars = {m: tk.StringVar(master=self) for m, _label in MODES}
+        self.language_model_note_var = tk.StringVar(master=self)
         self.hardware_var = tk.StringVar(master=self, value=_("Checking this computer…"))
         self._build()
         self.mode_var.trace_add("write", lambda *_a: self._refresh_try_button())
@@ -261,6 +274,10 @@ class QuickStartDialog(tk.Toplevel):
             ttk.Label(
                 body, textvariable=self.mode_detail_vars[mode], foreground=tokens.themed(tokens.TEXT_MUTED),
             ).pack(anchor="w", padx=(24, 0))
+        ttk.Label(
+            body, textvariable=self.language_model_note_var, foreground=tokens.themed(tokens.TEXT_MUTED),
+            wraplength=px(500), justify="left",
+        ).pack(anchor="w", padx=(24, 0))
         ttk.Label(
             body, textvariable=self.hardware_var, foreground=tokens.themed(tokens.TEXT_MUTED),
             wraplength=px(500), justify="left",
@@ -330,6 +347,7 @@ class QuickStartDialog(tk.Toplevel):
         from core.model_manager import approx_download_size_text
 
         language = self.language_code()
+        self.language_model_note_var.set("")
         for mode, _title in MODES:
             row = _lm.quick_start_best(language, self._ram_gb) if mode == "best" else None
             if row is not None:
@@ -337,6 +355,14 @@ class QuickStartDialog(tk.Toplevel):
                 size = row.size_gb + (_lm.TRANSFORMERS_ENGINE_GB if row.engine == _lm.ENGINE_TRANSFORMERS else 0.0)
                 self.mode_detail_vars[mode].set(" · ".join(
                     [row.name, _("{size} download", size=f"about {size:g} GB")]))
+                note = _("{name} writes {language} only, whatever language is picked.",
+                         name=row.name, language=self.language_var.get())
+                if row.engine == _lm.ENGINE_TRANSFORMERS:
+                    note += " " + _(
+                        "It runs on the local transformers engine, which installs once the first "
+                        "time (about 1 GB more), gives no word-level timestamps and ignores the "
+                        "Whisper options (hot words, prompt).")
+                self.language_model_note_var.set(note)
                 continue
             wanted = recommended_model(language, mode)
             slug = _hw.fit_model_to_ram(wanted, self._ram_gb)
@@ -466,30 +492,50 @@ class QuickStartDialog(tk.Toplevel):
                 parent=self,
             )
             return
-        self._close(choice)
+        if not self._close(choice):
+            if not self._closed:
+                messagebox.showwarning(
+                    _("Save failed"),
+                    _("Not saved, so the app stays open."), parent=self,
+                )
+            return
         if try_sample and self._on_try_sample is not None:
             self._on_try_sample()
 
     def skip(self) -> None:
         self._close(None)
 
-    def _close(self, choice: QuickStartChoice | None) -> None:
+    def dismiss(self) -> None:
+        self._close(DISMISSED)
+
+    def _close(self, choice: QuickStartResult) -> bool:
         if self._closed:
-            return
+            return False
         self._closed = True
         if self._poll_id is not None:
             try:
                 self.after_cancel(self._poll_id)
             except tk.TclError:
                 pass
+            self._poll_id = None
         try:
             self.grab_release()
         except tk.TclError:
             pass
+        refused = False
         try:
-            self._on_done(choice)
+            refused = self._on_done(choice) is False
         finally:
-            try:
-                self.destroy()
-            except tk.TclError:
-                pass
+            if refused:
+                self._closed = False
+                try:
+                    self.grab_set()
+                    self._poll_id = self.after(100, self._poll)
+                except tk.TclError:
+                    pass
+            else:
+                try:
+                    self.destroy()
+                except tk.TclError:
+                    pass
+        return not refused

@@ -14,6 +14,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 ### Fixed
 
 - Keep valid transcription timings when optional alignment returns malformed or out-of-bounds word times. Validate the complete refinement before publishing it, including a zero-length word exactly at the audio end.
+- Keep Quick start open when saving choices fails, without changing active settings or starting the sample. Explain language-specific model limits, and offer setup again after Close or Escape while keeping explicit Skip permanent.
 
 - Replace three retired modules left by older Windows installations with inert compatibility files. This removes their old executable behavior during an overlay upgrade while preserving neighboring user files.
 

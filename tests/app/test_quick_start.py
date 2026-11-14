@@ -318,14 +318,14 @@ def test_finish_returns_the_choice_and_creates_the_folder(tk_root, tmp_path):
 
 
 @pytest.mark.parametrize("how", ["skip", "close"])
-def test_skip_and_closing_return_none_once(tk_root, tmp_path, how):
+def test_skip_and_closing_return_distinct_outcomes_once(tk_root, tmp_path, how):
     dialog, results = _open(tk_root, {"download_folder": str(tmp_path)})
     if how == "skip":
         dialog.skip()
     else:
         tk_root.eval(dialog.protocol("WM_DELETE_WINDOW"))
     dialog.skip()  # a second close does nothing
-    assert results == [None]
+    assert results == [None if how == "skip" else qs.DISMISSED]
 
 
 def test_finish_without_a_folder_keeps_the_window_open(tk_root, monkeypatch):

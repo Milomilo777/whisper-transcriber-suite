@@ -1,6 +1,7 @@
 """The Tk root. Wires services + dialogs + widgets together."""
 from __future__ import annotations
 
+import copy
 import gc
 import logging
 import os
@@ -19,8 +20,9 @@ import sv_ttk
 from app.dialogs.advanced import AdvancedDialog
 from app.dialogs.model_download import ModelDownloadDialog
 from app.dialogs.quick_start import (
-    QuickStartChoice,
+    QuickStartDismissed,
     QuickStartDialog,
+    QuickStartResult,
     apply_choice,
     short_model_name,
     should_show,
@@ -81,6 +83,7 @@ from app.theme import (
 from app.theme.bidi_display import ltr_base
 from core._proc import kill_download_tree
 from core.config import (
+    LoadedConfig,
     _PROJECT_KEY_RANGES,
     load_config,
     parse_download_rate_limit,
@@ -1695,18 +1698,32 @@ class App(tk.Tk):
                 logger.warning("Quick start window failed: %s", e)
         self._ensure_hub_folder()
 
-    def _on_quick_start_done(self, choice: QuickStartChoice | None) -> None:
+    def _on_quick_start_done(self, choice: QuickStartResult) -> bool:
         """Save the quick start outcome, then sync the widgets that show it."""
-        self._quick_start_open = False
-        apply_choice(self.app_config, choice)
+        if isinstance(choice, QuickStartDismissed):
+            self._quick_start_open = False
+            self._ensure_hub_folder()
+            return True
         try:
-            save_config(self.app_config)
+            candidate = copy.deepcopy(self.app_config)
+            apply_choice(candidate, choice)
+            save_config(candidate)
         except Exception as e:  # noqa: BLE001
             logger.exception("Failed to save the quick start choices")
             self.log(f"Could not save the quick start choices: {e}")
+            if choice is not None:
+                return False
+        else:
+            self.app_config.clear()
+            self.app_config.update(candidate)
+            if isinstance(self.app_config, LoadedConfig) and isinstance(candidate, LoadedConfig):
+                # save_config advanced the staged snapshot, not the live object's
+                # merge baseline. Keep later unrelated saves from replaying it.
+                self.app_config._config_baseline = candidate._config_baseline
+        self._quick_start_open = False
         if choice is None:
             self._ensure_hub_folder()
-            return
+            return True
         var = getattr(self, "download_folder_var", None)
         if var is not None:
             var.set(self.app_config.get("download_folder", ""))
@@ -1733,6 +1750,7 @@ class App(tk.Tk):
             f"{self.app_config.get('download_folder')}. The model downloads on the first "
             "transcription."
         )
+        return True
 
     def _ensure_hub_folder(self) -> None:
         """First-run Hub Folder picker, when no model folder is set yet."""
