@@ -12,6 +12,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   CPU preference, and CPU fallback uses a supported precision.
 
 ### Fixed
+- Check upgrade inventories against every pinned published release, import legacy history even without settings, and reject installation folders that overlap a retained predecessor's files, including directory aliases.
 - Keep error dialogs usable with dropdowns and stacked dialogs, and let Enter activate their detail buttons without closing them. Dismissed notices release their close-button focus and stop consuming Escape; the clipboard virtual-key fallback runs only on Windows.
 - Preserve the error-report limit and duplicate suppression across backward clock corrections, while bounding recovery to one hour and ignoring corrupt timestamps.
 

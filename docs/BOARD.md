@@ -5,6 +5,12 @@ Updated: 2026-11-14. Release target: 2.4.0.
 
 ## Current integrated source checkpoint
 
+Upgrade checks pin all published release inventories, legacy history can migrate
+without a settings file, and retained-predecessor folder guards resolve physical
+directory aliases. The affected headless selection passes 165 tests. Compiled
+installer allow/refuse cases and historical upgrade/uninstall acceptance remain
+open before release.
+
 The current source also includes error-dialog keyboard and modal-grab recovery,
 notice keyboard/focus recovery, and a Windows-only clipboard virtual-key fallback.
 The combined headless selection passes 75 tests; application and engine type
