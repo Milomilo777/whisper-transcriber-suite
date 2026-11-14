@@ -2,6 +2,7 @@
 from copy import deepcopy
 import json
 from pathlib import Path
+import re
 
 import pytest
 
@@ -28,7 +29,27 @@ def test_transcribe_bounds_word_inside_capped_segment_tail_and_saves_outputs(
     path = next(Path(p) for p in task.output_paths if p.endswith('.json'))
     saved = json.loads(path.read_text(encoding='utf-8'))
     assert saved[0]['end'] == case.duration
+    # The decoder conversion strips token padding; writers preserve these labels.
+    assert [word['word'] for word in saved[0]['words']] == ['last', 'words']
     assert saved[0]['words'][-1]['start'] == saved[0]['words'][-1]['end'] == case.duration
+    vtt = next(Path(p) for p in task.output_paths if p.endswith('.vtt')).read_text(encoding='utf-8')
+    assert re.findall(r'<c>(.*?)</c>', vtt) == ['last', 'words']
+    ass = next(Path(p) for p in task.output_paths if p.endswith('.ass')).read_text(encoding='utf-8')
+    dialogue = next(line for line in ass.splitlines() if line.startswith('Dialogue:'))
+    assert re.search(r'\{\\k\d+\}last \{\\k\d+\}words$', dialogue)
+
+
+def test_transcribe_lone_word_inside_segment_overshoot_survives(endpoint_case, monkeypatch):
+    case = endpoint_case
+    install_model(monkeypatch, [Segment(2.14, 3.12, words=[Word(2.6, 3.12)])])
+    task = output_task(case)
+    tr.transcribe(task)
+    path = next(Path(p) for p in task.output_paths if p.endswith('.json'))
+    saved = json.loads(path.read_text(encoding='utf-8'))
+    assert saved[0]['text'] == 'last words'
+    assert [word['word'] for word in saved[0]['words']] == ['last']
+    assert saved[0]['words'][0]['start'] == saved[0]['words'][0]['end'] == case.duration
+    assert all('last words' in Path(path).read_text(encoding='utf-8') for path in task.output_paths)
 
 
 def test_word_outside_its_raw_segment_is_still_rejected():

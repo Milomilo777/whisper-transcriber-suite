@@ -12,6 +12,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   CPU preference, and CPU fallback uses a supported precision.
 
 ### Fixed
+- Keep original word timings when optional alignment assigns words outside their source cues, and retain trailing words inside a segment that extends beyond the audio end.
 - Report incomplete recordings when capture cannot stop promptly, retain the active recorder until it exits, and keep partial audio out of voice reference samples.
 - Keep saved checkpoint bytes aside after a failed resume read, before a fresh run can replace or delete them.
 - Keep subtitle cues separate when a zero-length cue is followed by an earlier-starting cue, preserving their text and original start times.
