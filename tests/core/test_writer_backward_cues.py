@@ -5,6 +5,7 @@ import json
 import pytest
 
 from core.convert import convert_file, parse_to_segments
+from core.writers import bilingual_srt
 
 
 @pytest.mark.parametrize('fmt', ['srt', 'vtt'])
@@ -59,3 +60,20 @@ def test_forward_repair_keeps_the_hundred_millisecond_boundary(tmp_path, fmt, ne
     output = convert_file(str(source), fmt)
 
     assert [(s['start'], s['end'], s['text']) for s in parse_to_segments(output)] == expected
+
+
+def test_bilingual_backward_zero_cue_keeps_language_rows_and_clocks():
+    segments = [
+        {'start': 3600.0, 'end': 3600.0, 'text': 'late original'},
+        {'start': 10.0, 'end': 12.0, 'text': 'early original'},
+    ]
+    translations = ['late translation', 'early translation']
+    original = json.dumps([segments, translations])
+
+    assert bilingual_srt.write(segments, translations) == (
+        '1\n01:00:00,000 --> 01:00:01,000\n'
+        'late original\nlate translation\n\n'
+        '2\n00:00:10,000 --> 00:00:12,000\n'
+        'early original\nearly translation\n'
+    )
+    assert json.dumps([segments, translations]) == original

@@ -12,6 +12,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   CPU preference, and CPU fallback uses a supported precision.
 
 ### Fixed
+- Keep subtitle cues separate when a zero-length cue is followed by an earlier-starting cue, preserving their text and original start times.
 - Compile both Windows installer scripts with the pinned Inno Setup 6 compiler, using supported handle types and a shared version definition for Compact shortcut cleanup.
 - Check upgrade inventories against every pinned published release, import legacy history even without settings, and reject installation folders that overlap a retained predecessor's files, including directory aliases.
 - Keep error dialogs usable with dropdowns and stacked dialogs, and let Enter activate their detail buttons without closing them. Dismissed notices release their close-button focus and stop consuming Escape; the clipboard virtual-key fallback runs only on Windows.

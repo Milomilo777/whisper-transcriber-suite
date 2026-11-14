@@ -302,9 +302,10 @@ def prepare_cues(
     difference cannot collapse into a zero-length cue.
 
     A cue whose end is not after its start is given 1000 ms (clipped to
-    the next cue's start when that still leaves at least 100 ms). When
-    the next cue begins less than 100 ms later, or at the same time, the
-    texts are merged in input order and use the earlier start. Exact
+    the next cue's start when that still leaves at least 100 ms). Only a
+    next cue beginning at the same time or 1-99 ms later is merged, keeping
+    the current start and joining texts in input order. Earlier-starting
+    next cues remain separate, in input order, and do not clip this cue. Exact
     duplicate text is written once; differing text is joined by a space.
     ``join_text`` can preserve format-specific structure when merging payloads.
     Duplicates are compared by source text and speaker (see
@@ -351,7 +352,6 @@ def prepare_cues(
                 if key not in seen:
                     seen.add(key)
                     merged.append((key, text))
-            start_ms = min(start_ms, next_start)
             if next_end > next_start:
                 end_ms = next_end
                 found_valid = True
