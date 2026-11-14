@@ -1,8 +1,122 @@
 """Actual dialog contracts for native-confirmed hidden-parent/popup schedules."""
 import tkinter as tk
+from types import SimpleNamespace
 import pytest
 from app.widgets import error_dialog
 from tests.core.test_error_dialog_grab_lookup import display
+
+
+def ok_button(display):
+ return next(widget for widget in display.widgets if widget.options.get('text')=='OK')
+
+
+@pytest.mark.parametrize('detail',[None,'diagnostic detail'])
+def test_hidden_owner_map_reattaches_recenters_and_focuses_once(display,monkeypatch,detail):
+ owner=display.root;visible=[False]
+ monkeypatch.setattr(owner,'winfo_viewable',lambda:visible[0])
+ error_dialog.show_error(owner,'Background failure','Message',detail)
+ error=display.windows[-1]
+ assert '<Map>' in owner.bindings
+ callback=owner.bindings['<Map>']
+ callback(SimpleNamespace(widget=error)) # Child mapping is not owner restoration.
+ assert '<Map>' in owner.bindings and error.raised==0
+ visible[0]=True
+ monkeypatch.setattr(owner,'winfo_rootx',lambda:300)
+ monkeypatch.setattr(owner,'winfo_rooty',lambda:200)
+ callback(SimpleNamespace(widget=owner))
+ assert error.transient_parent is owner and error.geometry_value=='+300+200'
+ assert error.raised==1 and display.focus is ok_button(display)
+ assert '<Map>' not in owner.bindings and owner.grab_current() is error
+ callback(SimpleNamespace(widget=owner))
+ assert error.raised==1
+
+
+@pytest.mark.parametrize('close',['command','destroy'])
+def test_closing_unmapped_error_removes_only_its_owner_map_binding(display,monkeypatch,close):
+ owner=display.root
+ other=lambda event:None
+ other_id=owner.bind('<Map>',other,add='+')
+ monkeypatch.setattr(owner,'winfo_viewable',lambda:False)
+ error_dialog.show_error(owner,'Background failure','Message')
+ error=display.windows[-1]
+ assert len([pair for pair in owner.binding_tokens.values() if pair[0]=='<Map>'])==2
+ if close=='command':error.protocols['WM_DELETE_WINDOW']()
+ else:
+  callback=error.bindings['<Destroy>'];error.destroy();callback(SimpleNamespace(widget=error))
+ assert owner.binding_tokens[other_id]==('<Map>',other)
+ assert len([pair for pair in owner.binding_tokens.values() if pair[0]=='<Map>'])==1
+
+
+def test_actual_tkinter_binding_scripts_and_commands_survive_owned_cleanup(display,monkeypatch):
+ owner=display.root
+ raw='set unrelated_map_observer 1\n'
+ owner.tk.call('bind',str(owner),'<Map>',raw)
+ other=lambda event:None
+ other_id=owner.bind('<Map>',other,add='+')
+ before=owner.tk.call('bind',str(owner),'<Map>')
+ monkeypatch.setattr(owner,'winfo_viewable',lambda:False)
+ error_dialog.show_error(owner,'Background failure','Message')
+ error=display.windows[-1]
+ error.protocols['WM_DELETE_WINDOW']()
+ assert owner.tk.call('bind',str(owner),'<Map>')==before
+ assert owner.registered_commands=={other_id:other}
+
+
+def test_closing_older_hidden_error_preserves_newer_owner_map_callback(display,monkeypatch):
+ owner=display.root;visible=[False]
+ monkeypatch.setattr(owner,'winfo_viewable',lambda:visible[0])
+ error_dialog.show_error(owner,'Older failure','Message');older=display.windows[-1]
+ error_dialog.show_error(owner,'Newer failure','Message');newer=display.windows[-1]
+ older.protocols['WM_DELETE_WINDOW']()
+ assert '<Map>' in owner.bindings and owner.grab_current() is newer
+ visible[0]=True;owner.bindings['<Map>'](SimpleNamespace(widget=owner))
+ assert newer.transient_parent is owner and newer.raised==1
+ assert owner.grab_current() is newer and '<Map>' not in owner.bindings
+
+
+def test_unmapped_frame_uses_visible_toplevel_as_error_owner(display):
+ owner=display.root
+ class Frame(tk.Misc):
+  master=owner;tk=owner.tk;children={};_w='.hiddenframe'
+  def winfo_toplevel(self):return owner
+  def winfo_viewable(self):return False
+ frame=Frame()
+ error_dialog.show_error(frame,'Frame error','Message')
+ error=display.windows[-1]
+ assert error.master is owner and error.transient_parent is owner
+ assert error.geometry_value=='+100+100' and '<Map>' not in owner.bindings
+
+
+def test_owner_map_keeps_a_newer_modal_grab_and_focus(display,monkeypatch):
+ owner=display.root;visible=[False]
+ monkeypatch.setattr(owner,'winfo_viewable',lambda:visible[0])
+ error_dialog.show_error(owner,'Background failure','Message')
+ error=display.windows[-1];callback=owner.bindings['<Map>']
+ newer=display.Top(owner);newer.grab_set()
+ newer_focus=object();display.focus=newer_focus;visible[0]=True
+ callback(SimpleNamespace(widget=owner))
+ assert error.transient_parent is owner and '<Map>' not in owner.bindings
+ assert error.raised==0 and display.focus is newer_focus
+ assert owner.grab_current() is newer
+
+
+@pytest.mark.parametrize('operation',['ttk::combobox::Unpost','ttk::releaseGrab'])
+def test_popup_mutation_failure_is_logged_after_validation(display,monkeypatch,caplog,operation):
+ owner=display.root
+ class Combo:
+  def __str__(self):return '.combo'
+ combo=Combo()
+ monkeypatch.setattr(error_dialog.ttk,'Combobox',Combo)
+ monkeypatch.setattr(owner,'nametowidget',lambda path:combo)
+ def call(*args):
+  if args[:2]==('grab','current'):return '.combo.popdown'
+  if args[:2]==('winfo','class'):return 'ComboboxPopdown' if args[2]=='.combo.popdown' else 'TCombobox'
+  if args[:2]==('winfo','parent'):return '.combo'
+  if args[0]==operation:raise tk.TclError('synthetic popup mutation failure')
+  return ''
+ monkeypatch.setattr(owner.tk,'call',call)
+ error_dialog._unpost_combobox_grab(owner)
+ assert any(record.exc_info and 'popdown' in record.getMessage().lower() for record in caplog.records)
 
 @pytest.mark.parametrize('rootxy',[(100,100),(-32000,-32000)])
 def test_unviewable_parent_does_not_hide_or_misplace_error(display,monkeypatch,rootxy):

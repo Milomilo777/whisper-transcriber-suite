@@ -20,8 +20,27 @@ def display(monkeypatch):
         holder = ''
         fail_lookup = False
 
+        def __init__(self): self.scripts = {}
+
         def call(self, *args):
+            if len(args) == 1 and isinstance(args[0], tuple): args = args[0]
             state.commands.append(args)
+            if args[0] == 'bind':
+                window, sequence = args[1:3]
+                owner = next(widget for widget in state.windows if widget._w == window)
+                key = (window, sequence)
+                if len(args) == 3: return self.scripts.get(key, '')
+                script = args[3]
+                self.scripts[key] = self.scripts.get(key, '') + script[1:] if script.startswith('+') else script
+                owner.binding_tokens = {token: pair for token, pair in owner.binding_tokens.items() if pair[0] != sequence}
+                callbacks = []
+                for token, callback in owner.registered_commands.items():
+                    if f'[{token} ' in self.scripts[key]:
+                        owner.binding_tokens[token] = (sequence, callback)
+                        callbacks.append(callback)
+                if callbacks: owner.bindings[sequence] = callbacks[-1]
+                else: owner.bindings.pop(sequence, None)
+                return ''
             if args[:2] == ('grab', 'current'):
                 if self.fail_lookup:
                     self.fail_lookup = False
@@ -38,6 +57,8 @@ def display(monkeypatch):
         def __init__(self, master=None):
             self.master, self.children, self.alive = master, {}, True
             self.bindings, self.protocols, self.callbacks = {}, {}, []
+            self.binding_tokens, self.binding_serial, self.raised = {}, 0, 0
+            self.registered_commands = {}
             self.tk = master.tk if master else Interpreter()
             self._w = '.' if master is None else master._w.rstrip('.') + '.w' + str(len(state.windows))
             if master:
@@ -46,10 +67,20 @@ def display(monkeypatch):
 
         # grab_current/grab_set/_nametowidget are actual CPython Misc methods.
         def title(self, value): self.caption = value
-        def transient(self, parent): pass
+        def transient(self, parent): self.transient_parent = parent
         def resizable(self, *args): pass
         def protocol(self, name, callback): self.protocols[name] = callback
-        def bind(self, sequence, callback, **kwargs): self.bindings[sequence] = callback
+        # Use installed Tkinter's actual bind/unbind script protocol. In 3.11,
+        # unbind(sequence, id) clears other callbacks too; do not emulate newer behavior.
+        bind = tk.Misc.bind
+        unbind = tk.Misc.unbind
+        def _register(self, callback, subst=None, needcleanup=1):
+            self.binding_serial += 1
+            token = f'binding-{self.binding_serial}'
+            self.registered_commands[token] = callback
+            return token
+        def deletecommand(self, identifier): self.registered_commands.pop(identifier)
+        def lift(self): self.raised += 1
         def update_idletasks(self): pass
         def winfo_rootx(self): return 100
         def winfo_rooty(self): return 100
@@ -59,6 +90,7 @@ def display(monkeypatch):
         def winfo_screenheight(self): return 1080
         def winfo_exists(self): return self.alive
         def winfo_viewable(self): return True
+        def winfo_toplevel(self): return self
         def wm_geometry(self, value): self.geometry_value = value
         def bell(self): pass
         def clipboard_clear(self): pass

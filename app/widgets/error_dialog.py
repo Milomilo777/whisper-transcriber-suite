@@ -6,6 +6,7 @@ unlike a bare ``messagebox.showerror(title, str(e))``.
 """
 from __future__ import annotations
 
+import logging
 import tkinter as tk
 from tkinter import font as tkfont
 from tkinter import ttk
@@ -14,6 +15,7 @@ from app.i18n import _, plain
 from app.theme import tokens
 
 _PREVIOUS_GRAB_ATTR = "_wts_error_previous_grab"
+logger = logging.getLogger(__name__)
 
 
 def _unpost_combobox_grab(parent: tk.Misc) -> None:
@@ -27,19 +29,24 @@ def _unpost_combobox_grab(parent: tk.Misc) -> None:
                 or parent.tk.call("winfo", "class", combo_path) != "TCombobox"):
             return
         combo = parent.nametowidget(combo_path)
-        if isinstance(combo, ttk.Combobox) and str(combo) == combo_path:
-            parent.tk.call("ttk::combobox::Unpost", combo_path)
-            # Unmap may be delivered later. Consume its saved grab now;
-            # ttk::RestoreGrab removes the slot, so a later call is inert.
-            parent.tk.call("ttk::releaseGrab", holder)
+        if not isinstance(combo, ttk.Combobox) or str(combo) != combo_path:
+            return
     except (tk.TclError, KeyError):
         # Unknown raw grabs are neither repaired nor restored by this helper.
-        pass
+        return
+    try:
+        parent.tk.call("ttk::combobox::Unpost", combo_path)
+        # Unmap may be delivered later. Consume its saved grab now;
+        # ttk::RestoreGrab removes the slot, so a later call is inert.
+        parent.tk.call("ttk::releaseGrab", holder)
+    except tk.TclError:
+        logger.exception("Closing the combobox popdown before an error dialog failed")
 
 
 def show_error(
-    parent: "tk.Tk | tk.Toplevel", title: str, message: str, detail: str | None = None,
+    parent: "tk.Misc", title: str, message: str, detail: str | None = None,
 ) -> None:
+    parent = parent.winfo_toplevel()
     # A popdown's later Unmap handler would otherwise restore its old grab
     # over this error. Unpost only a validated, Python-owned ttk Combobox.
     _unpost_combobox_grab(parent)
@@ -74,11 +81,29 @@ def show_error(
 
     setattr(top, _PREVIOUS_GRAB_ATTR, previous_grab)
     restored = False
+    parent_map_id: str | None = None
+
+    def _unbind_parent_map() -> None:
+        nonlocal parent_map_id
+        identifier, parent_map_id = parent_map_id, None
+        if identifier is not None:
+            try:
+                # Older Tkinter clears the entire sequence even with a funcid.
+                # Remove only our generated command line and its registration.
+                script = str(parent.tk.call("bind", str(parent), "<Map>"))
+                prefix = f'if {{"[{identifier} '
+                kept = "".join(line for line in script.splitlines(keepends=True)
+                               if not line.startswith(prefix))
+                parent.tk.call("bind", str(parent), "<Map>", kept)
+                parent.deletecommand(identifier)
+            except tk.TclError:
+                pass  # Parent teardown already removes its bindings.
 
     def _restore_grab(event: "tk.Event[tk.Misc] | None" = None) -> None:
         nonlocal restored
         if (event is not None and event.widget is not top) or restored:
             return
+        _unbind_parent_map()
         restored = True
         owner = previous_grab
         try:
@@ -181,35 +206,51 @@ def show_error(
     top.bind("<Return>", lambda _e: _close())
     top.bind("<Escape>", lambda _e: _close())
 
+    def _position_error() -> None:
+        try:
+            if parent_viewable:
+                x = parent.winfo_rootx() + (parent.winfo_width() - top.winfo_width()) // 2
+                y = parent.winfo_rooty() + (parent.winfo_height() - top.winfo_height()) // 2
+                # Preserve a visible owner's secondary-monitor coordinates.
+                screen_w = parent.winfo_screenwidth()
+                screen_h = parent.winfo_screenheight()
+                if 0 <= parent.winfo_rootx() < screen_w and 0 <= parent.winfo_rooty() < screen_h:
+                    x = max(x, 0)
+                    y = max(y, 0)
+            else:
+                # Hidden/iconic coordinates may be minimized far off-screen.
+                x = max((top.winfo_screenwidth() - top.winfo_width()) // 2, 0)
+                y = max((top.winfo_screenheight() - top.winfo_height()) // 2, 0)
+            # A literal "+" keeps negative positions absolute, not edge offsets.
+            top.wm_geometry(f"+{x}+{y}")
+        except tk.TclError:
+            pass
+
+    def _parent_mapped(event: tk.Event[tk.Misc]) -> None:
+        nonlocal parent_viewable
+        if event.widget is not parent or parent_map_id is None:
+            return
+        try:
+            if not parent.winfo_viewable() or not top.winfo_exists():
+                return
+            parent_viewable = True
+            _unbind_parent_map()
+            top.transient(parent)
+            _position_error()
+            try:
+                current = top.grab_current()
+            except KeyError:
+                return  # Never lift or focus over an unwrapped newer holder.
+            if current is None or current is top:
+                top.lift()
+                ok_btn.focus_set()
+        except tk.TclError:
+            logger.exception("Restoring an error dialog after its owner mapped failed")
+
+    if not parent_viewable:
+        parent_map_id = parent.bind("<Map>", _parent_mapped, add="+")
     top.update_idletasks()
-    try:
-        if parent_viewable:
-            x = parent.winfo_rootx() + (parent.winfo_width() - top.winfo_width()) // 2
-            y = parent.winfo_rooty() + (parent.winfo_height() - top.winfo_height()) // 2
-            # Only clamp to a non-negative position when the parent itself is
-            # on the PRIMARY monitor -- winfo_screenwidth/height describe just
-            # that display, so clamping unconditionally would yank this dialog
-            # onto the wrong screen for a parent window living on a secondary
-            # monitor placed to the left of the primary (negative root
-            # coordinates). Same family of bug already fixed for tooltip.py's
-            # popup positioning; same fix shape.
-            screen_w = parent.winfo_screenwidth()
-            screen_h = parent.winfo_screenheight()
-            if 0 <= parent.winfo_rootx() < screen_w and 0 <= parent.winfo_rooty() < screen_h:
-                x = max(x, 0)
-                y = max(y, 0)
-        else:
-            # A withdrawn/iconic owner hides its transients and may report
-            # minimized coordinates such as -32000. Keep the owner unchanged
-            # and show this independent error in the primary screen bounds.
-            x = max((top.winfo_screenwidth() - top.winfo_width()) // 2, 0)
-            y = max((top.winfo_screenheight() - top.winfo_height()) // 2, 0)
-        # Always a literal "+": Tk reads "+-500" as a left edge at -500,
-        # while "-500" means 500 px from the right edge -- a real trap
-        # once x/y can legitimately be negative.
-        top.wm_geometry(f"+{x}+{y}")
-    except tk.TclError:
-        pass
+    _position_error()
     try:
         top.grab_set()
     except tk.TclError:
