@@ -8017,9 +8017,9 @@ class App(tk.Tk):
         return App._CLIPBOARD_VK.get(keycode)
 
     def _install_clipboard_keys(self) -> None:
-        if shortcuts.is_mac():
-            # Tk/aqua maps Command-C/V/X/A natively, and its keycodes are not
-            # the Windows virtual-key codes this handler dispatches on.
+        if sys.platform != "win32":
+            # This fallback uses Windows virtual-key codes. On X11 the same
+            # numbers identify unrelated keys; other platforms keep Tk's bindings.
             return
         virt = {"paste": "<<Paste>>", "copy": "<<Copy>>", "cut": "<<Cut>>"}
 
