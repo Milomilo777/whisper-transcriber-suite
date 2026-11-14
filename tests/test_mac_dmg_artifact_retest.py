@@ -160,6 +160,65 @@ class ArtifactRetestControls(unittest.TestCase):
             opener.return_value.open.return_value=io.BytesIO(b'zipp')
             with self.assertRaises(ValueError):m.download('owner/repo',row,'fixture',self.root/'long.zip')
 
+    def test_production_https_redirect_strips_auth_and_closes_error_response(self):
+        row={'id':456,'size_in_bytes':3,'digest':'sha256:'+hashlib.sha256(b'zip').hexdigest()}
+        location='https://signed.invalid/artifact?fixture-signature=1'
+        error_body=tempfile.TemporaryFile()
+        self.addCleanup(error_body.close)
+        error_body.write(b'redirect response');error_body.seek(0)
+        error=m.urllib.error.HTTPError('https://api.github.com/fixture',302,'Found',{'Location':location},error_body)
+        response=io.BytesIO(b'zip')
+        with patch.object(m.urllib.request,'build_opener') as opener,patch.object(m.urllib.request,'urlopen',return_value=response) as redirected:
+            opener.return_value.open.side_effect=error
+            m.download('owner/repo',row,'fixture-token',self.root/'redirect.zip')
+            request=opener.return_value.open.call_args.args[0]
+            self.assertEqual(request.get_header('Authorization'),'Bearer fixture-token')
+            self.assertIsInstance(redirected.call_args.args[0],str)
+            self.assertEqual(redirected.call_args.args,(location,))
+            self.assertEqual(redirected.call_args.kwargs,{'timeout':60})
+        self.assertTrue(error_body.closed)
+        self.assertTrue(response.closed)
+        self.assertEqual((self.root/'redirect.zip').read_bytes(),b'zip')
+
+    def test_http_redirect_and_api_404_rejected_with_closed_responses(self):
+        row={'id':456,'size_in_bytes':3,'digest':'sha256:'+hashlib.sha256(b'zip').hexdigest()}
+        for code,location in ((302,'http://unsigned.invalid/file'),(404,'https://signed.invalid/file')):
+            body=io.BytesIO(b'refused response')
+            error=m.urllib.error.HTTPError('https://api.github.com/fixture',code,'Refused',{'Location':location},body)
+            destination=self.root/f'refused-{code}.zip'
+            with self.subTest(code=code),patch.object(m.urllib.request,'build_opener') as opener,patch.object(m.urllib.request,'urlopen') as redirected:
+                opener.return_value.open.side_effect=error
+                with self.assertRaises(ValueError):m.download('owner/repo',row,'fixture-token',destination)
+                redirected.assert_not_called()
+                self.assertFalse(destination.exists())
+                self.assertTrue(body.closed)
+
+    def test_redirect_still_checks_artifact_digest(self):
+        row={'id':456,'size_in_bytes':3,'digest':'sha256:'+hashlib.sha256(b'zip').hexdigest()}
+        body=io.BytesIO(b'redirect response')
+        error=m.urllib.error.HTTPError('https://api.github.com/fixture',302,'Found',{'Location':'https://signed.invalid/file'},body)
+        response=io.BytesIO(b'bad')
+        with patch.object(m.urllib.request,'build_opener') as opener,patch.object(m.urllib.request,'urlopen',return_value=response):
+            opener.return_value.open.side_effect=error
+            with self.assertRaisesRegex(ValueError,'ZIP digest mismatch'):
+                m.download('owner/repo',row,'fixture-token',self.root/'bad-redirect.zip')
+        self.assertTrue(body.closed)
+        self.assertTrue(response.closed)
+
+    def test_signed_destination_http_error_is_closed_and_no_file_created(self):
+        row={'id':456,'size_in_bytes':3,'digest':'sha256:'+hashlib.sha256(b'zip').hexdigest()}
+        redirect_body=io.BytesIO(b'redirect response')
+        redirect=m.urllib.error.HTTPError('https://api.github.com/fixture',302,'Found',{'Location':'https://signed.invalid/file'},redirect_body)
+        refused_body=tempfile.TemporaryFile();self.addCleanup(refused_body.close)
+        refused=m.urllib.error.HTTPError('https://signed.invalid/file',404,'Missing',{},refused_body)
+        destination=self.root/'signed-refused.zip'
+        with patch.object(m.urllib.request,'build_opener') as opener,patch.object(m.urllib.request,'urlopen',side_effect=refused):
+            opener.return_value.open.side_effect=redirect
+            with self.assertRaises(m.urllib.error.HTTPError):m.download('owner/repo',row,'fixture-token',destination)
+        self.assertTrue(refused_body.closed)
+        self.assertTrue(redirect_body.closed)
+        self.assertFalse(destination.exists())
+
     def test_expired_and_truncated_api_fail(self):
         r,j,a=self.metadata();a['artifacts'][0]['expired']=True
         with self.assertRaises(ValueError):m.select_artifact(r,j,a,123,SHA,'x86_64')

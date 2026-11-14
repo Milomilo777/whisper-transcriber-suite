@@ -272,10 +272,15 @@ def download(repository, row, token, destination):
     try:
         response = urllib.request.build_opener(NoRedirect).open(request, timeout=60)
     except urllib.error.HTTPError as error:
-        require(error.code in (301, 302, 303, 307, 308), 'artifact download refused')
-        location = error.headers.get('Location', '')
-        require(location.startswith('https://'), 'HTTPS redirect required')
-        response = urllib.request.urlopen(location, timeout=60)
+        with error:
+            require(error.code in (301, 302, 303, 307, 308), 'artifact download refused')
+            location = error.headers.get('Location', '')
+            require(location.startswith('https://'), 'HTTPS redirect required')
+        try:
+            response = urllib.request.urlopen(location, timeout=60)
+        except urllib.error.HTTPError as redirected_error:
+            redirected_error.close()
+            raise
     count = 0
     with response, open(destination, 'xb') as target:
         for block in iter(lambda: response.read(65536), b''):
