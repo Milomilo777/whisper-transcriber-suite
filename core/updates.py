@@ -490,12 +490,15 @@ def kind_has_a_release_file(kind: str) -> bool:
     return kind in _KINDS_WITH_A_FILE
 
 
+MACOS_ARM64_MIN_MAJOR = 14
+
+
 def pick_asset(kind: str, asset_names: tuple[str, ...], *, machine: str | None = None) -> str | None:
     """The release file for this kind of install, or ``None``.
 
     macOS picks the dmg for this CPU (``arm64`` on Apple silicon, else
     ``x64``). An x64 app running under Rosetta on Apple silicon prefers the
-    ``arm64`` dmg and falls back to ``x64`` when only that one is published;
+    ``arm64`` dmg on macOS 14+ and falls back to ``x64`` otherwise;
     a native ``arm64`` app never falls back (its dmg may still be uploading).
     Source and unknown installs have no file.
     """
@@ -509,7 +512,11 @@ def pick_asset(kind: str, asset_names: tuple[str, ...], *, machine: str | None =
             # version still names the ARM64 kernel ("RELEASE_ARM64_T8101").
             rosetta = cpu == "x86_64" and "arm64" in _platform.version().lower()
         if rosetta:
-            arches: tuple[str, ...] = ("arm64", "x64")
+            try:
+                major = int(_platform.mac_ver()[0].split('.')[0])
+            except ValueError:
+                major = 0
+            arches: tuple[str, ...] = ("arm64", "x64") if major >= MACOS_ARM64_MIN_MAJOR else ("x64",)
         else:
             arches = ("arm64",) if cpu in ("arm64", "aarch64") else ("x64",)
         patterns = [re.compile(rf"macos-{arch}\.dmg$", re.IGNORECASE) for arch in arches]

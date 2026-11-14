@@ -27,9 +27,11 @@ jobs:
           - runner: macos-15        # Apple Silicon
             arch: arm64
             suffix: arm64
+            claimed_min: "14.0"
           - runner: macos-15-intel  # Intel
             arch: x86_64
             suffix: x64
+            claimed_min: "12.0"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -76,6 +78,8 @@ jobs:
         run: pyinstaller --noconfirm --clean platform/macos/pyinstaller/whisper_project_mac.spec
 
       - name: Verify bundle (every Mach-O self-contained, right arch, tools run)
+        env:
+          WTS_CLAIMED_MACOS_MIN: ${{ matrix.claimed_min }}
         run: bash platform/macos/pyinstaller/verify_mac_bundle.sh "dist/Whisper Transcriber Suite.app" ${{ matrix.arch }}
 
       - name: Smoke test like a user (real transcription, GUI launch, yt-dlp)

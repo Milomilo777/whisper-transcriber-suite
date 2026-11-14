@@ -32,7 +32,8 @@ version_greater() {
 macho_list="$(mktemp)" || exit 1
 native_error="$(mktemp)" || { rm -f -- "$macho_list"; exit 1; }
 minima_list="$(mktemp)" || { rm -f -- "$macho_list" "$native_error"; exit 1; }
-trap 'rm -f -- "$macho_list" "$native_error" "$minima_list"' EXIT
+dyld_records="$(mktemp)" || { rm -f -- "$macho_list" "$native_error" "$minima_list"; exit 1; }
+trap 'rm -f -- "$macho_list" "$native_error" "$minima_list" "$dyld_records"' EXIT
 if ! "$VERIFY_PYTHON" platform/macos/pyinstaller/list_macho.py "$APP" >"$macho_list"; then
   rm -f -- "$macho_list"
   echo "error: could not enumerate bundle binaries" >&2
@@ -72,6 +73,9 @@ while IFS= read -r -d '' f; do
     if ! loads="$(otool -l -arch "$slice" "$f" 2>&1)"; then
       echo "OTOOL $rel [$slice]: load-command inspection failed: $loads"; bad=$((bad + 1)); continue
     fi
+    printf '%s\0%s\0%s\0%s\0%s\0' "$f" "$slice" "$description" "$links" "$loads" >>"$dyld_records" || {
+      echo "DYLD $rel [$slice]: could not retain inspection records"; bad=$((bad + 1));
+    }
     # Each otool invocation selects its slice; its default is the host architecture.
     mins="$(printf '%s\n' "$loads" | awk '
       /^Load command / {b=0; v=0; p=""}
@@ -104,6 +108,9 @@ while IFS= read -r -d '' f; do
   done
 
 done <"$macho_list"
+if ! "$VERIFY_PYTHON" platform/macos/pyinstaller/check_bundle_paths.py --records "$APP" "$dyld_records"; then
+  echo "DYLD bundle dependency contexts failed"; bad=$((bad + 1))
+fi
 rm -f -- "$macho_list"
 [ "$n" -gt 0 ] || { echo "error: no Mach-O files inspected"; bad=$((bad + 1)); }
 
@@ -127,6 +134,14 @@ else
   fi
   if [ "$minima_read" -ne "$minima_count" ]; then
     echo "MINOS version metadata could not be read completely"; bad=$((bad + 1))
+  fi
+fi
+claim="${WTS_CLAIMED_MACOS_MIN:-}"
+if [ -n "$claim" ]; then
+  if ! [[ "$claim" =~ ^[0-9]+(\.[0-9]+){0,2}$ ]]; then
+    echo "MINOS invalid published minimum: $claim"; bad=$((bad + 1))
+  elif version_greater "$plist_min" "$claim"; then
+    echo "MINOS bundle declares $plist_min, above published minimum $claim"; bad=$((bad + 1))
   fi
 fi
 echo "problems             : $bad"

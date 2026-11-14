@@ -114,6 +114,7 @@ def _under_rosetta(monkeypatch: pytest.MonkeyPatch) -> None:
     # An x64 process translated by Rosetta: the CPU reads as x86_64, the
     # kernel version names the Apple-silicon (ARM64) kernel.
     monkeypatch.setattr(platform, "machine", lambda: "x86_64")
+    monkeypatch.setattr(platform, "mac_ver", lambda: ('14.0', '', ''))
     monkeypatch.setattr(
         platform, "version",
         lambda: "Darwin Kernel Version 21.6.0: root:xnu-8020.141.5~2/RELEASE_ARM64_T8101",

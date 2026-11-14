@@ -31,7 +31,7 @@ def inspect_bundle(tmp_path, *, executable=True, minimum="10.15", tool_error="",
                    magic="cffaedfe", plist_min="10.15", legacy_minimum=False,
                    want="x86_64", foreign_arm64=False, second_architecture="arm64",
                    build_platform="1", extra_loads="", lipo_warning="", second_tool_error="",
-                   other_minimum="", minima_failure=""):
+                   other_minimum="", minima_failure="", dependency_override=""):
     bundle = tmp_path / "Example ü.app"
     # NTFS does not expose chmod's execute bit to Git Bash find. A .dylib
     # baseline is deliberately selected by the old scanner too; only the
@@ -56,6 +56,7 @@ def inspect_bundle(tmp_path, *, executable=True, minimum="10.15", tool_error="",
     if bash is None:
         pytest.skip("a working Bash is required for the actual inspector loop")
     dependency = "/opt/homebrew/lib/libbad.dylib" if foreign else "/usr/lib/libSystem.B.dylib"
+    dependency = dependency_override or dependency
     # Native otool defaults to the host slice unless -arch selects another.
     primary = ("Load command 0\n      cmd LC_VERSION_MIN_MACOSX\n  version " if legacy_minimum else f"Load command 0\n      cmd LC_BUILD_VERSION\n platform {build_platform}\n    minos ") + minimum + "\n" + extra_loads
     secondary = (f"Load command 0\n      cmd LC_BUILD_VERSION\n platform {build_platform}\n    minos " + second_minimum + "\n") if second_minimum else ""
