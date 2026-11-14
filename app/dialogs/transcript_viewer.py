@@ -678,30 +678,32 @@ def _strip_fillers(text: str, pattern: re.Pattern[str]) -> str:
     them tidied: "Hello, um, world" -> "Hello, world", "Hello um. Bye" ->
     "Hello. Bye", "Um, so" -> "so". Text without a filler comes back
     unchanged apart from surrounding whitespace."""
-    cleaned = pattern.sub("", text)
+    # Keep removal sites until tidying is complete: unrelated punctuation and
+    # whitespace elsewhere in the segment must remain byte-for-byte intact.
+    marker = "\ue000"
+    while marker in text:
+        marker += "\ue000"
+    cleaned = pattern.sub(marker, text)
     if cleaned == text:
         return text.strip()
-    # Brackets or quotes that held only the filler: "(um)", '"um,"'.
-    cleaned = re.sub(r"\(\s*[,;:]?\s*\)|\[\s*[,;:]?\s*\]", "", cleaned)
-    cleaned = re.sub(r"(^|\s)[\"“]\s*[,;:]?\s*[\"”](?=[\s,.!?]|$)", r"\1", cleaned)
-    # A comma left next to another mark: "Hello,, world", "Hello,.", "Bye., so"
-    cleaned = re.sub(r"([,;:])(?:\s*[,;:])+", r"\1", cleaned)
-    cleaned = re.sub(r"[,;:]\s*([.!?…])", r"\1", cleaned)
-    cleaned = re.sub(r"([.!?…])\s*[,;:]", r"\1", cleaned)
-    # A dash pair that framed the filler: "so - um - then" -> "so - then",
-    # "hello—um—world" -> "hello—world" (the dashes may touch the words).
-    cleaned = re.sub(r"([-–—])(?:\s*[-–—])+", r"\1", cleaned)
-    # A quote or bracket that opened on the filler: '"Um, hello"' -> '"hello"'.
-    cleaned = re.sub(r"(^|\s)([\"“«(\[])\s*[,;:]\s*", r"\1\2", cleaned)
-    cleaned = re.sub(r"\s{2,}", " ", cleaned).strip()
-    # A sentence that started with the filler: "Um, so" -> ", so" -> "so".
-    # Marks the text itself opens with ("... um, well") are not the filler's
-    # leftovers: they stay.
-    lead = re.match(r"\s*([.!?…]+)(\s?)", text)
-    cleaned = re.sub(r"^[,;:.!?\s]+", "", cleaned)
-    if lead and cleaned:
-        cleaned = lead.group(1) + lead.group(2) + cleaned
-    return cleaned
+    hole = rf"{re.escape(marker)}(?:\s*{re.escape(marker)})*"
+    cleaned = re.sub(rf"\(\s*[,;:]?\s*{hole}[,;:]?\s*\)|\[\s*[,;:]?\s*{hole}[,;:]?\s*\]",
+                     marker, cleaned)
+    cleaned = re.sub(rf"(^|\s)[\"“]\s*[,;:]?\s*{hole}[,;:]?\s*[\"”](?=[\s,.!?]|$)",
+                     lambda m: m.group(1) + marker, cleaned)
+    cleaned = re.sub(rf"([,;:])\s*{hole}\s*[,;:]", lambda m: m.group(1) + marker, cleaned)
+    cleaned = re.sub(rf"[,;:]\s*{hole}\s*([.!?…])", lambda m: marker + m.group(1), cleaned)
+    cleaned = re.sub(rf"([.!?…])\s*{hole}\s*[,;:]", lambda m: m.group(1) + marker, cleaned)
+    cleaned = re.sub(rf"([-–—])\s*{hole}\s*[-–—]", lambda m: m.group(1) + marker, cleaned)
+    cleaned = re.sub(rf"(^|\s)([\"“«(\[])\s*{hole}\s*[,;:]\s*",
+                     lambda m: m.group(1) + m.group(2) + marker, cleaned)
+    cleaned = re.sub(rf"^\s*{hole}[,;:.!?\s]*", "", cleaned)
+
+    def remove_site(match: re.Match[str]) -> str:
+        spaced = any(char.isspace() for char in match.group())
+        return " " if spaced and match.start() > 0 and match.end() < len(cleaned) else ""
+
+    return re.sub(rf"\s*{hole}\s*", remove_site, cleaned).strip()
 
 
 class TranscriptViewer(tk.Toplevel):
