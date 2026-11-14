@@ -5,6 +5,16 @@ Updated: 2026-11-14. Release target: 2.4.0.
 
 ## Current integrated source checkpoint
 
+The current source also includes error-dialog keyboard and modal-grab recovery,
+notice keyboard/focus recovery, and a Windows-only clipboard virtual-key fallback.
+The combined headless selection passes 75 tests; application and engine type
+checks report zero errors or warnings. Native keyboard, focus and popup-grab
+acceptance remains open.
+
+The latest completed full gate belongs to `4d58097b`: 16,255 passed,
+44 skipped, zero failures. Later shared-code fixes require a final matching gate;
+the earlier source counts below are historical and do not qualify this source.
+
 The current release includes Windows plus Intel and Apple-silicon macOS
 packages. Apple-silicon builds and acceptance use the GitHub Actions macOS
 hardware runner; no additional owner device is required. All three packages
