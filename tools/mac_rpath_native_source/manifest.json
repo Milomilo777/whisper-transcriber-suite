@@ -1,0 +1,9 @@
+{
+  "source_commit": "b78593fdf4db419f96deb1c40be0455f35ab86d3",
+  "source_directory": "platform/macos/pyinstaller",
+  "files": {
+    "repair_bundle_rpaths.py": "dad57cef35ef7d39ac71dcfef6df5c17accea64e0f3a75986f844532e0ec14de",
+    "check_bundle_paths.py": "f2830ad6a23696b6ebacce4576cba091a1272336da6ecfde949c704798f7fce6",
+    "list_macho.py": "4c362e20b51538346744bdc1c12c411b8061ecaee6e810ce065c837c0b23326f"
+  }
+}

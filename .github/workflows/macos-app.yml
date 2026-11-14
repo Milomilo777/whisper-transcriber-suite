@@ -40,6 +40,66 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Observe universal2 rpath repair (non-gating)
+        continue-on-error: true
+        timeout-minutes: 5
+        shell: bash
+        env:
+          WTS_PROBE_ARCH: ${{ matrix.arch }}
+        run: |
+          set -o pipefail
+          mkdir -p diagnostics/universal2
+          python -u - <<'PY' 2>&1 | tee diagnostics/universal2/probe.log
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          import subprocess
+          import sys
+
+          def verify_live_source(root):
+              names = ('check_bundle_paths.py', 'list_macho.py', 'repair_bundle_rpaths.py')
+              verified = []
+              for name in names:
+                  live = root / 'platform/macos/pyinstaller' / name
+                  frozen = root / 'tools/mac_rpath_native_source' / name
+                  if live.read_bytes() != frozen.read_bytes():
+                      raise ValueError('Checked-out source differs from diagnostic snapshot: ' + name)
+                  verified.append(name)
+              return verified
+
+          root = Path.cwd()
+          out = root / 'diagnostics/universal2'
+          context = {key: os.environ.get(key) for key in (
+              'GITHUB_SHA', 'GITHUB_RUN_ID', 'GITHUB_RUN_ATTEMPT', 'GITHUB_JOB', 'WTS_PROBE_ARCH')}
+          context['checkout_commit'] = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          context['checkout_tree'] = subprocess.check_output(['git', 'rev-parse', 'HEAD^{tree}'], text=True).strip()
+          for name in ('tools/mac_rpath_native_probe.py', 'tools/mac_rpath_native_source/manifest.json'):
+              context[name + '_sha256'] = hashlib.sha256((root / name).read_bytes()).hexdigest()
+          (out / 'context.json').write_text(json.dumps(context, indent=2) + '\n', encoding='utf-8')
+          try:
+              if context['checkout_commit'] != context['GITHUB_SHA']:
+                  raise ValueError('Checked-out commit differs from job source SHA')
+              context['verified_live_source_files'] = verify_live_source(root)
+          except Exception as exc:
+              result = {'verdict': 'FAIL', 'native_case_pass': False,
+                        'phase': 'live_source_preflight', 'reason': str(exc)}
+              (out / 'result.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
+              print(json.dumps(result), flush=True)
+              sys.exit(1)
+          (out / 'context.json').write_text(json.dumps(context, indent=2) + '\n', encoding='utf-8')
+          sys.exit(subprocess.run([sys.executable, '-u', 'tools/mac_rpath_native_probe.py', str(out)],
+                                  timeout=240, check=False).returncode)
+          PY
+
+      - name: Upload universal2 rpath diagnostics
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: macos-universal2-rpath-${{ matrix.arch }}-${{ github.sha }}
+          path: diagnostics/universal2/
+          if-no-files-found: warn
+
       - name: Version
         id: ver
         run: echo "version=$(sed -n 's/^__version__ = "\(.*\)"/\1/p' core/__init__.py)" >> "$GITHUB_OUTPUT"
