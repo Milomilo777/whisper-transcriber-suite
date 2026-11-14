@@ -74,7 +74,10 @@ def display(monkeypatch):
     class Widget:
         def __init__(self, master, **options):
             self.master, self.options = master, options
+            self.bindings = {}
             state.widgets.append(self)
+        def bind(self, sequence, callback): self.bindings[sequence] = callback
+        def invoke(self): return self.options['command']()
         def pack(self, **kwargs): pass
         def pack_forget(self): pass
         def configure(self, **options): self.options.update(options)
