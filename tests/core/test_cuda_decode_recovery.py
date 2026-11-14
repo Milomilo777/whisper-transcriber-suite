@@ -328,7 +328,8 @@ def test_backend_unload_allows_requested_device_after_cpu_fallback(monkeypatch, 
     backend._requested_device, backend._downgraded = "cuda", True
     backend._decode_batch_size = 1
     monkeypatch.setattr(fw, "load_config", lambda **k: {"model_path": str(tmp_path)})
-    monkeypatch.setattr(fw, "_detect_device", lambda cfg: ("cuda", "float16"))
+    monkeypatch.setattr(fw, "_detect_device", lambda cfg: SimpleNamespace(
+        device="cuda", compute_type="float16", fallback_reason=None))
     monkeypatch.setattr(hardware, "prepare_cuda_runtime", lambda: None)
     monkeypatch.setattr(hardware, "warm_up_cuda_model", lambda model: None)
     calls = []

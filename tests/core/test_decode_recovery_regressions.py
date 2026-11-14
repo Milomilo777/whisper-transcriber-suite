@@ -244,7 +244,8 @@ def test_backend_recovery_state_belongs_to_loaded_model(monkeypatch, tmp_path, l
     backend._device, backend._compute_type, backend._requested_device = "cpu", "int8", "cuda"
     monkeypatch.setattr(fw, "load_config", lambda **kw: {"model_path": str(tmp_path)})
     monkeypatch.setattr(fw, "ensure_model", lambda *a: str(tmp_path))
-    monkeypatch.setattr(fw, "_detect_device", lambda cfg: ("cuda", "float16"))
+    monkeypatch.setattr(fw, "_detect_device", lambda cfg: SimpleNamespace(
+        device="cuda", compute_type="float16", fallback_reason=None))
     calls = []
 
     def load(path, status_cb):

@@ -17,7 +17,10 @@ import time
 from contextlib import nullcontext
 from contextvars import ContextVar
 from pathlib import Path
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
+
+if TYPE_CHECKING:
+    from ..hardware import DeviceSelection
 
 from faster_whisper import WhisperModel as _WhisperModel
 
@@ -328,14 +331,14 @@ class WhisperDecode:
         return iterate(), info
 
 
-def _detect_device(config: dict[str, Any]) -> tuple[str, str]:
+def _detect_device(config: dict[str, Any]) -> DeviceSelection:
     """Delegate to the canonical detector in ``core.hardware``.
 
     Kept as a module-level alias so existing call sites + tests that
     import ``_detect_device`` from this module don't need to move.
     """
-    from ..hardware import detect_device_for
-    return detect_device_for(config)
+    from ..hardware import resolve_device_for
+    return resolve_device_for(config)
 
 
 class FasterWhisperBackend(Backend):
@@ -354,6 +357,8 @@ class FasterWhisperBackend(Backend):
         # ``_downgraded`` records that a fallback happened so the UI can warn.
         self._requested_device = "cpu"
         self._downgraded = False
+        self._preflight_fallback_reason: str | None = None
+        self._fallback_reason = ""
         # Long-file safeguards read from config at load time (see
         # core.vad_window and core.loop_guard).
         self._vad_window_s = vad_window.DEFAULT_WINDOW_S
@@ -386,6 +391,10 @@ class FasterWhisperBackend(Backend):
     @property
     def downgraded(self) -> bool:
         return self._downgraded
+
+    @property
+    def fallback_reason(self) -> str:
+        return self._fallback_reason if self._downgraded else ""
 
     @property
     def model(self) -> Any:
@@ -441,6 +450,17 @@ class FasterWhisperBackend(Backend):
                     status_cb("Checking the GPU with a short warm-up pass...")
                 warm_up_cuda_model(self._model)
             self._capture_effective_device(req_device, req_compute)
+            if self._preflight_fallback_reason and self._device == "cpu":
+                self._requested_device = "auto"
+                self._downgraded = True
+                self._fallback_reason = self._preflight_fallback_reason
+                message = f"GPU unavailable ({self._preflight_fallback_reason}); falling back to CPU (slower)."
+                logger.warning(message)
+                if status_cb:
+                    try:
+                        status_cb(message)
+                    except Exception:
+                        logger.debug("CPU fallback notification failed", exc_info=True)
             return
         except Exception as e:
             if req_device != "cuda":
@@ -466,6 +486,7 @@ class FasterWhisperBackend(Backend):
         )
         self._downgraded = True
         self._capture_effective_device("cpu", "int8")
+        self._fallback_reason = f"{error} {reason}"
 
     def load_existing(self, status_cb: Callable[[str], None] | None = None) -> bool:
         config = load_config(fetch_online=False)  # worker path: local keys only
@@ -473,9 +494,7 @@ class FasterWhisperBackend(Backend):
         model_path = Path(config["model_path"])
         if str(model_path) != self._model_path:
             self.unload()
-        if not self._downgraded:
-            self._device, self._compute_type = _detect_device(config)
-            self._requested_device = self._device
+        self._select_device(config)
         self._ready = False
         self._error = None
         if not model_path.exists():
@@ -514,9 +533,7 @@ class FasterWhisperBackend(Backend):
                 raise DownloadCancelled("Model download cancelled")
             if model_path != self._model_path:
                 self.unload()
-            if not self._downgraded:
-                self._device, self._compute_type = _detect_device(config)
-                self._requested_device = self._device
+            self._select_device(config)
             if status_cb:
                 status_cb("Loading Whisper model...")
             if progress_cb:
@@ -546,11 +563,24 @@ class FasterWhisperBackend(Backend):
                 status_cb(f"ERROR: {e}")
             raise
 
+    def _select_device(self, config: dict[str, Any]) -> None:
+        configured = str(config.get("device") or "auto").strip().lower()
+        if (not self._downgraded or self._requested_device == "auto"
+                or (configured != "auto" and configured != self._requested_device)):
+            selection = _detect_device(config)
+            self._device, self._compute_type = selection.device, selection.compute_type
+            self._requested_device = self._device
+            self._preflight_fallback_reason = selection.fallback_reason
+            self._fallback_reason = ""
+            self._downgraded = False
+
     def unload(self) -> None:
         self._model = None
         self._pipeline = None
         self._ready = False
         self._downgraded = False
+        self._preflight_fallback_reason = None
+        self._fallback_reason = ""
         self._decode_batch_size = 0
         self._model_path = ""
 

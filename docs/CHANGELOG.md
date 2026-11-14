@@ -12,6 +12,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   CPU preference, and CPU fallback uses a supported precision.
 
 ### Fixed
+- Preserve automatic GPU fallback intent and report the unavailable-runtime reason after worker logging starts. Explicit and saved CPU choices stay free of false GPU warnings.
 - Keep original word timings when optional alignment assigns words outside their source cues, and retain trailing words inside a segment that extends beyond the audio end.
 - Show error dialogs when their parent is hidden or minimized, reattach them after the parent is restored, and keep them modal when a dropdown closes.
 - Report incomplete recordings when capture cannot stop promptly, retain the active recorder until it exits, and keep partial audio out of voice reference samples.

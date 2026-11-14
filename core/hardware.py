@@ -1233,8 +1233,15 @@ def tier_to_dict(tier: Tier) -> dict[str, Any]:
 # below so the resolution chain stays in one place.
 
 
-def detect_device_for(config: dict[str, Any]) -> tuple[str, str]:
-    """Return ``(device, compute_type)`` for a given config dict.
+@dataclass(frozen=True)
+class DeviceSelection:
+    device: str
+    compute_type: str
+    fallback_reason: str | None = None
+
+
+def resolve_device_for(config: dict[str, Any]) -> DeviceSelection:
+    """Select a device together with the reason for an AUTO CPU fallback.
 
     Resolution order — first match wins, every match logs the source:
 
@@ -1261,7 +1268,7 @@ def detect_device_for(config: dict[str, Any]) -> tuple[str, str]:
         logger.info(
             "device_choice device=%s compute_type=%s source=config", dev, ct
         )
-        return dev, _cpu_compute_type(ct) if dev == "cpu" else ct
+        return DeviceSelection(dev, _cpu_compute_type(ct) if dev == "cpu" else ct)
     try:
         wizard_choice = device_choice_from_hardware_file()
         if wizard_choice is not None:
@@ -1269,10 +1276,12 @@ def detect_device_for(config: dict[str, Any]) -> tuple[str, str]:
                 "device_choice device=%s compute_type=%s source=hardware.json",
                 wizard_choice[0], wizard_choice[1],
             )
-            return (wizard_choice[0], _cpu_compute_type(wizard_choice[1])) if wizard_choice[0] == "cpu" else wizard_choice
+            return DeviceSelection(wizard_choice[0], _cpu_compute_type(wizard_choice[1])
+                                   if wizard_choice[0] == "cpu" else wizard_choice[1])
     except Exception:
         logger.exception("device_choice_from_hardware_file probe raised")
     status = cuda_status()
+    reason = None
     if status.usable:
         for ct in ("float16", "int8_float16", "int8"):
             if ct in status.compute_types:
@@ -1280,17 +1289,24 @@ def detect_device_for(config: dict[str, Any]) -> tuple[str, str]:
                     "device_choice device=cuda compute_type=%s "
                     "source=ctranslate2_probe gpu=%s", ct, status.gpu_name or "?",
                 )
-                return "cuda", ct
+                return DeviceSelection("cuda", ct)
     elif status.gpu_present:
+        reason = status.summary()
         logger.warning(
             "NVIDIA GPU found but CUDA is not usable, using the CPU: %s",
-            status.summary(),
+            reason,
         )
     ct = _cpu_compute_type(config.get("compute_type"))
     logger.info(
         "device_choice device=cpu compute_type=%s source=cpu_fallback", ct
     )
-    return "cpu", ct
+    return DeviceSelection("cpu", ct, reason)
+
+
+def detect_device_for(config: dict[str, Any]) -> tuple[str, str]:
+    """Compatibility pair for callers that do not consume selection metadata."""
+    selection = resolve_device_for(config)
+    return selection.device, selection.compute_type
 
 
 # ---------------------------------------------------------------- model advice

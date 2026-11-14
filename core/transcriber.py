@@ -161,6 +161,7 @@ _DEVICE_DOWNGRADED = False
 _REQUESTED_DEVICE = ""
 _EFFECTIVE_DEVICE = ""
 _EFFECTIVE_COMPUTE_TYPE = ""
+_DEVICE_FALLBACK_REASON = ""
 # A decode-time reduction survives per-file settings scopes, only in this process.
 _CUDA_BATCH_SIZE = 0
 
@@ -261,8 +262,8 @@ def _wrap_for_batched(model: Any) -> Any:
 class EffectiveDevice:
     """What the model actually loaded onto, vs. what was requested.
 
-    ``downgraded`` is True when a requested ``cuda`` load failed and we
-    self-healed onto CPU int8. ``device`` / ``compute_type`` are read back
+    ``downgraded`` is True when a requested ``cuda`` load failed or AUTO
+    found an unusable GPU and selected CPU. ``device`` / ``compute_type`` are read back
     from the underlying CTranslate2 object after a successful load (falling
     back to the requested values when those attributes aren't exposed).
     """
@@ -270,6 +271,7 @@ class EffectiveDevice:
     compute_type: str
     requested_device: str
     downgraded: bool
+    fallback_reason: str = ""
 
 
 def _device_kind(value: Any) -> str:
@@ -287,6 +289,7 @@ def _backend_effective_device(backend: Any) -> EffectiveDevice:
         compute_type=str(getattr(backend, "compute_type", "") or ""),
         requested_device=str(getattr(backend, "requested_device", "") or ""),
         downgraded=bool(getattr(backend, "downgraded", False)),
+        fallback_reason=str(getattr(backend, "fallback_reason", "") or ""),
     )
 
 
@@ -307,6 +310,7 @@ def get_effective_device(backend_name: str | None = None) -> EffectiveDevice:
         compute_type=_EFFECTIVE_COMPUTE_TYPE or compute_type,
         requested_device=_REQUESTED_DEVICE or device,
         downgraded=_DEVICE_DOWNGRADED,
+        fallback_reason=_DEVICE_FALLBACK_REASON if _DEVICE_DOWNGRADED else "",
     )
 
 
@@ -349,12 +353,13 @@ def _capture_effective_device(model: Any, req_device: str, req_compute: str) -> 
     ``_wrap_for_batched`` (which reads the global ``device``) and the worker's
     UI report agree.
     """
-    global device, compute_type, _EFFECTIVE_DEVICE, _EFFECTIVE_COMPUTE_TYPE
+    global device, compute_type, _EFFECTIVE_DEVICE, _EFFECTIVE_COMPUTE_TYPE, _DEVICE_FALLBACK_REASON
     ct2 = getattr(model, "model", None)
     eff_device = str(getattr(ct2, "device", "") or "") or req_device
     eff_compute = str(getattr(ct2, "compute_type", "") or "") or req_compute
     _EFFECTIVE_DEVICE = eff_device
     _EFFECTIVE_COMPUTE_TYPE = eff_compute
+    _DEVICE_FALLBACK_REASON = ""
     # Keep the module globals authoritative so the batched-pipeline wrap and
     # any later detect_device() readers see the device we truly loaded on.
     device = eff_device
@@ -378,7 +383,7 @@ def _load_whisper_model_self_healing(
     re-download prompt into a visible, graceful downgrade. A CPU load that
     fails still raises (nothing to fall back to).
     """
-    global device, compute_type, _DEVICE_DOWNGRADED, _REQUESTED_DEVICE, _CUDA_BATCH_SIZE
+    global device, compute_type, _DEVICE_DOWNGRADED, _REQUESTED_DEVICE, _CUDA_BATCH_SIZE, _DEVICE_FALLBACK_REASON
     if _DEVICE_DOWNGRADED and (req_device, req_compute) == (device, compute_type):
         req_device, req_compute = detect_device()
     _CUDA_BATCH_SIZE = 0
@@ -425,6 +430,37 @@ def _load_whisper_model_self_healing(
     compute_type = cpu_compute
     _DEVICE_DOWNGRADED = True
     _capture_effective_device(model, cpu_device, cpu_compute)
+    _DEVICE_FALLBACK_REASON = f"{error} {reason}"
+    return model
+
+
+def _load_selected_whisper_model(
+    model_path: str, req_device: str, req_compute: str,
+    status_cb: Callable[[str], None] | None = None,
+) -> Any:
+    """Retain AUTO preflight fallback intent when loading its CPU selection."""
+    global _REQUESTED_DEVICE, _DEVICE_DOWNGRADED, _DEVICE_FALLBACK_REASON
+    selection = None
+    if req_device == "cpu" and str(config.get("device") or "auto").strip().lower() == "auto":
+        from .hardware import resolve_device_for
+        # Resolve once at the actual load boundary, after worker logging setup.
+        # The reason travels with the choice; a later probe cannot erase it.
+        selection = resolve_device_for(config)
+        req_device, req_compute = selection.device, selection.compute_type
+        _DEVICE_DOWNGRADED = False  # This fresh selection replaces the retry below.
+    model = _load_whisper_model_self_healing(model_path, req_device, req_compute, status_cb)
+    if (selection is not None and selection.fallback_reason
+            and get_effective_device("faster_whisper").device == "cpu"):
+        _REQUESTED_DEVICE = "auto"
+        _DEVICE_DOWNGRADED = True
+        _DEVICE_FALLBACK_REASON = selection.fallback_reason
+        message = f"GPU unavailable ({selection.fallback_reason}); falling back to CPU (slower)."
+        logger.warning(message)
+        if status_cb:
+            try:
+                status_cb(message)
+            except Exception:
+                logger.debug("CPU fallback notification failed", exc_info=True)
     return model
 
 
@@ -587,7 +623,7 @@ def load_existing_model(status_cb: Callable[[str], None] | None = None) -> bool:
             "device=%s compute_type=%s",
             model_path, device, compute_type,
         )
-        MODEL = _load_whisper_model_self_healing(
+        MODEL = _load_selected_whisper_model(
             str(model_path), device, compute_type, status_cb
         )
         PIPELINE = _wrap_for_batched(MODEL)
@@ -620,7 +656,7 @@ def load_model(
         if progress_cb:
             progress_cb({"phase": "load", "status": "Loading Whisper model...",
                          "percent": 100, "detail": "Preparing model for transcription"})
-        MODEL = _load_whisper_model_self_healing(
+        MODEL = _load_selected_whisper_model(
             model_path, device, compute_type, status_cb
         )
         PIPELINE = _wrap_for_batched(MODEL)
@@ -2194,7 +2230,7 @@ def _ensure_default_backend_loaded(
                 "device=%s compute_type=%s (lazy per-file)",
                 model_path, device, compute_type,
             )
-            MODEL = _load_whisper_model_self_healing(
+            MODEL = _load_selected_whisper_model(
                 str(model_path), device, compute_type, status_cb
             )
             PIPELINE = _wrap_for_batched(MODEL)
@@ -2291,7 +2327,7 @@ class _WhisperLanguageModel:
         if not model_weights_present(self.folder or None):
             self._error = f"model files missing in {self.folder or '(no folder)'}"
             return False
-        self.model = _load_whisper_model_self_healing(self.folder, device, compute_type, status_cb)
+        self.model = _load_selected_whisper_model(self.folder, device, compute_type, status_cb)
         self.pipeline = _wrap_for_batched(self.model)
         return True
 

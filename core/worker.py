@@ -5,7 +5,7 @@ protocol is intentionally frozen — adding fields is safe, renaming
 or removing them breaks the parent UI.
 
 Events emitted:
-  - ``ready``  ([device, compute_type, requested_device, downgraded])
+  - ``ready``  ([device, compute_type, requested_device, downgraded, fallback_reason])
                                        : model loaded; accepting commands.
     The device fields are additive (R3) — they report which device the model
     actually loaded onto and whether a requested CUDA load self-healed onto
@@ -1123,12 +1123,14 @@ def _main() -> int:
     # failure never blocks the (essential) bare ``ready`` signal.
     try:
         eff = get_effective_device()
+        fallback_reason = getattr(eff, "fallback_reason", "")
         emit(
             "ready",
             device=eff.device,
             compute_type=eff.compute_type,
             requested_device=eff.requested_device,
             downgraded=eff.downgraded,
+            **({"fallback_reason": fallback_reason} if fallback_reason else {}),
         )
     except Exception:  # noqa: BLE001
         logger.exception("Could not read effective device; emitting bare ready")
