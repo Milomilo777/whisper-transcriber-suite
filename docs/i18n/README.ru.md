@@ -117,7 +117,7 @@ macOS и Linux: см. [Скачать](#download).
 | `WhisperTranscriberSuite-Installer-Windows-vX.Y.Z.exe` | Windows 10 или 11, 64-бит. Большинству пользователей нужен именно он. |
 | `WhisperTranscriberSuite-Portable-Windows-vX.Y.Z.zip` | Windows без установки: распакуйте и запустите. |
 | `WhisperTranscriberSuite-vX.Y.Z-macOS-arm64.dmg` | Mac на процессорах Apple Silicon, macOS 14 или новее. |
-| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Mac на процессорах Intel, macOS 10.15 или новее. |
+| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Mac на процессорах Intel, macOS 12 или новее. |
 
 В Linux запускается из исходного кода: [../../platform/linux/README.md](../../platform/linux/README.md).
 

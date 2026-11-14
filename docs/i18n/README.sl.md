@@ -139,7 +139,7 @@ Najnovejša različica: **[stran z izdajami](https://github.com/Milomilo777/whis
 | `WhisperTranscriberSuite-Installer-Windows-vX.Y.Z.exe` | Windows 10 ali 11, 64-bitni. Večina uporabnikov potrebuje to datoteko. |
 | `WhisperTranscriberSuite-Portable-Windows-vX.Y.Z.zip` | Windows brez namestitve: razširite (unzip) in zaženite. |
 | `WhisperTranscriberSuite-vX.Y.Z-macOS-arm64.dmg` | Računalniki Mac s čipi Apple silicon, macOS 14 ali novejši. |
-| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Računalniki Mac s čipi Intel, macOS 10.15 ali novejši. |
+| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Računalniki Mac s čipi Intel, macOS 12 ali novejši. |
 
 Linux se zažene iz izvorne kode: [../../platform/linux/README.md](../../platform/linux/README.md).
 

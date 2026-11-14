@@ -141,7 +141,7 @@ incluindo quando outro aplicativo pode ser a melhor escolha:
 | `WhisperTranscriberSuite-Installer-Windows-vX.Y.Z.exe` | Windows 10 ou 11, 64-bit. A maioria das pessoas vai querer este. |
 | `WhisperTranscriberSuite-Portable-Windows-vX.Y.Z.zip` | Windows sem instalação: extraia e execute. |
 | `WhisperTranscriberSuite-vX.Y.Z-macOS-arm64.dmg` | Macs com Apple Silicon, macOS 14 ou mais recente. |
-| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Macs Intel, macOS 10.15 ou mais recente. |
+| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Macs Intel, macOS 12 ou mais recente. |
 
 No Linux ele é executado a partir do código-fonte: [../../platform/linux/README.md](../../platform/linux/README.md).
 

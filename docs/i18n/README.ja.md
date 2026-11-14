@@ -119,7 +119,7 @@ Subtitle Edit、Vibe、Buzz、noScribe、aTrain との比較。他のアプリ�
 | `WhisperTranscriberSuite-Installer-Windows-vX.Y.Z.exe` | Windows 10 または 11、64ビット。ほとんどの方はこちらをお選びください。 |
 | `WhisperTranscriberSuite-Portable-Windows-vX.Y.Z.zip` | インストール不要の Windows 版：解凍して実行。 |
 | `WhisperTranscriberSuite-vX.Y.Z-macOS-arm64.dmg` | Apple シリコン搭載 Mac、macOS 14 以降。 |
-| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Intel Mac、macOS 10.15 以降。 |
+| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Intel Mac、macOS 12 以降。 |
 
 Linux はソースから実行します：[../platform/linux/README.md](../../platform/linux/README.md)。
 

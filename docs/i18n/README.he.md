@@ -140,7 +140,7 @@
 | `WhisperTranscriberSuite-Installer-Windows-vX.Y.Z.exe` | Windows 10 או 11, 64-bit. מתאים לרוב המשתמשים. |
 | `WhisperTranscriberSuite-Portable-Windows-vX.Y.Z.zip` | Windows ללא התקנה: פשוט חלצו והפעילו. |
 | `WhisperTranscriberSuite-vX.Y.Z-macOS-arm64.dmg` | מחשבי Mac עם שבבי Apple silicon (סדרת M), מגרסה macOS 14 ומעלה. |
-| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | מחשבי Mac עם מעבד Intel, מגרסה macOS 10.15 ומעלה. |
+| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | מחשבי Mac עם מעבד Intel, מגרסה macOS 12 ומעלה. |
 
 ב-Linux האפליקציה פועלת מקוד המקור (source): [../../platform/linux/README.md](../../platform/linux/README.md).
 

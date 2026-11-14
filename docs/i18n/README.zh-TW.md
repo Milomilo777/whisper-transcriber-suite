@@ -130,7 +130,7 @@ macOS 與 Linux：請參見 [Download](#download)。
 | `WhisperTranscriberSuite-Installer-Windows-vX.Y.Z.exe` | Windows 10 或 11，64 位元。多數使用者適用此版本。 |
 | `WhisperTranscriberSuite-Portable-Windows-vX.Y.Z.zip` | Windows 免安裝版：解壓縮後即可執行。 |
 | `WhisperTranscriberSuite-vX.Y.Z-macOS-arm64.dmg` | 搭載 Apple 晶片的 Mac，macOS 14 或更新版本。 |
-| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | 搭載 Intel 處理器的 Mac，macOS 10.15 或更新版本。 |
+| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | 搭載 Intel 處理器的 Mac，macOS 12 或更新版本。 |
 
 Linux 版本需從原始碼執行：[../../platform/linux/README.md](../../platform/linux/README.md)。
 

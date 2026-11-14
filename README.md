@@ -767,7 +767,9 @@ Latest release: **[releases page](https://github.com/Milomilo777/whisper-transcr
 | `WhisperTranscriberSuite-Installer-Windows-vX.Y.Z.exe` | Windows 10 or 11, 64-bit. Most people want this one. |
 | `WhisperTranscriberSuite-Portable-Windows-vX.Y.Z.zip` | Windows without installing: unzip and run. |
 | `WhisperTranscriberSuite-vX.Y.Z-macOS-arm64.dmg` | Macs with Apple silicon, macOS 14 or newer. |
-| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Intel Macs, macOS 10.15 or newer. |
+| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Intel Macs, macOS 12 or newer. |
+
+The 2.4.0 Intel package currently requires macOS 12.0. Earlier published Intel versions retain their stated compatibility requirements.
 
 Linux runs from source: [platform/linux/README.md](platform/linux/README.md).
 
@@ -815,7 +817,7 @@ reset):
 | | Minimum | Better |
 |---|---|---|
 | **Windows** | Windows 10 or 11, 64-bit | |
-| **macOS** | 10.15 (Intel) or 14 (Apple silicon) | |
+| **macOS** | 12 (Intel) or 14 (Apple silicon) | |
 | **Linux** | Python 3.11 or newer with Tk (`python3-tk`) | |
 | **Memory** | below 5 GB the app picks Small | 8 GB or more; Large v3 needs at least 6.5 GB |
 | **Disk** | about 2 GB (app and a Small model) | about 5 GB (app, Large v3 and working space) |
@@ -924,7 +926,7 @@ and what was not checked are in [docs/COMPARISON.md](docs/COMPARISON.md)):
 
 **Pick this app** for one tool that combines file transcription, a live microphone (and system audio on
 Windows), video downloads, a watched folder, 14 output formats and a local-network mode with an
-OpenAI-compatible API; or for a Windows portable ZIP, or an Intel Mac on macOS 10.15.
+OpenAI-compatible API; or for a Windows portable ZIP, or an Intel Mac on macOS 12.
 
 **Pick another app** if you need a code-signed Windows installer (Vibe), a notarized Mac app (Subtitle Edit), AMD
 or Intel GPU acceleration (Vibe, Subtitle Edit, Buzz), a Linux package (Buzz, Vibe, Subtitle Edit, aTrain),
@@ -985,7 +987,7 @@ suggested model trained for that language.
 
 ### What computer do I need?
 
-Windows 10 or 11 (64-bit), macOS 10.15 (Intel) or 14 (Apple silicon) or newer, or Linux with Python 3.11. Plan for 8 GB of RAM and about
+Windows 10 or 11 (64-bit), macOS 12 (Intel) or 14 (Apple silicon) or newer, or Linux with Python 3.11. Plan for 8 GB of RAM and about
 5 GB of free disk. On a computer with less than 5 GB of RAM the app picks the Small model. See
 [System requirements](#system-requirements).
 
@@ -1073,7 +1075,7 @@ library and Open WebUI) and an MCP endpoint for AI assistants, all served from y
 
 ### Does it work on a Mac?
 
-Yes. There are `.dmg` files for Apple silicon (macOS 14 or newer) and for Intel Macs (macOS 10.15 or newer). The
+Yes. There are `.dmg` files for Apple silicon (macOS 14 or newer) and for Intel Macs (macOS 12 or newer). The
 app is not notarized, so you approve it once on first launch. It runs on the CPU.
 
 ### Does it work on Linux?

@@ -137,7 +137,7 @@ macOS และ Linux: ดูที่ [Download](#download)
 | `WhisperTranscriberSuite-Installer-Windows-vX.Y.Z.exe` | Windows 10 หรือ 11 แบบ 64-bit (ผู้ใช้ส่วนใหญ่แนะนำตัวนี้) |
 | `WhisperTranscriberSuite-Portable-Windows-vX.Y.Z.zip` | Windows แบบไม่ต้องติดตั้ง: แตกไฟล์และใช้งานได้เลย |
 | `WhisperTranscriberSuite-vX.Y.Z-macOS-arm64.dmg` | Mac ที่ใช้ Apple silicon, macOS 14 หรือใหม่กว่า |
-| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Mac ที่ใช้ Intel, macOS 10.15 หรือใหม่กว่า |
+| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Mac ที่ใช้ Intel, macOS 12 หรือใหม่กว่า |
 
 Linux ต้องรันจากซอร์สโค้ด: [../../platform/linux/README.md](../../platform/linux/README.md)
 

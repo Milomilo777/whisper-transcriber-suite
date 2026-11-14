@@ -127,7 +127,7 @@ En son sürüm: **[Sürümler sayfası (releases)](https://github.com/Milomilo77
 | `WhisperTranscriberSuite-Installer-Windows-vX.Y.Z.exe` | Windows 10 veya 11, 64-bit. Çoğu kişinin indirmesi gereken dosya budur. |
 | `WhisperTranscriberSuite-Portable-Windows-vX.Y.Z.zip` | Kurulum yapmadan Windows: zip'ten çıkarın ve çalıştırın. |
 | `WhisperTranscriberSuite-vX.Y.Z-macOS-arm64.dmg` | Apple Silicon (M serisi çip) kullanan Mac'ler, macOS 14 veya daha yenisi. |
-| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Intel işlemcili Mac'ler, macOS 10.15 veya daha yenisi. |
+| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Intel işlemcili Mac'ler, macOS 12 veya daha yenisi. |
 
 Linux'ta kaynak kodundan (source) çalışır: [../../platform/linux/README.md](../../platform/linux/README.md).
 

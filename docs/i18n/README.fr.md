@@ -143,7 +143,7 @@ Dernière version : **[page des versions (releases)](https://github.com/Milomilo
 | `WhisperTranscriberSuite-Installer-Windows-vX.Y.Z.exe` | Windows 10 ou 11, 64 bits. C'est le fichier qu'il vous faut dans la plupart des cas. |
 | `WhisperTranscriberSuite-Portable-Windows-vX.Y.Z.zip` | Windows sans installation : décompressez et lancez l'application. |
 | `WhisperTranscriberSuite-vX.Y.Z-macOS-arm64.dmg` | Mac avec puce Apple (Apple Silicon), macOS 14 ou supérieur. |
-| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Mac Intel, macOS 10.15 ou supérieur. |
+| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Mac Intel, macOS 12 ou supérieur. |
 
 Pour Linux, exécutez depuis le code source : [platform/linux/README.md](../../platform/linux/README.md).
 

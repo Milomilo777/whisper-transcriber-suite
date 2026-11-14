@@ -142,7 +142,7 @@ Uusin julkaisu: **[julkaisusivu](https://github.com/Milomilo777/whisper-transcri
 | `WhisperTranscriberSuite-Installer-Windows-vX.Y.Z.exe` | Windows 10 tai 11, 64-bittinen. Useimmat haluavat tämän. |
 | `WhisperTranscriberSuite-Portable-Windows-vX.Y.Z.zip` | Windows ilman asennusta: pura ja suorita. |
 | `WhisperTranscriberSuite-vX.Y.Z-macOS-arm64.dmg` | Macit Apple Siliconilla, macOS 14 tai uudempi. |
-| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Intel-Macit, macOS 10.15 tai uudempi. |
+| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Intel-Macit, macOS 12 tai uudempi. |
 
 Linux toimii lähdekoodista: [../platform/linux/README.md](../../platform/linux/README.md).
 

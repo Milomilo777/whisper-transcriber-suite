@@ -141,7 +141,7 @@ Najnovšia verzia: **[stránka vydaní (releases)](https://github.com/Milomilo77
 | `WhisperTranscriberSuite-Installer-Windows-vX.Y.Z.exe` | Windows 10 alebo 11, 64-bit. Túto verziu bude chcieť väčšina ľudí. |
 | `WhisperTranscriberSuite-Portable-Windows-vX.Y.Z.zip` | Windows bez inštalácie: rozbaľte a spustite. |
 | `WhisperTranscriberSuite-vX.Y.Z-macOS-arm64.dmg` | Macy s čipom Apple silicon, macOS 14 alebo novší. |
-| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Macy s procesorom Intel, macOS 10.15 alebo novší. |
+| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Macy s procesorom Intel, macOS 12 alebo novší. |
 
 Na Linuxe sa spúšťa zo zdrojových kódov: [platform/linux/README.md](../../platform/linux/README.md).
 

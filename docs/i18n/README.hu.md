@@ -117,7 +117,7 @@ Legújabb kiadás: **[releases page](https://github.com/Milomilo777/whisper-tran
 | `WhisperTranscriberSuite-Installer-Windows-vX.Y.Z.exe` | Windows 10 vagy 11, 64-bites. A legtöbb felhasználónak erre van szüksége. |
 | `WhisperTranscriberSuite-Portable-Windows-vX.Y.Z.zip` | Windows telepítés nélkül: csomagolja ki és futtassa. |
 | `WhisperTranscriberSuite-vX.Y.Z-macOS-arm64.dmg` | Mac-ek Apple Siliconnal, macOS 14 vagy újabb. |
-| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Intel alapú Mac-ek, macOS 10.15 vagy újabb. |
+| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Intel alapú Mac-ek, macOS 12 vagy újabb. |
 
 Linux alatt forráskódból futtatható: [platform/linux/README.md](../../platform/linux/README.md).
 

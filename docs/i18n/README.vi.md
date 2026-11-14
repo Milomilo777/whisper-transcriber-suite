@@ -137,7 +137,7 @@ Phiên bản mới nhất: **[trang releases](https://github.com/Milomilo777/whi
 | `WhisperTranscriberSuite-Installer-Windows-vX.Y.Z.exe` | Windows 10 hoặc 11, 64-bit. Hầu hết mọi người cần tải tệp này. |
 | `WhisperTranscriberSuite-Portable-Windows-vX.Y.Z.zip` | Windows, không cần cài đặt: chỉ cần giải nén và chạy. |
 | `WhisperTranscriberSuite-vX.Y.Z-macOS-arm64.dmg` | Mac dùng Apple silicon, macOS 14 trở lên. |
-| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Mac dùng chip Intel, macOS 10.15 trở lên. |
+| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Mac dùng chip Intel, macOS 12 trở lên. |
 
 Linux chạy từ mã nguồn: [../../platform/linux/README.md](../../platform/linux/README.md).
 

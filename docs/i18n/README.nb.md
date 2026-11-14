@@ -142,7 +142,7 @@ Siste utgivelse: **[utgivelsessiden](https://github.com/Milomilo777/whisper-tran
 | `WhisperTranscriberSuite-Installer-Windows-vX.Y.Z.exe` | Windows 10 eller 11, 64-biters. De fleste vil ha denne. |
 | `WhisperTranscriberSuite-Portable-Windows-vX.Y.Z.zip` | Windows uten å installere: pakk ut og kjør. |
 | `WhisperTranscriberSuite-vX.Y.Z-macOS-arm64.dmg` | Macer med Apple Silicon, macOS 14 eller nyere. |
-| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Intel-Macer, macOS 10.15 eller nyere. |
+| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Intel-Macer, macOS 12 eller nyere. |
 
 Linux kjører fra kildekoden: [../platform/linux/README.md](../../platform/linux/README.md).
 

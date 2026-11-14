@@ -135,7 +135,7 @@ macOS και Linux: δείτε την ενότητα [Λήψη](#download).
 | `WhisperTranscriberSuite-Installer-Windows-vX.Y.Z.exe` | Windows 10 ή 11, 64-bit. Οι περισσότεροι χρήστες θέλουν αυτό. |
 | `WhisperTranscriberSuite-Portable-Windows-vX.Y.Z.zip` | Windows χωρίς εγκατάσταση: αποσυμπιέστε και εκτελέστε. |
 | `WhisperTranscriberSuite-vX.Y.Z-macOS-arm64.dmg` | Mac με Apple silicon, macOS 14 ή νεότερο. |
-| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Mac με επεξεργαστή Intel, macOS 10.15 ή νεότερο. |
+| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Mac με επεξεργαστή Intel, macOS 12 ή νεότερο. |
 
 Στο Linux εκτελείται από τον πηγαίο κώδικα: [../../platform/linux/README.md](../../platform/linux/README.md).
 

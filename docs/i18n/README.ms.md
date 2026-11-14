@@ -140,7 +140,7 @@ Keluaran terbaru: **[releases page](https://github.com/Milomilo777/whisper-trans
 | `WhisperTranscriberSuite-Installer-Windows-vX.Y.Z.exe` | Windows 10 atau 11, 64-bit. Kebanyakan orang memerlukan yang ini. |
 | `WhisperTranscriberSuite-Portable-Windows-vX.Y.Z.zip` | Windows tanpa pemasangan: unzip dan jalankan. |
 | `WhisperTranscriberSuite-vX.Y.Z-macOS-arm64.dmg` | Mac dengan Apple silicon, macOS 14 atau lebih baru. |
-| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Intel Mac, macOS 10.15 atau lebih baru. |
+| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Intel Mac, macOS 12 atau lebih baru. |
 
 Linux dijalankan dari sumber: [../../platform/linux/README.md](../../platform/linux/README.md).
 

@@ -118,7 +118,7 @@ Subtitle Edit, Vibe, Buzz, noScribe এবং aTrain-এর সাথে এর 
 | `WhisperTranscriberSuite-Installer-Windows-vX.Y.Z.exe` | Windows 10 বা 11, 64-বিট। বেশিরভাগ মানুষ এটাই চান। |
 | `WhisperTranscriberSuite-Portable-Windows-vX.Y.Z.zip` | ইনস্টল না করেই Windows: আনজিপ করে চালান। |
 | `WhisperTranscriberSuite-vX.Y.Z-macOS-arm64.dmg` | Apple সিলিকন যুক্ত Mac, macOS 14 বা নতুন। |
-| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Intel Mac, macOS 10.15 বা নতুন। |
+| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Intel Mac, macOS 12 বা নতুন। |
 
 Linux সোর্স থেকে চলে: [platform/linux/README.md](../../platform/linux/README.md)।
 

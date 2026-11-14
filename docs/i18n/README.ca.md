@@ -141,7 +141,7 @@ Darrer llançament: **[pàgina de llançaments (releases)](https://github.com/Mi
 | `WhisperTranscriberSuite-Installer-Windows-vX.Y.Z.exe` | Windows 10 o 11, 64-bit. La majoria d'usuaris necessita aquest. |
 | `WhisperTranscriberSuite-Portable-Windows-vX.Y.Z.zip` | Windows sense instal·lar: descomprimeix i executa. |
 | `WhisperTranscriberSuite-vX.Y.Z-macOS-arm64.dmg` | Macs amb Apple silicon, macOS 14 o més recent. |
-| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Macs Intel, macOS 10.15 o més recent. |
+| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Macs Intel, macOS 12 o més recent. |
 
 A Linux s'executa des del codi font: [../../platform/linux/README.md](../../platform/linux/README.md).
 

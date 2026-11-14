@@ -140,7 +140,7 @@ Cea mai recentă lansare: **[releases page](https://github.com/Milomilo777/whisp
 | `WhisperTranscriberSuite-Installer-Windows-vX.Y.Z.exe` | Windows 10 sau 11, 64-bit. Majoritatea oamenilor doresc această versiune. |
 | `WhisperTranscriberSuite-Portable-Windows-vX.Y.Z.zip` | Windows fără instalare: dezarhivează și rulează. |
 | `WhisperTranscriberSuite-vX.Y.Z-macOS-arm64.dmg` | Mac-uri cu procesor Apple Silicon, macOS 14 sau mai nou. |
-| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Mac-uri cu procesor Intel, macOS 10.15 sau mai nou. |
+| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Mac-uri cu procesor Intel, macOS 12 sau mai nou. |
 
 Linux rulează din codul sursă: [platform/linux/README.md](../../platform/linux/README.md).
 

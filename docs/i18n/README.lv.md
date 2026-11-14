@@ -142,7 +142,7 @@ Jaunākais laidiens: **[laidienu lapa](https://github.com/Milomilo777/whisper-tr
 | `WhisperTranscriberSuite-Installer-Windows-vX.Y.Z.exe` | Windows 10 vai 11, 64 bitu. Lielākajai daļai cilvēku būs nepieciešams šis. |
 | `WhisperTranscriberSuite-Portable-Windows-vX.Y.Z.zip` | Windows bez instalēšanas: atpakojiet un palaidiet. |
 | `WhisperTranscriberSuite-vX.Y.Z-macOS-arm64.dmg` | Mac ar Apple Silicon, macOS 14 vai jaunāka. |
-| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Intel Mac, macOS 10.15 vai jaunāka. |
+| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Intel Mac, macOS 12 vai jaunāka. |
 
 Linux darbojas no pirmkoda: [../platform/linux/README.md](../../platform/linux/README.md).
 

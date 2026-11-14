@@ -6,6 +6,27 @@ The full run log with every error verbatim is kept outside the repository; this 
 
 **Read this before touching** `platform/macos/**` or `.github/workflows/macos-app.yml`.
 
+## Current minimum-version contract
+
+The bundle declares at least the highest minimum encoded by its bundled native
+components. Building on an older host does not lower that requirement.
+`WTS_MACOS_MIN` may raise the computed value, but a lower or malformed value
+stops the build. This matches the final bundle verifier rather than using a
+successful smoke run as an exception to metadata checks.
+
+With the current Intel dependencies, Deno and protobuf require 12.0 and
+ONNX Runtime requires 11.0, so the 2.4.0 Intel bundle declares macOS 12.0.
+The earlier successful macOS 10.15 runtime tests remain valid observations of
+those runs; they do not establish support for the new bundle declaration.
+Keeping Catalina support requires compatible dependency builds and renewed
+native verification, rather than lowering `Info.plist`. Build and test the
+current Intel package on macOS 12 or later. Apple silicon retains its separately
+computed requirement.
+
+[Apple documents LSMinimumSystemVersion](https://developer.apple.com/documentation/bundleresources/information-property-list/lsminimumsystemversion)
+as the app's supported minimum. The dated compatibility examples below describe
+older package policies and are not instructions to override this contract.
+
 ## TL;DR — the pipeline
 
 **One command:** `bash platform/macos/build_mac.sh` runs every step below
@@ -97,10 +118,12 @@ What v1.9.0 and v1.9.3 did, in order; repeat it for the next version.
 2. **arm64 (Apple silicon):** `gh workflow run macos-app.yml --ref master`, wait until both jobs are green,
    then `gh run download <run-id> -n macos-dmg-arm64`. In the job log, note `[mac-spec] highest bundled minos`
    (14.0 for v1.9.0) for the release notes. The job has already smoke-tested the app on real Apple silicon.
-3. **x64 (Intel):** build on the oldest macOS you can (the 10.15 VM gave a 10.15+ app; the CI Intel build
-   needs macOS 14 because pip picks newer wheels there): from a fresh clone run
-   `WTS_MACOS_MIN=10.15 bash platform/macos/build_mac.sh` in a logged-in desktop session (it runs
-   `verify_mac_bundle.sh`, `smoke_test_app.sh` and, after the dmg, `test_dmg.sh`; all must pass). If no old Mac is available, the CI x64 dmg is acceptable. It needs macOS 14.
+3. **x64 (Intel):** use a build/test host that meets the bundled dependencies'
+   computed minimum (macOS 12.0 for the current 2.4.0 payloads). From a fresh clone,
+   run `bash platform/macos/build_mac.sh` in a logged-in desktop session. It runs
+   `verify_mac_bundle.sh`, `smoke_test_app.sh` and `test_dmg.sh`; all must pass.
+   A higher `WTS_MACOS_MIN` is allowed; a lower value is rejected. CI artifacts
+   must be verified on a supported real system before release.
 4. Create the release with the dmgs (no `.sha256` files) and
    its release notes (written in the release body; they are no longer kept as files in the repository). **New tag every time, even for a mac-only fix** — see
    AGENTS.md "Guardrails": never `delete-asset` + `upload` mac dmgs onto
@@ -155,7 +178,7 @@ Each of these was reproduced on a real Mac. Any one of them is enough to ship a 
 |---|---|---|---|
 | 1 | Transcription / any media step fails; bundled `ffmpeg` dies with `dyld: Library not loaded` | CI copied **Homebrew's** `ffmpeg`/`ffprobe` into `bin/`. They link **18 dylibs** under `/opt/homebrew` (libav*, x264, x265, dav1d, openssl, …). The spec bundled `bin/` as DATA, so none of those dylibs entered the .app. Homebrew bottles are also built for the runner's OS (`minos 15.0`), and there is no Intel-macOS ffmpeg bottle any more. | Static builds only: evermeet.cx (x86_64, minos 10.13) / martin-riedl.de (arm64, minos 12.0), fetched and `otool`-verified by `fetch_mac_binaries.sh`. |
 | 2 | Downloads never work in the .app | CI never bundled yt-dlp. When bundled, PyInstaller **destroyed** it: `yt-dlp_macos` is itself a PyInstaller onefile whose payload is appended to the Mach-O; PyInstaller 6 re-classifies Mach-O "data" as binaries and rewrites them, dropping the payload (37 MB → 73 KB, `Could not load PyInstaller's embedded PKG archive`). | Spec copies yt-dlp **byte-for-byte after BUNDLE**, re-signs ad-hoc, and runs `--version` (fails the build if broken). |
-| 3 | App refuses to open / crashes on "older" Macs even though CI said OK | Every wheel carries its own minimum macOS. `MACOSX_DEPLOYMENT_TARGET=12.0` in CI does **nothing** for prebuilt wheels. Unpinned, pip picks onnxruntime 1.23.2 on Intel (**macOS 13+**) and ≥1.24 on Apple silicon (**macOS 14+**), numpy's Accelerate wheels (14+), etc. Meanwhile the Info.plist hard-coded `LSMinimumSystemVersion 11.0` — a promise the bundle could not keep (and on 10.15 LaunchServices refused it: `error -10825`). | `constraints-macos.txt` pins onnxruntime 1.19.2 (macosx_11_0), numpy 1.26.4 and PyInstaller; `fetch_mac_binaries.sh` pins ffmpeg, yt-dlp and Deno by SHA-256. The spec **computes** `LSMinimumSystemVersion` from the highest `minos` in the bundle (`WTS_MACOS_MIN` overrides only after a real test on that OS). `verify_mac_bundle.sh` prints it. |
+| 3 | App refuses to open / crashes on "older" Macs even though CI said OK | Every wheel carries its own minimum macOS. `MACOSX_DEPLOYMENT_TARGET=12.0` in CI does **nothing** for prebuilt wheels. Unpinned, pip picks onnxruntime 1.23.2 on Intel (**macOS 13+**) and ≥1.24 on Apple silicon (**macOS 14+**), numpy's Accelerate wheels (14+), etc. Meanwhile the Info.plist hard-coded `LSMinimumSystemVersion 11.0` — a promise the bundle could not keep (and on 10.15 LaunchServices refused it: `error -10825`). | `constraints-macos.txt` pins onnxruntime 1.19.2 (macosx_11_0), numpy 1.26.4 and PyInstaller; `fetch_mac_binaries.sh` pins ffmpeg, yt-dlp and Deno by SHA-256. The spec **computes** `LSMinimumSystemVersion` from the highest `minos` in the bundle (`WTS_MACOS_MIN` may raise, but cannot lower, the computed minimum). `verify_mac_bundle.sh` prints it. |
 | 4 | Info.plist says 1.6.0 | Hard-coded version in the spec. | Read from `core.__version__`. |
 | 5 | `invalid choice: 'from multiprocessing.resource_tracker import main;main(6)'` in logs | `gui.py` never calls `multiprocessing.freeze_support()`, so in a frozen app multiprocessing's helper re-launch re-enters the argparse CLI. | Runtime hook `rthook_mp_helpers.py` diverts it (packaging-level; the proper fix is in `gui.py`, see open issues). |
 | 6 | Model download slower than needed | `hf_xet` not collected (dynamic import in huggingface_hub). | `hiddenimports += ['hf_xet']`. |
@@ -184,19 +207,21 @@ The .app's real floor is `max(minos)` over every Mach-O inside it
 **v1.9.3:** x64 highest minos 12.0 (protobuf `_message.abi3.so` and the bundled
 `deno` 2.9.7, which runs on 10.15 — real YouTube download through it verified);
 LSMinimumSystemVersion 10.15. arm64 unchanged at 14.0 (same PyAV libs + tkdnd).
-The mac spec now caps the computed value at the build Mac's own macOS for a
-native build (pip only installs wheels for that macOS; the smoke test then runs
-the app there), so a 10.15 build no longer needs `WTS_MACOS_MIN` to open on 10.15.
+Those older builds capped the computed value at the build host and allowed a
+lower override. The current minimum-version contract above removes that cap
+and rejects lower overrides; these historical runs do not waive its verifier.
 
 Every Apple-silicon Mac can run macOS 14, so 14.0 is acceptable for arm64 (the
 release one-liner sends Apple-silicon Macs still on 11–13 to the x64 dmg). To lower a build's floor, pin the
 packages the spec names in `[mac-spec] highest bundled minos` in `constraints-macos.txt` (e.g. `av` to a release whose
 arm64 wheel is tagged `macosx_11_0`, numpy to a non-Accelerate wheel) and re-check the printed value. The Intel
-release is built on the old macOS VM instead, where pip can only pick ≤10.15-compatible wheels.
+release must be built and tested on a host meeting the resulting minimum.
+Retagging a wheel for installation does not change its native build metadata.
 
 dyld on 10.15 does not enforce a dylib's `minos`; what matters is whether a
-newer API is actually called. That is why an override is only allowed after a
-real run on that OS.
+newer API is actually called. That explains the historical observations, but
+it is not a current override exemption: the bundle metadata and verifier must
+agree on the supported minimum.
 
 ## Building on an old macOS (10.15) — extra gotchas
 

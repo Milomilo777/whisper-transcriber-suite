@@ -140,7 +140,7 @@ Pinakabagong release: **[releases page](https://github.com/Milomilo777/whisper-t
 | `WhisperTranscriberSuite-Installer-Windows-vX.Y.Z.exe` | Windows 10 o 11, 64-bit. Ito ang kailangan ng karamihan. |
 | `WhisperTranscriberSuite-Portable-Windows-vX.Y.Z.zip` | Windows nang walang pag-install: i-unzip at patakbuhin. |
 | `WhisperTranscriberSuite-vX.Y.Z-macOS-arm64.dmg` | Mac na may Apple silicon, macOS 14 o mas bago. |
-| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Intel na Mac, macOS 10.15 o mas bago. |
+| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Intel na Mac, macOS 12 o mas bago. |
 
 Ang Linux ay tumatakbo mula sa source: [../../platform/linux/README.md](../../platform/linux/README.md).
 

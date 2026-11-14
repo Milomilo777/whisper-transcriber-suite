@@ -139,7 +139,7 @@ macOS и Linux: погледајте [Преузимање](#download).
 | `WhisperTranscriberSuite-Installer-Windows-vX.Y.Z.exe` | Windows 10 или 11, 64-бита. Већина људи жели ово. |
 | `WhisperTranscriberSuite-Portable-Windows-vX.Y.Z.zip` | Windows без инсталације: распакујте и покрените. |
 | `WhisperTranscriberSuite-vX.Y.Z-macOS-arm64.dmg` | Mac рачунари са Apple silicon чиповима, macOS 14 или новији. |
-| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Intel Mac рачунари, macOS 10.15 или новији. |
+| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Intel Mac рачунари, macOS 12 или новији. |
 
 Linux се покреће из изворног кода: [../../platform/linux/README.md](../../platform/linux/README.md).
 

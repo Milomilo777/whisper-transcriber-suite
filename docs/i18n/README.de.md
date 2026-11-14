@@ -143,7 +143,7 @@ Aktuelle Version: **[Releases-Seite](https://github.com/Milomilo777/whisper-tran
 | `WhisperTranscriberSuite-Installer-Windows-vX.Y.Z.exe` | Windows 10 oder 11, 64-Bit. Die meisten Nutzer benötigen diese. |
 | `WhisperTranscriberSuite-Portable-Windows-vX.Y.Z.zip` | Windows ohne Installation: Entpacken und starten. |
 | `WhisperTranscriberSuite-vX.Y.Z-macOS-arm64.dmg` | Macs mit Apple Silicon, macOS 14 oder neuer. |
-| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Intel-Macs, macOS 10.15 oder neuer. |
+| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Intel-Macs, macOS 12 oder neuer. |
 
 Linux läuft aus dem Quellcode: [platform/linux/README.md](../../platform/linux/README.md).
 

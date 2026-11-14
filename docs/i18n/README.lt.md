@@ -138,7 +138,7 @@ Naujausias leidimas: **[releases page](https://github.com/Milomilo777/whisper-tr
 | `WhisperTranscriberSuite-Installer-Windows-vX.Y.Z.exe` | Windows 10 arba 11, 64-bit. Daugumai žmonių reikia šio. |
 | `WhisperTranscriberSuite-Portable-Windows-vX.Y.Z.zip` | Windows be diegimo: išarchyvuokite ir paleiskite. |
 | `WhisperTranscriberSuite-vX.Y.Z-macOS-arm64.dmg` | Mac su Apple Silicon, macOS 14 ar naujesne versija. |
-| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Intel Mac, macOS 10.15 ar naujesne versija. |
+| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Intel Mac, macOS 12 ar naujesne versija. |
 
 Linux veikia iš šaltinio kodo: [platform/linux/README.md](../../platform/linux/README.md).
 

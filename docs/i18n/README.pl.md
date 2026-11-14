@@ -140,7 +140,7 @@ Najnowsza wersja: **[strona wydań (releases)](https://github.com/Milomilo777/wh
 | `WhisperTranscriberSuite-Installer-Windows-vX.Y.Z.exe` | Windows 10 lub 11, 64-bitowy. Zdecydowana większość wybierze ten. |
 | `WhisperTranscriberSuite-Portable-Windows-vX.Y.Z.zip` | Windows bez instalacji: rozpakuj i uruchom. |
 | `WhisperTranscriberSuite-vX.Y.Z-macOS-arm64.dmg` | Mac z układem Apple silicon, macOS 14 lub nowszy. |
-| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Mac z procesorem Intel, macOS 10.15 lub nowszy. |
+| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Mac z procesorem Intel, macOS 12 lub nowszy. |
 
 Linux uruchamiany jest z kodu źródłowego: [platform/linux/README.md](../../platform/linux/README.md).
 

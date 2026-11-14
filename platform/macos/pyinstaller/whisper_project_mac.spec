@@ -659,9 +659,9 @@ pyz = PYZ(a.pure)
 # bundled and put THAT in LSMinimumSystemVersion, so the Info.plist never
 # promises less than the bundle can deliver.
 #
-# WTS_MACOS_MIN overrides it — only for a value that was actually VERIFIED by
-# running the built app on that macOS version (e.g. onnxruntime 1.19.2 is
-# tagged 11.0 but was verified to work on 10.15).
+# WTS_MACOS_MIN may raise the requirement, but never lower a bundled
+# component's declared minimum. Native smoke success on one older host does
+# not justify metadata that contradicts the verifier's compatibility checks.
 def _macho_minos(path):
     try:
         from macholib.MachO import MachO
@@ -691,25 +691,29 @@ for _p in _minos_files:
     _v = _macho_minos(_p)
     if _v:
         _minos_hits.setdefault(_v, []).append(_p)
+def _select_minimum_macos(computed_min, override):
+    minimum = '.'.join(str(part) for part in computed_min)
+    if not override:
+        return minimum
+    parts = override.split('.')
+    if not 1 <= len(parts) <= 3 or any(
+            not part or not part.isascii() or not part.isdigit() for part in parts):
+        raise ValueError('WTS_MACOS_MIN must be a numeric macOS minimum version')
+    requested = tuple(int(part) for part in parts)
+    padded = requested + (0,) * (3 - len(requested))
+    required = tuple(computed_min) + (0,) * (3 - len(computed_min))
+    if padded < required:
+        raise ValueError('WTS_MACOS_MIN cannot be lower than bundled minimum ' + minimum)
+    if len(requested) == 1:
+        requested += (0,)
+    return '.'.join(str(part) for part in requested)
+
+
 _highest_min = max(_minos_hits) if _minos_hits else (10, 13)
 _computed_min = max(_highest_min, (10, 13))
 print('[mac-spec] highest bundled minos: %d.%d  <- %s' % (
     _highest_min + (', '.join(os.path.basename(p) for p in _minos_hits.get(_highest_min, [])),)))
-# A native build on an older Mac: pip only installed wheels tagged for this
-# macOS and the bundled tools were run above, yet a few files still carry a
-# newer minos (protobuf's and deno's 12.0 on Intel) and work (verified on
-# 10.15). Claiming more than this Mac's version would make LaunchServices
-# refuse to open the app on the machine that built it (error -10825), so cap
-# it at the build host; smoke_test_app.sh then runs the app on this macOS.
-try:
-    _host_macos = tuple(int(x) for x in _platform.mac_ver()[0].split('.')[:2])
-except ValueError:
-    _host_macos = ()
-if (len(_host_macos) == 2 and _computed_min > _host_macos
-        and os.environ.get('WTS_TARGET_ARCH') in (None, '', _platform.machine())):
-    print('[mac-spec] capped to this build Mac: %d.%d' % _host_macos)
-    _computed_min = _host_macos
-_MIN_MACOS = os.environ.get('WTS_MACOS_MIN') or '%d.%d' % _computed_min
+_MIN_MACOS = _select_minimum_macos(_computed_min, os.environ.get('WTS_MACOS_MIN'))
 print('[mac-spec] LSMinimumSystemVersion = %s%s' % (
     _MIN_MACOS, ' (WTS_MACOS_MIN override)' if os.environ.get('WTS_MACOS_MIN') else ''))
 

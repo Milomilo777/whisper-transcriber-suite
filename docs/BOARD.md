@@ -10,7 +10,7 @@ with the same loop-recovery decision for normal and resumed tasks. Empty clip
 ranges retain the decoded prefix and continue through the remaining audio;
 malformed clip arguments remain available for decoder validation.
 
-The ASR source checkpoint `02b29281` passed **15,803 tests, 44 skipped, zero failures**. It
+The integrated source checkpoint `eba67ddcaa` passed **15,862 tests, 30 skipped, zero failures**. The earlier 44 reported outcomes were skips: 14 now pass and 30 remain skipped. It
 includes format identity for API outputs, bounded ASS karaoke timing, and four
 native Tk preset tests covering explicit models, settings-only presets and
 failed saves. The type gate reports
@@ -34,7 +34,7 @@ installer or Portable acceptance.
 - Release-branch pushes run Linux CI; mainline pushes and pull requests retain Windows and Linux coverage.
 - Translation review and remaining native acceptance checks are listed in the ignored release record.
 - Tagging, public release and artifact uploads require maintainer approval.
-- Intel macOS tests exercised startup, tab navigation and all output formats after the shared-library packaging fix; a final committed-source DMG remains pending.
+- Intel macOS tests exercised startup, tab navigation and all output formats after the shared-library packaging fix. Current bundled dependencies declare a macOS 12.0 minimum; a matching final-source DMG and supported-system validation remain pending.
 - Recording transport was checked on real devices; complete Live/voice UI acceptance and reference-speech quality remain open. Voice worker imports passed native checks; full model-level acceptance remains pending. Hardware re-probe passed real queued-event, timeout and cancellation regressions, plus native CUDA availability checks with a responsive event loop. Packaged transcription acceptance remains separate.
 
 ## RESUME

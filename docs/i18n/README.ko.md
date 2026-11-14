@@ -120,7 +120,7 @@ Subtitle Edit, Vibe, Buzz, noScribe, aTrain과의 비교. 다른 앱을 선택�
 | `WhisperTranscriberSuite-Installer-Windows-vX.Y.Z.exe` | Windows 10 또는 11, 64비트. 대부분의 사용자가 필요로 하는 파일입니다. |
 | `WhisperTranscriberSuite-Portable-Windows-vX.Y.Z.zip` | 설치 없이 사용하는 Windows 버전: 압축을 풀고 바로 실행. |
 | `WhisperTranscriberSuite-vX.Y.Z-macOS-arm64.dmg` | Apple Silicon이 탑재된 Mac, macOS 14 이상. |
-| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Intel Mac, macOS 10.15 이상. |
+| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Intel Mac, macOS 12 이상. |
 
 Linux는 소스에서 실행합니다: [../platform/linux/README.md](../../platform/linux/README.md).
 

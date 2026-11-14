@@ -142,7 +142,7 @@ Nieuwste release: **[releases page](https://github.com/Milomilo777/whisper-trans
 | `WhisperTranscriberSuite-Installer-Windows-vX.Y.Z.exe` | Windows 10 of 11, 64-bit. De meeste mensen hebben deze nodig. |
 | `WhisperTranscriberSuite-Portable-Windows-vX.Y.Z.zip` | Windows zonder installatie: uitpakken en uitvoeren. |
 | `WhisperTranscriberSuite-vX.Y.Z-macOS-arm64.dmg` | Macs met Apple silicon, macOS 14 of nieuwer. |
-| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Intel Macs, macOS 10.15 of nieuwer. |
+| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Intel Macs, macOS 12 of nieuwer. |
 
 Voor Linux bouw je vanuit de broncode: [../../platform/linux/README.md](../../platform/linux/README.md).
 

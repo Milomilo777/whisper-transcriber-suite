@@ -123,7 +123,7 @@
 | `WhisperTranscriberSuite-Installer-Windows-vX.Y.Z.exe` | Windows 10 یا 11، ۶۴ بیتی. بیشتر کاربران این یکی را می‌خواهند. |
 | `WhisperTranscriberSuite-Portable-Windows-vX.Y.Z.zip` | Windows بدون نصب: استخراج و اجرا کنید. |
 | `WhisperTranscriberSuite-vX.Y.Z-macOS-arm64.dmg` | مک‌های با پردازنده‌ی Apple silicon، سیستم‌عامل macOS 14 یا جدیدتر. |
-| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | مک‌های Intel، سیستم‌عامل macOS 10.15 یا جدیدتر. |
+| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | مک‌های Intel، سیستم‌عامل macOS 12 یا جدیدتر. |
 
 لینوکس از روی سورس اجرا می‌شود: [platform/linux/README.md](../../platform/linux/README.md).
 

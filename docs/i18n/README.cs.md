@@ -141,7 +141,7 @@ Nejnovější verze: **[stránka vydání (releases)](https://github.com/Milomil
 | `WhisperTranscriberSuite-Installer-Windows-vX.Y.Z.exe` | Windows 10 nebo 11, 64-bit. Tuto verzi bude chtít většina lidí. |
 | `WhisperTranscriberSuite-Portable-Windows-vX.Y.Z.zip` | Windows bez instalace: rozbalte a spusťte. |
 | `WhisperTranscriberSuite-vX.Y.Z-macOS-arm64.dmg` | Macy s čipem Apple silicon, macOS 14 nebo novější. |
-| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Macy s procesorem Intel, macOS 10.15 nebo novější. |
+| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Macy s procesorem Intel, macOS 12 nebo novější. |
 
 Na Linuxu se spouští ze zdrojových kódů: [platform/linux/README.md](../../platform/linux/README.md).
 

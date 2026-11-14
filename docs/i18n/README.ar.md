@@ -124,7 +124,7 @@
 | `WhisperTranscriberSuite-Installer-Windows-vX.Y.Z.exe` | نظام Windows 10 أو 11 بنواة 64 بت. يفضل معظم الأشخاص هذا الملف. |
 | `WhisperTranscriberSuite-Portable-Windows-vX.Y.Z.zip` | نظام Windows بدون تثبيت: قم بفك الضغط والتشغيل. |
 | `WhisperTranscriberSuite-vX.Y.Z-macOS-arm64.dmg` | أجهزة Mac بمعالجات Apple، ونظام macOS 14 أو أحدث. |
-| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | أجهزة Mac بمعالجات Intel، ونظام macOS 10.15 أو أحدث. |
+| `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | أجهزة Mac بمعالجات Intel، ونظام macOS 12 أو أحدث. |
 
 يعمل Linux من المصدر الأساسي: [platform/linux/README.md](../../platform/linux/README.md).
 
