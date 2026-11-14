@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" width="100%" height="100%" role="img" aria-labelledby="promo-title promo-desc">
   <title id="promo-title">Whisper Transcriber Suite — Sound in. Text out. Your audio stays on your computer.</title>
-  <desc id="promo-desc">Animated typographic promo showing giant punctuation marks clamping spoken audio echoes into timed transcripts in 14 formats offline on your computer.</desc>
+  <desc id="promo-desc">Animated typographic promo for version 2.4: sound becomes a timed transcript, with saved transcription presets and subtitle quality review, then SRT, DOCX and PDF on your computer.</desc>
 
   <defs>
     <linearGradient id="brand-grad" x1="0%" y1="0%" x2="98%" y2="18%">
@@ -66,56 +66,56 @@
     #ext-docx-mover { transform: translate(870px, 504px) scale(0.5, 0.5); }
     #ext-pdf-mover { transform: translate(1033px, 504px) scale(0.5, 0.5); }
 
-    /* MOTION (16s loop) */
+    /* MOTION (36s loop) */
     @media all {
       #bar1-echoes, #bar2-dialogue, #bar3-formats, #bar4-engines, #bar5-hero, #docked-extensions { visibility: visible; }
 
-      #jaw-left-pos { animation: jawLeftMove 33.6s infinite both; }
-      #jaw-right-pos { animation: jawRightMove 33.6s infinite both; }
-      #jaw-left-set, #jaw-right-set { animation: bracketVis 33.6s infinite both; }
-      #quote-left, #quote-right { animation: quoteVis 33.6s infinite both, quoteScale 33.6s infinite both; }
-      #cleave-line { animation: cleaveLine 33.6s infinite both; }
+      #jaw-left-pos { animation: jawLeftMove 36s infinite both; }
+      #jaw-right-pos { animation: jawRightMove 36s infinite both; }
+      #jaw-left-set, #jaw-right-set { animation: bracketVis 36s infinite both; }
+      #quote-left, #quote-right { animation: quoteVis 36s infinite both, quoteScale 36s infinite both; }
+      #cleave-line { animation: cleaveLine 36s infinite both; }
 
-      #bar1-echoes { animation: bar1Vis 33.6s infinite both; }
-      #echo-teal { animation: echoVis 33.6s infinite both, echoTeal 33.6s infinite both; }
-      #echo-violet { animation: echoVis 33.6s infinite both, echoViolet 33.6s infinite both; }
-      #echo-coral { animation: echoVis 33.6s infinite both, echoCoral 33.6s infinite both; }
-      #bar1-headline { animation: headline1 33.6s infinite both; }
-      #bar1-timestamp { animation: stamp1 33.6s infinite both; }
+      #bar1-echoes { animation: bar1Vis 36s infinite both; }
+      #echo-teal { animation: echoVis 36s infinite both, echoTeal 36s infinite both; }
+      #echo-violet { animation: echoVis 36s infinite both, echoViolet 36s infinite both; }
+      #echo-coral { animation: echoVis 36s infinite both, echoCoral 36s infinite both; }
+      #bar1-headline { animation: headline1 36s infinite both; }
+      #bar1-timestamp { animation: stamp1 36s infinite both; }
 
-      #bar2-dialogue { animation: bar2Vis 33.6s infinite both; }
-      #speaker1-line { animation: speaker1 33.6s infinite both; }
-      #speaker2-line { animation: speaker2 33.6s infinite both; }
-      #speed-line { animation: speedLine 33.6s infinite both; }
+      #bar2-dialogue { animation: bar2Vis 36s infinite both; }
+      #speaker1-line { animation: speaker1 36s infinite both; }
+      #speaker2-line { animation: speaker2 36s infinite both; }
+      #speed-line { animation: speedLine 36s infinite both; }
 
-      #bar3-formats { animation: bar3Vis 33.6s infinite both; }
-      #split-dot-1 { animation: dot1 33.6s infinite both; }
-      #split-dot-2 { animation: dot2 33.6s infinite both; }
-      #split-dot-3 { animation: dot3 33.6s infinite both; }
-      #bar3-sub { animation: sub3 33.6s infinite both; }
+      #bar3-formats { animation: bar3Vis 36s infinite both; }
+      #split-dot-1 { animation: dot1 36s infinite both; }
+      #split-dot-2 { animation: dot2 36s infinite both; }
+      #split-dot-3 { animation: dot3 36s infinite both; }
+      #bar3-sub { animation: sub3 36s infinite both; }
 
-      #docked-extensions { animation: extVis 33.6s infinite both; }
-      #ext-srt-mover { animation: extSrt 33.6s infinite both; }
-      #ext-docx-mover { animation: extDocx 33.6s infinite both; }
-      #ext-pdf-mover { animation: extPdf 33.6s infinite both; }
+      #docked-extensions { animation: extVis 36s infinite both; }
+      #ext-srt-mover { animation: extSrt 36s infinite both; }
+      #ext-docx-mover { animation: extDocx 36s infinite both; }
+      #ext-pdf-mover { animation: extPdf 36s infinite both; }
 
-      #bar4-engines { animation: bar4Vis 33.6s infinite both; }
-      #vault-arrow { animation: vaultArrow 33.6s infinite both; }
-      #bar4-a { animation: b4a 33.6s infinite both; }
-      #bar4-b { animation: b4b 33.6s infinite both; }
-      #bar4-c { animation: b4c 33.6s infinite both; }
-      #bar4-d { animation: b4d 33.6s infinite both; }
+      #bar4-engines { animation: bar4Vis 36s infinite both; }
+      #vault-arrow { animation: vaultArrow 36s infinite both; }
+      #bar4-a { animation: b4a 36s infinite both; }
+      #bar4-b { animation: b4b 36s infinite both; }
+      #bar4-c { animation: b4c 36s infinite both; }
+      #bar4-d { animation: b4d 36s infinite both; }
 
-      #bar5-hero { animation: bar5Vis 33.6s infinite both; }
-      #hero-brand-row { animation: hero1 33.6s infinite both; }
-      #hero-sound-in { animation: hero2 33.6s infinite both; }
-      #hero-text-out { animation: hero3 33.6s infinite both; }
-      #hero-sub-1 { animation: hero4 33.6s infinite both; }
-      #hero-sub-2 { animation: hero5 33.6s infinite both; }
-      #bar5-a { animation: b5a 33.6s infinite both; }
-      #bar5-b { animation: b5b 33.6s infinite both; }
-      #bar5-c { animation: b5c 33.6s infinite both; }
-      #bar5-d { animation: b5d 33.6s infinite both; }
+      #bar5-hero { animation: bar5Vis 36s infinite both; }
+      #hero-brand-row { animation: hero1 36s infinite both; }
+      #hero-sound-in { animation: hero2 36s infinite both; }
+      #hero-text-out { animation: hero3 36s infinite both; }
+      #hero-sub-1 { animation: hero4 36s infinite both; }
+      #hero-sub-2 { animation: hero5 36s infinite both; }
+      #bar5-a { animation: b5a 36s infinite both; }
+      #bar5-b { animation: b5b 36s infinite both; }
+      #bar5-c { animation: b5c 36s infinite both; }
+      #bar5-d { animation: b5d 36s infinite both; }
     }
 
     /* RIG */
@@ -175,7 +175,7 @@
     @keyframes b5d { 0% { transform: scaleY(0); animation-timing-function: steps(1, end) } 33.5238% { transform: scaleY(0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) } 35.4286% { transform: scaleY(1); animation-timing-function: steps(1, end) } 40.4762%, 100% { transform: scaleY(1) } }
 
     /* MANDATORY REDUCED-MOTION OVERRIDE */
-    @media not all {
+    @media (prefers-reduced-motion: reduce) {
       * { animation: none !important; transition: none !important; }
       #bar1-echoes, #bar2-dialogue, #bar3-formats, #bar4-engines { opacity: 0 !important; visibility: hidden !important; }
       #bar5-hero, #vise-rig, #docked-extensions { opacity: 1 !important; visibility: visible !important; }
@@ -204,7 +204,7 @@
   <g id="bar2-dialogue" class="vb">
     <text id="speaker1-line" class="vb" x="264" y="256" font-size="56" font-weight="800" fill="#0c1a2b"><tspan fill="#0c9d95">Speaker 1</tspan> · Interview</text>
     <text id="speaker2-line" class="vb" x="264" y="410" font-size="56" font-weight="800" fill="#0c1a2b"><tspan fill="#f2604c">Speaker 2</tspan> · Answer</text>
-    <text id="speed-line" class="vb" x="640" y="510" text-anchor="middle" font-size="48" font-weight="700" fill="#6a5cf0">4.8x · 6 min left · Offline</text>
+    <text id="speed-line" class="vb" x="640" y="510" text-anchor="middle" font-size="48" font-weight="700" fill="#6a5cf0">Saved presets · 2.4</text>
   </g>
 
   <!-- BAR 3: THE PERIOD MULTIPLIES -->
@@ -212,7 +212,7 @@
     <circle id="split-dot-1" class="vb" cx="0" cy="0" r="11" fill="#0c1a2b"/>
     <circle id="split-dot-2" class="vb" cx="0" cy="0" r="11" fill="#0c1a2b"/>
     <circle id="split-dot-3" class="vb" cx="0" cy="0" r="11" fill="#0c1a2b"/>
-    <text id="bar3-sub" class="vb" x="640" y="510" text-anchor="middle" font-size="48" font-weight="700" fill="#0c1a2b">14 transcript formats</text>
+    <text id="bar3-sub" class="vb" x="640" y="510" text-anchor="middle" font-size="48" font-weight="700" fill="#0c1a2b">Subtitle quality review</text>
   </g>
 
   <!-- SHARED FORMAT EXTENSIONS -->
