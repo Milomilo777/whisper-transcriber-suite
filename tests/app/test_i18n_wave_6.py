@@ -269,7 +269,8 @@ def capture_tab(mp: pytest.MonkeyPatch, root: Any, fakes: Any, tmp_path: Path) -
     mp.setattr(recorder, "mic_available", lambda: True)
 
     class FailingRecorder:
-        def __init__(self, **_k: Any) -> None: ...
+        def __init__(self, *, output_path: str, **_k: Any) -> None:
+            self.output_path = output_path
 
         def start(self) -> None:
             raise RuntimeError("CORE: device busy")
@@ -282,6 +283,9 @@ def capture_tab(mp: pytest.MonkeyPatch, root: Any, fakes: Any, tmp_path: Path) -
 
         def stop(self) -> str:
             raise RuntimeError("CORE: stream lost")
+
+        def is_running(self) -> bool:
+            return False
 
     mp.setattr(recorder, "Recorder", BrokenRecorder)
     vct._record_sample(app)
