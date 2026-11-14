@@ -291,6 +291,7 @@ def _cue_identity(seg: object) -> tuple[str, str]:
 def prepare_cues(
     segments: list[dict],
     render_text,
+    join_text=None,
 ) -> list[tuple[int, int, str]]:
     """Return subtitle cues with valid, non-zero written durations.
 
@@ -305,6 +306,7 @@ def prepare_cues(
     the next cue begins less than 100 ms later, or at the same time, the
     texts are merged in input order and use the earlier start. Exact
     duplicate text is written once; differing text is joined by a space.
+    ``join_text`` can preserve format-specific structure when merging payloads.
     Duplicates are compared by source text and speaker (see
     :func:`_cue_identity`), not by rendered payload, and a merge chain
     keeps deduplicating against everything already merged. Valid cues are
@@ -360,7 +362,8 @@ def prepare_cues(
                 end_ms = min(end_ms, cues[i][0])
         written.append([start_ms, end_ms, merged])
 
+    join_text = join_text or " ".join
     return [
-        (start, end, " ".join(text for _key, text in parts))
+        (start, end, join_text([text for _key, text in parts]))
         for start, end, parts in written
     ]

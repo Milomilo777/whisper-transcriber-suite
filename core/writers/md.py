@@ -62,5 +62,5 @@ def write(segments: list[dict], audio_path: str = "") -> str:
         else:
             lines.append(f"**{ts}** {text}")
         lines.append("")
-    # The heading and speaker labels do not pass through normalize_text.
+    # The heading does not pass through normalize_text.
     return replace_lone_surrogates("\n".join(lines)).rstrip() + "\n"

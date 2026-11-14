@@ -10,6 +10,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 - Gate Windows installer builds on retired-source inventory and a pinned historical upgrade/uninstall test at the default installation path.
 
+- Keep original and translated text on separate rows when repairing bilingual cues. Unusable word ends use their word's start, inferred word clocks stay bounded, and ASS speaker labels exclude control characters.
+
 - Preserve existing files beside settings backups and corrupt-config recovery by copying through an exclusively allocated temporary file; failed copies remove only their own scratch file.
 
 - Prevent a delayed telemetry identity write from restoring a revoked identifier or sending stale identifiers after statistics are switched off and on. Local model-path normalization runs on the background sender.

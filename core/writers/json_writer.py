@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import math
 
-from .base import replace_lone_surrogates
+from .base import MAX_SECONDS, replace_lone_surrogates
 
 
 def _safe_float(value: object, default: float = 0.0) -> float:
@@ -67,11 +67,11 @@ def write(segments: list[dict], audio_path: str = "") -> str:
             # A missing/collapsed segment end carries no usable upper bound.
             # Preserve valid word clocks instead of clamping them all to start.
             if item["end"] <= start:
-                item["end"] = max([start] + [
+                item["end"] = max(start, min(MAX_SECONDS, max([start] + [
                     max(start, _safe_float(w.get("start"), start),
                         _safe_float(w.get("end"), start))
                     for w in words if isinstance(w, dict)
-                ])
+                ])))
             coerced_words = []
             for w in words:
                 if not isinstance(w, dict):
@@ -82,7 +82,7 @@ def write(segments: list[dict], audio_path: str = "") -> str:
                     item["start"], _safe_float(w.get("start"), item["start"])
                 ))
                 word_end = min(item["end"], max(
-                    word_start, _safe_float(w.get("end", word_start), item["end"])
+                    word_start, _safe_float(w.get("end"), word_start)
                 ))
                 coerced_words.append({
                     "start": word_start,

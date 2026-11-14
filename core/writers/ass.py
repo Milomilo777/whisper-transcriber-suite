@@ -123,7 +123,7 @@ def _speaker_name(seg: dict) -> str:
     raw = seg.get("speaker") if isinstance(seg, dict) else None
     if raw in (None, ""):
         return ""
-    return " ".join(replace_lone_surrogates(str(raw)).split()).replace(",", ";")
+    return normalize_text(raw).replace(",", ";")
 
 
 def _karaoke_payload(seg: dict) -> str:

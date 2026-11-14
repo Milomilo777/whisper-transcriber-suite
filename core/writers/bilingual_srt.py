@@ -52,18 +52,26 @@ def write(
     for seg, translated in zip(segments, translations):
         original = normalize_text(seg.get("text", ""))
         translated_line = normalize_text(translated or "")
-        lines = [escape_cue_separator(line) for line in (original, translated_line) if line]
-        if not lines:
+        if not original and not translated_line:
             continue
-        lines[0] = escape_cue_separator(speaker_prefix(seg)) + lines[0]
-        body = "\n".join(lines)
+        prefix = escape_cue_separator(speaker_prefix(seg))
+        original_body = prefix + escape_cue_separator(original) if original else ""
+        translated_body = ((prefix if not original else "") + escape_cue_separator(translated_line)
+                           if translated_line else "")
         # Preserve the language boundary and source characters in identity;
         # rendered/escaped text can make distinct source pairs look identical.
         identity = json.dumps([original, translated_line], ensure_ascii=True)
-        cues.append({**seg, "text": identity, "_bilingual_body": body})
+        cues.append({**seg, "text": identity,
+                     "_bilingual_lines": (original_body, translated_body)})
+
+    def join_languages(parts: list[tuple[str, str]]) -> str:
+        originals = " ".join(original for original, _ in parts if original)
+        translated = " ".join(translation for _, translation in parts if translation)
+        return "\n".join(line for line in (originals, translated) if line)
+
     out: list[str] = []
     for index, (start_ms, end_ms, body) in enumerate(
-        prepare_cues(cues, lambda cue: cue["_bilingual_body"]), start=1
+        prepare_cues(cues, lambda cue: cue["_bilingual_lines"], join_text=join_languages), start=1
     ):
         out.extend([str(index),
                     f"{fmt_srt_time(start_ms / 1000)} --> {fmt_srt_time(end_ms / 1000)}",
