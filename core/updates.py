@@ -543,11 +543,18 @@ def update_command(app_dir: Path, *, sys_platform: str | None = None) -> str:
     """
     sys_platform = sys.platform if sys_platform is None else sys_platform
     if sys_platform == "win32":
+        if re.search(r"%[^%]+%", str(app_dir)):
+            # Neither CMD nor PowerShell --% preserves literal paired percents.
+            # Fail closed instead of updating an environment-expanded checkout.
+            return (
+                'cmd /d /c "echo [whisper] ERROR: this checkout path has paired percent markers. '
+                'Open Command Prompt in the checkout and run platform\\windows\\update.bat. & exit /b 1"'
+            )
         script = app_dir / "platform" / "windows" / "update.bat"
         if script.is_file():
-            # "cmd /c" runs it from cmd and from PowerShell alike (PowerShell
-            # only prints a bare quoted path).
-            return f'cmd /c "{script}"'
+            # PowerShell consumes --% and preserves the native quoted argument.
+            # The @ prefix avoids cmd's special stripping of a leading quote.
+            return f'cmd --% /d /c @"{script}"'
         return f'git -C "{app_dir}" pull --ff-only'
     script = app_dir / "platform" / "linux" / "update.sh"
     if sys_platform.startswith("linux") and script.is_file():

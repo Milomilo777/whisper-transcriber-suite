@@ -297,7 +297,7 @@ def test_update_command_for_a_source_checkout(tmp_path: Path) -> None:
     (tmp_path / "platform" / "windows").mkdir()
     (tmp_path / "platform" / "windows" / "update.bat").write_text("", encoding="utf-8")
     assert u.update_command(tmp_path, sys_platform="win32") == (
-        f'cmd /c "{tmp_path / "platform" / "windows" / "update.bat"}"'
+        f'cmd --% /d /c @"{tmp_path / "platform" / "windows" / "update.bat"}"'
     )
 
 
