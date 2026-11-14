@@ -12,7 +12,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 - Declare the actual bundled minimum macOS version and reject lower overrides, instead of capping it to an older build host. With the current dependencies, the 2.4.0 Intel package requires macOS 12.0; earlier Catalina runtime results do not change that package requirement.
 
-- Keep original and translated text on separate rows when repairing bilingual cues. Unusable word ends use their word's start, inferred word clocks stay bounded, and ASS speaker labels exclude control characters.
+- Keep original and translated text on separate rows when repairing bilingual cues. Unusable earlier word ends use their word's start, final words retain the cue's remaining coverage, inferred word clocks stay bounded, and ASS speaker labels exclude control characters.
 
 - Preserve existing files beside settings backups and corrupt-config recovery by copying through an exclusively allocated temporary file; failed copies remove only their own scratch file.
 

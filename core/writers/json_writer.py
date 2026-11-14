@@ -73,16 +73,19 @@ def write(segments: list[dict], audio_path: str = "") -> str:
                     for w in words if isinstance(w, dict)
                 ])))
             coerced_words = []
-            for w in words:
-                if not isinstance(w, dict):
-                    continue
+            valid_words = [w for w in words if isinstance(w, dict)]
+            for index, w in enumerate(valid_words):
                 # Alignment may extend a word past its containing cue.
                 # Keep its label and confidence while bounding the clock.
                 word_start = min(item["end"], max(
                     item["start"], _safe_float(w.get("start"), item["start"])
                 ))
+                # An unusable earlier end must not consume a later word. The
+                # final word can use the cue's remaining coverage; a missing
+                # end retains its separate legacy fallback to its own start.
+                fallback_end = word_start if index + 1 < len(valid_words) else item["end"]
                 word_end = min(item["end"], max(
-                    word_start, _safe_float(w.get("end"), word_start)
+                    word_start, _safe_float(w.get("end", word_start), fallback_end)
                 ))
                 coerced_words.append({
                     "start": word_start,

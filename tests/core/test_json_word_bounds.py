@@ -62,3 +62,24 @@ def test_repair_does_not_mutate_shared_segments_or_words():
     before = deepcopy(segments)
     json_writer.write(segments)
     assert segments == before
+
+
+@pytest.mark.parametrize('end', [None, 'bad', float('nan'), float('inf'), 10**1000],
+                         ids=['null', 'text', 'nan', 'infinity', 'overflow'])
+@pytest.mark.parametrize('trailing_junk', [False, True])
+def test_unusable_last_word_end_keeps_the_remaining_cue(end, trailing_junk):
+    words = [{'start': 2.0, 'end': 2.5, 'word': 'first', 'probability': 0.8},
+             {'start': 3.0, 'end': end, 'word': 'tail', 'probability': 0.7}]
+    if trailing_junk:
+        words.append(None)
+    body = json_writer.write([{'start': 2.0, 'end': 4.0, 'text': 'first tail', 'words': words}])
+    result = json.loads(body)
+    assert result[0]['words'][-1] == {'start': 3.0, 'end': 4.0,
+                                      'word': 'tail', 'probability': 0.7}
+    assert json_writer.write(result) == body
+
+
+def test_missing_last_word_end_remains_its_start():
+    result = json.loads(json_writer.write([{'start': 2.0, 'end': 4.0, 'text': 'tail',
+                                            'words': [{'start': 3.0, 'word': 'tail'}]}]))
+    assert result[0]['words'][0]['end'] == 3.0
