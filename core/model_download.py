@@ -415,29 +415,31 @@ class ModelDownloader:
         # after it finishes, including when an aliased original retained bytes.
         mm._require_free_space(part.parent, info.size - offset, "the model download")
         headers = {"Range": f"bytes={offset}-"} if offset else {}
-        with self._open(url, headers, cancel) as response:
-            target = part
-            status = response.status
-            if status == 206:
-                match = _RANGE.fullmatch(response.headers.get("Content-Range", ""))
-                if not match or tuple(map(int, match.groups())) != (offset, info.size - 1, info.size):
-                    raise _HostUnavailable("server returned an incorrect Content-Range", reject_bytes=True)
-            elif status == 200:
-                if offset:
-                    # A host ignoring Range must earn the saved prefix's replacement.
-                    target = part.with_name("." + part.name + ".restart")
-                    if target.is_symlink():
-                        raise mm.ModelDestinationNotWritable(part.parent)
-                    mm._require_free_space(part.parent, info.size, "the model download")
-                offset = 0
-            else:
-                raise _HostUnavailable(f"HTTP {status}")
-            length = response.headers.get("Content-Length")
-            if length is not None and (not length.isdecimal() or int(length) != info.size - offset):
-                raise _HostUnavailable("server returned an incorrect Content-Length", reject_bytes=True)
-            if response.headers.get("Content-Encoding", "identity").lower() != "identity":
-                raise _HostUnavailable("server returned an encoded model file", reject_bytes=True)
-            try:
+        target = part
+        try:
+            with self._open(url, headers, cancel) as response:
+                status = response.status
+                if status == 206:
+                    match = _RANGE.fullmatch(response.headers.get("Content-Range", ""))
+                    if not match or tuple(map(int, match.groups())) != (offset, info.size - 1, info.size):
+                        raise _HostUnavailable("server returned an incorrect Content-Range", reject_bytes=True)
+                elif status == 200:
+                    if offset:
+                        # A host ignoring Range must earn the saved prefix's replacement.
+                        target = part.with_name("." + part.name + ".restart")
+                        if target.is_symlink():
+                            raise mm.ModelDestinationNotWritable(part.parent)
+                        mm._require_free_space(part.parent, info.size, "the model download")
+                    offset = 0
+                else:
+                    raise _HostUnavailable(f"HTTP {status}")
+                length = response.headers.get("Content-Length")
+                if length is not None and (not length.isdecimal() or int(length) != info.size - offset):
+                    raise _HostUnavailable("server returned an incorrect Content-Length", reject_bytes=True)
+                if response.headers.get("Content-Encoding", "identity").lower() != "identity":
+                    raise _HostUnavailable("server returned an encoded model file", reject_bytes=True)
+                if target != part:
+                    self._prepared_parts.pop(target, None)
                 digest = self._receive(response, target, offset, info, cancel,
                                        prepared=prepared if target == part else None)
                 if target != part:
@@ -445,9 +447,16 @@ class ModelDownloader:
                         raise _HostUnavailable("download does not match its pinned checksum", reject_bytes=True)
                     self._replace(target, part, cancel)
                 return digest
-            finally:
-                if target != part:
-                    self._remove_restart(part)
+        finally:
+            # Close the socket before local cleanup. One best-effort unlink
+            # cannot delay or replace a cancellation/network error; the next
+            # admitted download retries removal before reusing this name.
+            if target != part:
+                expected = self._prepared_parts.pop(target, None)
+                with contextlib.suppress(OSError, verified.DownloadError):
+                    if (expected is not None and not target.is_symlink()
+                            and verified._part_identity(target.lstat()) == expected):
+                        target.unlink()
 
     def _receive(self, response: Any, target: Path, offset: int, info: FileInfo,
                  cancel: threading.Event | None, *,
@@ -582,10 +591,10 @@ class ModelDownloader:
     def _replace(self, part: Path, final: Path, cancel: threading.Event | None) -> None:
         self._file_op(lambda: os.replace(part, final), cancel, rename=True)
 
-    def _remove_restart(self, part: Path) -> None:
+    def _remove_restart(self, part: Path, cancel: threading.Event | None = None) -> None:
         side = part.with_name("." + part.name + ".restart")
-        # Cleanup must still run when the transfer was cancelled.
-        self._file_op(lambda: side.unlink(missing_ok=True), None)
+        # Preflight/success cleanup remains cancellable during scanner waits.
+        self._file_op(lambda: side.unlink(missing_ok=True), cancel)
 
     def download(self, repo: str, folder: Path, entry: ManifestEntry,
                  *, cancel_event: threading.Event | None = None) -> bool:
@@ -626,7 +635,7 @@ class ModelDownloader:
         for name, info in entry.files.items():
             final = folder / name
             part = verified.part_path(final)
-            self._remove_restart(part)
+            self._remove_restart(part, cancel)
             if final.exists():
                 if not final.is_file():
                     raise mm.ModelDestinationNotWritable(folder)
@@ -667,7 +676,7 @@ class ModelDownloader:
                         # one clean transfer before attributing bad bytes to it.
                     _check_cancel(cancel)
                     self._replace(part, final, cancel)
-                    self._remove_restart(part)
+                    self._remove_restart(part, cancel)
                     self.preferred = host
                     break
                 except _HostUnavailable as exc:

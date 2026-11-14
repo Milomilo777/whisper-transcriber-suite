@@ -6,6 +6,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Finish cancelled model downloads promptly even if a scanner locks the restart file. Close the response first and clean up only the owned file without replacing the cancellation error.
+
 - Keep the original word alignment when optional refinement returns missing segments, reordered text or incomplete words. Validate all replacements before changing any segment.
 
 - Check retired packaged files against every stable release tag, so a newer tag cannot hide files left by an older installation.
