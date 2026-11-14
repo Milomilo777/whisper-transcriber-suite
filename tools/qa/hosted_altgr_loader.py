@@ -32,8 +32,8 @@ class HostedEnvironmentError(RuntimeError):
     """Expected hosted layout/desktop limitation, retained as BLOCKED-ENV."""
 
 
-def exception_verdict(error):
-    return ("BLOCKED-ENV", 0) if isinstance(error, HostedEnvironmentError) else ("FAIL", 1)
+def exception_verdict(error, required=False):
+    return ("BLOCKED-ENV", int(required)) if isinstance(error, HostedEnvironmentError) else ("FAIL", 1)
 
 
 def validate_hosted_context(env, actual_head, tracked_dirty, platform_name):
@@ -67,18 +67,41 @@ def write_fallback_junit(output, status, reason):
     ET.ElementTree(suite).write(path, encoding="utf-8", xml_declaration=True)
 
 
-def final_verdict(rc, clean_xml, probe_status, missing_keys, xml_failed=False):
+def final_verdict(rc, clean_xml, probe_status, missing_keys, xml_failed=False, *, skipped_xml=False, required=False):
     # Environment skips remain visible in receipts/JUnit without blocking the
     # workflow until this acceptance has produced its first hosted PASS.
     if xml_failed:
         return "FAIL", 1
-    if rc == 0 and probe_status == "BLOCKED-ENV":
-        return "BLOCKED-ENV", 0
+    if rc == 0 and probe_status == "BLOCKED-ENV" and skipped_xml:
+        return "BLOCKED-ENV", int(required)
     if rc != 0 or not clean_xml or probe_status != "PASS":
         return "FAIL", 1
     if missing_keys:
         return "INCOMPLETE-KEY-COVERAGE", 1
     return "PASS", 0
+
+
+def junit_evidence(xml):
+    cases = list(xml.iter("testcase"))
+    failed = any(list(xml.iter(kind)) for kind in ("failure", "error"))
+    skips = list(xml.iter("skipped"))
+    clean = len(cases) == 1 and not failed and not skips
+    blocked = len(cases) == 1 and not failed and len(skips) == 1 and len(cases[0].findall("skipped")) == 1
+    return clean, failed, blocked
+
+
+def report_verdict(identity, summary_path):
+    status = identity["status"]
+    if status == "PASS":
+        print("AltGr native acceptance: PASS", flush=True)
+        return
+    reason = identity.get("message") or identity.get("probe_reason") or "Inspect retained native evidence"
+    escaped = str(reason).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+    kind = "warning" if status == "BLOCKED-ENV" else "error"
+    print("::" + kind + " title=AltGr acceptance " + status + "::" + escaped, flush=True)
+    if summary_path:
+        with Path(summary_path).open("a", encoding="utf-8") as summary:
+            summary.write("\n### AltGr native acceptance\n\nStatus: `" + status + "`. " + str(reason) + "\n")
 
 
 def covered_keys(rows):
@@ -92,6 +115,7 @@ def covered_keys(rows):
                 and all(ch.isprintable() or unicodedata.category(ch) == "Zs" for ch in expected)
                 and row.get("text") == expected and row.get("virtual_actions") == []
                 and isinstance(row.get("handler_results"), list)
+                and bool(row["handler_results"])
                 and "break" not in row["handler_results"])
 
     return [key for key in KEYS if any(valid(row, key) for row in rows)]
@@ -114,6 +138,9 @@ def activate_layout_verdict(api, target, expected):
 
 def main():
     env = os.environ.copy()
+    if env.get("QA_ALTGR_REQUIRED", "0") not in ("0", "1"):
+        raise RuntimeError("QA_ALTGR_REQUIRED must be 0 or 1")
+    required = env.get("QA_ALTGR_REQUIRED", "0") == "1"
     workspace = Path(env["GITHUB_WORKSPACE"]).resolve(strict=True)
 
     def git(*args):
@@ -143,7 +170,7 @@ def main():
     (packet / "plan.json").write_text(json.dumps({"job": job, "head": context["source_head"]}), encoding="utf-8")
     identity = {**context, "run_id": run_id, "run_attempt": attempt, "job": job,
                 "helper_source_head": context["source_head"], "helper_sha256": helpers,
-                "layout_api_started": False, "status": "STARTED", "missing_keys": list(KEYS)}
+                "layout_api_started": False, "status": "STARTED", "missing_keys": list(KEYS), "required": required}
     identity_path = output / "loaderidentity.json"
 
     def save():
@@ -223,17 +250,17 @@ def main():
             raise RuntimeError("Native probe produced no raw receipt")
         observation = json.loads(raw.read_text())
         identity["probe_status"] = observation.get("status")
+        identity["probe_reason"] = observation.get("reason")
         rows = observation.get("observations", [])
         covered = covered_keys(rows)
         identity["covered_keys"] = covered
         identity["missing_keys"] = [key for key in KEYS if key not in covered]
         xml = ET.parse(output / "results.xml").getroot()
-        cases = list(xml.iter("testcase"))
-        clean_xml = len(cases) == 1 and not any(list(xml.iter(kind)) for kind in ("skipped", "failure", "error"))
-        xml_failed = any(list(xml.iter(kind)) for kind in ("failure", "error"))
-        identity["status"], exit_code = final_verdict(rc, clean_xml, observation.get("status"), identity["missing_keys"], xml_failed)
+        clean_xml, xml_failed, skipped_xml = junit_evidence(xml)
+        identity["status"], exit_code = final_verdict(rc, clean_xml, observation.get("status"), identity["missing_keys"], xml_failed,
+                                                     skipped_xml=skipped_xml, required=required)
     except BaseException as error:
-        identity["status"], exit_code = exception_verdict(error)
+        identity["status"], exit_code = exception_verdict(error, required=required)
         identity.update(error=type(error).__name__, message=str(error))
     finally:
         cleanup_errors = []
@@ -269,6 +296,7 @@ def main():
             exit_code = 1
         write_fallback_junit(output, identity["status"], identity.get("message", "Native acceptance did not emit JUnit"))
         save()
+        report_verdict(identity, env.get("GITHUB_STEP_SUMMARY"))
     return exit_code
 
 

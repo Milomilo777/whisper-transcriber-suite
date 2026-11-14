@@ -359,6 +359,7 @@ jobs:
         env:
           QA_EXPECTED_HEAD: ${{ github.sha }}
           QA_ALTGR_KLID: '00020407'
+          QA_ALTGR_REQUIRED: '0'
         run: |
           $qaPython = Join-Path (Join-Path $env:RUNNER_TEMP 'wts-compact-venv') 'Scripts/python.exe'
           $qaResults = Join-Path $env:RUNNER_TEMP 'wts-altgr'

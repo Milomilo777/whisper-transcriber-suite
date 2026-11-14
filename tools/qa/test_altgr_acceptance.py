@@ -33,6 +33,7 @@ def test_finite_native_altgr_acceptance(record_property):
 
     save()
     root = None
+    phase = None
     try:
         assert sys.platform == "win32"
         root = tk.Tk()
@@ -241,7 +242,7 @@ def test_finite_native_altgr_acceptance(record_property):
                             pytest.skip("BLOCKED-ENV: printable native Entry baseline unavailable; app hook not run")
                         baselines[vk] = value
                     else:
-                        assert entry.get() == baselines[vk] and not virtual_actions and "break" not in handler_results, row
+                        assert entry.get() == baselines[vk] and not virtual_actions and handler_results and "break" not in handler_results, row
             data["status"] = "PASS"
         data["layout_after"] = hex(layout.current())
         assert data["thread_layout_state"]["restored"]
@@ -249,6 +250,9 @@ def test_finite_native_altgr_acceptance(record_property):
         data.update(status="FAIL", error=type(error).__name__, message=str(error))
         raise
     except GuardError as error:
+        if phase == "actual_app_hook":
+            data.update(status="FAIL", error=type(error).__name__, message=str(error))
+            raise
         data.update(status="BLOCKED-ENV", reason=str(error))
         save()
         pytest.skip("BLOCKED-ENV: native input safety guard denied completion")

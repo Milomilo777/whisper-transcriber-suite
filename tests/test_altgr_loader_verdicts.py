@@ -30,7 +30,7 @@ def load(name):
     (0, True, "PASS", [67], ("INCOMPLETE-KEY-COVERAGE", 1)),
 ])
 def test_verdict_keeps_environment_distinct_from_failure(rc, clean, status, missing, expected):
-    assert load("hosted_altgr_loader").final_verdict(rc, clean, status, missing) == expected
+    assert load("hosted_altgr_loader").final_verdict(rc, clean, status, missing, skipped_xml=not clean) == expected
 
 
 def test_xml_failure_overrides_a_blocked_raw_receipt():
@@ -42,6 +42,44 @@ def test_only_expected_environment_errors_can_be_nonblocking():
     assert loader.exception_verdict(loader.HostedEnvironmentError("layout unavailable")) == ("BLOCKED-ENV", 0)
     for error in (RuntimeError("bug"), NameError("bug"), OSError("io failure"), KeyboardInterrupt()):
         assert loader.exception_verdict(error) == ("FAIL", 1)
+
+
+def test_required_mode_keeps_environment_verdict_but_fails_the_gate():
+    loader = load("hosted_altgr_loader")
+    assert loader.final_verdict(0, False, "BLOCKED-ENV", [], skipped_xml=True, required=True) == ("BLOCKED-ENV", 1)
+    assert loader.exception_verdict(loader.HostedEnvironmentError("missing E1"), required=True) == ("BLOCKED-ENV", 1)
+
+
+@pytest.mark.parametrize("xml", [
+    '<testsuite/>', '<testsuite><testcase/></testsuite>',
+    '<testsuite><testcase><skipped/></testcase><testcase><skipped/></testcase></testsuite>',
+    '<testsuite><testcase><skipped/><failure/></testcase></testsuite>',
+])
+def test_blocked_receipt_requires_exactly_one_consistent_skipped_case(xml):
+    loader = load("hosted_altgr_loader")
+    clean, failed, skipped = loader.junit_evidence(ET.fromstring(xml))
+    assert loader.final_verdict(0, clean, "BLOCKED-ENV", [], failed, skipped_xml=skipped) == ("FAIL", 1)
+
+
+def test_one_real_skipped_case_can_only_report_environment_status():
+    loader = load("hosted_altgr_loader")
+    clean, failed, skipped = loader.junit_evidence(ET.fromstring('<testsuite><testcase><skipped/></testcase></testsuite>'))
+    assert (clean, failed, skipped) == (False, False, True)
+    assert loader.final_verdict(0, clean, "BLOCKED-ENV", [65], failed, skipped_xml=skipped) == ("BLOCKED-ENV", 0)
+    assert loader.final_verdict(0, clean, "PASS", [], failed, skipped_xml=skipped) == ("FAIL", 1)
+
+
+def test_environment_skip_is_visible_in_actions_warning_and_summary(tmp_path, capsys):
+    loader = load("hosted_altgr_loader")
+    summary = tmp_path / "summary.md"
+    loader.report_verdict({"status": "BLOCKED-ENV", "message": "missing E1\n::error::spoof"}, summary)
+    assert "::warning title=AltGr acceptance BLOCKED-ENV::missing E1%0A::error::spoof" in capsys.readouterr().out
+    assert "BLOCKED-ENV" in summary.read_text(encoding="utf-8")
+
+
+def test_real_failure_is_visible_in_actions_error(tmp_path, capsys):
+    load("hosted_altgr_loader").report_verdict({"status": "FAIL", "message": "hook failed"}, tmp_path / "summary.md")
+    assert "::error title=AltGr acceptance FAIL::hook failed" in capsys.readouterr().out
 
 
 def test_packet_writer_import_executes_the_hashed_packet_file(tmp_path, monkeypatch):
@@ -91,7 +129,7 @@ def test_all_four_real_hook_rows_cover_the_required_keys():
     {"phase": "plain_entry_baseline"}, {"text": "wrong"},
     {"text": "", "expected_altgr": ""}, {"text": "\t", "expected_altgr": "\t"},
     {"virtual_actions": ["<<Copy>>"]}, {"handler_results": ["break"]},
-    {"expected_altgr": None}, {"vk": 999},
+    {"expected_altgr": None}, {"vk": 999}, {"handler_results": []}, {"handler_results": "x"},
 ])
 def test_incomplete_or_intercepted_hook_row_is_not_coverage(change):
     assert load("hosted_altgr_loader").covered_keys([{**valid_row(65), **change}]) == []
@@ -218,3 +256,27 @@ def test_actual_probe_does_not_downgrade_cleanup_failure_to_environment_skip():
     with pytest.raises(guards.GuardCleanupError):
         exec(compile(ast.fix_missing_locations(ast.Module(body=[node], type_ignores=[])), "<actual-native-handlers>", "exec"), namespace)
     assert data["status"] == "FAIL"
+
+
+@pytest.mark.parametrize("phase", ["plain_entry_baseline", "actual_app_hook"])
+def test_actual_probe_guard_failure_is_fatal_after_baseline_passes(phase):
+    class EnvironmentSkip(RuntimeError):
+        pass
+
+    def skip(*args):
+        raise EnvironmentSkip()
+
+    guards = load("altgr_guards")
+    tree = ast.parse((HELPERS / "test_altgr_acceptance.py").read_text(encoding="utf-8"))
+    probe = next(n for n in tree.body if isinstance(n, ast.FunctionDef))
+    native_try = next(n for n in probe.body if isinstance(n, ast.Try))
+    node = ast.Try(body=[ast.Raise(exc=ast.Name(id="injected", ctx=ast.Load()), cause=None)],
+                   handlers=native_try.handlers, orelse=[], finalbody=[])
+    data = {}
+    namespace = {"GuardCleanupError": guards.GuardCleanupError, "GuardError": guards.GuardError,
+                 "injected": guards.GuardError("focus moved"), "data": data, "save": lambda: None,
+                 "pytest": SimpleNamespace(skip=skip), "phase": phase}
+    expected = guards.GuardError if phase == "actual_app_hook" else EnvironmentSkip
+    with pytest.raises(expected):
+        exec(compile(ast.fix_missing_locations(ast.Module(body=[node], type_ignores=[])), "<actual-native-handlers>", "exec"), namespace)
+    assert data["status"] == ("FAIL" if phase == "actual_app_hook" else "BLOCKED-ENV")

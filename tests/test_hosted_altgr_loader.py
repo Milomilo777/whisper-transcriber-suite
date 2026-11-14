@@ -119,7 +119,9 @@ def test_disposable_step_preserves_built_artifacts_and_timeout_evidence():
     assert native < names.index("Upload the build manifest")
     step = steps[native]
     assert step["timeout-minutes"] == 3
-    assert step["env"] == {"QA_EXPECTED_HEAD": "${{ github.sha }}", "QA_ALTGR_KLID": "00020407"}
+    assert {name: value for name, value in step["env"].items() if name != "QA_ALTGR_REQUIRED"} == {
+        "QA_EXPECTED_HEAD": "${{ github.sha }}", "QA_ALTGR_KLID": "00020407"}
+    assert step["env"]["QA_ALTGR_REQUIRED"] in {"0", "1"}
     upload = steps[names.index("Upload the build manifest")]
     assert upload["if"] == "always()"
     assert "${{ runner.temp }}/wts-altgr/**" in upload["with"]["path"]

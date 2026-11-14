@@ -27,6 +27,8 @@ verifies the active German Extended E1 layout before input. Its JSON and JUnit
 keep `BLOCKED-ENV` distinct from `PASS`: environment skips do not fail the
 workflow until the first hosted pass qualifies this check as a hard gate.
 Application failures, incomplete coverage and cleanup failures still fail.
+Environment skips emit an Actions warning and step summary; set
+`QA_ALTGR_REQUIRED=1` after qualification to make them fail the gate too.
 Keyboard layouts are loaded only inside that disposable hosted runner.
 
 From the repo root, run:
