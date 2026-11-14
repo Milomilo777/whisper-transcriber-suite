@@ -2214,6 +2214,7 @@ class TranscriptionService:
         # Audit D8: liveness watchdog. After draining the queue,
         # check every active worker. If one has been silent past the
         # threshold (heartbeat missed several times), restart it.
+        self._expire_blocked_cancels(now)
         self._expire_dead_workers(now)
         for w in list(self.active_workers()):
             last = float(w.get("last_event_at") or 0.0)
@@ -2227,6 +2228,40 @@ class TranscriptionService:
     # How long a worker whose process has exited may wait for its reader
     # thread's worker_exit before poll() synthesizes one.
     DEAD_WORKER_GRACE_S: float = 10.0
+
+    CANCEL_SEND_TIMEOUT_S: float = 5.0
+
+    def _expire_blocked_cancels(self, now: float) -> None:
+        """Retire a worker whose command pipe cannot accept its cancellation.
+
+        Use the existing background stop path; never wait on the blocked pipe
+        in Tk. Keep the last checkpoint and the caller's cancelled state.
+        A stale send cannot retire a reused slot or a different task.
+        """
+        for worker in list(self.app.workers):
+            pending = worker.get("pending_cancel_send")
+            if pending is None:
+                continue
+            if (worker.get("process") is not pending["process"]
+                    or worker.get("task") is not pending["task"]
+                    or pending["sent"].is_set()):
+                worker.pop("pending_cancel_send", None)
+                continue
+            if now - pending["started"] < self.CANCEL_SEND_TIMEOUT_S:
+                continue
+            worker.pop("pending_cancel_send", None)
+            task = pending["task"]
+            if task is None:
+                continue
+            task.status = "cancelled"
+            task.cancelled = True
+            task.recovery_note = (
+                "Cancellation could not reach the worker; stopped the blocked "
+                "transport. Any existing checkpoint was retained."
+            )
+            worker["ready"] = False
+            self.app.log(task.recovery_note)
+            self.retire_worker(worker)
 
     def _expire_dead_workers(self, now: float) -> None:
         """Synthesize ``worker_exit`` for a worker whose process is dead.
@@ -2599,6 +2634,17 @@ class TranscriptionService:
         # Taken here, on the caller's thread, so two controls sent in a row
         # reach the worker in that order whatever the writer threads do.
         ticket = self._take_send_ticket(worker)
+        pending = None
+        if command.get("action") == "cancel":
+            import time as _time
+            pending = {
+                "process": worker.get("process"), "task": worker.get("task"),
+                "started": _time.monotonic(), "sent": threading.Event(),
+            }
+            current = worker.get("pending_cancel_send")
+            if (current is None or current["process"] is not pending["process"]
+                    or current["task"] is not pending["task"]):
+                worker["pending_cancel_send"] = pending
 
         def _send() -> None:
             try:
@@ -2608,6 +2654,9 @@ class TranscriptionService:
                     "control %r to worker %s failed: %s",
                     command.get("action"), worker_id, e,
                 )
+            else:
+                if pending is not None:
+                    pending["sent"].set()
 
         try:
             threading.Thread(
