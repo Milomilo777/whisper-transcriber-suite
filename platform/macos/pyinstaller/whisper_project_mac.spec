@@ -1010,9 +1010,14 @@ if os.path.isdir(_app_bin):
         if not (os.path.isdir(_link) if _is_dir else os.path.isfile(_link)):
             raise SystemExit('[mac-spec] symlink for %s did not resolve' % _entry)
     print('[mac-spec] Contents/MacOS/bin symlinks: %s' % ', '.join(sorted(os.listdir(_macos_bin))))
-    # Re-seal the outer bundle signature over the replaced nested code.
-    _subprocess.run(['codesign', '--force', '--sign', '-', _app_path], check=True)
-    _subprocess.run(['codesign', '--verify', '--deep', '--strict', _app_path], check=True)
+
+# Wheel libraries may retain redundant absolute compiler search directories.
+# Prove all dependency contexts remain bundled, remove those paths and re-sign
+# changed binaries before the final outer seal and immutable packaging manifest.
+_subprocess.run([sys.executable, os.path.join(_REPO_ROOT, 'platform', 'macos', 'pyinstaller',
+                 'repair_bundle_rpaths.py'), _app_path], check=True)
+_subprocess.run(['codesign', '--force', '--sign', '-', _app_path], check=True)
+_subprocess.run(['codesign', '--verify', '--deep', '--strict', _app_path], check=True)
 
 # Verbatim tools and data arrive after Analysis. Reinspect the actual final app,
 # including nested yt-dlp binaries, before any packaging step can proceed.
