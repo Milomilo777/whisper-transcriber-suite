@@ -69,6 +69,7 @@ _FORM_FLAG = "form_submitted"
 _ERROR_LOCK = threading.RLock()
 _CONSENT_LOCK = threading.Lock()  # Memory only: never hold across I/O.
 _CONSENT_GENERATION = 0
+_PENDING_INSTALL_IDS: dict[int, dict[str, Any]] = {}
 _SESSION_ERRORS: dict[str, int] = {}
 _ERASURE_DONE = threading.Event()
 _ERASURE_DONE.set()
@@ -345,6 +346,10 @@ def install_id_for(config: dict[str, Any]) -> str:
             generation = _CONSENT_GENERATION
             if not bool(config.get("telemetry_opt_in", False)):
                 return ""
+            # A concurrent caller must not identify usage with a candidate
+            # whose save can still fail. Anonymous usage stays deliverable.
+            if _PENDING_INSTALL_IDS.get(id(config)) is config:
+                return ""
             current = config.get("install_id")
             if _valid_install_id(current):
                 return str(current)
@@ -364,10 +369,23 @@ def install_id_for(config: dict[str, Any]) -> str:
                 if _valid_install_id(current):
                     return str(current)
                 config["install_id"] = candidate
+                _PENDING_INSTALL_IDS[id(config)] = config
             try:
                 save_config(config)
             except Exception as e:  # noqa: BLE001 - stats never break anything
-                logger.debug("install id not saved (kept for this run): %s", e)
+                # An identified row must match the saved profile at delivery.
+                # Preserve usage anonymously when this new identity cannot be
+                # saved, rather than caching an identity every send will reject.
+                with _CONSENT_LOCK:
+                    if (generation == _CONSENT_GENERATION
+                            and config.get("install_id") == candidate):
+                        config["install_id"] = ""
+                logger.debug("install id not saved (using anonymous usage): %s", e)
+                return ""
+            finally:
+                with _CONSENT_LOCK:
+                    if _PENDING_INSTALL_IDS.get(id(config)) is config:
+                        del _PENDING_INSTALL_IDS[id(config)]
             with _CONSENT_LOCK:
                 if (generation == _CONSENT_GENERATION
                         and bool(config.get("telemetry_opt_in", False))
