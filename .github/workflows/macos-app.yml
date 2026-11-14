@@ -1,6 +1,7 @@
 name: macOS app build
 
-# Heavy build — MANUAL dispatch only (does not auto-run on push to master).
+# Heavy build: manual dispatch or an explicit build/integration branch push.
+# Does not auto-run on push to master.
 # Builds the PyInstaller .app/.dmg on real Apple-silicon and Intel runners and
 # TESTS THE RESULT LIKE A USER WOULD (real transcription with the frozen app,
 # GUI launch, bundled ffmpeg/yt-dlp) before uploading it.
@@ -10,7 +11,7 @@ name: macOS app build
 on:
   workflow_dispatch:
   push:
-    branches: [macos-app-build]
+    branches: [macos-app-build, codex/integration-2.4.x]
 
 permissions:
   contents: read

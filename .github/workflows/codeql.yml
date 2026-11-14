@@ -1,7 +1,7 @@
 name: CodeQL
 
 # Free static-analysis security scanning for public repos (GitHub's own
-# scanner). Runs on every push/PR to master plus a daily schedule, so new
+# scanner). Runs on mainline and integration pushes, PRs to master and a daily schedule, so new
 # queries and newly published weaknesses are caught between pushes.
 # Three languages: the Python app, the website's JavaScript (the in-browser
 # demo under site/try/) and the GitHub Actions workflows themselves
@@ -10,7 +10,7 @@ name: CodeQL
 
 on:
   push:
-    branches: [master]
+    branches: [master, codex/integration-2.4.x]
   pull_request:
     branches: [master]
   schedule:
