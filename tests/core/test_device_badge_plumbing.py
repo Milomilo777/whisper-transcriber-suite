@@ -113,7 +113,7 @@ def test_plain_cpu_only_host_does_not_warn(monkeypatch):
     app = _FakeApp([_worker(device="cpu", compute_type="int8")])
     svc = _svc(app)
     # No NVIDIA GPU on this host at all.
-    monkeypatch.setattr(hw, "cuda_status", lambda: hw.CudaStatus(
+    monkeypatch.setattr(hw, "isolated_cuda_status", lambda: hw.CudaStatus(
         usable=False, gpu_present=False, reason="No NVIDIA CUDA GPU was found.",
     ))
     svc.update_model_state()
@@ -129,7 +129,7 @@ def test_cpu_with_detected_but_unusable_gpu_warns(monkeypatch):
     app = _FakeApp([_worker(device="cpu", compute_type="int8")])
     svc = _svc(app)
     # An NVIDIA GPU is on the host but not usable (e.g. cuBLAS missing).
-    monkeypatch.setattr(hw, "cuda_status", lambda: hw.CudaStatus(
+    monkeypatch.setattr(hw, "isolated_cuda_status", lambda: hw.CudaStatus(
         usable=False, gpu_present=True, reason="cuBLAS missing",
     ))
     svc.update_model_state()
@@ -164,7 +164,7 @@ def test_gpu_check_runs_once_per_session_off_the_tk_thread(monkeypatch):
         calls.append(threading.current_thread().name)
         return hw.CudaStatus(usable=False, gpu_present=False, reason="none")
 
-    monkeypatch.setattr(hw, "cuda_status", _status)
+    monkeypatch.setattr(hw, "isolated_cuda_status", _status)
     app = _FakeApp([_worker(device="cpu", compute_type="int8")])
     svc = _svc(app)
     for _ in range(3):
