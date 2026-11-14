@@ -949,9 +949,14 @@ def _keep_timing_recovery(source: str, segments: list[dict[str, Any]], reason: s
 def _cap_segment(segment: dict[str, Any], audio_end: float) -> dict[str, Any]:
     result = dict(segment)
 
-    def interval(item: dict[str, Any], *, word: bool = False) -> dict[str, Any]:
+    def interval(item: dict[str, Any], *, word: bool = False,
+                 capped_end: float | None = None) -> dict[str, Any]:
         out = dict(item)
         start, end = float(item.get("start", 0.0)), float(item.get("end", 0.0))
+        if capped_end is not None and audio_end < start <= end <= capped_end:
+            # The enclosing raw segment already permits this tail to be capped.
+            # Retain its decoded word using the existing zero-length EOF form.
+            start = out["start"] = audio_end
         if (not math.isfinite(start) or not math.isfinite(end) or start < 0
                 or (start > audio_end if word else start >= audio_end) or end < start):
             raise _TimingBoundsError("Decoded timing is outside the audio; the text was preserved.")
@@ -962,7 +967,9 @@ def _cap_segment(segment: dict[str, Any], audio_end: float) -> dict[str, Any]:
     # — bound model timestamps by actual audio length, not predicted token ends.
     result = interval(result)
     if isinstance(result.get("words"), list):
-        result["words"] = [interval(word, word=True) for word in result["words"]]
+        raw_end = float(segment.get("end", 0.0))
+        result["words"] = [interval(word, word=True, capped_end=raw_end)
+                           for word in result["words"]]
     return result
 
 

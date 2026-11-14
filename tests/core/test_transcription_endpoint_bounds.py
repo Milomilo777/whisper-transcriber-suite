@@ -350,7 +350,7 @@ def test_short_final_cue_keeps_a_representable_positive_interval(endpoint_case, 
 def test_unusable_timing_keeps_all_decoded_text_before_error(endpoint_case, monkeypatch, kind):
     case = endpoint_case
     invalid = (Segment(2.6, 3.12, words=[Word(2.7, 3.12)]) if kind == "segment" else
-               Segment(2.14, 3.12, words=[Word(2.6, 3.12)]) if kind == "word" else
+               Segment(2.14, 3.12, words=[Word(2.6, 3.22)]) if kind == "word" else
                Segment(2.4884, 39817 / 16000, words=[]))
     duration = 39817 / 16000 if kind == "unrepresentable" else case.duration
     if kind == "unrepresentable":
