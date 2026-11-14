@@ -179,9 +179,14 @@ def _render_sibling(fmt: str, segments: list[dict[str, Any]]) -> str:
     return get_writer(fmt)(segments, "")
 
 
-def _write_text_atomically(path: str, text: str) -> None:
+def _write_text_atomically(
+    path: str, text: str, expect_stamp: tuple[int, int] | None = None,
+    *, check_missing: bool = False,
+) -> tuple[int, int]:
     """Write ``text`` to a temp sibling of ``path``, then move it into place."""
-    viewer_exports.write_atomically(path, text.encode("utf-8"))
+    return viewer_exports.write_atomically(
+        path, text.encode("utf-8"), expect_stamp=expect_stamp, check_missing=check_missing,
+    )
 
 
 def _find_media_next_to(json_path: str) -> str | None:
@@ -2380,7 +2385,8 @@ class TranscriptViewer(tk.Toplevel):
     def _save_changes(self) -> None:
         if not self._dirty:
             return
-        if self._disk_stamp is not None and _file_stamp(self.json_path) != self._disk_stamp:
+        disk_stamp = _file_stamp(self.json_path)
+        if self._disk_stamp is not None and disk_stamp != self._disk_stamp:
             if not messagebox.askyesno(
                 _("Transcript changed on disk"),
                 _("{name} was changed or removed by "
@@ -2399,7 +2405,9 @@ class TranscriptViewer(tk.Toplevel):
             # ever fails in a stripped-down environment.
             payload_s = json.dumps(self.segments, indent=2, ensure_ascii=False) + "\n"
         try:
-            _write_text_atomically(self.json_path, payload_s)
+            written_stamp = _write_text_atomically(
+                self.json_path, payload_s, expect_stamp=disk_stamp, check_missing=True,
+            )
         except Exception as e:  # noqa: BLE001
             show_error(
                 self, _("Save failed"),
@@ -2408,7 +2416,7 @@ class TranscriptViewer(tk.Toplevel):
             )
             return
         self._dirty = False
-        self._disk_stamp = _file_stamp(self.json_path)
+        self._disk_stamp = written_stamp
         notify(
             self,
             ngettext("Saved {n} segment(s) → {name}", "Saved {n} segment(s) → {name}",

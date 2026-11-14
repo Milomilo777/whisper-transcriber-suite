@@ -18,6 +18,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Serialize legacy settings migration with settings saves, preserving newer choices and existing recovery backups when multiple instances start together.
 - Finish saved transcripts even when a worker reports malformed optional counts or speed metadata. Preserve the history update and release the queue slot before accepting another job.
 - Finish saved transcripts even when a worker reports malformed optional counts or speed metadata, including during app shutdown. Preserve the history update and release the queue slot before accepting another job.
+- Preserve external transcript edits made while Save is preparing its output. Regenerated subtitle exports retain the stamp of the version actually written, so later external edits require review.
 
 - Replace three retired modules left by older Windows installations with inert compatibility files. This removes their old executable behavior during an overlay upgrade while preserving neighboring user files.
 

@@ -234,12 +234,15 @@ class ChangedWhileBuilding(Exception):
 
 
 def write_atomically(
-    path: str, data: bytes, expect_stamp: tuple[int, int] | None = None
-) -> None:
+    path: str, data: bytes, expect_stamp: tuple[int, int] | None = None,
+    *, check_missing: bool = False,
+) -> tuple[int, int]:
     """Write ``data`` to a temp sibling of ``path``, then move it into place.
 
     With ``expect_stamp`` the target is checked once more right before the move and left
     alone (``ChangedWhileBuilding``) when someone changed it while ``data`` was being built.
+    ``check_missing`` also checks an expected absent target. Return the staged
+    file's stamp, never the name's potentially newer contents after publication.
     """
     part = os.path.join(os.path.dirname(os.path.abspath(path)), f".viewer-{uuid.uuid4().hex}.part")
     created = False
@@ -249,12 +252,15 @@ def write_atomically(
             created = True
             f.write(data)
             _checkpoint._flush_to_disk(f)
-        if expect_stamp is not None and (
+        staged = os.stat(part)
+        stamp = (staged.st_mtime_ns, staged.st_size)
+        if (expect_stamp is not None or check_missing) and (
             file_stamp(path) != expect_stamp or link_reason(path) is not None
         ):
             raise ChangedWhileBuilding(path)
         os.replace(part, path)
         created = False
+        return stamp
     finally:
         if created:
             try:
@@ -416,7 +422,7 @@ def _update_one(
         return
     fmt, audio_path = plan
     try:
-        write_atomically(path, render_bytes(fmt, segments, audio_path), expect_stamp=stamp)
+        written_stamp = write_atomically(path, render_bytes(fmt, segments, audio_path), expect_stamp=stamp)
     except ChangedWhileBuilding:
         report.raced.append(path)
         return
@@ -424,7 +430,7 @@ def _update_one(
         logger.warning("Could not update %s", path, exc_info=True)
         report.failed.append(path)
         return
-    scan.synced[path] = file_stamp(path)
+    scan.synced[path] = written_stamp
     report.updated.append(path)
 
 
