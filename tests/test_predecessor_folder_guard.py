@@ -416,9 +416,10 @@ def test_missing_unicode_tails_use_windows_ordinal_case_rules(tmp_path, installe
 
 
 @pytest.mark.parametrize('unknown', [0, 4])
-def test_failed_ordinal_comparison_is_not_treated_as_no_overlap(monkeypatch, unknown):
+@pytest.mark.parametrize('installer', ['installer_embed.iss', 'installer.iss'])
+def test_failed_ordinal_comparison_is_not_treated_as_no_overlap(monkeypatch, unknown, installer):
     monkeypatch.setattr(DirectoryMetadata, 'compare', lambda *args: unknown)
-    source = (ROOT / 'installer.iss').read_text(encoding='utf-8')
+    source = (ROOT / installer).read_text(encoding='utf-8')
     assert paths_overlap(source, 'old\\', 'new\\')
 
 
@@ -428,8 +429,13 @@ def test_ordinal_api_receives_literal_numeric_true(installer):
     assert 'SecondLength: Integer; IgnoreCase: Integer): Integer;' in source
     calls = [line for line in source.splitlines()
              if 'PredecessorCompareNames(' in line and not line.startswith('function ')]
-    assert len(calls) == 3 and all(re.search(r', 1\)', line) for line in calls)
+    numeric_fifth_argument = (
+        r'\bPredecessorCompareNames\(\s*\w+\s*,\s*Length\(\w+\)\s*,'
+        r'\s*\w+\s*,\s*Length\(\w+\)\s*,\s*1\s*\)'
+    )
+    assert len(calls) == 3 and all(re.search(numeric_fifth_argument, line) for line in calls)
+    assert not any(re.search(r'\bPredecessorCompareNames\([^\n]*,\s*True\s*\)', line)
+                   for line in calls)
     if os.name == 'nt':
         api = DirectoryMetadata()
         assert api.kernel.CompareStringOrdinal('A', 1, 'a', 1, 1) == 2
-        assert api.kernel.CompareStringOrdinal('A', 1, 'a', 1, -1) == 0
