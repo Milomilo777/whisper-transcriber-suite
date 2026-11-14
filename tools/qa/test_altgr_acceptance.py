@@ -175,8 +175,15 @@ def test_finite_native_altgr_acceptance(record_property):
 
                     def bind_all(sequence, handler, add=None):
                         def wrapped(event):
-                            result = handler(event)
-                            handler_results.append(result)
+                            observed = {"keycode": event.keycode, "state": event.state,
+                                        "keysym": event.keysym, "result": None}
+                            handler_results.append(observed)
+                            try:
+                                result = handler(event)
+                            except Exception as error:
+                                observed["error"] = type(error).__name__
+                                raise
+                            observed["result"] = result
                             return result
                         root.bind_all(sequence, wrapped, add=add)
 
@@ -186,9 +193,9 @@ def test_finite_native_altgr_acceptance(record_property):
                     entry.delete(0, "end")
                     entry.focus_force()
                     pump()
-                    events.clear()
-                    virtual_actions.clear()
-                    handler_results.clear()
+                    events = []
+                    virtual_actions = []
+                    handler_results = []
                     proofs = []
 
                     class Native:
@@ -225,7 +232,8 @@ def test_finite_native_altgr_acceptance(record_property):
                         raise GuardError("Modifier or target key held; no input admitted")
                     selected_probe = next(item for item in selection["probes"] if item["hkl"] == hex(selection["selected"]))
                     expected = next(item["altgr"] for item in selected_probe["keys"] if item["vk"] == vk)
-                    row = {"phase": phase, "vk": vk, "expected_altgr": expected, "ownership": proofs}
+                    row = {"phase": phase, "vk": vk, "expected_altgr": expected, "ownership": proofs,
+                           "events": events, "virtual_actions": virtual_actions, "handler_results": handler_results}
                     data["observations"].append(row)
                     save()
                     row["input"] = guarded_chord(native, vk)
@@ -242,7 +250,10 @@ def test_finite_native_altgr_acceptance(record_property):
                             pytest.skip("BLOCKED-ENV: printable native Entry baseline unavailable; app hook not run")
                         baselines[vk] = value
                     else:
-                        assert entry.get() == baselines[vk] and not virtual_actions and handler_results and "break" not in handler_results, row
+                        row["target_callback_observed"] = any(observed["keycode"] == vk for observed in handler_results)
+                        row["character_delivered"] = entry.get() == baselines[vk]
+                        row["hook_body_observation"] = "OBSERVED" if row["target_callback_observed"] else "NOT_EXERCISED"
+                        assert row["character_delivered"] and not virtual_actions and row["target_callback_observed"] and all(observed["result"] != "break" and not observed.get("error") for observed in handler_results), row
             data["status"] = "PASS"
         data["layout_after"] = hex(layout.current())
         assert data["thread_layout_state"]["restored"]

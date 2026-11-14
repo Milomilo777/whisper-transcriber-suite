@@ -27,6 +27,11 @@ verifies the active German Extended E1 layout before input. Its JSON and JUnit
 keep `BLOCKED-ENV` distinct from `PASS`: environment skips do not fail the
 workflow until the first hosted pass qualifies this check as a hard gate.
 Application failures, incomplete coverage and cleanup failures still fail.
+Ownership/focus guard failures during the App-hook phase also fail after the
+plain Entry baseline has passed. Receipts retain each callback's keycode, state,
+keysym and result alongside generic key events; a modifier callback cannot
+stand in for the target key. Character delivery and hook-body observation are
+recorded separately, including when the latter was not exercised.
 Environment skips emit an Actions warning and step summary; set
 `QA_ALTGR_REQUIRED=1` after qualification to make them fail the gate too.
 Keyboard layouts are loaded only inside that disposable hosted runner.

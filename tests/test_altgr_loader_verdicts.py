@@ -117,7 +117,8 @@ def test_packet_inventory_includes_every_native_sibling_import():
 
 def valid_row(key):
     return {"vk": key, "phase": "actual_app_hook", "text": "\u202f",
-            "expected_altgr": "\u202f", "virtual_actions": [], "handler_results": [None]}
+            "expected_altgr": "\u202f", "virtual_actions": [],
+            "handler_results": [{"keycode": key, "state": 0x20004, "keysym": "a", "result": None}]}
 
 
 def test_all_four_real_hook_rows_cover_the_required_keys():

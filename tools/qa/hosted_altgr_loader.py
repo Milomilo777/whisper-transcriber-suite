@@ -90,18 +90,40 @@ def junit_evidence(xml):
     return clean, failed, blocked
 
 
+def verdict_reason(identity):
+    reasons = [identity.get(name) for name in ("message", "reason", "probe_message", "probe_reason")]
+    for name in ("cleanup_errors", "probe_cleanup_errors"):
+        reasons.extend(identity.get(name) or [])
+    if identity["status"] == "INCOMPLETE-KEY-COVERAGE":
+        reasons.append("Missing target callback coverage for keys: " + ", ".join(map(str, identity.get("missing_keys", []))))
+    return "; ".join(dict.fromkeys(str(reason) for reason in reasons if reason)) or "Inspect retained native evidence"
+
+
 def report_verdict(identity, summary_path):
     status = identity["status"]
     if status == "PASS":
         print("AltGr native acceptance: PASS", flush=True)
         return
-    reason = identity.get("message") or identity.get("probe_reason") or "Inspect retained native evidence"
+    reason = verdict_reason(identity)
     escaped = str(reason).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
     kind = "warning" if status == "BLOCKED-ENV" else "error"
     print("::" + kind + " title=AltGr acceptance " + status + "::" + escaped, flush=True)
     if summary_path:
-        with Path(summary_path).open("a", encoding="utf-8") as summary:
-            summary.write("\n### AltGr native acceptance\n\nStatus: `" + status + "`. " + str(reason) + "\n")
+        import html
+        try:
+            with Path(summary_path).open("a", encoding="utf-8") as summary:
+                summary.write("\n### AltGr native acceptance\n\nStatus: `" + status + "`.\n\n<pre>"
+                              + html.escape(" ".join(reason.split())) + "</pre>\n")
+        except OSError:
+            print("::warning title=AltGr summary unavailable::Could not append the step summary; native verdict and receipts are retained", flush=True)
+
+
+def apply_probe_evidence(identity, observation):
+    """Carry raw fatal causes and observed callbacks into the visible verdict."""
+    identity.update(probe_status=observation.get("status"), probe_reason=observation.get("reason"),
+                    probe_message=observation.get("message"), probe_cleanup_errors=observation.get("cleanup_errors", []))
+    identity["covered_keys"] = covered_keys(observation.get("observations", []))
+    identity["missing_keys"] = [key for key in KEYS if key not in identity["covered_keys"]]
 
 
 def covered_keys(rows):
@@ -115,8 +137,11 @@ def covered_keys(rows):
                 and all(ch.isprintable() or unicodedata.category(ch) == "Zs" for ch in expected)
                 and row.get("text") == expected and row.get("virtual_actions") == []
                 and isinstance(row.get("handler_results"), list)
-                and bool(row["handler_results"])
-                and "break" not in row["handler_results"])
+                and all(isinstance(event, dict) and type(event.get("keycode")) is int
+                        and type(event.get("state")) is int and isinstance(event.get("keysym"), str)
+                        and "result" in event and event["result"] != "break" and not event.get("error")
+                        for event in row["handler_results"])
+                and any(event["keycode"] == key for event in row["handler_results"]))
 
     return [key for key in KEYS if any(valid(row, key) for row in rows)]
 
@@ -249,12 +274,7 @@ def main():
         if not raw.is_file():
             raise RuntimeError("Native probe produced no raw receipt")
         observation = json.loads(raw.read_text())
-        identity["probe_status"] = observation.get("status")
-        identity["probe_reason"] = observation.get("reason")
-        rows = observation.get("observations", [])
-        covered = covered_keys(rows)
-        identity["covered_keys"] = covered
-        identity["missing_keys"] = [key for key in KEYS if key not in covered]
+        apply_probe_evidence(identity, observation)
         xml = ET.parse(output / "results.xml").getroot()
         clean_xml, xml_failed, skipped_xml = junit_evidence(xml)
         identity["status"], exit_code = final_verdict(rc, clean_xml, observation.get("status"), identity["missing_keys"], xml_failed,
