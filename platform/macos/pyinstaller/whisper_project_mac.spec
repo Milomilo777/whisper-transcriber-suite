@@ -1014,7 +1014,7 @@ if os.path.isdir(_app_bin):
 # Wheel libraries may retain redundant absolute compiler search directories.
 # Prove all dependency contexts remain bundled, remove those paths and re-sign
 # changed binaries before the final outer seal and immutable packaging manifest.
-_subprocess.run([sys.executable, os.path.join(_REPO_ROOT, 'platform', 'macos', 'pyinstaller',
+_subprocess.run([_sys.executable, os.path.join(_REPO_ROOT, 'platform', 'macos', 'pyinstaller',
                  'repair_bundle_rpaths.py'), _app_path], check=True)
 _subprocess.run(['codesign', '--force', '--sign', '-', _app_path], check=True)
 _subprocess.run(['codesign', '--verify', '--deep', '--strict', _app_path], check=True)

@@ -1,4 +1,5 @@
 """Controlled native-tool commands; these are not native macOS bundle tests."""
+import ast
 import importlib.util
 import json
 import os
@@ -7,6 +8,7 @@ import subprocess
 import sys
 
 import pytest
+from tests.mac_path_alias import directory_alias
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -124,8 +126,14 @@ def test_spec_repairs_vendor_rpath_before_final_outer_signing(bundle, monkeypatc
 
     monkeypatch.setattr(subprocess, "run", spec_run)
     namespace = dict(DISTPATH=str(app.parent), _POST_COPY_BINS=[], _BIN_DIR=str(app.parent / "bin"),
-        _REPO_ROOT=str(ROOT), os=__import__('os'), sys=sys, _MIN_MACOS='14.0', _native_target='arm64',
+        _REPO_ROOT=str(ROOT), os=__import__('os'), _MIN_MACOS='14.0', _native_target='arm64',
         _minimum_sources=lambda *a: [], _require_native_components=lambda *a: None)
+    # Bind the interpreter only under names actually imported by the full spec.
+    for statement in ast.parse(source).body:
+        if isinstance(statement, ast.Import):
+            for alias in statement.names:
+                if alias.name == 'sys':
+                    namespace[alias.asname or alias.name] = sys
     if tool_failure:
         change(state, library, fail_tool=tool_failure)
         with pytest.raises(subprocess.CalledProcessError):
@@ -362,7 +370,7 @@ def test_absolute_inbundle_search_path_is_retained(bundle, monkeypatch, vendor):
 def test_absolute_symlink_canonical_inside_bundle_is_retained(bundle, monkeypatch):
     app, _gui, library, _dependency, state, log, run = bundle
     alias = app / 'Contents/Frameworks/local-library-alias'
-    os.symlink(library.parent, alias, target_is_directory=True)
+    directory_alias(alias, library.parent)
     internal = native_absolute(alias)
     change(state, library, rpaths=[internal, VENDOR])
     assert load_helper(monkeypatch, 'repair_bundle_rpaths').repair_bundle(app, run=run) == 1
@@ -377,7 +385,7 @@ def test_bundle_spelled_absolute_escape_is_not_silently_deleted(bundle, monkeypa
     outside.mkdir()
     alias = app / 'Contents/Frameworks/escaping-alias'
     if symlink:
-        os.symlink(outside, alias, target_is_directory=True)
+        directory_alias(alias, outside)
         escape = native_absolute(alias)
     else:
         escape = native_absolute(app / '..' / '..' / 'outside')
