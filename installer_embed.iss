@@ -148,17 +148,151 @@ const
 
 // Refuse cross-product overlays: the retained predecessor uninstaller still
 // owns its old folder and may recursively delete files installed beneath it.
+// Resolve existing ancestors through directory handles, including reparse
+// points, short names and mapped paths. Append only proven-missing components.
+type
+  TPredecessorFileInfo = record
+    Attributes: Cardinal;
+    CreationTime, AccessTime, WriteTime: TFileTime;
+    VolumeSerial, SizeHigh, SizeLow, LinkCount, IndexHigh, IndexLow: Cardinal;
+  end;
+
+function PredecessorOpenPath(Name: String; Access, Share: Cardinal;
+  Security: NativeUInt; Creation, Flags: Cardinal; Template: THandle): THandle;
+  external 'CreateFileW@kernel32.dll stdcall';
+function PredecessorFinalPath(Handle: THandle; Buffer: String;
+  Capacity, Flags: Cardinal): Cardinal;
+  external 'GetFinalPathNameByHandleW@kernel32.dll stdcall';
+function PredecessorFileInfo(Handle: THandle; var Info: TPredecessorFileInfo): BOOL;
+  external 'GetFileInformationByHandle@kernel32.dll stdcall';
+function PredecessorClosePath(Handle: THandle): BOOL;
+  external 'CloseHandle@kernel32.dll stdcall';
+function PredecessorPathAttributes(Name: String): Cardinal;
+  external 'GetFileAttributesW@kernel32.dll stdcall';
+function PredecessorLastError(): Cardinal;
+  external 'GetLastError@kernel32.dll stdcall';
+
+function CanonicalPredecessorFolder(Folder: String; var Canonical: String): Boolean;
+var
+  Current, Parent, Leaf, Suffix, Buffer: String;
+  Handle: THandle;
+  Count, Error, Attributes: Cardinal;
+  Info: TPredecessorFileInfo;
+begin
+  Result := False;
+  Canonical := '';
+  if (Copy(Folder, 2, 2) <> ':\') and (Copy(Folder, 1, 2) <> '\\') then Exit;
+  Current := RemoveBackslashUnlessRoot(ExpandFileName(Folder));
+  if Length(Current) > 32767 then Exit;
+  Suffix := '';
+  while Current <> '' do begin
+    // OPEN_EXISTING + BACKUP_SEMANTICS follows directory reparse targets.
+    Handle := PredecessorOpenPath(Current, 0, 7, 0, 3, $02000000, 0);
+    if NativeInt(Handle) <> -1 then begin
+      try
+        if not PredecessorFileInfo(Handle, Info) then Exit;
+        if (Info.Attributes and FILE_ATTRIBUTE_DIRECTORY) = 0 then Exit;
+        SetLength(Buffer, 32768);
+        // FILE_NAME_NORMALIZED + VOLUME_NAME_NT avoids drive-letter aliases.
+        Count := PredecessorFinalPath(Handle, Buffer, Length(Buffer), 2);
+        if (Count = 0) or (Count >= Cardinal(Length(Buffer))) then Exit;
+        Canonical := AddBackslash(Copy(Buffer, 1, Count)) + Suffix;
+        if Length(Canonical) > 32767 then Exit;
+        Result := True;
+        Exit;
+      finally
+        PredecessorClosePath(Handle);
+      end;
+    end;
+    Error := PredecessorLastError();
+    if (Error <> 2) and (Error <> 3) then Exit;
+    // A broken/denied reparse route is not a nonexistent ordinary component.
+    Attributes := PredecessorPathAttributes(Current);
+    if Attributes <> $FFFFFFFF then Exit;
+    Error := PredecessorLastError();
+    if (Error <> 2) and (Error <> 3) then Exit;
+    Leaf := ExtractFileName(Current);
+    Parent := RemoveBackslashUnlessRoot(ExtractFileDir(Current));
+    if (Leaf = '') or (Parent = '') or (Parent = Current) then Exit;
+    Suffix := Leaf + '\' + Suffix;
+    Current := Parent;
+  end;
+end;
+
+function PredecessorCompareNames(First: String; FirstLength: Integer;
+  Second: String; SecondLength: Integer; IgnoreCase: BOOL): Integer;
+  external 'CompareStringOrdinal@kernel32.dll stdcall';
+
+function PredecessorPathsOverlap(OldDir, NewDir: String): Boolean;
+var Comparison: Integer;
+begin
+  Result := True;
+  if Length(OldDir) <= Length(NewDir) then begin
+    Comparison := PredecessorCompareNames(OldDir, Length(OldDir), NewDir, Length(OldDir), True);
+    if (Comparison <> 1) and (Comparison <> 3) then Exit;
+  end;
+  if Length(NewDir) <= Length(OldDir) then begin
+    Comparison := PredecessorCompareNames(NewDir, Length(NewDir), OldDir, Length(NewDir), True);
+    if (Comparison <> 1) and (Comparison <> 3) then Exit;
+  end;
+  Result := False;
+end;
+
+function PredecessorDriveType(Root: String): Cardinal;
+  external 'GetDriveTypeW@kernel32.dll stdcall';
+
+// Different SMB authority/share spellings may refer to the same storage.
+// Only compare names inside one proven normalized namespace; otherwise refuse.
+function PredecessorNamespace(Canonical, Original: String): String;
+var Remaining, Device, Server, Share: String;
+  Separator: Integer;
+  DriveType: Cardinal;
+begin
+  Result := '';
+  if Lowercase(Copy(Canonical, 1, 8)) <> '\device\' then Exit;
+  Remaining := Copy(Canonical, 9, Length(Canonical));
+  Separator := Pos('\', Remaining);
+  if Separator = 0 then Exit;
+  Device := Lowercase(Copy(Remaining, 1, Separator - 1));
+  Remaining := Copy(Remaining, Separator + 1, Length(Remaining));
+  if Device = 'mup' then begin
+    Separator := Pos('\', Remaining);
+    if Separator = 0 then Exit;
+    Server := Copy(Remaining, 1, Separator - 1);
+    Remaining := Copy(Remaining, Separator + 1, Length(Remaining));
+    Separator := Pos('\', Remaining);
+    if Separator = 0 then Exit;
+    Share := Copy(Remaining, 1, Separator - 1);
+    if (Server = '') or (Share = '') or (Pos(';', Server) <> 0) or
+       (Pos(':', Server) <> 0) then Exit;
+    Result := '\device\mup\' + Server + '\' + Share + '\';
+  end else begin
+    DriveType := PredecessorDriveType(AddBackslash(ExtractFileDrive(Original)));
+    if (DriveType = 0) or (DriveType = 1) or (DriveType = 4) then Exit;
+    if (Device = '') or (Device = 'lanmanredirector') or (Device = 'webdavredirector') then Exit;
+    Result := '\device\' + Device + '\';
+  end;
+end;
+
 function PredecessorFolderOverlaps(RootKey: Integer): Boolean;
-var OldDir, NewDir, UninstPath: String;
+var OldDir, OldPhysical, NewDir, OldNamespace, NewNamespace, UninstPath: String;
 begin
   Result := False;
   OldDir := '';
   UninstPath := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\' + OldAppId + '_is1';
-  if not RegQueryStringValue(RootKey, UninstPath, 'Inno Setup: App Path', OldDir) then Exit;
-  if OldDir = '' then Exit;
-  OldDir := Lowercase(AddBackslash(ExpandFileName(OldDir)));
-  NewDir := Lowercase(AddBackslash(ExpandFileName(ExpandConstant('{app}'))));
-  Result := (Pos(OldDir, NewDir) = 1) or (Pos(NewDir, OldDir) = 1);
+  if not RegKeyExists(RootKey, UninstPath) then Exit;
+  if not RegQueryStringValue(RootKey, UninstPath, 'Inno Setup: App Path', OldDir) then begin Result := True; Exit; end;
+  if OldDir = '' then begin Result := True; Exit; end;
+  // Unknown physical ownership must not permit a cross-product overlay.
+  if not CanonicalPredecessorFolder(OldDir, OldPhysical) then begin Result := True; Exit; end;
+  if not CanonicalPredecessorFolder(ExpandConstant('{app}'), NewDir) then begin Result := True; Exit; end;
+  OldNamespace := PredecessorNamespace(OldPhysical, OldDir);
+  NewNamespace := PredecessorNamespace(NewDir, ExpandConstant('{app}'));
+  if (OldNamespace = '') or (NewNamespace = '') then begin Result := True; Exit; end;
+  if ((Pos('\device\mup\', OldNamespace) = 1) or (Pos('\device\mup\', NewNamespace) = 1)) and
+     (PredecessorCompareNames(OldNamespace, Length(OldNamespace), NewNamespace, Length(NewNamespace), True) <> 2) then begin Result := True; Exit; end;
+  OldDir := OldPhysical;
+  Result := PredecessorPathsOverlap(OldDir, NewDir);
 end;
 
 function SharesPredecessorFolder(): Boolean;
