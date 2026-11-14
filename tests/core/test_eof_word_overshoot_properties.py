@@ -1,9 +1,12 @@
 """Contained tail capping preserves ordered decoded words and raw evidence."""
 from copy import deepcopy
 
-from hypothesis import given, settings, strategies as st
+import pytest
 
-from core import transcriber as tr
+pytest.importorskip("hypothesis")
+from hypothesis import given, settings, strategies as st  # noqa: E402
+
+from core import transcriber as tr  # noqa: E402
 
 
 @settings(max_examples=50, database=None, derandomize=True, deadline=None)

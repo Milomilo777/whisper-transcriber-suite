@@ -41,15 +41,15 @@ def test_transcribe_bounds_word_inside_capped_segment_tail_and_saves_outputs(
 
 def test_transcribe_lone_word_inside_segment_overshoot_survives(endpoint_case, monkeypatch):
     case = endpoint_case
-    install_model(monkeypatch, [Segment(2.14, 3.12, words=[Word(2.6, 3.12)])])
+    install_model(monkeypatch, [Segment(2.14, 3.12, text='last', words=[Word(2.6, 3.12)])])
     task = output_task(case)
     tr.transcribe(task)
     path = next(Path(p) for p in task.output_paths if p.endswith('.json'))
     saved = json.loads(path.read_text(encoding='utf-8'))
-    assert saved[0]['text'] == 'last words'
+    assert saved[0]['text'] == 'last'
     assert [word['word'] for word in saved[0]['words']] == ['last']
     assert saved[0]['words'][0]['start'] == saved[0]['words'][0]['end'] == case.duration
-    assert all('last words' in Path(path).read_text(encoding='utf-8') for path in task.output_paths)
+    assert all('last' in Path(path).read_text(encoding='utf-8') for path in task.output_paths)
 
 
 def test_word_outside_its_raw_segment_is_still_rejected():
