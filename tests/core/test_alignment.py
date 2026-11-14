@@ -208,3 +208,32 @@ def test_refine_raises_on_missing_audio(alignment_module, monkeypatch):
             "/no/such/audio.wav",
             [{"start": 0.0, "end": 1.0, "text": "hi"}],
         )
+
+
+@pytest.mark.parametrize("returned", ["missing-head", "partial-words", "partial-tail", "reordered"])
+def test_partial_or_reordered_alignment_never_reassigns_text(alignment_module, monkeypatch, tmp_path, returned):
+    from types import SimpleNamespace as NS
+    from copy import deepcopy
+    monkeypatch.setattr(alignment_module, "is_available", lambda: True)
+    original = [
+        {"start": 0., "end": 1., "text": "first line", "words": [{"word": "first line", "start": 0., "end": 1.}]},
+        {"start": 1., "end": 2., "text": "last line", "words": [{"word": "last line", "start": 1., "end": 2.}]},
+    ]
+    rows = [NS(words=[NS(word=s["text"], start=s["start"], end=s["end"], probability=1.)]) for s in original]
+    if returned == "missing-head":
+        rows = rows[1:]
+    elif returned == "reordered":
+        rows.reverse()
+    elif returned == "partial-tail":
+        rows[1].words[0].word = "last"
+    else:
+        rows[0].words[0].word = "first"
+    fake = types.ModuleType("stable_whisper")
+    fake.WhisperResult = lambda payload: NS(language="en")
+    fake.load_model = lambda _: NS(align=lambda *a, **k: NS(segments=rows))
+    monkeypatch.setitem(sys.modules, "stable_whisper", fake)
+    audio = tmp_path / "a.wav"
+    audio.write_bytes(b"fixture")
+    candidate = deepcopy(original)
+    assert alignment_module.refine_word_timestamps_in_place(str(audio), candidate) is False
+    assert candidate == original

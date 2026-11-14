@@ -162,11 +162,15 @@ def refine_word_timestamps_in_place(
     if not refined_segments:
         return False
 
-    # Splice the refined word lists into segments_data, matching by
-    # index. stable-ts preserves order when aligning a sequence.
-    n = min(len(refined_segments), len(segments_data))
-    spliced_any = False
-    for i in range(n):
+    # Refinement is optional: retain the complete original alignment if the
+    # result drops/reorders segments or omits words. Validate the whole result
+    # before mutating any caller-owned list.
+    from .writers.base import words_match_text
+
+    if len(refined_segments) != len(segments_data):
+        return False
+    replacements: list[list[dict[str, Any]]] = []
+    for i in range(len(segments_data)):
         words = getattr(refined_segments[i], "words", None) or []
         seg_words: list[dict[str, Any]] = []
         for w in words:
@@ -176,7 +180,13 @@ def refine_word_timestamps_in_place(
                 "word": str(getattr(w, "word", "") or "").strip(),
                 "probability": float(getattr(w, "probability", 1.0)),
             })
+        candidate = dict(segments_data[i], words=seg_words)
+        if candidate.get("text") and not words_match_text(candidate):
+            return False
+        replacements.append(seg_words)
+    spliced_any = False
+    for segment, seg_words in zip(segments_data, replacements):
         if seg_words:
-            segments_data[i]["words"] = seg_words
+            segment["words"] = seg_words
             spliced_any = True
     return spliced_any
