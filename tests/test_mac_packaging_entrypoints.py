@@ -6,6 +6,7 @@ import subprocess
 import sys
 import pytest
 from tests.test_mac_build_pins import _find_bash
+from tests.mac_path_alias import directory_alias
 from tests.test_mac_review_regressions import app,SPEC
 
 def run_entry(tmp_path,host='10.15.7',audit=0,*,image=False,copied_audit=0,mutation=None,args='',existing=False,suffix='x64',thin=False):
@@ -162,7 +163,7 @@ def test_copied_gui_temp_failures_stop_before_launch(tmp_path,failure):
  assert not list((tmp_path/'real').glob('wts-*'))
 
 
-def run_copied_gui_fixture(tmp_path,temporary_root,*,fresh_log=True,owned_process=True,mktemp_failure='none'):
+def run_copied_gui_fixture(tmp_path,temporary_root,*,fresh_log=True,owned_process=True,mktemp_failure='none',proof_ready=True,open_ok=True,stop_ok=True):
  """Execute real temp setup, GUI proof and cleanup with controlled OS replies."""
  bash=_find_bash()
  if bash is None:pytest.skip('A working Bash is required')
@@ -170,11 +171,11 @@ def run_copied_gui_fixture(tmp_path,temporary_root,*,fresh_log=True,owned_proces
  setup=script[script.index('NAME="Whisper Transcriber Suite"'):script.index('\nCONTRACT=')]
  gui=script[script.index('if [ "$GUI" = 1 ]; then\n  echo "== 3.'):script.index('\necho "== 4. detach"')]
  (tmp_path/'real').mkdir()
- if temporary_root=='alias':(tmp_path/'alias').symlink_to(tmp_path/'real',target_is_directory=True)
+ if temporary_root=='alias':directory_alias(tmp_path/'alias',tmp_path/'real')
  env=os.environ.copy()
  env.update(TEMP_FIXTURE=str(tmp_path).replace('\\','/'),TMP_MODE=temporary_root,
             FRESH_LOG=str(int(fresh_log)),OWNED_PROCESS=str(int(owned_process)),
-            FAIL_MKTEMP=mktemp_failure)
+            FAIL_MKTEMP=mktemp_failure,PROOF_READY=str(int(proof_ready)),OPEN_OK=str(int(open_ok)),STOP_OK=str(int(stop_ok)))
  prelude='''set -uo pipefail
 BASE="$(cd -- "$TEMP_FIXTURE" && pwd -P)"
 case "$TMP_MODE" in
@@ -192,6 +193,7 @@ mkdir -p "$HOME/Library/Logs/WhisperTranscriberSuite"
 printf 'App startup old\\n' > "$HOME/Library/Logs/WhisperTranscriberSuite/app.log"
 open() {
   printf called > "$BASE/opened"
+  if [ "$OPEN_OK" != 1 ]; then OWNED_PROCESS=0; return 1; fi
   ACTUAL_OWNED_ARGV="$(cd -- "$1" && pwd -P)/Contents/MacOS/Whisper Transcriber Suite"
   if [ "$FRESH_LOG" = 1 ]; then printf 'App startup new\\n' >> "$HOME/Library/Logs/WhisperTranscriberSuite/app.log"; fi
 }
@@ -202,12 +204,20 @@ hdiutil() { :; }
 python_stub() {
   if [ "$1" = -c ]; then printf '1000\\n'; return 0; fi
   if [ "$1" = - ]; then printf called > "$BASE/diagnostic.called"; return 0; fi
+  if [ "$2" = preflight ]; then [ "$PROOF_READY" = 1 ]; return $?; fi
   if [ "$2" = capture ]; then
     printf '{}' > "$5"
-    [ "$OWNED_PROCESS" = 1 ]; return $?
+    [ "$OWNED_PROCESS" = 1 ] || return 1
+    candidate="$(cd -- "$(dirname "$3")" && pwd -P)/$(basename "$3")" || return 2
+    [ "$candidate" = "${ACTUAL_OWNED_ARGV:-}" ]; return $?
   fi
   if [ "$2" = stop ]; then
-    if [ "$OWNED_PROCESS" = 1 ]; then printf '42424\\n' >> "$BASE/killed"; OWNED_PROCESS=0; fi
+    [ "$STOP_OK" = 1 ] || return 1
+    if [ "$OWNED_PROCESS" = 1 ]; then
+      candidate="$(cd -- "$(dirname "$3")" && pwd -P)/$(basename "$3")" || return 2
+      [ "$candidate" = "${ACTUAL_OWNED_ARGV:-}" ] || return 2
+      printf '42424\\n' >> "$BASE/killed"; OWNED_PROCESS=0
+    fi
     return 0
   fi
   return 2
@@ -220,3 +230,38 @@ mktemp() {
 '''
  code=prelude+setup+'\nAPP="$DEST/$NAME.app"\nmkdir -p "$APP/Contents/MacOS"\n'+gui+'\n[ "$fail" = 0 ]\n'
  return subprocess.run([bash,'-c',code],cwd=tmp_path,env=env,capture_output=True,text=True,timeout=15)
+
+
+def test_missing_process_dependency_stops_before_open(tmp_path):
+ result=run_copied_gui_fixture(tmp_path,'plain',proof_ready=False)
+ assert result.returncode!=0,result.stdout+result.stderr
+ assert not (tmp_path/'opened').exists()
+ assert not (tmp_path/'killed').exists()
+ assert not list((tmp_path/'real').glob('wts-*'))
+
+
+def test_copied_gui_open_failure_never_signals_unidentified_process(tmp_path):
+ result=run_copied_gui_fixture(tmp_path,'plain',open_ok=False)
+ assert result.returncode!=0,result.stdout+result.stderr
+ assert not (tmp_path/'killed').exists()
+
+
+def test_copied_gui_cleanup_failure_preserves_copy_and_fails(tmp_path):
+ result=run_copied_gui_fixture(tmp_path,'plain',stop_ok=False)
+ assert result.returncode!=0,result.stdout+result.stderr
+ assert 'preserving' in result.stderr
+ assert len(list((tmp_path/'real').glob('wts-apps.*')))==1
+ assert not (tmp_path/'killed').exists()
+
+
+def test_builder_passes_the_dependency_python_to_dmg(tmp_path):
+ bash=_find_bash()
+ if bash is None:pytest.fail('Bash is required for this packaging contract')
+ root=Path(__file__).resolve().parents[1]
+ script=(root/'platform/macos/build_mac.sh').read_text()
+ line=next(line for line in script.splitlines() if line.startswith('PYTHON=') and 'builddmg.command' in line)
+ environment=os.environ.copy();environment['BASE_FIXTURE']=str(tmp_path).replace('\\','/')
+ code='set -euo pipefail\ncd "$BASE_FIXTURE"\nPY=base_python; SUFFIX=x64; PACKAGE_ARGS=()\nbash() { printf "%s" "$PYTHON"; }\n'+line+'\n'
+ result=subprocess.run([bash,'-c',code],env=environment,capture_output=True,text=True,timeout=10)
+ assert result.returncode==0,result.stderr
+ assert result.stdout.endswith('/.buildenv/bin/python'),result.stdout

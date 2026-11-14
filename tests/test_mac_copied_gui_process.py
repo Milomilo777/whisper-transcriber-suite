@@ -1,9 +1,13 @@
 """No native process is started or signalled by these ownership controls."""
 import importlib.util
 import json
+import os
 from pathlib import Path
+import subprocess
+import sys
 
 import pytest
+from tests.mac_path_alias import directory_alias
 
 
 @pytest.fixture
@@ -12,6 +16,7 @@ def proof():
     spec = importlib.util.spec_from_file_location("copied_gui_process_fixture", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
+    module.psutil = __import__("psutil")
     return module
 
 
@@ -77,7 +82,7 @@ def test_cleanup_revalidates_captured_identity(proof, tmp_path, monkeypatch, cha
 
 def test_canonical_alias_matches_exact_executable(proof, tmp_path, monkeypatch):
     real = tmp_path / "real"; real.mkdir()
-    alias = tmp_path / "alias"; alias.symlink_to(real, target_is_directory=True)
+    alias = tmp_path / "alias"; directory_alias(alias, real)
     process = Process(real / "Suite")
     monkeypatch.setattr(proof.psutil, "process_iter", lambda: iter([process]))
     assert proof.capture(str(alias / "Suite"), 1000, tmp_path / "receipt.json")
@@ -117,3 +122,19 @@ def test_late_bootloader_child_prevents_cleanup_without_signalling_it(proof, tmp
     assert not proof.stop(str(target), 1000, receipt)
     assert original.terminated
     assert not late.terminated
+
+
+def test_missing_psutil_is_unknown_before_any_process_lookup():
+    helper = Path(__file__).resolve().parents[1] / "platform/macos/pyinstaller/copied_gui_process.py"
+    environment = os.environ.copy()
+    environment["PYTHONPATH"] = ""
+    result = subprocess.run([sys.executable, "-S", str(helper), "preflight"],
+                            env=environment, capture_output=True, text=True, timeout=10)
+    assert result.returncode == 2
+    assert "ModuleNotFoundError" in result.stderr
+    assert "Traceback" not in result.stderr
+
+
+def test_preflight_accepts_the_dependency_environment(proof, monkeypatch):
+    monkeypatch.setattr(sys, "argv", ["copied_gui_process.py", "preflight"])
+    assert proof.main() == 0

@@ -41,6 +41,12 @@ bounded disposable process. A skipped GUI smoke test is labelled packaging-only.
 Record the exact tested OS and artifact hash; a newer supported host does not
 establish execution on every older version allowed by the declaration.
 
+GUI verification uses the build environment Python with psutil installed. A
+dependency preflight stops before LaunchServices opens the copied app when the
+verification interpreter cannot load it. The process proof checks the exact
+copied executable and its creation identity; visible-window acceptance remains
+a separate native check.
+
 ## TL;DR — the pipeline
 
 **One command:** `bash platform/macos/build_mac.sh` runs every step below

@@ -30,6 +30,12 @@ esac
 [ -f "$DMG" ] || { echo "error: $DMG not found" >&2; exit 1; }
 NAME="Whisper Transcriber Suite"
 fail=0
+if [ "$GUI" = 1 ]; then
+  "$VERIFY_PYTHON" "$SCRIPT_DIR/copied_gui_process.py" preflight || {
+    echo "error: GUI verification needs psutil in the verification Python; use the build environment" >&2
+    exit 1
+  }
+fi
 # LaunchServices reports the physical executable path. Resolve aliases such as
 # /var -> /private/var and trailing separators before creating owned paths.
 TMP_ROOT="$(cd -- "${TMPDIR:-/tmp}" && pwd -P)" || { echo "error: invalid temporary directory" >&2; exit 1; }

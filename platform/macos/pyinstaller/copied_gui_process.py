@@ -7,10 +7,19 @@ import os
 from pathlib import Path
 import sys
 
-import psutil
+psutil = None
+
+
+def process_api():
+    global psutil
+    if psutil is None:
+        import psutil as native_psutil
+        psutil = native_psutil
+    return psutil
 
 
 def owned_processes(executable: str, started: float, *, include_older: bool = False) -> list[dict]:
+    process_api()
     if not math.isfinite(started) or started <= 0:
         raise ValueError("Invalid launch timestamp")
     target = os.path.realpath(executable)
@@ -47,6 +56,7 @@ def capture(executable: str, started: float, receipt: Path) -> bool:
 
 
 def stop(executable: str, started: float, receipt: Path) -> bool:
+    process_api()
     payload = json.loads(receipt.read_text(encoding="utf-8"))
     target = os.path.realpath(executable)
     if payload["executable"] != target or payload["started"] != started:
@@ -79,9 +89,13 @@ def stop(executable: str, started: float, receipt: Path) -> bool:
 
 
 def main() -> int:
-    if len(sys.argv) != 5 or sys.argv[1] not in ("capture", "stop"):
-        return 2
     try:
+        if sys.argv[1:] == ["preflight"]:
+            process_api()
+            return 0
+        if len(sys.argv) != 5 or sys.argv[1] not in ("capture", "stop"):
+            return 2
+        process_api()
         action, executable, started_text, receipt_text = sys.argv[1:]
         started = float(started_text)
         if not math.isfinite(started) or started <= 0:

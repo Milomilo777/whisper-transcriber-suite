@@ -126,7 +126,7 @@ PACKAGE_ARGS=(--manifest "$MANIFEST")
 if [ "$SMOKE" = 0 ]; then
   PACKAGE_ARGS+=(--no-gui)
 fi
-PYTHON="$PY" WTS_DMG_SUFFIX="$SUFFIX" bash platform/macos/pyinstaller/builddmg.command "${PACKAGE_ARGS[@]}"
+PYTHON="$PWD/.buildenv/bin/python" WTS_DMG_SUFFIX="$SUFFIX" bash platform/macos/pyinstaller/builddmg.command "${PACKAGE_ARGS[@]}"
 mv -f "dist/Whisper Transcriber Suite-$SUFFIX.dmg" "dist/$OUT"
 echo
 if [ "$SMOKE" = 1 ]; then
