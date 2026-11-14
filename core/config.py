@@ -833,6 +833,17 @@ def _copy_legacy_settings(
                 logger.exception("Could not remove staged legacy settings")
 
 
+def _archive_legacy_settings(source: str, backup: str) -> None:
+    """Retire the source only after publishing a backup without replacement."""
+    if sys.platform == "win32":
+        os.rename(source, backup)  # Windows rename refuses an existing destination.
+    else:
+        # POSIX rename replaces an existing destination; link publishes without
+        # replacement instead. If retirement fails, both names retain the bytes.
+        os.link(source, backup, follow_symlinks=False)
+        os.unlink(source)
+
+
 def migrate_config_location() -> str:
     """Move a legacy next-to-source config.json into the platformdirs path.
 
@@ -874,7 +885,11 @@ def migrate_config_location() -> str:
             if os.path.lexists(backup):
                 logger.warning("Keeping existing migration backup %s and legacy file %s", backup, legacy)
                 return new_path
-            os.replace(legacy, backup)
+            try:
+                _archive_legacy_settings(legacy, backup)
+            except FileExistsError:
+                logger.warning("Keeping competing migration backup %s and legacy file %s", backup, legacy)
+                return new_path
             logger.info("Renamed legacy config to %s", backup)
     except OSError as e:
         logger.exception("Failed to migrate legacy config (path=%s): %s", legacy, e)

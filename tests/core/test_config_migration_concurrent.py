@@ -5,6 +5,7 @@ import os
 import subprocess
 import sys
 import threading
+from types import SimpleNamespace
 from pathlib import Path
 
 import pytest
@@ -218,3 +219,96 @@ def test_other_process_settings_lock_blocks_migration(migration, monkeypatch, ca
                 if stream is not None:
                     stream.close()
     assert child.returncode == 0
+
+
+def test_backup_created_after_absence_check_is_not_replaced(migration, monkeypatch):
+    source, target, original = migration
+    backup = Path(str(source) + ".migrated.bak")
+    older = b'{"older_original":"only copy"}'
+    checked, created = threading.Event(), threading.Event()
+    real = cfg.os.path.lexists
+    failures = []
+
+    def independent_backup():
+        try:
+            assert checked.wait(5)
+            backup.write_bytes(older)
+        except BaseException as error:
+            failures.append(error)
+        finally:
+            created.set()
+
+    def stale_absence(path):
+        value = real(path)
+        if os.fspath(path) == str(backup) and not value:
+            checked.set()
+            assert created.wait(5)
+        return value
+
+    writer = threading.Thread(target=independent_backup)
+    monkeypatch.setattr(cfg.os.path, "lexists", stale_absence)
+    writer.start()
+    try:
+        cfg.migrate_config_location()
+    finally:
+        checked.set()
+        writer.join(5)
+    assert not writer.is_alive() and not failures
+    assert target.read_bytes() == original
+    assert backup.read_bytes() == older
+    assert source.read_bytes() == original
+
+
+@pytest.mark.parametrize("collision", [False, True])
+def test_posix_archive_publishes_without_replacing(migration, monkeypatch, collision):
+    source, _target, original = migration
+    backup = Path(str(source) + ".migrated.bak")
+    older = b"older original"
+    monkeypatch.setattr(cfg, "sys", SimpleNamespace(platform="linux"))
+    if collision:
+        backup.write_bytes(older)
+        with pytest.raises(FileExistsError):
+            cfg._archive_legacy_settings(str(source), str(backup))
+        assert source.read_bytes() == original and backup.read_bytes() == older
+    else:
+        cfg._archive_legacy_settings(str(source), str(backup))
+        assert backup.read_bytes() == original and not source.exists()
+
+
+def test_posix_archive_retirement_error_keeps_both_names(migration, monkeypatch):
+    source, _target, original = migration
+    backup = Path(str(source) + ".migrated.bak")
+    monkeypatch.setattr(cfg, "sys", SimpleNamespace(platform="linux"))
+    unlink = cfg.os.unlink
+
+    def refuse(path, *args, **kwargs):
+        if os.fspath(path) == str(source):
+            raise PermissionError("synthetic source retirement failure")
+        return unlink(path, *args, **kwargs)
+
+    monkeypatch.setattr(cfg.os, "unlink", refuse)
+    with pytest.raises(PermissionError):
+        cfg._archive_legacy_settings(str(source), str(backup))
+    assert source.read_bytes() == backup.read_bytes() == original
+
+
+def test_archive_failure_keeps_original_for_retry(migration, monkeypatch):
+    source, target, original = migration
+    backup = Path(str(source) + ".migrated.bak")
+    operation = "rename" if cfg.sys.platform == "win32" else "link"
+    real = getattr(cfg.os, operation)
+
+    def refuse(src, dst, *args, **kwargs):
+        if os.fspath(dst) == str(backup):
+            raise PermissionError("synthetic archive publication failure")
+        return real(src, dst, *args, **kwargs)
+
+    with monkeypatch.context() as failure:
+        failure.setattr(cfg.os, operation, refuse)
+        cfg.migrate_config_location()
+    assert source.read_bytes() == target.read_bytes() == original
+    assert not backup.exists()
+    cfg.migrate_config_location()
+    assert backup.read_bytes() == original and not source.exists()
+
+
