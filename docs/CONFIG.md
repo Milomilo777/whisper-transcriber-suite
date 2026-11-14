@@ -571,7 +571,9 @@ native allocation or ffmpeg pattern. Incomplete last lines cannot supply a clue.
 
 The automatic sender reserves at most five error rows per install in a rolling hour. A fingerprint already
 sent during that hour is suppressed, and the number of suppressed duplicates since the previous row becomes
-the next row's repeat bucket. A bounded local JSON file beside the config preserves this limit across
+the next row's repeat bucket. If the clock moves backwards, future reservations keep their place in the
+limit and their duplicate fingerprints. Their corrected timestamp is persisted, so they expire within one
+hour after the clock stabilizes. A bounded local JSON file beside the config preserves this limit across
 restarts, uses an atomic replacement and serializes processes; missing or corrupt state starts empty, and
 unavailable state suppresses the report. There is no retry queue. Rate-state work and the POST run on the
 existing background thread. The existing usage-statistics and Work offline switches gate all sends.

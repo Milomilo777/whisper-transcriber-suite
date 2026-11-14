@@ -606,10 +606,26 @@ def limit_error_row(payload: dict[str, str], install_id: str, *, path: Path | No
                 sent = state.get("sent", [])
                 if not isinstance(sent, list) or len(sent) > 5:
                     sent = []
-                sent = [row for row in sent if isinstance(row, dict)
-                        and isinstance(row.get("t"), (int, float)) and not isinstance(row["t"], bool)
-                        and math.isfinite(row["t"]) and 0 <= timestamp - row["t"] < 3600
-                        and isinstance(row.get("fp"), str) and re.fullmatch(r"[0-9a-f]{12}", row["fp"])]
+                normalized = []
+                for row in sent:
+                    if (not isinstance(row, dict)
+                            or not isinstance(row.get("t"), (int, float)) or isinstance(row["t"], bool)
+                            or not isinstance(row.get("fp"), str)
+                            or not re.fullmatch(r"[0-9a-f]{12}", row["fp"])):
+                        continue
+                    try:
+                        recorded = float(row["t"])
+                    except (OverflowError, ValueError):
+                        continue  # One corrupt timestamp cannot disable every report.
+                    if not math.isfinite(recorded):
+                        continue
+                    # Persist a backwards-clock correction even when suppressing
+                    # this row. Keep its quota and fingerprint for at most one
+                    # corrected hour rather than resetting them or muting forever.
+                    recorded = min(recorded, timestamp)
+                    if 0 <= timestamp - recorded < 3600:
+                        normalized.append({"t": recorded, "fp": row["fp"]})
+                sent = normalized
                 raw_pending = state.get("pending", {})
                 if not isinstance(raw_pending, dict):
                     raw_pending = {}

@@ -12,6 +12,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   CPU preference, and CPU fallback uses a supported precision.
 
 ### Fixed
+- Preserve the error-report limit and duplicate suppression across backward clock corrections, while bounding recovery to one hour and ignoring corrupt timestamps.
 
 - Keep valid transcription timings when optional alignment returns malformed or out-of-bounds word times. Validate the complete refinement before publishing it, including a zero-length word exactly at the audio end.
 - Keep Quick start open when saving choices fails, without changing active settings or starting the sample. Explain language-specific model limits, and offer setup again after Close or Escape while keeping explicit Skip permanent.
