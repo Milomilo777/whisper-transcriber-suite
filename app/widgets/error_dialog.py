@@ -13,6 +13,8 @@ from app.dpi import px
 from app.i18n import _, plain
 from app.theme import tokens
 
+_PREVIOUS_GRAB_ATTR = "_wts_error_previous_grab"
+
 
 def show_error(
     parent: "tk.Tk | tk.Toplevel", title: str, message: str, detail: str | None = None,
@@ -41,23 +43,38 @@ def show_error(
         # grab (or anything else) must not be re-grabbed later.
         previous_grab = None
 
+    setattr(top, _PREVIOUS_GRAB_ATTR, previous_grab)
+    restored = False
+
+    def _restore_grab(event: "tk.Event[tk.Misc] | None" = None) -> None:
+        nonlocal restored
+        if (event is not None and event.widget is not top) or restored:
+            return
+        restored = True
+        owner = previous_grab
+        try:
+            # An older error can close before the one above it. Follow its
+            # saved predecessor instead of losing the original modal host.
+            while owner is not None and not owner.winfo_exists():
+                owner = getattr(owner, _PREVIOUS_GRAB_ATTR, None)
+            if owner is not None:
+                current = owner.grab_current()
+                # As in widgets/grab.py, Destroy may precede grab release.
+                if current is None or current is top:
+                    owner.grab_set()
+        except (tk.TclError, KeyError):
+            # Teardown or an unwrapped newer holder: never steal its grab.
+            pass
+
     def _close() -> None:
         try:
             top.destroy()
         except tk.TclError:
             pass
-        if previous_grab is not None:
-            # Destroying the dialog above released its grab. Take the old
-            # one back only when nothing newer holds it -- never steal a
-            # grab from a dialog opened on top of this one.
-            try:
-                if previous_grab.winfo_exists() and previous_grab.grab_current() is None:
-                    previous_grab.grab_set()
-            except (tk.TclError, KeyError):
-                # An unwrapped newer holder must keep its grab too.
-                pass
+        _restore_grab()
 
     top.protocol("WM_DELETE_WINDOW", _close)
+    top.bind("<Destroy>", _restore_grab, add="+")
 
     body = ttk.Frame(top, padding=16)
     body.pack(fill="both", expand=True)

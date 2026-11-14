@@ -47,7 +47,7 @@ def display(monkeypatch):
         def transient(self, parent): pass
         def resizable(self, *args): pass
         def protocol(self, name, callback): self.protocols[name] = callback
-        def bind(self, sequence, callback): self.bindings[sequence] = callback
+        def bind(self, sequence, callback, **kwargs): self.bindings[sequence] = callback
         def update_idletasks(self): pass
         def winfo_rootx(self): return 100
         def winfo_rooty(self): return 100
