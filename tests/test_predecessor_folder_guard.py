@@ -113,7 +113,7 @@ def test_physical_path_resolver_contract_is_identical_in_both_installers():
                      "CanonicalPredecessorFolder(ExpandConstant('{app}'), NewDir)"):
             assert 'if not ' + call + ' then begin Result := True; Exit; end;' in guard
         assert "if (OldNamespace = '') or (NewNamespace = '') then begin Result := True; Exit; end;" in guard
-        assert '(PredecessorCompareNames(OldNamespace, Length(OldNamespace), NewNamespace, Length(NewNamespace), True) <> 2) then begin Result := True; Exit; end;' in guard
+        assert '(PredecessorCompareNames(OldNamespace, Length(OldNamespace), NewNamespace, Length(NewNamespace), 1) <> 2) then begin Result := True; Exit; end;' in guard
         assert "Pos('\\device\\mup\\', OldNamespace)" in guard
         assert "Pos('\\device\\mup\\', NewNamespace)" in guard
         for api in ('CreateFileW', 'GetFinalPathNameByHandleW', 'GetFileInformationByHandle',
@@ -142,7 +142,7 @@ class DirectoryMetadata:
         self.kernel.CloseHandle.restype = wintypes.BOOL
         self.kernel.GetDriveTypeW.argtypes = [wintypes.LPCWSTR]
         self.kernel.GetDriveTypeW.restype = wintypes.DWORD
-        self.kernel.CompareStringOrdinal.argtypes = [wintypes.LPCWSTR, ctypes.c_int, wintypes.LPCWSTR, ctypes.c_int, wintypes.BOOL]
+        self.kernel.CompareStringOrdinal.argtypes = [wintypes.LPCWSTR, ctypes.c_int, wintypes.LPCWSTR, ctypes.c_int, ctypes.c_int]
         self.kernel.CompareStringOrdinal.restype = ctypes.c_int
         class FileInfo(ctypes.Structure):
             _fields_ = [('attributes', ctypes.c_uint32), ('times', ctypes.c_uint32 * 6),
@@ -191,7 +191,7 @@ class DirectoryMetadata:
 
     def compare(self, first, first_length, second, second_length):
         if os.name == 'nt':
-            return self.kernel.CompareStringOrdinal(first, first_length, second, second_length, True)
+            return self.kernel.CompareStringOrdinal(first, first_length, second, second_length, 1)
         def prefix(text, count):
             return text if count < 0 else text.encode('utf-16-le', 'surrogatepass')[:count * 2].decode('utf-16-le', 'surrogatepass')
         # Model only these source-control examples off Windows; the Windows
@@ -281,8 +281,9 @@ def physical_guard(source, old, new, api=None):
 def paths_overlap(source, old, new):
     comparison = function(source, 'PredecessorPathsOverlap')
     assert 'Result := True;' in comparison and 'Result := False;' in comparison
-    assert 'PredecessorCompareNames(OldDir, Length(OldDir), NewDir, Length(OldDir), True)' in comparison
-    assert 'PredecessorCompareNames(NewDir, Length(NewDir), OldDir, Length(NewDir), True)' in comparison
+    assert 'SecondLength: Integer; IgnoreCase: Integer): Integer;' in source
+    assert 'PredecessorCompareNames(OldDir, Length(OldDir), NewDir, Length(OldDir), 1)' in comparison
+    assert 'PredecessorCompareNames(NewDir, Length(NewDir), OldDir, Length(NewDir), 1)' in comparison
     assert comparison.count('if (Comparison <> 1) and (Comparison <> 3) then Exit;') == 2
     api = DirectoryMetadata()
     length = lambda text: len(text.encode('utf-16-le', 'surrogatepass')) // 2
@@ -419,3 +420,16 @@ def test_failed_ordinal_comparison_is_not_treated_as_no_overlap(monkeypatch, unk
     monkeypatch.setattr(DirectoryMetadata, 'compare', lambda *args: unknown)
     source = (ROOT / 'installer.iss').read_text(encoding='utf-8')
     assert paths_overlap(source, 'old\\', 'new\\')
+
+
+@pytest.mark.parametrize('installer', ['installer.iss', 'installer_embed.iss'])
+def test_ordinal_api_receives_literal_numeric_true(installer):
+    source = (ROOT / installer).read_text(encoding='utf-8')
+    assert 'SecondLength: Integer; IgnoreCase: Integer): Integer;' in source
+    calls = [line for line in source.splitlines()
+             if 'PredecessorCompareNames(' in line and not line.startswith('function ')]
+    assert len(calls) == 3 and all(re.search(r', 1\)', line) for line in calls)
+    if os.name == 'nt':
+        api = DirectoryMetadata()
+        assert api.kernel.CompareStringOrdinal('A', 1, 'a', 1, 1) == 2
+        assert api.kernel.CompareStringOrdinal('A', 1, 'a', 1, -1) == 0

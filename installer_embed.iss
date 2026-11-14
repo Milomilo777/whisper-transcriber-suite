@@ -219,8 +219,9 @@ begin
   end;
 end;
 
+// CompareStringOrdinal requires numeric TRUE=1, not an arbitrary nonzero BOOL.
 function PredecessorCompareNames(First: String; FirstLength: Integer;
-  Second: String; SecondLength: Integer; IgnoreCase: BOOL): Integer;
+  Second: String; SecondLength: Integer; IgnoreCase: Integer): Integer;
   external 'CompareStringOrdinal@kernel32.dll stdcall';
 
 function PredecessorPathsOverlap(OldDir, NewDir: String): Boolean;
@@ -228,11 +229,11 @@ var Comparison: Integer;
 begin
   Result := True;
   if Length(OldDir) <= Length(NewDir) then begin
-    Comparison := PredecessorCompareNames(OldDir, Length(OldDir), NewDir, Length(OldDir), True);
+    Comparison := PredecessorCompareNames(OldDir, Length(OldDir), NewDir, Length(OldDir), 1);
     if (Comparison <> 1) and (Comparison <> 3) then Exit;
   end;
   if Length(NewDir) <= Length(OldDir) then begin
-    Comparison := PredecessorCompareNames(NewDir, Length(NewDir), OldDir, Length(NewDir), True);
+    Comparison := PredecessorCompareNames(NewDir, Length(NewDir), OldDir, Length(NewDir), 1);
     if (Comparison <> 1) and (Comparison <> 3) then Exit;
   end;
   Result := False;
@@ -290,7 +291,7 @@ begin
   NewNamespace := PredecessorNamespace(NewDir, ExpandConstant('{app}'));
   if (OldNamespace = '') or (NewNamespace = '') then begin Result := True; Exit; end;
   if ((Pos('\device\mup\', OldNamespace) = 1) or (Pos('\device\mup\', NewNamespace) = 1)) and
-     (PredecessorCompareNames(OldNamespace, Length(OldNamespace), NewNamespace, Length(NewNamespace), True) <> 2) then begin Result := True; Exit; end;
+     (PredecessorCompareNames(OldNamespace, Length(OldNamespace), NewNamespace, Length(NewNamespace), 1) <> 2) then begin Result := True; Exit; end;
   OldDir := OldPhysical;
   Result := PredecessorPathsOverlap(OldDir, NewDir);
 end;
