@@ -23,3 +23,6 @@ app/locales/*.json text eol=lf
 
 # The OSS Scanner Dockerfile runs on Linux: CRLF would break its line continuations.
 .oss-scanner/Dockerfile text eol=lf
+
+# The native diagnostic verifies these snapshots against exact manifest hashes.
+tools/mac_rpath_native_source/*.py text eol=lf

@@ -13,6 +13,28 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class NativeRpathProbeTests(unittest.TestCase):
+    def test_frozen_source_checkout_preserves_manifest_bytes_with_autocrlf(self):
+        """Git checkout must not rewrite the byte-pinned source snapshot."""
+        with tempfile.TemporaryDirectory() as directory:
+            repository = Path(directory) / 'repository'
+            repository.mkdir()
+            (repository / '.gitattributes').write_bytes((ROOT / '.gitattributes').read_bytes())
+            source = Path('tools/mac_rpath_native_source')
+            (repository / source).mkdir(parents=True)
+            expected = {}
+            for path in (ROOT / source).glob('*.py'):
+                expected[path.name] = path.read_text(encoding='utf-8').encode('utf-8')
+                (repository / source / path.name).write_bytes(expected[path.name])
+            def git(*arguments):
+                subprocess.run(['git', '-c', 'core.autocrlf=true', '-C', str(repository),
+                                *arguments], check=True, capture_output=True)
+            git('init', '-q')
+            git('add', '.gitattributes', str(source))
+            checkout = Path(directory) / 'checkout'
+            git('checkout-index', '--all', '--prefix=' + checkout.as_posix() + '/')
+            for name, content in expected.items():
+                self.assertEqual((checkout / source / name).read_bytes(), content, name)
+
     def setUp(self):
         path = ROOT / 'tools/mac_rpath_native_probe.py'
         spec = importlib.util.spec_from_file_location('native_rpath_under_test', path)
