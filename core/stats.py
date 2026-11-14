@@ -608,7 +608,7 @@ def limit_error_row(payload: dict[str, str], install_id: str, *, path: Path | No
                     sent = []
                 sent = [row for row in sent if isinstance(row, dict)
                         and isinstance(row.get("t"), (int, float)) and not isinstance(row["t"], bool)
-                        and math.isfinite(row["t"]) and timestamp - row["t"] < 3600
+                        and math.isfinite(row["t"]) and 0 <= timestamp - row["t"] < 3600
                         and isinstance(row.get("fp"), str) and re.fullmatch(r"[0-9a-f]{12}", row["fp"])]
                 raw_pending = state.get("pending", {})
                 if not isinstance(raw_pending, dict):
