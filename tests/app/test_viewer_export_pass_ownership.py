@@ -13,8 +13,8 @@ def segments(text):
     return [{"start": 0.0, "end": 1.0, "text": text}]
 
 
-@pytest.mark.parametrize("pause_before_binding", [False, True])
-def test_queued_save_retains_every_unfinished_latest_export(tmp_path, monkeypatch, pause_before_binding):
+@pytest.mark.parametrize("pause_in_scan_wait", [False, True])
+def test_queued_save_retains_every_unfinished_latest_export(tmp_path, monkeypatch, pause_in_scan_wait):
     path = str(tmp_path / "talk.json")
     old = segments("original")
     files = [str(tmp_path / ("talk." + fmt)) for fmt in ("srt", "vtt", "txt")]
@@ -34,22 +34,30 @@ def test_queued_save_retains_every_unfinished_latest_export(tmp_path, monkeypatc
     host._mark_export_fast_done = MethodType(tv.TranscriptViewer._mark_export_fast_done, host)
     monkeypatch.setattr(tv, "_EXPORTING", [host])
     a_paused, release_a, b_paused, release_b = [threading.Event() for _ in range(4)]
-    if pause_before_binding:
-        def wait_before_binding():
-            a_paused.set()
-            assert release_a.wait(5)
-        host._scan_fast_done = SimpleNamespace(wait=wait_before_binding)
-    render = ve.render_bytes
     failures = []
+
+    def wait_for_release(event, label):
+        if not event.wait(5):
+            error = AssertionError(f"Timed out waiting for {label}")
+            failures.append(error)  # Export error handling must not hide a broken barrier.
+            raise error
+
+    if pause_in_scan_wait:
+        def wait_in_scan():
+            a_paused.set()
+            wait_for_release(release_a, "scan release")
+        host._scan_fast_done = SimpleNamespace(wait=wait_in_scan)
+    render = ve.render_bytes
+    original_remaining = host._export_remaining
 
     def barrier_render(fmt, segs, audio):
         text = segs[0]["text"]
-        if not pause_before_binding and text == "edit A" and fmt == "vtt":
+        if not pause_in_scan_wait and text == "edit A" and fmt == "vtt":
             a_paused.set()
-            assert release_a.wait(5)
+            wait_for_release(release_a, "A render release")
         if text == "edit B" and fmt == "srt":
             b_paused.set()
-            assert release_b.wait(5)
+            wait_for_release(release_b, "B render release")
         return render(fmt, segs, audio)
 
     def run():
@@ -77,6 +85,8 @@ def test_queued_save_retains_every_unfinished_latest_export(tmp_path, monkeypatc
         release_b.set()
         worker.join(8)
     assert not worker.is_alive() and not failures
+    assert not any(report.failed for report in host._export_reports)
+    assert original_remaining == set()
     assert host._export_idle.is_set() and tv._EXPORTING == []
     assert all(b"edit B" in Path(filename).read_bytes() for filename in files)
 
