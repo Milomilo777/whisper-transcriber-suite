@@ -4,6 +4,8 @@ import threading
 from pathlib import Path
 from types import MethodType, SimpleNamespace
 
+import pytest
+
 from app.dialogs import transcript_viewer as tv, viewer_exports as ve
 
 
@@ -11,7 +13,8 @@ def segments(text):
     return [{"start": 0.0, "end": 1.0, "text": text}]
 
 
-def test_queued_save_retains_every_unfinished_latest_export(tmp_path, monkeypatch):
+@pytest.mark.parametrize("pause_before_binding", [False, True])
+def test_queued_save_retains_every_unfinished_latest_export(tmp_path, monkeypatch, pause_before_binding):
     path = str(tmp_path / "talk.json")
     old = segments("original")
     files = [str(tmp_path / ("talk." + fmt)) for fmt in ("srt", "vtt", "txt")]
@@ -31,12 +34,17 @@ def test_queued_save_retains_every_unfinished_latest_export(tmp_path, monkeypatc
     host._mark_export_fast_done = MethodType(tv.TranscriptViewer._mark_export_fast_done, host)
     monkeypatch.setattr(tv, "_EXPORTING", [host])
     a_paused, release_a, b_paused, release_b = [threading.Event() for _ in range(4)]
+    if pause_before_binding:
+        def wait_before_binding():
+            a_paused.set()
+            assert release_a.wait(5)
+        host._scan_fast_done = SimpleNamespace(wait=wait_before_binding)
     render = ve.render_bytes
     failures = []
 
     def barrier_render(fmt, segs, audio):
         text = segs[0]["text"]
-        if text == "edit A" and fmt == "vtt":
+        if not pause_before_binding and text == "edit A" and fmt == "vtt":
             a_paused.set()
             assert release_a.wait(5)
         if text == "edit B" and fmt == "srt":

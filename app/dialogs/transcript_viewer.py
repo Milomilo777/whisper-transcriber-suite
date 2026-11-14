@@ -2501,6 +2501,7 @@ class TranscriptViewer(tk.Toplevel):
                     if self in _EXPORTING:
                         _EXPORTING.remove(self)  # nothing left to wait for at exit
                     return True
+                progress = self._export_remaining.discard
             try:
                 self._scan_fast_done.wait()
                 segments = viewer_exports.segments_from_json(text)
@@ -2510,7 +2511,7 @@ class TranscriptViewer(tk.Toplevel):
                 with viewer_exports.responsive_threads():
                     report = viewer_exports.update_exports(
                         self.json_path, segments, scan, self._mark_export_fast_done,
-                        self._wait_for_scan, self._export_remaining.discard,
+                        self._wait_for_scan, progress,
                     )
             except Exception:  # noqa: BLE001 - never leave a Save without a report
                 logger.exception("Updating the exports of %s failed", self.json_path)
