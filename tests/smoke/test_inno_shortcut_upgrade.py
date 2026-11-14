@@ -15,7 +15,8 @@ pytestmark = pytest.mark.skipif(os.name != "nt" or not COMPILER.is_file(),
 
 
 @pytest.mark.parametrize("script_name", ["installer_embed.iss", "installer.iss"])
-def test_upgrade_retires_only_matching_versioned_shortcuts(tmp_path, script_name):
+@pytest.mark.parametrize("target_kind", ["private", "commonpf"])
+def test_upgrade_retires_only_matching_versioned_shortcuts(tmp_path, script_name, target_kind):
     text = (ROOT / script_name).read_text(encoding="utf-8")
     app, menu, desktop = [tmp_path / n for n in ("app", "menu", "desktop")]
     for folder in (app / "python", menu, desktop):
@@ -28,8 +29,15 @@ def test_upgrade_retires_only_matching_versioned_shortcuts(tmp_path, script_name
     prepare = re.search(r"(?ms)^function PrepareToInstall\b.*?^end;", text).group(0)
     match = re.search(r"(?s)// Versioned shortcut maintenance\.\n(.*?)// End versioned shortcut maintenance\.", text)
     cleanup = match.group(1) if match else ""
+    # All writes stay under tmp_path. The Program Files target is only stored
+    # in synthetic .lnk files, never created or executed. In 64-bit install
+    # mode this exercises COM target lookup against the real {commonpf} value.
+    target = str(app) if target_kind == "private" else r"{commonpf}\WhisperShortcutReadOnlyFixture"
+    architecture = ("ArchitecturesAllowed=x64compatible\nArchitecturesInstallIn64BitMode=x64compatible"
+                    if target_kind == "commonpf" else "")
     def mapped(value):
-        return value.replace("{group}", str(menu)).replace("{commondesktop}", str(desktop))
+        return (value.replace("{group}", str(menu)).replace("{commondesktop}", str(desktop))
+                .replace("{app}", target))
     code = """const OldAppId = 'fixture-legacy';
 function GetUninstallString(): String; begin Result := 'existing fixture'; end;
 function GetUninstallStringForAppId(AnAppId: String): String; begin Result := ''; end;
@@ -53,7 +61,7 @@ begin
       ExpandConstant('{app}\python\pythonw.exe'), '"' + ExpandConstant('{app}\gui.py') + '"', '', '', 0, SW_SHOWNORMAL);
   end;
 end;
-""".replace('MENU', str(menu)).replace('DESKTOP', str(desktop)).replace('{app}', str(app))
+""".replace('MENU', str(menu)).replace('DESKTOP', str(desktop)).replace('{app}', target)
     script = tmp_path / "fixture.iss"
     script.write_text(f'''#define MyAppVersion "2.4.0"
 [Setup]
@@ -62,6 +70,7 @@ AppName=Whisper shortcut private fixture
 AppVersion=2.4.0
 DefaultDirName={app}
 PrivilegesRequired=lowest
+{architecture}
 DisableProgramGroupPage=yes
 OutputDir={tmp_path}
 OutputBaseFilename=fixture
