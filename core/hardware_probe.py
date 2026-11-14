@@ -51,7 +51,7 @@ def _run_command(command: list[str], result: Path, timeout: float) -> dict[str, 
         if child.poll() is None:
             _UNREAPED_PROCESS = child
     if code:
-        raise RuntimeError("Hardware probe process failed")
+        raise RuntimeError(f"Hardware probe process failed (exit {code})")
     with result.open("rb") as stream:
         data = stream.read(MAX_RESULT_BYTES + 1)
     if len(data) > MAX_RESULT_BYTES:
@@ -59,6 +59,8 @@ def _run_command(command: list[str], result: Path, timeout: float) -> dict[str, 
     value = json.loads(data)
     if not isinstance(value, dict):
         raise ValueError("Invalid hardware probe result")
+    if value.get("error"):
+        raise RuntimeError(str(value["error"]))
     return value
 
 
@@ -80,23 +82,47 @@ def query(operation: str, *, timeout: float = PROBE_TIMEOUT_S) -> dict[str, Any]
         _PROBE_LOCK.release()
 
 
+NATIVE_COMPONENT_MODULES = (
+    "numpy.core._multiarray_umath", "ctranslate2._ext",
+    "av._core", "onnxruntime.capi.onnxruntime_pybind11_state", "PIL._imaging",
+    "bidi.bidi", "google._upb._message", "sherpa_onnx.lib._sherpa_onnx", "hf_xet.hf_xet",
+)
+
+
+def _native_component_report() -> dict[str, Any]:
+    import importlib
+    for name in NATIVE_COMPONENT_MODULES:
+        try:
+            importlib.import_module(name)
+        except Exception as error:
+            raise RuntimeError("Required native component failed: " + name) from error
+    return {"native_components": list(NATIVE_COMPONENT_MODULES)}
+
+
 def worker_main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("operation", choices=("cuda", "snapshot", "diagnostics"))
+    parser.add_argument("operation", choices=("cuda", "snapshot", "diagnostics", "native-components"))
     parser.add_argument("result", type=Path)
     args = parser.parse_args()
     from dataclasses import asdict
     from . import hardware as hw
     from ._gc_import_guard import gc_disabled_import
 
-    with gc_disabled_import():
-        if args.operation == "diagnostics":
-            value: dict[str, Any] = {"report": hw.diagnostics_report()}
-        else:
-            status = hw.cuda_status()
-            value = {"cuda": asdict(status)}
-            if args.operation == "snapshot":
-                value["tiers"] = [asdict(tier) for tier in hw.probe_tiers(status)]
+    try:
+        with gc_disabled_import():
+            if args.operation == "native-components":
+                value: dict[str, Any] = _native_component_report()
+            elif args.operation == "diagnostics":
+                value = {"report": hw.diagnostics_report()}
+            else:
+                status = hw.cuda_status()
+                value = {"cuda": asdict(status)}
+                if args.operation == "snapshot":
+                    value["tiers"] = [asdict(tier) for tier in hw.probe_tiers(status)]
+    except Exception as error:
+        # Windowed PyInstaller reports an unhandled Python exception in a
+        # dialog. Keep expected probe failures in the file protocol instead.
+        value = {"error": str(error), "error_type": type(error).__name__}
     # A windowed frozen interpreter may have no stdout; use an owned file.
     pending = args.result.with_suffix(".pending")
     with pending.open("w", encoding="utf-8") as stream:

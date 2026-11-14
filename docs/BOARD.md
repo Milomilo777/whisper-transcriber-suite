@@ -5,6 +5,11 @@ Updated: 2026-11-14. Release target: 2.4.0.
 
 ## Current integrated source checkpoint
 
+The current release includes Windows plus Intel and Apple-silicon macOS
+packages. Apple-silicon builds and acceptance use the GitHub Actions macOS
+hardware runner; no additional owner device is required. All three packages
+wait together for final maintainer publication approval.
+
 The post-24c review fixes preserve incomplete exports and checkpoints, reject
 partial alignment, retain exact-EOF words, repair collapsed ASS cues, honor model
 download cancellation through locked cleanup, and reject revoked statistics

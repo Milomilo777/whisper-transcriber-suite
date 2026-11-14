@@ -4,6 +4,9 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+- macOS packaging rejects missing or unreadable native requirements and a build
+  host below the declared deployment target. The DMG must contain the exact
+  verified app and pass the copied app's strict native audit.
 - Hardware checks and diagnostics use a disposable process so a stalled native
   library cannot freeze the app. An inconclusive check does not save an automatic
   CPU preference, and CPU fallback uses a supported precision.

@@ -174,7 +174,10 @@ def _is_macho(path):
     # supported by yt-dlp" (seen on v1.9.3 after a swap).
     try:
         with open(path, 'rb') as f:
-            return f.read(4) in (b'\xca\xfe\xba\xbe', b'\xcf\xfa\xed\xfe', b'\xce\xfa\xed\xfe')
+            return f.read(4) in {bytes.fromhex(value) for value in (
+                'feedface', 'cefaedfe', 'feedfacf', 'cffaedfe',
+                'cafebabe', 'bebafeca', 'cafebabf', 'bfbafeca',
+            )}
     except OSError:
         return False
 
@@ -271,13 +274,16 @@ for _pkg in ('grpc', 'google.cloud.speech_v2', 'google.cloud.storage',
 # same pattern as the google/grpc block above.
 _npstack_datas, _npstack_binaries, _npstack_hidden = [], [], []
 for _pkg in ('numpy', 'ctranslate2', 'scipy', 'av', 'onnxruntime'):
-    try:
-        _d, _b, _h = collect_all(_pkg)
-        _npstack_datas += _d
-        _npstack_binaries += _b
-        _npstack_hidden += _h
-    except Exception:
-        pass
+    if _pkg == 'scipy':
+        # SciPy is an optional voice-cloning/MLX dependency, not a base-package
+        # requirement. Collect it when installed; never hide other failures.
+        from importlib.util import find_spec
+        if find_spec(_pkg) is None:
+            continue
+    _d, _b, _h = collect_all(_pkg)
+    _npstack_datas += _d
+    _npstack_binaries += _b
+    _npstack_hidden += _h
 
 # Arabic-script shaping for the PDF writer (core/writers/pdf_bidi.py):
 # arabic-reshaper (pure Python) and python-bidi (a pure-Python algorithm
@@ -534,6 +540,15 @@ a = Analysis(
         'core.hallucination',
         'core.hardware',
         'core.hardware_probe',
+        'numpy.core._multiarray_umath',
+        'ctranslate2._ext',
+        'av._core',
+        'onnxruntime.capi.onnxruntime_pybind11_state',
+        'PIL._imaging',
+        'bidi.bidi',
+        'google._upb._message',
+        'sherpa_onnx.lib._sherpa_onnx',
+        'hf_xet.hf_xet',
         'core.js_runtime',
         'core.loop_guard',
         'core.translate_task',
@@ -654,46 +669,124 @@ a.binaries = _select_compatible_dylibs(
 pyz = PYZ(a.pure)
 
 
-# ---- Real minimum macOS of what is being bundled ---------------------------
-# Every wheel/binary carries its own minimum-OS (LC_BUILD_VERSION minos /
-# LC_VERSION_MIN_MACOSX). MACOSX_DEPLOYMENT_TARGET does NOT lower those for
-# prebuilt wheels, so e.g. onnxruntime 1.23.2 (the newest Intel wheel) needs
-# macOS 13 no matter what the build sets. Compute the max over everything
-# bundled and put THAT in LSMinimumSystemVersion, so the Info.plist never
-# promises less than the bundle can deliver.
-#
-# WTS_MACOS_MIN may raise the requirement, but never lower a bundled
-# component's declared minimum. Native smoke success on one older host does
-# not justify metadata that contradicts the verifier's compatibility checks.
-def _macho_minos(path):
+# ---- Highest declared macOS deployment target in the bundled native code ----
+# Load-command metadata sets a conservative deployment declaration; it does not
+# prove runtime compatibility. The build and copied DMG app need native checks
+# on a supported host. An override may only raise the computed deployment floor.
+def _macho_minos(path, target_arch=None):
     try:
         from macholib.MachO import MachO
         from macholib import mach_o
         best = None
-        for header in MachO(path).headers:
+        headers = MachO(path).headers
+        if not headers:
+            raise ValueError('no Mach-O slices')
+        expected = {'x86_64': {0x01000007}, 'arm64': {0x0100000C},
+                    'universal2': {0x01000007, 0x0100000C}}
+        wanted = expected.get(target_arch)
+        matched = set()
+        for header in headers:
+            if wanted is not None and header.header.cputype not in wanted:
+                continue
+            matched.add(header.header.cputype)
+            minimum = None
             for cmd in header.commands:
                 if cmd[0].cmd == mach_o.LC_BUILD_VERSION:
-                    v = cmd[1].minos
+                    if cmd[1].platform != 1:
+                        continue
+                    value = cmd[1].minos
                 elif cmd[0].cmd == mach_o.LC_VERSION_MIN_MACOSX:
-                    v = cmd[1].version
+                    value = cmd[1].version
                 else:
                     continue
-                t = ((v >> 16) & 0xFFFF, (v >> 8) & 0xFF)
-                best = t if best is None or t > best else best
+                decoded = ((value >> 16) & 0xFFFF, (value >> 8) & 0xFF, value & 0xFF)
+                minimum = decoded if minimum is None else max(minimum, decoded)
+            if minimum is None:
+                raise ValueError('no macOS deployment target for a Mach-O slice')
+            best = minimum if best is None else max(best, minimum)
+        if not matched:
+            raise ValueError('no slice for the target architecture')
+        if wanted is not None and not wanted.issubset(matched):
+            raise ValueError('missing slice for the target architecture')
         return best
-    except Exception:
-        return None
+    except Exception as error:
+        raise SystemExit('[mac-spec] cannot inspect native deployment target: %s (%s)' % (path, error)) from error
 
 
-_minos_files = [src for _dest, src, _kind in a.binaries] + [
-    os.path.join(_BIN_DIR, n) for n in _POST_COPY_BINS
-    if os.path.isfile(os.path.join(_BIN_DIR, n))
-]
+def _minimum_sources(binaries, datas, bin_root):
+    sources = []
+    def add(path):
+        with open(path, 'rb') as stream:
+            magic = stream.read(4)
+        magics = {bytes.fromhex(value) for value in (
+            'feedface', 'cefaedfe', 'feedfacf', 'cffaedfe',
+            'cafebabe', 'bebafeca', 'cafebabf', 'bfbafeca',
+        )}
+        if magic == bytes.fromhex('cafebabe'):
+            # Java class files share this magic with fat Mach-O. Use the
+            # native classifier; unreadable or unknown inputs still fail.
+            import subprocess
+            kind = subprocess.run(['/usr/bin/file', '-b', os.fspath(path)],
+                                  check=True, capture_output=True, text=True, timeout=10).stdout
+            if 'compiled Java class' in kind:
+                return
+        if magic in magics:
+            sources.append(os.fspath(path))
+    def walk(root):
+        def failed(error):
+            raise error
+        for directory, _folders, names in os.walk(root, onerror=failed, followlinks=False):
+            for name in [*_folders, *names]:
+                path = os.path.join(directory, name)
+                if os.path.islink(path) and not os.path.exists(path):
+                    raise SystemExit('[mac-spec] collected symlink is dangling: %s' % path)
+            for name in names:
+                path = os.path.join(directory, name)
+                if os.path.isfile(path):
+                    add(path)
+    for _dest, source, kind in [*binaries, *datas]:
+        if kind == 'SYMLINK':
+            continue
+        if os.path.isdir(source):
+            walk(source)
+        elif os.path.isfile(source):
+            add(source)
+        else:
+            raise SystemExit('[mac-spec] collected source is missing: %s' % source)
+    walk(bin_root)
+    return sorted(set(sources))
+
+
+def _require_native_components(paths, required=None):
+    import re
+    if required is None:
+        required = ('numpy', 'ctranslate2', 'av', 'onnxruntime', 'PIL',
+                    'bidi', 'google/_upb', 'sherpa_onnx', 'hf_xet',
+                    'ffmpeg', 'ffprobe', 'yt-dlp', 'deno')
+    normalized = [os.fspath(path).replace('\\', '/') for path in paths]
+    missing = []
+    for component in required:
+        if component in ('ffmpeg', 'ffprobe', 'yt-dlp', 'deno'):
+            present = any(os.path.basename(path) == component for path in normalized)
+        else:
+            pattern = r'(^|/)' + re.escape(component) + r'(/|[.])'
+            present = any(re.search(pattern, path, flags=re.IGNORECASE) for path in normalized)
+        if not present:
+            missing.append(component)
+    if missing:
+        raise SystemExit('[mac-spec] required native components missing: ' + ', '.join(missing))
+
+
+_native_target = os.environ.get('WTS_TARGET_ARCH') or _platform.machine()
+_minos_files = _minimum_sources(a.binaries, a.datas, _BIN_DIR)
 _minos_hits = {}
 for _p in _minos_files:
-    _v = _macho_minos(_p)
-    if _v:
-        _minos_hits.setdefault(_v, []).append(_p)
+    _v = _macho_minos(_p, _native_target)
+    if _v is None:
+        raise SystemExit('[mac-spec] native deployment target missing: ' + _p)
+    _minos_hits.setdefault(_v, []).append(_p)
+_require_native_components(_minos_files)
+
 def _select_minimum_macos(computed_min, override):
     minimum = '.'.join(str(part) for part in computed_min)
     if not override:
@@ -712,10 +805,12 @@ def _select_minimum_macos(computed_min, override):
     return '.'.join(str(part) for part in requested)
 
 
-_highest_min = max(_minos_hits) if _minos_hits else (10, 13)
+_highest_min = max(_minos_hits) if _minos_hits else None
+if _highest_min is None:
+    raise SystemExit('[mac-spec] no inspected native deployment targets; refusing a default')
 _computed_min = max(_highest_min, (10, 13))
-print('[mac-spec] highest bundled minos: %d.%d  <- %s' % (
-    _highest_min + (', '.join(os.path.basename(p) for p in _minos_hits.get(_highest_min, [])),)))
+print('[mac-spec] highest bundled minos: %s  <- %s' % (
+    '.'.join(map(str, _highest_min)), ', '.join(os.path.basename(p) for p in _minos_hits[_highest_min])))
 _MIN_MACOS = _select_minimum_macos(_computed_min, os.environ.get('WTS_MACOS_MIN'))
 print('[mac-spec] LSMinimumSystemVersion = %s%s' % (
     _MIN_MACOS, ' (WTS_MACOS_MIN override)' if os.environ.get('WTS_MACOS_MIN') else ''))
@@ -778,10 +873,8 @@ app = BUNDLE(
         # dialog. verify_mac_bundle.sh / test_dmg.sh check it is present.
         'NSMicrophoneUsageDescription': 'Whisper Transcriber Suite records '
             'from the microphone for live transcription in the Live tab.',
-        # Computed above from the bundled binaries (or a verified
-        # WTS_MACOS_MIN override). A value higher than the real minimum
-        # blocks launch outright (LaunchServices error -10825); a lower one
-        # lets the app start and then crash in dyld.
+        # Deployment metadata, not a runtime-compatibility certificate.
+        # Native checks must pass on a host at or above this declaration.
         'LSMinimumSystemVersion': _MIN_MACOS,
     },
 )
@@ -920,3 +1013,13 @@ if os.path.isdir(_app_bin):
     # Re-seal the outer bundle signature over the replaced nested code.
     _subprocess.run(['codesign', '--force', '--sign', '-', _app_path], check=True)
     _subprocess.run(['codesign', '--verify', '--deep', '--strict', _app_path], check=True)
+
+# Verbatim tools and data arrive after Analysis. Reinspect the actual final app,
+# including nested yt-dlp binaries, before any packaging step can proceed.
+_final_native = _minimum_sources([], [], _app_path)
+_require_native_components(_final_native)
+_declared_parts = tuple(int(part) for part in _MIN_MACOS.split('.'))
+_declared_parts += (0,) * (3 - len(_declared_parts))
+for _path in _final_native:
+    if _macho_minos(_path, _native_target) > _declared_parts:
+        raise SystemExit('[mac-spec] final bundle exceeds declared deployment target: ' + _path)

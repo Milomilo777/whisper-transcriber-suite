@@ -20,7 +20,7 @@
 # Options / environment:
 #   --no-smoke        skip step 5's smoke test (the bundle check still runs)
 #   PYTHON=/path      use this Python instead of searching for one
-#   WTS_MACOS_MIN=X   LSMinimumSystemVersion override (only after testing on X)
+#   WTS_MACOS_MIN=X   raise the computed deployment target (never lower it)
 set -euo pipefail
 cd "$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/../.." && pwd)"
 
@@ -42,6 +42,9 @@ case "$ARCH" in
   arm64)  SUFFIX=arm64 ;;
   *) die "unsupported Mac architecture: $ARCH" ;;
 esac
+if [ -n "${WTS_TARGET_ARCH:-}" ] && [ "$WTS_TARGET_ARCH" != "$ARCH" ]; then
+  die "WTS_TARGET_ARCH must match the build host architecture ($ARCH)"
+fi
 MACOS="$(sw_vers -productVersion)"
 VERSION="$(sed -n 's/^__version__ = "\(.*\)"/\1/p' core/__init__.py)"
 echo "Whisper Transcriber Suite $VERSION -- macOS $MACOS ($ARCH)"
@@ -76,7 +79,8 @@ grep -viE '^\s*(pywhispercpp|stable-ts)' requirements.txt > .buildenv/requiremen
 if [ "$ARCH" = x86_64 ] && [ "${MACOS%%.*}" = 10 ]; then
   # No onnxruntime cp312 wheel installs on macOS < 11. The official
   # macosx_11_0 universal2 wheel works on 10.15 (verified); offer it to pip
-  # under a 10.15 tag. Build host only -- nothing about the app changes.
+  # under a 10.15 tag for development builds. This does not establish
+  # supported-host validation; the later host/deployment gate still applies.
   ORT=.buildenv/ort-wheel
   if ! ls "$ORT"/onnxruntime-1.19.2-*macosx_10_15_universal2.whl >/dev/null 2>&1; then
     mkdir -p "$ORT"
@@ -100,7 +104,12 @@ pyinstaller --noconfirm --clean platform/macos/pyinstaller/whisper_project_mac.s
 APP="dist/Whisper Transcriber Suite.app"
 
 say_step "5. checks"
-bash platform/macos/pyinstaller/verify_mac_bundle.sh "$APP" "$ARCH"
+CONTRACT=platform/macos/pyinstaller/bundle_contract.py
+python "$CONTRACT" host "$APP" "$MACOS"
+MANIFEST="dist/Whisper Transcriber Suite.verified-app.json"
+rm -f -- "$MANIFEST"
+python "$CONTRACT" manifest "$APP" "$MANIFEST"
+bash platform/macos/pyinstaller/verify_mac_bundle.sh "$APP" "$ARCH" "$PY"
 if [ "$SMOKE" = 1 ]; then
   # Needs a logged-in desktop session (GUI launch) and the network (model
   # download, one real YouTube download).
@@ -109,15 +118,20 @@ else
   echo "smoke test skipped (--no-smoke)"
 fi
 
+python "$CONTRACT" verify "$APP" "$MANIFEST"
 say_step "6. .dmg"
-WTS_DMG_SUFFIX="$SUFFIX" bash platform/macos/pyinstaller/builddmg.command
 OUT="WhisperTranscriberSuite-v$VERSION-macOS-$SUFFIX.dmg"
-mv -f "dist/Whisper Transcriber Suite-$SUFFIX.dmg" "dist/$OUT"
-if [ "$SMOKE" = 1 ]; then
-  bash platform/macos/pyinstaller/test_dmg.sh "dist/$OUT"
-else
-  bash platform/macos/pyinstaller/test_dmg.sh "dist/$OUT" --no-gui
+rm -f -- "dist/Whisper Transcriber Suite-$SUFFIX.dmg" "dist/$OUT"
+PACKAGE_ARGS=(--manifest "$MANIFEST")
+if [ "$SMOKE" = 0 ]; then
+  PACKAGE_ARGS+=(--no-gui)
 fi
+PYTHON="$PY" WTS_DMG_SUFFIX="$SUFFIX" bash platform/macos/pyinstaller/builddmg.command "${PACKAGE_ARGS[@]}"
+mv -f "dist/Whisper Transcriber Suite-$SUFFIX.dmg" "dist/$OUT"
 echo
-echo "Done: dist/$OUT"
-echo "Minimum macOS: $(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$APP/Contents/Info.plist")"
+if [ "$SMOKE" = 1 ]; then
+  echo "Done: dist/$OUT"
+else
+  echo "Packaging only: dist/$OUT (GUI smoke skipped; not release validated)"
+fi
+echo "Declared deployment target: $(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$APP/Contents/Info.plist")"

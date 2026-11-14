@@ -202,4 +202,10 @@ echo "CFBundleDocumentTypes[0] LSHandlerRank: $rank"
 [ "$rank" = "Alternate" ] \
   || { echo "document types must be rank Alternate (the app must never become a default handler)"; bad=$((bad + 1)); }
 
+# Import the required compiled providers inside the frozen app, not the
+# builder's Python. Missing extensions or load failures are packaging errors.
+if ! "$VERIFY_PYTHON" platform/macos/pyinstaller/bundle_contract.py native "$APP"; then
+  echo "NATIVE required frozen components failed to import"; bad=$((bad + 1))
+fi
+
 [ "$bad" = 0 ] && echo "OK: bundle is self-contained." || { echo "FAILED: $bad problem(s)" >&2; exit 1; }

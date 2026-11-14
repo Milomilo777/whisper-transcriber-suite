@@ -95,8 +95,7 @@ jobs:
           bash platform/macos/pyinstaller/builddmg.command
           out="WhisperTranscriberSuite-v${{ steps.ver.outputs.version }}-macOS-${{ matrix.suffix }}.dmg"
           mv "dist/Whisper Transcriber Suite-${{ matrix.suffix }}.dmg" "dist/$out"
-          hdiutil verify "dist/$out"
-          bash platform/macos/pyinstaller/test_dmg.sh "dist/$out"
+          # builddmg.command already verifies and runs the copied image before success.
 
       - name: Upload .dmg
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

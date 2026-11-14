@@ -6,22 +6,50 @@
 # hdiutil) did not lose or break anything. Runs from build_mac.sh step 6 and
 # from macos-app.yml after the dmg is made.
 #
-# Usage: bash platform/macos/pyinstaller/test_dmg.sh <path.dmg> [--no-gui]
+# Usage: bash platform/macos/pyinstaller/test_dmg.sh <path.dmg> [--no-gui] [--arch x86_64|arm64|universal2]
 #   --no-gui   skip the GUI launch (no logged-in desktop session)
 set -uo pipefail
 DMG="${1:?usage: test_dmg.sh <path.dmg> [--no-gui]}"
-GUI=1; [ "${2:-}" = "--no-gui" ] && GUI=0
+shift
+GUI=1; MANIFEST=""; VERIFY_PYTHON="${PYTHON:-python3}"
+WANT="$(uname -m)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --no-gui) GUI=0; shift ;;
+    --manifest) MANIFEST="${2:?missing verified-app manifest}"; shift 2 ;;
+    --verify-python) VERIFY_PYTHON="${2:?missing verification Python}"; shift 2 ;;
+    --arch) WANT="${2:?missing application architecture}"; shift 2 ;;
+    *) echo "error: unknown option $1" >&2; exit 2 ;;
+  esac
+done
+case "$WANT" in
+  x86_64|arm64|universal2) ;;
+  *) echo "error: unsupported application architecture $WANT" >&2; exit 2 ;;
+esac
 [ -f "$DMG" ] || { echo "error: $DMG not found" >&2; exit 1; }
 NAME="Whisper Transcriber Suite"
 fail=0
-MNT="$(mktemp -d /tmp/wts-dmg.XXXXXX)"
-DEST="$(mktemp -d /tmp/wts-apps.XXXXXX)"
+MNT="$(mktemp -d "${TMPDIR:-/tmp}/wts-dmg.XXXXXX")"
+DEST="$(mktemp -d "${TMPDIR:-/tmp}/wts-apps.XXXXXX")"
 cleanup() {
-  pkill -f "$DEST/$NAME.app/Contents/MacOS/" 2>/dev/null || true
+  for own_pid in $(pgrep -f "$DEST/$NAME.app/Contents/MacOS/" || true); do
+    kill "$own_pid" 2>/dev/null || true
+  done
   hdiutil detach "$MNT" -quiet 2>/dev/null || hdiutil detach "$MNT" -force -quiet 2>/dev/null || true
   rm -rf "$DEST"; rmdir "$MNT" 2>/dev/null || true
 }
 trap cleanup EXIT
+
+CONTRACT="$SCRIPT_DIR/bundle_contract.py"
+if [ -z "$MANIFEST" ]; then
+  REFERENCE="$(dirname "$DMG")/$NAME.app"
+  MANIFEST="$DEST/verified-app.json"
+  "$VERIFY_PYTHON" "$CONTRACT" host "$REFERENCE" "$(sw_vers -productVersion)" || exit 1
+  "$VERIFY_PYTHON" "$CONTRACT" manifest "$REFERENCE" "$MANIFEST" || exit 1
+  bash "$SCRIPT_DIR/verify_mac_bundle.sh" "$REFERENCE" "$WANT" "$VERIFY_PYTHON" || exit 1
+  "$VERIFY_PYTHON" "$CONTRACT" verify "$REFERENCE" "$MANIFEST" || exit 1
+fi
 
 echo "== 1. hdiutil verify + attach"
 if hdiutil verify -quiet "$DMG"; then echo "OK   image checksum"; else echo "FAIL hdiutil verify"; fail=1; fi
@@ -38,6 +66,9 @@ echo "== 2. copy out like Finder, then check the copy"
 cp -R "$MNT/$NAME.app" "$DEST/" || { echo "FAIL copying the app out of the dmg"; exit 1; }
 APP="$DEST/$NAME.app"
 PL="$APP/Contents/Info.plist"
+"$VERIFY_PYTHON" "$CONTRACT" verify "$APP" "$MANIFEST" || exit 1
+"$VERIFY_PYTHON" "$CONTRACT" host "$APP" "$(sw_vers -productVersion)" || exit 1
+bash "$SCRIPT_DIR/verify_mac_bundle.sh" "$APP" "$WANT" "$VERIFY_PYTHON" || exit 1
 if plutil -lint "$PL" >/dev/null; then echo "OK   Info.plist parses"; else echo "FAIL Info.plist does not parse"; fail=1; fi
 for k in CFBundleIdentifier CFBundleShortVersionString LSMinimumSystemVersion NSMicrophoneUsageDescription CFBundleDocumentTypes:0:CFBundleTypeRole CFBundleDocumentTypes:0:LSHandlerRank; do
   v="$(/usr/libexec/PlistBuddy -c "Print :$k" "$PL" 2>/dev/null)"
@@ -82,7 +113,9 @@ if [ "$GUI" = 1 ]; then
   else
     echo "FAIL GUI did not start from the copy (or died)"; tail -30 "$LOG_DIR/app.log" 2>/dev/null || true; fail=1
   fi
-  pkill -f "$APP/Contents/MacOS/" 2>/dev/null || true
+  for own_pid in $(pgrep -f "$APP/Contents/MacOS/" || true); do
+    kill "$own_pid" 2>/dev/null || true
+  done
   sleep 2
 else
   echo "== 3. GUI launch skipped (--no-gui)"
@@ -90,4 +123,9 @@ fi
 
 echo "== 4. detach"
 if hdiutil detach "$MNT" -quiet; then echo "OK   unmounted"; else echo "FAIL detach"; fail=1; fi
-[ "$fail" = 0 ] && echo "DMG TEST PASSED" || { echo "DMG TEST FAILED" >&2; exit 1; }
+[ "$fail" = 0 ] || { echo "DMG TEST FAILED" >&2; exit 1; }
+if [ "$GUI" = 1 ]; then
+  echo "DMG TEST PASSED"
+else
+  echo "DMG PACKAGING CHECKS PASSED (GUI not validated)"
+fi

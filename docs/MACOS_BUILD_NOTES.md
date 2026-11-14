@@ -27,6 +27,20 @@ computed requirement.
 as the app's supported minimum. The dated compatibility examples below describe
 older package policies and are not instructions to override this contract.
 
+The inspector fails closed if any candidate cannot supply a macOS deployment
+version for the target architecture. It includes native data and every nested
+verbatim tool, retains patch versions, and requires the bundled native components.
+The final app is inspected again after post-copy steps. These are deployment
+metadata checks, not a runtime-compatibility certificate.
+
+The packaging command rejects a build host below the app's declared deployment
+target. The verified app receives a content, symlink and executable-bit manifest;
+the copied app from the DMG must match it and pass the strict bundle audit again.
+Required compiled Python providers are imported inside that frozen copy, in a
+bounded disposable process. A skipped GUI smoke test is labelled packaging-only.
+Record the exact tested OS and artifact hash; a newer supported host does not
+establish execution on every older version allowed by the declaration.
+
 ## TL;DR — the pipeline
 
 **One command:** `bash platform/macos/build_mac.sh` runs every step below
@@ -45,10 +59,22 @@ pip install --prefer-binary -c platform/macos/pyinstaller/constraints-macos.txt 
 pyinstaller --noconfirm --clean platform/macos/pyinstaller/whisper_project_mac.spec
 bash platform/macos/pyinstaller/verify_mac_bundle.sh               # every Mach-O self-contained?
 bash platform/macos/pyinstaller/smoke_test_app.sh "dist/Whisper Transcriber Suite.app" python tiny
-bash platform/macos/pyinstaller/builddmg.command                   # create-dmg, or hdiutil fallback
+PYTHON=python bash platform/macos/pyinstaller/builddmg.command     # gated create-dmg, or hdiutil fallback
 ```
 Release file name: `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` / `-arm64.dmg`.
 CI (`macos-app.yml`, manual dispatch) runs exactly these steps on both archs.
+
+Every packaging entry uses `builddmg.command`: it refuses a host below the
+declared minimum, audits the native bundle, binds the source and staged copy to
+an immutable manifest, and checks a fresh nonempty image through `test_dmg.sh`
+before reporting success. It uses unique staging and refuses an existing output.
+Set `PYTHON` to the build-host interpreter. `--no-gui` explicitly produces only a
+packaging check, with no release-validation claim; `build_mac.sh --no-smoke`
+passes that mode to the packager.
+The output suffix selects the audited architectures: `x64` requires `x86_64`,
+`arm64` requires `arm64`, and `universal` requires both through `universal2`.
+The same target reaches the copied-image check through `test_dmg.sh --arch`;
+standalone image checks default to the host architecture when it is omitted.
 
 The bundle verifier requires a build-host Python interpreter (optional third
 argument, default `python3`) to enumerate Mach-O candidates by their magic bytes.
@@ -72,11 +98,8 @@ earlier Mac versions. From the repo root, in the build venv (python.org Python
 3.12 with Tk 8.6, slim requirements as in the TL;DR):
 
 ```bash
-rm -rf dist
 pyinstaller --noconfirm --clean whisper_project_onedir.spec   # or whisper_project_onefile.spec
-rm -rf dist/dmg/ && mkdir dist/dmg && cp -R "dist/Whisper Transcriber Suite.app" dist/dmg/
-rm -f "dist/Whisper Transcriber Suite.dmg"
-create-dmg --volname "Whisper Transcriber Suite" --window-pos 200 120 --window-size 600 320   --icon-size 100 --icon "Whisper Transcriber Suite.app" 170 130   --hide-extension "Whisper Transcriber Suite.app" --app-drop-link 430 130   "dist/Whisper Transcriber Suite.dmg" "dist/dmg/"
+PYTHON=python bash platform/macos/pyinstaller/builddmg.command
 ```
 
 - On macOS both repo-root specs run `whisper_project_mac.spec` and stop, so
@@ -90,7 +113,7 @@ create-dmg --volname "Whisper Transcriber Suite" --window-pos 200 120 --window-s
   step with the right name (and falls back to `hdiutil` without create-dmg).
 - `bash platform/macos/pyinstaller/compileall-whisper-mac.sh` (the
   colleague's committed script) is the same thing in one command:
-  clean `dist/`, mac spec, `builddmg.command`.
+  mac spec, then the same gated `builddmg.command` (including copied-image checks).
 - Use the **slim** venv. With torch / openai-whisper / stable-ts installed
   (an older venv) the build still finishes (5.4 min on the VM) and passes the
   smoke test, but PyInstaller bundles torch: the `.app` grows from 0.73 GB
