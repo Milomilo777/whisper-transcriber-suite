@@ -130,13 +130,24 @@ def test_review_partial_optional_mutation_is_isolated(monkeypatch, tmp_path, rai
 
 
 @pytest.mark.parametrize("extent", [None, 0, -1, float("nan"), float("inf")])
-def test_review_unknown_extent_does_not_guess_or_clamp(monkeypatch, tmp_path, extent):
+@pytest.mark.parametrize("cue_end", [10.0, 10.04], ids=["disjoint-cue", "compatible-cue"])
+def test_review_unknown_extent_does_not_guess_or_clamp(monkeypatch, tmp_path, extent, cue_end):
     install_aligner(monkeypatch, word_for("past-audio-end"))
     monkeypatch.setattr(tr, "config", {"alignment": "stable_ts", "diarization_enabled": False,
         "hallucination_detect_enabled": False, "auto_chapters_enabled": False})
     audio=tmp_path / "fixture.wav";audio.write_bytes(b"fake")
     task=NS(file_path=str(audio),cancelled=False,whisper_task="transcribe",_audio_end=extent)
-    rows=original_segments();tr._run_post_pipeline(task,rows,"en",lambda _:None)
+    rows=original_segments()
+    rows[-1]["end"] = cue_end
+    before = deepcopy(rows)
+    tr._run_post_pipeline(task,rows,"en",lambda _:None)
+    if cue_end == 10.0:
+        # Media extent is unknown, but the optional words still cannot belong
+        # wholly to a different known cue. Keep every original clock intact.
+        assert rows == before
+        tr._enforce_audio_end(task,rows)
+        assert rows == before
+        return
     assert rows[-1]["words"][-1]["start"] == 10.02
     assert rows[-1]["words"][-1]["end"] == 10.03
     tr._enforce_audio_end(task,rows)

@@ -172,6 +172,13 @@ def refine_word_timestamps_in_place(
         return False
     replacements: list[list[dict[str, Any]]] = []
     for i in range(len(segments_data)):
+        try:
+            low = float(segments_data[i]["start"])
+            high = float(segments_data[i]["end"])
+            known_cue = math.isfinite(low) and math.isfinite(high) and 0 <= low < high
+        except (KeyError, TypeError, ValueError, OverflowError):
+            low = high = 0.0
+            known_cue = False
         words = getattr(refined_segments[i], "words", None) or []
         seg_words: list[dict[str, Any]] = []
         for w in words:
@@ -181,6 +188,12 @@ def refine_word_timestamps_in_place(
             except (TypeError, ValueError, OverflowError):
                 return False
             if not math.isfinite(start) or not math.isfinite(end) or start < 0 or end < start:
+                return False
+            # Repeated text alone cannot associate a result with its cue. Keep
+            # crossover words, but decline the entire optional result if a word
+            # is wholly outside its known source interval. Unknown bounds do
+            # not justify inventing a limit or changing otherwise usable times.
+            if known_cue and (end < low or start > high):
                 return False
             seg_words.append({
                 "start": start,
