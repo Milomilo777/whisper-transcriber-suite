@@ -41,6 +41,7 @@ import sys
 import threading
 import time
 import tkinter as tk
+import unicodedata
 from tkinter import font as tkfont
 from tkinter import filedialog, messagebox, simpledialog, ttk
 from typing import Any, Callable, Collection, Optional
@@ -310,6 +311,7 @@ def _filler_regex(words: tuple[str, ...] = _FILLER_WORDS) -> re.Pattern[str]:
     dot or "@" inside a name ("user@um.com", "um.mp3"). Punctuation after
     the filler is NOT matched: "Hello um, world" keeps its comma
     ("Hello, world"); ``_strip_fillers`` tidies doubled punctuation.
+    Unicode combining marks and hyphens are checked at replacement time.
     """
     alternatives = "|".join(re.escape(w) for w in sorted(words, key=len, reverse=True))
     return re.compile(
@@ -683,7 +685,18 @@ def _strip_fillers(text: str, pattern: re.Pattern[str]) -> str:
     marker = "\ue000"
     while marker in text:
         marker += "\ue000"
-    cleaned = pattern.sub(marker, text)
+    def mark_filler(match: re.Match[str]) -> str:
+        start = match.start()
+        while start < match.end() and text[start].isspace():
+            start += 1
+        neighbours = [text[start - 1] if start else "",
+                      text[match.end()] if match.end() < len(text) else ""]
+        if any(char and (char == "\u00ad" or unicodedata.category(char).startswith("M")
+                         or "HYPHEN" in unicodedata.name(char, "")) for char in neighbours):
+            return match.group()  # A real word part, not a standalone filler.
+        return marker
+
+    cleaned = pattern.sub(mark_filler, text)
     if cleaned == text:
         return text.strip()
     hole = rf"{re.escape(marker)}(?:\s*{re.escape(marker)})*"

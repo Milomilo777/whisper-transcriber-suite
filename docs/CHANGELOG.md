@@ -18,6 +18,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Serialize legacy settings migration with settings saves, preserving newer choices and existing recovery backups when multiple instances start together.
 - Finish saved transcripts even when a worker reports malformed optional counts or speed metadata. Preserve the history update and release the queue slot before accepting another job.
 - Finish saved transcripts even when a worker reports malformed optional counts or speed metadata, including during app shutdown. Preserve the history update and release the queue slot before accepting another job.
+- Keep combining marks and Unicode hyphens attached to real words during filler removal, including nonbreaking “Mm-hmm” spellings and decomposed accents.
+
 - Limit filler-word punctuation cleanup to the removed words, preserving unrelated punctuation, spacing and paragraph breaks elsewhere in the transcript.
 
 - Keep the latest Save's pending export list separate from an older rebuild, so closing during overlapping saves names every file still waiting for the newest text.
