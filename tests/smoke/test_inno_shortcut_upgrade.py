@@ -14,9 +14,7 @@ ROOT = Path(__file__).resolve().parents[2]
 pytestmark = pytest.mark.skipif(os.name != 'nt', reason='Windows-only Inno smoke gate')
 
 
-@pytest.mark.parametrize("script_name", ["installer_embed.iss", "installer.iss"])
-@pytest.mark.parametrize("target_kind", ["private", "commonpf"])
-def test_upgrade_retires_only_matching_versioned_shortcuts(tmp_path, script_name, target_kind, inno_compiler):
+def build_shortcut_fixture(tmp_path, script_name, target_kind):
     text = (ROOT / script_name).read_text(encoding="utf-8")
     app, menu, desktop = [tmp_path / n for n in ("app", "menu", "desktop")]
     for folder in (app / "python", menu, desktop):
@@ -27,6 +25,10 @@ def test_upgrade_retires_only_matching_versioned_shortcuts(tmp_path, script_name
     source.write_bytes(b"tracked fixture")
     icons = text.split("[Icons]", 1)[1].split("[Tasks]", 1)[0]
     prepare = re.search(r"(?ms)^function PrepareToInstall\b.*?^end;", text).group(0)
+    guard = re.search(r"(?ms)^type\n  TPredecessorFileInfo = record\n.*?"
+                      r"(?=^// Versioned shortcut maintenance\.)", text)
+    if guard is None:
+        raise ValueError('Missing predecessor guard in ' + script_name)
     match = re.search(r"(?s)// Versioned shortcut maintenance\.\n(.*?)// End versioned shortcut maintenance\.", text)
     cleanup = match.group(1) if match else ""
     # All writes stay under tmp_path. The Program Files target is only stored
@@ -41,7 +43,7 @@ def test_upgrade_retires_only_matching_versioned_shortcuts(tmp_path, script_name
     code = """const OldAppId = 'fixture-legacy';
 function GetUninstallString(): String; begin Result := 'existing fixture'; end;
 function GetUninstallStringForAppId(AnAppId: String): String; begin Result := ''; end;
-""" + mapped(cleanup) + prepare
+""" + mapped(guard.group(0)) + mapped(cleanup) + prepare
     seed = r"""procedure InitializeWizard();
 var Folder, Link: String; i: Integer;
 begin
@@ -87,6 +89,24 @@ Name: "desktopicon"; Description: "Private desktop fixture"
 {code}
 {seed}
 ''', encoding="utf-8")
+    return app, menu, desktop, script
+
+
+@pytest.mark.parametrize("script_name", ["installer_embed.iss", "installer.iss"])
+@pytest.mark.parametrize("target_kind", ["private", "commonpf"])
+def test_shortcut_fixture_compiles_without_running_setup(tmp_path, script_name, target_kind, inno_compiler):
+    _app, _menu, _desktop, script = build_shortcut_fixture(tmp_path, script_name, target_kind)
+    result = subprocess.run([str(inno_compiler), '/Qp', str(script)], cwd=tmp_path,
+                            capture_output=True, timeout=45,
+                            creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+    assert result.returncode == 0, (result.stdout + result.stderr).decode(errors='replace')
+    assert (tmp_path / 'fixture.exe').is_file()
+
+
+@pytest.mark.parametrize("script_name", ["installer_embed.iss", "installer.iss"])
+@pytest.mark.parametrize("target_kind", ["private", "commonpf"])
+def test_upgrade_retires_only_matching_versioned_shortcuts(tmp_path, script_name, target_kind, inno_compiler):
+    app, menu, desktop, script = build_shortcut_fixture(tmp_path, script_name, target_kind)
     def run(args):
         setup_log = tmp_path / "setup.log"
         if Path(args[0]).name == "fixture.exe":
