@@ -25,12 +25,15 @@ def build_shortcut_fixture(tmp_path, script_name, target_kind):
     source.write_bytes(b"tracked fixture")
     icons = text.split("[Icons]", 1)[1].split("[Tasks]", 1)[0]
     prepare = re.search(r"(?ms)^function PrepareToInstall\b.*?^end;", text).group(0)
+    # Unlike the data-preservation stub, the real guard covers shortcut compile dependencies.
     guard = re.search(r"(?ms)^type\n  TPredecessorFileInfo = record\n.*?"
                       r"(?=^// Versioned shortcut maintenance\.)", text)
     if guard is None:
         raise ValueError('Missing predecessor guard in ' + script_name)
     match = re.search(r"(?s)// Versioned shortcut maintenance\.\n(.*?)// End versioned shortcut maintenance\.", text)
-    cleanup = match.group(1) if match else ""
+    if match is None:
+        raise ValueError('Missing versioned shortcut cleanup in ' + script_name)
+    cleanup = match.group(1)
     # All writes stay under tmp_path. The Program Files target is only stored
     # in synthetic .lnk files, never created or executed. In 64-bit install
     # mode this exercises COM target lookup against the real {commonpf} value.
@@ -43,7 +46,7 @@ def build_shortcut_fixture(tmp_path, script_name, target_kind):
     code = """const OldAppId = 'fixture-legacy';
 function GetUninstallString(): String; begin Result := 'existing fixture'; end;
 function GetUninstallStringForAppId(AnAppId: String): String; begin Result := ''; end;
-""" + mapped(guard.group(0)) + mapped(cleanup) + prepare
+""" + guard.group(0) + mapped(cleanup) + prepare
     seed = r"""procedure InitializeWizard();
 var Folder, Link: String; i: Integer;
 begin
