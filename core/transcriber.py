@@ -1663,6 +1663,29 @@ class _WrittenOutputs(list[str]):
     def __init__(self) -> None:
         super().__init__()
         self.by_format: dict[str, str] = {}
+        self.failure: Exception | None = None
+        self.errors: list[str] = []
+
+
+def _write_task_outputs(task: TranscriptionTask, *args: Any, **kwargs: Any) -> list[str]:
+    written = _write_outputs(*args, **kwargs)
+    task.output_paths = written
+    if isinstance(written, _WrittenOutputs) and written.failure is not None:
+        error = written.failure
+        message = "Some output writers failed: " + "; ".join(written.errors)
+        # A clipped run may have no checkpoint. Preserve the entire decoded
+        # transcript as well as the successfully published selected formats.
+        if not _caused_by_memory_error(error):
+            try:
+                kept = _keep_output_recovery(
+                    args[2], args[1], kwargs.get("lang", ""),
+                    kwargs.get("chapters"), message,
+                )
+                message += f" Recovery data: {kept}"
+            except Exception as recovery_error:
+                logger.warning("Could not keep completed output recovery: %s", recovery_error)
+        raise RuntimeError(message) from error
+    return written
 
 
 def _caused_by_memory_error(error: BaseException) -> bool:
@@ -2017,14 +2040,13 @@ def _write_outputs_impl(
                 continue
             written.append(path)
             written.by_format[fmt_name] = path
-        # Requested known formats, but every writer failed (disk full, all
-        # writers broken) — surface it so the task doesn't report a silent
-        # "wrote 0 files" success.
         if planned and not written:
             raise RuntimeError(
                 "All output writers failed; last error: "
                 + (write_errors[-1] if write_errors else "unknown")
             ) from (allocation_error if allocation_error is not None else last_write_error)
+        written.errors = write_errors
+        written.failure = allocation_error if allocation_error is not None else last_write_error
         # Auto-chapter sidecar: same set, same index. A sidecar failure is
         # non-fatal (chapters are an optional extra, never worth failing the
         # transcript over) — _write_chapter_sidecar returns None on error.
@@ -3808,8 +3830,8 @@ def transcribe(
         _note_no_speech(task, segments_data, log_cb)
         _enforce_audio_end(task, segments_data)
         _clue_phase(task, "worker.output")
-        written = _write_outputs(
-            base,
+        written = _write_task_outputs(
+            task, base,
             segments_data,
             task.file_path,
             getattr(task, "output_formats", None),
@@ -4071,8 +4093,8 @@ def _transcribe_via_alt_backend(
     _note_no_speech(task, segments_data, log_cb)
     _enforce_audio_end(task, segments_data)
     _clue_phase(task, "worker.output")
-    written = _write_outputs(
-        base,
+    written = _write_task_outputs(
+        task, base,
         segments_data,
         task.file_path,
         getattr(task, "output_formats", None),
@@ -4305,8 +4327,8 @@ def _write_resumed_outputs(
     base = _task_output_base(task)
     _note_no_speech(task, segments, log_cb)
     _enforce_audio_end(task, segments)
-    written = _write_outputs(
-        base,
+    written = _write_task_outputs(
+        task, base,
         segments,
         task.file_path,
         getattr(task, "output_formats", None),

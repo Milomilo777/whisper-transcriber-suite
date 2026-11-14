@@ -9,6 +9,7 @@ do for real (same stem: a.mp4 + a.wav, or two clips of one file).
 from __future__ import annotations
 
 import os
+from pathlib import Path
 import threading
 
 import core.transcriber as tr
@@ -152,3 +153,70 @@ def test_no_claimable_name_fails_instead_of_writing_unclaimed(tmp_path, monkeypa
     with pytest.raises(RuntimeError):
         tr._write_outputs(base, [], str(tmp_path / "talk.mp4"), ["srt"])
     assert list(tmp_path.iterdir()) == []
+
+
+def test_partial_writer_failure_keeps_checkpoint_and_successful_output(tmp_path, monkeypatch):
+    """A requested format failing must not turn a resumable run into done."""
+    from core.task import TranscriptionTask
+    import pytest
+
+    source = tmp_path / "resume.wav"
+    source.write_bytes(b"audio")
+    checkpoint = tmp_path / "resume.checkpoint"
+    checkpoint.write_text("completed transcript", encoding="utf-8")
+    task = TranscriptionTask(str(source))
+    task.output_formats = ["srt", "json"]
+    progress = []
+
+    def writer(name):
+        def render(segments, audio):
+            if name == "json":
+                raise PermissionError("selected JSON unavailable")
+            return "saved transcript\n"
+        return render
+
+    monkeypatch.setattr(tr, "get_writer", writer)
+    monkeypatch.setattr(tr._checkpoint, "delete_checkpoint", lambda _: checkpoint.unlink())
+    monkeypatch.setattr(tr._checkpoint, "user_data_dir", lambda: tmp_path / "profile")
+    with pytest.raises(RuntimeError, match="json"):
+        tr._write_resumed_outputs(
+            task, [{"start": 0., "end": 1., "text": "saved transcript"}],
+            "en", 0, None, progress.append,
+        )
+    assert checkpoint.read_text(encoding="utf-8") == "completed transcript"
+    assert progress == []
+    assert len(task.output_paths) == 1
+    assert Path(task.output_paths[0]).read_text(encoding="utf-8") == "saved transcript\n"
+    recovery = list((tmp_path / "profile" / "transcript-recovery").glob("*.json"))
+    assert len(recovery) == 1
+    assert "saved transcript" in recovery[0].read_text(encoding="utf-8")
+
+
+def test_partial_failure_preserves_outputs_when_recovery_cannot_be_written(tmp_path, monkeypatch):
+    import pytest
+    from core.task import TranscriptionTask
+
+    for failure in (MemoryError("format OOM"), PermissionError("format denied")):
+        source = str(tmp_path / (type(failure).__name__ + ".wav"))
+        task = TranscriptionTask(source)
+        calls = []
+
+        def writer(name):
+            def render(segments, audio):
+                if name == "json":
+                    raise failure
+                return "saved text\n"
+            return render
+
+        def unavailable_recovery(*args):
+            calls.append(True)
+            raise OSError("recovery unavailable")
+
+        monkeypatch.setattr(tr, "get_writer", writer)
+        monkeypatch.setattr(tr, "_keep_output_recovery", unavailable_recovery)
+        with pytest.raises(RuntimeError, match="json") as caught:
+            tr._write_task_outputs(task, source[:-4], [], source, ["srt", "json"])
+        assert caught.value.__cause__ is failure
+        assert len(task.output_paths) == 1
+        assert Path(task.output_paths[0]).read_text(encoding="utf-8") == "saved text\n"
+        assert calls == ([] if isinstance(failure, MemoryError) else [True])
