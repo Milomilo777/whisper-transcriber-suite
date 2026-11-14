@@ -113,7 +113,7 @@ def test_voice_reference_recording_reports_stop_errors_and_keeps_file(
         return str(path)
 
     recorder = types.SimpleNamespace(
-        stop=stop, is_running=lambda: False,
+        stop=stop, is_running=lambda: False, output_path=str(path),
         last_error="synthetic finalization failure" if state == "worker_error" else None,
     )
     app = types.SimpleNamespace(vc_recorder=recorder,
@@ -127,10 +127,10 @@ def test_voice_reference_recording_reports_stop_errors_and_keeps_file(
         assert added == [str(path)] and errors == []
     else:
         assert added == [] and len(errors) == 1 and statuses
-        if state == "worker_error":
-            assert "synthetic finalization failure" in str(errors[0][0])
-            detail = errors[0][1].get("detail", "")
-            assert (str(path) in detail) == exists
+        reason = "synthetic finalization failure" if state == "worker_error" else "synthetic stop failure"
+        assert errors[0][1]["detail"] == reason
+        assert reason not in errors[0][0][2]
+        assert (str(path) in errors[0][0][2]) == exists
     assert path.read_bytes() == original if exists else not path.exists()
 
 

@@ -111,7 +111,8 @@ def test_supported_finish_retains_capture_and_polls_without_repeated_stop(record
     assert controller.app.vc_recorder is recording.recorder
     assert controller.app.vc_record_btn.state == 'disabled'
     assert not controller.added and len(controller.errors) == 1
-    assert str(recording.path) in controller.errors[0][1]['detail']
+    assert str(recording.path) in controller.errors[0][0][2]
+    assert recording.recorder.last_error in controller.errors[0][1]['detail']
     assert controller.app.vc_recording_after_id in controller.callbacks
     for _ in range(3):
         identifier = controller.app.vc_recording_after_id
@@ -253,10 +254,10 @@ def test_pending_stop_uses_existing_localized_body_and_diagnostic_detail(recordi
     diagnostic = diagnostic if raises else recording.recorder.last_error
     args, kwargs = controller.errors[0]
     assert args[1] == 'localized failure'
-    assert args[2] == 'localized stopping'
+    assert args[2] == (f'localized retained file: {recording.path}' if exists else 'localized failure')
     assert diagnostic not in args[2]
     assert diagnostic in kwargs['detail']
-    assert ('localized retained file' in kwargs['detail']) is exists
+    assert 'localized retained file' not in kwargs['detail']
     assert controller.statuses[-1] == 'localized stopping'
     assert controller.app.vc_recorder is recording.recorder and not controller.added
 
@@ -313,7 +314,39 @@ def test_pending_stop_preserves_existing_job_status(recording, controller, busy,
     controller.app.vc_status_var.set('Current job status')
     controller.call('_finish_recording')
     assert controller.statuses[-1] == 'Current job status'
-    assert controller.errors[0][0][2] == 'Recording failed'
+    assert controller.errors[0][0][2] == f'The recording file was kept at:\n{recording.path}\nIt may be incomplete.'
     assert recording.recorder.last_error in controller.errors[0][1]['detail']
     assert controller.app.vc_record_btn.state == 'disabled'
     assert controller.app.vc_recorder is recording.recorder and not controller.added
+
+
+@pytest.mark.parametrize('pending', [False, True])
+@pytest.mark.parametrize('raises', [False, True])
+@pytest.mark.parametrize('exists', [False, True])
+def test_failure_body_exposes_kept_file_in_all_stop_paths(recording, controller, monkeypatch, pending, raises, exists):
+    diagnostic = 'private backend failure'
+    recording.capture.alive = pending
+    if not exists:
+        recording.path.unlink()  # Owned synthetic audio only.
+    messages = {
+        'Recording failed': 'localized failure', 'Stopping...': 'localized stopping',
+        'The recording file was kept at:\n{path}\nIt may be incomplete.': 'localized retained file: {path}',
+    }
+    controller.namespace['_'] = lambda text, **kwargs: messages.get(text, text).format(**kwargs)
+
+    def failed_stop():
+        if raises:
+            raise OSError(diagnostic)
+        recording.recorder.last_error = diagnostic
+        return str(recording.path)
+
+    monkeypatch.setattr(recording.recorder, 'stop', failed_stop)
+    controller.call('_finish_recording')
+    assert len(controller.errors) == 1 and not controller.added
+    args, kwargs = controller.errors[0]
+    assert args[2] == (f'localized retained file: {recording.path}' if exists else 'localized failure')
+    assert diagnostic not in args[2] and kwargs['detail'] == diagnostic
+    assert controller.app.vc_recorder is (recording.recorder if pending else None)
+    assert controller.statuses[-1] == ('localized stopping' if pending else 'Idle.')
+    if exists:
+        assert recording.path.read_bytes() == recording.original
