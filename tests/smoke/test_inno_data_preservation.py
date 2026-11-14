@@ -80,6 +80,7 @@ def test_first_upgrade_and_later_uninstall_preserve_old_user_additions(tmp_path)
 function ThisAppId():String; begin Result := 'fixture-current'; end;
 function GetUninstallString():String; begin Result := '{old_exe}'; end;
 function GetUninstallStringForAppId(AnAppId:String):String; begin Result := ''; end;
+function SharesPredecessorFolder():Boolean; begin Result := False; end;
 function RunOldUninstaller(AnAppId, What:String):String;
 var ExitCode:Integer;
 begin

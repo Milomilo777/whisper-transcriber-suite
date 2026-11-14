@@ -146,6 +146,28 @@ end;
 const
   OldAppId = '{734B46B9-5E70-4C4E-8833-0A7506A64376}';
 
+// Refuse cross-product overlays: the retained predecessor uninstaller still
+// owns its old folder and may recursively delete files installed beneath it.
+function PredecessorFolderOverlaps(RootKey: Integer): Boolean;
+var OldDir, NewDir, UninstPath: String;
+begin
+  Result := False;
+  OldDir := '';
+  UninstPath := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\' + OldAppId + '_is1';
+  if not RegQueryStringValue(RootKey, UninstPath, 'Inno Setup: App Path', OldDir) then Exit;
+  if OldDir = '' then Exit;
+  OldDir := Lowercase(AddBackslash(ExpandFileName(OldDir)));
+  NewDir := Lowercase(AddBackslash(ExpandFileName(ExpandConstant('{app}'))));
+  Result := (Pos(OldDir, NewDir) = 1) or (Pos(NewDir, OldDir) = 1);
+end;
+
+function SharesPredecessorFolder(): Boolean;
+begin
+  // Registrations can coexist in both views at different locations. A
+  // non-overlapping native-view path must not mask the 32-bit-view path.
+  Result := PredecessorFolderOverlaps(HKLM) or PredecessorFolderOverlaps(HKLM32);
+end;
+
 // Versioned shortcut maintenance.
 function ShortcutFileAttributes(PathName: String): Cardinal;
   external 'GetFileAttributesW@kernel32.dll stdcall';
@@ -233,6 +255,10 @@ begin
   // Historical uninstallers recursively remove untracked user additions.
   // Upgrade in place and let the application import legacy profile data.
   Result := '';
+  if SharesPredecessorFolder() then begin
+    Result := 'Choose a different folder from the earlier Whisper Project installation. Its retained uninstaller could remove files from this folder.';
+    Exit;
+  end;
   if GetUninstallString() <> '' then begin
     Log('Upgrade in place; existing user additions are preserved.');
     CleanupVersionedShortcuts();
