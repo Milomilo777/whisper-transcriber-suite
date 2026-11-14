@@ -4,6 +4,7 @@ import unicodedata
 from pathlib import Path
 PIN='3adf5845e3d28d131dcb3cb78572c12de5fe5cf4'
 class GuardError(RuntimeError):pass
+class GuardCleanupError(GuardError):pass
 
 def verify_source(source,manifest):
  source=Path(source)
@@ -35,7 +36,7 @@ def guarded_chord(api,vk):
  # Cleanup is key-UP only for keys proved initially up and attempted by this
  # probe. It must run even if focus is lost after submission; no new key-down
  # may be issued to an unowned foreground window.
- keys=(0x11,0xA5,vk)
+ keys=(0xA2,0xA5,vk)
  if not api.owns():raise GuardError('Foreground/PID/native+Tk focus is not owned')
  if any(api.down(key) for key in keys):raise GuardError('A chord key is already held; no input admitted')
  primary=None;attempted=False
@@ -43,17 +44,30 @@ def guarded_chord(api,vk):
   if not api.owns():raise GuardError('Foreground ownership changed before input')
   try:
    attempted=True
-   sent=api.send([(0x11,0),(0xA5,1),(vk,0),(vk,2),(0xA5,3),(0x11,2)])
+   sent=api.send([(0xA2,0),(0xA5,1),(vk,0),(vk,2),(0xA5,3),(0xA2,2)])
    if sent!=6:raise GuardError('Partial native input; abort remaining cases')
   except Exception as e:primary=e
  finally:
   if attempted:
-   released=api.send([(vk,2),(0xA5,3),(0x11,2)])
-   if released!=3:raise GuardError('Probe-owned key release incomplete; stop')
+   try:released=api.send([(vk,2),(0xA5,3),(0xA2,2)])
+   except Exception as error:raise GuardCleanupError('Probe-owned key release failed; stop') from error
+   if released!=3:raise GuardCleanupError('Probe-owned key release incomplete; stop')
  if primary is not None:raise primary
  if not api.owns():raise GuardError('Foreground changed during input; remaining cases aborted')
  return {'sent_events':6,'cleanup_keyups':3}
 
+
+def keyboard_packets(sequence, map_scan, hkl):
+    """Map physical keys before sending any input, including key-up cleanup."""
+    packets = []
+    for key, flags in sequence:
+        # MAPVK_VK_TO_VSC_EX preserves the E0 prefix for right Alt.
+        scan = int(map_scan(key, 4, hkl))
+        if not scan or (key == 0xA2 and scan != 0x1D) or (key == 0xA5 and scan != 0xE038):
+            raise GuardError('Physical AltGr scan mapping is unavailable')
+        extended = 1 if scan & 0xFF00 == 0xE000 else 0
+        packets.append((key, scan & 0xFF, (flags & 2) | extended | 8))
+    return packets
 
 
 def ownership_allowed(proof):
@@ -114,8 +128,8 @@ def temporary_layout(api,target):
             if previous!=original or api.current()!=target:raise GuardError('Thread-local layout activation failed')
         yield state
     finally:
-        if not api.owns_thread():raise GuardError('Owned fixture thread changed before layout restoration')
+        if not api.owns_thread():raise GuardCleanupError('Owned fixture thread changed before layout restoration')
         if attempted or api.current()!=original:
-            if not api.activate(original,0):raise GuardError('Original thread layout could not be restored')
-        if api.current()!=original:raise GuardError('Original thread layout restoration is unverified')
+            if not api.activate(original,0):raise GuardCleanupError('Original thread layout could not be restored')
+        if api.current()!=original:raise GuardCleanupError('Original thread layout restoration is unverified')
         state['restored']=True

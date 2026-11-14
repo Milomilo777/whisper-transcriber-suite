@@ -95,7 +95,7 @@ def test_invalid_hosted_context_is_refused(change):
 
 @pytest.mark.parametrize("rc,clean,status,missing", [
     (1, True, "PASS", []), (0, False, "PASS", []),
-    (0, True, "BLOCKED-ENV", []), (0, True, "PASS", [67]),
+    (1, False, "BLOCKED-ENV", []), (0, True, "PASS", [67]),
 ])
 def test_incomplete_native_evidence_never_passes(rc, clean, status, missing):
     assert load("hosted_altgr_loader").final_verdict(rc, clean, status, missing)[1] != 0
@@ -142,8 +142,11 @@ def require_uploadable_patterns(paths):
 
 def test_uploaded_evidence_has_no_forbidden_parent_path_components():
     workflow = yaml.safe_load((ROOT / ".github/workflows/windows-installer.yml").read_text(encoding="utf-8"))
-    upload = next(step for step in workflow["jobs"]["build"]["steps"] if step["name"] == "Upload the build manifest")
-    require_uploadable_patterns(upload["with"]["path"])
+    uploads = [step for job in workflow["jobs"].values() for step in job["steps"]
+               if step.get("uses", "").startswith("actions/upload-artifact@")]
+    assert len(uploads) >= 2
+    for upload in uploads:
+        require_uploadable_patterns(upload["with"]["path"])
 
 
 def test_parent_path_regression_control_is_rejected():

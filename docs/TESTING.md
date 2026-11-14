@@ -22,6 +22,13 @@ cleaned up. The same workflow fetches complete release history and runs
 `tools/check_installer_upgrade_files.py` before building, failing on retired
 packaged source paths or unavailable release history.
 
+Hosted AltGr acceptance uses physical left-Control/right-Alt scan codes and
+verifies the active German Extended E1 layout before input. Its JSON and JUnit
+keep `BLOCKED-ENV` distinct from `PASS`: environment skips do not fail the
+workflow until the first hosted pass qualifies this check as a hard gate.
+Application failures, incomplete coverage and cleanup failures still fail.
+Keyboard layouts are loaded only inside that disposable hosted runner.
+
 From the repo root, run:
 
 ```

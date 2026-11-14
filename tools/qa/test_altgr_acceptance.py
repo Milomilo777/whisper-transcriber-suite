@@ -12,7 +12,7 @@ import psutil
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parent))
-from altgr_guards import GuardError, guarded_chord, is_altgr_text, ownership_allowed, select_loaded_layout, temporary_layout
+from altgr_guards import GuardCleanupError, GuardError, guarded_chord, is_altgr_text, keyboard_packets, ownership_allowed, select_loaded_layout, temporary_layout
 from receipt_io import write_json_checkpoint
 
 
@@ -36,7 +36,7 @@ def test_finite_native_altgr_acceptance(record_property):
     try:
         assert sys.platform == "win32"
         root = tk.Tk()
-        root.title("Owned P17B AltGr acceptance")
+        root.title("Owned AltGr acceptance")
         root.geometry("500x240+140+140")
         data["tk_version"] = str(root.tk.call("info", "patchlevel"))
         assert root.tk.call("tk", "windowingsystem") == "win32"
@@ -142,7 +142,7 @@ def test_finite_native_altgr_acceptance(record_property):
             virtual_actions.append("native:" + action)
             return "break"
 
-        clipboard_guard_tag = "P17BClipboardGuard" + str(identity[0])
+        clipboard_guard_tag = "AltGrClipboardGuard" + str(identity[0])
         entry.bindtags((clipboard_guard_tag, *entry.bindtags()))
         for action in ("<<Copy>>", "<<Cut>>", "<<Paste>>"):
             root.bind_class(clipboard_guard_tag, action, lambda event, action=action: block_native_clipboard(event, action), add="+")
@@ -211,9 +211,10 @@ def test_finite_native_altgr_acceptance(record_property):
 
                         def send(self, sequence):
                             packets = (Input * len(sequence))()
-                            for index, (key, flags) in enumerate(sequence):
+                            mapped = keyboard_packets(sequence, user.MapVirtualKeyExW, selection["selected"])
+                            for index, (key, scan, flags) in enumerate(mapped):
                                 packets[index].type = 1
-                                packets[index].payload.ki = Keyboard(key, 0, flags, 0, 0)
+                                packets[index].payload.ki = Keyboard(key, scan, flags, 0, 0)
                             count = int(user.SendInput(len(sequence), packets, ctypes.sizeof(Input)))
                             data["injected_events"] += count
                             return count
@@ -244,6 +245,9 @@ def test_finite_native_altgr_acceptance(record_property):
             data["status"] = "PASS"
         data["layout_after"] = hex(layout.current())
         assert data["thread_layout_state"]["restored"]
+    except GuardCleanupError as error:
+        data.update(status="FAIL", error=type(error).__name__, message=str(error))
+        raise
     except GuardError as error:
         data.update(status="BLOCKED-ENV", reason=str(error))
         save()
