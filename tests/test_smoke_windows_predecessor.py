@@ -1,5 +1,5 @@
 """Pure runner boundaries/protocol controls; no registry/compiler/installer use."""
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import hashlib
 import importlib.util
 import sys
@@ -89,6 +89,22 @@ def test_fixture_cases_select_both_overlap_directions_without_reimplementing_pas
     elif scenario == 'parent': assert old.parent == new
     elif scenario == 'child': assert new.parent == old
     else: assert alias == new.parent and alias.parent == old.parent
+
+
+def test_same_case_alias_preserves_exact_owned_parent_spelling(tmp_path):
+    root = tmp_path / 'Owned-Mixed-Work'
+    old, target, alias = gate.scenario_paths(root, 'same-case')
+    assert str(target.parent) == str(root)
+    assert target.name == old.name.swapcase() and str(target) != str(old)
+    assert alias is None
+
+
+def test_same_case_alias_remains_lexically_inside_a_posix_work_root():
+    root = PurePosixPath('/tmp/Owned-Mixed-Work')
+    old, target, _ = gate.scenario_paths(root, 'same-case')
+    assert target.is_relative_to(root)
+    assert target.parent == old.parent == root
+    assert target.name == old.name.swapcase()
 
 
 class RegistryProtocol:
@@ -188,3 +204,15 @@ def test_changed_registry_owner_makes_cleanup_fail_closed(tmp_path, monkeypatch)
     row = gate.execute_case('embed', '64', 'same-case', Path('not-executed.exe'), {'gui.py': '0' * 64},
                             workspace(tmp_path), registry)
     assert row['status'] == 'FAILED' and row['cleanup_verified'] is False and row['discard_vm_required'] is True
+
+
+def test_escaped_target_is_refused_before_registry_or_setup(tmp_path, monkeypatch):
+    work = tmp_path / 'OwnedWork'
+    work.mkdir()
+    outside = tmp_path / 'OutsideWork'
+    registry = RegistryProtocol()
+    monkeypatch.setattr(gate, 'scenario_paths', lambda root, scenario: (root / 'old', outside, None))
+    monkeypatch.setattr(gate, 'run_process', lambda *a, **k: pytest.fail('Escaped target reached Setup'))
+    with pytest.raises(gate.GateError, match='Native target escaped'):
+        gate.execute_case('embed', '64', 'same-case', Path('not-executed.exe'), {}, workspace(work), registry)
+    assert not registry.old and not registry.removed and not outside.exists()

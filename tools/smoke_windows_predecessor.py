@@ -190,7 +190,8 @@ def scenario_paths(root, scenario):
     if scenario == 'different':
         return old, root / 'NewProduct', None
     if scenario == 'same-case':
-        return old, Path(str(old).swapcase()), None
+        # Vary only the owned basename, not case-sensitive parent directories.
+        return old, old.with_name(old.name.swapcase()), None
     if scenario == 'parent':
         target = root / 'NewParent'
         return target / 'WhisperProject', target, None
