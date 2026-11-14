@@ -8024,6 +8024,10 @@ class App(tk.Tk):
         virt = {"paste": "<<Paste>>", "copy": "<<Copy>>", "cut": "<<Cut>>"}
 
         def _on_ctrl_key(event: tk.Event) -> str | None:
+            # Windows Tk uses ALT_MASK (1 << 17) for AltGr's Alt modifier.
+            # Mod1 (0x0008) is NumLock here, so ordinary Ctrl still works.
+            if getattr(event, "state", 0) & 0x20000:
+                return None
             action = self._clipboard_action(
                 event.keysym or "", getattr(event, "keycode", -1)
             )
