@@ -158,7 +158,7 @@ type
   end;
 
 function PredecessorOpenPath(Name: String; Access, Share: Cardinal;
-  Security: NativeUInt; Creation, Flags: Cardinal; Template: THandle): THandle;
+  Security: THandle; Creation, Flags: Cardinal; Template: THandle): THandle;
   external 'CreateFileW@kernel32.dll stdcall';
 function PredecessorFinalPath(Handle: THandle; Buffer: String;
   Capacity, Flags: Cardinal): Cardinal;
@@ -188,7 +188,7 @@ begin
   while Current <> '' do begin
     // OPEN_EXISTING + BACKUP_SEMANTICS follows directory reparse targets.
     Handle := PredecessorOpenPath(Current, 0, 7, 0, 3, $02000000, 0);
-    if NativeInt(Handle) <> -1 then begin
+    if Handle <> THandle(-1) then begin
       try
         if not PredecessorFileInfo(Handle, Info) then Exit;
         if (Info.Attributes and FILE_ATTRIBUTE_DIRECTORY) = 0 then Exit;

@@ -9,6 +9,8 @@
 ; whisper_project_onedir.spec) and emits a single
 ; WhisperTranscriberSuite-Setup.exe under dist_installer\.
 
+#define MyAppVersion "2.4.0"
+
 [Setup]
 ; Stable AppId — keeps a single, upgradable Add/Remove Programs entry
 ; across versions (and shared with the Standard installer, same product).
@@ -18,12 +20,12 @@
 ; from the predecessor product).
 AppId={{BD640ACA-1EDB-4F9F-890E-C2DC04221871}
 AppName=Whisper Transcriber Suite
-AppVersion=2.4.0
+AppVersion={#MyAppVersion}
 AppPublisher=translation-robot
 AppPublisherURL=https://github.com/translation-robot
 DefaultDirName={autopf}\WhisperTranscriberSuite
 DefaultGroupName=Whisper Transcriber Suite
-OutputBaseFilename=WhisperTranscriberSuite-v2.4.0-Setup-Compact
+OutputBaseFilename=WhisperTranscriberSuite-v{#MyAppVersion}-Setup-Compact
 OutputDir=dist_installer
 Compression=lzma2/ultra
 SolidCompression=yes
@@ -120,7 +122,7 @@ type
   end;
 
 function PredecessorOpenPath(Name: String; Access, Share: Cardinal;
-  Security: NativeUInt; Creation, Flags: Cardinal; Template: THandle): THandle;
+  Security: THandle; Creation, Flags: Cardinal; Template: THandle): THandle;
   external 'CreateFileW@kernel32.dll stdcall';
 function PredecessorFinalPath(Handle: THandle; Buffer: String;
   Capacity, Flags: Cardinal): Cardinal;
@@ -150,7 +152,7 @@ begin
   while Current <> '' do begin
     // OPEN_EXISTING + BACKUP_SEMANTICS follows directory reparse targets.
     Handle := PredecessorOpenPath(Current, 0, 7, 0, 3, $02000000, 0);
-    if NativeInt(Handle) <> -1 then begin
+    if Handle <> THandle(-1) then begin
       try
         if not PredecessorFileInfo(Handle, Info) then Exit;
         if (Info.Attributes and FILE_ATTRIBUTE_DIRECTORY) = 0 then Exit;
