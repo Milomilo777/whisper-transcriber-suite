@@ -375,7 +375,7 @@ def test_a_recording_that_ends_during_the_confirm_step_keeps_record_off(root, fa
     monkeypatch.setattr(vct, "_validate_and_add_sample", lambda *_a: None)
     app = _build(root, fakes)
     _engine(app, vct._ENGINE_OMNI, LONG, mode=vct._MODE_DESIGN)
-    app.vc_recorder = types.SimpleNamespace(stop=lambda: "sample.wav")
+    app.vc_recorder = types.SimpleNamespace(stop=lambda: "sample.wav", is_running=lambda: False)
     app.vc_generate_btn.invoke()
     assert _confirm_shown(app)
     vct._finish_recording(app)

@@ -288,7 +288,8 @@ class Recorder:
     def stop(self, *, timeout: float = 5.0) -> str:
         """Stop the recording loop and finalize the WAV.
 
-        Returns the path to the final WAV. Joins the recording
+        Returns the recording path, including a partial WAV when capture
+        is still alive; last_error then reports the unfinished stop. Joins the recording
         thread with ``timeout`` so a wedged backend doesn't deadlock
         the UI. The capture loop streams + closes the WAV itself; if it
         never produced one (start failed, instant stop, no backend) we
@@ -322,6 +323,9 @@ class Recorder:
         # for the same file handle. A partial WAV beats a truncated/empty
         # one and avoids the two-writer corruption.
         if thread is not None and thread.is_alive():
+            self.last_error = self.last_error or (
+                f"Recording did not stop within {timeout:g} seconds; the file may be incomplete."
+            )
             return self.output_path
         try:
             info = os.stat(self.output_path)

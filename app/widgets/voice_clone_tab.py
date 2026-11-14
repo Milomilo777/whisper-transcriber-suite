@@ -214,6 +214,7 @@ def build_voice_clone_tab(app: Any, parent: Any) -> None:
     app.vc_worker = None
     app.vc_last_output = None
     app.vc_recorder = None
+    app.vc_recording_stopping = False
     app.vc_cancel_event = None
     app.vc_recording_after_id = None
     app.vc_status_var = tk.StringVar(value=_("Idle."))
@@ -766,6 +767,8 @@ def _finish_adding_sample(app: Any, path: str, issue: "Any") -> None:
 
 
 def _record_sample(app: Any) -> None:
+    if getattr(app, "vc_recorder", None) is not None:
+        return
     from core.recorder import Recorder, mic_availability_reason, mic_available
     from core.voice_clone import MAX_REFERENCE_SAMPLES, session_work_dir
 
@@ -792,11 +795,15 @@ def _record_sample(app: Any) -> None:
         show_error(app, _("Could not start recording"), str(e))
         return
     app.vc_recorder = recorder
+    app.vc_recording_stopping = False
     app.vc_record_btn.configure(state="disabled")
     _tick_recording(app, _SAMPLE_SECONDS)
 
 
 def _tick_recording(app: Any, seconds_left: int) -> None:
+    recorder = app.vc_recorder
+    if recorder is None or getattr(app, "vc_recording_stopping", False):
+        return
     app.vc_status_var.set(_("Recording... {seconds}s", seconds=seconds_left))
     if seconds_left <= 0:
         app.vc_recording_after_id = None
@@ -804,27 +811,61 @@ def _tick_recording(app: Any, seconds_left: int) -> None:
         return
     app.vc_recording_after_id = app.after(
         1000, lambda: _tick_recording(app, seconds_left - 1)
+        if app.vc_recorder is recorder and not getattr(app, "vc_recording_stopping", False) else None
     )
+
+
+def _poll_recording_stop(app: Any, recorder: Any) -> None:
+    """Keep ownership until capture exits; never repeat native stop work."""
+    def check() -> None:
+        if (app.vc_recorder is not recorder
+                or app.vc_recording_after_id != after_id):
+            return
+        app.vc_recording_after_id = None
+        if recorder.is_running():
+            _poll_recording_stop(app, recorder)
+            return
+        app.vc_recorder = None
+        app.vc_recording_stopping = False
+        _sync_lock(app)
+        app.vc_status_var.set(_("Idle."))
+
+    after_id = app.after(100, check)
+    app.vc_recording_after_id = after_id
 
 
 def _finish_recording(app: Any) -> None:
     recorder = app.vc_recorder
-    app.vc_recorder = None
-    _sync_lock(app)  # stays off when a job started while this was recording
-    if recorder is None:
+    if recorder is None or getattr(app, "vc_recording_stopping", False):
         return
+    app.vc_recording_stopping = True
     try:
         path = recorder.stop()
     except Exception as e:  # noqa: BLE001
+        if recorder.is_running():
+            _poll_recording_stop(app, recorder)
+        else:
+            app.vc_recorder = None
+            app.vc_recording_stopping = False
+        _sync_lock(app)
         show_error(app, _("Recording failed"), str(e))
-        app.vc_status_var.set(_("Idle."))
+        app.vc_status_var.set(_("Recording failed") if app.vc_recorder is not None else _("Idle."))
         return
+    pending = recorder.is_running()
+    if pending:
+        _poll_recording_stop(app, recorder)
+    else:
+        app.vc_recorder = None
+        app.vc_recording_stopping = False
+    _sync_lock(app)  # stays off when a job started while this was recording
     recording_error = getattr(recorder, "last_error", None)
     if recording_error:
         detail = (_("The recording file was kept at:\n{path}\nIt may be incomplete.", path=path)
                   if os.path.isfile(path) else "")
         show_error(app, _("Recording failed"), str(recording_error), detail=detail)
-        app.vc_status_var.set(_("Idle."))
+        app.vc_status_var.set(_("Recording failed") if app.vc_recorder is not None else _("Idle."))
+        return
+    if pending:
         return
     _validate_and_add_sample(app, path)
 
@@ -1956,8 +1997,12 @@ def stop_voice_clone_worker(app: Any) -> None:
     app.vc_worker = None
     recorder = getattr(app, "vc_recorder", None)
     if recorder is not None:
-        try:
-            recorder.stop()
-        except Exception:  # noqa: BLE001
-            logger.exception("Voice-clone recorder teardown failed")
-    app.vc_recorder = None
+        if not getattr(app, "vc_recording_stopping", False):
+            app.vc_recording_stopping = True
+            try:
+                recorder.stop()
+            except Exception:  # noqa: BLE001
+                logger.exception("Voice-clone recorder teardown failed")
+        if not recorder.is_running():
+            app.vc_recorder = None
+            app.vc_recording_stopping = False

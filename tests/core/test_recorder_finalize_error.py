@@ -113,7 +113,8 @@ def test_voice_reference_recording_reports_stop_errors_and_keeps_file(
         return str(path)
 
     recorder = types.SimpleNamespace(
-        stop=stop, last_error="synthetic finalization failure" if state == "worker_error" else None,
+        stop=stop, is_running=lambda: False,
+        last_error="synthetic finalization failure" if state == "worker_error" else None,
     )
     app = types.SimpleNamespace(vc_recorder=recorder,
                                 vc_status_var=types.SimpleNamespace(set=statuses.append))
