@@ -344,7 +344,7 @@ def prepare_cues(
         merged = list(parts)
         found_valid = False
         seen = {key for key, _text in merged}
-        while i < len(cues) and cues[i][0] - start_ms < 100:
+        while i < len(cues) and 0 <= cues[i][0] - start_ms < 100:
             next_start, next_end, next_parts = cues[i]
             i += 1
             for key, text in next_parts:
@@ -358,7 +358,7 @@ def prepare_cues(
                 break
         if not found_valid:
             end_ms = start_ms + 1000
-            if i < len(cues):
+            if i < len(cues) and cues[i][0] >= start_ms + 100:
                 end_ms = min(end_ms, cues[i][0])
         written.append([start_ms, end_ms, merged])
 
