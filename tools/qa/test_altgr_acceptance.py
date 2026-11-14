@@ -12,7 +12,7 @@ import psutil
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parent))
-from altgr_guards import GuardError, guarded_chord, is_altgr_text, ownership_allowed, select_loaded_layout, temporary_layout
+from altgr_guards import GuardCleanupError, GuardError, guarded_chord, is_altgr_text, keyboard_packets, ownership_allowed, select_loaded_layout, temporary_layout
 from receipt_io import write_json_checkpoint
 
 
@@ -33,10 +33,11 @@ def test_finite_native_altgr_acceptance(record_property):
 
     save()
     root = None
+    phase = None
     try:
         assert sys.platform == "win32"
         root = tk.Tk()
-        root.title("Owned P17B AltGr acceptance")
+        root.title("Owned AltGr acceptance")
         root.geometry("500x240+140+140")
         data["tk_version"] = str(root.tk.call("info", "patchlevel"))
         assert root.tk.call("tk", "windowingsystem") == "win32"
@@ -142,7 +143,7 @@ def test_finite_native_altgr_acceptance(record_property):
             virtual_actions.append("native:" + action)
             return "break"
 
-        clipboard_guard_tag = "P17BClipboardGuard" + str(identity[0])
+        clipboard_guard_tag = "AltGrClipboardGuard" + str(identity[0])
         entry.bindtags((clipboard_guard_tag, *entry.bindtags()))
         for action in ("<<Copy>>", "<<Cut>>", "<<Paste>>"):
             root.bind_class(clipboard_guard_tag, action, lambda event, action=action: block_native_clipboard(event, action), add="+")
@@ -174,8 +175,15 @@ def test_finite_native_altgr_acceptance(record_property):
 
                     def bind_all(sequence, handler, add=None):
                         def wrapped(event):
-                            result = handler(event)
-                            handler_results.append(result)
+                            observed = {"keycode": event.keycode, "state": event.state,
+                                        "keysym": event.keysym, "result": None}
+                            handler_results.append(observed)
+                            try:
+                                result = handler(event)
+                            except Exception as error:
+                                observed["error"] = type(error).__name__
+                                raise
+                            observed["result"] = result
                             return result
                         root.bind_all(sequence, wrapped, add=add)
 
@@ -185,9 +193,9 @@ def test_finite_native_altgr_acceptance(record_property):
                     entry.delete(0, "end")
                     entry.focus_force()
                     pump()
-                    events.clear()
-                    virtual_actions.clear()
-                    handler_results.clear()
+                    events = []
+                    virtual_actions = []
+                    handler_results = []
                     proofs = []
 
                     class Native:
@@ -211,9 +219,10 @@ def test_finite_native_altgr_acceptance(record_property):
 
                         def send(self, sequence):
                             packets = (Input * len(sequence))()
-                            for index, (key, flags) in enumerate(sequence):
+                            mapped = keyboard_packets(sequence, user.MapVirtualKeyExW, selection["selected"])
+                            for index, (key, scan, flags) in enumerate(mapped):
                                 packets[index].type = 1
-                                packets[index].payload.ki = Keyboard(key, 0, flags, 0, 0)
+                                packets[index].payload.ki = Keyboard(key, scan, flags, 0, 0)
                             count = int(user.SendInput(len(sequence), packets, ctypes.sizeof(Input)))
                             data["injected_events"] += count
                             return count
@@ -223,7 +232,8 @@ def test_finite_native_altgr_acceptance(record_property):
                         raise GuardError("Modifier or target key held; no input admitted")
                     selected_probe = next(item for item in selection["probes"] if item["hkl"] == hex(selection["selected"]))
                     expected = next(item["altgr"] for item in selected_probe["keys"] if item["vk"] == vk)
-                    row = {"phase": phase, "vk": vk, "expected_altgr": expected, "ownership": proofs}
+                    row = {"phase": phase, "vk": vk, "expected_altgr": expected, "ownership": proofs,
+                           "events": events, "virtual_actions": virtual_actions, "handler_results": handler_results}
                     data["observations"].append(row)
                     save()
                     row["input"] = guarded_chord(native, vk)
@@ -240,11 +250,20 @@ def test_finite_native_altgr_acceptance(record_property):
                             pytest.skip("BLOCKED-ENV: printable native Entry baseline unavailable; app hook not run")
                         baselines[vk] = value
                     else:
-                        assert entry.get() == baselines[vk] and not virtual_actions and "break" not in handler_results, row
+                        row["target_callback_observed"] = any(observed["keycode"] == vk for observed in handler_results)
+                        row["character_delivered"] = entry.get() == baselines[vk]
+                        row["hook_body_observation"] = "OBSERVED" if row["target_callback_observed"] else "NOT_EXERCISED"
+                        assert row["character_delivered"] and not virtual_actions and row["target_callback_observed"] and all(observed["result"] != "break" and not observed.get("error") for observed in handler_results), row
             data["status"] = "PASS"
         data["layout_after"] = hex(layout.current())
         assert data["thread_layout_state"]["restored"]
+    except GuardCleanupError as error:
+        data.update(status="FAIL", error=type(error).__name__, message=str(error))
+        raise
     except GuardError as error:
+        if phase == "actual_app_hook":
+            data.update(status="FAIL", error=type(error).__name__, message=str(error))
+            raise
         data.update(status="BLOCKED-ENV", reason=str(error))
         save()
         pytest.skip("BLOCKED-ENV: native input safety guard denied completion")

@@ -1,17 +1,39 @@
-"""Hosted-only AltGr loader; adopt with the reviewed public-safe companions."""
+"""Native AltGr acceptance restricted to disposable GitHub-hosted Windows."""
 from pathlib import Path
 import hashlib
 import importlib.util
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
 
-HELPER_BASE_SHA = "3adf5845e3d28d131dcb3cb78572c12de5fe5cf4"
 KEYS = (65, 67, 88, 86)
+PACKET_HELPERS = ("test_altgr_acceptance.py", "altgr_guards.py", "receipt_io.py")
+
+
+def load_packet_helper(packet, name):
+    """Execute exactly the packet bytes attested by the helper inventory."""
+    if name in sys.modules:
+        raise RuntimeError("Unexpected preloaded packet helper: " + name)
+    spec = importlib.util.spec_from_file_location(name, Path(packet) / (name + ".py"))
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    try:
+        spec.loader.exec_module(module)
+    except BaseException:
+        del sys.modules[name]
+        raise
+    return module
+
+
+class HostedEnvironmentError(RuntimeError):
+    """Expected hosted layout/desktop limitation, retained as BLOCKED-ENV."""
+
+
+def exception_verdict(error, required=False):
+    return ("BLOCKED-ENV", int(required)) if isinstance(error, HostedEnvironmentError) else ("FAIL", 1)
 
 
 def validate_hosted_context(env, actual_head, tracked_dirty, platform_name):
@@ -45,16 +67,105 @@ def write_fallback_junit(output, status, reason):
     ET.ElementTree(suite).write(path, encoding="utf-8", xml_declaration=True)
 
 
-def final_verdict(rc, clean_xml, probe_status, missing_keys):
+def final_verdict(rc, clean_xml, probe_status, missing_keys, xml_failed=False, *, skipped_xml=False, required=False):
+    # Environment skips remain visible in receipts/JUnit without blocking the
+    # workflow until this acceptance has produced its first hosted PASS.
+    if xml_failed:
+        return "FAIL", 1
+    if rc == 0 and probe_status == "BLOCKED-ENV" and skipped_xml:
+        return "BLOCKED-ENV", int(required)
     if rc != 0 or not clean_xml or probe_status != "PASS":
-        return ("BLOCKED-ENV" if probe_status == "BLOCKED-ENV" else "FAIL"), 1
+        return "FAIL", 1
     if missing_keys:
         return "INCOMPLETE-KEY-COVERAGE", 1
     return "PASS", 0
 
 
+def junit_evidence(xml):
+    cases = list(xml.iter("testcase"))
+    failed = any(list(xml.iter(kind)) for kind in ("failure", "error"))
+    skips = list(xml.iter("skipped"))
+    clean = len(cases) == 1 and not failed and not skips
+    blocked = len(cases) == 1 and not failed and len(skips) == 1 and len(cases[0].findall("skipped")) == 1
+    return clean, failed, blocked
+
+
+def verdict_reason(identity):
+    reasons = [identity.get(name) for name in ("message", "reason", "probe_message", "probe_reason")]
+    for name in ("cleanup_errors", "probe_cleanup_errors"):
+        reasons.extend(identity.get(name) or [])
+    if identity["status"] == "INCOMPLETE-KEY-COVERAGE":
+        reasons.append("Missing target callback coverage for keys: " + ", ".join(map(str, identity.get("missing_keys", []))))
+    return "; ".join(dict.fromkeys(str(reason) for reason in reasons if reason)) or "Inspect retained native evidence"
+
+
+def report_verdict(identity, summary_path):
+    status = identity["status"]
+    if status == "PASS":
+        print("AltGr native acceptance: PASS", flush=True)
+        return
+    reason = verdict_reason(identity)
+    escaped = str(reason).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+    kind = "warning" if status == "BLOCKED-ENV" else "error"
+    print("::" + kind + " title=AltGr acceptance " + status + "::" + escaped, flush=True)
+    if summary_path:
+        import html
+        try:
+            with Path(summary_path).open("a", encoding="utf-8") as summary:
+                summary.write("\n### AltGr native acceptance\n\nStatus: `" + status + "`.\n\n<pre>"
+                              + html.escape(" ".join(reason.split())) + "</pre>\n")
+        except OSError:
+            print("::warning title=AltGr summary unavailable::Could not append the step summary; native verdict and receipts are retained", flush=True)
+
+
+def apply_probe_evidence(identity, observation):
+    """Carry raw fatal causes and observed callbacks into the visible verdict."""
+    identity.update(probe_status=observation.get("status"), probe_reason=observation.get("reason"),
+                    probe_message=observation.get("message"), probe_cleanup_errors=observation.get("cleanup_errors", []))
+    identity["covered_keys"] = covered_keys(observation.get("observations", []))
+    identity["missing_keys"] = [key for key in KEYS if key not in identity["covered_keys"]]
+
+
+def covered_keys(rows):
+    """Count only observed, printable and uninterrupted App-hook characters."""
+    import unicodedata
+
+    def valid(row, key):
+        expected = row.get("expected_altgr")
+        return (row.get("vk") == key and row.get("phase") == "actual_app_hook"
+                and isinstance(expected, str) and bool(expected)
+                and all(ch.isprintable() or unicodedata.category(ch) == "Zs" for ch in expected)
+                and row.get("text") == expected and row.get("virtual_actions") == []
+                and isinstance(row.get("handler_results"), list)
+                and all(isinstance(event, dict) and type(event.get("keycode")) is int
+                        and type(event.get("state")) is int and isinstance(event.get("keysym"), str)
+                        and "result" in event and event["result"] != "break" and not event.get("error")
+                        for event in row["handler_results"])
+                and any(event["keycode"] == key for event in row["handler_results"]))
+
+    return [key for key in KEYS if any(valid(row, key) for row in rows)]
+
+
+def activate_layout_verdict(api, target, expected):
+    """Check the active KLID; a loaded HKL alone cannot rule out substitution."""
+    import ctypes
+    result = {"status": "BLOCKED-ENV", "active_klid": None}
+    if not api.ActivateKeyboardLayout(target, 0) or int(api.GetKeyboardLayout(0) or 0) != target:
+        return {**result, "reason": "Hosted fixture-thread layout activation failed"}
+    name = ctypes.create_unicode_buffer(9)
+    if not api.GetKeyboardLayoutNameW(name):
+        return {**result, "reason": "Active hosted KLID could not be read"}
+    result["active_klid"] = name.value
+    if name.value != expected:
+        return {**result, "reason": "Active hosted KLID differs from requested E1 layout"}
+    return {"status": "PASS", "active_klid": name.value}
+
+
 def main():
     env = os.environ.copy()
+    if env.get("QA_ALTGR_REQUIRED", "0") not in ("0", "1"):
+        raise RuntimeError("QA_ALTGR_REQUIRED must be 0 or 1")
+    required = env.get("QA_ALTGR_REQUIRED", "0") == "1"
     workspace = Path(env["GITHUB_WORKSPACE"]).resolve(strict=True)
 
     def git(*args):
@@ -63,7 +174,6 @@ def main():
     # No ctypes import or Win32 API construction occurs before this admission.
     context = validate_hosted_context(env, git("rev-parse", "HEAD"),
                                       git("status", "--porcelain", "--untracked-files=no"), sys.platform)
-    from receipt_io import write_json_checkpoint
     run_id, attempt = env.get("GITHUB_RUN_ID", ""), env.get("GITHUB_RUN_ATTEMPT", "")
     if not run_id.isdecimal() or not attempt.isdecimal():
         raise RuntimeError("Numeric GitHub run ID and attempt are required")
@@ -76,15 +186,16 @@ def main():
     packet = workspace / "qa_native_packet"
     packet.mkdir(exist_ok=False)
     helpers = {}
-    for name in ("test_altgr_acceptance.py", "altgr_guards.py", "receipt_io.py"):
+    for name in PACKET_HELPERS:
         source = Path(__file__).resolve().parent / name
         data = source.read_bytes()
         helpers[name] = hashlib.sha256(data).hexdigest()
-        shutil.copyfile(source, packet / name)
+        (packet / name).write_bytes(data)
+    write_json_checkpoint = load_packet_helper(packet, "receipt_io").write_json_checkpoint
     (packet / "plan.json").write_text(json.dumps({"job": job, "head": context["source_head"]}), encoding="utf-8")
     identity = {**context, "run_id": run_id, "run_attempt": attempt, "job": job,
-                "helper_original_base_sha": HELPER_BASE_SHA, "helper_sha256": helpers,
-                "layout_api_started": False, "status": "STARTED", "missing_keys": list(KEYS)}
+                "helper_source_head": context["source_head"], "helper_sha256": helpers,
+                "layout_api_started": False, "status": "STARTED", "missing_keys": list(KEYS), "required": required}
     identity_path = output / "loaderidentity.json"
 
     def save():
@@ -94,7 +205,6 @@ def main():
     target = 0
     loaded_new = False
     load_attempted = False
-    pytest_started = False
     exit_code = 1
     old_autoload = os.environ.get("PYTEST_DISABLE_PLUGIN_AUTOLOAD")
     guards = None
@@ -112,6 +222,8 @@ def main():
         user.LoadKeyboardLayoutW.restype = ctypes.c_void_p
         user.ActivateKeyboardLayout.argtypes = [ctypes.c_void_p, ctypes.c_uint]
         user.ActivateKeyboardLayout.restype = ctypes.c_void_p
+        user.GetKeyboardLayoutNameW.argtypes = [ctypes.c_wchar_p]
+        user.GetKeyboardLayoutNameW.restype = ctypes.c_int
         user.UnloadKeyboardLayout.argtypes = [ctypes.c_void_p]
         user.UnloadKeyboardLayout.restype = ctypes.c_int
         identity["layout_api_started"] = True
@@ -120,26 +232,24 @@ def main():
         original = int(user.GetKeyboardLayout(0) or 0)
         count = int(user.GetKeyboardLayoutList(0, None))
         if not original or not 0 < count <= 32:
-            raise RuntimeError("Original hosted thread layout inventory is unavailable")
+            raise HostedEnvironmentError("Original hosted thread layout inventory is unavailable")
         handles = (ctypes.c_void_p * count)()
         received = int(user.GetKeyboardLayoutList(count, handles))
         if not 0 < received <= count:
-            raise RuntimeError("Hosted layout inventory changed")
+            raise HostedEnvironmentError("Hosted layout inventory changed")
         before = [int(handles[index] or 0) for index in range(received)]
         identity.update(original_hkl=hex(original), loaded_before=[hex(hkl) for hkl in before], thread=thread)
         load_attempted = True
         target = int(user.LoadKeyboardLayoutW(context["klid"], 0) or 0)
         if not target:
-            raise RuntimeError("Preselected hosted layout could not be loaded")
+            raise HostedEnvironmentError("Preselected hosted layout could not be loaded")
         loaded_new = target not in before
         identity.update(target_hkl=hex(target), newly_loaded=loaded_new, load_flags=0)
+        identity["layout_activation"] = activate_layout_verdict(user, target, context["klid"])
         save()
-        if "altgr_guards" in sys.modules:
-            raise RuntimeError("Unexpected preloaded guard module")
-        spec = importlib.util.spec_from_file_location("altgr_guards", packet / "altgr_guards.py")
-        guards = importlib.util.module_from_spec(spec)
-        sys.modules["altgr_guards"] = guards
-        spec.loader.exec_module(guards)
+        if identity["layout_activation"]["status"] != "PASS":
+            raise HostedEnvironmentError(identity["layout_activation"]["reason"])
+        guards = load_packet_helper(packet, "altgr_guards")
         original_select = guards.select_loaded_layout
 
         def select_target_only(api):
@@ -157,7 +267,6 @@ def main():
         guards.select_loaded_layout = select_target_only
         os.environ["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] = "1"
         import pytest
-        pytest_started = True
         rc = int(pytest.main([str(packet / "test_altgr_acceptance.py"), "--noconftest",
                               "--rootdir=" + str(packet), "-o", "addopts=", "-p", "no:cacheprovider",
                               "-vv", "-rs", "--junitxml=" + str(output / "results.xml")]))
@@ -165,19 +274,14 @@ def main():
         if not raw.is_file():
             raise RuntimeError("Native probe produced no raw receipt")
         observation = json.loads(raw.read_text())
-        identity["probe_status"] = observation.get("status")
-        rows = observation.get("observations", [])
-        covered = [key for key in KEYS if any(row.get("vk") == key and row.get("phase") == "actual_app_hook"
-                   and row.get("text") == row.get("expected_altgr") and not row.get("virtual_actions")
-                   and "break" not in row.get("handler_results", []) for row in rows)]
-        identity["covered_keys"] = covered
-        identity["missing_keys"] = [key for key in KEYS if key not in covered]
+        apply_probe_evidence(identity, observation)
         xml = ET.parse(output / "results.xml").getroot()
-        cases = list(xml.iter("testcase"))
-        clean_xml = len(cases) == 1 and not any(list(xml.iter(kind)) for kind in ("skipped", "failure", "error"))
-        identity["status"], exit_code = final_verdict(rc, clean_xml, observation.get("status"), identity["missing_keys"])
+        clean_xml, xml_failed, skipped_xml = junit_evidence(xml)
+        identity["status"], exit_code = final_verdict(rc, clean_xml, observation.get("status"), identity["missing_keys"], xml_failed,
+                                                     skipped_xml=skipped_xml, required=required)
     except BaseException as error:
-        identity.update(status="FAIL" if pytest_started else "BLOCKED-ENV", error=type(error).__name__, message=str(error))
+        identity["status"], exit_code = exception_verdict(error, required=required)
+        identity.update(error=type(error).__name__, message=str(error))
     finally:
         cleanup_errors = []
         if guards is not None and original_select is not None:
@@ -212,6 +316,7 @@ def main():
             exit_code = 1
         write_fallback_junit(output, identity["status"], identity.get("message", "Native acceptance did not emit JUnit"))
         save()
+        report_verdict(identity, env.get("GITHUB_STEP_SUMMARY"))
     return exit_code
 
 
