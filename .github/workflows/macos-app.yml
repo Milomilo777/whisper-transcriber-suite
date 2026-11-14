@@ -10,6 +10,23 @@ name: macOS app build
 # is documented in docs/MACOS_BUILD_NOTES.md. Read it before changing this.
 on:
   workflow_dispatch:
+    inputs:
+      retest_run_id:
+        description: 'Artifact-only retest: successful source workflow run ID'
+        type: string
+        required: false
+      retest_source_sha:
+        description: 'Artifact-only retest: full source commit SHA'
+        type: string
+        required: false
+      retest_dmg_sha_x86_64:
+        description: 'Artifact-only retest: expected Intel inner DMG SHA256'
+        type: string
+        required: false
+      retest_dmg_sha_arm64:
+        description: 'Artifact-only retest: expected ARM inner DMG SHA256'
+        type: string
+        required: false
   push:
     branches: [macos-app-build, codex/integration-2.4.x]
 
@@ -18,6 +35,7 @@ permissions:
 
 jobs:
   build-app:
+    if: ${{ !(github.event_name == 'workflow_dispatch' && (inputs.retest_run_id != '' || inputs.retest_source_sha != '' || inputs.retest_dmg_sha_x86_64 != '' || inputs.retest_dmg_sha_arm64 != '')) }}
     name: Build + test macOS .app/.dmg (${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
     strategy:
@@ -168,3 +186,63 @@ jobs:
           path: |
             dist/*.dmg
           if-no-files-found: error
+
+  retest-downloaded-dmg:
+    if: ${{ github.event_name == 'workflow_dispatch' && (inputs.retest_run_id != '' || inputs.retest_source_sha != '' || inputs.retest_dmg_sha_x86_64 != '' || inputs.retest_dmg_sha_arm64 != '') }}
+    name: Retest downloaded DMG (${{ matrix.arch }})
+    permissions:
+      contents: read
+      actions: read
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+          - runner: macos-15-intel
+            arch: x86_64
+    env:
+      RETEST_RUN: ${{ inputs.retest_run_id }}
+      RETEST_SOURCE: ${{ inputs.retest_source_sha }}
+      RETEST_INTEL: ${{ inputs.retest_dmg_sha_x86_64 }}
+      RETEST_ARM: ${{ inputs.retest_dmg_sha_arm64 }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          path: retest-tools
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - name: Validate all explicit pins before candidate checkout
+        run: >-
+          python retest-tools/tools/mac_dmg_artifact_retest.py
+          --run-id "$RETEST_RUN" --source "$RETEST_SOURCE"
+          --intel-sha "$RETEST_INTEL" --arm-sha "$RETEST_ARM" --validate-only
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.retest_source_sha }}
+          path: candidate
+          persist-credentials: false
+      - name: Install process observation dependency only
+        run: python -m pip install psutil
+      - name: Download, authenticate and retest exact DMG with GUI enabled
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RETEST_REPOSITORY: ${{ github.repository }}
+          RETEST_ARCH: ${{ matrix.arch }}
+        run: >-
+          python retest-tools/tools/mac_dmg_artifact_retest.py
+          --run-id "$RETEST_RUN" --source "$RETEST_SOURCE"
+          --intel-sha "$RETEST_INTEL" --arm-sha "$RETEST_ARM"
+          --repository "$RETEST_REPOSITORY" --arch "$RETEST_ARCH"
+          --candidate candidate --output "retest-report-$RETEST_ARCH"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: macos-dmg-retest-${{ matrix.arch }}
+          path: retest-report-${{ matrix.arch }}/
+          if-no-files-found: warn
