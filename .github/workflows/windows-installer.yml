@@ -18,7 +18,7 @@ name: Windows installer
 
 on:
   push:
-    branches: [master]
+    branches: [master, codex/integration-2.4.x]
     paths:
       - build_embed_installer.bat
       - installer_embed.iss

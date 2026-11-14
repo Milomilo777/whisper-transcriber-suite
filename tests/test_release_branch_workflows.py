@@ -18,6 +18,12 @@ def push_branches(name: str) -> tuple[str, set[str]]:
 
 
 class ReleaseBranchWorkflowTests(unittest.TestCase):
+    def test_windows_packages_build_for_integration_push_and_manual_dispatch(self):
+        events, branches = push_branches('windows-installer.yml')
+        self.assertIn('codex/integration-2.4.x', branches)
+        self.assertIn('master', branches)
+        self.assertRegex(events, r'(?m)^  workflow_dispatch:')
+
     def test_codeql_analyzes_integration_push_and_keeps_mainline(self):
         _, branches = push_branches('codeql.yml')
         self.assertIn('codex/integration-2.4.x', branches)
