@@ -8,6 +8,8 @@ import re
 
 import pytest
 
+from tools.inno_sections import uninstall_delete_section
+
 ROOT=Path(__file__).resolve().parents[2]
 COMPILER=Path(os.environ.get('WHISPER_SMOKE_INNO_COMPILER',''))
 pytestmark=pytest.mark.skipif(os.name!='nt' or not COMPILER.is_file(),reason='Pinned local Inno compiler required')
@@ -15,7 +17,7 @@ pytestmark=pytest.mark.skipif(os.name!='nt' or not COMPILER.is_file(),reason='Pi
 
 def test_actual_uninstall_section_retains_user_additions(tmp_path):
     actual=(ROOT/'installer_embed.iss').read_text(encoding='utf-8')
-    section=actual.split('[UninstallDelete]',1)[1].split('[InstallDelete]',1)[0]
+    section=uninstall_delete_section(actual)
     app=tmp_path/'app'
     (tmp_path/'tracked.txt').write_text('tracked fixture',encoding='utf-8')
     script=tmp_path/'fixture.iss'
@@ -97,7 +99,7 @@ end;
         assert result.returncode==0,(result.stdout+result.stderr).decode(errors='replace')
 
     def install(name,text,code=''):
-        section=text.split('[UninstallDelete]',1)[1].split('[InstallDelete]',1)[0]
+        section=uninstall_delete_section(text)
         log_mode=re.search(r'(?m)^UninstallLogMode=(\w+)',text)
         mode=log_mode.group(1) if log_mode else 'append'
         old_only=(f'Source: "{tracked}"; DestDir: "{{app}}/assets"; DestName: "old-only.txt"' if name=='old' else '')
