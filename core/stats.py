@@ -519,6 +519,21 @@ def _saved_consent_allows(path: Path) -> bool:
         return False  # Unreadable preferences must never become consent.
 
 
+def _saved_identity_matches(path: Path, install_id: object) -> bool:
+    """Reject a cached identity revoked or replaced by another app instance."""
+    if install_id is None:
+        return True
+    try:
+        with path.open("r", encoding="utf-8") as stream:
+            raw = stream.read(1024 * 1024 + 1)
+        saved = json.loads(raw) if len(raw) <= 1024 * 1024 else None
+        return isinstance(saved, dict) and saved.get("install_id") == install_id
+    except FileNotFoundError:
+        return True  # A new profile may keep its generated identity in memory.
+    except (OSError, ValueError, UnicodeError):
+        return False
+
+
 def memory_class(value: int) -> str:
     """Keep byte units for existing readers, but only disclose RAM classes."""
     if value <= 0:
@@ -743,7 +758,8 @@ def post_stats_async(
 
                 # A quick re-enable must not race older erasure. Only the
                 # daemon waits; sends from before opt-out become obsolete.
-                if not erased.wait(5.0) or not _saved_consent_allows(consent_path):
+                if (not erased.wait(5.0) or not _saved_consent_allows(consent_path)
+                        or not _saved_identity_matches(consent_path, payload.get("install_id"))):
                     return
                 # Model validation may inspect the filesystem. Keep it off
                 # the caller and outside both local-state locks.
@@ -764,7 +780,8 @@ def post_stats_async(
                             return
                 # Never hold either state lock during the HTTP timeout. Recheck
                 # after reservation; requests already in flight may finish.
-                if not _saved_consent_allows(consent_path):
+                if (not _saved_consent_allows(consent_path)
+                        or not _saved_identity_matches(consent_path, payload.get("install_id"))):
                     return
                 with _CONSENT_LOCK:
                     admitted = (generation == _CONSENT_GENERATION
