@@ -105,7 +105,10 @@ def report_verdict(identity, summary_path):
         print("AltGr native acceptance: PASS", flush=True)
         return
     reason = verdict_reason(identity)
-    escaped = str(reason).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+    # Redirected Windows stdout may use a legacy code page. Keep the annotation
+    # printable there while the UTF-8 receipt and summary retain Unicode text.
+    escaped = str(reason).encode("ascii", "backslashreplace").decode("ascii")
+    escaped = escaped.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
     kind = "warning" if status == "BLOCKED-ENV" else "error"
     print("::" + kind + " title=AltGr acceptance " + status + "::" + escaped, flush=True)
     if summary_path:

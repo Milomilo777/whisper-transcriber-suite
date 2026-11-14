@@ -1,6 +1,8 @@
 """Native callback evidence controls, with no Tk or Windows API execution."""
 import ast
+from contextlib import redirect_stdout
 import importlib.util
+import io
 import json
 from pathlib import Path
 from types import SimpleNamespace
@@ -74,6 +76,34 @@ def test_actual_native_assert_requires_the_target_callback(records):
                  "virtual_actions": [], "handler_results": records, "row": row(records)}
     with pytest.raises(AssertionError):
         exec(compile(ast.Module(body=branch.orelse, type_ignores=[]), "<actual-native-assert>", "exec"), namespace)
+
+
+def test_actual_native_assert_accepts_observed_target_callback():
+    branches = [n for n in ast.walk(native_tree()) if isinstance(n, ast.If) and n.orelse
+                and any(isinstance(x, ast.Constant) and x.value == "plain_entry_baseline" for x in ast.walk(n.test))]
+    assert len(branches) == 1
+    records = [event(0xA5), event()]
+    observed = row(records)
+    namespace = {"entry": SimpleNamespace(get=lambda: "a"), "baselines": {65: "a"}, "vk": 65,
+                 "virtual_actions": [], "handler_results": records, "row": observed}
+    exec(compile(ast.Module(body=branches[0].orelse, type_ignores=[]), "<actual-positive-native-assert>", "exec"), namespace)
+    assert observed["target_callback_observed"] is True
+    assert observed["character_delivered"] is True
+    assert observed["hook_body_observation"] == "OBSERVED"
+
+
+def test_non_ascii_fatal_cause_survives_cp1252_stdout(tmp_path):
+    buffer = io.BytesIO()
+    stream = io.TextIOWrapper(buffer, encoding="cp1252", errors="strict")
+    reason = "Fatal AltGr character: \u202f\u263a"
+    summary = tmp_path / "summary.md"
+    with redirect_stdout(stream):
+        loader().report_verdict({"status": "FAIL", "message": reason}, summary)
+    stream.flush()
+    annotation = buffer.getvalue().decode("cp1252")
+    assert "::error title=AltGr acceptance FAIL::Fatal AltGr character: \\u202f\\u263a" in annotation
+    assert "\u263a" in summary.read_text(encoding="utf-8")
+    assert "\\u263a" not in summary.read_text(encoding="utf-8")
 
 
 @pytest.mark.parametrize("status,extra,wanted", [
