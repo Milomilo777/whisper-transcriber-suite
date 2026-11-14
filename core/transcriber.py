@@ -2480,13 +2480,25 @@ def _run_post_pipeline(
             from . import alignment as _align
             if _align.is_available():
                 log("Refining word timestamps via stable-ts...", log_cb)
+                # Optional refinement cannot replace usable ASR clocks with
+                # timings that the subsequent media-bound guard would reject.
+                aligned_segments = copy.deepcopy(segments_data)
                 ok = _align.refine_word_timestamps_in_place(
                     task.file_path,
-                    segments_data,
+                    aligned_segments,
                     language=detected_lang or None,
                     log_cb=log_cb,
                 )
                 if ok:
+                    audio_end = _positive_duration(getattr(task, "_audio_end", None))
+                    if audio_end is not None:
+                        try:
+                            for segment in aligned_segments:
+                                _cap_segment(segment, audio_end)
+                        except (ValueError, TypeError, OverflowError, _TimingBoundsError):
+                            ok = False
+                if ok:
+                    segments_data[:] = aligned_segments
                     log("Word alignment refined.", log_cb)
                 else:
                     # Surfaced as a WARN-style line — alignment was

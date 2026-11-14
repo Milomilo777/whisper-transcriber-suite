@@ -13,6 +13,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Keep valid transcription timings when optional alignment returns malformed or out-of-bounds word times. Validate the complete refinement before publishing it, including a zero-length word exactly at the audio end.
+
 - Replace three retired modules left by older Windows installations with inert compatibility files. This removes their old executable behavior during an overlay upgrade while preserving neighboring user files.
 
 - Stop a worker in the background when a blocked command pipe cannot accept Cancel within five seconds. Preserve its cancelled status and any existing resume checkpoint, without waiting on the window thread.

@@ -23,6 +23,7 @@ shaped exactly like what the caller already has.
 from __future__ import annotations
 
 import logging
+import math
 import os
 from typing import Any, Callable
 
@@ -174,9 +175,16 @@ def refine_word_timestamps_in_place(
         words = getattr(refined_segments[i], "words", None) or []
         seg_words: list[dict[str, Any]] = []
         for w in words:
+            try:
+                start = float(getattr(w, "start", math.nan))
+                end = float(getattr(w, "end", math.nan))
+            except (TypeError, ValueError, OverflowError):
+                return False
+            if not math.isfinite(start) or not math.isfinite(end) or start < 0 or end < start:
+                return False
             seg_words.append({
-                "start": float(getattr(w, "start", 0.0)),
-                "end": float(getattr(w, "end", 0.0)),
+                "start": start,
+                "end": end,
                 "word": str(getattr(w, "word", "") or "").strip(),
                 "probability": float(getattr(w, "probability", 1.0)),
             })
