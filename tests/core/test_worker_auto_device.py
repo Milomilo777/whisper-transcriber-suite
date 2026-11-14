@@ -13,13 +13,14 @@ PROBE = ROOT / "tests/fixtures/worker_auto_device_probe.py"
 
 
 def bootstrap(tmp_path, device, gpu_present, *, wizard_cpu=False, entrypoint="worker", broken_warning=False,
-              flip_after_cpu_model=False, reconfigure_cpu=False):
+              flip_after_cpu_model=False, reconfigure_cpu=False, reload_gpu=False, initial_gpu_usable=False):
     # Fresh interpreter: never clear live core modules in the full-suite process.
     env = {k: v for k, v in os.environ.items() if not k.upper().startswith("WHISPER_")}
     env["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] = "1"
     run = subprocess.run([sys.executable, "-B", str(PROBE), str(tmp_path), device,
                           str(int(gpu_present)), str(int(wizard_cpu)), entrypoint, str(int(broken_warning)),
-                          str(int(flip_after_cpu_model)), str(int(reconfigure_cpu))],
+                          str(int(flip_after_cpu_model)), str(int(reconfigure_cpu)), str(int(reload_gpu)),
+                          str(int(initial_gpu_usable))],
                          cwd=ROOT, env=env, capture_output=True, text=True, timeout=20,
                          creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
     assert run.returncode == 0, run.stderr + run.stdout
@@ -144,3 +145,44 @@ def test_bootstrap_child_never_requests_a_visible_console(monkeypatch, tmp_path)
     monkeypatch.setattr(subprocess, "run", run)
     assert bootstrap(tmp_path, "cpu", False) == {}
     assert calls[0]["creationflags"] == (subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
+
+
+LEGACY_ENTRYPOINTS = ("legacy-download", "legacy-lazy", "legacy-language")
+
+
+@pytest.mark.parametrize("entrypoint", ("worker", *LEGACY_ENTRYPOINTS))
+def test_preflight_cpu_selection_is_not_a_recovered_model_failure(tmp_path, entrypoint):
+    result = bootstrap(tmp_path, "auto", True, entrypoint=entrypoint)
+    assert result["ready"]["downgraded"] is True
+    assert result["model_loads"] == [["cpu", "int8"]]
+    assert result["telemetry_recovery"] == "none"
+    assert result["existing_decode_recovery"] == "cpu_fallback"
+
+
+@pytest.mark.parametrize("entrypoint", LEGACY_ENTRYPOINTS)
+def test_legacy_loaders_keep_auto_reason_and_clear_it_after_gpu_reload(tmp_path, entrypoint):
+    result = bootstrap(tmp_path, "auto", True, entrypoint=entrypoint, reload_gpu=True)
+    assert result["ready"]["requested_device"] == "auto" and result["ready"]["downgraded"] is True
+    assert "libcublas.so.12" in result["ready"]["fallback_reason"]
+    assert any("libcublas.so.12" in message for message in messages_after_setup(result))
+    assert result["after_gpu"]["device"] == "cuda"
+    assert result["after_gpu"]["requested_device"] == "cuda"
+    assert result["after_gpu"]["downgraded"] is False
+    assert result["after_gpu"]["fallback_reason"] == ""
+    assert result["after_gpu_loads"] == [["cpu", "int8"], ["cuda", "float16"]]
+    assert not any("GPU unavailable" in row.get("message", "") for row in result["after_gpu_messages"])
+
+
+@pytest.mark.parametrize("entrypoint", ("worker", *LEGACY_ENTRYPOINTS))
+def test_real_cuda_load_failure_still_counts_as_cpu_recovery(tmp_path, entrypoint):
+    result = bootstrap(tmp_path, "cuda", True, entrypoint=entrypoint)
+    assert result["model_loads"][0][0] == "cuda" and result["model_loads"][-1] == ["cpu", "int8"]
+    assert result["telemetry_recovery"] == "cpu_fallback"
+
+
+@pytest.mark.parametrize("entrypoint", ("worker", *LEGACY_ENTRYPOINTS))
+def test_auto_selected_cuda_failure_still_counts_as_cpu_recovery(tmp_path, entrypoint):
+    result = bootstrap(tmp_path, "auto", True, entrypoint=entrypoint, initial_gpu_usable=True)
+    assert result["model_loads"] == [["cuda", "float16"], ["cpu", "int8"]]
+    assert result["ready"]["requested_device"] == "cuda" and result["ready"]["downgraded"] is True
+    assert result["telemetry_recovery"] == "cpu_fallback"

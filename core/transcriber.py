@@ -321,7 +321,9 @@ def _remember_task_device(task: Any, backend: Any = None, *, whisper: bool = Fal
             effective = get_effective_device("faster_whisper")
             value = effective.device
             task._failure_compute_type = effective.compute_type or None
-            if effective.downgraded and getattr(task, "_telemetry_recovery", "none") == "none":
+            # AUTO preflight CPU selection has not recovered a failed model load.
+            if (effective.downgraded and effective.requested_device != "auto"
+                    and getattr(task, "_telemetry_recovery", "none") == "none"):
                 task._telemetry_recovery = "cpu_fallback" if value == "cpu" else "retried_ok"
             if value == "cuda":
                 task._telemetry_gpu_vendor = "nvidia"
