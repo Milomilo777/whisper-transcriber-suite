@@ -80,7 +80,8 @@ class NoticeHost:
         for widget in (self.frame, self.label, self._accent, self.close_button):
             widget.bind("<Enter>", self._on_enter, add="+")
             widget.bind("<Leave>", self._on_leave, add="+")
-        self.close_button.bind("<Escape>", self._on_escape, add="+")
+        for sequence in ("<Escape>", "<Return>", "<KP_Enter>"):
+            self.close_button.bind(sequence, self._on_escape, add="+")
         window.bind(DISMISS_SEQUENCE, self._on_dismiss_key, add="+")
         # Tk deletes a destroyed window's commands but keeps its after()
         # events: a pending timer would fire into a deleted command.
@@ -126,6 +127,13 @@ class NoticeHost:
         if self.pending:
             self._show(self.pending.popleft())
         else:
+            try:
+                # Unmapping leaves keyboard focus on the hidden close button.
+                # Only return our own focus; never take it from another widget.
+                if str(self.window.tk.call("focus")) == str(self.close_button):
+                    self.window.focus_set()
+            except tk.TclError:
+                pass  # the window may already be closing
             self.frame.place_forget()
 
     # ---------------------------------------------------------------- display
@@ -210,9 +218,8 @@ class NoticeHost:
         elif self._after_id is None:
             self._arm_timer(LEAVE_GRACE_MS)
 
-    def _on_escape(self, *_args: object) -> str:
-        self.dismiss()
-        return "break"
+    def _on_escape(self, *_args: object) -> str | None:
+        return self._on_dismiss_key()
 
     def _on_dismiss_key(self, *_args: object) -> str | None:
         if self.current is None:
