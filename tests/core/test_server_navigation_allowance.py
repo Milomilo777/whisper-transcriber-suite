@@ -18,7 +18,7 @@ def test_foreign_document_guesses_cannot_lock_out_header_clients(tmp_path, site,
             headers["Sec-Fetch-Dest"] = destination
         if purpose:
             headers["Sec-Purpose"] = purpose
-        statuses = [_request(srv, "GET", "/api/health?token=wrong-fixture-guess", headers=headers)[0]
+        statuses = [_request(srv, "GET", "/api/health?token=wrong-dummy-guess", headers=headers)[0]
                     for _ in range(8)]
         # Foreign navigation remains rate-limited in its own allowance.
         assert 401 in statuses and 429 in statuses
@@ -33,7 +33,7 @@ def test_foreign_document_guesses_cannot_lock_out_header_clients(tmp_path, site,
 def test_foreign_unknown_destinations_fail_closed_before_booking(tmp_path, destination):
     with _RunningServer(tmp_path, token=_SHARED) as srv:
         for _ in range(8):
-            assert _request(srv, "GET", "/api/health?token=wrong-fixture-guess", headers={
+            assert _request(srv, "GET", "/api/health?token=wrong-dummy-guess", headers={
                 "Sec-Fetch-Site": " CROSS-SITE ", "Sec-Fetch-Mode": " NAVIGATE ",
                 "Sec-Fetch-Dest": destination,
             })[0] == 403
@@ -46,7 +46,7 @@ def test_foreign_frame_post_refuses_closes_body_and_books_nothing(tmp_path, path
     with _RunningServer(tmp_path, token=_SHARED) as srv:
         connection = http.client.HTTPConnection("127.0.0.1", srv.port, timeout=5)
         try:
-            connection.request("POST", path+"?token=wrong-fixture-guess", body=b"untrusted body", headers={
+            connection.request("POST", path+"?token=wrong-dummy-guess", body=b"untrusted body", headers={
                 "Sec-Fetch-Site": site, "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Dest": "iframe",
                 "Content-Type": "text/plain",
             })
@@ -76,7 +76,7 @@ def test_auth_errors_vary_but_interim_continue_does_not(tmp_path):
         statuses = []
         try:
             for _ in range(8):
-                connection.request("GET", "/api/health", headers={"X-Auth-Token": "wrong-fixture-guess"})
+                connection.request("GET", "/api/health", headers={"X-Auth-Token": "wrong-dummy-guess"})
                 response = connection.getresponse()
                 statuses.append(response.status)
                 varied = {v.strip().lower() for v in response.getheader("Vary", "").split(",")}
@@ -114,7 +114,7 @@ def test_navigation_allowance_retains_ipv6_subnet_cap_and_bounded_tables(tmp_pat
         headers = {"Sec-Fetch-Site": "cross-site", "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Dest": "document"}
         limiter = srv.server.navigation_auth_throttle
         assert limiter.admit("192.0.2.1") == 0
-        assert _request(srv, "GET", "/api/health?token=wrong-fixture-guess", headers=headers)[0] == 401
-        assert _request(srv, "GET", "/api/health?token=wrong-fixture-guess", headers=headers)[0] == 429
+        assert _request(srv, "GET", "/api/health?token=wrong-dummy-guess", headers=headers)[0] == 401
+        assert _request(srv, "GET", "/api/health?token=wrong-dummy-guess", headers=headers)[0] == 429
         assert len(limiter) == 1
         assert _request(srv, "GET", "/api/health", headers={"X-Auth-Token": _SHARED})[0] == 200
