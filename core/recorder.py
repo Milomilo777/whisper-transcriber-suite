@@ -35,7 +35,7 @@ import time
 import wave
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, cast
 
 logger = logging.getLogger(__name__)
 
@@ -151,7 +151,7 @@ def list_mic_devices() -> list[InputDevice]:
     try:
         import sounddevice as sd  # type: ignore[import-not-found]
         out: list[InputDevice] = []
-        for idx, info in enumerate(sd.query_devices()):
+        for idx, info in enumerate(cast("tuple[dict[str, Any], ...]", sd.query_devices())):
             try:
                 channels = int(info.get("max_input_channels", 0))
                 if channels <= 0:
@@ -198,7 +198,7 @@ def _mic_error_message(error: BaseException) -> str:
                 try:
                     import sounddevice as sd  # type: ignore[import-not-found]
                     denied = (isinstance(error, sd.PortAudioError)
-                              and sd.query_hostapis(host_index)["name"] == "Windows WASAPI")
+                              and cast("dict[str, Any]", sd.query_hostapis(host_index))["name"] == "Windows WASAPI")
                 except Exception:
                     pass
     if denied:
@@ -261,7 +261,7 @@ class Recorder:
                 raise RecorderUnavailable(mic_availability_reason())
             try:
                 import sounddevice as sd  # type: ignore[import-not-found]
-                info = sd.query_devices(self.device_index, kind="input")
+                info = cast("dict[str, Any]", sd.query_devices(self.device_index, kind="input"))
                 _check_mic_host(sd, info)
                 selected = info.get("index")
                 if type(selected) is not int or selected < 0:
