@@ -32,7 +32,9 @@ def show_error(
     previous_grab: tk.Misc | None = None
     try:
         previous_grab = parent.grab_current()
-    except tk.TclError:
+    except (tk.TclError, KeyError):
+        # Tcl-created windows (for example a Combobox popdown) have no
+        # Python wrapper, so grab_current's widget lookup raises KeyError.
         previous_grab = None
     if not isinstance(previous_grab, (tk.Tk, tk.Toplevel)):
         # Only a window can meaningfully be modal; a popup menu's internal
@@ -51,7 +53,8 @@ def show_error(
             try:
                 if previous_grab.winfo_exists() and previous_grab.grab_current() is None:
                     previous_grab.grab_set()
-            except tk.TclError:
+            except (tk.TclError, KeyError):
+                # An unwrapped newer holder must keep its grab too.
                 pass
 
     top.protocol("WM_DELETE_WINDOW", _close)
