@@ -2047,14 +2047,19 @@ class TranscriptionService:
                             # workers) — the authoritative word count even when no
                             # machine-readable output format was selected.
                             try:
-                                worker["task"].word_count = int(
-                                    event.get("word_count") or 0
+                                word_count = int(event.get("word_count") or 0)
+                                # History binds counts as signed 64-bit SQLite integers.
+                                worker["task"].word_count = (
+                                    word_count if 0 <= word_count < (1 << 63) else 0
                                 )
+                            except (TypeError, ValueError, OverflowError):
+                                worker["task"].word_count = 0
+                            try:
                                 worker["task"].audio_duration = float(
                                     event.get("audio_duration") or 0.0
                                 )
-                            except (TypeError, ValueError):
-                                pass
+                            except (TypeError, ValueError, OverflowError):
+                                worker["task"].audio_duration = 0.0
                             worker["task"].no_speech = bool(event.get("no_speech"))
                             worker["task"].speaker_labels_failed = bool(
                                 event.get("speaker_labels_failed")
@@ -2064,7 +2069,10 @@ class TranscriptionService:
                                 worker["task"].failure_clue = sanitise_clue(event, status="finished")
                             except Exception:  # noqa: BLE001
                                 logger.debug("Could not remember recovery", exc_info=True)
-                            apply_final_speed(worker["task"], event)
+                            try:
+                                apply_final_speed(worker["task"], event)
+                            except Exception:  # noqa: BLE001 - optional metadata cannot withhold saved work
+                                logger.exception("Could not remember final speed; finishing saved task")
                             self.finish_task(worker)
                     else:
                         self.finish_task(worker)
