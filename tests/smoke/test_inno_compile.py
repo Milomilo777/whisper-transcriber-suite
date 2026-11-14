@@ -6,15 +6,14 @@ import subprocess
 
 import pytest
 
+from tests.smoke.inno_prerequisites import inno_compiler
+
 ROOT = Path(__file__).resolve().parents[2]
-COMPILER = Path(os.environ.get('WHISPER_SMOKE_INNO_COMPILER', ''))
-pytestmark = pytest.mark.skipif(
-    os.name != 'nt' or not COMPILER.is_file(), reason='Pinned local Inno compiler required',
-)
+pytestmark = pytest.mark.skipif(os.name != 'nt', reason='Windows-only Inno smoke gate')
 
 
 @pytest.mark.parametrize('installer', ['installer_embed.iss', 'installer.iss'])
-def test_complete_installer_script_compiles_with_fixture_payload(tmp_path, installer):
+def test_complete_installer_script_compiles_with_fixture_payload(tmp_path, installer, inno_compiler):
     # Keep all directives and Pascal code intact. Only the packaged application
     # bytes are synthetic: this checks compilation, not installation or launch.
     script = tmp_path / installer
@@ -25,7 +24,7 @@ def test_complete_installer_script_compiles_with_fixture_payload(tmp_path, insta
         payload.mkdir(parents=True)
         (payload / 'compile-fixture.txt').write_text('Compile-only fixture.\n')
     result = subprocess.run(
-        [str(COMPILER), '/Qp', '/O' + str(tmp_path / 'output'), str(script)],
+        [str(inno_compiler), '/Qp', '/O' + str(tmp_path / 'output'), str(script)],
         cwd=tmp_path, capture_output=True, timeout=45,
         creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0),
     )

@@ -8,14 +8,15 @@ import re
 
 import pytest
 
+from tests.smoke.inno_prerequisites import inno_compiler, require_historical_script
+
 from tools.inno_sections import uninstall_delete_section
 
 ROOT=Path(__file__).resolve().parents[2]
-COMPILER=Path(os.environ.get('WHISPER_SMOKE_INNO_COMPILER',''))
-pytestmark=pytest.mark.skipif(os.name!='nt' or not COMPILER.is_file(),reason='Pinned local Inno compiler required')
+pytestmark = pytest.mark.skipif(os.name != 'nt', reason='Windows-only Inno smoke gate')
 
 
-def test_actual_uninstall_section_retains_user_additions(tmp_path):
+def test_actual_uninstall_section_retains_user_additions(tmp_path, inno_compiler):
     actual=(ROOT/'installer_embed.iss').read_text(encoding='utf-8')
     section=uninstall_delete_section(actual)
     app=tmp_path/'app'
@@ -43,7 +44,7 @@ Source: "{tmp_path}/tracked.txt"; DestDir: "{{app}}/assets"
                               creationflags=subprocess.CREATE_NO_WINDOW)
         assert result.returncode==0,(result.stdout+result.stderr).decode(errors='replace')
 
-    run([str(COMPILER),'/Q',str(script)])
+    run([str(inno_compiler),'/Q',str(script)])
     run([str(tmp_path/'fixture.exe'),'/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART'])
     originals=[]
     for name in ('app','core','bin','assets','python','Lib'):
@@ -60,10 +61,8 @@ Source: "{tmp_path}/tracked.txt"; DestDir: "{{app}}/assets"
     assert all(path.is_file() and path.read_bytes()==b'user-owned fixture bytes' for path in originals), 'uninstall destroyed untracked originals'
 
 
-def test_first_upgrade_and_later_uninstall_preserve_old_user_additions(tmp_path):
-    old_path=Path(os.environ.get('WHISPER_SMOKE_OLD_INSTALLER_SCRIPT',''))
-    if not old_path.is_file():
-        pytest.skip('Historical installer script required')
+def test_first_upgrade_and_later_uninstall_preserve_old_user_additions(tmp_path, inno_compiler):
+    old_path=require_historical_script(os.name, os.environ)
     old=old_path.read_text(encoding='utf-8')
     current=(ROOT/'installer_embed.iss').read_text(encoding='utf-8')
     app=tmp_path/'app'
@@ -124,7 +123,7 @@ Source: "{tracked}"; DestDir: "{{app}}/assets"
 [Code]
 {code}
 ''',encoding='utf-8')
-        run([str(COMPILER),'/Q',str(script)])
+        run([str(inno_compiler),'/Q',str(script)])
         run([str(tmp_path/(name+'.exe')),'/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART'])
 
     install('old',old)
@@ -149,7 +148,7 @@ Source: "{tracked}"; DestDir: "{{app}}/assets"
 
 
 @pytest.mark.parametrize('installer',['installer_embed.iss','installer.iss'])
-def test_deselecting_shell_integration_retires_previous_registration(tmp_path,installer):
+def test_deselecting_shell_integration_retires_previous_registration(tmp_path,installer, inno_compiler):
     import winreg
     text=(ROOT/installer).read_text(encoding='utf-8')
     registry=re.search(r'(?ms)^\[Registry\]\s*$(.*?)(?=^\[|\Z)',text).group(1)
@@ -207,7 +206,7 @@ Source: "{tmp_path}/payload.txt"; DestDir: "{{app}}"
 [Registry]
 {registry}
 ''',encoding='utf-8')
-        run([str(COMPILER),'/Q',str(script)])
+        run([str(inno_compiler),'/Q',str(script)])
         run([str(tmp_path/(name+'.exe')),'/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/TASKS='+tasks])
 
     assert not exists(),'fixture namespace was not fresh'

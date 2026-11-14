@@ -22,12 +22,15 @@ on:
     paths:
       - build_embed_installer.bat
       - installer_embed.iss
+      - installer.iss
+      - whisper_project_onedir.spec
       - requirements.txt
       - platform/windows/build-deps.json
       - tools/fetch_windows_build_deps.py
       - tools/check_embed_tree.py
       - tools/build_manifest.py
       - tools/smoke_windows_install.py
+      - tools/smoke_windows_predecessor.py
       - tools/smoke_windows_upgrade.py
       - tools/check_installer_upgrade_files.py
       - .github/workflows/windows-installer.yml
@@ -104,6 +107,46 @@ jobs:
           $iscc = Join-Path $dir 'ISCC.exe'
           if (-not (Test-Path $iscc)) { throw "ISCC.exe missing in $dir" }
           "ISCC=$iscc" >> $env:GITHUB_ENV
+          "WHISPER_SMOKE_INNO_COMPILER=$iscc" >> $env:GITHUB_ENV
+          New-Item -ItemType Directory -Force build-manifest | Out-Null
+          $sdk = Get-Item -LiteralPath $iscc
+          $engine = Get-Item -LiteralPath (Join-Path $dir 'ISCmplr.dll')
+          $probe = @'
+          import hashlib, json, os, pathlib, re, subprocess, sys
+          iscc = pathlib.Path(sys.argv[1])
+          engine = iscc.with_name('ISCmplr.dll')
+          manifest = pathlib.Path('build-manifest')
+          pins = json.loads(pathlib.Path('platform/windows/build-deps.json').read_text(encoding='utf-8'))
+          declared = next(item for item in pins['deps'] if item['name'] == 'inno-setup')
+          probe = subprocess.run([str(iscc), '-'], input=b'', capture_output=True,
+                                 timeout=30, creationflags=subprocess.CREATE_NO_WINDOW)
+          stdout = probe.stdout.decode('utf-8', errors='replace')
+          stderr = probe.stderr.decode('utf-8', errors='replace')
+          (manifest / 'inno-compiler-probe.stdout.log').write_text(stdout, encoding='utf-8')
+          (manifest / 'inno-compiler-probe.stderr.log').write_text(stderr, encoding='utf-8')
+          match = re.search(r'Compiler engine version:\s*Inno Setup\s+(\d+\.\d+\.\d+)', stdout)
+          record = {
+              'source_head': os.environ['GITHUB_SHA'],
+              'declared_package_version': declared['version'],
+              'declared_package_sha256': declared['sha256'],
+              'runtime_engine_version': match.group(1) if match else None,
+              'compiler_path': str(iscc),
+              'compiler_file_version': sys.argv[2],
+              'compiler_product_version': sys.argv[3],
+              'engine_file_version': sys.argv[4],
+              'engine_product_version': sys.argv[5],
+              'iscc_sha256': hashlib.sha256(iscc.read_bytes()).hexdigest(),
+              'iscmplr_sha256': hashlib.sha256(engine.read_bytes()).hexdigest(),
+              'probe_exit': probe.returncode,
+          }
+          (manifest / 'inno-compiler.json').write_text(json.dumps(record, indent=2), encoding='utf-8')
+          # Empty stdin intentionally fails compilation without executing Setup.
+          if (probe.returncode != 2 or 'AppName' not in stderr or not match
+                  or match.group(1) != declared['version']):
+              raise SystemExit('Pinned Inno compiler runtime engine identity probe failed')
+          '@
+          $probe | python - "$iscc" "$($sdk.VersionInfo.FileVersion)" "$($sdk.VersionInfo.ProductVersion)" "$($engine.VersionInfo.FileVersion)" "$($engine.VersionInfo.ProductVersion)"
+          if ($LASTEXITCODE -ne 0) { throw 'Could not verify the pinned Inno runtime compiler identity' }
 
       - name: Build the embed tree (build_embed_installer.bat)
         shell: cmd
@@ -117,11 +160,100 @@ jobs:
           python tools/fetch_windows_build_deps.py --check --select msvc-runtime --root embed_build
           if ($LASTEXITCODE -ne 0) { throw 'embed_build\python Visual C++ runtime DLLs do not match the pins' }
 
-      - name: Compile the installer (installer_embed.iss)
+      - name: Build the real Compact payload
         shell: pwsh
         run: |
-          & $env:ISCC /Qp installer_embed.iss
-          if ($LASTEXITCODE -ne 0) { throw "ISCC exited $LASTEXITCODE" }
+          $venv = Join-Path $env:RUNNER_TEMP 'wts-compact-venv'
+          $buildLog = Join-Path $env:RUNNER_TEMP 'wts-compact-build.log'
+          python -m venv $venv 2>&1 | Tee-Object -FilePath $buildLog
+          if ($LASTEXITCODE -ne 0) { throw 'Compact build environment creation failed' }
+          $compactPython = Join-Path $venv 'Scripts/python.exe'
+          & $compactPython -m pip install -r requirements.txt pyinstaller 2>&1 | Tee-Object -FilePath $buildLog -Append
+          if ($LASTEXITCODE -ne 0) { throw 'Compact build dependency installation failed' }
+          New-Item -ItemType Directory -Force build-manifest | Out-Null
+          & $compactPython -m pip list --format freeze | Out-File -Encoding utf8 build-manifest/compact-site-packages.txt
+          if ($LASTEXITCODE -ne 0) { throw 'Compact build package inventory failed' }
+          $pyinstallerVersion = & $compactPython -m PyInstaller --version
+          if ($LASTEXITCODE -ne 0) { throw 'Could not read the actual PyInstaller version' }
+          $pythonVersion = & $compactPython -c "import platform; print(platform.python_version())"
+          if ($LASTEXITCODE -ne 0) { throw 'Could not read the Compact build Python version' }
+          [ordered]@{
+            source_head = $env:GITHUB_SHA
+            python = "$pythonVersion"
+            pyinstaller = "$pyinstallerVersion"
+            spec = 'whisper_project_onedir.spec'
+            dist = 'dist_onedir/WhisperTranscriberSuite'
+          } | ConvertTo-Json | Set-Content -Encoding utf8 build-manifest/compact-build.json
+          & $compactPython -m PyInstaller --noconfirm --clean --distpath dist_onedir --workpath "$env:RUNNER_TEMP/wts-compact-pyinstaller" whisper_project_onedir.spec 2>&1 | Tee-Object -FilePath $buildLog -Append
+          if ($LASTEXITCODE -ne 0) { throw 'Real Compact PyInstaller build failed' }
+          if (-not (Test-Path -LiteralPath 'dist_onedir/WhisperTranscriberSuite/WhisperTranscriberSuite.exe' -PathType Leaf)) {
+            throw 'Real Compact payload executable is missing'
+          }
+
+      - name: Compile both installers and verify predecessor isolation
+        shell: pwsh
+        run: |
+          python tools/smoke_windows_predecessor.py `
+            --source "$env:GITHUB_WORKSPACE" `
+            --iscc "$env:ISCC" `
+            --expected-head "${{ github.sha }}" `
+            --work-dir "$env:RUNNER_TEMP/wts-predecessor-compiled" `
+            --confirm-disposable-vm `
+            --confirm-clean-machine
+          if ($LASTEXITCODE -ne 0) { throw 'Compiled predecessor isolation gate failed; see retained compile and native-case logs' }
+
+      - name: Promote the guard-tested embed installer
+        shell: pwsh
+        run: |
+          $work = Join-Path $env:RUNNER_TEMP 'wts-predecessor-compiled'
+          $result = Get-Content -LiteralPath (Join-Path $work 'result.json') -Raw | ConvertFrom-Json
+          if ($result.status -ne 'PASS' -or $result.expected_head -ne $env:GITHUB_SHA) {
+            throw 'Native predecessor result does not accept this exact source head'
+          }
+          $expectedHash = [string]$result.compiled.embed.sha256
+          if ($expectedHash -notmatch '^[0-9a-fA-F]{64}$') { throw 'Guard-tested embed SHA-256 is missing or invalid' }
+          $source = (Resolve-Path -LiteralPath $result.compiled.embed.path).Path
+          $compiledDir = [IO.Path]::GetFullPath((Join-Path $work 'compiled/embed'))
+          if (-not [string]::Equals([IO.Path]::GetDirectoryName($source), $compiledDir, [StringComparison]::OrdinalIgnoreCase)) {
+            throw 'Guard-tested embed binary is outside its owned compiled directory'
+          }
+          if ((Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash -ne $expectedHash) {
+            throw 'Guard-tested embed binary changed after native acceptance'
+          }
+          New-Item -ItemType Directory -Force dist_installer | Out-Null
+          $target = Join-Path 'dist_installer' "WhisperTranscriberSuite-Installer-Windows-v$env:APP_VERSION.exe"
+          Copy-Item -LiteralPath $source -Destination $target -Force
+          if ((Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash -ne $expectedHash) {
+            throw 'Published installer bytes differ from the guard-tested embed binary'
+          }
+
+      - name: Install pytest for compiled Windows smoke checks
+        shell: pwsh
+        run: |
+          $smokePython = Join-Path (Join-Path $env:RUNNER_TEMP 'wts-compact-venv') 'Scripts/python.exe'
+          & $smokePython -m pip install pytest pytest-timeout
+          if ($LASTEXITCODE -ne 0) { throw 'Could not install the compiled smoke test runner' }
+          $oldScript = Join-Path $env:RUNNER_TEMP 'wts-inno-smoke-history/installer_embed.iss'
+          & $smokePython -c "import pathlib, subprocess, sys; target = pathlib.Path(sys.argv[1]); target.parent.mkdir(parents=True, exist_ok=True); target.write_bytes(subprocess.check_output(['git', 'show', 'v2.3.1:installer_embed.iss']))" $oldScript
+          if ($LASTEXITCODE -ne 0) { throw 'Could not materialize the historical installer script for native smoke checks' }
+          "WHISPER_SMOKE_OLD_INSTALLER_SCRIPT=$oldScript" >> $env:GITHUB_ENV
+
+      - name: Run compiled Windows smoke regressions
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:WHISPER_SMOKE_INNO_COMPILER) -or -not (Test-Path -LiteralPath $env:WHISPER_SMOKE_INNO_COMPILER -PathType Leaf)) {
+            throw 'Pinned Inno compiler is required for Windows smoke checks'
+          }
+          if (-not (Test-Path -LiteralPath $env:WHISPER_SMOKE_OLD_INSTALLER_SCRIPT -PathType Leaf)) {
+            throw 'Historical installer script is required for Windows smoke checks'
+          }
+          $smokePython = Join-Path (Join-Path $env:RUNNER_TEMP 'wts-compact-venv') 'Scripts/python.exe'
+          $smokeWork = Join-Path $env:RUNNER_TEMP 'wts-inno-smoke'
+          New-Item -ItemType Directory -Force $smokeWork | Out-Null
+          & $smokePython -m pytest tests/smoke/test_inno_compile.py tests/smoke/test_inno_data_preservation.py tests/smoke/test_inno_shortcut_upgrade.py -q -ra --junitxml="$smokeWork/results.xml" --basetemp="$smokeWork/cases" 2>&1 | Tee-Object -FilePath (Join-Path $smokeWork 'pytest.log')
+          if ($LASTEXITCODE -ne 0) { throw 'Compiled Windows smoke regressions failed; see retained XML and logs' }
+          & $smokePython -c "import sys, xml.etree.ElementTree as ET; cases = ET.parse(sys.argv[1]).getroot().findall('.//testcase'); assert cases and not any(c.find(kind) is not None for c in cases for kind in ('skipped', 'error', 'failure')), 'Compiled smoke cases must execute and pass without skips'" "$smokeWork/results.xml"
+          if ($LASTEXITCODE -ne 0) { throw 'Compiled Windows smoke evidence contains skipped or missing cases' }
 
       - name: Zip the Portable build
         shell: pwsh
@@ -229,5 +361,11 @@ jobs:
             build-manifest/
             ${{ runner.temp }}/wts-historical-upgrade/*.json
             ${{ runner.temp }}/wts-historical-upgrade/*.log
+            ${{ runner.temp }}/wts-predecessor-compiled/result.json
+            ${{ runner.temp }}/wts-predecessor-compiled/**/*.json
+            ${{ runner.temp }}/wts-predecessor-compiled/**/*.log
+            ${{ runner.temp }}/wts-compact-build.log
+            ${{ runner.temp }}/wts-inno-smoke/*.xml
+            ${{ runner.temp }}/wts-inno-smoke/**/*.log
           retention-days: 7
           if-no-files-found: warn

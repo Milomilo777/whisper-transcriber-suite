@@ -479,7 +479,10 @@ def test_workflow_builds_with_pinned_tools_and_smoke_tests_the_install():
     assert "runs-on: windows-latest" in text
     assert "python tools/fetch_windows_build_deps.py --only inno-setup" in text
     assert "call build_embed_installer.bat" in text
-    assert "& $env:ISCC /Qp installer_embed.iss" in text
+    assert "python tools/smoke_windows_predecessor.py" in text
+    assert '--expected-head "${{ github.sha }}"' in text
+    assert '--confirm-disposable-vm' in text and '--confirm-clean-machine' in text
+    assert 'Promote the guard-tested embed installer' in text
     assert "'/VERYSILENT'" in text and "tools\\smoke_windows_install.py" in text
     assert "unins000.exe" in text
     # The bytes that ship are checked against the pins, not only the downloads.

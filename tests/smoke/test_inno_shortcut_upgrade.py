@@ -8,15 +8,15 @@ import uuid
 
 import pytest
 
+from tests.smoke.inno_prerequisites import inno_compiler
+
 ROOT = Path(__file__).resolve().parents[2]
-COMPILER = Path(os.environ.get("WHISPER_SMOKE_INNO_COMPILER", ""))
-pytestmark = pytest.mark.skipif(os.name != "nt" or not COMPILER.is_file(),
-                                reason="Pinned local Inno compiler required")
+pytestmark = pytest.mark.skipif(os.name != 'nt', reason='Windows-only Inno smoke gate')
 
 
 @pytest.mark.parametrize("script_name", ["installer_embed.iss", "installer.iss"])
 @pytest.mark.parametrize("target_kind", ["private", "commonpf"])
-def test_upgrade_retires_only_matching_versioned_shortcuts(tmp_path, script_name, target_kind):
+def test_upgrade_retires_only_matching_versioned_shortcuts(tmp_path, script_name, target_kind, inno_compiler):
     text = (ROOT / script_name).read_text(encoding="utf-8")
     app, menu, desktop = [tmp_path / n for n in ("app", "menu", "desktop")]
     for folder in (app / "python", menu, desktop):
@@ -97,7 +97,7 @@ Name: "desktopicon"; Description: "Private desktop fixture"
         if result.returncode and setup_log.exists():
             detail += setup_log.read_text(encoding="utf-8-sig", errors="replace")
         assert result.returncode == 0, detail
-    run([str(COMPILER), "/Q", str(script)])
+    run([str(inno_compiler), "/Q", str(script)])
     run([str(tmp_path / "fixture.exe"), "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/TASKS=desktopicon"])
     for folder in (menu, desktop):
         for version in ("2.3.1", "2.2.0"):
