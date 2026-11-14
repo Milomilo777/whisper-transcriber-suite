@@ -247,13 +247,21 @@ def test_file_menu_entries(monkeypatch, mac):
         root.destroy()
 
 
-@pytest.mark.parametrize("mac", [True, False])
-def test_main_window_bindings_and_clipboard_hook(monkeypatch, mac):
+@pytest.mark.parametrize("plat", ["win32", "linux", "darwin"])
+def test_clipboard_hook_platform_contract_without_window(plat):
+    from tests.core.test_clipboard_platform_dispatch import _installed
+
+    assert (_installed(plat) is not None) is (plat == "win32")
+
+
+@pytest.mark.parametrize("plat", ["win32", "linux", "darwin"])
+def test_main_window_bindings_and_clipboard_hook(monkeypatch, plat):
     root = _bare_app()
     try:
-        _mac(monkeypatch, mac)
+        _platform(monkeypatch, plat)
+        _mac(monkeypatch, plat == "darwin")
         root._install_clipboard_keys()
-        assert bool(root.bind_all("<Control-KeyPress>")) is (not mac)
+        assert bool(root.bind_all("<Control-KeyPress>")) is (plat == "win32")
     finally:
         root.destroy()
 

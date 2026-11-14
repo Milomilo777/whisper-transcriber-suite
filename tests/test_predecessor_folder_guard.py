@@ -1,5 +1,6 @@
 """Pure source-contract coverage for cross-AppId installation separation."""
 from pathlib import Path
+from types import SimpleNamespace
 import ctypes
 import ntpath
 import os
@@ -160,6 +161,8 @@ class DirectoryMetadata:
                 return path, 0
             except FileNotFoundError:
                 return None, 2
+            except NotADirectoryError:
+                return None, 5
         handle = self.kernel.CreateFileW(path, 0, 7, None, 3, 0x02000000, None)
         if handle == ctypes.c_void_p(-1).value:
             return None, ctypes.get_last_error()
@@ -182,6 +185,8 @@ class DirectoryMetadata:
                 return 16, 0
             except FileNotFoundError:
                 return None, 2
+            except NotADirectoryError:
+                return None, 5
         attributes = self.kernel.GetFileAttributesW(path)
         return (None, ctypes.get_last_error()) if attributes == 0xFFFFFFFF else (attributes, 0)
 
@@ -204,6 +209,21 @@ class DirectoryMetadata:
             return 3
         root = ntpath.splitdrive(str(path))[0] + '\\'
         return self.kernel.GetDriveTypeW(root)
+
+
+@pytest.mark.parametrize('operation', ['open', 'attributes'])
+@pytest.mark.parametrize('error,expected', [(FileNotFoundError, 2), (NotADirectoryError, 5)])
+def test_portable_metadata_distinguishes_missing_from_file_parent(monkeypatch, operation, error, expected):
+    """Exercise POSIX errors even when the test host is Windows."""
+    class UnavailablePath:
+        def __init__(self, path): pass
+        def is_dir(self): return False
+        def stat(self): raise error('controlled path lookup')
+        def lstat(self): raise error('controlled path lookup')
+
+    monkeypatch.setitem(globals(), 'os', SimpleNamespace(name='posix'))
+    monkeypatch.setitem(globals(), 'Path', UnavailablePath)
+    assert getattr(DirectoryMetadata(), operation)('ordinary-file/Suite') == (None, expected)
 
 
 def physical_folder(path, api=None):

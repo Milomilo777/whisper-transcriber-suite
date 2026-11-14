@@ -347,7 +347,7 @@ def install_id_for(config: dict[str, Any]) -> str:
             if not bool(config.get("telemetry_opt_in", False)):
                 return ""
             # A concurrent caller must not identify usage with a candidate
-            # whose save can still fail. Anonymous usage stays deliverable.
+            # whose save can still fail. Usage without an install ID stays deliverable.
             if _PENDING_INSTALL_IDS.get(id(config)) is config:
                 return ""
             current = config.get("install_id")
@@ -380,7 +380,7 @@ def install_id_for(config: dict[str, Any]) -> str:
                     if (generation == _CONSENT_GENERATION
                             and config.get("install_id") == candidate):
                         config["install_id"] = ""
-                logger.debug("install id not saved (using anonymous usage): %s", e)
+                logger.debug("install id not saved (sending usage without install id): %s", e)
                 return ""
             finally:
                 with _CONSENT_LOCK:
