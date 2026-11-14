@@ -90,24 +90,60 @@ class ArtifactRetestControls(unittest.TestCase):
         attached=plistlib.dumps({'images':[{'image-path':str(image),'system-entities':[{'mount-point':str(mount),'dev-entry':'/dev/disk4s1'}]}]})
         empty=plistlib.dumps({'images':[]})
         commands=Mock();commands.run.side_effect=[attached,b'',empty]
-        m.detach_owned(commands,image,mount)
+        m.detach_owned(commands,image,mount,'/dev/disk4s1')
         self.assertEqual(commands.run.call_args_list[1].args[0],['hdiutil','detach',str(mount)])
         self.assertNotIn('-force',str(commands.run.call_args_list))
 
     def test_cleanup_rejects_foreign_mount_without_detach(self):
         commands=Mock();commands.run.return_value=plistlib.dumps({'images':[{'image-path':str(Path('/cache/a.dmg')),'system-entities':[{'mount-point':'/foreign','dev-entry':'/dev/disk4'}]}]})
-        with self.assertRaises(ValueError):m.detach_owned(commands,Path('/cache/a.dmg'),Path('/owned'))
+        with self.assertRaises(ValueError):m.detach_owned(commands,Path('/cache/a.dmg'),Path('/owned'),'/dev/disk4')
         self.assertEqual(commands.run.call_count,1)
 
     def test_cleanup_remaining_mount_cannot_pass(self):
         data=plistlib.dumps({'images':[{'image-path':str(Path('/cache/a.dmg')),'system-entities':[{'mount-point':str(Path('/owned')),'dev-entry':'/dev/disk4'}]}]})
         commands=Mock();commands.run.side_effect=[data,b'',data]
-        with self.assertRaises(ValueError):m.detach_owned(commands,Path('/cache/a.dmg'),Path('/owned'))
+        with self.assertRaises(ValueError):m.detach_owned(commands,Path('/cache/a.dmg'),Path('/owned'),'/dev/disk4')
+        self.assertEqual(commands.run.call_count,3)
 
     def test_cleanup_observation_timeout_cannot_pass(self):
         commands=Mock();commands.run.side_effect=TimeoutError()
         with self.assertRaises(TimeoutError):m.detach_owned(commands,Path('/cache/a.dmg'),Path('/owned'))
         self.assertEqual(commands.run.call_count,1)
+
+    def test_cleanup_alias_image_path_cannot_hide_owned_mount(self):
+        image=Path('/cache/a.dmg');mount=Path('/owned')
+        aliased=plistlib.dumps({'images':[{'image-path':'/different-spelling/a.dmg',
+            'system-entities':[{'mount-point':str(mount),'dev-entry':'/dev/disk4'}]}]})
+        commands=Mock();commands.run.return_value=aliased
+        with self.assertRaises(ValueError):m.detach_owned(commands,image,mount)
+        self.assertFalse(any(call.args[0][:2]==['hdiutil','detach'] for call in commands.run.call_args_list))
+
+    def test_cleanup_final_alias_mount_cannot_pass(self):
+        image=Path('/cache/a.dmg');mount=Path('/owned')
+        entity={'mount-point':str(mount),'dev-entry':'/dev/disk4'}
+        initial=plistlib.dumps({'images':[{'image-path':str(image),'system-entities':[entity]}]})
+        aliased=plistlib.dumps({'images':[{'image-path':'/different-spelling/a.dmg','system-entities':[entity]}]})
+        commands=Mock();commands.run.side_effect=[initial,b'',aliased]
+        with self.assertRaises(ValueError):m.detach_owned(commands,image,mount,'/dev/disk4')
+
+    def test_cleanup_requires_actual_attach_device_and_rejects_replacement(self):
+        image=Path('/cache/a.dmg');mount=Path('/owned')
+        data=plistlib.dumps({'images':[{'image-path':str(image),'system-entities':[
+            {'mount-point':str(mount),'dev-entry':'/dev/disk4'}]}]})
+        for device in (None,'/dev/disk99'):
+            commands=Mock();commands.run.return_value=data
+            with self.subTest(device=device),self.assertRaises(ValueError):m.detach_owned(commands,image,mount,device)
+            self.assertEqual(commands.run.call_count,1)
+
+    def test_missing_inventory_is_not_an_empty_inventory(self):
+        commands=Mock();commands.run.return_value=plistlib.dumps({})
+        with self.assertRaises(ValueError):m.detach_owned(commands,Path('/cache/a.dmg'),Path('/owned'))
+        self.assertEqual(commands.run.call_count,1)
+
+    def test_unrelated_foreign_mount_does_not_prevent_owned_cleanup_proof(self):
+        data=plistlib.dumps({'images':[{'image-path':'/foreign.dmg','system-entities':[
+            {'mount-point':'/foreign-mount','dev-entry':'/dev/disk8'}]}]})
+        m.require_unmounted(data,Path('/cache/a.dmg'),Path('/owned'),roots=(Path('/contract'),))
 
     def test_commands_strip_ephemeral_tokens(self):
         backend=Mock(return_value=m.subprocess.CompletedProcess(['fixed'],0,b'ok',b''))
@@ -228,7 +264,8 @@ class ArtifactRetestControls(unittest.TestCase):
         candidate=self.root/'candidate';base=candidate/'platform/macos/pyinstaller';base.mkdir(parents=True)
         for name in ('test_dmg.sh','verify_mac_bundle.sh','bundle_contract.py','copied_gui_process.py'):(base/name).write_text('fixture')
         image=self.root/'image.dmg';image.write_bytes(b'fixture');mount=self.root/'baseline-mount'
-        seen=[]
+        seen=[];state={'attached':False,'contract':False}
+        self.native_seen=seen
         def backend(argv,**kwargs):
             seen.append(argv);out=b''
             if argv[0]=='git' or any(str(base) in arg for arg in argv):self.assertEqual(kwargs['cwd'],str(candidate))
@@ -236,12 +273,24 @@ class ArtifactRetestControls(unittest.TestCase):
             elif argv==['uname','-m']:out=b'x86_64'
             elif argv[0]=='sw_vers':out=b'15.7'
             elif argv[:2]==['hdiutil','attach']:
+                state['attached']=True
                 app=mount/'App.app';(app/'Contents').mkdir(parents=True)
                 (app/'Contents/Info.plist').write_bytes(plistlib.dumps({'LSMinimumSystemVersion':'12.0'}))
                 out=plistlib.dumps({'system-entities':[{'mount-point':str(mount),'dev-entry':'/dev/disk4'}]})
-            elif argv[:2]==['hdiutil','info']:out=plistlib.dumps({'images':[]})
+            elif argv[:2]==['hdiutil','info']:
+                images=[]
+                if state['attached']:
+                    reported='/alias/image.dmg' if getattr(self,'alias_at_attach',False) else str(image)
+                    images=[{'image-path':reported,'system-entities':[{'mount-point':str(mount),'dev-entry':'/dev/disk4'}]}]
+                elif state['contract'] and getattr(self,'alias_after_contract',False):
+                    images=[{'image-path':'/alias/image.dmg','system-entities':[{
+                        'mount-point':str(self.root/'contract-tmp/wts-dmg.fixture'),'dev-entry':'/dev/disk8'}]}]
+                out=plistlib.dumps({'images':images})
+            elif argv[:2]==['hdiutil','detach']:state['attached']=False
             elif any(arg.endswith('test_dmg.sh') for arg in argv):
+                state['contract']=True
                 self.assertTrue(any(row[:2]==['hdiutil','info'] for row in seen))
+                self.assertTrue(any(row[:2]==['hdiutil','detach'] for row in seen))
                 out=b'{"owned_processes":[{"pid":101,"created":12.5}]}\nDMG TEST PASSED\n'
             return m.subprocess.CompletedProcess(argv,0,out,b'')
         ps=self.identity_ps();ps.Process.side_effect=ProcessLookupError();ps.process_iter.return_value=[]
@@ -250,5 +299,14 @@ class ArtifactRetestControls(unittest.TestCase):
             m.native(candidate,image,self.root,'x86_64',m.Commands(self.root,backend),facts)
         self.assertEqual(facts['declared_minimum'],'12.0')
         self.assertIn('candidate_post_contract_attestation',facts)
+
+    def test_native_requires_positive_image_binding_before_bundle_execution(self):
+        self.alias_at_attach=True
+        with self.assertRaises(ValueError):self.test_mock_native_candidate_context_and_detach_before_contract()
+        self.assertFalse(any(row[0]=='codesign' for row in self.native_seen))
+
+    def test_native_final_census_checks_contract_mounts_under_all_image_paths(self):
+        self.alias_after_contract=True
+        with self.assertRaises(TimeoutError):self.test_mock_native_candidate_context_and_detach_before_contract()
 
 if __name__=='__main__':unittest.main()

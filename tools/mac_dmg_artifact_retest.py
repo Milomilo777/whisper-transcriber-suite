@@ -117,16 +117,56 @@ def contract_command(candidate, image, manifest, python, arch):
 def require_contract_success(rc, output):
     require(rc == 0 and 'DMG TEST PASSED' in output.splitlines(), 'positive GUI contract marker required')
 
-def image_mounts(data, image):
-    return [r for r in plistlib.loads(data).get('images', []) if r.get('image-path') == str(image)]
+def mounted_images(data):
+    parsed = plistlib.loads(data)
+    require(isinstance(parsed, dict) and isinstance(parsed.get('images'), list), 'mount inventory unavailable')
+    images = parsed['images']
+    for row in images:
+        require(isinstance(row, dict) and isinstance(row.get('image-path'), str)
+                and isinstance(row.get('system-entities'), list), 'invalid mount inventory')
+        require(all(isinstance(entity, dict) for entity in row['system-entities']), 'invalid mount entities')
+    return images
 
-def detach_owned(commands, image, mount):
-    rows = image_mounts(commands.run(['hdiutil', 'info', '-plist']), image)
+
+def image_mounts(data, image):
+    return [r for r in mounted_images(data) if r['image-path'] == str(image)]
+
+
+def mount_images(data, mount):
+    return [r for r in mounted_images(data) if any(
+        entity.get('mount-point') == str(mount) for entity in r['system-entities'])]
+
+
+def require_image_binding(data, image, mount, device):
+    rows = image_mounts(data, image)
+    require(len(rows) == 1, 'unique attached image binding required')
+    require(owned_mount(plistlib.dumps(rows[0]), mount) == device, 'attached device binding changed')
+    owners = mount_images(data, mount)
+    require(len(owners) == 1 and owners[0] == rows[0], 'ambiguous owned mount')
+
+
+def require_unmounted(data, image, mount, roots=()):
+    require(not image_mounts(data, image), 'image remains attached')
+    for row in mounted_images(data):
+        for entity in row['system-entities']:
+            point = entity.get('mount-point')
+            if point is None:
+                continue
+            require(isinstance(point, str) and point, 'invalid mount point')
+            require(point != str(mount) and not any(
+                Path(point).resolve().is_relative_to(Path(root).resolve()) for root in roots),
+                'owned mount remains attached under an image alias')
+
+def detach_owned(commands, image, mount, device=None):
+    data = commands.run(['hdiutil', 'info', '-plist'])
+    rows = image_mounts(data, image)
     if rows:
-        require(len(rows) == 1, 'ambiguous owned image')
-        owned_mount(plistlib.dumps(rows[0]), mount)
+        require(device is not None, 'actual attachment device proof required')
+        require_image_binding(data, image, mount, device)
         commands.run(['hdiutil', 'detach', str(mount)])
-    require(not image_mounts(commands.run(['hdiutil', 'info', '-plist']), image), 'image remains attached')
+    else:
+        require(not mount_images(data, mount), 'owned mount image identity unproved')
+    require_unmounted(commands.run(['hdiutil', 'info', '-plist']), image, mount)
 
 
 def mounted_minimum(app, arch):
@@ -266,9 +306,11 @@ def native(candidate, image, report, arch, commands, facts):
     mount = image.parent/'baseline-mount'
     mount.mkdir()
     manifest = report/'mounted-copy-baseline.json'
+    ownership = {}
     def baseline():
         data = commands.run(['hdiutil', 'attach', '-readonly', '-nobrowse', '-noautoopen', '-mountpoint', str(mount), '-plist', str(image)])
-        owned_mount(data, mount)
+        ownership['device'] = owned_mount(data, mount)
+        require_image_binding(commands.run(['hdiutil', 'info', '-plist']), image, mount, ownership['device'])
         apps = list(mount.glob('*.app'))
         require(len(apps) == 1 and apps[0].is_dir() and not apps[0].is_symlink(), 'unique real app required')
         app = apps[0]
@@ -278,7 +320,7 @@ def native(candidate, image, report, arch, commands, facts):
         commands.run([sys.executable, str(base/'bundle_contract.py'), 'manifest', str(app), str(manifest)], cwd=candidate)
         commands.run([sys.executable, str(base/'bundle_contract.py'), 'verify', str(app), str(manifest)], cwd=candidate)
         facts['baseline_scope'] = 'COPY_BASELINE_FROM_SELECTED_READONLY_IMAGE_NOT_ORIGINAL_BUILD_MANIFEST'
-    run_phase(facts, 'mounted-baseline', baseline, lambda: detach_owned(commands, image, mount))
+    run_phase(facts, 'mounted-baseline', baseline, lambda: detach_owned(commands, image, mount, ownership.get('device')))
     env = dict(os.environ)
     temp = image.parent/'contract-tmp'
     temp.mkdir()
@@ -288,7 +330,7 @@ def native(candidate, image, report, arch, commands, facts):
         require_contract_success(0, output.decode('utf-8', 'replace'))
         facts['contract_owned_identities'] = contract_identities(output.decode('utf-8', 'replace'))
     def contract_cleanup():
-        require(not image_mounts(commands.run(['hdiutil', 'info', '-plist']), image), 'contract mount cleanup unproved')
+        require_unmounted(commands.run(['hdiutil', 'info', '-plist']), image, mount, roots=(temp,))
         import psutil
         require(bool(facts.get('contract_owned_identities')), 'contract identity proof unavailable')
         verify_owned_identities(facts['contract_owned_identities'], facts, psutil)
