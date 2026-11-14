@@ -165,7 +165,8 @@ def test_failure_after_copy_keeps_original_and_retries(migration, monkeypatch, o
         if operation == "fsync":
             failure.setattr(cfg.os, "fsync", fail)
         else:
-            failure.setattr(cfg, "_replace_with_retry", fail)
+            # Migration publishes without replacing a competing settings save.
+            failure.setattr(cfg.os, "rename" if cfg.sys.platform == "win32" else "link", fail)
         assert cfg.migrate_config_location() == str(target)
     assert source.read_bytes() == original and not target.exists()
     assert not list(target.parent.glob("*.tmp"))
@@ -182,7 +183,7 @@ def test_read_only_staged_copy_is_removed_on_publication_failure(migration, monk
 
     try:
         with monkeypatch.context() as failure:
-            failure.setattr(cfg, "_replace_with_retry", fail)
+            failure.setattr(cfg.os, "rename" if cfg.sys.platform == "win32" else "link", fail)
             cfg.migrate_config_location()
         assert source.is_file() and not target.exists()
         assert not list(target.parent.glob("*.tmp"))

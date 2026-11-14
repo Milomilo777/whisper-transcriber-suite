@@ -837,7 +837,8 @@ def migrate_config_location() -> str:
     """Move a legacy next-to-source config.json into the platformdirs path.
 
     Returns the new path. Idempotent: if the new file already exists, the legacy
-    one is renamed to .migrated.bak and not copied. Safe to call on every launch.
+    one is renamed to .migrated.bak and not copied. An existing backup is never
+    replaced; in that case the legacy file is retained too. Safe on every launch.
     """
     new_path = config_path()
     legacy = _legacy_config_path()
@@ -860,25 +861,23 @@ def migrate_config_location() -> str:
     if os.path.abspath(legacy) == os.path.abspath(new_path):
         return new_path
 
-    if not os.path.exists(new_path):
-        try:
-            _copy_legacy_settings(legacy, new_path)
-            logger.info("Migrated legacy config.json from %s to %s", legacy, new_path)
-        except OSError as e:
-            logger.error("Failed to migrate legacy config: %s", e)
-            return new_path
-
-    backup = legacy + ".migrated.bak"
     try:
-        if os.path.exists(backup):
-            os.unlink(backup)
-        os.replace(legacy, backup)
-        logger.info("Renamed legacy config to %s", backup)
+        # Share the settings writers' lock and recheck only after acquisition:
+        # another launch may already have copied and retired the legacy file.
+        with _SAVE_LOCK, _config_file_lock(new_path):
+            if not os.path.exists(legacy):
+                return new_path
+            if not os.path.exists(new_path):
+                _copy_legacy_settings(legacy, new_path, replace=False)
+                logger.info("Legacy config migration target available at %s", new_path)
+            backup = legacy + ".migrated.bak"
+            if os.path.lexists(backup):
+                logger.warning("Keeping existing migration backup %s and legacy file %s", backup, legacy)
+                return new_path
+            os.replace(legacy, backup)
+            logger.info("Renamed legacy config to %s", backup)
     except OSError as e:
-        logger.exception(
-            "Could not rename legacy config to .migrated.bak (path=%s): %s",
-            legacy, e,
-        )
+        logger.exception("Failed to migrate legacy config (path=%s): %s", legacy, e)
 
     return new_path
 
