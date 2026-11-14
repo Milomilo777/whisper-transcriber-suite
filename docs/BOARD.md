@@ -17,7 +17,7 @@ The combined headless selection passes 75 tests; application and engine type
 checks report zero errors or warnings. Native keyboard, focus and popup-grab
 acceptance remains open.
 
-The latest completed full gate belongs to `4d58097b`: 16,255 passed,
+The latest completed full gate belongs to `b78593fd`: 16,301 passed,
 44 skipped, zero failures. Later shared-code fixes require a final matching gate;
 the earlier source counts below are historical and do not qualify this source.
 
