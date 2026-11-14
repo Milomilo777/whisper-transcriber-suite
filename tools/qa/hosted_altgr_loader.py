@@ -63,6 +63,7 @@ def main():
     # No ctypes import or Win32 API construction occurs before this admission.
     context = validate_hosted_context(env, git("rev-parse", "HEAD"),
                                       git("status", "--porcelain", "--untracked-files=no"), sys.platform)
+    from receipt_io import write_json_checkpoint
     run_id, attempt = env.get("GITHUB_RUN_ID", ""), env.get("GITHUB_RUN_ATTEMPT", "")
     if not run_id.isdecimal() or not attempt.isdecimal():
         raise RuntimeError("Numeric GitHub run ID and attempt are required")
@@ -75,7 +76,7 @@ def main():
     packet = workspace / "qa_native_packet"
     packet.mkdir(exist_ok=False)
     helpers = {}
-    for name in ("test_altgr_acceptance.py", "altgr_guards.py"):
+    for name in ("test_altgr_acceptance.py", "altgr_guards.py", "receipt_io.py"):
         source = Path(__file__).resolve().parent / name
         data = source.read_bytes()
         helpers[name] = hashlib.sha256(data).hexdigest()
@@ -87,7 +88,7 @@ def main():
     identity_path = output / "loaderidentity.json"
 
     def save():
-        identity_path.write_text(json.dumps(identity, indent=2), encoding="utf-8")
+        write_json_checkpoint(identity_path, identity)
 
     save()
     target = 0

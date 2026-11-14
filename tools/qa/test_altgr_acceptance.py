@@ -13,6 +13,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent))
 from altgr_guards import GuardError, guarded_chord, is_altgr_text, ownership_allowed, select_loaded_layout, temporary_layout
+from receipt_io import write_json_checkpoint
 
 
 def test_finite_native_altgr_acceptance(record_property):
@@ -28,7 +29,7 @@ def test_finite_native_altgr_acceptance(record_property):
     data = {"head": plan["head"], "pid": identity[0], "created": identity[1], "status": "STARTED", "injected_events": 0, "observations": []}
 
     def save():
-        output.write_text(json.dumps(data, indent=2))
+        write_json_checkpoint(output, data)
 
     save()
     root = None
