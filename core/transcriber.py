@@ -4473,7 +4473,13 @@ def resume_transcription(
 
         data = _checkpoint.load_checkpoint(task.file_path)
         if data is None:
-            log("Resume: no checkpoint on disk; falling back to full re-run.", log_cb)
+            # None also means unreadable. Preserve that first failed read
+            # before a fresh route can reread valid bytes and supersede them.
+            kept = _keep_checkpoint_aside(task, "the saved checkpoint file is unreadable", log_cb)
+            if kept is not None:
+                log(f"Resume: unreadable checkpoint kept aside ({kept}); falling back to full re-run.", log_cb)
+            else:
+                log("Resume: no checkpoint on disk; falling back to full re-run.", log_cb)
             return False
 
         backend, model_name = _current_backend_and_model()

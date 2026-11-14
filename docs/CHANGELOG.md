@@ -13,6 +13,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 - Report incomplete recordings when capture cannot stop promptly, retain the active recorder until it exits, and keep partial audio out of voice reference samples.
+- Keep saved checkpoint bytes aside after a failed resume read, before a fresh run can replace or delete them.
 - Keep subtitle cues separate when a zero-length cue is followed by an earlier-starting cue, preserving their text and original start times.
 - Compile both Windows installer scripts with the pinned Inno Setup 6 compiler, using supported handle types and a shared version definition for Compact shortcut cleanup.
 - Check upgrade inventories against every pinned published release, import legacy history even without settings, and reject installation folders that overlap a retained predecessor's files, including directory aliases.
