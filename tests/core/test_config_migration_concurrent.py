@@ -310,5 +310,3 @@ def test_archive_failure_keeps_original_for_retry(migration, monkeypatch):
     assert not backup.exists()
     cfg.migrate_config_location()
     assert backup.read_bytes() == original and not source.exists()
-
-
