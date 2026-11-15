@@ -4,8 +4,8 @@
   "version": "v2.4.0",
   "release_sha": "7197cd21af46574aeb4c302b733076be78dfdade",
   "complete_interface_catalogs": 42,
-  "released": "TODO-FINAL-SHA",
-  "release_status": "unpublished draft",
+  "released": "2026-11-15",
+  "release_status": "published",
   "release_features": ["presets", "subtitle-quality", "download-limit"],
   "artifact_verification": "verified shipping bytes",
   "files": {

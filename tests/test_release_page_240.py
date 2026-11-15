@@ -78,8 +78,8 @@ def test_release_block_in_wrong_section_is_rejected():
 
 def test_draft_artifact_rows_retain_final_build_provenance():
     notes = (ROOT / "docs/releases/2.4.0.md").read_text(encoding="utf-8")
-    assert "Unpublished draft" in notes
-    assert "TODO-FINAL-SHA" in notes
+    assert "Released 2026-11-15" in notes
+    assert "TODO-FINAL-SHA" not in notes
     rows = [line for line in notes.splitlines() if line.startswith("| [")]
     assert len(rows) == 4
     release_checks.check_release_artifacts(notes, RELEASE_SHA)
@@ -122,13 +122,13 @@ def test_release_facts_and_notes_name_the_frozen_candidate():
 def test_machine_readable_release_facts():
     facts = json.loads((ROOT / "site/facts.json").read_text(encoding="utf-8"))
     assert facts["version"] == "v2.4.0"
-    assert facts["release_status"] == "unpublished draft"
-    assert facts["released"] == "TODO-FINAL-SHA"
+    assert facts["release_status"] == "published"
+    assert facts["released"] == "2026-11-15"
     assert set(facts["website_languages"]) == set(LANGUAGES)
     for name in ("llms.txt", "llms-full.txt"):
         text = (ROOT / "site" / name).read_text(encoding="utf-8")
         summary = text.split("# Full text", 1)[0]
-        assert "2.4.0" in summary and "Unpublished draft" in summary
+        assert "2.4.0" in summary and "Unpublished draft" not in summary
         assert "v2.3.1" not in summary
     ET = __import__("xml.etree.ElementTree", fromlist=["ElementTree"])
     ET.parse(ROOT / "site/sitemap.xml")
@@ -136,7 +136,7 @@ def test_machine_readable_release_facts():
 
 def test_readiness_document_is_explicitly_a_draft():
     text = (ROOT / "RELEASE-PAGE-READY.md").read_text(encoding="utf-8")
-    assert "DRAFT / ARTIFACTS VERIFIED" in text
+    assert "PUBLICATION METADATA / ARTIFACTS VERIFIED" in text
     assert "Persian interface" in text
     assert "Persian approval is OPEN" not in text
     assert "TODO-FINAL-SHA" in text

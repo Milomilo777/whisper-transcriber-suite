@@ -1,6 +1,7 @@
-# 2.4.0 release page — DRAFT / ARTIFACTS VERIFIED
+# 2.4.0 release page — PUBLICATION METADATA / ARTIFACTS VERIFIED
 
-Publication remains unapproved. Release payload source:
+Publication metadata targets 2026-11-15; apply only after maintainer approval
+and verification of the published assets. Release payload source:
 `7197cd21af46574aeb4c302b733076be78dfdade`.
 All four download rows in [the release draft](docs/releases/2.4.0.md) now contain
 actual shipping filenames, byte sizes, SHA-256 values and that source revision.
