@@ -79,6 +79,21 @@ def test_root_at_the_limit_passes(tmp_path: Path) -> None:
     assert _run(repo).returncode == 0
 
 
+def test_release_readiness_file_at_the_limit_passes(tmp_path: Path) -> None:
+    repo = _make_repo(tmp_path, [f"f{i}.txt" for i in range(24)] + ["RELEASE-PAGE-READY.md"])
+    assert _run(repo).returncode == 0
+
+
+def test_readiness_exception_does_not_allow_other_extra_file(tmp_path: Path) -> None:
+    repo = _make_repo(tmp_path, [f"f{i}.txt" for i in range(25)] + ["RELEASE-PAGE-READY.md"])
+    assert _run(repo).returncode == 1
+
+
+def test_readiness_lookalike_does_not_get_exception(tmp_path: Path) -> None:
+    repo = _make_repo(tmp_path, [f"f{i}.txt" for i in range(24)] + ["RELEASE-PAGE-READY-OTHER.md"])
+    assert _run(repo).returncode == 1
+
+
 def test_gitlink_is_refused(tmp_path: Path) -> None:
     repo = _make_repo(tmp_path, ["README.md"])
     sha = "1" * 40

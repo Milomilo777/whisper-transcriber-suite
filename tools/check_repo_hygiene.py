@@ -3,7 +3,8 @@
 Fails (exit 1) when `git ls-files` lists
   * a path on the deny list (session handoffs, agent briefs, generated repo maps, local notes,
     editor-agent settings, a nested local layer), or a gitlink (submodule entry), or
-  * more than MAX_ROOT_FILES files directly in the repository root.
+  * more than MAX_ROOT_FILES files directly in the repository root, excluding
+    the release draft's exact readiness filename.
 
 Usage: python tools/check_repo_hygiene.py [REPO_DIR]     (default: the repository containing this file)
 CI runs it as the "repo hygiene" job; tests/test_repo_hygiene.py covers it on a throwaway repo.
@@ -52,7 +53,7 @@ def tracked(repo: Path) -> list[tuple[str, str]]:
 
 def problems(entries: list[tuple[str, str]]) -> list[str]:
     found = []
-    root_files = [p for _, p in entries if "/" not in p]
+    root_files = [p for _, p in entries if "/" not in p and p != "RELEASE-PAGE-READY.md"]
     for mode, path in entries:
         if DENY.search(path):
             found.append(f"deny-listed path is tracked: {path}")
