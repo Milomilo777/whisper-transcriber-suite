@@ -1,6 +1,6 @@
 """Every interface catalog in app/locales is valid, fits en.json, and en.json is current.
 
-Missing translations are reported as warnings, never as failures: a catalog may be partial.
+The validator accepts partial fixtures; every shipped catalog must cover the source messages.
 """
 from __future__ import annotations
 
@@ -134,6 +134,46 @@ def test_catalog_is_valid(path: Path) -> None:
                       stacklevel=1)
 
 
+@pytest.mark.parametrize("path", CATALOGS, ids=lambda p: p.name)
+def test_catalog_covers_every_source_message(path: Path) -> None:
+    """A shipped catalog keeps every source key and its format fields."""
+    problems, missing = catalog_problems(path, _source())
+    assert not missing, f"{path.name}: {len(missing)} missing messages: {missing}"
+    assert not problems, f"{path.name}: {problems}"
+    messages = json.loads(path.read_text(encoding="utf-8"))["messages"]
+    empty = [key for key, value in messages.items()
+             if any(not isinstance(form, str) or not form.strip()
+                    for form in (value if isinstance(value, list) else [value]))]
+    assert not empty, f"{path.name}: empty translation forms: {empty}"
+
+
+def _format_signatures(text: str) -> set[tuple[str, str, str]]:
+    signatures = set()
+    for _literal, field, spec, conversion in string.Formatter().parse(text):
+        if field is not None:
+            signatures.add((field, conversion or "", spec))
+            signatures.update(_format_signatures(spec))
+    return signatures
+
+
+@pytest.mark.parametrize("path", CATALOGS, ids=lambda p: p.name)
+def test_catalog_preserves_required_format_fields(path: Path) -> None:
+    messages = json.loads(path.read_text(encoding="utf-8"))["messages"]
+    for key, source in _source().items():
+        if key not in messages:
+            continue  # The completeness test reports missing keys independently.
+        plural = isinstance(source, list)
+        wanted = set().union(*(_format_signatures(form) for form in source)) if plural else _format_signatures(source)
+        forms = messages[key] if plural else [messages[key]]
+        for form in forms:
+            got = _format_signatures(form)
+            # n may be implicit in grammar. voice_clone_tab._on_text_modified also passes
+            # count == n for this exact counter; singular/dual forms spell the number in words.
+            implicit = {"n", "count"} if key == "{count} characters" else {"n"}
+            required = {field for field in wanted if not (plural and field[0] in implicit)}
+            assert required <= got <= wanted, (path.name, key, form, wanted, got)
+
+
 def test_en_json_is_current() -> None:
     res = subprocess.run([sys.executable, str(EXTRACTOR), "--check"], capture_output=True, text=True,
                          stdin=subprocess.DEVNULL, timeout=120)
@@ -200,3 +240,11 @@ def test_validator_catches_bad_json_and_crlf(tmp_path: Path) -> None:
     crlf = _write(tmp_path, "fr", {})
     crlf.write_bytes(crlf.read_bytes().replace(b"\n", b"\r\n") + b"\r\n")
     assert any("CR" in p for p in catalog_problems(crlf, SOURCE)[0])
+
+
+def test_shipped_catalog_rejects_blank_plural_form(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    source = {"{n} file": ["{n} file", "{n} files"]}
+    path = _write(tmp_path, "ru", {"{n} file": ["", "{n} файла", "{n} файлов"]})
+    monkeypatch.setattr(sys.modules[__name__], "_source", lambda: source)
+    with pytest.raises(AssertionError, match="empty"):
+        test_catalog_covers_every_source_message(path)
