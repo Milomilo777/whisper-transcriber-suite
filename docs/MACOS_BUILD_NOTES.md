@@ -14,8 +14,10 @@ components. Building on an older host does not lower that requirement.
 stops the build. This matches the final bundle verifier rather than using a
 successful smoke run as an exception to metadata checks.
 
-With the current Intel dependencies, Deno and protobuf require 12.0 and
-ONNX Runtime requires 11.0, so the 2.4.0 Intel bundle declares macOS 12.0.
+The 2.4.0 Intel Mac package requires macOS 12 Monterey or later; the
+Apple-silicon package requires macOS 14 Sonoma or later. Intel Deno and
+protobuf require 12.0 and ONNX Runtime requires 11.0, so the Intel bundle
+declares `LSMinimumSystemVersion` 12.0.
 The earlier successful macOS 10.15 runtime tests remain valid observations of
 those runs; they do not establish support for the new bundle declaration.
 Keeping Catalina support requires compatible dependency builds and renewed

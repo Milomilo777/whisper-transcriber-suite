@@ -1,5 +1,9 @@
 # Whisper Transcriber Suite on macOS
 
+For 2.4.0, the Intel package requires macOS 12 Monterey or later and the
+Apple-silicon package requires macOS 14 Sonoma or later. The dated checks
+below describe older releases.
+
 > Status (2026-09-23): **validated on a real Mac** (Intel, macOS 10.15.7):
 > this installer, the PyInstaller `.app`/`.dmg` (installed from a quarantined
 > `.dmg` through Finder, Gatekeeper, real transcription and YouTube download).
