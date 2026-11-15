@@ -1066,10 +1066,17 @@ class TranscriptViewer(tk.Toplevel):
             root=self._qc_tree,
             font=ttk.Style(self._qc_tree).lookup("Treeview.Heading", "font") or "TkHeadingFont",
         )
+        row_font = tkfont.Font(
+            root=self._qc_tree,
+            font=ttk.Style(self._qc_tree).lookup("Treeview", "font") or "TkDefaultFont",
+        )
+        severity_width = max(row_font.measure(_("Error")), row_font.measure(_("Warning"))) + px(16)
         for key, title, width in (("cue", _("Cue"), 45), ("level", _("Severity"), 75),
                                   ("finding", _("Finding"), 240)):
             self._qc_tree.heading(key, text=title)
             heading_width = heading_font.measure(title) + px(16)
+            if key == "level":
+                heading_width = max(heading_width, severity_width)
             self._qc_tree.column(key, width=max(px(width), heading_width),
                                  minwidth=max(px(40), heading_width),
                                  stretch=key == "finding")
