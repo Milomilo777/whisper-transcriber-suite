@@ -1,7 +1,7 @@
 # 2.4.0 release page — DRAFT / HASHES PENDING
 
-This is a prepared draft, not publication approval. Final builds, artifact names,
-sizes, SHA-256 values and the final candidate validation remain pending.
+This is a prepared draft, not publication approval. Exact-source builds and automated workflows passed. Artifact names, sizes,
+SHA-256 values and downloaded-artifact acceptance remain pending.
 `TODO-FINAL-SHA` is deliberately visible wherever final artifact data is unknown.
 Expected download filenames and URLs are provisional until compared with final CI.
 Release payload source: `7197cd21af46574aeb4c302b733076be78dfdade`.
@@ -129,3 +129,7 @@ separately and apply its `publish-time only` commit last, after publication.
 6. Apply any separately reviewed `publish-time only` endpoint commit last, then verify
    installed-app update behavior against the published release. Nothing in this document
    authorizes those actions before owner approval.
+
+## Exact-source workflow completion
+
+All four workflows succeeded for `7197cd21af46574aeb4c302b733076be78dfdade`: CI [43691496406](https://github.com/Milomilo777/whisper-transcriber-suite/actions/runs/43691496406), Windows installer [43691496465](https://github.com/Milomilo777/whisper-transcriber-suite/actions/runs/43691496465), macOS [43691496479](https://github.com/Milomilo777/whisper-transcriber-suite/actions/runs/43691496479), and CodeQL [43691496474](https://github.com/Milomilo777/whisper-transcriber-suite/actions/runs/43691496474). Existing QA terminal receipts were checked; no workflow was dispatched or polled. This does not fill artifact hashes or establish downloaded-DMG acceptance. The four rows stay `TODO-FINAL-SHA` until the exact-source intake completes.
