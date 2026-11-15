@@ -1,140 +1,104 @@
-# 2.4.0 release page — DRAFT / HASHES PENDING
+# 2.4.0 release page — DRAFT / ARTIFACTS VERIFIED
 
-This is a prepared draft, not publication approval. Exact-source builds and automated workflows passed. Artifact names, sizes,
-SHA-256 values and downloaded-artifact acceptance remain pending.
-`TODO-FINAL-SHA` is deliberately visible wherever final artifact data is unknown.
-Expected download filenames and URLs are provisional until compared with final CI.
-Release payload source: `7197cd21af46574aeb4c302b733076be78dfdade`.
-Both Mac rows now have exact-source verified values; Windows rows remain
-`TODO-FINAL-SHA`. The earlier Windows values
-were for a different source and cannot be carried forward. Fill rows only from
-QA's exact-source POST_PUSH table. The checker binds every filled hash to this
-release source, not to the documentation branch commit.
+Publication remains unapproved. Release payload source:
+`7197cd21af46574aeb4c302b733076be78dfdade`.
+All four download rows in [the release draft](docs/releases/2.4.0.md) now contain
+actual shipping filenames, byte sizes, SHA-256 values and that source revision.
+Windows values come from the final exact-source QA intake; both Mac values agree
+with independent QA readback and the downloaded-image native acceptance.
+The documentation branch revision is not the payload source.
 
-Identify the latest draft changes with
-`git log -1 --format=%H -- RELEASE-PAGE-READY.md`.
+See [public release readiness](docs/RELEASE_READINESS_2.4.0.md) for the passing
+checks, open causes, single owners and clock deadlines. The draft is not a
+release authorization or a statement that every feature has native acceptance.
 
 ## Prepared files
 
+- `docs/releases/2.4.0.md`: release draft, verified four-file artifact table,
+  feature bullets, reporter thanks and invitation to report problems.
 - `docs/img/promo-release.svg`: existing artwork and embedded fonts, saved presets
   and subtitle quality review, a 36-second cycle, all 320 property/step holds at
   least as long as the 33.6-second baseline, and an active reduced-motion poster.
-- `docs/releases/2.4.0.md`: previous release layout, accurate draft qualification,
-  provisional download links, pending sizes/hashes, feature bullets and reporting
-  invitation. The unverified numeric bug total is replaced with a nonnumeric heading.
-- `site/index.html` and the home pages under `ar bg bn ca cs da de el es fa fi fil
-  fr he hi hr hu id it ja ko lt lv ms nb nl pl pt pt-br ro ru sk sl sr sv th tr uk vi
-  zh-cn zh-tw`: the same three translated 2.4 blocks in `#whats-new`, current version
-  and provisional downloads, with existing 2.3 and earlier history retained.
+- `site/index.html` and the 41 translated home pages: three translated 2.4 blocks
+  inside `#whats-new`, with earlier release history retained. Persian interface
+  catalogs are complete; Gemini interface translations need no separate owner review.
 - `site/facts.json`, `site/llms.txt`, `site/llms-full.txt`, `site/sitemap.xml`:
-  draft release facts, the existing full-text generator's output from the unchanged
-  README, and last-modified dates for the 42 changed home pages only. Dates in the
-  sitemap describe the draft edit, not release publication.
-- `tools/check_release_page.py`, `tests/test_release_page_240.py`,
-  `tests/fixtures/promo-release-timing-2.3.1.json`: offline draft checks and causal
-  negative controls. `tools/check_repo_hygiene.py` and its tests allow this exact
-  readiness filename while preserving the general 24-file root limit.
+  unpublished draft facts and dates of draft edits. Site size/date fields still
+  use `TODO-FINAL-SHA` until the approved publication metadata pass.
+- `tools/check_release_page.py`, `tests/test_release_page_240.py` and the existing
+  timing fixture: offline artifact-source, language placement and animation checks.
+  Hygiene checks retain the exact readiness-file exception and root-file limit.
 
 ## Validation
 
-Focused command: `python -m pytest tests/test_release_page_240.py tests/test_repo_hygiene.py -q`.
-Initial tests failed before the changes. Negative copies shorten one actual hold
-below its old duration while leaving the cycle and other holds intact; shorten the
-second animation in a declaration; remove one Filipino feature article while
-keeping the other two; move a feature outside its release block; and move the whole
-block outside `#whats-new`. Each is rejected. The exact readiness-file exception
-also has a failing-before check and arbitrary-extra-file controls.
+Focused release/hygiene selection: 83 passed, including all 42 language pages,
+artifact-source mismatch controls for every file, partial-metadata rejection,
+feature-placement mutations and animation hold-duration negative controls.
+The final rerun command and result are retained in the private delivery record.
 
-Standalone checks: `python tools/check_release_page.py` (or pass
-`--baseline-svg ORIGINAL_SVG_PATH` to parse the original SVG directly),
-`python tools/docs_check.py .`, and `python tools/check_repo_hygiene.py`.
-The existing non-live site tests and documentation checks are run once against
-the draft; final counts and any publication-phase mismatch are recorded below.
-Headless previews cover both changed feature frames and reduced motion; the latter
-has zero running animations. No rendering result establishes final artifact QA.
+The earlier combined non-live site/documentation run had 172 passed and 2 failed:
+the legacy published-version/date check rejects the unpublished date marker;
+the country-table freshness check used Babel 2.15.0 rather than its generator's
+2.18.0 and reproduced the unchanged-baseline mismatch. These remain named
+publication/environment checks, not passing release gates. Earlier standalone
+draft, documentation, hygiene, translation and generated-full-text checks passed.
+Headless previews covered both changed feature frames and reduced motion;
+zero running reduced-motion animations does not establish native app rendering.
 
-Validation results: 83 focused release/hygiene tests passed, including all 42
-language pages and artifact-source mismatch controls for all four files. The
-current Windows size/hash/source rows are pending; future verified rows may be
-filled without changing the source-provenance tests. The earlier combined
-non-live site/documentation run had 172 passed and 2 failed: the legacy published
-version/date pattern rejects the intentionally unpublished `TODO-FINAL-SHA` date;
-the country-table freshness test uses Babel 2.15.0 while its generator specifies
-2.18.0, and reproduces a mismatch against the unchanged baseline table. These
-remain open final-publication/environment checks, not passing release gates.
-The standalone draft checker, documentation checker, hygiene gate, generated
-translation check and generated full-text check pass.
+## Exact-source accepted evidence
 
-## Persian interface and change inventory
+All four workflows succeeded for the payload revision: CI
+[43691496406](https://github.com/Milomilo777/whisper-transcriber-suite/actions/runs/43691496406),
+Windows installer
+[43691496465](https://github.com/Milomilo777/whisper-transcriber-suite/actions/runs/43691496465),
+macOS
+[43691496479](https://github.com/Milomilo777/whisper-transcriber-suite/actions/runs/43691496479),
+and CodeQL
+[43691496474](https://github.com/Milomilo777/whisper-transcriber-suite/actions/runs/43691496474).
+Existing terminal receipts and actual shipping-byte verification qualify these
+four files; the workflow result alone is not byte verification.
 
-The Persian interface catalog is complete. Gemini interface translations do not
-require a separate owner review. The draft remains unpublished; publication
-approval still applies to the whole release.
-The private review attachment contains every changed Persian-page line in full,
-with before/after line numbers and structured change groups, including the three
-new translated feature sentences, current-version/download references, pending
-sizes/date, current and historical heading IDs, and modification metadata.
-It also contains the complete unified diff; no changed line is omitted.
-Other languages have prepared translations; final editorial review is still pending.
+Downloaded Mac replay
+[43698426946](https://github.com/Milomilo777/whisper-transcriber-suite/actions/runs/43698426946)
+passed copied-app native checks on Intel and Apple silicon, two passes total.
+Execution used macOS 15.x. Minimum targets (Intel 12, Apple silicon 14) were
+checked statically; oldest-supported-system launch and visible-window rendering
+are not inferred. Windows acceptance includes 14 native smoke passes with zero
+skips, 22 predecessor guard cases, and the 2.3.1 upgrade/uninstall's three phases
+and six preserved sentinels. GPU evidence is explicitly carried forward from
+`16df0244ae43454d34c97a388754446fc3ab99ff` with unchanged core, not a new run.
+Voice and statistics limitations remain in the public readiness table.
 
-## Open publication gates
+## Open publication work
 
-- Pin one final candidate and passing Windows installer/Portable, both macOS DMGs,
-  full-suite and required real-machine checks to that same source revision.
-- Compare actual CI artifact names with the provisional links. Replace every
-  `TODO-FINAL-SHA` with verified final sizes, SHA-256 values and the publication
-  date in the appropriate fields; retain the draft label until approval.
-- Persian interface catalogs are complete, and Gemini interface translations
-  require no separate owner review. Finish the existing editorial checks and
-  verify the final rendered release page and site after final metadata is filled.
-- Adopt the prepared private catalog snapshot before future site regeneration;
-  the existing private generator and catalogs remain the build source.
-- Rerun final documentation/site gates after final values are available. Legacy
-  published-facts date checks require a real publication date, not a draft marker.
+- Resolve the named voice and statistics causes or obtain an explicit maintainer
+  disposition; publication remains owner-only.
+- Adopt the prepared private catalog snapshot before site regeneration; the
+  existing private generator and catalogs remain the build source.
+- Fill approved site sizes and publication date; replace remaining date/size
+  `TODO-FINAL-SHA` fields only with approved metadata, then run the final
+  documentation/site checks and rendered-page editorial acceptance.
+- Verify the FFmpeg corresponding-source attachment against
+  `platform/ffmpeg-source.json` before release creation.
 
-Update/version endpoints deferred unchanged: `site/app_config.json`, `core/updates.py`.
-No publish-time endpoint commit is prepared. If one becomes necessary, review it
-separately and apply its `publish-time only` commit last, after publication.
+Update/version endpoints remain `site/app_config.json` and `core/updates.py`.
+Any publish-time endpoint change needs separate review and is applied last,
+after publication approval and release verification.
 
 ## Future publishing steps — chief only, after owner approval
 
-1. Integrate this reviewed draft into the final candidate. Adopt the reviewed private
-   catalogs, verify the final source pin and all release gates, and fill final artifact
-   metadata. Regenerate full text with `python _local/site/tools/build_llms_full.py`;
-   validate translations with `python _local/site/tools/site_i18n.py check` and
-   `python -m pytest -q -o addopts="" _local/site/tests`. Run the three standalone
-   commands above and review the final Persian before/after attachment.
-2. With explicit owner approval to publish, remove the draft qualification and
-   review the exact final notes/assets. Prepare the final merge and metadata commit
-   locally, without pushing `master` yet. Confirm each artifact's source manifest
-   binds the approved candidate: a documentation-only commit does not automatically
-   transfer build hashes or QA results from a different payload revision.
-3. Tag the approved final commit using `git tag v2.4.0 FINAL_RELEASE_SHA`, replacing
-   `FINAL_RELEASE_SHA` with the verified approved commit. Push through the documented
-   approved-release tag procedure (`ALLOW_TAG_PUSH=1` for `git push origin v2.4.0`).
-   Do not move an existing published tag.
-4. With `ARTIFACT_DIR` pointing at verified final CI files, create the new release:
+1. Integrate this documentation unit; preserve the payload source identity and
+   reuse the verified four shipping files. Adopt the reviewed private catalogs,
+   regenerate full text and validate translations with the existing private tools.
+2. Obtain explicit owner publication approval, review the final notes/assets,
+   complete site metadata and final checks, and remove draft qualification only
+   when approved. A documentation-only commit does not rebuild the payload.
+3. Use the documented approved-release tag procedure for the approved final
+   commit. Preserve all existing published tags, assets and download counts.
+4. Verify corresponding FFmpeg source, publish the four verified packages and
+   source attachment through the chief's approved release procedure, then verify
+   the published files and URLs before the site deployment trigger.
+5. Verify the deployment and all 42 language pages. Apply any separately reviewed
+   publish-time endpoint change last and verify installed-app update behavior.
 
-   ```powershell
-   python tools/fetch_ffmpeg_source.py --out "$ARTIFACT_DIR" --app-version 2.4.0 --check --platform all
-   gh release create v2.4.0 --verify-tag --title "Whisper Transcriber Suite 2.4.0" --notes-file docs/releases/2.4.0.md "$ARTIFACT_DIR/WhisperTranscriberSuite-Installer-Windows-v2.4.0.exe" "$ARTIFACT_DIR/WhisperTranscriberSuite-Portable-Windows-v2.4.0.zip" "$ARTIFACT_DIR/WhisperTranscriberSuite-v2.4.0-macOS-arm64.dmg" "$ARTIFACT_DIR/WhisperTranscriberSuite-v2.4.0-macOS-x64.dmg" "$ARTIFACT_DIR/WhisperTranscriberSuite-v2.4.0-source-ffmpeg-9.0.2.tar.xz"
-   ```
-
-   The corresponding-source filename above follows `platform/ffmpeg-source.json`
-   and must match the actual reviewed source artifact;
-   do not execute with an assumed or missing file. Preserve published assets and counts.
-5. Verify the published release, all download URLs, sizes/hashes and source attachment
-   before `git push origin master`. That approved push is the site's existing Cloudflare
-   Pages deployment trigger. Verify the actual deployment and all 42 language pages
-   before announcing the site update, so its new links already have published assets.
-6. Apply any separately reviewed `publish-time only` endpoint commit last, then verify
-   installed-app update behavior against the published release. Nothing in this document
-   authorizes those actions before owner approval.
-
-## Exact-source workflow completion
-
-All four workflows succeeded for `7197cd21af46574aeb4c302b733076be78dfdade`: CI [43691496406](https://github.com/Milomilo777/whisper-transcriber-suite/actions/runs/43691496406), Windows installer [43691496465](https://github.com/Milomilo777/whisper-transcriber-suite/actions/runs/43691496465), macOS [43691496479](https://github.com/Milomilo777/whisper-transcriber-suite/actions/runs/43691496479), and CodeQL [43691496474](https://github.com/Milomilo777/whisper-transcriber-suite/actions/runs/43691496474). Existing QA terminal receipts were checked; no workflow was dispatched or polled. This does not fill artifact hashes or establish downloaded-DMG acceptance. The Windows rows stay `TODO-FINAL-SHA` until their exact-source intake completes.
-
-## Exact-source Mac artifact intake
-
-Both source-bound Mac disk images were verified from the existing HW cache and independently read by QA; no second download. Build [43691496479](https://github.com/Milomilo777/whisper-transcriber-suite/actions/runs/43691496479), one downloaded-image replay [43698426946](https://github.com/Milomilo777/whisper-transcriber-suite/actions/runs/43698426946), Intel and Apple-silicon copied-app checks each passed. The release-note rows now use their actual inner-file sizes and SHA-256 values, bound to source `7197cd21af46574aeb4c302b733076be78dfdade`. Native hosts were macOS 15.x; no oldest-supported-system or visible-window rendering result is inferred. Windows byte intake, voice acceptance and stats cutover remain separate release gates.
+Nothing in this draft authorizes tagging, pushing, uploading or deployment.

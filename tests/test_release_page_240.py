@@ -136,7 +136,7 @@ def test_machine_readable_release_facts():
 
 def test_readiness_document_is_explicitly_a_draft():
     text = (ROOT / "RELEASE-PAGE-READY.md").read_text(encoding="utf-8")
-    assert "DRAFT / HASHES PENDING" in text
+    assert "DRAFT / ARTIFACTS VERIFIED" in text
     assert "Persian interface" in text
     assert "Persian approval is OPEN" not in text
     assert "TODO-FINAL-SHA" in text
