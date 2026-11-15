@@ -74,13 +74,18 @@ def test_release_block_in_wrong_section_is_rejected():
         check_page(damaged, "en", ROOT / "site", relative)
 
 
-def test_draft_notes_keep_artifact_unknowns_explicit():
+def test_draft_notes_use_verified_windows_rows_and_keep_mac_unknowns():
     notes = (ROOT / "docs/releases/2.4.0.md").read_text(encoding="utf-8")
     assert "Unpublished draft" in notes
     assert "TODO-FINAL-SHA" in notes
     rows = [line for line in notes.splitlines() if line.startswith("| [")]
     assert len(rows) == 4
-    assert all("TODO-FINAL-SHA" in row for row in rows)
+    assert "249916406 B" in rows[0]
+    assert "c0a8454caf5ea5e6386f5e6a3df29c6699c2aed57c0975784ac6c6fbdb11c82f" in rows[0]
+    assert "372070348 B" in rows[1]
+    assert "9a22b6797badc7721c4192e7a72ce17fae4ff2f7aa1a40bfcb890190e5be7cfb" in rows[1]
+    assert all("TODO-FINAL-SHA" not in row for row in rows[:2])
+    assert all("TODO-FINAL-SHA" in row for row in rows[2:])
     assert "## 🐞 Bugs fixed" in notes
     assert "32 bugs" not in notes
 
