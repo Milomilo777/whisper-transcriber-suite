@@ -4,7 +4,13 @@ This is a prepared draft, not publication approval. Final builds, artifact names
 sizes, SHA-256 values and the final candidate validation remain pending.
 `TODO-FINAL-SHA` is deliberately visible wherever final artifact data is unknown.
 Expected download filenames and URLs are provisional until compared with final CI.
-The draft is one coherent commit; identify it with
+Release payload source: `7197cd21af46574aeb4c302b733076be78dfdade`.
+All four artifact rows remain `TODO-FINAL-SHA`; the earlier Windows values
+were for a different source and cannot be carried forward. Fill rows only from
+QA's exact-source POST_PUSH table. The checker binds every filled hash to this
+release source, not to the documentation branch commit.
+
+Identify the latest draft changes with
 `git log -1 --format=%H -- RELEASE-PAGE-READY.md`.
 
 ## Prepared files
@@ -46,7 +52,10 @@ the draft; final counts and any publication-phase mismatch are recorded below.
 Headless previews cover both changed feature frames and reduced motion; the latter
 has zero running animations. No rendering result establishes final artifact QA.
 
-Validation results: 76 focused release/hygiene tests passed. The single combined
+Validation results: 83 focused release/hygiene tests passed, including all 42
+language pages and artifact-source mismatch controls for all four files. The
+current four size/hash/source rows are pending; future verified rows may be
+filled without changing the source-provenance tests. The earlier combined
 non-live site/documentation run had 172 passed and 2 failed: the legacy published
 version/date pattern rejects the intentionally unpublished `TODO-FINAL-SHA` date;
 the country-table freshness test uses Babel 2.15.0 while its generator specifies
@@ -55,9 +64,11 @@ remain open final-publication/environment checks, not passing release gates.
 The standalone draft checker, documentation checker, hygiene gate, generated
 translation check and generated full-text check pass.
 
-## Persian approval and change inventory
+## Persian interface and change inventory
 
-Persian approval is OPEN. The prepared Persian text has not been approved for publication.
+The Persian interface catalog is complete. Gemini interface translations do not
+require a separate owner review. The draft remains unpublished; publication
+approval still applies to the whole release.
 The private review attachment contains every changed Persian-page line in full,
 with before/after line numbers and structured change groups, including the three
 new translated feature sentences, current-version/download references, pending
@@ -72,8 +83,9 @@ Other languages have prepared translations; final editorial review is still pend
 - Compare actual CI artifact names with the provisional links. Replace every
   `TODO-FINAL-SHA` with verified final sizes, SHA-256 values and the publication
   date in the appropriate fields; retain the draft label until approval.
-- Obtain Persian approval, finish translation/editorial review, and verify the
-  final rendered release page and site after those changes.
+- Persian interface catalogs are complete, and Gemini interface translations
+  require no separate owner review. Finish the existing editorial checks and
+  verify the final rendered release page and site after final metadata is filled.
 - Adopt the prepared private catalog snapshot before future site regeneration;
   the existing private generator and catalogs remain the build source.
 - Rerun final documentation/site gates after final values are available. Legacy

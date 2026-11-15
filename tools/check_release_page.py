@@ -13,6 +13,27 @@ ROOT = Path(__file__).resolve().parents[1]
 LANGUAGES = "en ar bg bn ca cs da de el es fa fi fil fr he hi hr hu id it ja ko lt lv ms nb nl pl pt pt-br ro ru sk sl sr sv th tr uk vi zh-cn zh-tw".split()
 FEATURES = ["presets", "subtitle-quality", "download-limit"]
 RELEASE = "https://github.com/Milomilo777/whisper-transcriber-suite/releases/"
+PENDING = "TODO-FINAL-SHA"
+
+
+def check_release_artifacts(notes: str, release_sha: str) -> None:
+    """Require explicit build provenance before a draft can display artifact hashes."""
+    assert re.fullmatch(r"[0-9a-f]{40}", release_sha), "invalid release source"
+    rows = [line for line in notes.splitlines() if line.startswith("| [")]
+    assert len(rows) == 4, "expected four release artifact rows"
+    for row in rows:
+        cells = [part.strip() for part in row.strip("|").split("|")]
+        assert len(cells) == 5, "artifact row must include its build source"
+        size, digest, source = cells[2:]
+        assert source in (PENDING, release_sha), "artifact source differs from release source"
+        if digest == PENDING:
+            assert size == source == PENDING, "pending artifact has partial verified metadata"
+        else:
+            assert re.fullmatch(r"[0-9a-f]{64}", digest), "invalid artifact SHA-256"
+            assert re.fullmatch(r"[1-9][0-9]* B", size), "invalid artifact byte size"
+            assert source == release_sha, "artifact hash has no matching build source"
+    declared = re.search(r"^Release source: `([0-9a-f]{40})`\.$", notes, re.M)
+    assert declared and declared[1] == release_sha, "release source declaration differs"
 
 
 def animation_timing(svg: str) -> dict:
@@ -178,6 +199,8 @@ def main() -> int:
                         help="parse an original SVG instead of the hermetic timing fixture")
     args = parser.parse_args()
     root = args.root
+    facts = json.loads((root / "site/facts.json").read_text(encoding="utf-8"))
+    check_release_artifacts((root / "docs/releases/2.4.0.md").read_text(encoding="utf-8"), facts["release_sha"])
     if args.baseline_svg:
         old_svg = args.baseline_svg.read_text(encoding="utf-8")
         ET.fromstring(old_svg)
