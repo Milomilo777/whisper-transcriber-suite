@@ -165,7 +165,8 @@ def check_page(html: str, lang: str, site: Path, relative: Path) -> None:
     for key in ("version", "size-installer", "size-portable", "size-mac-arm64", "size-mac-x64", "released"):
         match = re.search(rf'data-auto="{key}"[^>]*>([^<]+)', html)
         assert match, f"missing {key}: {lang}"
-        assert ("2.4.0" if key == "version" else "TODO-FINAL-SHA") in match[1], f"unverified {key}: {lang}"
+        expected = {"version": "2.4.0", "size-installer": "238 MB", "size-portable": "355 MB", "size-mac-arm64": "277 MB", "size-mac-x64": "304 MB", "released": PENDING}
+        assert expected[key] in match[1], f"unverified {key}: {lang}"
     for link in page.links:
         u = urlsplit(link)
         if u.netloc == "whisper-transcriber-suite.com":

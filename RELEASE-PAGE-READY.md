@@ -23,8 +23,8 @@ release authorization or a statement that every feature has native acceptance.
   inside `#whats-new`, with earlier release history retained. Persian interface
   catalogs are complete; Gemini interface translations need no separate owner review.
 - `site/facts.json`, `site/llms.txt`, `site/llms-full.txt`, `site/sitemap.xml`:
-  unpublished draft facts and dates of draft edits. Site size/date fields still
-  use `TODO-FINAL-SHA` until the approved publication metadata pass.
+  unpublished draft facts and dates of draft edits. All four site size fields are verified; date fields retain
+  `TODO-FINAL-SHA` for the separate publish-time metadata change.
 - `tools/check_release_page.py`, `tests/test_release_page_240.py` and the existing
   timing fixture: offline artifact-source, language placement and animation checks.
   Hygiene checks retain the exact readiness-file exception and root-file limit.
@@ -36,13 +36,19 @@ artifact-source mismatch controls for every file, partial-metadata rejection,
 feature-placement mutations and animation hold-duration negative controls.
 The final rerun command and result are retained in the private delivery record.
 
-The earlier combined non-live site/documentation run had 172 passed and 2 failed:
-the legacy published-version/date check rejects the unpublished date marker;
-the country-table freshness check used Babel 2.15.0 rather than its generator's
-2.18.0 and reproduced the unchanged-baseline mismatch. These remain named
-publication/environment checks, not passing release gates. Earlier standalone
-draft, documentation, hygiene, translation and generated-full-text checks passed.
-Headless previews covered both changed feature frames and reduced motion;
+Final combined non-live site/release/hygiene selection: 176 passed. The former
+published-date test now strictly distinguishes the explicit draft state from a
+published version/date line. Babel 2.15.0 reproduced genuine country-data drift;
+pinned Babel 2.18.0 matches the existing table. A private generator newline bug
+also treated the correct CRLF checkout as stale; preserving target newlines
+closes that check without changing the country data. Standalone draft,
+documentation, hygiene, translation and generated-full-text checks pass.
+Final local browser checks cover 42 languages at 390 and 1280 pixels (84 cases),
+with matching feature counts, sizes and header fit. English/Persian release frames
+and download cards were visually inspected; the four-row release-note preview
+was inspected at both widths. Existing decorative page overflow matches the
+unchanged baseline; no release-content or header regression was introduced.
+Earlier headless previews covered both changed feature frames and reduced motion;
 zero running reduced-motion animations does not establish native app rendering.
 
 ## Exact-source accepted evidence
@@ -75,11 +81,12 @@ Voice and statistics limitations remain in the public readiness table.
   disposition; publication remains owner-only.
 - Adopt the prepared private catalog snapshot before site regeneration; the
   existing private generator and catalogs remain the build source.
-- Fill approved site sizes and publication date; replace remaining date/size
-  `TODO-FINAL-SHA` fields only with approved metadata, then run the final
-  documentation/site checks and rendered-page editorial acceptance.
-- Verify the FFmpeg corresponding-source attachment against
-  `platform/ffmpeg-source.json` before release creation.
+- Apply the separately prepared publish-time date change only at publication;
+  the remaining `TODO-FINAL-SHA` date marker is deliberate. Recheck the real
+  publication date if publication moves to another day.
+- Attach the verified existing FFmpeg 9.0.2 source archive at release creation.
+  Offline verification against both platform pins passes: 12,040,788 bytes,
+  matching SHA-256, release identity and required source/license members.
 
 Update/version endpoints remain `site/app_config.json` and `core/updates.py`.
 Any publish-time endpoint change needs separate review and is applied last,

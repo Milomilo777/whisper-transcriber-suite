@@ -8,7 +8,7 @@ Common questions this page answers: Is it free? Yes — BSD-3-Clause, no subscri
 
 ## Version 2.4.0 — Unpublished draft
 
-Saved transcription presets; subtitle quality review for reading speed, line length and timing; a remembered download speed limit. Artifact sizes and hashes: TODO-FINAL-SHA.
+Saved transcription presets; subtitle quality review for reading speed, line length and timing; a remembered download speed limit. All four shipping artifact sizes and hashes are verified against source 7197cd21af46574aeb4c302b733076be78dfdade; publication remains pending.
 
 ## Video tour
 - [Watch the tour and chapters](https://whisper-transcriber-suite.com/tour/); [YouTube](https://www.youtube.com/watch?v=pfnjrinmayA). English narration, subtitles in 13 languages.
