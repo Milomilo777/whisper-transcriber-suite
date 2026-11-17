@@ -41,9 +41,11 @@ jobs:
     # hang in the install step, or in pytest's own startup/collection
     # before the per-test timeout plugin is active). The Windows suite
     # alone takes about 28 minutes (12,000+ tests, October 2026) and
-    # hit the old 30-minute limit; 45 still replaces GitHub's 360-minute
-    # default so a wedge fails fast instead of burning hours of Actions time.
-    timeout-minutes: 45
+    # hit the old 30-minute limit; by November 2026 (17,000+ tests) the
+    # Windows jobs took 43-45 minutes and Python 3.11 hit the 45-minute
+    # limit. 60 still replaces GitHub's 360-minute default so a wedge fails
+    # fast instead of burning hours of Actions time.
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
