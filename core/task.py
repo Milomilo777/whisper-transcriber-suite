@@ -34,6 +34,7 @@ class TranscriptionTask:
         self.end_time: float | None = None
         self.paused: bool = False
         self.cancelled: bool = False
+        self._gpu_temperature_controller: Any = None
         # Phase 2a additions
         self.detected_language: str = ""
         self.language_probability: float = 0.0

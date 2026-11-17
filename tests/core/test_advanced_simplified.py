@@ -38,6 +38,8 @@ def _fake_dialog(app: Any, **overrides: Any) -> types.SimpleNamespace:
     fields: dict[str, Any] = dict(
         app=app,
         _vad_enabled=_V(True),
+        _gpu_temperature_enabled=_V(True),
+        _gpu_temperature_c=_V("83"),
         _vad_min_silence=_V(500),
         _vad_threshold=_V(0.5),
         _vad_speech_pad=_V(400),
@@ -95,6 +97,17 @@ def _fake_app(cfg: dict) -> types.SimpleNamespace:
         transcription_service=types.SimpleNamespace(stop_all=lambda: None),
         log=lambda _m: None,
     )
+
+
+def test_save_gpu_temperature_choice_and_clamp(monkeypatch):
+    from app.dialogs import advanced as adv
+    monkeypatch.setattr(adv, "save_config", lambda _cfg: None)
+    cfg = _base_cfg()
+    dialog = _fake_dialog(_fake_app(cfg), _gpu_temperature_enabled=_V(False),
+                          _gpu_temperature_c=_V("200"))
+    adv.AdvancedDialog._save_and_close(dialog)
+    assert cfg["gpu_temperature_limit_enabled"] is False
+    assert cfg["gpu_temperature_limit_c"] == 90
 
 
 def _base_cfg() -> dict:
@@ -224,6 +237,17 @@ def _shown_setup(dlg: Any) -> set[str]:
         value for value, frame in dlg._engine_setup_frames.items()
         if frame.winfo_manager() == "pack"
     }
+
+
+def test_gpu_temperature_controls_are_visible_and_initialized(make_dialog):
+    from tkinter import ttk
+    dlg = make_dialog(gpu_temperature_limit_enabled=False, gpu_temperature_limit_c=75)
+    assert dlg._gpu_temperature_enabled.get() is False
+    assert dlg._gpu_temperature_c.get() == "75"
+    children = dlg._engine_section.winfo_children()
+    assert any(isinstance(w, ttk.Checkbutton) and w.cget("text") == "Limit GPU temperature"
+               and w.winfo_manager() == "grid" for w in children)
+    assert any(isinstance(w, ttk.Spinbox) for frame in children for w in frame.winfo_children())
 
 
 def _nav_texts(dlg: Any) -> list[str]:

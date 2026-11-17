@@ -29,7 +29,7 @@ try:  # 1.0.3+ ships this; older wheels do not
 except ImportError:  # pragma: no cover
     _BatchedInferencePipeline = None  # type: ignore[assignment]
 
-from .. import loop_guard, vad_window
+from .. import gpu_temperature, loop_guard, vad_window
 from ..config import load_config
 from ..model_manager import DownloadCancelled, ensure_model
 from .base import Backend, LanguageInfo
@@ -226,11 +226,13 @@ class WhisperDecode:
         is_cuda: Callable[[], bool],
         recover: Callable[[dict[str, Any], bool], None],
         window_s: float | None,
+        temperature: Callable[[Any], gpu_temperature.TemperatureController | None] | None = None,
     ) -> None:
         self._runner = runner
         self._is_cuda = is_cuda
         self._recover = recover
         self._window_s = window_s
+        self._temperature = temperature
         self.before_retry: Callable[[], None] = lambda: None
         self.retry_enabled = True
 
@@ -253,7 +255,13 @@ class WhisperDecode:
                 try:
                     with (vad_window.windowed_vad(self._window_s)
                           if self._window_s is not None else nullcontext()):
-                        return self._runner(options).transcribe(source, **options)
+                        runner = self._runner(options)
+                        factory = self._temperature
+                        control = factory(runner) if factory is not None else None
+                        if control is not None:
+                            control.before_step()
+                        segments, info = runner.transcribe(source, **options)
+                        return (control.pace(segments) if control is not None else segments), info
                 except RuntimeError as exc:
                     failure = _cuda_failure(exc)
                     if not self.retry_enabled or not self._is_cuda() or not failure:
@@ -365,8 +373,10 @@ class FasterWhisperBackend(Backend):
         self._loop_guard_repeats = loop_guard.DEFAULT_REPEATS
         self._decode_batch_size = 0
         self._model_path = ""
+        self._temperature_config: dict[str, Any] = {}
 
     def _read_safeguards(self, config: dict[str, Any]) -> None:
+        self._temperature_config = dict(config)
         self._vad_window_s = vad_window.window_seconds(config)
         self._loop_guard_repeats = loop_guard.repeat_limit(config)
 
@@ -654,9 +664,22 @@ class FasterWhisperBackend(Backend):
         if hotwords:
             transcribe_kwargs["hotwords"] = hotwords
 
+        control = None
+
+        def temperature(_runner: Any) -> gpu_temperature.TemperatureController | None:
+            nonlocal control
+            if self._device.split(":")[0] != "cuda":
+                return None
+            if control is None:
+                control = gpu_temperature.for_model(
+                    self._model, self._temperature_config, log=log_cb or logger.info,
+                    cancelled=cancelled, paused=paused)
+            return control
+
         runner = WhisperDecode(
             self._decode_runner, lambda: self._device.split(":")[0] == "cuda",
             lambda options, oom: self._recover_decode(options, oom, log_cb), self._vad_window_s,
+            temperature=temperature,
         )
         if self._pipeline is not None:
             transcribe_kwargs["batch_size"] = int(batch_size)

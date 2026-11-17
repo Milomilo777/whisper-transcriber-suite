@@ -553,6 +553,7 @@ def _fake_dialog(app: Any, provider_label: str) -> types.SimpleNamespace:
     """What _save_and_close reads, as plain objects (see tests/core/test_advanced_simplified.py)."""
     return types.SimpleNamespace(
         app=app, _vad_enabled=_V(True), _vad_min_silence=_V(500), _vad_threshold=_V(0.5),
+        _gpu_temperature_enabled=_V(True), _gpu_temperature_c=_V("83"),
         _vad_speech_pad=_V(400), _format_vars={"srt": _V(True)}, _reset_hidden_tuning=False,
         _initial_prompt=_V(""), _hotwords=_V(""), _sb_vars={}, _cookies_browser=_V("(off)"),
         _cookies_browser_initial="(off)", _backend_display=_V("Faster-Whisper — offline, default"),

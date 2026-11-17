@@ -133,6 +133,7 @@
         "core.distribution", "core.download_guard",
         "core.failure_clue",
         "core.finish_hooks",
+        "core.gpu_temperature",
         "core.hallucination",
         "core.hardware",
         "core.hardware_probe",

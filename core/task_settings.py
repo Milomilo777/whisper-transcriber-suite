@@ -50,6 +50,8 @@ PER_TASK_KEYS: tuple[str, ...] = (
     "initial_prompt",
     "hotwords",
     "batch_size",
+    "gpu_temperature_limit_enabled",
+    "gpu_temperature_limit_c",
     # Audio pre-processing.
     "demucs_enabled",
     "denoise_enabled",
