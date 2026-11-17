@@ -256,6 +256,17 @@ def _load(lang_code: str) -> Any:
     """
     import sherpa_onnx  # type: ignore[import-not-found]
 
+    # 2.x removed bundled espeak; its lexicon-only frontend silently skips
+    # unknown words. Keep the frontend used by this model until an external
+    # phonemizer is shipped: https://github.com/k2-fsa/sherpa-onnx/pull/4055
+    version_text = getattr(sherpa_onnx, "__version__", "")
+    version = re.match(r"^(\d+)\.(\d+)\.(\d+)(?:$|[.+-])", version_text) if isinstance(version_text, str) else None
+    if version is None or not (1, 13, 8) <= tuple(map(int, version.groups())) < (2, 0, 0):
+        raise RuntimeError(
+            "Text to Voice requires sherpa-onnx>=1.13.8,<2 for unknown-word "
+            "pronunciation. Reinstall the application or its required dependencies."
+        )
+
     key = lang_code
     with _engine_lock:
         eng = _engines.get(key)
@@ -283,15 +294,47 @@ def _load(lang_code: str) -> Any:
                 kokoro=kokoro, num_threads=max(1, min(4, os.cpu_count() or 1)),
                 provider="cpu",
             ),
+            # The bundled date/number/phone rules produce Chinese readings.
+            # Other languages must leave numbers to their pronunciation frontend.
             rule_fsts=",".join(
                 str(p) for p in sorted(d.glob("*.fst"))
-            ),
+            ) if lang_code == "zh" else "",
             max_num_sentences=1,
         )
         eng = sherpa_onnx.OfflineTts(config)
         _engines.clear()  # keep one engine resident, not one per language
         _engines[key] = eng
         return eng
+
+
+def _japanese_numbers(text: str) -> str:
+    """Spell simple Japanese numbers without using Chinese pronunciation rules.
+
+    Leave separated dates, identifiers, signed/grouped numbers and integers over 9999
+    untouched rather than rewriting an ambiguous token or only part of it.
+    """
+    digits = "零一二三四五六七八九"
+
+    def replace(match: re.Match[str]) -> str:
+        integer, fraction = match.groups()
+        if integer.startswith("0"):
+            spoken = "".join(digits[int(c)] for c in integer)
+        else:
+            value = int(integer)
+            parts = []
+            for divisor, unit in ((1000, "千"), (100, "百"), (10, "十"), (1, "")):
+                count, value = divmod(value, divisor)
+                if count:
+                    parts.append((digits[count] if count != 1 or divisor == 1 else "") + unit)
+            spoken = "".join(parts)
+        if fraction is not None:
+            spoken += "点" + "".join(digits[int(c)] for c in fraction)
+        return spoken
+
+    return re.sub(
+        r"(?<![A-Za-z0-9_.,:+/-])([0-9]{1,4})(?:\.([0-9]+))?(?![A-Za-z0-9_:+/-]|[.,][A-Za-z0-9_])",
+        replace, text,
+    )
 
 
 @dataclass
@@ -338,7 +381,8 @@ def generate(
         return 0 if cancel_event is not None and cancel_event.is_set() else 1
 
     t0 = time.time()
-    audio = engine.generate(text, sid=voice.sid, speed=float(speed), callback=_cb)
+    spoken_text = _japanese_numbers(text) if voice.lang_code == "ja" else text
+    audio = engine.generate(spoken_text, sid=voice.sid, speed=float(speed), callback=_cb)
     elapsed = time.time() - t0
     if cancel_event is not None and cancel_event.is_set():
         raise RuntimeError("Cancelled.")

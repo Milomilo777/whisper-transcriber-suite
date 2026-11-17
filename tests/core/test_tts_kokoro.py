@@ -6,6 +6,64 @@ import pytest
 from core import tts_kokoro as k
 
 
+@pytest.mark.parametrize("version", ["2.0.0", "2.0.1", "3.0.0", "1.13.7", "unknown", None, 1])
+def test_load_rejects_runtime_without_supported_oov_frontend(monkeypatch, version):
+    import sys
+    from types import SimpleNamespace
+
+    monkeypatch.setitem(sys.modules, "sherpa_onnx", SimpleNamespace(__version__=version))
+    monkeypatch.setattr(k, "model_dir", lambda: pytest.fail("accessed model before version check"))
+    with pytest.raises(RuntimeError, match="sherpa-onnx>=1.13.8,<2"):
+        k._load("en-us")
+
+
+@pytest.mark.parametrize("lang", list(k._LANG_SCRIPTS))
+def test_load_keeps_legacy_multilingual_frontend(monkeypatch, tmp_path, lang):
+    import sys
+    from types import SimpleNamespace
+
+    for name in ("lexicon-us-en.txt", "lexicon-gb-en.txt", "lexicon-zh.txt", "date-zh.fst", "number-zh.fst", "phone-zh.fst"):
+        (tmp_path / name).touch()
+    (tmp_path / "dict").mkdir()
+    seen = {}
+
+    def engine(config):
+        seen["config"] = config
+        return object()
+
+    monkeypatch.setitem(sys.modules, "sherpa_onnx", SimpleNamespace(
+        __version__="1.13.8", OfflineTtsKokoroModelConfig=SimpleNamespace,
+        OfflineTtsModelConfig=SimpleNamespace, OfflineTtsConfig=SimpleNamespace,
+        OfflineTts=engine,
+    ))
+    monkeypatch.setattr(k, "model_dir", lambda: tmp_path)
+    monkeypatch.setattr(k, "_engines", {})
+    loaded = k._load(lang)
+    assert k._load(lang) is loaded
+    cfg = seen["config"]
+    kokoro = cfg.model.kokoro
+    assert kokoro.lang == ("" if lang in ("en-us", "en-gb", "zh") else lang)
+    english = "lexicon-gb-en.txt" if lang == "en-gb" else "lexicon-us-en.txt"
+    assert kokoro.lexicon.split(",") == [str(tmp_path / english), str(tmp_path / "lexicon-zh.txt")]
+    assert kokoro.data_dir == str(tmp_path / "espeak-ng-data")
+    expected_rules = ",".join(str(tmp_path / name) for name in (
+        "date-zh.fst", "number-zh.fst", "phone-zh.fst",
+    )) if lang == "zh" else ""
+    assert cfg.rule_fsts == expected_rules
+    assert cfg.model.provider == "cpu"
+
+
+def test_dependencies_keep_the_bundled_espeak_frontend():
+    import tomllib
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[2]
+    requirement = "sherpa-onnx>=1.13.8,<2"
+    assert requirement in (root / "requirements.txt").read_text(encoding="utf-8").splitlines()
+    metadata = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
+    assert requirement in metadata["project"]["dependencies"]
+
+
 def test_voice_table_matches_the_model_order():
     # sherpa-onnx kokoro-multi-lang-v1_0: ids 0..52, em_santa appended at 53.
     assert len(k.VOICES) == 54
@@ -241,3 +299,32 @@ def test_voice_texts_do_not_hard_code_the_voice_count():
     for rel in ("app/widgets/voice_clone_tab.py", "core/tts_kokoro.py"):
         source = (root / rel).read_text(encoding="utf-8")
         assert not re.search(r"\b\d+ ready-made voices", source), rel
+
+
+@pytest.mark.parametrize("text,expected", [
+    ("2025年に42人。第7課は3.14円。", "二千二十五年に四十二人。第七課は三点一四円。"),
+    ("0 1 10 11 99 100 101 999 1000 1001 9999", "零 一 十 十一 九十九 百 百一 九百九十九 千 千一 九千九百九十九"),
+    ("人数は42. 次は7, 価格は3.14.", "人数は四十二. 次は七, 価格は三点一四."),
+    ("0.05 3.140 0042", "零点零五 三点一四零 零零四二"),
+    ("10000 v1.2 1.2.3 1,234 -42 +42 2025/11/17 2025-11-17 12:30", "10000 v1.2 1.2.3 1,234 -42 +42 2025/11/17 2025-11-17 12:30"),
+])
+def test_japanese_number_normalization_is_bounded(text, expected):
+    assert k._japanese_numbers(text) == expected
+
+
+@pytest.mark.parametrize("voice", ["af_heart", "bf_emma", "zf_xiaobei", "ef_dora", "ff_siwis", "if_sara", "pf_dora", "hf_alpha", "jf_alpha"])
+def test_generate_normalizes_numbers_only_for_japanese(monkeypatch, tmp_path, voice):
+    from types import SimpleNamespace
+
+    text = "2025年に42人。第7課は3.14円。"
+    seen = []
+
+    def capture(actual, **kwargs):
+        seen.append(actual)
+        raise RuntimeError("captured text")
+
+    monkeypatch.setattr(k, "_load", lambda lang: SimpleNamespace(generate=capture))
+    with pytest.raises(RuntimeError, match="captured text"):
+        k.generate(text, voice, str(tmp_path / "unused.wav"))
+    expected = "二千二十五年に四十二人。第七課は三点一四円。" if voice == "jf_alpha" else text
+    assert seen == [expected]
