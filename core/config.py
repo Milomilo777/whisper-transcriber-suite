@@ -198,6 +198,8 @@ DEFAULT_CONFIG = {
     # A config.json from before .txt joined keeps LEGACY_OUTPUT_FORMATS (load_config).
     "output_formats": ["srt", "json", "txt"],
     "batch_size": 16,
+    "gpu_temperature_limit_enabled": True,
+    "gpu_temperature_limit_c": 83,
     "initial_prompt": "",
     "hotwords": "",
     # Phase 3a — yt-dlp killer features
@@ -2140,6 +2142,17 @@ def read_local_config_for_switches() -> dict[str, Any] | None:
     return {}
 
 
+def gpu_temperature_ceiling(config: Mapping[str, Any]) -> int:
+    """Bound a user temperature setting, including hand-edited profiles."""
+    try:
+        value = config.get("gpu_temperature_limit_c", 83)
+        if isinstance(value, bool):
+            return 83
+        return max(60, min(90, int(value)))
+    except (TypeError, ValueError, OverflowError):
+        return 83
+
+
 def effective_word_timestamps(config: Mapping[str, Any]) -> bool:
     """Explicit choice, then profile-era default; incomplete legacy configs stay off."""
     return bool(config.get("word_timestamps", config.get("word_timestamps_profile_default", False)))
@@ -2209,6 +2222,7 @@ def load_config(*, fetch_online: bool = True) -> dict[str, Any]:
 
     online = _unexpired_online(online)
     merged = merge_config_sources(DEFAULT_CONFIG, online, local)
+    merged["gpu_temperature_limit_c"] = gpu_temperature_ceiling(merged)
     if "stats_url" in local:
         stats_source = "local" if isinstance(local["stats_url"], str) else "default"
     elif ("stats_url" in ONLINE_ALLOWED_KEYS and "stats_url" not in LOCAL_ONLY_KEYS

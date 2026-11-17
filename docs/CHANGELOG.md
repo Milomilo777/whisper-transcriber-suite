@@ -4,6 +4,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+- Add an adjustable NVIDIA GPU temperature limit with predictive load reduction while transcription continues.
+
 - macOS packaging rejects missing or unreadable native requirements and a build
   host below the declared deployment target. The DMG must contain the exact
   verified app and pass the copied app's strict native audit.

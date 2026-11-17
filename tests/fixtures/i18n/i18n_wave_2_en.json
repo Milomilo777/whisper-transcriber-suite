@@ -229,6 +229,14 @@
    " ⓘ "
   ],
   [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!checkbutton2",
+   "Limit GPU temperature"
+  ],
+  [
+   ".!advanceddialog.!frame.!frame.!canvas.!frame.!labelframe.!frame3.!label",
+   "°C"
+  ],
+  [
    ".!advanceddialog.!frame.!frame.!canvas.!frame.!frame.!label",
    "▸ Gemini cloud setup (optional — uploads audio to Google)"
   ],

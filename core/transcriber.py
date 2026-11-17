@@ -547,9 +547,26 @@ def _whisper_runner(
         _remember_task_device(task, whisper=True)
         log(f"CUDA decode failed; retrying the remaining audio on {target}/{compute}.", log_cb)
 
+    def temperature(runner: Any) -> Any:
+        from . import gpu_temperature
+
+        if not config.get("gpu_temperature_limit_enabled", True):
+            return None
+        model = slot.model if slot is not None else MODEL
+        inner = getattr(model, "model", model)
+        if str(getattr(inner, "device", "")).split(":")[0] != "cuda":
+            return None
+        control = getattr(task, "_gpu_temperature_controller", None)
+        if control is None:
+            control = gpu_temperature.for_model(model, config, task=task,
+                                                log=lambda message: log(message, log_cb))
+            task._gpu_temperature_controller = control
+        return control
+
     return WhisperDecode(
         current, lambda: _device_kind(device) == "cuda", recover,
         None if live_chunk else _vad_window_seconds(),
+        temperature=temperature,
     )
 
 

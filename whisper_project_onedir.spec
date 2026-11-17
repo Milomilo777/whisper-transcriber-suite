@@ -308,6 +308,7 @@ a = Analysis(
         'core.speech_collect',
         'core.keep_awake',
         'core.vad_window',
+        'core.gpu_temperature',
         'core.language_defaults',
         'core.accuracy',
         'core.language_model_fetch',
