@@ -12,8 +12,8 @@ The tools mirror the JSON job API: ``transcribe_url`` goes through the same
 validators as ``POST /api/jobs`` (normalize_formats, normalize_language,
 english_only_problem, parse_clip and the manager's is_safe_url gate), but
 refuses a value those validators would replace instead of dropping it
-silently. No tool takes a local file path: a remote client must never be
-able to make the server read files from this computer.
+silently. Local-file controls additionally require a local transport and
+an explicit physical-folder grant.
 """
 from __future__ import annotations
 
@@ -96,6 +96,7 @@ _JOB_ID = {"type": "string", "description": "A job id from transcribe_url "
 def tool_definitions() -> list[dict[str, Any]]:
     """The tools/list payload; the format enums follow the writer registry."""
     formats = supported_formats()
+    from core.server.mcp_control import definitions
     return [
         {
             "name": "transcribe_url",
@@ -153,7 +154,7 @@ def tool_definitions() -> list[dict[str, Any]]:
             "description": "Cancel a queued or running job.",
             "inputSchema": _schema({"job_id": _JOB_ID}, ["job_id"]),
         },
-    ]
+    ] + definitions()
 
 
 # --- argument validation ---------------------------------------------------------
@@ -244,6 +245,11 @@ def validate_transcribe_args(
 # --- tools -------------------------------------------------------------------------
 
 def _transcribe_url(args: dict[str, Any], manager: Any) -> dict[str, Any]:
+    from core import config
+    from core.server.mcp_control import safe_settings
+    cfg = config.load_config()
+    args = dict(args)
+    args.setdefault("language", cfg.get("mcp_language", ""))
     url, formats, language, clip_start, clip_end = (
         validate_transcribe_args(args))
     try:
@@ -252,7 +258,8 @@ def _transcribe_url(args: dict[str, Any], manager: Any) -> dict[str, Any]:
         # Only when a language model is chosen (ADR 0016), so other managers keep working.
         chosen = job_language_model(language)
         extra = {"language_model": chosen} if chosen[0] else {}
-        job_id = manager.submit_url(url, formats, language, options={},
+        options = {k: v for k, v in safe_settings(cfg).items() if k in config.PROJECT_ALLOWED_KEYS}
+        job_id = manager.submit_url(url, formats, language, options=options,
                                     clip_start=clip_start, clip_end=clip_end, **extra)
     except (ValueError, QueueFull) as exc:
         raise _ToolError(str(exc)) from None
@@ -358,13 +365,14 @@ def _initialize(msg_id: Any, params: dict[str, Any],
 
 
 def _tools_call(msg_id: Any, params: dict[str, Any],
-                manager: Any) -> dict[str, Any]:
+                manager: Any, client_address: str = "") -> dict[str, Any]:
+    from core.server import mcp_control
     name = params.get("name")
     if not isinstance(name, str):
         return error_response(msg_id, INVALID_PARAMS,
                               "tools/call needs params.name")
     tool = _TOOLS.get(name)
-    if tool is None:
+    if tool is None and name not in mcp_control.NAMES:
         return error_response(msg_id, INVALID_PARAMS, f"Unknown tool: {name}")
     args = params.get("arguments", {})
     if args is None:
@@ -373,6 +381,9 @@ def _tools_call(msg_id: Any, params: dict[str, Any],
         return error_response(msg_id, INVALID_PARAMS,
                               "params.arguments must be an object")
     try:
+        if name in mcp_control.NAMES:
+            return _result(msg_id, mcp_control.call(name, args, manager, client_address))
+        assert tool is not None
         return _result(msg_id, tool(args, manager))
     except _ToolError as exc:
         return _result(msg_id, _tool_error(str(exc)))
@@ -384,14 +395,14 @@ def _tools_call(msg_id: Any, params: dict[str, Any],
 
 
 def handle(message: Any, manager: Any, *,
-           app_version: str) -> dict[str, Any] | None:
+           app_version: str, client_address: str = "") -> dict[str, Any] | None:
     """Answer one decoded JSON-RPC message.
 
     Returns the response object, or None when no response is due (a
     notification, or a response the client sent). Never raises.
     """
     try:
-        return _dispatch(message, manager, app_version)
+        return _dispatch(message, manager, app_version, client_address)
     except Exception:  # noqa: BLE001 - the transport must always answer
         logger.exception("mcp: dispatch failed")
         msg_id = message.get("id") if isinstance(message, dict) else None
@@ -400,7 +411,7 @@ def handle(message: Any, manager: Any, *,
 
 
 def _dispatch(message: Any, manager: Any,
-              app_version: str) -> dict[str, Any] | None:
+              app_version: str, client_address: str = "") -> dict[str, Any] | None:
     if not isinstance(message, dict):
         # Includes a JSON array: 2025-06-18 removed JSON-RPC batching.
         return error_response(None, INVALID_REQUEST,
@@ -437,6 +448,6 @@ def _dispatch(message: Any, manager: Any,
     if method == "tools/list":
         return _result(msg_id, {"tools": tool_definitions()})
     if method == "tools/call":
-        return _tools_call(msg_id, params, manager)
+        return _tools_call(msg_id, params, manager, client_address)
     return error_response(msg_id, METHOD_NOT_FOUND,
                           f"Method not found: {method}")

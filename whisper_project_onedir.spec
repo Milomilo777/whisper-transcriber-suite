@@ -170,6 +170,9 @@ a = Analysis(
         # Inert replacements for retired source left by overlay upgrades.
         'core.backends.parakeet', 'core.monitors', 'core.tiling',
         'core.server.mcp',
+        'core.server.mcp_control',
+        'core.server.mcp_files',
+        'core.server.mcp_stdio',
     'core.diarization_worker',
         *whisper_cpp_hidden,
         *alignment_hidden,

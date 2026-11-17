@@ -288,6 +288,9 @@ class Job:
     settling: bool = False
     # A visible problem that does not fail the job (outputs not archived).
     warning: str = ""
+    # Local MCP inputs are staged; exports go beside the original under this grant.
+    local_source: str = ""
+    local_root: str = ""
 
     def public_dict(self) -> dict[str, Any]:
         """The JSON shape returned by ``GET /api/jobs/<id>``."""
@@ -905,6 +908,35 @@ class JobManager:
         if job is not None:
             self._discard_dir(job.work_dir, job)
 
+    def submit_local(self, path: str, root: str, formats: list[str],
+                     language: str = "", *, options: dict[str, Any] | None = None) -> str:
+        """Stage authorized local media without ever owning the original."""
+        from core.server.mcp_control import allowed_file
+        from core.server.mcp_files import confined_open
+        physical, grant = allowed_file(path, {"mcp_allowed_folders": [root]})
+        with self._lock:
+            job = self._new_job("upload", formats, language, physical.name, options=options)
+            job.local_source, job.local_root = str(physical), str(grant)
+            job.media_path = os.path.join(job.work_dir, _safe_filename(physical.name))
+        try:
+            with confined_open(physical.parent, grant, physical.name, "rb") as src, open(job.media_path, "xb") as dest:
+                if os.fstat(src.fileno()).st_size > self._max_download_bytes:
+                    raise ValueError("local media exceeds the server size limit")
+                remaining = self._max_download_bytes + 1
+                while remaining:
+                    chunk = src.read(min(1024 * 1024, remaining))
+                    if not chunk:
+                        break
+                    dest.write(chunk)
+                    remaining -= len(chunk)
+                if remaining == 0:
+                    raise ValueError("local media exceeds the server size limit")
+        except BaseException:
+            self.discard(job.job_id)
+            raise
+        self.enqueue_upload(job.job_id)
+        return job.job_id
+
     def submit_url(self, url: str, formats: list[str],
                    language: str = "", *,
                    options: dict[str, Any] | None = None,
@@ -1233,6 +1265,15 @@ class JobManager:
             logger.error("server: %d result file(s) of job %s have no copy "
                          "outside the job folder", len(unsaved), job.job_id)
             job.warning = _UNSAVED_WARNING
+        if job.local_source and job.outputs:
+            try:
+                self._export_local_outputs(job)
+            except (OSError, ValueError):
+                logger.exception("server: local export failed for job %s", job.job_id)
+                job.warning = "Results retained by the server; saving beside the original failed."
+                if status == STATUS_FINISHED:
+                    status = STATUS_ERROR
+                    job.error = job.warning
         if uncertain:
             self._write_keep_file(job, [path for _, path in job.outputs], uncertain=True)
         elif unsaved:
@@ -1255,6 +1296,20 @@ class JobManager:
             logger.exception("server: could not remove the media of job %s",
                              job.job_id)
         self._set_status(job, status)
+
+    def _export_local_outputs(self, job: Job) -> None:
+        """Export without replacing existing files or following output links."""
+        from pathlib import Path
+        from core.server.mcp_control import allowed_file
+        from core.server.mcp_files import confined_open
+        source, _root = allowed_file(job.local_source, {"mcp_allowed_folders": [job.local_root]})
+        for index, (_fmt, path) in enumerate(job.outputs):
+            target = source.parent / f"{source.stem[:80]}.{job.job_id}.{index}{Path(path).suffix}"
+            # Exclusive creation refuses both existing files and dangling symlinks.
+            with open(path, "rb") as src, confined_open(source.parent, Path(job.local_root), target.name, "xb") as dest:
+                shutil.copyfileobj(src, dest)
+                dest.flush()
+                os.fsync(dest.fileno())
 
     def _drop_input_media(self, job: Job) -> None:
         """Delete the media the server itself stored for a finished job.

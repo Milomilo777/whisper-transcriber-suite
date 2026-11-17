@@ -1166,6 +1166,7 @@ More: [docs/INSTALL.md](docs/INSTALL.md). Still stuck? **Advanced → Re-detect 
 
 [Install](docs/INSTALL.md) · [Configuration](docs/CONFIG.md) ·
 [Live transcription](docs/LIVE.md) · [Local-network mode and API](docs/SERVER.md) ·
+[AI assistant connections (stdio MCP)](docs/AI_ASSISTANTS.md) ·
 [Cloud engines](docs/CLOUD_STT.md) · [Architecture](docs/ARCHITECTURE.md) ·
 [Changelog](docs/CHANGELOG.md) · [All docs](docs/README.md)
 
