@@ -12,6 +12,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   CPU preference, and CPU fallback uses a supported precision.
 
 ### Fixed
+- Preserve valid speed metadata when another field overflows, and normalize invalid audio durations before completion hooks and usage reporting.
 - Report copied macOS verification cleanup phases and unresolved process identities without exposing exception messages or changing cleanup outcomes.
 - Keep the Windows clipboard fallback from handling Ctrl+Alt chords that produce no text. Hosted keyboard checks record key events and distinguish unverified input from application or cleanup failures.
 - Preserve automatic GPU fallback intent and report the unavailable-runtime reason after worker logging starts. Explicit and saved CPU choices stay free of false GPU warnings.
