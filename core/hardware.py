@@ -516,13 +516,45 @@ def cuda_free_memory_mb(device_index: int = 0) -> int | None:
     return _run_with_timeout(probe, 2.0, None)
 
 
-def cuda_batch_size(configured: int, model: Any) -> int:
-    """Conservative incremental decode budget, measured after weights are loaded.
+def _cuda_batch_budget(model_path: str, compute: str, beam_size: int) -> tuple[int, int]:
+    """Return (reserve, incremental MiB/item) for known Whisper architectures.
 
-    Reserve 1 GiB for other allocations and allow 384 MiB per batch item. This
-    deliberately exceeds the observed large-model float16 beam-5 cost; smaller
-    models keep the same conservative envelope until separately calibrated.
+    Large float16 beam 5 measured about 0.27-0.30 GiB/item: budget 336 MiB,
+    plus 512 MiB untouched headroom after model loading. Split the estimate
+    into 128 MiB encoder/workspace and 208 MiB decoder/cache, scaling by width
+    and decoder layers; only the latter grows above beam 5. Lighter-model
+    figures are conservative extrapolations, with a 96 MiB minimum.
+    Quantized weights already increase the measured free memory. Do not halve
+    activation/cache costs for int8 weights; use the effective activation type.
+    Unknown/custom architectures retain the previous conservative envelope.
+    """
+    name = model_path.replace("\\", "/").rstrip("/").rsplit("/", 1)[-1]
+    name = name.removeprefix("faster-whisper-")
+    shapes = {
+        "tiny": (384, 4), "base": (512, 6), "small": (768, 12),
+        "medium": (1024, 24), "large-v1": (1280, 32),
+        "large-v2": (1280, 32), "large-v3": (1280, 32),
+        "large-v3-turbo": (1280, 4),
+    }
+    shape = shapes.get(name.removesuffix(".en"))
+    precision = {"float16": 1, "int8_float16": 1, "bfloat16": 1,
+                 "float32": 2, "int8_float32": 2, "int8": 2}.get(compute)
+    if shape is None or precision is None:
+        return 1024, 384
+    width, layers = shape
+    denominator = 1280 * 32 * 5
+    numerator = width * (128 * 32 * 5 + 208 * layers * max(5, beam_size))
+    item = max(96, (numerator + denominator - 1) // denominator) * precision
+    return 512, item
+
+
+def cuda_batch_size(
+    configured: int, model: Any, *, model_path: str = "", beam_size: int = 5,
+) -> int:
+    """Cap batching using free memory after weights and a model-aware budget.
+
     A snapshot cannot reserve memory against another process allocating later.
+    Unknown memory preserves configured batching; OOM recovery remains necessary.
     """
     configured = max(1, configured)
     indices = getattr(getattr(model, "model", None), "device_index", None)
@@ -533,8 +565,12 @@ def cuda_batch_size(configured: int, model: Any) -> int:
     free = cuda_free_memory_mb(int(indices[0]))
     if free is None:
         return configured
-    chosen = min(configured, max(1, (free - 1024) // 384))
-    logger.info("CUDA batch size %d (configured %d; free VRAM %d MiB)", chosen, configured, free)
+    reserve, item = _cuda_batch_budget(
+        model_path, str(getattr(model.model, "compute_type", "")), beam_size)
+    chosen = min(configured, max(1, (free - reserve) // item))
+    logger.info("CUDA batch size %d (configured %d; free VRAM %d MiB); "
+                "reserve %d MiB; budget %d MiB/item; beam %d",
+                chosen, configured, free, reserve, item, beam_size)
     return chosen
 
 

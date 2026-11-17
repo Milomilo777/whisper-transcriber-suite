@@ -703,7 +703,8 @@ class FasterWhisperBackend(Backend):
                 batch_size = min(batch_size, self._decode_batch_size)
             if self._device.split(":")[0] == "cuda":
                 from ..hardware import cuda_batch_size
-                batch_size = cuda_batch_size(int(batch_size), self._model)
+                batch_size = cuda_batch_size(
+                    int(batch_size), self._model, model_path=self._model_path)
             transcribe_kwargs["batch_size"] = int(batch_size)
 
         with vad_window.windowed_vad(self._vad_window_s):
