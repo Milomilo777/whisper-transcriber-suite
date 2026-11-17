@@ -14,7 +14,7 @@ from tests.core.test_transcription_endpoint_bounds import Segment, endpoint_case
 @pytest.mark.parametrize('windows', [False, True])
 def test_storage_wrapper_is_rendered_once_and_runner_flag_restored(endpoint_case, monkeypatch, windows):
     task=output_task(endpoint_case);task._audio_end=2.488
-    raw=[{'start':2.6,'end':3,'text':'rejected'}]
+    raw=[{'start':2.6,'end':2.5,'text':'rejected'}]
     source=str(endpoint_case.audio)
     error=OSError(0,'synthetic refusal',source,112) if windows else OSError(errno.ENOSPC,'synthetic refusal',source)
     saved=[];keep=tr._keep_timing_recovery
@@ -37,7 +37,7 @@ def test_storage_wrapper_is_rendered_once_and_runner_flag_restored(endpoint_case
 @pytest.mark.parametrize('value', [None,b'non-string',{'text':'mapping'}])
 def test_consumed_unconvertible_cue_does_not_claim_no_cues(endpoint_case,value):
     task=output_task(endpoint_case);task._audio_end=2.488
-    raw=[{'start':2.6,'end':3,'text':'rejected'}]
+    raw=[{'start':2.6,'end':2.5,'text':'rejected'}]
     consumed=[]
     def decoder():
         consumed.append(True)
@@ -82,7 +82,7 @@ def test_decoder_oom_has_a_safe_diagnostic_category(endpoint_case,caplog):
 
 def test_serialization_failure_is_a_programmer_error_not_an_os_error(endpoint_case):
     task=output_task(endpoint_case);task._audio_end=2.488
-    raw=[{'start':2.6,'end':3,'text':'rejected'}]
+    raw=[{'start':2.6,'end':2.5,'text':'rejected'}]
     with pytest.raises(TypeError) as caught:
         tr._enforce_decoded_audio_end(task,list(raw),recovery=lambda:raw,
             remaining=iter([{'text':'later','unsupported':object()}]),convert=dict)
@@ -115,8 +115,9 @@ def test_capture_after_rejection_inside_release_keeps_remaining_copies_and_follo
         row=convert(segment)
         if row['start']>=task._audio_end:
             original=accepted+[row]
+            corrupt=dict(row, end=row['start']-.1)
             with pytest.raises(tr._TimingBoundsError):
-                tr._enforce_decoded_audio_end(task,[row],recovery=lambda:original,
+                tr._enforce_decoded_audio_end(task,[corrupt],recovery=lambda:original,
                                              remaining=guarded,convert=convert,runner=runner)
             break
         accepted.append(row)
@@ -129,7 +130,7 @@ def test_capture_after_rejection_inside_release_keeps_remaining_copies_and_follo
 @pytest.mark.parametrize('diagnostic_failure',['exception-string','logging-handler'])
 def test_failed_diagnostics_do_not_replace_initial_recovery(endpoint_case,monkeypatch,diagnostic_failure):
     task=output_task(endpoint_case);task._audio_end=2.488
-    raw=[{'start':2.6,'end':3,'text':'rejected'}]
+    raw=[{'start':2.6,'end':2.5,'text':'rejected'}]
     class Unprintable(RuntimeError):
         def __str__(self):raise ValueError('controlled broken formatter')
     def decoder():

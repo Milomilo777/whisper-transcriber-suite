@@ -56,7 +56,7 @@ def test_error_keeps_latest_prefix_even_when_cancel_races(endpoint_case, monkeyp
         if kind == "decoder":
             task.cancelled = cancel
             raise RuntimeError("synthetic decoder error after accepted text")
-        yield Segment(2.6 - offset, 3.0 - offset, "invalid", [])
+        yield Segment(2.6 - offset, 2.5 - offset, "invalid", [])
 
     install_model(monkeypatch, decoded(), duration=endpoint_case.duration - offset)
     expected = tr._TimingBoundsError if kind == "timing" else RuntimeError

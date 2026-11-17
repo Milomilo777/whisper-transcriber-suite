@@ -17,11 +17,12 @@ engine wiring lives in ``core.transcriber``.
 from __future__ import annotations
 
 import math
+from statistics import median
 from dataclasses import dataclass, field
 from typing import Any, Callable, Iterable
 
 from .loop_guard import repeat_key
-from .text_metrics import count_words
+from .text_metrics import _CJK_RE, count_words
 from .writers.base import coerce_seconds
 
 SAMPLE_RATE = 16000
@@ -98,6 +99,18 @@ def find_suspect_spans(segments: list[dict[str, Any]], duration: float) -> list[
     ``segments`` are the transcript's dicts (``start``/``end``/``text``), sorted by start; a segment
     with an unusable time is skipped. ``duration`` is the media length (0 = unknown: no tail gap).
     """
+    # Compare like scripts: a character rate must not make normal English look sparse.
+    # Five substantial cues keep tiny files and isolated language switches conservative.
+    rates: dict[bool, list[float]] = {True: [], False: []}
+    for seg in segments:
+        start = coerce_seconds(seg.get("start"), float("nan"))
+        end = coerce_seconds(seg.get("end"), float("nan"))
+        text = str(seg.get("text") or "")
+        if math.isfinite(start) and math.isfinite(end) and start >= 0 and end - start >= 8:
+            units = count_words(text)
+            if units:
+                rates[len(_CJK_RE.findall(text)) > units / 2].append(units / (end - start))
+    baselines = {script: median(values) for script, values in rates.items() if len(values) >= 5}
     spans: list[Span] = []
     previous_end = 0.0
     for i, seg in enumerate(segments):
@@ -108,7 +121,11 @@ def find_suspect_spans(segments: list[dict[str, Any]], duration: float) -> list[
         if start - previous_end >= MIN_GAP_S:
             spans.append(Span(previous_end, start, i, i, "gap"))
         length = end - start
-        if length >= MIN_COLLAPSED_S and count_words(str(seg.get("text") or "")) < length * MAX_UNITS_PER_S:
+        text = str(seg.get("text") or "")
+        units = count_words(text)
+        baseline = baselines.get(len(_CJK_RE.findall(text)) > units / 2, 0.0)
+        partial = length >= PIECE_MAX_S and units < length * baseline * 0.55
+        if partial or (length >= MIN_COLLAPSED_S and units < length * MAX_UNITS_PER_S):
             spans.append(Span(start, end, i, i + 1, "collapsed"))
         previous_end = max(previous_end, end)
     if duration > 0 and duration - previous_end >= MIN_GAP_S:

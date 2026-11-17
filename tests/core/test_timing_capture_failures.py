@@ -36,7 +36,7 @@ def test_tail_storage_failure_names_existing_record_and_keeps_os_identity(
         return path
     monkeypatch.setattr(tr, "_keep_timing_recovery", save)
     segments = [Segment(s-offset, e-offset, t, []) for s, e, t in
-                [(1.1, 1.5, "valid"), (2.6, 3, "rejected"), (2.8, 3.2, "later")]]
+                [(1.1, 1.5, "valid"), (2.6, 2.5, "rejected"), (2.8, 3.2, "later")]]
     install_model(monkeypatch, iter(segments), duration=endpoint_case.duration-offset)
     with pytest.raises(OSError) as caught:
         (tr.resume_transcription if resume else tr.transcribe)(task)
@@ -82,8 +82,8 @@ def test_capture_never_restarts_loop_guard_or_drops_following_repeats(endpoint_c
     rejected = next(guarded)
     with pytest.raises(tr._TimingBoundsError):
         tr._enforce_decoded_audio_end(
-            task, [{"start": rejected.start, "end": rejected.end, "text": rejected.text}],
-            recovery=lambda: [{"start": rejected.start, "end": rejected.end, "text": rejected.text}],
+            task, [{"start": rejected.start, "end": rejected.start - .1, "text": rejected.text}],
+            recovery=lambda: [{"start": rejected.start, "end": rejected.start - .1, "text": rejected.text}],
             remaining=guarded,
             convert=lambda seg: {"start": seg.start, "end": seg.end, "text": seg.text},
             runner=active,
@@ -99,7 +99,7 @@ def test_capture_cuda_error_does_not_retry_or_change_device(endpoint_case):
     task._audio_end = 2.0
     calls = []
     def decoded():
-        yield Segment(2.6, 3, "rejected", [])
+        yield Segment(2.6, 2.5, "rejected", [])
         raise RuntimeError("CUDA failed with error out of memory")
     backend = SimpleNamespace(transcribe=lambda *a, **kw: (decoded(), SimpleNamespace(language="en")))
     runner = WhisperDecode(lambda options: backend, lambda: True,
@@ -107,7 +107,7 @@ def test_capture_cuda_error_does_not_retry_or_change_device(endpoint_case):
     runner.before_retry = lambda: calls.append("checkpoint")
     remaining, _ = runner.transcribe("unused.wav")
     next(remaining)
-    raw = [{"start": 2.6, "end": 3, "text": "rejected"}]
+    raw = [{"start": 2.6, "end": 2.5, "text": "rejected"}]
     with pytest.raises(tr._TimingBoundsError, match="decoder-error:RuntimeError"):
         tr._enforce_decoded_audio_end(task, list(raw), recovery=lambda: raw,
                                      remaining=remaining, convert=dict, runner=runner)
@@ -155,7 +155,7 @@ def test_actual_caller_disables_lazy_cuda_recovery(endpoint_case, monkeypatch, r
         tr._write_periodic_checkpoint(task, [{"start": 0, "end": 1, "text": "prior"}], 1, "en", .9, None)
     def decoded():
         yield Segment(1.1-offset, 1.5-offset, "valid", [])
-        yield Segment(2.6-offset, 3-offset, "rejected", [])
+        yield Segment(2.6-offset, 2.5-offset, "rejected", [])
         raise RuntimeError("CUDA failed with error out of memory")
     install_model(monkeypatch, decoded(), duration=endpoint_case.duration-offset)
     monkeypatch.setattr(tr, "device", "cuda")
@@ -192,7 +192,7 @@ def test_actual_caller_keeps_guarded_repeated_raw_tail(endpoint_case, monkeypatc
     if resume:
         tr._write_periodic_checkpoint(task, [{"start": 0, "end": 1, "text": "prior"}], 1, "en", .9, None)
     raw = [Segment(2.6+n*.2-offset, 2.7+n*.2-offset, "repeat", []) for n in range(12)]
-    install_model(monkeypatch, iter(raw), duration=endpoint_case.duration-offset)
+    install_model(monkeypatch, iter([Segment(1.1-offset, 1.5-offset, "valid", [])] + raw), duration=endpoint_case.duration-offset)
     restarts = []
     def create_restart(*args):
         def restart(at):
@@ -200,18 +200,20 @@ def test_actual_caller_keeps_guarded_repeated_raw_tail(endpoint_case, monkeypatc
             return iter([])
         return restart
     monkeypatch.setattr(tr, "_loop_guard_restart", create_restart)
-    with pytest.raises(tr._TimingBoundsError):
-        (tr.resume_transcription if resume else tr.transcribe)(task)
+    (tr.resume_transcription if resume else tr.transcribe)(task)
+    assert len(task.output_paths) == 3
+    assert [s["text"] for s in endpoint_case.writes[-1]] == (["prior", "valid"] if resume else ["valid"])
+    assert all("repeat" not in Path(p).read_text(encoding="utf-8") for p in task.output_paths)
     assert restarts == []
     records = [json.loads(p.read_text(encoding="utf-8")) for p in cp.partials_dir().glob("*.timing-recovery.json")]
-    assert max(len(r["segments"]) for r in records) == 12 + int(resume)
+    assert sorted(r["segments"][-1]["start"] for r in records) == pytest.approx([seg.start+offset for seg in raw])
 
 
 def test_repeated_empty_capture_creates_only_mandatory_record(endpoint_case):
     task = output_task(endpoint_case)
     task._audio_end = 2.0
     task.paused = True
-    raw = [{"start": 2.6, "end": 3, "text": "rejected"}]
+    raw = [{"start": 2.6, "end": 2.5, "text": "rejected"}]
     for attempt in range(3):
         with pytest.raises(tr._TimingBoundsError, match="paused; no additional text was recovered"):
             tr._enforce_decoded_audio_end(task, list(raw), recovery=lambda: raw,
@@ -237,7 +239,7 @@ def test_conversion_failure_preserves_whole_last_text_then_stops(endpoint_case, 
 def test_tail_storage_failure_preserves_windows_error_and_filenames(endpoint_case, monkeypatch, winerror):
     task = output_task(endpoint_case)
     task._audio_end = 2.0
-    raw = [{"start": 2.6, "end": 3, "text": "rejected"}]
+    raw = [{"start": 2.6, "end": 2.5, "text": "rejected"}]
     error = OSError(0, "synthetic refusal", str(endpoint_case.audio), winerror,
                     str(endpoint_case.audio.with_suffix(".json")))
     identity = (type(error), error.errno, error.winerror, error.filename, error.filename2)

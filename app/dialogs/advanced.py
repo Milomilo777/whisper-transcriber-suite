@@ -30,6 +30,7 @@ from core.backends.availability import (
 from core import offline, subtitle_edit, tts_plan
 from core.config import (
     DEFAULT_CONFIG,
+    gpu_temperature_ceiling,
     NOISY_AUDIO_PRESET,
     save_config,
     sync_from_disk,
@@ -387,6 +388,8 @@ class AdvancedDialog(tk.Toplevel):
         self.bind("<Escape>", lambda _e: self._on_close())
 
         cfg = app.app_config
+        self._gpu_temperature_enabled = tk.BooleanVar(value=bool(cfg.get("gpu_temperature_limit_enabled", True)))
+        self._gpu_temperature_c = tk.StringVar(value=str(gpu_temperature_ceiling(cfg)))
         self._vad_enabled = tk.BooleanVar(value=bool(cfg.get("vad_enabled", True)))
         self._vad_min_silence = tk.IntVar(value=int(cfg.get("vad_min_silence_ms", 500)))
         self._vad_threshold = tk.DoubleVar(value=float(cfg.get("vad_threshold", 0.5)))
@@ -1240,6 +1243,14 @@ class AdvancedDialog(tk.Toplevel):
             "one-time ~700 MB component that is offered the first time "
             "you transcribe with this on."),
         ).grid(row=5, column=3, sticky="w", padx=(0, 8), pady=4)
+        ttk.Checkbutton(engine, text=_("Limit GPU temperature"),
+                        variable=self._gpu_temperature_enabled).grid(
+            row=6, column=0, columnspan=2, sticky="w", padx=8, pady=4)
+        temperature_row = ttk.Frame(engine)
+        temperature_row.grid(row=6, column=2, columnspan=2, sticky="w", padx=8, pady=4)
+        ttk.Spinbox(temperature_row, from_=60, to=90, width=5,
+                    textvariable=self._gpu_temperature_c).pack(side="left")
+        ttk.Label(temperature_row, text=_("°C")).pack(side="left", padx=4)
         engine.columnconfigure(1, weight=1)
         return engine
 
@@ -2449,6 +2460,9 @@ class AdvancedDialog(tk.Toplevel):
         # and a retry see exactly what they saw before this click.
         before = copy.deepcopy(dict(cfg))
         cfg["vad_enabled"] = bool(self._vad_enabled.get())
+        cfg["gpu_temperature_limit_enabled"] = bool(self._gpu_temperature_enabled.get())
+        cfg["gpu_temperature_limit_c"] = gpu_temperature_ceiling(
+            {"gpu_temperature_limit_c": self._gpu_temperature_c.get()})
         cfg["vad_min_silence_ms"] = int(self._vad_min_silence.get())
         cfg["vad_threshold"] = round(float(self._vad_threshold.get()), 2)
         cfg["vad_speech_pad_ms"] = int(self._vad_speech_pad.get())

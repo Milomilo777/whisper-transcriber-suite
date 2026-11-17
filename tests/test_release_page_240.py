@@ -11,7 +11,6 @@ from tools import check_release_page as release_checks
 from tools.check_release_page import LANGUAGES, ROOT, animation_timing, check_page, check_svg
 
 BASELINE = json.loads((ROOT / "tests/fixtures/promo-release-timing-2.3.1.json").read_text())
-RELEASE_SHA = "7197cd21af46574aeb4c302b733076be78dfdade"
 
 
 def test_promo_timing_and_resources():
@@ -76,47 +75,21 @@ def test_release_block_in_wrong_section_is_rejected():
         check_page(damaged, "en", ROOT / "site", relative)
 
 
-def test_draft_artifact_rows_retain_final_build_provenance():
+def test_public_artifact_rows_have_sizes_and_numbered_fixes():
     notes = (ROOT / "docs/releases/2.4.0.md").read_text(encoding="utf-8")
     assert "Released 2026-11-15" in notes
-    assert "TODO-FINAL-SHA" not in notes
-    rows = [line for line in notes.splitlines() if line.startswith("| [")]
-    assert len(rows) == 4
-    release_checks.check_release_artifacts(notes, RELEASE_SHA)
-    assert "## 🐞 Bugs fixed" in notes
-    assert "32 bugs" not in notes
-
-
-def artifact_copy(*, source=RELEASE_SHA, row=0, digest="a" * 64):
-    notes = (ROOT / "docs/releases/2.4.0.md").read_text(encoding="utf-8")
-    lines = notes.splitlines()
-    indices = [i for i, text in enumerate(lines) if text.startswith("| [")]
-    cells = [part.strip() for part in lines[indices[row]].strip("|").split("|")]
-    lines[indices[row]] = "| " + " | ".join(cells[:2] + ["10 B", digest, source]) + " |"
-    return "\n".join(lines)
+    release_checks.check_release_artifacts(notes)
+    assert "## 🐞 More than 33 bugs fixed" in notes
 
 
 @pytest.mark.parametrize("row", range(4))
-def test_artifact_hash_from_a_different_release_source_is_rejected(row):
-    notes = artifact_copy(source="16df0244ae43454d34c97a388754446fc3ab99ff", row=row)
-    with pytest.raises(AssertionError, match="artifact source differs"):
-        release_checks.check_release_artifacts(notes, RELEASE_SHA)
-
-
-def test_artifact_hash_from_the_expected_release_source_is_accepted():
-    release_checks.check_release_artifacts(artifact_copy(), RELEASE_SHA)
-
-
-def test_pending_hash_does_not_waive_source_identity():
-    notes = artifact_copy(source="0" * 40, digest="TODO-FINAL-SHA")
-    with pytest.raises(AssertionError, match="artifact source differs"):
-        release_checks.check_release_artifacts(notes, RELEASE_SHA)
-
-
-def test_release_facts_and_notes_name_the_frozen_candidate():
-    facts = json.loads((ROOT / "site/facts.json").read_text(encoding="utf-8"))
-    assert facts["release_sha"] == RELEASE_SHA
-    release_checks.check_release_artifacts((ROOT / "docs/releases/2.4.0.md").read_text(encoding="utf-8"), facts["release_sha"])
+def test_artifact_row_with_extra_build_metadata_is_rejected(row):
+    notes = (ROOT / "docs/releases/2.4.0.md").read_text(encoding="utf-8")
+    lines = notes.splitlines()
+    indices = [i for i, text in enumerate(lines) if text.startswith("| [")]
+    lines[indices[row]] += " extra |"
+    with pytest.raises(AssertionError, match="file, platform and size only"):
+        release_checks.check_release_artifacts("\n".join(lines))
 
 
 def test_machine_readable_release_facts():
@@ -139,7 +112,7 @@ def test_readiness_document_is_explicitly_a_draft():
     assert "PUBLICATION METADATA / ARTIFACTS VERIFIED" in text
     assert "Persian interface" in text
     assert "Persian approval is OPEN" not in text
-    assert "TODO-FINAL-SHA" in text
+    assert "verification digests belong in private local records" in text
 
 
 def test_cli_accepts_original_svg_baseline(tmp_path):

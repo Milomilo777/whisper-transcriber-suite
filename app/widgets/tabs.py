@@ -359,6 +359,13 @@ def status_label(status: str) -> str:
     return STATUS_ICON.get(status, "") + _status_text(status)
 
 
+def download_status_label(status: str) -> str:
+    """Name the active download stage in the Download tab."""
+    if status == "running":
+        return STATUS_ICON[status] + _("Downloading…")
+    return status_label(status)
+
+
 def task_status_label(task: object) -> str:
     """The Queue row's status: ``status_label``, except that a finished job that found no
     speech says so instead of a plain "✓ finished" (round-2 screenshot critics, 2026-10-21)."""

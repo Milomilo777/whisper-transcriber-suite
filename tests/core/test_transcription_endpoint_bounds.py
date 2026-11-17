@@ -362,8 +362,9 @@ def test_unusable_timing_keeps_all_decoded_text_before_error(endpoint_case, monk
     install_model(monkeypatch, [invalid], duration=duration)
     task = output_task(case)
     task.output_formats = ["srt"]
-    with pytest.raises(RuntimeError):
-        tr.transcribe(task)
+    tr.transcribe(task)
+    assert task.output_paths and all(Path(p).is_file() for p in task.output_paths)
+    assert all("last words" not in Path(p).read_text(encoding="utf-8") for p in task.output_paths)
     saved = []
     for path in cp.partials_dir().rglob("*"):
         if not path.is_file():
@@ -376,7 +377,7 @@ def test_unusable_timing_keeps_all_decoded_text_before_error(endpoint_case, monk
     assert any(item.get("text") == "last words" for item in saved)
     if kind == "word":
         assert any(any(word.get("word") == "last" for word in item.get("words", [])) for item in saved)
-    assert not task.output_paths
+    assert task.output_paths
 
 
 def test_long_pcm_input_bounds_the_last_cue_and_checkpoint(endpoint_case, monkeypatch):
@@ -439,8 +440,8 @@ def test_invalid_clip_saves_raw_words_without_replacing_whole_file_checkpoint(en
     install_model(monkeypatch, [original], duration=0.988)
     task = output_task(case)
     task.clip_start, task.clip_end = 0.5, 1.488
-    with pytest.raises(RuntimeError):
-        tr.transcribe(task)
+    tr.transcribe(task)
+    assert task.output_paths and all("last words" not in Path(p).read_text(encoding="utf-8") for p in task.output_paths)
     assert path.read_bytes() == old_bytes
     assert original.words[0] == Word(1.2, 1.5)
     raw = [json.loads(item.read_text(encoding="utf-8"))
@@ -490,9 +491,8 @@ def test_rejected_later_segment_preserves_the_entire_original_record(endpoint_ca
     raw = [{"start": 0, "end": 3, "text": "first raw words", "words": []},
            {"start": 3, "end": 4, "text": "second raw words", "words": []}]
     original = deepcopy(raw)
-    with pytest.raises(RuntimeError):
-        tr._enforce_audio_end(task, raw)
-    assert raw == original
+    tr._enforce_audio_end(task, raw)
+    assert raw == [dict(original[0], end=2.0)]
     records = [json.loads(path.read_text(encoding="utf-8"))
                for path in cp.partials_dir().glob("*.timing-recovery.json")]
     assert records[-1]["segments"] == original
@@ -525,13 +525,11 @@ def test_native_late_cue_does_not_poison_valid_checkpoint(
                                        "unplaced text", [Word(late_start - offset, late_end - offset)])],
                   duration=600.0 - offset)
     run = tr.resume_transcription if resume else tr.transcribe
-    with pytest.raises(RuntimeError, match="Decoded timing is outside"):
-        run(task)
-    checkpoint = json.loads(cp.checkpoint_path(str(case.audio)).read_text(encoding="utf-8"))
-    assert checkpoint["last_end_time"] == 599.0
-    assert [s["text"] for s in checkpoint["segments"]] == (
-        ["prior", "valid tail"] if resume else ["valid tail"])
-    assert not checkpoint["transcription_completed"]
+    run(task)
+    assert len(task.output_paths) == 3
+    assert [s["text"] for s in case.writes[-1]] == (["prior", "valid tail"] if resume else ["valid tail"])
+    assert all("unplaced text" not in Path(p).read_text(encoding="utf-8") for p in task.output_paths)
+    assert not cp.checkpoint_path(str(case.audio)).exists()
     recovery = [json.loads(path.read_text(encoding="utf-8"))
                 for path in cp.partials_dir().glob("*.timing-recovery.json")]
     assert recovery[-1]["segments"][-1]["text"] == "unplaced text"
@@ -539,7 +537,6 @@ def test_native_late_cue_does_not_poison_valid_checkpoint(
     assert recovery[-1]["segments"][-1]["end"] == late_end
     assert recovery[-1]["segments"][-1]["words"][0]["start"] == late_start
     assert recovery[-1]["segments"][-1]["words"][0]["end"] == late_end
-    assert not task.output_paths
 
 
 @pytest.mark.parametrize("resume", [False, True])
@@ -552,7 +549,7 @@ def test_bad_word_does_not_replace_valid_checkpoint(endpoint_case, monkeypatch, 
                                       1, "en", 0.9, None)
     install_model(monkeypatch, [Segment(1.1 - offset, 1.5 - offset, "valid", []),
                                Segment(2.0 - offset, 2.3 - offset, "bad word",
-                                       [Word(2.6 - offset, 3.0 - offset)])],
+                                       [Word(2.6 - offset, 2.5 - offset)])],
                   duration=case.duration - offset)
     with pytest.raises(RuntimeError, match="Decoded timing is outside"):
         (tr.resume_transcription if resume else tr.transcribe)(task)
@@ -564,17 +561,15 @@ def test_bad_word_does_not_replace_valid_checkpoint(endpoint_case, monkeypatch, 
 def test_rejected_rescue_keeps_first_pass_checkpoint(endpoint_case, monkeypatch):
     task = output_task(endpoint_case)
     install_model(monkeypatch, [Segment(0.2, 1.5, "first pass", [])])
-    monkeypatch.setattr(tr, "_rescue_collapsed", lambda *a, **kw: [
+    monkeypatch.setattr(tr, "_rescue_collapsed", lambda task, data, *a, **kw: data + [
         {"start": 2.6, "end": 3.0, "text": "unplaced rescue", "words": []}])
-    with pytest.raises(RuntimeError, match="Decoded timing is outside"):
-        tr.transcribe(task)
-    checkpoint = json.loads(cp.checkpoint_path(str(endpoint_case.audio)).read_text(encoding="utf-8"))
-    assert checkpoint["last_end_time"] == 1.5
-    assert checkpoint["segments"][0]["text"] == "first pass"
-    assert not checkpoint["transcription_completed"]
+    tr.transcribe(task)
+    assert len(task.output_paths) == 3
+    assert endpoint_case.writes[-1][0]["text"] == "first pass"
+    assert all("unplaced rescue" not in Path(p).read_text(encoding="utf-8") for p in task.output_paths)
     recovery = [json.loads(path.read_text(encoding="utf-8"))
                 for path in cp.partials_dir().glob("*.timing-recovery.json")]
-    assert recovery[-1]["segments"] == [
+    assert recovery[-1]["segments"][-1:] == [
         {"start": 2.6, "end": 3.0, "text": "unplaced rescue", "words": []}]
 
 
@@ -586,9 +581,11 @@ def test_rejected_first_resume_cue_keeps_previous_checkpoint_bytes(endpoint_case
     previous = path.read_bytes()
     install_model(monkeypatch, [Segment(1.6, 2.0, "unplaced", [])],
                   duration=endpoint_case.duration - 1.0)
-    with pytest.raises(RuntimeError, match="Decoded timing is outside"):
-        tr.resume_transcription(task)
-    assert path.read_bytes() == previous
+    assert tr.resume_transcription(task)
+    assert not path.exists() and len(task.output_paths) == 3
+    assert endpoint_case.writes[-1] == [{"start": 0, "end": 1, "text": "prior"}]
+    records = list(cp.partials_dir().glob("*.timing-recovery.json"))
+    assert json.loads(records[-1].read_text(encoding="utf-8"))["segments"][-1]["text"] == "unplaced"
 
 
 def test_recovery_write_failure_keeps_valid_prefix_checkpoint(endpoint_case, monkeypatch):
@@ -659,7 +656,7 @@ def test_invalid_paid_partial_keeps_original_error_and_previous_file(endpoint_ca
     partial = case.audio.with_suffix(".partial.srt")
     partial.write_text("previous partial sentinel", encoding="utf-8")
     old = partial.read_bytes()
-    segments = [{"start": 2.6, "end": 3.12, "text": "paid words",
+    segments = [{"start": 2.6, "end": 2.5, "text": "paid words",
                  "words": [{"start": 2.7, "end": 3.12, "word": "paid", "probability": 0.9}]}]
     error = PartialResultError("original provider failure", segments)
 
@@ -733,8 +730,7 @@ def test_alternative_backend_cancel_bounds_checkpoint_or_preserves_raw(endpoint_
             return segments, LanguageInfo("en", 0.9)
 
     if outside:
-        with pytest.raises(RuntimeError):
-            tr._transcribe_via_alt_backend("test", task, None, None, None, backend=Backend())
+        tr._transcribe_via_alt_backend("test", task, None, None, None, backend=Backend())
         assert not cp.checkpoint_path(str(case.audio)).exists()
         records = [json.loads(path.read_text(encoding="utf-8"))
                    for path in cp.partials_dir().glob("*.timing-recovery.json")]

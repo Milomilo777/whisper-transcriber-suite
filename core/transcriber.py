@@ -487,7 +487,10 @@ def _whisper_runner(
     slot = None if live_chunk else getattr(_LM_RUNNER, "slot", None)
     pair = None if live_chunk or language_check else mixed_language_pair(task)
 
+    memory_checked = False
+
     def current(options: dict[str, Any]) -> Any:
+        nonlocal memory_checked
         model = slot.model if slot is not None else MODEL
         pipeline = slot.pipeline if slot is not None else PIPELINE
         # Long audio needs VAD or explicit clips in the batched engine.
@@ -500,15 +503,27 @@ def _whisper_runner(
         else:
             if _CUDA_BATCH_SIZE:
                 options["batch_size"] = min(int(options.get("batch_size", 16)), _CUDA_BATCH_SIZE)
+            if not memory_checked and _device_kind(device) == "cuda" and "batch_size" in options:
+                from .hardware import cuda_batch_size
+                options["batch_size"] = cuda_batch_size(int(options["batch_size"]), model)
+                memory_checked = True
             runner = pipeline
-        return _two_language_runner(runner, pair) if pair else runner
+        if pair:
+            return _two_language_runner(runner, pair)
+        forced = _normalize_language(getattr(task, "language", None))
+        if forced and not live_chunk and not language_check:
+            return _language_audited_runner(
+                runner, forced=forced, log_cb=log_cb,
+                time_offset=decoder.language_offset + decoder.audio_offset,
+            )
+        return runner
 
     def recover(options: dict[str, Any], oom: bool) -> None:
         global MODEL, PIPELINE, device, compute_type, _DEVICE_DOWNGRADED, _CUDA_BATCH_SIZE
         if oom and int(options.get("batch_size", 1)) > 1:
-            _CUDA_BATCH_SIZE = options["batch_size"] = 1
+            _CUDA_BATCH_SIZE = options["batch_size"] = max(1, int(options["batch_size"]) // 2)
             task._telemetry_recovery = "cuda_batch_reduced"
-            log("CUDA ran out of memory; retrying the remaining audio with batch size 1.", log_cb)
+            log(f"CUDA ran out of memory; retrying the remaining audio with batch size {_CUDA_BATCH_SIZE}.", log_cb)
             return
         target = "cuda" if oom and compute_type not in ("int8", "int8_float16") else "cpu"
         compute = "int8_float16" if target == "cuda" else "int8"
@@ -540,10 +555,29 @@ def _whisper_runner(
         _remember_task_device(task, whisper=True)
         log(f"CUDA decode failed; retrying the remaining audio on {target}/{compute}.", log_cb)
 
-    return WhisperDecode(
+    def temperature(runner: Any) -> Any:
+        from . import gpu_temperature
+
+        if not config.get("gpu_temperature_limit_enabled", True):
+            return None
+        model = slot.model if slot is not None else MODEL
+        inner = getattr(model, "model", model)
+        if str(getattr(inner, "device", "")).split(":")[0] != "cuda":
+            return None
+        control = getattr(task, "_gpu_temperature_controller", None)
+        if control is None:
+            control = gpu_temperature.for_model(model, config, task=task,
+                                                log=lambda message: log(message, log_cb))
+            task._gpu_temperature_controller = control
+        return control
+
+    decoder = WhisperDecode(
         current, lambda: _device_kind(device) == "cuda", recover,
         None if live_chunk else _vad_window_seconds(),
+        temperature=temperature,
     )
+    decoder.language_offset = float(getattr(task, "clip_start", None) or 0.0)
+    return decoder
 
 
 def load_existing_model(status_cb: Callable[[str], None] | None = None) -> bool:
@@ -838,6 +872,7 @@ def _loop_guard_restart(
         if language and not kwargs.get("language") and not kwargs.get("multilingual"):
             kwargs["language"] = language
         with _vad_window.windowed_vad(_vad_window_seconds()):
+            runner.language_offset = offset + rel
             segments, _info = runner.transcribe(sliced, **kwargs)
         return _shift_segments(segments, offset + rel)
 
@@ -899,6 +934,9 @@ def _segment_to_dict(seg: Any, want_words: bool) -> dict[str, Any]:
         "end": float(seg.end),
         "text": (seg.text or "").strip(),
     }
+    decoded_language = getattr(seg, "decoded_language", None)
+    if decoded_language:
+        payload["language"] = decoded_language
     if want_words:
         words = getattr(seg, "words", None) or []
         payload["words"] = [
@@ -984,31 +1022,87 @@ def _keep_timing_recovery(source: str, segments: list[dict[str, Any]], reason: s
     return final
 
 
-def _cap_segment(segment: dict[str, Any], audio_end: float) -> dict[str, Any]:
-    result = dict(segment)
-
-    def interval(item: dict[str, Any], *, word: bool = False,
-                 capped_end: float | None = None) -> dict[str, Any]:
-        out = dict(item)
+def _cap_segment(segment: dict[str, Any], audio_end: float) -> dict[str, Any] | None:
+    """Validate raw clocks before dropping padding cues or capping crossings."""
+    def interval(item: dict[str, Any]) -> tuple[float, float]:
+        if not isinstance(item, dict):
+            raise _TimingBoundsError("Decoded timing is not a mapping; the text was preserved.")
         start, end = float(item.get("start", 0.0)), float(item.get("end", 0.0))
-        if capped_end is not None and audio_end < start <= end <= capped_end:
-            # The enclosing raw segment already permits this tail to be capped.
-            # Retain its decoded word using the existing zero-length EOF form.
-            start = out["start"] = audio_end
-        if (not math.isfinite(start) or not math.isfinite(end) or start < 0
-                or (start > audio_end if word else start >= audio_end) or end < start):
+        if not math.isfinite(start) or not math.isfinite(end) or start < 0 or end < start:
             raise _TimingBoundsError("Decoded timing is outside the audio; the text was preserved.")
-        out["end"] = min(end, audio_end)
-        return out
+        return start, end
 
+    start, end = interval(segment)
+    words = segment.get("words")
+    # Validate even the words of a cue that will be dropped: corrupt clocks
+    # are decoder faults, and must not be hidden by a padding hallucination.
+    clocks = [interval(word) for word in words] if isinstance(words, list) else []
+    if start >= audio_end:
+        return None
+    result = dict(segment)
     # Adapted from whisper.cpp (https://github.com/ggml-org/whisper.cpp/pull/4137)
     # — bound model timestamps by actual audio length, not predicted token ends.
-    result = interval(result)
-    if isinstance(result.get("words"), list):
-        raw_end = float(segment.get("end", 0.0))
-        result["words"] = [interval(word, word=True, capped_end=raw_end)
-                           for word in result["words"]]
+    result["end"] = min(end, audio_end)
+    if isinstance(words, list):
+        kept = [dict(word, end=min(finish, audio_end))
+                for word, (begin, finish) in zip(words, clocks) if begin < audio_end]
+        if len(kept) != len(words):
+            if not kept:
+                return None
+            # Locate retained tokens in the original text to preserve punctuation,
+            # spacing and scripts without spaces. Decoder word labels may be stripped.
+            import unicodedata
+
+            text = str(segment.get("text", ""))
+            cursor = 0
+            pieces = []
+            for word, (begin, _) in zip(words, clocks):
+                token = str(word.get("word", "")).strip()
+                at = text.find(token, cursor) if token else -1
+                if at < 0:
+                    # Legacy checkpoints can carry labels unrelated to cue text.
+                    pieces = [" ".join(str(w.get("word", "")).strip() for w in kept)]
+                    break
+                stop = at + len(token)
+                # Closing punctuation touching a retained token belongs to it,
+                # even when the next word is an invented padding token.
+                while stop < len(text) and unicodedata.category(text[stop]) in {"Pe", "Pf", "Po"}:
+                    stop += 1
+                if begin < audio_end:
+                    pieces.append(text[cursor:stop])
+                cursor = stop
+            result["text"] = "".join(pieces).strip()
+        result["words"] = kept
     return result
+
+
+def _bounded_segments(
+    segments: list[dict[str, Any]], end: float,
+) -> tuple[list[dict[str, Any]], int, int]:
+    bounded = []
+    cues = words = 0
+    for segment in segments:
+        capped = _cap_segment(segment, end)
+        if capped is None:
+            cues += 1
+            words += len(segment.get("words") or [])
+        else:
+            words += len(segment.get("words") or []) - len(capped.get("words") or [])
+            bounded.append(capped)
+    return bounded, cues, words
+
+
+def _warn_dropped_timing(
+    source: str, raw: list[dict[str, Any]], cues: int, words: int,
+    log_cb: Callable[[str], None] | None = None,
+) -> None:
+    kept = _keep_timing_recovery(source, raw, "Dropped timing at or after the audio end.")
+    message = f"WARN: dropped {cues} cue(s) and {words} word(s) at the audio end; raw record: {kept}."
+    if log_cb:
+        log(message, log_cb)
+    else:
+        logger.warning(message)
+
 
 
 def _recover_checkpoint_timing(
@@ -1020,6 +1114,16 @@ def _recover_checkpoint_timing(
     segments = data.get("segments")
     if end is None or not isinstance(segments, list):
         return data, False
+    try:
+        bounded, cues, words = _bounded_segments(segments, end)
+    except (ValueError, TypeError, OverflowError, _TimingBoundsError):
+        pass  # Keep the legacy valid-prefix recovery for corrupt checkpoints.
+    else:
+        if cues or words:
+            _warn_dropped_timing(task.file_path, segments, cues, words, log_cb)
+            data = dict(data, segments=bounded, segment_count=len(bounded),
+                        last_end_time=max((float(s["end"]) for s in bounded), default=0.0))
+            return data, False
     prefix: list[dict[str, Any]] = []
     reason = ""
     for segment in segments:
@@ -1029,7 +1133,9 @@ def _recover_checkpoint_timing(
             words = segment.get("words")
             if isinstance(words, list) and any(not isinstance(word, dict) for word in words):
                 raise _TimingBoundsError("Saved checkpoint timing contains a non-mapping word.")
-            prefix.append(_cap_segment(segment, end))
+            capped = _cap_segment(segment, end)
+            if capped is not None:
+                prefix.append(capped)
         except (ValueError, TypeError, OverflowError, _TimingBoundsError) as error:
             reason = str(error)
             break
@@ -1054,6 +1160,7 @@ def _recover_checkpoint_timing(
 def _enforce_audio_end(
     task: TranscriptionTask, segments: list[dict[str, Any]],
     *, recovery: Callable[[], list[dict[str, Any]]] | None = None,
+    log_cb: Callable[[str], None] | None = None,
 ) -> None:
     end = _positive_duration(getattr(task, "_audio_end", None))
     if end is None:
@@ -1061,7 +1168,10 @@ def _enforce_audio_end(
     try:
         # Build each replacement before publishing it, so a rejected word
         # cannot mutate away the original decoded text or timing evidence.
-        bounded = [_cap_segment(segment, end) for segment in segments]
+        bounded, cues, words = _bounded_segments(segments, end)
+        if cues or words:
+            _warn_dropped_timing(task.file_path, recovery() if recovery else segments,
+                                 cues, words, log_cb)
         segments[:] = bounded
     except (ValueError, TypeError, OverflowError, _TimingBoundsError) as error:
         kept = _keep_timing_recovery(task.file_path, recovery() if recovery else segments, str(error))
@@ -1143,10 +1253,15 @@ def _enforce_decoded_audio_end(
     recovery: Callable[[], list[dict[str, Any]]], remaining: Iterator[Any],
     convert: Callable[[Any], dict[str, Any]],
     runner: Any = None,
+    log_cb: Callable[[str], None] | None = None,
 ) -> None:
     try:
         # This writes the initial raw record BEFORE advancing the lazy decoder.
-        _enforce_audio_end(task, bounded, recovery=recovery)
+        original_count = len(bounded)
+        _enforce_audio_end(task, bounded, recovery=recovery, log_cb=log_cb)
+        if len(bounded) < original_count and runner is not None:
+            # Preserve subsequent raw tail cues without a loop-guard restart.
+            runner._timing_tail_seen = True
     except _TimingBoundsError as error:
         retry_enabled = runner.retry_enabled if runner is not None else None
         if runner is not None:
@@ -1179,12 +1294,15 @@ def _enforce_decoded_audio_end(
 
 def _segments_for_writer(
     segments: list[dict[str, Any]], audio_end: float | None, fmt_name: str,
+    *, source: str = "",
 ) -> list[dict[str, Any]]:
     end = _positive_duration(audio_end)
     if end is None:
         return segments
-    bounded = [_cap_segment(segment, end) for segment in segments]
+    bounded, cues, words = _bounded_segments(segments, end)
     if fmt_name in {"json", "txt"}:
+        if cues or words:
+            _warn_dropped_timing(source, segments, cues, words)
         return bounded
     scale = {"ass": 100, "lrc": 100, "inqscribe": 100,
              "smtv_docx": 10, "express_scribe": 1}.get(fmt_name, 1000)
@@ -1217,13 +1335,21 @@ def _segments_for_writer(
 
     result = []
     for segment in bounded:
-        item = quantize(segment, interval=fmt_name in intervals)
+        try:
+            item = quantize(segment, interval=fmt_name in intervals)
+        except _TimingBoundsError:
+            # This format has no positive tick left before EOF. Keep the raw
+            # cue, then omit it rather than failing the other valid output.
+            cues += 1
+            continue
         if isinstance(item.get("words"), list):
             # VTT renders word starts only; ASS fits cumulative karaoke ticks
             # inside its Dialogue. Zero-length words retain their text.
             item["words"] = [quantize(word, interval=False)
                              for word in item["words"]]
         result.append(item)
+    if cues or words:
+        _warn_dropped_timing(source, segments, cues, words)
     return result
 
 
@@ -1299,6 +1425,7 @@ def _rescue_collapsed(
             audio = _decode_window(audio_path, start, end)
             if not len(audio):
                 return []
+            rescue_runner.language_offset = start
             segs, _info = rescue_runner.transcribe(audio, **kwargs)
             return [_segment_to_dict(s, want_words) for s in _shift_segments(segs, start)]
 
@@ -1542,9 +1669,9 @@ def _save_partial_subtitles(
     path = os.path.splitext(task.file_path)[0] + ".partial.srt"
     part: str | None = None
     try:
-        _enforce_audio_end(task, segments)
+        _enforce_audio_end(task, segments, log_cb=log_cb)
         try:
-            bounded = _segments_for_writer(segments, getattr(task, "_audio_end", None), "srt")
+            bounded = _segments_for_writer(segments, getattr(task, "_audio_end", None), "srt", source=task.file_path)
         except _TimingBoundsError as error:
             kept = _keep_timing_recovery(task.file_path, segments, str(error))
             raise _TimingBoundsError(f"{error} Recovery data: {kept}") from error
@@ -1938,7 +2065,7 @@ def _write_outputs_impl(
     # transcripts move to " (1)".
     if chapters and _positive_duration(audio_end) is not None:
         try:
-            chapters = _segments_for_writer(chapters, audio_end, "json")
+            chapters = _segments_for_writer(chapters, audio_end, "json", source=audio_path)
         except _TimingBoundsError as error:
             kept = _keep_timing_recovery(audio_path, chapters, str(error))
             logger.warning("Automatic chapter timing could not be represented; recovery data: %s", kept)
@@ -2032,7 +2159,7 @@ def _write_outputs_impl(
             part_path: str | None = None
             try:
                 try:
-                    format_segments = _segments_for_writer(segments_data, audio_end, fmt_name)
+                    format_segments = _segments_for_writer(segments_data, audio_end, fmt_name, source=audio_path)
                 except _TimingBoundsError as error:
                     if timing_recovery is None:
                         timing_recovery = _keep_timing_recovery(audio_path, segments_data, str(error))
@@ -2539,7 +2666,10 @@ def _run_post_pipeline(
                     if audio_end is not None:
                         try:
                             for segment in aligned_segments:
-                                _cap_segment(segment, audio_end)
+                                capped = _cap_segment(segment, audio_end)
+                                if capped is None or len(capped.get("words") or []) != len(segment.get("words") or []):
+                                    ok = False
+                                    break
                         except (ValueError, TypeError, OverflowError, _TimingBoundsError):
                             ok = False
                 if ok:
@@ -3066,13 +3196,129 @@ class _TwoLanguageDetection:
     def __init__(self, inner: Any, pair: tuple[str, str]) -> None:
         self._inner = inner
         self._tokens = {f"<|{code}|>" for code in pair}
+        self.rows: Any = []
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self._inner, name)
 
     def detect_language(self, *args: Any, **kwargs: Any) -> Any:
         results = self._inner.detect_language(*args, **kwargs)
-        return [[p for p in r if p[0] in self._tokens] or r for r in results]
+        self.rows = [[p for p in r if p[0] in self._tokens] or r for r in results]
+        return self.rows
+
+
+class _DecodedLanguageSegment:
+    """Segment view retaining decode language through timestamp copies."""
+
+    def __init__(self, segment: Any, language: str) -> None:
+        self._segment = segment
+        self.start, self.end = segment.start, segment.end
+        self.text = segment.text
+        self.words = getattr(segment, "words", None)
+        self.decoded_language = language
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(object.__getattribute__(self, "_segment"), name)
+
+    def _replace(self, **changes: Any) -> Any:
+        import copy
+        result = copy.copy(self)
+        result.__dict__.update(changes)
+        return result
+
+
+class _DecodeLanguageAudit:
+    """Observe language decisions without changing the decoder's prompts."""
+
+    def __init__(self, inner: Any, forced: str | None) -> None:
+        self.inner = inner
+        self.forced = forced
+        self.rows: Any = []
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self.inner, name)
+
+    def detect_language(self, *args: Any, **kwargs: Any) -> Any:
+        self.rows = self.inner.detect_language(*args, **kwargs)
+        return self.rows
+
+    def generate(self, features: Any, *args: Any, **kwargs: Any) -> Any:
+        if self.forced:
+            self.rows = []
+            try:
+                self.rows = self.inner.detect_language(features)
+            except Exception:
+                logger.debug("Forced-language audit unavailable", exc_info=True)
+        return self.inner.generate(features, *args, **kwargs)
+
+
+def _language_audited_runner(
+    runner: Any, *, mixed: bool = False, forced: str | None = None,
+    log_cb: Callable[[str], None] | None = None, time_offset: float = 0.0,
+) -> Any:
+    """Copy a runner and retain the decision for each lazy decode window.
+
+    Batched forward returns one group per encoded chunk, including empty groups.
+    Key by seek before VAD restores timestamps, so empty chunks never shift labels.
+    """
+    import copy
+
+    inner = getattr(runner, "model", None)
+    batched = hasattr(runner, "forward") and hasattr(inner, "feature_extractor")
+    decoder = getattr(inner, "model", None) if batched else inner
+    # Auditing is optional: adapters exposing only transcribe must still decode.
+    if not all(callable(getattr(decoder, hook, None)) for hook in ("detect_language", "generate")):
+        return runner
+    view = copy.copy(runner)
+    if not hasattr(view, "transcribe"):
+        return view
+    model = copy.copy(view.model) if batched else view
+    audit: Any = model.model if isinstance(model.model, _TwoLanguageDetection) else _DecodeLanguageAudit(model.model, forced)
+    model.model = audit
+    if batched:
+        view.model = model
+    by_seek: dict[Any, Any] = {}
+    if batched:
+        forward = view.forward
+
+        def audited_forward(features: Any, tokenizer: Any, metadata: Any, options: Any) -> Any:
+            groups = forward(features, tokenizer, metadata, options)
+            for index, group in enumerate(groups):
+                row = audit.rows[index] if index < len(audit.rows) else []
+                for segment in group:
+                    by_seek[segment["seek"]] = row
+            return groups
+
+        view.forward = audited_forward
+    transcribe = view.transcribe
+
+    def audited_transcribe(*args: Any, **kwargs: Any) -> Any:
+        segments, info = transcribe(*args, **kwargs)
+
+        def annotated() -> Any:
+            warned: set[Any] = set()
+            try:
+                for segment in segments:
+                    seek = getattr(segment, "seek", None)
+                    row = by_seek.get(seek, []) if batched else (audit.rows[0] if audit.rows else [])
+                    if row:
+                        token, probability = row[0]
+                        language = str(token)[2:-2]
+                        if forced and language != forced and probability >= 0.9 and seek not in warned:
+                            warned.add(seek)
+                            message = (f"WARN: forced language={forced}, but {segment.start + time_offset:.2f}-"
+                                       f"{segment.end + time_offset:.2f}s strongly detects {language} ({probability:.0%}).")
+                            log(message, log_cb)
+                            logger.warning(message)
+                        if mixed:
+                            segment = _DecodedLanguageSegment(segment, language)
+                    yield segment
+            finally:
+                _close_iterator_quietly(segments)
+        return annotated(), info
+
+    view.transcribe = audited_transcribe
+    return view
 
 
 def _two_language_runner(runner: Any, pair: tuple[str, str]) -> Any:
@@ -3088,6 +3334,9 @@ def _two_language_runner(runner: Any, pair: tuple[str, str]) -> Any:
     def restricted(model: Any) -> Any:
         view = copy.copy(model)
         view.model = _TwoLanguageDetection(model.model, pair)
+        # The sequential feature extractor mutates its window size in __call__.
+        if hasattr(model, "feature_extractor"):
+            view.feature_extractor = copy.copy(model.feature_extractor)
         return view
 
     inner_model = getattr(runner, "model", None)
@@ -3095,8 +3344,8 @@ def _two_language_runner(runner: Any, pair: tuple[str, str]) -> Any:
         # BatchedInferencePipeline: its .model is the WhisperModel
         pipe = copy.copy(runner)
         pipe.model = restricted(inner_model)
-        return pipe
-    return restricted(runner)
+        return _language_audited_runner(pipe, mixed=True)
+    return _language_audited_runner(restricted(runner), mixed=True)
 
 
 def _build_transcribe_kwargs(task: "TranscriptionTask") -> dict[str, Any]:
@@ -3126,6 +3375,7 @@ def _build_transcribe_kwargs(task: "TranscriptionTask") -> dict[str, Any]:
         # the previous text as prompt across a language change, which turns a
         # stretch into the other language, so it stays off here.
         kwargs["multilingual"] = True
+        kwargs["chunk_length"] = 15
         kwargs["condition_on_previous_text"] = False
     elif forced_lang:
         kwargs["language"] = forced_lang
@@ -3725,7 +3975,7 @@ def transcribe(
             stats=_guard_stats,
             ticks=True,
             cancelled=lambda: bool(task.cancelled),
-            passthrough=lambda: not runner.retry_enabled,
+            passthrough=lambda: not runner.retry_enabled or getattr(runner, "_timing_tail_seen", False),
         )
 
         segments_data: list[dict[str, Any]] = []
@@ -3796,8 +4046,10 @@ def transcribe(
                 _enforce_decoded_audio_end(
                     task, bounded, recovery=lambda: segments_data + [decoded], remaining=segments,
                     convert=lambda raw: _guarded_segment_to_dict(raw, want_words, _guard_stats),
-                    runner=runner,
+                    runner=runner, log_cb=log_cb,
                 )
+                if not bounded:
+                    continue
                 segments_data.append(bounded[0])
                 segments_since_checkpoint += 1
 
@@ -3828,7 +4080,7 @@ def transcribe(
                     detected_lang_so_far, float(getattr(info, "duration", 0.0) or 0.0), log_cb,
                     before_piece=lambda: _wait_while_paused(task, meter),
                 )
-                _enforce_audio_end(task, rescued_segments)
+                _enforce_audio_end(task, rescued_segments, log_cb=log_cb)
                 segments_data = rescued_segments
         except BaseException:
             # A decoder error mid-file: keep what was decoded since the last
@@ -3885,7 +4137,7 @@ def transcribe(
             return
 
         _note_no_speech(task, segments_data, log_cb)
-        _enforce_audio_end(task, segments_data)
+        _enforce_audio_end(task, segments_data, log_cb=log_cb)
         _clue_phase(task, "worker.output")
         written = _write_task_outputs(
             task, base,
@@ -4091,7 +4343,7 @@ def _transcribe_via_alt_backend(
             task.detected_language = lang_info.language
             task.language_probability = lang_info.probability
 
-    _enforce_audio_end(task, segments_data)
+    _enforce_audio_end(task, segments_data, log_cb=log_cb)
     if task.cancelled:
         # Alt-backend gives us the segments list as a single return —
         # if it returned a partial on cancellation, persist what we
@@ -4148,7 +4400,7 @@ def _transcribe_via_alt_backend(
         return
 
     _note_no_speech(task, segments_data, log_cb)
-    _enforce_audio_end(task, segments_data)
+    _enforce_audio_end(task, segments_data, log_cb=log_cb)
     _clue_phase(task, "worker.output")
     written = _write_task_outputs(
         task, base,
@@ -4383,7 +4635,7 @@ def _write_resumed_outputs(
     _clue_phase(task, "worker.output")
     base = _task_output_base(task)
     _note_no_speech(task, segments, log_cb)
-    _enforce_audio_end(task, segments)
+    _enforce_audio_end(task, segments, log_cb=log_cb)
     written = _write_task_outputs(
         task, base,
         segments,
@@ -4640,7 +4892,7 @@ def resume_transcription(
             # an earlier run died in them (e.g. a native diarisation crash).
             # Redo only the post steps and write the outputs.
             done_segments = list(data.get("segments") or [])
-            _enforce_audio_end(task, done_segments)
+            _enforce_audio_end(task, done_segments, log_cb=log_cb)
             done_language = cp_language
             log(
                 f"Resume: transcription already complete ({len(done_segments)} "
@@ -4807,6 +5059,7 @@ def resume_transcription(
 
             use_batched = PIPELINE is not None and _whisper_has_segmentation(transcribe_kwargs)
             runner = _whisper_runner(task, batched=use_batched, log_cb=log_cb)
+            runner.language_offset = last_end_time
             if use_batched:
                 transcribe_kwargs["batch_size"] = int(config.get("batch_size", 16))
 
@@ -4825,7 +5078,7 @@ def resume_transcription(
                     transcribe_slice, **transcribe_kwargs
                 )
             _remember_audio_end(task, transcribe_slice, info, offset=last_end_time)
-            _enforce_audio_end(task, prior_segments)
+            _enforce_audio_end(task, prior_segments, log_cb=log_cb)
             # Same repetition-loop guard as transcribe(), on the tail's own
             # timeline (shifted below). The last checkpointed line seeds its
             # text; its times are on the other timeline, so the first tail
@@ -4845,7 +5098,7 @@ def resume_transcription(
                 stats=guard_stats,
                 ticks=True,
                 cancelled=lambda: bool(task.cancelled),
-                passthrough=lambda: not runner.retry_enabled,
+                passthrough=lambda: not runner.retry_enabled or getattr(runner, "_timing_tail_seen", False),
                 previous_text=(
                     str(prior_segments[-1].get("text", "") or "")
                     if prior_segments and isinstance(prior_segments[-1], dict)
@@ -4922,8 +5175,10 @@ def resume_transcription(
                 _enforce_decoded_audio_end(
                     task, bounded, recovery=lambda: prior_segments + new_segments_data + [d],
                     remaining=new_segments_iter, convert=_resume_segment,
-                    runner=runner,
+                    runner=runner, log_cb=log_cb,
                 )
+                if not bounded:
+                    continue
                 new_segments_data.append(bounded[0])
 
                 if progress_cb:

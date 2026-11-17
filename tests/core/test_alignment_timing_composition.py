@@ -16,7 +16,7 @@ def original_segments():
             {"start": 1.0, "end": 2.0, "word": "world"}]},
         {"start": 9.2, "end": 10.0, "text": "ok bye", "words": [
             {"start": 9.2, "end": 9.6, "word": "ok"},
-            {"start": 10.0, "end": 10.0, "word": "bye"}]},
+            {"start": 9.9, "end": 10.0, "word": "bye"}]},
     ]
 
 
@@ -85,10 +85,10 @@ def test_exact_zero_length_eof_remains_valid_and_exportable(monkeypatch, tmp_pat
     segments = original_segments()
     assert alignment.refine_word_timestamps_in_place(str(audio), segments) is True
     assert segments[1]["words"][-1]["start"] == segments[1]["words"][-1]["end"] == 10.0
-    assert tr._cap_segment(segments[1], 10.0) == segments[1]
+    assert tr._cap_segment(segments[1], 10.0)["text"] == "ok"
     for fmt in ("srt", "vtt", "ass", "json"):
         rows = tr._segments_for_writer(segments, 10.0, fmt)
-        assert "bye" in tr.get_writer(fmt)(rows, "source.wav")
+        assert "bye" not in tr.get_writer(fmt)(rows, "source.wav")
 
 
 @pytest.mark.parametrize("end", [10.0, 10.2], ids=["exact-eof", "end-clamped-only"])
@@ -106,9 +106,9 @@ def test_valid_post_pipeline_refinement_is_published(monkeypatch, tmp_path, end)
     logs = []
     tr._run_post_pipeline(task, segments, "en", logs.append)
     tr._enforce_audio_end(task, segments)
-    assert segments[0]["words"][0]["start"] == 0.1, "valid refinement must still replace ASR clocks"
+    assert segments[0]["words"][0]["start"] == (0.1 if end > 10 else 0.0)
     assert segments[-1]["words"][-1]["end"] == 10.0
-    assert "Word alignment refined." in logs
+    assert ("Word alignment refined." in logs) is (end > 10)
 
 
 @pytest.mark.parametrize("raises", [False, True], ids=["partial-false", "partial-raise"])

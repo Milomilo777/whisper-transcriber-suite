@@ -198,6 +198,8 @@ DEFAULT_CONFIG = {
     # A config.json from before .txt joined keeps LEGACY_OUTPUT_FORMATS (load_config).
     "output_formats": ["srt", "json", "txt"],
     "batch_size": 16,
+    "gpu_temperature_limit_enabled": True,
+    "gpu_temperature_limit_c": 83,
     "initial_prompt": "",
     "hotwords": "",
     # Phase 3a — yt-dlp killer features
@@ -430,6 +432,9 @@ DEFAULT_CONFIG = {
     #     per-user under %LOCALAPPDATA%\WhisperTranscriberSuite and is not encrypted.
     "server_port": 8765,
     "server_max_upload_mb": 512,
+    # Physical folders whose media local MCP clients may transcribe. No grants by default.
+    "mcp_allowed_folders": [],
+    "mcp_language": "",  # Default language code for assistant jobs; empty = automatic.
     "server_share_lan": False,
     "server_token": "",
     #   server_https_enabled — when True the server wraps its socket in TLS
@@ -2140,6 +2145,17 @@ def read_local_config_for_switches() -> dict[str, Any] | None:
     return {}
 
 
+def gpu_temperature_ceiling(config: Mapping[str, Any]) -> int:
+    """Bound a user temperature setting, including hand-edited profiles."""
+    try:
+        value = config.get("gpu_temperature_limit_c", 83)
+        if isinstance(value, bool):
+            return 83
+        return max(60, min(90, int(value)))
+    except (TypeError, ValueError, OverflowError):
+        return 83
+
+
 def effective_word_timestamps(config: Mapping[str, Any]) -> bool:
     """Explicit choice, then profile-era default; incomplete legacy configs stay off."""
     return bool(config.get("word_timestamps", config.get("word_timestamps_profile_default", False)))
@@ -2209,6 +2225,7 @@ def load_config(*, fetch_online: bool = True) -> dict[str, Any]:
 
     online = _unexpired_online(online)
     merged = merge_config_sources(DEFAULT_CONFIG, online, local)
+    merged["gpu_temperature_limit_c"] = gpu_temperature_ceiling(merged)
     if "stats_url" in local:
         stats_source = "local" if isinstance(local["stats_url"], str) else "default"
     elif ("stats_url" in ONLINE_ALLOWED_KEYS and "stats_url" not in LOCAL_ONLY_KEYS
@@ -2832,6 +2849,8 @@ PROJECT_ALLOWED_KEYS: frozenset[str] = frozenset({
     "hotwords",
     "word_timestamps",
     "batch_size",
+    "gpu_temperature_limit_enabled",
+    "gpu_temperature_limit_c",
     "vad_enabled",
     "vad_threshold",
     "vad_min_silence_ms",
@@ -2861,6 +2880,7 @@ _PROJECT_ONLY_DEFAULTS: dict[str, Any] = {"alignment": "none"}
 # the user's own key.
 _PROJECT_KEY_RANGES: dict[str, tuple[float, float]] = {
     "batch_size": (1, 256),
+    "gpu_temperature_limit_c": (60, 90),
     "vad_threshold": (0.0, 1.0),
     "vad_min_silence_ms": (0, 60_000),
     "vad_speech_pad_ms": (0, 10_000),

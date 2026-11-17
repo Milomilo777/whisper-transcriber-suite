@@ -70,6 +70,8 @@ _ALLOWED = {
     "hotwords": "Anthropic",
     "word_timestamps": True,
     "batch_size": 8,
+    "gpu_temperature_limit_enabled": False,
+    "gpu_temperature_limit_c": 70,
     "vad_enabled": False,
     "vad_threshold": 0.4,
     "vad_min_silence_ms": 300,

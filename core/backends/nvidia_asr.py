@@ -648,12 +648,16 @@ class NvidiaAsrBackend(Backend):
         from ..hardware import classify_cuda_load_failure
 
         at = 0
+        control = getattr(self, "_temperature_controller", None)
         while at < len(audio):
             while paused and paused() and not (cancelled and cancelled()):
                 time.sleep(0.2)
             if cancelled and cancelled():
                 return
             end = min(len(audio), at + (self._cuda_max_samples or len(audio)))
+            if control is not None and self._device.startswith("cuda"):
+                control.before_step()
+            started = time.monotonic()
             try:
                 result = run(audio[at:end])
             except RuntimeError as exc:
@@ -661,7 +665,11 @@ class NvidiaAsrBackend(Backend):
                         or classify_cuda_load_failure(str(exc)) != "out_of_memory"):
                     raise
             else:
+                work = max(0, time.monotonic() - started)
                 yield at, end, result
+                if control is not None and self._device.startswith("cuda"):
+                    if not control._wait(work * (1 / control.share - 1)):
+                        return
                 at = end
                 continue
             # Outside the exception handler: release its references to the old
@@ -781,6 +789,13 @@ class NvidiaAsrBackend(Backend):
                 raise RuntimeError(self._error or "NVIDIA Parakeet backend not ready")
         if self._pipe is None and self._runner is None:
             raise RuntimeError(self._error or "NVIDIA Parakeet model not loaded")
+        from types import SimpleNamespace
+        from .. import gpu_temperature
+
+        kind, _, ordinal = self._device.partition(":")
+        self._temperature_controller = gpu_temperature.for_model(
+            SimpleNamespace(device=kind, device_index=int(ordinal or 0)), self._cfg(),
+            log=log_cb or logger.info, cancelled=cancelled, paused=paused)
         writes = str((self._recipe or {}).get("writes") or "")
         from ..language_models import normalize
         if writes and log_cb and normalize(language) != writes:

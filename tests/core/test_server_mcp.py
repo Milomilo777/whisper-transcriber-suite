@@ -125,7 +125,8 @@ def test_tools_list_schemas():
     assert res is not None
     tools = {t["name"]: t for t in res["result"]["tools"]}
     assert set(tools) == {"transcribe_url", "job_status", "get_result",
-                          "list_jobs", "cancel_job"}
+                          "list_jobs", "cancel_job", "transcribe_file",
+                          "get_settings", "set_settings", "system_status", "list_models"}
     for tool in tools.values():
         assert tool["inputSchema"]["type"] == "object"
         assert tool["inputSchema"]["additionalProperties"] is False
@@ -216,7 +217,11 @@ def test_transcribe_url_submits_normalized_values():
     assert json.loads(result["content"][0]["text"]) == {"job_id": "stub1"}
     assert mgr.submitted == [{
         "url": "http://93.184.216.34/a.mp4", "formats": ["srt", "txt"],
-        "language": "en", "options": {}, "clip_start": 10.0,
+        "language": "en", "options": {
+            "batch_size": 16, "diarization_enabled": False,
+            "gpu_temperature_limit_c": 83, "gpu_temperature_limit_enabled": True,
+            "output_formats": ["srt", "json", "txt"], "vad_enabled": True,
+            "word_timestamps": False}, "clip_start": 10.0,
         "clip_end": 20.5}]
 
 
@@ -532,7 +537,7 @@ def test_http_full_session_on_one_keep_alive_connection(tmp_path):
 
         hdr = {"MCP-Protocol-Version": "2025-06-18"}
         tools = _post_rpc(conn, _rpc("tools/list", msg_id=2), hdr)
-        assert len(tools["result"]["tools"]) == 5
+        assert len(tools["result"]["tools"]) == 10
 
         sub = _post_rpc(conn, _rpc("tools/call", {
             "name": "transcribe_url",

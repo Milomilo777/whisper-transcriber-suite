@@ -407,8 +407,8 @@ real Mac with `bash platform/macos/build_mac.sh` (one command: venv, tools,
 PyInstaller, checks, `.dmg`), or dispatch the CI workflow — it
 builds AND tests (real transcription with the frozen app, GUI launch,
 bundled ffmpeg/yt-dlp) on Apple-silicon and Intel runners and uploads
-`WhisperTranscriberSuite-vX.Y.Z-macOS-{arm64,x64}.dmg`. Releases ship no `.sha256` files (GitHub shows each
-asset's SHA-256 digest itself).
+`WhisperTranscriberSuite-vX.Y.Z-macOS-{arm64,x64}.dmg`. Release pages and assets follow the [public release check](RELEASE_PROCESS.md#public-release-check):
+keep verification digests in private local records.
 
 ```cmd
 gh workflow run macos-app.yml --ref master
@@ -416,7 +416,8 @@ gh run list --workflow=macos-app.yml -L 1
 gh run watch <run-id> --exit-status
 gh run download <run-id> --dir some_temp_dir
 :: upload to a NEW release/version only - never --clobber (see AGENTS.md)
-gh release upload vX.Y.Z some_temp_dir\macos-dmg-arm64\*.dmg* some_temp_dir\macos-dmg-x86_64\*.dmg*
+python tools/check_public_release.py --notes docs/releases/X.Y.Z.md --assets some_temp_dir\macos-dmg-arm64\WhisperTranscriberSuite-vX.Y.Z-macOS-arm64.dmg some_temp_dir\macos-dmg-x86_64\WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg
+gh release upload vX.Y.Z some_temp_dir\macos-dmg-arm64\WhisperTranscriberSuite-vX.Y.Z-macOS-arm64.dmg some_temp_dir\macos-dmg-x86_64\WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg
 ```
 Check each job's log for `[mac-spec] highest bundled minos` — that is the
 real minimum macOS of that .dmg; put it in the release notes.

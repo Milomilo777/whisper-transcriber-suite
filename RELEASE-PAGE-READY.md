@@ -1,13 +1,8 @@
 # 2.4.0 release page — PUBLICATION METADATA / ARTIFACTS VERIFIED
 
-Publication metadata targets 2026-11-15; apply only after maintainer approval
-and verification of the published assets. Release payload source:
-`7197cd21af46574aeb4c302b733076be78dfdade`.
-All four download rows in [the release draft](docs/releases/2.4.0.md) now contain
-actual shipping filenames, byte sizes, SHA-256 values and that source revision.
-Windows values come from the final exact-source QA intake; both Mac values agree
-with independent QA readback and the downloaded-image native acceptance.
-The documentation branch revision is not the payload source.
+The published release body is mirrored in [the release notes](docs/releases/2.4.0.md).
+Its four download rows contain shipping filenames, platforms and readable sizes.
+Build identities and verification digests belong in private local records.
 
 See [public release readiness](docs/RELEASE_READINESS_2.4.0.md) for the passing
 checks, open causes, single owners and clock deadlines. The draft is not a
@@ -24,10 +19,9 @@ release authorization or a statement that every feature has native acceptance.
   inside `#whats-new`, with earlier release history retained. Persian interface
   catalogs are complete; Gemini interface translations need no separate owner review.
 - `site/facts.json`, `site/llms.txt`, `site/llms-full.txt`, `site/sitemap.xml`:
-  unpublished draft facts and dates of draft edits. All four site size fields are verified; date fields retain
-  `TODO-FINAL-SHA` for the separate publish-time metadata change.
+  published version, date and verified artifact sizes, without build identities.
 - `tools/check_release_page.py`, `tests/test_release_page_240.py` and the existing
-  timing fixture: offline artifact-source, language placement and animation checks.
+  timing fixture: offline public-release policy, language placement and animation checks.
   Hygiene checks retain the exact readiness-file exception and root-file limit.
 
 ## Validation
@@ -73,7 +67,7 @@ checked statically; oldest-supported-system launch and visible-window rendering
 are not inferred. Windows acceptance includes 14 native smoke passes with zero
 skips, 22 predecessor guard cases, and the 2.3.1 upgrade/uninstall's three phases
 and six preserved sentinels. GPU evidence is explicitly carried forward from
-`16df0244ae43454d34c97a388754446fc3ab99ff` with unchanged core, not a new run.
+the preceding accepted candidate with unchanged core, not a new run.
 Voice and statistics limitations remain in the public readiness table.
 
 ## Open publication work
@@ -82,12 +76,10 @@ Voice and statistics limitations remain in the public readiness table.
   disposition; publication remains owner-only.
 - Adopt the prepared private catalog snapshot before site regeneration; the
   existing private generator and catalogs remain the build source.
-- Apply the separately prepared publish-time date change only at publication;
-  the remaining `TODO-FINAL-SHA` date marker is deliberate. Recheck the real
-  publication date if publication moves to another day.
+- Keep the published date consistent with the release body when regenerating site output.
 - Attach the verified existing FFmpeg 9.0.2 source archive at release creation.
   Offline verification against both platform pins passes: 12,040,788 bytes,
-  matching SHA-256, release identity and required source/license members.
+  matching private verification records and required source/license members.
 
 Update/version endpoints remain `site/app_config.json` and `core/updates.py`.
 Any publish-time endpoint change needs separate review and is applied last,

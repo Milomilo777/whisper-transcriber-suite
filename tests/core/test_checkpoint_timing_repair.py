@@ -24,10 +24,10 @@ def seed(case, monkeypatch, *, completed=False, prefix=True, bad_word=False):
     task = output_task(case)
     tr._remember_audio_end(task, str(case.audio))
     original = [{"start": 0.0, "end": 598.0, "text": "valid prefix", "words": []}] if prefix else []
-    bad = {"start": 602.82, "end": 604.48, "text": "unplaced text", "words": []}
+    bad = {"start": 602.82, "end": 602.0, "text": "unplaced text", "words": []}
     if bad_word:
         bad = {"start": 598.0, "end": 600.0, "text": "unplaced text",
-               "words": [{"start": 600.96, "end": 601.96, "word": "unplaced"}]}
+               "words": [{"start": 600.96, "end": 600.0, "word": "unplaced"}]}
     original.append(bad)
     tr._write_periodic_checkpoint(task, original, 604.48, "en", 0.9, None,
                                   transcription_completed=completed)
@@ -169,7 +169,7 @@ def test_timing_repair_preserves_all_raw_fields_for_generated_prefixes(monkeypat
             return ''.join(randomizer.choices(samples, k=3))
         prefix = [{"start": float(i*2), "end": float(i*2+1), "text": text(), "words": [],
                    "extra": {"index": i, "labels": [text(), None, True]}} for i in range(count)]
-        invalid = {"start": 21.0, "end": 22.0, "text": text(), "words": []}
+        invalid = {"start": 21.0, "end": 20.0, "text": text(), "words": []}
         suffix = [{"start": randomizer.random()*30, "end": 31.0, "text": text(), "raw": [text()]}
                   for _ in range(randomizer.randrange(4))]
         data = {"segments": prefix+[invalid]+suffix, "last_end_time": 31.0,
