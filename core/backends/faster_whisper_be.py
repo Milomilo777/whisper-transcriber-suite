@@ -228,6 +228,8 @@ class WhisperDecode:
         window_s: float | None,
         temperature: Callable[[Any], gpu_temperature.TemperatureController | None] | None = None,
     ) -> None:
+        self.audio_offset = 0.0
+        self.language_offset = 0.0
         self._runner = runner
         self._is_cuda = is_cuda
         self._recover = recover
@@ -264,7 +266,8 @@ class WhisperDecode:
     def transcribe(self, audio: Any, **kwargs: Any) -> tuple[Any, Any]:
         options = dict(kwargs)
 
-        def start(source: Any) -> tuple[Any, Any]:
+        def start(source: Any, source_offset: float = 0.0) -> tuple[Any, Any]:
+            self.audio_offset = source_offset
             while True:
                 try:
                     with (vad_window.windowed_vad(self._window_s)
@@ -341,7 +344,7 @@ class WhisperDecode:
                         else:
                             source = audio[round(cursor * 16000):]
                     offset = cursor
-                    iterator, _ = start(source)
+                    iterator, _ = start(source, cursor)
             finally:
                 _close_iterator_quietly(iterator)
                 for path in temporary:

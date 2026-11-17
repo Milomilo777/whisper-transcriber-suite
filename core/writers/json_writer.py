@@ -46,6 +46,9 @@ def write(segments: list[dict], audio_path: str = "") -> str:
             "end": max(start, _safe_float(seg.get("end", start), start)),
             "text": ("" if raw_text is None else str(raw_text)).strip(),
         }
+        language = seg.get("language")
+        if language not in (None, ""):
+            item["language"] = str(language)
         speaker = seg.get("speaker")
         if speaker not in (None, ""):
             item["speaker"] = str(speaker)

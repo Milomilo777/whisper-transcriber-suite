@@ -508,7 +508,15 @@ def _whisper_runner(
                 options["batch_size"] = cuda_batch_size(int(options["batch_size"]), model)
                 memory_checked = True
             runner = pipeline
-        return _two_language_runner(runner, pair) if pair else runner
+        if pair:
+            return _two_language_runner(runner, pair)
+        forced = _normalize_language(getattr(task, "language", None))
+        if forced and not live_chunk and not language_check:
+            return _language_audited_runner(
+                runner, forced=forced, log_cb=log_cb,
+                time_offset=decoder.language_offset + decoder.audio_offset,
+            )
+        return runner
 
     def recover(options: dict[str, Any], oom: bool) -> None:
         global MODEL, PIPELINE, device, compute_type, _DEVICE_DOWNGRADED, _CUDA_BATCH_SIZE
@@ -563,11 +571,13 @@ def _whisper_runner(
             task._gpu_temperature_controller = control
         return control
 
-    return WhisperDecode(
+    decoder = WhisperDecode(
         current, lambda: _device_kind(device) == "cuda", recover,
         None if live_chunk else _vad_window_seconds(),
         temperature=temperature,
     )
+    decoder.language_offset = float(getattr(task, "clip_start", None) or 0.0)
+    return decoder
 
 
 def load_existing_model(status_cb: Callable[[str], None] | None = None) -> bool:
@@ -862,6 +872,7 @@ def _loop_guard_restart(
         if language and not kwargs.get("language") and not kwargs.get("multilingual"):
             kwargs["language"] = language
         with _vad_window.windowed_vad(_vad_window_seconds()):
+            runner.language_offset = offset + rel
             segments, _info = runner.transcribe(sliced, **kwargs)
         return _shift_segments(segments, offset + rel)
 
@@ -923,6 +934,9 @@ def _segment_to_dict(seg: Any, want_words: bool) -> dict[str, Any]:
         "end": float(seg.end),
         "text": (seg.text or "").strip(),
     }
+    decoded_language = getattr(seg, "decoded_language", None)
+    if decoded_language:
+        payload["language"] = decoded_language
     if want_words:
         words = getattr(seg, "words", None) or []
         payload["words"] = [
@@ -1411,6 +1425,7 @@ def _rescue_collapsed(
             audio = _decode_window(audio_path, start, end)
             if not len(audio):
                 return []
+            rescue_runner.language_offset = start
             segs, _info = rescue_runner.transcribe(audio, **kwargs)
             return [_segment_to_dict(s, want_words) for s in _shift_segments(segs, start)]
 
@@ -3181,13 +3196,124 @@ class _TwoLanguageDetection:
     def __init__(self, inner: Any, pair: tuple[str, str]) -> None:
         self._inner = inner
         self._tokens = {f"<|{code}|>" for code in pair}
+        self.rows: Any = []
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self._inner, name)
 
     def detect_language(self, *args: Any, **kwargs: Any) -> Any:
         results = self._inner.detect_language(*args, **kwargs)
-        return [[p for p in r if p[0] in self._tokens] or r for r in results]
+        self.rows = [[p for p in r if p[0] in self._tokens] or r for r in results]
+        return self.rows
+
+
+class _DecodedLanguageSegment:
+    """Segment view retaining decode language through timestamp copies."""
+
+    def __init__(self, segment: Any, language: str) -> None:
+        self._segment = segment
+        self.start, self.end = segment.start, segment.end
+        self.text = segment.text
+        self.words = getattr(segment, "words", None)
+        self.decoded_language = language
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(object.__getattribute__(self, "_segment"), name)
+
+    def _replace(self, **changes: Any) -> Any:
+        import copy
+        result = copy.copy(self)
+        result.__dict__.update(changes)
+        return result
+
+
+class _DecodeLanguageAudit:
+    """Observe language decisions without changing the decoder's prompts."""
+
+    def __init__(self, inner: Any, forced: str | None) -> None:
+        self.inner = inner
+        self.forced = forced
+        self.rows: Any = []
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self.inner, name)
+
+    def detect_language(self, *args: Any, **kwargs: Any) -> Any:
+        self.rows = self.inner.detect_language(*args, **kwargs)
+        return self.rows
+
+    def generate(self, features: Any, *args: Any, **kwargs: Any) -> Any:
+        if self.forced:
+            self.rows = []
+            try:
+                self.rows = self.inner.detect_language(features)
+            except Exception:
+                logger.debug("Forced-language audit unavailable", exc_info=True)
+        return self.inner.generate(features, *args, **kwargs)
+
+
+def _language_audited_runner(
+    runner: Any, *, mixed: bool = False, forced: str | None = None,
+    log_cb: Callable[[str], None] | None = None, time_offset: float = 0.0,
+) -> Any:
+    """Copy a runner and retain the decision for each lazy decode window.
+
+    Batched forward returns one group per encoded chunk, including empty groups.
+    Key by seek before VAD restores timestamps, so empty chunks never shift labels.
+    """
+    import copy
+
+    view = copy.copy(runner)
+    if not hasattr(view, "transcribe"):
+        return view
+    batched = hasattr(view, "forward") and hasattr(view.model, "feature_extractor")
+    model = copy.copy(view.model) if batched else view
+    audit: Any = model.model if isinstance(model.model, _TwoLanguageDetection) else _DecodeLanguageAudit(model.model, forced)
+    model.model = audit
+    if batched:
+        view.model = model
+    by_seek: dict[Any, Any] = {}
+    if batched:
+        forward = view.forward
+
+        def audited_forward(features: Any, tokenizer: Any, metadata: Any, options: Any) -> Any:
+            groups = forward(features, tokenizer, metadata, options)
+            for index, group in enumerate(groups):
+                row = audit.rows[index] if index < len(audit.rows) else []
+                for segment in group:
+                    by_seek[segment["seek"]] = row
+            return groups
+
+        view.forward = audited_forward
+    transcribe = view.transcribe
+
+    def audited_transcribe(*args: Any, **kwargs: Any) -> Any:
+        segments, info = transcribe(*args, **kwargs)
+
+        def annotated() -> Any:
+            warned: set[Any] = set()
+            try:
+                for segment in segments:
+                    seek = getattr(segment, "seek", None)
+                    row = by_seek.get(seek, []) if batched else (audit.rows[0] if audit.rows else [])
+                    if row:
+                        token, probability = row[0]
+                        language = str(token)[2:-2]
+                        if forced and language != forced and probability >= 0.9 and seek not in warned:
+                            warned.add(seek)
+                            message = (f"WARN: forced language={forced}, but {segment.start + time_offset:.2f}-"
+                                       f"{segment.end + time_offset:.2f}s strongly detects {language} ({probability:.0%}).")
+                            log(message, log_cb)
+                            logger.warning(message)
+                        if mixed:
+                            segment = _DecodedLanguageSegment(segment, language)
+                    yield segment
+            finally:
+                _close_iterator_quietly(segments)
+        return annotated(), info
+
+    view.transcribe = audited_transcribe
+    return view
 
 
 def _two_language_runner(runner: Any, pair: tuple[str, str]) -> Any:
@@ -3203,6 +3329,9 @@ def _two_language_runner(runner: Any, pair: tuple[str, str]) -> Any:
     def restricted(model: Any) -> Any:
         view = copy.copy(model)
         view.model = _TwoLanguageDetection(model.model, pair)
+        # The sequential feature extractor mutates its window size in __call__.
+        if hasattr(model, "feature_extractor"):
+            view.feature_extractor = copy.copy(model.feature_extractor)
         return view
 
     inner_model = getattr(runner, "model", None)
@@ -3210,8 +3339,8 @@ def _two_language_runner(runner: Any, pair: tuple[str, str]) -> Any:
         # BatchedInferencePipeline: its .model is the WhisperModel
         pipe = copy.copy(runner)
         pipe.model = restricted(inner_model)
-        return pipe
-    return restricted(runner)
+        return _language_audited_runner(pipe, mixed=True)
+    return _language_audited_runner(restricted(runner), mixed=True)
 
 
 def _build_transcribe_kwargs(task: "TranscriptionTask") -> dict[str, Any]:
@@ -3241,6 +3370,7 @@ def _build_transcribe_kwargs(task: "TranscriptionTask") -> dict[str, Any]:
         # the previous text as prompt across a language change, which turns a
         # stretch into the other language, so it stays off here.
         kwargs["multilingual"] = True
+        kwargs["chunk_length"] = 15
         kwargs["condition_on_previous_text"] = False
     elif forced_lang:
         kwargs["language"] = forced_lang
@@ -4924,6 +5054,7 @@ def resume_transcription(
 
             use_batched = PIPELINE is not None and _whisper_has_segmentation(transcribe_kwargs)
             runner = _whisper_runner(task, batched=use_batched, log_cb=log_cb)
+            runner.language_offset = last_end_time
             if use_batched:
                 transcribe_kwargs["batch_size"] = int(config.get("batch_size", 16))
 
