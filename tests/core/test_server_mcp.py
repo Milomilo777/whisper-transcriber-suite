@@ -219,7 +219,7 @@ def test_transcribe_url_submits_normalized_values():
         "url": "http://93.184.216.34/a.mp4", "formats": ["srt", "txt"],
         "language": "en", "options": {
             "batch_size": 16, "diarization_enabled": False,
-            "gpu_temperature_limit_c": 83, "gpu_temperature_limit_enabled": True,
+            "gpu_temperature_limit_c": 75, "gpu_temperature_limit_enabled": True,
             "output_formats": ["srt", "json", "txt"], "vad_enabled": True,
             "word_timestamps": False}, "clip_start": 10.0,
         "clip_end": 20.5}]
