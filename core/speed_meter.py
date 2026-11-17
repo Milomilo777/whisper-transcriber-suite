@@ -339,7 +339,7 @@ def _opt_float(value: object) -> float | None:
         return None
     try:
         v = float(value)  # type: ignore[arg-type]
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return None
     return v if math.isfinite(v) and v >= 0 else None
 

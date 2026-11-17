@@ -1,5 +1,6 @@
 """Optional done-event metadata cannot strand already-persisted transcripts."""
 import json
+import math
 import queue
 import sqlite3
 import time
@@ -224,3 +225,97 @@ def test_shutdown_event_drain_records_saved_result_with_invalid_count(completion
     assert service.settle_done_on_exit(wait_s=0.5) == 1
     assert history.list_transcriptions()[0]["status"] == "finished"
     assert output.read_bytes() == content and shown == []
+
+
+@pytest.mark.parametrize("mode", ["poll", "shutdown"])
+@pytest.mark.parametrize("field", ["speed_x", "speed_audio_s", "speed_seconds"])
+def test_bad_speed_field_preserves_other_final_metadata(completion, mode, field):
+    app, service, history, shown, new_job = completion
+    task, worker, event, _, _ = new_job()
+    event.update(model="review-model", device="cpu")
+    event[field] = 10**400
+    if mode == "poll":
+        app.worker_events.put(event)
+        service._poll_once()
+        assert shown == [task] and worker["task"] is None
+    else:
+        assert service._settle_one_done(history, task, event)
+    row = history.list_transcriptions()[0]
+    assert row["model"] == task.speed_model == "review-model"
+    assert row["device"] == task.speed_device == "cpu"
+    attributes = {"speed_x": "speed_x", "speed_audio_s": "speed_audio_s", "speed_seconds": "speed_seconds"}
+    assert getattr(task, attributes[field]) == 0.0
+    for key in attributes.keys() - {field}:
+        assert getattr(task, attributes[key]) == event[key]
+
+
+@pytest.mark.parametrize("field", ["speed_x", "eta_s", "audio_s"])
+def test_progress_overflow_keeps_valid_companion_fields_and_ui_update(completion, field):
+    app, service, _history, _shown, new_job = completion
+    task, worker, done, _, _ = new_job()
+    event = {"event": "progress", "task_id": done["task_id"], "_token": done["_token"],
+             "percent": 40, "speed_x": 2.0, "eta_s": 30.0, "audio_s": 15.0}
+    event[field] = 10**400
+    updates = []
+    app.update_overall_progress = lambda: updates.append(True)
+    app.worker_events.put(event)
+    service._poll_once()
+    assert updates and task.status == "running" and worker["task"] is task
+    mapping = {"speed_x": "live_speed_x", "eta_s": "live_eta_s", "audio_s": "live_audio_s"}
+    assert getattr(task, mapping[field]) is None
+    for key in mapping.keys() - {field}:
+        assert getattr(task, mapping[key]) == event[key]
+
+
+@pytest.mark.parametrize("duration", [float("inf"), float("-inf"), float("nan"), -1.0])
+def test_bad_audio_duration_cannot_reach_hooks_or_stats(completion, monkeypatch, duration):
+    app, service, _history, shown, new_job = completion
+    task, worker, event, _, _ = new_job()
+    observed = []
+    monkeypatch.setattr(service, "_run_finish_hooks", lambda task, seconds: observed.append(seconds))
+    monkeypatch.setattr(service, "_post_usage_stats", lambda task, count, seconds, worker: observed.append(seconds))
+    event["audio_duration"] = duration
+    app.worker_events.put(event)
+    service._poll_once()
+    assert shown == [task] and worker["task"] is None and task.word_count == 2
+    assert len(observed) == 2 and all(math.isfinite(value) and value == 0.0 for value in observed)
+
+
+@pytest.mark.parametrize("duration", [0.0, 2.0, 1e308])
+def test_finite_nonnegative_audio_duration_is_preserved(completion, duration):
+    app, service, _history, shown, new_job = completion
+    task, worker, event, _, _ = new_job()
+    event["audio_duration"] = duration
+    app.worker_events.put(event)
+    service._poll_once()
+    assert shown == [task] and task.audio_duration == duration and task.word_count == 2
+
+
+@pytest.mark.parametrize("count", [0, 1, 42, (1 << 63) - 1])
+def test_shutdown_retains_valid_count(completion, count):
+    _app, service, history, _shown, new_job = completion
+    task, _worker, event, _, _ = new_job()
+    event["word_count"] = count
+    assert service._settle_one_done(history, task, event)
+    assert history.list_transcriptions()[0]["word_count"] == count
+
+
+@pytest.mark.parametrize("count", [float("inf"), 10**400])
+def test_shutdown_uses_real_saved_file_when_both_stats_unavailable(completion, count):
+    _app, service, history, _shown, new_job = completion
+    task, _worker, event, output, content = new_job()
+    event.update(word_count=count, audio_duration=0.0)
+    assert service._settle_one_done(history, task, event)
+    assert history.list_transcriptions()[0]["word_count"] == 2
+    assert output.read_bytes() == content
+
+
+def test_shutdown_drain_preserves_model_device_after_speed_overflow(completion):
+    app, service, history, _shown, new_job = completion
+    task, worker, event, _, _ = new_job()
+    event.update(speed_audio_s=10**400, model="review-model", device="cpu", _worker_id=worker["id"])
+    app.worker_events.put(event)
+    app.worker_events.put({"event": "worker_exit", "_worker_id": worker["id"]})
+    assert service.settle_done_on_exit(wait_s=0.5) == 1
+    row = history.list_transcriptions()[0]
+    assert row["model"] == "review-model" and row["device"] == "cpu"
