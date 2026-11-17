@@ -3263,10 +3263,15 @@ def _language_audited_runner(
     """
     import copy
 
+    inner = getattr(runner, "model", None)
+    batched = hasattr(runner, "forward") and hasattr(inner, "feature_extractor")
+    decoder = getattr(inner, "model", None) if batched else inner
+    # Auditing is optional: adapters exposing only transcribe must still decode.
+    if not all(callable(getattr(decoder, hook, None)) for hook in ("detect_language", "generate")):
+        return runner
     view = copy.copy(runner)
     if not hasattr(view, "transcribe"):
         return view
-    batched = hasattr(view, "forward") and hasattr(view.model, "feature_extractor")
     model = copy.copy(view.model) if batched else view
     audit: Any = model.model if isinstance(model.model, _TwoLanguageDetection) else _DecodeLanguageAudit(model.model, forced)
     model.model = audit

@@ -133,6 +133,32 @@ def test_forced_audit_failure_preserves_decoding():
     assert len(list(segments)) == 1
 
 
+@pytest.mark.parametrize('model_kind', ['absent', 'opaque', 'detection_only'])
+def test_forced_audit_preserves_runners_without_decode_hooks(model_kind):
+    class Runner:
+        def __init__(self):
+            self.calls = 0
+            if model_kind == 'opaque':
+                self.model = object()
+            elif model_kind == 'detection_only':
+                self.model = SimpleNamespace(detect_language=lambda features: [])
+
+        def __copy__(self):
+            raise AssertionError('Unsupported audit runners must stay untouched')
+
+        def transcribe(self, audio, **kwargs):
+            self.calls += 1
+            assert audio == 'audio' and kwargs == {'language': 'zh'}
+            return iter(['saved text']), SimpleNamespace(language='zh')
+
+    shared = Runner()
+    runner = t._language_audited_runner(shared, forced='zh')
+    assert runner is shared
+    segments, info = runner.transcribe('audio', language='zh')
+    assert list(segments) == ['saved text'] and info.language == 'zh'
+    assert shared.calls == 1
+
+
 def test_partial_window_reaches_nonbatched_rescue_with_piece_languages(monkeypatch):
     import sys
     from types import ModuleType
