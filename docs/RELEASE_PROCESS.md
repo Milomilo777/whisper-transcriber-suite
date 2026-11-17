@@ -78,17 +78,32 @@ In `docs/CHANGELOG.md`:
 
 ## Step 3 — Write release notes
 
-Prepare release notes locally before publication; an unpublished candidate may
-keep its draft under `docs/releases/`. After explicit owner approval, use the
-reviewed notes as the GitHub release body. Sections to include:
+Prepare release notes locally under `docs/releases/`. After explicit maintainer
+approval, use the reviewed notes as the GitHub release body. Include the intro,
+What's new, migration notes, known issues, and `## 🐞 N bugs fixed` with a
+positive count from the changelog's Fixed bullets. Use `More than N` when a
+bullet bundles several fixes. Thank reporters and invite further reports.
 
-* **What's new** — user-facing additions.
-* **What changed** — behaviour changes (incl. silent ones).
-* **Migration notes** — anything users need to do (delete an old
-  cache, rename a config, etc.). For private distribution, be
-  generous here — your users will read this.
-* **Bug fixes** — short list.
-* **Known issues** — items deferred to the next release.
+### Public release check
+
+Release pages and public website facts must contain no hashes, commit IDs,
+verification columns or checksum lists. Keep verification digests in private
+local records. Never upload checksum files (including `SHA256SUMS.txt` or
+`.sha256` sidecars). Keep the bundled FFmpeg GPL source `.tar.xz` asset.
+Use explicit shipping filenames; avoid broad upload globs and generated notes
+that can insert commit IDs. The private site generator must omit build identities
+from facts and release summaries when regenerating the public output.
+
+Run `python tools/check_public_release.py` before publication; CI runs the same
+check. Validate the proposed body and every exact upload path together:
+
+```sh
+python tools/check_public_release.py --notes docs/releases/X.Y.Z.md --assets dist_installer/WhisperTranscriberSuite-Installer-Windows-vX.Y.Z.exe dist_installer/WhisperTranscriberSuite-Portable-Windows-vX.Y.Z.zip
+```
+
+Replace the version placeholders and add the exact Mac DMG and FFmpeg source
+paths being published. The check rejects unsupported filenames, sidecars and
+unexpanded globs. Then upload only that checked list after maintainer approval.
 
 The app's update bar reads this body (`core.updates.release_headline` /
 `release_highlights`): it shows the first sentence of the paragraph right

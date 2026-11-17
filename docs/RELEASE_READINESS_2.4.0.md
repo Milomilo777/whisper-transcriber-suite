@@ -1,7 +1,7 @@
 # 2.4.0 release readiness
 
 Updated 2026-11-15 at 19:09; every clock deadline below is Australia/Perth (UTC+08:00)
-on that date. Payload source: `7197cd21af46574aeb4c302b733076be78dfdade`.
+on that date. Payload identity and verification digests are retained in private local records.
 PASS describes only the stated scope. An open or failed row requires an explicit
 resolution or maintainer disposition before publication. The app payload remains frozen.
 
