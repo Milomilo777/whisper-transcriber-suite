@@ -47,7 +47,7 @@ def nvidia_temperature_probe(index: int) -> Callable[[], float | None]:
             result = subprocess.run(
                 [executable, "-i", identity, "--query-gpu=temperature.gpu",
                  "--format=csv,noheader,nounits"],
-                capture_output=True, text=True, timeout=1,
+                stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=1,
                 creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
             )
             value = float(result.stdout.strip())

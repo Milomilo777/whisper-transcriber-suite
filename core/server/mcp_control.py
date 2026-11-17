@@ -135,7 +135,7 @@ def system_status(cfg: dict[str, Any]) -> dict[str, Any]:
         from core._proc import new_session_kwargs
         result = subprocess.run([
             "nvidia-smi", "--query-gpu=name,memory.free,memory.total,temperature.gpu",
-            "--format=csv,noheader,nounits"], capture_output=True, text=True,
+            "--format=csv,noheader,nounits"], stdin=subprocess.DEVNULL, capture_output=True, text=True,
             timeout=3, **new_session_kwargs())
         if result.returncode == 0:
             for line in result.stdout.splitlines():
