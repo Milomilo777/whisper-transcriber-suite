@@ -139,6 +139,19 @@ def test_system_status_gpu_and_versions(monkeypatch):
     assert call("system_status", {"command": "evil"})["result"]["isError"] is True
 
 
+@pytest.mark.parametrize(("reported", "expected"), [("55.56", 56), ("61", 61), ("[N/A]", None)])
+def test_system_status_reads_decimal_gpu_temperature(monkeypatch, reported, expected):
+    # Recent NVIDIA drivers report temperature.gpu with decimals (seen: 59.81 on an RTX 3070).
+    from core import config
+    from core.server import mcp_control
+    monkeypatch.setattr(config, "load_config", lambda: dict(config.DEFAULT_CONFIG))
+    monkeypatch.setattr(mcp_control, "models", lambda cfg: [])
+    monkeypatch.setattr(mcp_control.subprocess, "run", Mock(return_value=Mock(
+        returncode=0, stdout=f"GPU, 2048, 8192, {reported}\n")))
+    data = call("system_status")["result"]["structuredContent"]
+    assert data["gpus"][0]["temperature_c"] == expected
+
+
 def test_local_job_preserves_original_and_exports_before_done(tmp_path):
     from core.server.jobs import JobManager, STATUS_FINISHED
     source = tmp_path / "media.wav"

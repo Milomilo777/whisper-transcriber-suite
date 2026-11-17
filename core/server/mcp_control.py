@@ -114,6 +114,15 @@ def models(cfg: dict[str, Any]) -> list[dict[str, Any]]:
             for slug, _label in catalog_models(cfg)]
 
 
+def _celsius(value: str) -> int | None:
+    """nvidia-smi temperature: recent drivers print decimals (59.81); "[N/A]" and the like mean unknown."""
+    try:
+        number = float(value)
+    except ValueError:
+        return None
+    return round(number) if 0 <= number < 200 else None
+
+
 def system_status(cfg: dict[str, Any]) -> dict[str, Any]:
     versions = {"python": platform.python_version()}
     for name in ("faster-whisper", "ctranslate2"):
@@ -133,7 +142,7 @@ def system_status(cfg: dict[str, Any]) -> dict[str, Any]:
                 name, free, total, temperature = [v.strip() for v in line.split(",")]
                 gpus.append({"name": name, "free_vram_mib": int(free),
                              "total_vram_mib": int(total),
-                             "temperature_c": int(temperature) if temperature.isdigit() else None})
+                             "temperature_c": _celsius(temperature)})
     except (OSError, ValueError, subprocess.SubprocessError):
         pass
     return {"device": safe_settings(cfg).get("device", "auto"), "gpus": gpus,
