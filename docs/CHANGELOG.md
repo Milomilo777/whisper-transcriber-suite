@@ -15,6 +15,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   CPU preference, and CPU fallback uses a supported precision.
 
 ### Fixed
+- Split Windows CI tests into three balanced parallel shards per Python version to avoid full-suite timeouts.
 - Recognize stock model hub folders and cache snapshots when selecting calibrated CUDA batch memory budgets; keep custom model names on the conservative budget.
 - Calibrate CUDA batch memory budgets for model size, effective precision and beam size to improve GPU memory use.
 - Keep Windows packaging checks reliable for non-ASCII filenames and temporary-directory aliases, and run Windows tests on integration pushes.
