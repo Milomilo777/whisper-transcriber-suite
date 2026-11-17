@@ -141,3 +141,69 @@ def test_batch_choice_logs_basis(setup, monkeypatch, caplog):
     with caplog.at_level("INFO", logger="core.hardware"):
         assert hw.cuda_batch_size(16, setup) == 8
     assert "CUDA batch size 8 (configured 16; free VRAM 4096 MiB)" in caplog.text
+
+
+@pytest.mark.parametrize("free", [3319, 3351])
+@pytest.mark.parametrize("backend", [False, True])
+def test_calibrated_large_batch_reaches_both_adapters(setup, monkeypatch, free, backend):
+    setup.model.compute_type = "float16"
+    monkeypatch.setattr(hw, "cuda_free_memory_mb", lambda index=0: free)
+    calls = []
+    setup.transcribe = lambda audio, **kw: (calls.append(kw) or iter(()), SimpleNamespace())
+    if backend:
+        be = FasterWhisperBackend()
+        be._model = be._pipeline = setup
+        be._device, be._ready = "cuda", True
+        be._model_path = "models/faster-whisper-large-v3"
+        be.transcribe_to_segments("unused", vad_parameters={})
+    else:
+        monkeypatch.setitem(tr.config, "model_path", "models/faster-whisper-large-v3")
+        tr._whisper_runner(TranscriptionTask("unused"), batched=True).transcribe(
+            np.zeros(1), batch_size=16, beam_size=5)
+    assert calls[0]["batch_size"] == 8
+
+
+@pytest.mark.parametrize("name,compute,beam,free,expected", [
+    ("large-v3", "float16", 5, 3319, 8),
+    ("large-v3", "float16", 5, 3351, 8),
+    ("large-v3", "float16", 10, 3319, 5),
+    ("large-v3", "float16", 1, 3319, 8),
+    ("large-v3", "float32", 5, 3319, 4),
+    ("large-v3", "int8_float32", 5, 3319, 4),
+    ("large-v3", "int8_float16", 5, 3319, 8),
+    ("large-v3", "int8_float16", 5, 4800, 12),
+    ("large-v3-turbo", "float16", 5, 3319, 16),
+    ("small", "float16", 5, 3319, 16),
+    ("small.en", "float16", 5, 3319, 16),
+    ("medium", "float16", 5, 3319, 12),
+    ("custom-large-v3-turbo", "float16", 5, 3319, 5),
+    ("large-v3", "unknown", 5, 3319, 5),
+    ("large-v3", "float16", 5, None, 16),
+    ("small", "float16", 5, 0, 1),
+])
+def test_model_compute_and_beam_budget(setup, monkeypatch, name, compute, beam, free, expected):
+    setup.model.compute_type = compute
+    monkeypatch.setattr(hw, "cuda_free_memory_mb", lambda index=0: free)
+    assert hw.cuda_batch_size(
+        16, setup, model_path=f"models/faster-whisper-{name}", beam_size=beam) == expected
+
+
+def test_calibrated_budget_honors_configured_limit_and_windows_path(setup, monkeypatch):
+    setup.model.compute_type = "float16"
+    monkeypatch.setattr(hw, "cuda_free_memory_mb", lambda index=0: 3319)
+    assert hw.cuda_batch_size(
+        3, setup, model_path=r"C:\models\faster-whisper-large-v3", beam_size=5) == 3
+
+
+@pytest.mark.parametrize("beam,expected", [(5, 8), (10, 5)])
+def test_slot_uses_its_loaded_folder_and_requested_beam(setup, monkeypatch, beam, expected):
+    setup.model.compute_type = "float16"
+    monkeypatch.setattr(hw, "cuda_free_memory_mb", lambda index=0: 3319)
+    monkeypatch.setitem(tr.config, "model_path", "models/faster-whisper-small")
+    monkeypatch.setattr(tr._LM_RUNNER, "slot", SimpleNamespace(
+        model=setup, pipeline=setup, folder="models/faster-whisper-large-v3"))
+    calls = []
+    setup.transcribe = lambda audio, **kw: (calls.append(kw) or iter(()), SimpleNamespace())
+    tr._whisper_runner(TranscriptionTask("unused"), batched=True).transcribe(
+        np.zeros(1), batch_size=16, beam_size=beam)
+    assert calls[0]["batch_size"] == expected
