@@ -4,7 +4,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
-- Add an adjustable NVIDIA GPU temperature limit with predictive load reduction while transcription continues.
+- Add an adjustable NVIDIA GPU temperature limit (default 75 °C) with predictive load reduction while transcription continues.
 - AI assistants can start a standalone stdio MCP server, transcribe explicitly allowed local media, inspect models and hardware, and save safe transcription settings, including GPU temperature limits.
 
 - macOS packaging rejects missing or unreadable native requirements and a build

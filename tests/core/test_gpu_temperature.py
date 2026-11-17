@@ -66,7 +66,7 @@ def test_unreadable_probe_becomes_inactive_once():
 
 
 @pytest.mark.parametrize("value,want", [(20, 60), (200, 90), (83, 83),
-                                         (None, 83), ("bad", 83), (float("nan"), 83)])
+                                         (None, 75), ("bad", 75), (float("nan"), 75)])
 def test_config_ceiling_clamped(value, want):
     from core.config import gpu_temperature_ceiling
     assert gpu_temperature_ceiling({"gpu_temperature_limit_c": value}) == want
