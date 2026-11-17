@@ -22,7 +22,7 @@ def test_load_keeps_legacy_multilingual_frontend(monkeypatch, tmp_path, lang):
     import sys
     from types import SimpleNamespace
 
-    for name in ("lexicon-us-en.txt", "lexicon-gb-en.txt", "lexicon-zh.txt", "date.fst"):
+    for name in ("lexicon-us-en.txt", "lexicon-gb-en.txt", "lexicon-zh.txt", "date-zh.fst", "number-zh.fst", "phone-zh.fst"):
         (tmp_path / name).touch()
     (tmp_path / "dict").mkdir()
     seen = {}
@@ -46,7 +46,10 @@ def test_load_keeps_legacy_multilingual_frontend(monkeypatch, tmp_path, lang):
     english = "lexicon-gb-en.txt" if lang == "en-gb" else "lexicon-us-en.txt"
     assert kokoro.lexicon.split(",") == [str(tmp_path / english), str(tmp_path / "lexicon-zh.txt")]
     assert kokoro.data_dir == str(tmp_path / "espeak-ng-data")
-    assert cfg.rule_fsts == str(tmp_path / "date.fst")
+    expected_rules = ",".join(str(tmp_path / name) for name in (
+        "date-zh.fst", "number-zh.fst", "phone-zh.fst",
+    )) if lang == "zh" else ""
+    assert cfg.rule_fsts == expected_rules
     assert cfg.model.provider == "cpu"
 
 
@@ -296,3 +299,32 @@ def test_voice_texts_do_not_hard_code_the_voice_count():
     for rel in ("app/widgets/voice_clone_tab.py", "core/tts_kokoro.py"):
         source = (root / rel).read_text(encoding="utf-8")
         assert not re.search(r"\b\d+ ready-made voices", source), rel
+
+
+@pytest.mark.parametrize("text,expected", [
+    ("2025年に42人。第7課は3.14円。", "二千二十五年に四十二人。第七課は三点一四円。"),
+    ("0 1 10 11 99 100 101 999 1000 1001 9999", "零 一 十 十一 九十九 百 百一 九百九十九 千 千一 九千九百九十九"),
+    ("人数は42. 次は7, 価格は3.14.", "人数は四十二. 次は七, 価格は三点一四."),
+    ("0.05 3.140 0042", "零点零五 三点一四零 零零四二"),
+    ("10000 v1.2 1.2.3 1,234 -42 +42 2025/11/17 2025-11-17 12:30", "10000 v1.2 1.2.3 1,234 -42 +42 2025/11/17 2025-11-17 12:30"),
+])
+def test_japanese_number_normalization_is_bounded(text, expected):
+    assert k._japanese_numbers(text) == expected
+
+
+@pytest.mark.parametrize("voice", ["af_heart", "bf_emma", "zf_xiaobei", "ef_dora", "ff_siwis", "if_sara", "pf_dora", "hf_alpha", "jf_alpha"])
+def test_generate_normalizes_numbers_only_for_japanese(monkeypatch, tmp_path, voice):
+    from types import SimpleNamespace
+
+    text = "2025年に42人。第7課は3.14円。"
+    seen = []
+
+    def capture(actual, **kwargs):
+        seen.append(actual)
+        raise RuntimeError("captured text")
+
+    monkeypatch.setattr(k, "_load", lambda lang: SimpleNamespace(generate=capture))
+    with pytest.raises(RuntimeError, match="captured text"):
+        k.generate(text, voice, str(tmp_path / "unused.wav"))
+    expected = "二千二十五年に四十二人。第七課は三点一四円。" if voice == "jf_alpha" else text
+    assert seen == [expected]

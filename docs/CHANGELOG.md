@@ -15,6 +15,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   CPU preference, and CPU fallback uses a supported precision.
 
 ### Fixed
+- Keep Kokoro's Chinese number rules from rewriting digits spoken by other voice languages, and spell simple Japanese numbers before pronunciation.
 - Keep Kokoro's unknown-word pronunciation frontend and reject incompatible runtimes that silently omit words.
 - Keep forced-language transcription working with runners that lack optional language-audit hooks.
 - Recover partially dropped speech using transcript-relative text rates, decode mixed-language audio in shorter windows, retain each cue's language in JSON, and warn when forced-language decoding disagrees with the audio.
