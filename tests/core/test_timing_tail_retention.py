@@ -21,7 +21,7 @@ def test_lazy_text_after_rejected_clock_is_kept_without_advancing_prefix(endpoin
         tr._write_periodic_checkpoint(task, prior, 1.0, "en", 0.9, None)
     calls = []
     def decoded():
-        for start, end, text in [(1.1, 1.5, "valid"), (2.6, 3.0, "rejected"),
+        for start, end, text in [(1.1, 1.5, "valid"), (2.6, 2.5, "rejected"),
                                   (2.8, 3.2, "later text")]:
             calls.append(text)
             if text == "later text":
@@ -53,9 +53,9 @@ def test_lazy_text_after_rejected_clock_is_kept_without_advancing_prefix(endpoin
 
 
 def capture(case, remaining, convert=lambda value: value):
-    original = [{"start": 2.6, "end": 3.0, "text": "rejected"}]
+    original = [{"start": 2.6, "end": 2.5, "text": "rejected"}]
     kept, stopped = tr._capture_timing_tail(output_task(case), original, remaining, convert, "bad timing")
-    assert original == [{"start": 2.6, "end": 3.0, "text": "rejected"}]
+    assert original == [{"start": 2.6, "end": 2.5, "text": "rejected"}]
     record = json.loads(Path(kept).read_text(encoding="utf-8")) if kept else None
     return record, stopped
 
@@ -139,7 +139,7 @@ def test_storage_failure_never_claims_completion_or_changes_published_output(end
     monkeypatch.setattr(tr, "_keep_timing_recovery", fail)
     observed = []
     def decoded():
-        for start, end, text in [(1.1, 1.5, "valid"), (2.6, 3, "rejected"), (2.8, 3.2, "later")]:
+        for start, end, text in [(1.1, 1.5, "valid"), (2.6, 2.5, "rejected"), (2.8, 3.2, "later")]:
             observed.append(text)
             yield Segment(start, end, text, [])
     install_model(monkeypatch, decoded(), duration=endpoint_case.duration)

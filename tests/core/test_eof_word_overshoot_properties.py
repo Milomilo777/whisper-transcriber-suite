@@ -27,11 +27,10 @@ def test_multiple_contained_tail_words_keep_identity_order_and_bounded_clocks(eo
     bounded = tr._cap_segment(segment, eof)
     assert segment == original
     assert 0 <= bounded['start'] <= bounded['end'] == eof
-    assert bounded['text'] == original['text']
-    assert len(bounded['words']) == len(original['words'])
-    assert [word['word'] for word in bounded['words']] == [word['word'] for word in original['words']]
-    assert [word['probability'] for word in bounded['words']] == [word['probability'] for word in original['words']]
+    assert bounded['text'] == 'head'
+    assert len(bounded['words']) == 1
+    assert bounded['words'] == original['words'][:1]
+    assert bounded['words'][0]['probability'] == .9
     assert bounded['words'][0] == original['words'][0]
     assert all(0 <= word['start'] <= word['end'] <= eof for word in bounded['words'])
-    assert all(word['start'] == word['end'] == eof for word in bounded['words'][1:])
     assert tr._cap_segment(bounded, eof) == bounded

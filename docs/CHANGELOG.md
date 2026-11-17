@@ -13,6 +13,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 - Size CUDA transcription batches from current free VRAM and halve them after an out-of-memory error while preserving completed audio.
+- Drop transcript cues and words that start after the audio ends, keeping their raw records for recovery so valid output can still finish.
 - Keep the Windows clipboard fallback from handling Ctrl+Alt chords that produce no text. Hosted keyboard checks record key events and distinguish unverified input from application or cleanup failures.
 - Preserve automatic GPU fallback intent and report the unavailable-runtime reason after worker logging starts. Explicit and saved CPU choices stay free of false GPU warnings.
 - Count CPU fallback as a diagnostic recovery after a model load or decode failure. Automatic preflight CPU selection keeps its warning without inflating recovery counts.

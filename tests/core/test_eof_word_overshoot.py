@@ -25,18 +25,19 @@ def test_transcribe_bounds_word_inside_capped_segment_tail_and_saves_outputs(
     tr.transcribe(task)
     assert len(task.output_paths) == 5
     for path in task.output_paths:
-        assert 'words' in Path(path).read_text(encoding='utf-8')
+        assert 'last words' not in Path(path).read_text(encoding='utf-8')
+        assert 'last' in Path(path).read_text(encoding='utf-8')
     path = next(Path(p) for p in task.output_paths if p.endswith('.json'))
     saved = json.loads(path.read_text(encoding='utf-8'))
     assert saved[0]['end'] == case.duration
     # The decoder conversion strips token padding; writers preserve these labels.
-    assert [word['word'] for word in saved[0]['words']] == ['last', 'words']
-    assert saved[0]['words'][-1]['start'] == saved[0]['words'][-1]['end'] == case.duration
+    assert [word['word'] for word in saved[0]['words']] == ['last']
+    assert saved[0]['words'][-1]['end'] == 2.3
     vtt = next(Path(p) for p in task.output_paths if p.endswith('.vtt')).read_text(encoding='utf-8')
-    assert re.findall(r'<c>(.*?)</c>', vtt) == ['last', 'words']
+    assert re.findall(r'<c>(.*?)</c>', vtt) == ['last']
     ass = next(Path(p) for p in task.output_paths if p.endswith('.ass')).read_text(encoding='utf-8')
     dialogue = next(line for line in ass.splitlines() if line.startswith('Dialogue:'))
-    assert re.search(r'\{\\k\d+\}last \{\\k\d+\}words$', dialogue)
+    assert 'last' in dialogue and 'words' not in dialogue
 
 
 def test_transcribe_lone_word_inside_segment_overshoot_survives(endpoint_case, monkeypatch):
@@ -46,18 +47,17 @@ def test_transcribe_lone_word_inside_segment_overshoot_survives(endpoint_case, m
     tr.transcribe(task)
     path = next(Path(p) for p in task.output_paths if p.endswith('.json'))
     saved = json.loads(path.read_text(encoding='utf-8'))
-    assert saved[0]['text'] == 'last'
-    assert [word['word'] for word in saved[0]['words']] == ['last']
-    assert saved[0]['words'][0]['start'] == saved[0]['words'][0]['end'] == case.duration
-    assert all('last' in Path(path).read_text(encoding='utf-8') for path in task.output_paths)
+    assert saved == []
+    records = list(tr._checkpoint.partials_dir().glob("*.timing-recovery.json"))
+    assert any(json.loads(p.read_text(encoding="utf-8"))["segments"][0]["text"] == "last" for p in records)
+    assert len(task.output_paths) == 3
 
 
 def test_word_outside_its_raw_segment_is_still_rejected():
     row = {'start': 9.2, 'end': 10.4, 'text': 'bad',
            'words': [{'start': 10.02, 'end': 10.5, 'word': 'bad'}]}
     original = deepcopy(row)
-    with pytest.raises(tr._TimingBoundsError):
-        tr._cap_segment(row, 10.0)
+    assert tr._cap_segment(row, 10.0) is None
     assert row == original
 
 
@@ -69,7 +69,8 @@ def test_capped_segment_tail_is_idempotent_and_does_not_mutate_raw_input():
     original = deepcopy(row)
     bounded = tr._cap_segment(row, 10.0)
     assert row == original
-    assert bounded['words'][-1] == {'start': 10.0, 'end': 10.0, 'word': ' bye'}
+    assert bounded['words'] == [row['words'][0]]
+    assert bounded['text'] == 'ok'
     assert tr._cap_segment(bounded, 10.0) == bounded
 
 
@@ -86,5 +87,8 @@ def test_completed_checkpoint_with_contained_word_tail_needs_no_redecode(endpoin
     assert tr.resume_transcription(task)
     path = next(Path(p) for p in task.output_paths if p.endswith('.json'))
     saved = json.loads(path.read_text(encoding='utf-8'))
-    assert saved[0]['words'][-1]['start'] == saved[0]['words'][-1]['end'] == case.duration
-    assert 'last words' == saved[0]['text']
+    assert saved[0]['words'] == [dict(rows[0]['words'][0], probability=0.0)]
+    assert 'last' == saved[0]['text']
+    assert len(task.output_paths) == 3
+    records = list(tr._checkpoint.partials_dir().glob('*.timing-recovery.json'))
+    assert json.loads(records[-1].read_text(encoding='utf-8'))['segments'] == rows
