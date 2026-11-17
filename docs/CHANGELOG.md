@@ -16,7 +16,6 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 - Keep forced-language transcription working with runners that lack optional language-audit hooks.
-- Use sequential decoding for mixed-language audio, including resumed jobs, to retain speech skipped by batched windows.
 - Recover partially dropped speech using transcript-relative text rates, decode mixed-language audio in shorter windows, retain each cue's language in JSON, and warn when forced-language decoding disagrees with the audio.
 - Size CUDA transcription batches from current free VRAM and halve them after an out-of-memory error while preserving completed audio.
 - Drop transcript cues and words that start after the audio ends, keeping their raw records for recovery so valid output can still finish.

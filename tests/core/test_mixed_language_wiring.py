@@ -109,8 +109,7 @@ def _mixed_call(call):
     assert [p[0] for p in call["detects"]] == ["<|en|>", "<|zh|>"]
 
 
-@pytest.mark.parametrize('batch_available', [False, True])
-def test_transcribe_runs_a_restricted_copy_and_restarts_without_pinning(t, monkeypatch, tmp_path, batch_available):
+def test_transcribe_runs_a_restricted_copy_and_restarts_without_pinning(t, monkeypatch, tmp_path):
     from core.task import TranscriptionTask
 
     audio = tmp_path / "class.wav"
@@ -119,8 +118,6 @@ def test_transcribe_runs_a_restricted_copy_and_restarts_without_pinning(t, monke
                     [Seg(0, 4, "back to normal")])
     shared_ct2 = engine.model
     written = _wire(t, monkeypatch, tmp_path, engine)
-    if batch_available:
-        monkeypatch.setattr(t, 'PIPELINE', BatchMustNotRun())
     task = TranscriptionTask(str(audio))
     task.languages = ("zh", "en")
     logs: list[str] = []
@@ -147,16 +144,7 @@ def test_one_language_still_pins_on_restart(t, monkeypatch, tmp_path):
     assert engine.calls[1]["kwargs"]["language"] == "zh"
 
 
-class BatchMustNotRun:
-    def __init__(self):
-        self.model = Ct2()
-
-    def transcribe(self, *args, **kwargs):
-        raise AssertionError('Mixed-language decoding must retain sequential timestamp seeking')
-
-
-@pytest.mark.parametrize('batch_available', [False, True])
-def test_crash_resume_gets_the_pair_back_from_the_checkpoint(t, monkeypatch, tmp_path, batch_available):
+def test_crash_resume_gets_the_pair_back_from_the_checkpoint(t, monkeypatch, tmp_path):
     from core import _checkpoint
     from core.task import TranscriptionTask
 
@@ -175,8 +163,6 @@ def test_crash_resume_gets_the_pair_back_from_the_checkpoint(t, monkeypatch, tmp
     )
     engine = Engine([Seg(0, 3, "the rest")])
     written = _wire(t, monkeypatch, tmp_path, engine)
-    if batch_available:
-        monkeypatch.setattr(t, 'PIPELINE', BatchMustNotRun())
     rebuilt = TranscriptionTask(str(audio))  # as from a history row: no pair
     rebuilt.language = "zh"
     assert t.resume_transcription(rebuilt) is True
