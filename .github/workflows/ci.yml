@@ -31,6 +31,9 @@ jobs:
       - name: Deny-listed paths and root size
         run: python3 tools/check_repo_hygiene.py
 
+      - name: Public release text and website facts
+        run: python3 tools/check_public_release.py
+
   unit-tests:
     name: ${{ matrix.os }} Â· Python ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
