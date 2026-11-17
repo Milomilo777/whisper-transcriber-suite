@@ -199,7 +199,7 @@ DEFAULT_CONFIG = {
     "output_formats": ["srt", "json", "txt"],
     "batch_size": 16,
     "gpu_temperature_limit_enabled": True,
-    "gpu_temperature_limit_c": 83,
+    "gpu_temperature_limit_c": 75,
     "initial_prompt": "",
     "hotwords": "",
     # Phase 3a — yt-dlp killer features
@@ -2148,12 +2148,12 @@ def read_local_config_for_switches() -> dict[str, Any] | None:
 def gpu_temperature_ceiling(config: Mapping[str, Any]) -> int:
     """Bound a user temperature setting, including hand-edited profiles."""
     try:
-        value = config.get("gpu_temperature_limit_c", 83)
+        value = config.get("gpu_temperature_limit_c", 75)
         if isinstance(value, bool):
-            return 83
+            return 75
         return max(60, min(90, int(value)))
     except (TypeError, ValueError, OverflowError):
-        return 83
+        return 75
 
 
 def effective_word_timestamps(config: Mapping[str, Any]) -> bool:
