@@ -6751,7 +6751,7 @@ class App(tk.Tk):
             self._auto_selected_download = picked
 
     def refresh_download_queue(self) -> None:
-        from app.widgets.tabs import status_label
+        from app.widgets.tabs import download_status_label
 
         # Snapshot the SELECTED tasks (by identity) before tearing the tree
         # down -- same rationale as refresh() above: a plain delete()+
@@ -6774,7 +6774,7 @@ class App(tk.Tk):
                     ltr_base(task.title),
                     task.url,
                     task.format_label,
-                    status_label(task.status),
+                    download_status_label(task.status),
                     self._row_progress_text(task.status, prog),
                     self.fmt_time(task),
                 ),

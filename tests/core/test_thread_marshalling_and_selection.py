@@ -190,6 +190,30 @@ def _download_task(title: str) -> VideoDownloadTask:
     )
 
 
+def test_download_status_cell_names_active_download_stage(monkeypatch):
+    from app import i18n
+    from app.widgets.tabs import STATUS_ICON, status_label
+
+    statuses = ("running", "transcribing", "waiting", "paused", "finished", "error", "cancelled", "burning", "unknown")
+    tasks = [_download_task(status) for status in statuses]
+    for task, status in zip(tasks, statuses):
+        task.status = status
+    app = _fake_download_refresh_app(tasks)
+    insert = app.download_tree.insert
+    cells = []
+
+    def record_cell(parent, index, values=(), tags=()):
+        cells.append(values[3])
+        return insert(parent, index, values, tags)
+
+    monkeypatch.setattr(app.download_tree, "insert", record_cell)
+    App.refresh_download_queue(app)
+
+    assert cells == [STATUS_ICON["running"] + i18n._("Downloading…"),
+                     *(status_label(status) for status in statuses[1:])]
+    assert tuple(task.status for task in tasks) == statuses
+
+
 def test_refresh_download_queue_preserves_selection_across_rebuild():
     d1, d2, d3 = (_download_task(f"v{i}") for i in range(3))
     for d in (d1, d2, d3):

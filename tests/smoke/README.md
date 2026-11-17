@@ -10,6 +10,10 @@ on CI and stays hermetic. The smoke suite is what catches **packaging
 bugs** the unit suite can't see — e.g. missing data files in the
 PyInstaller bundle.
 
+## Production-theme qualification
+
+`test_quality_production_theme.py` checks every shipped catalog at 100% and 200% DPI with the real Windows production theme. Run it explicitly on an interactive Windows desktop using Python with Tk 8.6: `python -m pytest tests/smoke/test_quality_production_theme.py`. Its renderer measurements intentionally reject other Tk versions.
+
 ## Why they live here
 
 The Session 8 history is instructive: a colleague reported the app was
