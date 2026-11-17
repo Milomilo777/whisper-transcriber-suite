@@ -35,17 +35,12 @@ jobs:
         run: python3 tools/check_public_release.py
 
   unit-tests:
-    name: ${{ matrix.os }} Â· Python ${{ matrix.python-version }}
+    name: ${{ matrix.os }} - Python ${{ matrix.python-version }} - shard ${{ matrix.shard }}
     runs-on: ${{ matrix.os }}
-    # Backstop for a hung test slipping past pytest-timeout below (e.g. a
-    # hang in the install step, or in pytest's own startup/collection
-    # before the per-test timeout plugin is active). The Windows suite
-    # alone takes about 28 minutes (12,000+ tests, October 2026) and
-    # hit the old 30-minute limit; by November 2026 (17,000+ tests) the
-    # Windows jobs took 43-45 minutes and Python 3.11 hit the 45-minute
-    # limit. 60 still replaces GitHub's 360-minute default so a wedge fails
-    # fast instead of burning hours of Actions time.
-    timeout-minutes: 60
+    # Windows shards target 15-20 minutes each; retain a bounded backstop
+    # for installation/collection hangs outside the per-test timeout.
+    # Linux still runs its complete suite and keeps its existing limit.
+    timeout-minutes: ${{ matrix.os == 'windows-latest' && 30 || 60 }}
     strategy:
       fail-fast: false
       matrix:
@@ -53,7 +48,13 @@ jobs:
         # core sanity check (no tkinter UI, the smoke tests skip).
         os: ${{ fromJSON(github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/release/') || github.ref == 'refs/heads/codex/integration-2.4.x') && '["ubuntu-latest"]' || '["windows-latest","ubuntu-latest"]') }}
         python-version: ["3.11", "3.12"]
-        include: ${{ fromJSON(github.event_name == 'push' && github.ref == 'refs/heads/codex/integration-2.4.x' && '[{"os":"windows-latest","python-version":"3.11"}]' || '[]') }}
+        shard: [1, 2, 3]
+        exclude:
+          - os: ubuntu-latest
+            shard: 2
+          - os: ubuntu-latest
+            shard: 3
+        include: ${{ fromJSON(github.event_name == 'push' && github.ref == 'refs/heads/codex/integration-2.4.x' && '[{"os":"windows-latest","python-version":"3.11","shard":1},{"os":"windows-latest","python-version":"3.11","shard":2},{"os":"windows-latest","python-version":"3.11","shard":3}]' || '[]') }}
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -92,13 +93,21 @@ jobs:
         run: python -m pyright app core
         continue-on-error: false
 
-      - name: Pytest (unit suite, no smoke) â€” Windows
+      - name: Pytest (unit suite, no smoke) - Windows shard ${{ matrix.shard }}/3
         if: runner.os == 'Windows'
         env:
           # Make sure the live SMTV smokes skip â€” CI is offline-only
           # from our test harness's point of view.
           WHISPER_OFFLINE_TESTS: "1"
-        run: python -m pytest tests/ --ignore=tests/smoke -v
+        run: python tools/ci_shards.py --shard ${{ matrix.shard }}
+
+      - name: Upload Windows shard timings
+        if: always() && runner.os == 'Windows'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-python-${{ matrix.python-version }}-shard-${{ matrix.shard }}
+          path: ci-shard-${{ matrix.shard }}.xml
+          if-no-files-found: ignore
 
       # Ubuntu 3.12 runs the suite once, with coverage (the step below):
       # running it twice there took 28-31 minutes and hit timeout-minutes.
