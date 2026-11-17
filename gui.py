@@ -1,10 +1,11 @@
-"""Entry point. Five modes:
+"""Entry point modes:
 
   python gui.py                     → launch the Tk app (default)
   python gui.py --worker            → spawn the JSON-stdio transcription worker
   python gui.py --voice-clone-worker → spawn the Clone Your Voice worker
   python gui.py transcribe FILE     → CLI transcription
   python gui.py serve               → run the local-network HTTP job server
+  python gui.py mcp                 → run the assistant MCP stdio server
   python gui.py --help              → usage
 
 ``--tls-self-check`` prints which CA certificates HTTPS requests trust
@@ -306,7 +307,7 @@ def _port_number(value: str) -> int:
 
 # The subcommands _build_argparser defines; anything else in the first
 # position is a file to open in the app.
-_SUBCOMMANDS = ("transcribe", "serve")
+_SUBCOMMANDS = ("transcribe", "serve", "mcp")
 
 
 def _split_launch_args(argv: list[str]) -> tuple[list[str], list[str]]:
@@ -370,6 +371,7 @@ def _build_argparser() -> argparse.ArgumentParser:
         ),
     )
     sub = p.add_subparsers(dest="command")
+    sub.add_parser("mcp", help="Run the MCP stdio server for AI assistants (no UI)")
 
     tr = sub.add_parser("transcribe", help="Transcribe a file and exit (no UI)")
     tr.add_argument("file", help="audio/video file to transcribe")
@@ -564,6 +566,12 @@ def main() -> int:
         from core.diarization_worker import main as _diarize_worker_main
         return _diarize_worker_main()
 
+    if sys.argv[1:] == ["mcp"]:
+        from core import offline
+        offline.install_network_guard()
+        from core.server.mcp_stdio import main as mcp_main
+        return mcp_main()
+
     _ensure_safe_stdio_encoding()
 
     # Work offline backstop for the CLI, the server and the GUI (the worker
@@ -589,6 +597,10 @@ def main() -> int:
     parser = _build_argparser()
     cli_args, open_paths = _split_launch_args(sys.argv[1:])
     args = parser.parse_args(cli_args)
+
+    if args.command == "mcp":
+        from core.server.mcp_stdio import main as mcp_main
+        return mcp_main()
 
     if args.command:
         _log_missing_stdio(args.command)

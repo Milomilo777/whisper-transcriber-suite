@@ -4,6 +4,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+- AI assistants can start a standalone stdio MCP server, transcribe explicitly allowed local media, inspect models and hardware, and save safe transcription settings.
+
 - macOS packaging rejects missing or unreadable native requirements and a build
   host below the declared deployment target. The DMG must contain the exact
   verified app and pass the copied app's strict native audit.

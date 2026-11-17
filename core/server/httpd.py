@@ -2680,7 +2680,8 @@ class JobRequestHandler(BaseHTTPRequestHandler):
             self._send_json(HTTPStatus.BAD_REQUEST, mcp.error_response(
                 None, mcp.PARSE_ERROR, "Parse error: body is not JSON"))
             return
-        response = mcp.handle(data, self._srv.manager, app_version=__version__)
+        response = mcp.handle(data, self._srv.manager, app_version=__version__,
+                              client_address=self.client_address[0])
         if response is None:
             # A notification or a client's response: 202 with an explicit
             # empty body, so a keep-alive client does not wait for one.

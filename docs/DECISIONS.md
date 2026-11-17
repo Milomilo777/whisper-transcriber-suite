@@ -1040,3 +1040,38 @@ index and no `AUTOINCREMENT`, reads go by id, and a daily cron keeps the newest 
 traffic approaches the cap, the plan is: the app queues unsent rows and sends them in batches, and
 the Worker runs on a route set to "fail open", so requests over the quota reach a second, self-hosted
 origin. Cloudflare sees the connection's IP address as any web host does; the Worker does not store it.
+
+---
+
+## 0022 — Share assistant control across HTTP and stdio
+
+Status: Accepted for implementation
+
+The existing MCP JSON-RPC dispatcher and job manager serve both transports.
+`gui.py mcp` reads newline-delimited UTF-8 JSON on stdin and reserves stdout
+for protocol responses. It opens no listener; diagnostics go to stderr.
+
+Local files require stdio or the actual HTTP peer 127.0.0.1, plus an explicit
+`mcp_allowed_folders` configuration allowlist, empty by default. Assistants
+cannot edit this allowlist. Absolute regular media files must resolve inside
+an allowed directory; traversal and symlink escapes are refused. Inputs are
+staged into managed job storage; originals are never removed. Completed results
+are copied beside the source with unique names before completion is reported.
+Export rechecks the allowed physical directory and refuses existing targets.
+Staging verifies the opened file's kernel-reported path before reading;
+export pins parent directories with relative handles or Windows rename locks.
+The boundary trusts the local account and filesystem administrator; it is not
+a sandbox against an administrator replacing directories during filesystem calls.
+
+Settings use an explicit whitelist, strict value checks, the existing project
+validator where applicable, and the normal configuration save transaction.
+Secrets, arbitrary paths, endpoints and authentication settings are excluded.
+Settings affect subsequent jobs; active jobs retain their captured options.
+Read-only model and hardware summaries expose no local paths or credentials.
+HTTP retains its existing authentication and origin checks; peer identity never
+comes from forwarded headers or tool arguments.
+
+Rejected: a separate dispatcher (validation drift), arbitrary file access,
+assistant-editable folder grants, automatic public tunnels, arbitrary model
+URLs, and automatic model downloads. Model installation remains an explicit
+application operation. A future connection panel can generate client snippets.

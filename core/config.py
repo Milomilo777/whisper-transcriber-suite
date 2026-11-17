@@ -430,6 +430,9 @@ DEFAULT_CONFIG = {
     #     per-user under %LOCALAPPDATA%\WhisperTranscriberSuite and is not encrypted.
     "server_port": 8765,
     "server_max_upload_mb": 512,
+    # Physical folders whose media local MCP clients may transcribe. No grants by default.
+    "mcp_allowed_folders": [],
+    "mcp_language": "",  # Default language code for assistant jobs; empty = automatic.
     "server_share_lan": False,
     "server_token": "",
     #   server_https_enabled — when True the server wraps its socket in TLS

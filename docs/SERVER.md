@@ -335,6 +335,11 @@ Tools:
 | `get_result` | `job_id`, `format` (default `txt`) | the text of that output |
 | `list_jobs` | none | `{"jobs": [...]}`, as `GET /api/jobs` |
 | `cancel_job` | `job_id` | `{"cancelled": <job_id>}` |
+| `transcribe_file` | absolute `path`, optional `language`, `formats` | job id; local connections and allowed folders only |
+| `get_settings` | none | safe transcription settings |
+| `set_settings` | `settings` object | validated, saved settings |
+| `system_status` | none | device, GPU VRAM in MiB, temperature when readable, models, versions |
+| `list_models` | none | catalogue model ids and whether weights are installed |
 
 `transcribe_url` validates like `POST /api/jobs` but refuses a value that the
 JSON API would quietly replace: an unknown format or language, or a clip
@@ -344,9 +349,11 @@ returned by `get_result`; it names the `/api/jobs/<id>/result?fmt=` route to
 download them from. Results are JSON in `structuredContent` with the same
 JSON as text in `content`.
 
-No tool takes a path on this computer. The server only transcribes uploads
-and links, so a remote assistant cannot make it read local files; links to
-this computer itself are refused (see [Security caveats](#security-caveats)).
+`transcribe_file` requires stdio or an actual HTTP peer of `127.0.0.1` and
+an explicit `mcp_allowed_folders` configuration grant. LAN peers are refused,
+including when they send a forwarded loopback address. Links to this computer
+itself remain refused (see [Security caveats](#security-caveats)).
+See [desktop assistant setup](AI_ASSISTANTS.md) for stdio and client examples.
 
 Checked with the official MCP Python SDK (`mcp` 2.3.0) against a local
 server:
