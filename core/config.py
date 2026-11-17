@@ -2849,6 +2849,8 @@ PROJECT_ALLOWED_KEYS: frozenset[str] = frozenset({
     "hotwords",
     "word_timestamps",
     "batch_size",
+    "gpu_temperature_limit_enabled",
+    "gpu_temperature_limit_c",
     "vad_enabled",
     "vad_threshold",
     "vad_min_silence_ms",
@@ -2878,6 +2880,7 @@ _PROJECT_ONLY_DEFAULTS: dict[str, Any] = {"alignment": "none"}
 # the user's own key.
 _PROJECT_KEY_RANGES: dict[str, tuple[float, float]] = {
     "batch_size": (1, 256),
+    "gpu_temperature_limit_c": (60, 90),
     "vad_threshold": (0.0, 1.0),
     "vad_min_silence_ms": (0, 60_000),
     "vad_speech_pad_ms": (0, 10_000),

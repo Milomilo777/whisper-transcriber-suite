@@ -317,3 +317,55 @@ raise SystemExit(gui.main())
     assert [answer["id"] for answer in answers] == [1, 2, 3]
     assert len(answers[1]["result"]["tools"]) == 10
     assert answers[2]["result"] == {}
+
+@pytest.mark.parametrize("enabled,ceiling", [(True, 60), (False, 70), (True, 90)])
+def test_temperature_settings_save_and_reach_assistant_jobs(monkeypatch, tmp_path, enabled, ceiling):
+    from core import config
+    cfg = dict(config.DEFAULT_CONFIG)
+    media = tmp_path / "media.wav"
+    media.write_bytes(b"media")
+    cfg["mcp_allowed_folders"] = [str(tmp_path)]
+    monkeypatch.setattr(config, "load_config", lambda: cfg)
+    save = Mock()
+    monkeypatch.setattr(config, "save_config", save)
+    values = {"gpu_temperature_limit_enabled": enabled, "gpu_temperature_limit_c": ceiling}
+    response = call("set_settings", {"settings": values})
+    assert response["result"]["isError"] is False
+    save.assert_called_once_with(cfg)
+    settings = call("get_settings")["result"]["structuredContent"]["settings"]
+    assert all(settings[key] == value for key, value in values.items())
+    for tool, args, submit in [("transcribe_file", {"path": str(media)}, "submit_local"),
+                               ("transcribe_url", {"url": "https://example.com/media"}, "submit_url")]:
+        manager = Mock()
+        getattr(manager, submit).return_value = "job"
+        assert call(tool, args, manager=manager)["result"]["isError"] is False
+        options = getattr(manager, submit).call_args.kwargs["options"]
+        assert all(options[key] == value for key, value in values.items())
+        assert config._validate_overrides(options, tmp_path) == options
+        from core import transcriber as tr
+        from core.task import TranscriptionTask
+        monkeypatch.setattr(tr, "config", dict(config.DEFAULT_CONFIG))
+        monkeypatch.setattr(tr, "load_config", lambda: cfg)
+        (tmp_path / config.PROJECT_FILE_NAME).write_text(json.dumps(options), encoding="utf-8")
+        before = dict(tr.config)
+        with tr._runtime_overrides_scope(TranscriptionTask(str(media))):
+            assert all(tr.config[key] == value for key, value in values.items())
+        assert all(tr.config[key] == before[key] for key in values)
+
+
+@pytest.mark.parametrize("values", [
+    {"gpu_temperature_limit_c": 59}, {"gpu_temperature_limit_c": 91},
+    {"gpu_temperature_limit_c": True}, {"gpu_temperature_limit_c": 83.0},
+    {"gpu_temperature_limit_c": "83"}, {"gpu_temperature_limit_enabled": 1},
+])
+def test_invalid_temperature_settings_are_atomic(monkeypatch, values):
+    from core import config
+    cfg = dict(config.DEFAULT_CONFIG)
+    original = dict(cfg)
+    monkeypatch.setattr(config, "load_config", lambda: cfg)
+    save = Mock()
+    monkeypatch.setattr(config, "save_config", save)
+    response = call("set_settings", {"settings": {"batch_size": 4, **values}})
+    assert response["result"]["isError"] is True
+    save.assert_not_called()
+    assert cfg == original

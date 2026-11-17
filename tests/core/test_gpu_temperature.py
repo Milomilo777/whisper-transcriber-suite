@@ -226,3 +226,40 @@ def test_temperature_settings_reach_the_next_worker_task(monkeypatch):
         assert tr.config["gpu_temperature_limit_c"] == 70
     assert tr.config["gpu_temperature_limit_enabled"] is True
     assert tr.config["gpu_temperature_limit_c"] == 83
+
+@pytest.mark.parametrize("fallback", [False, True])
+def test_language_detection_paces_cuda_and_bypasses_cpu(fallback):
+    from core.backends.faster_whisper_be import WhisperDecode
+    c, clock, _ = controller([90] * 100)
+    state = {"cuda": True, "calls": 0}
+    result = ("en", .9, [("en", .9)])
+    def detect(**kwargs):
+        state["calls"] += 1
+        clock.now += 3
+        if fallback and state["cuda"]:
+            raise RuntimeError("CUDA out of memory")
+        return result
+    def recover(options, oom):
+        assert oom
+        state["cuda"] = False
+    model = SimpleNamespace(detect_language=detect)
+    decode = WhisperDecode(lambda options: model, lambda: state["cuda"], recover, None,
+                           temperature=lambda runner: c if state["cuda"] else None)
+    for _ in range(5):
+        assert decode.detect_language(audio="fake") == result
+    if fallback:
+        assert state["calls"] == 6
+        assert clock.gaps == []
+    else:
+        assert clock.gaps and max(clock.gaps) <= .1
+
+
+def test_language_detection_cancelled_before_gpu_work():
+    from core.backends.faster_whisper_be import WhisperDecode
+    c, _, _ = controller([90], cancelled=lambda: True)
+    def detect(**kwargs):
+        pytest.fail("cancelled detection reached the GPU")
+    decode = WhisperDecode(lambda options: SimpleNamespace(detect_language=detect),
+                           lambda: True, lambda options, oom: None, None, temperature=lambda runner: c)
+    with pytest.raises(RuntimeError, match="cancel"):
+        decode.detect_language(audio="fake")

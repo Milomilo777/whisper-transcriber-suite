@@ -25,7 +25,8 @@ Files must fit the server's bounded input size (512 MiB by default).
 `get_settings` and `set_settings` expose only `whisper_model` (catalogue id),
 `language` (API language code or empty for automatic), `device` (`auto`, `cpu`,
 `cuda`), `compute_type`, `output_formats`, `batch_size` (1–256), `vad_enabled`,
-`word_timestamps`, and `diarization_enabled`. For example:
+`word_timestamps`, `diarization_enabled`, `gpu_temperature_limit_enabled`,
+and `gpu_temperature_limit_c` (integer, 60–90 °C). For example:
 `{"settings":{"batch_size":4,"word_timestamps":true,"language":"en"}}`.
 Language is saved as `mcp_language` for subsequent assistant jobs; the GUI
 language picker remains per-session. Changes use the app's normal save path.

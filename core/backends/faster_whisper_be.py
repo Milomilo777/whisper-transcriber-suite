@@ -239,7 +239,21 @@ class WhisperDecode:
     def detect_language(self, **kwargs: Any) -> Any:
         while True:
             try:
-                return self._runner({}).detect_language(**kwargs)
+                runner = self._runner({})
+                factory = self._temperature
+                control = factory(runner) if factory is not None else None
+                if control is None:
+                    return runner.detect_language(**kwargs)
+
+                def detect() -> Any:
+                    yield runner.detect_language(**kwargs)
+
+                # Include language-ID work in the same cooling/cancel contract
+                # as decoding, including its final cooling gap before return.
+                results = list(control.pace(detect()))
+                if not results:
+                    raise RuntimeError("Language detection cancelled")
+                return results[0]
             except RuntimeError as exc:
                 failure = _cuda_failure(exc)
                 if not self.retry_enabled or not self._is_cuda() or not failure:

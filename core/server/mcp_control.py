@@ -12,7 +12,8 @@ from core.server.mcp import _ToolError, _check_keys, _schema, _tool_result
 
 SAFE_KEYS = frozenset({"whisper_model", "language", "device", "compute_type",
                        "output_formats", "batch_size", "vad_enabled",
-                       "word_timestamps", "diarization_enabled"})
+                       "word_timestamps", "diarization_enabled",
+                       "gpu_temperature_limit_enabled", "gpu_temperature_limit_c"})
 NAMES = frozenset({"transcribe_file", "get_settings", "set_settings",
                    "system_status", "list_models"})
 
@@ -68,6 +69,9 @@ def validate_settings(values: Any, cfg: dict[str, Any]) -> dict[str, Any]:
         elif key == "batch_size":
             if type(value) is not int or not 1 <= value <= 256:
                 raise _ToolError("batch_size must be an integer from 1 to 256")
+        elif key == "gpu_temperature_limit_c":
+            if type(value) is not int or not 60 <= value <= 90:
+                raise _ToolError("gpu_temperature_limit_c must be an integer from 60 to 90")
         elif type(value) is not bool:
             raise _ToolError(f"{key} must be a boolean")
     project = {k: v for k, v in values.items() if k in config.PROJECT_ALLOWED_KEYS}
