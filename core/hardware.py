@@ -528,7 +528,22 @@ def _cuda_batch_budget(model_path: str, compute: str, beam_size: int) -> tuple[i
     activation/cache costs for int8 weights; use the effective activation type.
     Unknown/custom architectures retain the previous conservative envelope.
     """
-    name = model_path.replace("\\", "/").rstrip("/").rsplit("/", 1)[-1]
+    parts = model_path.replace("\\", "/").rstrip("/").split("/")
+    # A cache snapshot is exactly two levels below its repository directory.
+    if len(parts) >= 3 and parts[-2] == "snapshots" and parts[-3].startswith("models--"):
+        name = parts[-3]
+    else:
+        name = parts[-1]
+    if name.startswith("models--"):
+        repo = name.split("--")
+        if len(repo) != 3:
+            return 1024, 384
+        _, vendor, name = repo
+        # Only stock conversion repositories are known from their names alone.
+        if vendor != "Systran" and not (
+            vendor == "mobiuslabsgmbh" and name == "faster-whisper-large-v3-turbo"
+        ):
+            return 1024, 384
     name = name.removeprefix("faster-whisper-")
     shapes = {
         "tiny": (384, 4), "base": (512, 6), "small": (768, 12),
@@ -536,7 +551,8 @@ def _cuda_batch_budget(model_path: str, compute: str, beam_size: int) -> tuple[i
         "large-v2": (1280, 32), "large-v3": (1280, 32),
         "large-v3-turbo": (1280, 4),
     }
-    shape = shapes.get(name.removesuffix(".en"))
+    shapes.update({f"{name}.en": shapes[name] for name in ("tiny", "base", "small", "medium")})
+    shape = shapes.get(name)
     precision = {"float16": 1, "int8_float16": 1, "bfloat16": 1,
                  "float32": 2, "int8_float32": 2, "int8": 2}.get(compute)
     if shape is None or precision is None:

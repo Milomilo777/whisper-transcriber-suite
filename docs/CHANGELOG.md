@@ -15,6 +15,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   CPU preference, and CPU fallback uses a supported precision.
 
 ### Fixed
+- Recognize stock model hub folders and cache snapshots when selecting calibrated CUDA batch memory budgets; keep custom model names on the conservative budget.
 - Calibrate CUDA batch memory budgets for model size, effective precision and beam size to improve GPU memory use.
 - Keep forced-language transcription working with runners that lack optional language-audit hooks.
 - Recover partially dropped speech using transcript-relative text rates, decode mixed-language audio in shorter windows, retain each cue's language in JSON, and warn when forced-language decoding disagrees with the audio.

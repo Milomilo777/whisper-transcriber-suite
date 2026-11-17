@@ -507,7 +507,8 @@ def _whisper_runner(
                 from .hardware import cuda_batch_size
                 options["batch_size"] = cuda_batch_size(
                     int(options["batch_size"]), model,
-                    model_path=str(slot.folder if slot is not None else config.get("model_path", "")),
+                    model_path=str(slot.folder if slot is not None else (
+                        config.get("model_path") or (config.get("model") or {}).get("name", ""))),
                     beam_size=int(options.get("beam_size", 5)))
                 memory_checked = True
             runner = pipeline

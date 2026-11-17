@@ -145,7 +145,14 @@ def test_batch_choice_logs_basis(setup, monkeypatch, caplog):
 
 @pytest.mark.parametrize("free", [3319, 3351])
 @pytest.mark.parametrize("backend", [False, True])
-def test_calibrated_large_batch_reaches_both_adapters(setup, monkeypatch, free, backend):
+@pytest.mark.parametrize("folder,expected", [
+    ("models/faster-whisper-large-v3", 8),
+    (r"C:\models\models--Systran--faster-whisper-large-v3", 8),
+    ("hub/models--Systran--faster-whisper-large-v3/snapshots/abc123", 8),
+    ("hub/models--mobiuslabsgmbh--faster-whisper-large-v3-turbo", 16),
+    (r"C:\hub\models--mobiuslabsgmbh--faster-whisper-large-v3-turbo\snapshots\abc123" + "\\", 16),
+])
+def test_calibrated_large_batch_reaches_both_adapters(setup, monkeypatch, free, backend, folder, expected):
     setup.model.compute_type = "float16"
     monkeypatch.setattr(hw, "cuda_free_memory_mb", lambda index=0: free)
     calls = []
@@ -154,13 +161,44 @@ def test_calibrated_large_batch_reaches_both_adapters(setup, monkeypatch, free, 
         be = FasterWhisperBackend()
         be._model = be._pipeline = setup
         be._device, be._ready = "cuda", True
-        be._model_path = "models/faster-whisper-large-v3"
+        be._model_path = folder
         be.transcribe_to_segments("unused", vad_parameters={})
     else:
-        monkeypatch.setitem(tr.config, "model_path", "models/faster-whisper-large-v3")
+        monkeypatch.setitem(tr.config, "model_path", folder)
         tr._whisper_runner(TranscriptionTask("unused"), batched=True).transcribe(
             np.zeros(1), batch_size=16, beam_size=5)
-    assert calls[0]["batch_size"] == 8
+    assert calls[0]["batch_size"] == expected
+
+
+@pytest.mark.parametrize("folder", [
+    "hub/faster-whisper-primeline-large-v3-turbo-de",
+    "hub/models--vendor--faster-whisper-primeline-large-v3-turbo-de",
+    "hub/models--vendor--faster-whisper-large-v3",
+    "hub/models--vendor--faster-whisper-large-v3/snapshots/abc123",
+    "hub/models--Systran--extra--faster-whisper-large-v3",
+    "hub/models--faster-whisper-large-v3",
+    "hub/models--Systran--faster-whisper-large-v3-custom/snapshots/abc123",
+    "hub/models--Systran--faster-whisper-large-v3/custom",
+    "hub/models--Systran--faster-whisper-large-v3/snapshots/abc123/custom",
+    "hub/models--Systran--faster-whisper-large-v3/snapshots",
+    "hub/faster-whisper-large-v3.en",
+])
+def test_custom_model_layout_keeps_conservative_budget(setup, monkeypatch, folder):
+    setup.model.compute_type = "float16"
+    monkeypatch.setattr(hw, "cuda_free_memory_mb", lambda index=0: 3351)
+    assert hw.cuda_batch_size(16, setup, model_path=folder) == 6
+
+
+@pytest.mark.parametrize("folder,expected", [("", 8), ("models/custom-large-v3", 6)])
+def test_configured_name_only_used_without_loaded_path(setup, monkeypatch, folder, expected):
+    setup.model.compute_type = "float16"
+    monkeypatch.setattr(hw, "cuda_free_memory_mb", lambda index=0: 3351)
+    monkeypatch.setitem(tr.config, "model_path", folder)
+    monkeypatch.setitem(tr.config, "model", {"name": "models--Systran--faster-whisper-large-v3"})
+    calls = []
+    setup.transcribe = lambda audio, **kw: (calls.append(kw) or iter(()), SimpleNamespace())
+    tr._whisper_runner(TranscriptionTask("unused"), batched=True).transcribe(np.zeros(1), batch_size=16)
+    assert calls[0]["batch_size"] == expected
 
 
 @pytest.mark.parametrize("name,compute,beam,free,expected", [
@@ -196,12 +234,16 @@ def test_calibrated_budget_honors_configured_limit_and_windows_path(setup, monke
 
 
 @pytest.mark.parametrize("beam,expected", [(5, 8), (10, 5)])
-def test_slot_uses_its_loaded_folder_and_requested_beam(setup, monkeypatch, beam, expected):
+@pytest.mark.parametrize("folder", [
+    "models/faster-whisper-large-v3",
+    "hub/models--Systran--faster-whisper-large-v3/snapshots/abc123",
+])
+def test_slot_uses_its_loaded_folder_and_requested_beam(setup, monkeypatch, beam, expected, folder):
     setup.model.compute_type = "float16"
     monkeypatch.setattr(hw, "cuda_free_memory_mb", lambda index=0: 3319)
     monkeypatch.setitem(tr.config, "model_path", "models/faster-whisper-small")
     monkeypatch.setattr(tr._LM_RUNNER, "slot", SimpleNamespace(
-        model=setup, pipeline=setup, folder="models/faster-whisper-large-v3"))
+        model=setup, pipeline=setup, folder=folder))
     calls = []
     setup.transcribe = lambda audio, **kw: (calls.append(kw) or iter(()), SimpleNamespace())
     tr._whisper_runner(TranscriptionTask("unused"), batched=True).transcribe(
