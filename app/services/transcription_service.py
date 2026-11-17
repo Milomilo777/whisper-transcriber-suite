@@ -49,7 +49,8 @@ def _apply_done_metadata(task: Any, event: dict[str, Any]) -> None:
     except (TypeError, ValueError, OverflowError):
         task.word_count = 0
     try:
-        task.audio_duration = float(event.get("audio_duration") or 0.0)
+        duration = float(event.get("audio_duration") or 0.0)
+        task.audio_duration = duration if math.isfinite(duration) and duration >= 0.0 else 0.0
     except (TypeError, ValueError, OverflowError):
         task.audio_duration = 0.0
     try:

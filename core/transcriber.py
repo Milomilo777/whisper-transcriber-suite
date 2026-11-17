@@ -505,7 +505,11 @@ def _whisper_runner(
                 options["batch_size"] = min(int(options.get("batch_size", 16)), _CUDA_BATCH_SIZE)
             if not memory_checked and _device_kind(device) == "cuda" and "batch_size" in options:
                 from .hardware import cuda_batch_size
-                options["batch_size"] = cuda_batch_size(int(options["batch_size"]), model)
+                options["batch_size"] = cuda_batch_size(
+                    int(options["batch_size"]), model,
+                    model_path=str(slot.folder if slot is not None else (
+                        config.get("model_path") or (config.get("model") or {}).get("name", ""))),
+                    beam_size=int(options.get("beam_size", 5)))
                 memory_checked = True
             runner = pipeline
         if pair:

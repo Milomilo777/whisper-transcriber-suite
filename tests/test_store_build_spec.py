@@ -87,12 +87,12 @@ class StoreBuildTests(unittest.TestCase):
         command, kwargs = next(call for call in self.calls if call[0][1:3] == ["-m", "PyInstaller"])
         self.assertEqual(command[:3], [str(self.python.resolve()), "-m", "PyInstaller"])
         self.assertNotIn("--noconfirm", command)
-        self.assertEqual(Path(kwargs["env"]["WTS_STORE_MARKER_PATH"]), self.options["build_dir"] / "STORE_BUILD.json")
-        self.assertEqual(Path(kwargs["env"]["PYINSTALLER_CONFIG_DIR"]), self.options["work_dir"] / "pyinstaller-config")
-        self.assertEqual(kwargs["cwd"], str(self.options["build_dir"] / "source-snapshot"))
+        self.assertEqual(Path(kwargs["env"]["WTS_STORE_MARKER_PATH"]).resolve(), (self.options["build_dir"] / "STORE_BUILD.json").resolve())
+        self.assertEqual(Path(kwargs["env"]["PYINSTALLER_CONFIG_DIR"]).resolve(), (self.options["work_dir"] / "pyinstaller-config").resolve())
+        self.assertEqual(Path(kwargs["cwd"]).resolve(), (self.options["build_dir"] / "source-snapshot").resolve())
         self.assertEqual(kwargs["env"]["PYTHONHASHSEED"], "0")
         self.assertEqual(kwargs["env"]["SOURCE_DATE_EPOCH"], "1794300000")
-        self.assertEqual(Path(command[-1]), self.options["build_dir"] / "source-snapshot/platform/windows/store/whisper_project_store.spec")
+        self.assertEqual(Path(command[-1]).resolve(), (self.options["build_dir"] / "source-snapshot/platform/windows/store/whisper_project_store.spec").resolve())
         self.assertEqual(kwargs["stdin"], subprocess.DEVNULL)
 
     def test_dirty_source_requires_explicit_scratch_fixture(self):
@@ -292,19 +292,21 @@ class StoreBuildTests(unittest.TestCase):
         self.assertEqual(Path.cwd(), cwd)
         self.assertEqual(len(calls), 1)
         args, kwargs = calls[0]
-        self.assertEqual(args[0], [str(self.source / "gui.py")])
-        self.assertIn((str(marker), "."), kwargs["datas"])
-        self.assertIn((str(self.source / "assets"), "assets"), kwargs["datas"])
-        self.assertIn((str(self.source / "LICENSE"), "."), kwargs["datas"])
-        self.assertIn((str(self.source / "THIRD_PARTY_NOTICES.md"), "."), kwargs["datas"])
+        self.assertEqual([Path(path).resolve() for path in args[0]], [(self.source / "gui.py").resolve()])
+        datas = [(Path(source).resolve(), destination) for source, destination in kwargs["datas"]]
+        self.assertIn((marker.resolve(), "."), datas)
+        self.assertIn(((self.source / "assets").resolve(), "assets"), datas)
+        self.assertIn(((self.source / "LICENSE").resolve(), "."), datas)
+        self.assertIn(((self.source / "THIRD_PARTY_NOTICES.md").resolve(), "."), datas)
         self.assertIn("core.distribution", kwargs["hiddenimports"])
         self.assertIn("core.transcriber", kwargs["hiddenimports"])
-        self.assertIn(str(self.source / "platform/windows/store/runtime_hook.py"), kwargs["runtime_hooks"])
+        self.assertIn((self.source / "platform/windows/store/runtime_hook.py").resolve(),
+                      [Path(path).resolve() for path in kwargs["runtime_hooks"]])
         self.assertIs(namespace["Analysis"], analysis)
         self.assertIs(namespace["EXE"], exe)
         self.assertEqual(namespace["a"].datas, keep_data)
-        for notice in ort_notices:
-            self.assertIn(notice, kwargs["datas"])
+        for source, destination in ort_notices:
+            self.assertIn((Path(source).resolve(), destination), datas)
         self.assertEqual(len(exe_calls), 1)
         manifest = ET.fromstring(exe_calls[0][1]["manifest"])
         settings = manifest.find("{urn:schemas-microsoft-com:asm.v3}application/{urn:schemas-microsoft-com:asm.v3}windowsSettings")

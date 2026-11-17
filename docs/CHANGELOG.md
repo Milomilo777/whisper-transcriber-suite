@@ -4,7 +4,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
-- Add an adjustable NVIDIA GPU temperature limit with predictive load reduction while transcription continues.
+- Add an adjustable NVIDIA GPU temperature limit (default 75 °C) with predictive load reduction while transcription continues.
 - AI assistants can start a standalone stdio MCP server, transcribe explicitly allowed local media, inspect models and hardware, and save safe transcription settings, including GPU temperature limits.
 
 - macOS packaging rejects missing or unreadable native requirements and a build
@@ -15,12 +15,17 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
   CPU preference, and CPU fallback uses a supported precision.
 
 ### Fixed
+- Recognize stock model hub folders and cache snapshots when selecting calibrated CUDA batch memory budgets; keep custom model names on the conservative budget.
+- Calibrate CUDA batch memory budgets for model size, effective precision and beam size to improve GPU memory use.
+- Keep Windows packaging checks reliable for non-ASCII filenames and temporary-directory aliases, and run Windows tests on integration pushes.
 - Keep forced-language transcription working with runners that lack optional language-audit hooks.
 - Recover partially dropped speech using transcript-relative text rates, decode mixed-language audio in shorter windows, retain each cue's language in JSON, and warn when forced-language decoding disagrees with the audio.
 - Size CUDA transcription batches from current free VRAM and halve them after an out-of-memory error while preserving completed audio.
 - Drop transcript cues and words that start after the audio ends, keeping their raw records for recovery so valid output can still finish.
 - Keep release notes and public download facts free of build hashes, and validate release assets before publication.
 - Show “Downloading…” for active downloads in the Download tab while preserving other task status labels.
+- Preserve valid speed metadata when another field overflows, and normalize invalid audio durations before completion hooks and usage reporting.
+- Report copied macOS verification cleanup phases and unresolved process identities without exposing exception messages or changing cleanup outcomes.
 - Keep the Windows clipboard fallback from handling Ctrl+Alt chords that produce no text. Hosted keyboard checks record key events and distinguish unverified input from application or cleanup failures.
 - Preserve automatic GPU fallback intent and report the unavailable-runtime reason after worker logging starts. Explicit and saved CPU choices stay free of false GPU warnings.
 - Count CPU fallback as a diagnostic recovery after a model load or decode failure. Automatic preflight CPU selection keeps its warning without inflating recovery counts.

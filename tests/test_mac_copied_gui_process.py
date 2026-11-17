@@ -138,3 +138,110 @@ def test_missing_psutil_is_unknown_before_any_process_lookup():
 def test_preflight_accepts_the_dependency_environment(proof, monkeypatch):
     monkeypatch.setattr(sys, "argv", ["copied_gui_process.py", "preflight"])
     assert proof.main() == 0
+
+
+@pytest.mark.parametrize("phase,error_name", [
+    ("lookup", "AccessDenied"), ("identity", "AccessDenied"),
+    ("terminate", "AccessDenied"), ("wait", "AccessDenied"),
+    ("wait", "TimeoutExpired"),
+])
+def test_unresolved_cleanup_reports_phase_and_exact_identity(
+        proof, tmp_path, monkeypatch, capsys, phase, error_name):
+    target = tmp_path / "Suite"
+    original = Process(target, pid=43958, created=1794659727.278269)
+    started = 1794659727.0
+    receipt = tmp_path / "receipt.json"
+    monkeypatch.setattr(proof.psutil, "process_iter", lambda: iter([original]))
+    assert proof.capture(str(target), started, receipt)
+    capsys.readouterr()
+    def fail(*args, **kwargs):
+        if error_name == "TimeoutExpired":
+            raise proof.psutil.TimeoutExpired(3, original.pid)
+        raise proof.psutil.AccessDenied(original.pid, "PRIVATE_EXCEPTION_MESSAGE")
+    def lookup(pid):
+        assert pid == original.pid
+        if phase == "lookup":
+            return fail()
+        return original
+    monkeypatch.setattr(proof.psutil, "Process", lookup)
+    if phase != "lookup":
+        monkeypatch.setattr(original, {"identity": "is_running", "terminate": "terminate", "wait": "wait"}[phase], fail)
+    monkeypatch.setattr(proof, "owned_processes", lambda *args, **kwargs: [])
+    assert not proof.stop(str(target), started, receipt)
+    output = capsys.readouterr().err
+    events = [json.loads(line)["copied_gui_cleanup"] for line in output.splitlines()]
+    assert events[0] == {"phase": phase, "error_type": error_name,
+                         "identity": {"pid": 43958, "created": 1794659727.278269}}
+    assert events[-1] == {"phase": "complete", "outcome": "unresolved", "remaining": []}
+    assert "PRIVATE_EXCEPTION_MESSAGE" not in output
+    assert original.terminated == (phase == "wait")
+
+
+def test_remaining_process_diagnostic_does_not_authorize_a_new_signal(
+        proof, tmp_path, monkeypatch, capsys):
+    target = tmp_path / "Suite"
+    original, late = Process(target), Process(target, pid=42425, created=1002)
+    receipt = tmp_path / "receipt.json"
+    monkeypatch.setattr(proof.psutil, "process_iter", lambda: iter([original]))
+    assert proof.capture(str(target), 1000, receipt)
+    capsys.readouterr()
+    monkeypatch.setattr(proof.psutil, "Process", lambda pid: original)
+    monkeypatch.setattr(proof.psutil, "process_iter", lambda: iter([original, late]))
+    assert not proof.stop(str(target), 1000, receipt)
+    event = json.loads(capsys.readouterr().err)["copied_gui_cleanup"]
+    assert event == {"phase": "complete", "outcome": "unresolved",
+                     "remaining": [{"pid": late.pid, "created": late.created}]}
+    assert original.terminated and not late.terminated
+
+
+def test_unavailable_remaining_scan_emits_phase_before_propagating(
+        proof, tmp_path, monkeypatch, capsys):
+    target = tmp_path / "Suite"
+    original = Process(target)
+    receipt = tmp_path / "receipt.json"
+    monkeypatch.setattr(proof.psutil, "process_iter", lambda: iter([original]))
+    assert proof.capture(str(target), 1000, receipt)
+    capsys.readouterr()
+    monkeypatch.setattr(proof.psutil, "Process", lambda pid: original)
+    def unknown(*args, **kwargs):
+        raise RuntimeError("PRIVATE_EXCEPTION_MESSAGE")
+    monkeypatch.setattr(proof, "owned_processes", unknown)
+    with pytest.raises(RuntimeError):
+        proof.stop(str(target), 1000, receipt)
+    output = capsys.readouterr().err
+    assert json.loads(output)["copied_gui_cleanup"] == {
+        "phase": "remaining_scan", "error_type": "RuntimeError"}
+    assert "PRIVATE_EXCEPTION_MESSAGE" not in output
+
+
+@pytest.mark.parametrize("sink_error", [OSError, BrokenPipeError, ValueError])
+@pytest.mark.parametrize("outcome", ["resolved", "timeout", "lookup-error", "scan-error"])
+def test_failed_diagnostic_sink_preserves_cleanup_outcome_and_exception(
+        proof, tmp_path, monkeypatch, sink_error, outcome):
+    target = tmp_path / "Suite"
+    original = Process(target)
+    receipt = tmp_path / "receipt.json"
+    monkeypatch.setattr(proof.psutil, "process_iter", lambda: iter([original]))
+    assert proof.capture(str(target), 1000, receipt)
+    original_error = RuntimeError("Original ownership failure")
+    def lookup(pid):
+        if outcome == "lookup-error":
+            raise original_error
+        return original
+    monkeypatch.setattr(proof.psutil, "Process", lookup)
+    original.timeout = outcome == "timeout"
+    def remaining(*args, **kwargs):
+        if outcome == "scan-error":
+            raise original_error
+        return []
+    monkeypatch.setattr(proof, "owned_processes", remaining)
+    def failed_print(*args, **kwargs):
+        assert kwargs["file"] is proof.sys.stderr
+        raise sink_error("Diagnostic sink is unavailable")
+    monkeypatch.setattr(proof, "print", failed_print, raising=False)
+    if outcome.endswith("error"):
+        with pytest.raises(RuntimeError) as caught:
+            proof.stop(str(target), 1000, receipt)
+        assert caught.value is original_error
+    else:
+        assert proof.stop(str(target), 1000, receipt) is (outcome == "resolved")
