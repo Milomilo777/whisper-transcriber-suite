@@ -41,7 +41,9 @@ class Engine:
 @pytest.fixture
 def decode(monkeypatch, tmp_path, rescue_vad_import):
     from core import _checkpoint as cp
+    from core import hardware
 
+    monkeypatch.setattr(hardware, "cuda_free_memory_mb", lambda index=0: None, raising=False)
     monkeypatch.setattr(cp, "user_data_dir", lambda: tmp_path)
     cfg = {**tr.config, "transcribe_backend": "faster_whisper", "model_path": "fake-model",
            "model_size": "small", "batch_size": 16, "word_timestamps": False,
@@ -94,7 +96,7 @@ def test_batched_oom_retries_only_tail_and_remembers_batch(decode, monkeypatch):
     logs = []
     tr.transcribe(TranscriptionTask(audio), log_cb=logs.append)
     tr.transcribe(TranscriptionTask(audio), log_cb=logs.append)
-    assert [c[1]["batch_size"] for c in engine.calls] == [16, 1, 1]
+    assert [c[1]["batch_size"] for c in engine.calls] == [16, 8, 8]
     assert [(s["start"], s["end"], s["text"]) for s in written[0]] == [
         (0, 5, "first"), (5, 9, "tail")]
     assert slices[0][:2] == (audio, 5)
@@ -137,7 +139,7 @@ def test_resumed_tail_recovers_without_repeating_checkpoint(decode, monkeypatch)
     monkeypatch.setattr(tr, "MODEL", engine)
     monkeypatch.setattr(tr, "PIPELINE", engine)
     assert tr.resume_transcription(task)
-    assert [c[1]["batch_size"] for c in engine.calls] == [16, 1]
+    assert [c[1]["batch_size"] for c in engine.calls] == [16, 8]
     assert [(s["start"], s["end"], s["text"]) for s in written[0]] == [
         (0, 7, "saved"), (7, 10, "new"), (10, 12, "tail")]
     assert [start for _, start, _ in slices] == [7, 3]
@@ -183,7 +185,7 @@ def test_faster_whisper_backend_recovers_segment_iteration(decode, monkeypatch):
     segments, _ = backend.transcribe_to_segments(audio)
     assert [s["text"] for s in segments] == ["first", "tail"]
     assert segments[-1]["start"] == 2
-    assert [c[1]["batch_size"] for c in engine.calls] == [16, 1]
+    assert [c[1]["batch_size"] for c in engine.calls] == [16, 8]
 
 
 def test_checkpoint_is_saved_before_reloading_weights(decode, monkeypatch):
@@ -355,3 +357,39 @@ def test_decoder_baseexception_keeps_latest_checkpoint(decode, monkeypatch, exc)
     with pytest.raises(type(exc)):
         tr.transcribe(TranscriptionTask(audio))
     assert cp.load_checkpoint(audio)["segments"][0]["text"] == "latest text"
+
+
+
+@pytest.mark.parametrize("backend", [False, True])
+def test_lazy_oom_ladder_then_device_fallback_preserves_every_tail(decode, monkeypatch, backend):
+    audio, written, slices = decode
+    gpu = Engine([[segment(0, 1, str(i)), RuntimeError(OOM)] for i in range(5)])
+    quantized = Engine([[segment(0, 1, "quantized"), RuntimeError(OOM)]], compute="int8_float16")
+    cpu = Engine([[segment(0, 1, "cpu")]], "cpu", "int8")
+    loads = []
+
+    def load(path, *, device, compute_type):
+        loads.append((device, compute_type))
+        return quantized if device == "cuda" else cpu
+
+    monkeypatch.setattr(tr, "MODEL", gpu)
+    monkeypatch.setattr(tr, "PIPELINE", gpu)
+    monkeypatch.setattr(tr, "WhisperModel", load)
+    monkeypatch.setattr(tr, "_wrap_for_batched", lambda model: model if model is quantized else None)
+    if backend:
+        from core.backends import faster_whisper_be as be
+        adapter = be.FasterWhisperBackend()
+        adapter._model = adapter._pipeline = gpu
+        adapter._device, adapter._compute_type, adapter._ready = "cuda", "float16", True
+        monkeypatch.setattr(be, "WhisperModel", load)
+        monkeypatch.setattr(adapter, "_wrap_for_batched", lambda: adapter._model if adapter._device == "cuda" else None)
+        data, _ = adapter.transcribe_to_segments(audio, vad_parameters={})
+    else:
+        tr.transcribe(TranscriptionTask(audio))
+        data = written[0]
+    assert [call[1]["batch_size"] for call in gpu.calls] == [16, 8, 4, 2, 1]
+    assert loads == [("cuda", "int8_float16"), ("cpu", "int8")]
+    assert [(s["start"], s["end"], s["text"]) for s in data] == [
+        (i, i + 1, text) for i, text in enumerate(["0", "1", "2", "3", "4", "quantized", "cpu"])]
+    assert [start for _, start, _ in slices] == [1, 2, 3, 4, 5, 6]
+    assert all(not path.exists() for _, _, path in slices)

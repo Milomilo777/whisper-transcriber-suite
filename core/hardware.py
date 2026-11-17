@@ -460,6 +460,84 @@ def prepare_cuda_runtime() -> bool:
 # ---- what the NVIDIA driver itself reports -------------------------------------
 
 
+def _cuda_driver_library() -> Any:
+    """Load the driver shipped with the OS, without a CUDA Toolkit dependency."""
+    if sys.platform == "win32":
+        names: tuple[str, ...] = ("nvcuda.dll",)
+    elif sys.platform.startswith("linux"):
+        names = ("libcuda.so.1", "libcuda.so")
+    else:
+        return None
+    import ctypes
+    lib: Any = None
+    for n in names:
+        try:
+            lib = ctypes.CDLL(n)
+            break
+        except OSError:
+            continue
+    return lib
+
+
+def cuda_free_memory_mb(device_index: int = 0) -> int | None:
+    """Fresh free VRAM for a CUDA ordinal; unknown preserves configured batching.
+
+    Query after model loading, so its weights are already charged. Retain the
+    existing primary context temporarily on the probe thread and balance every
+    successful retain/push, without replacing the decoder's current context.
+    """
+    def probe() -> int | None:
+        import ctypes
+        lib = _cuda_driver_library()
+        if lib is None or lib.cuInit(0) != 0:
+            return None
+        dev = ctypes.c_int()
+        if lib.cuDeviceGet(ctypes.byref(dev), device_index) != 0:
+            return None
+        context = ctypes.c_void_p()
+        if lib.cuDevicePrimaryCtxRetain(ctypes.byref(context), dev) != 0:
+            return None
+        try:
+            if lib.cuCtxPushCurrent_v2(context) != 0:
+                return None
+            try:
+                free, total = ctypes.c_size_t(), ctypes.c_size_t()
+                if lib.cuMemGetInfo_v2(ctypes.byref(free), ctypes.byref(total)) != 0:
+                    return None
+                if total.value == 0 or free.value > total.value:
+                    return None
+                return free.value // (1024 * 1024)
+            finally:
+                popped = ctypes.c_void_p()
+                lib.cuCtxPopCurrent_v2(ctypes.byref(popped))
+        finally:
+            lib.cuDevicePrimaryCtxRelease_v2(dev)
+
+    return _run_with_timeout(probe, 2.0, None)
+
+
+def cuda_batch_size(configured: int, model: Any) -> int:
+    """Conservative incremental decode budget, measured after weights are loaded.
+
+    Reserve 1 GiB for other allocations and allow 384 MiB per batch item. This
+    deliberately exceeds the observed large-model float16 beam-5 cost; smaller
+    models keep the same conservative envelope until separately calibrated.
+    A snapshot cannot reserve memory against another process allocating later.
+    """
+    configured = max(1, configured)
+    indices = getattr(getattr(model, "model", None), "device_index", None)
+    if isinstance(indices, int):
+        indices = [indices]
+    if not isinstance(indices, (list, tuple)) or len(indices) != 1:
+        return configured
+    free = cuda_free_memory_mb(int(indices[0]))
+    if free is None:
+        return configured
+    chosen = min(configured, max(1, (free - 1024) // 384))
+    logger.info("CUDA batch size %d (configured %d; free VRAM %d MiB)", chosen, configured, free)
+    return chosen
+
+
 def _cuda_driver_info() -> dict[str, Any]:
     """GPU list from the CUDA driver API, independent of CTranslate2 and torch.
 
@@ -469,20 +547,8 @@ def _cuda_driver_info() -> dict[str, Any]:
     or ``{}`` when there is no usable NVIDIA driver. May block on a broken
     driver: call it through ``_run_with_timeout``.
     """
-    if sys.platform == "win32":
-        names: tuple[str, ...] = ("nvcuda.dll",)
-    elif sys.platform.startswith("linux"):
-        names = ("libcuda.so.1", "libcuda.so")
-    else:
-        return {}
     import ctypes
-    lib: Any = None
-    for n in names:
-        try:
-            lib = ctypes.CDLL(n)
-            break
-        except OSError:
-            continue
+    lib = _cuda_driver_library()
     if lib is None or lib.cuInit(0) != 0:
         return {}
     version = ctypes.c_int(0)

@@ -594,8 +594,8 @@ class FasterWhisperBackend(Backend):
 
     def _recover_decode(self, options: dict[str, Any], oom: bool, log_cb: Callable[[str], None] | None) -> None:
         if oom and int(options.get("batch_size", 1)) > 1:
-            self._decode_batch_size = options["batch_size"] = 1
-            message = "CUDA ran out of memory; retrying the remaining audio with batch size 1."
+            self._decode_batch_size = options["batch_size"] = max(1, int(options["batch_size"]) // 2)
+            message = f"CUDA ran out of memory; retrying the remaining audio with batch size {self._decode_batch_size}."
         else:
             target = "cuda" if oom and self._compute_type not in ("int8", "int8_float16") else "cpu"
             compute = "int8_float16" if target == "cuda" else "int8"
@@ -659,6 +659,11 @@ class FasterWhisperBackend(Backend):
             lambda options, oom: self._recover_decode(options, oom, log_cb), self._vad_window_s,
         )
         if self._pipeline is not None:
+            if self._decode_batch_size:
+                batch_size = min(batch_size, self._decode_batch_size)
+            if self._device.split(":")[0] == "cuda":
+                from ..hardware import cuda_batch_size
+                batch_size = cuda_batch_size(int(batch_size), self._model)
             transcribe_kwargs["batch_size"] = int(batch_size)
 
         with vad_window.windowed_vad(self._vad_window_s):

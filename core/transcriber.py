@@ -487,7 +487,10 @@ def _whisper_runner(
     slot = None if live_chunk else getattr(_LM_RUNNER, "slot", None)
     pair = None if live_chunk or language_check else mixed_language_pair(task)
 
+    memory_checked = False
+
     def current(options: dict[str, Any]) -> Any:
+        nonlocal memory_checked
         model = slot.model if slot is not None else MODEL
         pipeline = slot.pipeline if slot is not None else PIPELINE
         # Long audio needs VAD or explicit clips in the batched engine.
@@ -500,15 +503,19 @@ def _whisper_runner(
         else:
             if _CUDA_BATCH_SIZE:
                 options["batch_size"] = min(int(options.get("batch_size", 16)), _CUDA_BATCH_SIZE)
+            if not memory_checked and _device_kind(device) == "cuda" and "batch_size" in options:
+                from .hardware import cuda_batch_size
+                options["batch_size"] = cuda_batch_size(int(options["batch_size"]), model)
+                memory_checked = True
             runner = pipeline
         return _two_language_runner(runner, pair) if pair else runner
 
     def recover(options: dict[str, Any], oom: bool) -> None:
         global MODEL, PIPELINE, device, compute_type, _DEVICE_DOWNGRADED, _CUDA_BATCH_SIZE
         if oom and int(options.get("batch_size", 1)) > 1:
-            _CUDA_BATCH_SIZE = options["batch_size"] = 1
+            _CUDA_BATCH_SIZE = options["batch_size"] = max(1, int(options["batch_size"]) // 2)
             task._telemetry_recovery = "cuda_batch_reduced"
-            log("CUDA ran out of memory; retrying the remaining audio with batch size 1.", log_cb)
+            log(f"CUDA ran out of memory; retrying the remaining audio with batch size {_CUDA_BATCH_SIZE}.", log_cb)
             return
         target = "cuda" if oom and compute_type not in ("int8", "int8_float16") else "cpu"
         compute = "int8_float16" if target == "cuda" else "int8"
