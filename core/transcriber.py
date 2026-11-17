@@ -497,7 +497,7 @@ def _whisper_runner(
         without_segmentation = not _whisper_has_segmentation(options)
         if without_segmentation:
             options.pop("clip_timestamps", None)
-        if not batched or pipeline is None or without_segmentation:
+        if pair or not batched or pipeline is None or without_segmentation:
             options.pop("batch_size", None)
             runner = model
         else:
@@ -3807,7 +3807,10 @@ def transcribe(
         # used for a clipped task, so it falls back to the plain model
         # (still fast for a short slice).
         clip = _clip_timestamps_arg(task)
-        use_batched = base_pipeline and clip is None and _whisper_has_segmentation(transcribe_kwargs)
+        # Sequential decoding retains timestamp-based seeking into unfinished
+        # windows. Batched decoding can drop the remaining speech in mixed audio.
+        use_batched = (base_pipeline and clip is None and not mixed_language_pair(task)
+                       and _whisper_has_segmentation(transcribe_kwargs))
         runner = _whisper_runner(task, batched=use_batched, log_cb=log_cb)
         if use_batched:
             transcribe_kwargs["batch_size"] = int(config.get("batch_size", 16))
@@ -5052,7 +5055,8 @@ def resume_transcription(
             if cp_language and not pair:
                 transcribe_kwargs["language"] = cp_language
 
-            use_batched = PIPELINE is not None and _whisper_has_segmentation(transcribe_kwargs)
+            use_batched = (PIPELINE is not None and not pair
+                           and _whisper_has_segmentation(transcribe_kwargs))
             runner = _whisper_runner(task, batched=use_batched, log_cb=log_cb)
             runner.language_offset = last_end_time
             if use_batched:
