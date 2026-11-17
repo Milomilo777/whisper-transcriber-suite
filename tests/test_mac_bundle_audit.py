@@ -87,7 +87,7 @@ def inspect_bundle(tmp_path, *, executable=True, minimum="10.15", tool_error="",
         + code + '\n[ "$bad" = 0 ]\n', encoding="utf-8", newline="\n",
     )
     return subprocess.run([bash, str(script), bundle.as_posix(), Path(sys.executable).as_posix()],
-                          cwd=ROOT, capture_output=True, text=True, timeout=30)
+                          cwd=ROOT, capture_output=True, encoding="utf-8", timeout=30)
 
 
 @pytest.mark.parametrize("tool_error", ["-L", "-l", "file", "lipo"])
