@@ -6,6 +6,61 @@ import pytest
 from core import tts_kokoro as k
 
 
+@pytest.mark.parametrize("version", ["2.0.0", "2.0.1", "3.0.0", "1.13.7", "unknown", None, 1])
+def test_load_rejects_runtime_without_supported_oov_frontend(monkeypatch, version):
+    import sys
+    from types import SimpleNamespace
+
+    monkeypatch.setitem(sys.modules, "sherpa_onnx", SimpleNamespace(__version__=version))
+    monkeypatch.setattr(k, "model_dir", lambda: pytest.fail("accessed model before version check"))
+    with pytest.raises(RuntimeError, match="sherpa-onnx>=1.13.8,<2"):
+        k._load("en-us")
+
+
+@pytest.mark.parametrize("lang", list(k._LANG_SCRIPTS))
+def test_load_keeps_legacy_multilingual_frontend(monkeypatch, tmp_path, lang):
+    import sys
+    from types import SimpleNamespace
+
+    for name in ("lexicon-us-en.txt", "lexicon-gb-en.txt", "lexicon-zh.txt", "date.fst"):
+        (tmp_path / name).touch()
+    (tmp_path / "dict").mkdir()
+    seen = {}
+
+    def engine(config):
+        seen["config"] = config
+        return object()
+
+    monkeypatch.setitem(sys.modules, "sherpa_onnx", SimpleNamespace(
+        __version__="1.13.8", OfflineTtsKokoroModelConfig=SimpleNamespace,
+        OfflineTtsModelConfig=SimpleNamespace, OfflineTtsConfig=SimpleNamespace,
+        OfflineTts=engine,
+    ))
+    monkeypatch.setattr(k, "model_dir", lambda: tmp_path)
+    monkeypatch.setattr(k, "_engines", {})
+    loaded = k._load(lang)
+    assert k._load(lang) is loaded
+    cfg = seen["config"]
+    kokoro = cfg.model.kokoro
+    assert kokoro.lang == ("" if lang in ("en-us", "en-gb", "zh") else lang)
+    english = "lexicon-gb-en.txt" if lang == "en-gb" else "lexicon-us-en.txt"
+    assert kokoro.lexicon.split(",") == [str(tmp_path / english), str(tmp_path / "lexicon-zh.txt")]
+    assert kokoro.data_dir == str(tmp_path / "espeak-ng-data")
+    assert cfg.rule_fsts == str(tmp_path / "date.fst")
+    assert cfg.model.provider == "cpu"
+
+
+def test_dependencies_keep_the_bundled_espeak_frontend():
+    import tomllib
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[2]
+    requirement = "sherpa-onnx>=1.13.8,<2"
+    assert requirement in (root / "requirements.txt").read_text(encoding="utf-8").splitlines()
+    metadata = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
+    assert requirement in metadata["project"]["dependencies"]
+
+
 def test_voice_table_matches_the_model_order():
     # sherpa-onnx kokoro-multi-lang-v1_0: ids 0..52, em_santa appended at 53.
     assert len(k.VOICES) == 54

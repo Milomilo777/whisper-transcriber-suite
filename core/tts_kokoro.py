@@ -256,6 +256,17 @@ def _load(lang_code: str) -> Any:
     """
     import sherpa_onnx  # type: ignore[import-not-found]
 
+    # 2.x removed bundled espeak; its lexicon-only frontend silently skips
+    # unknown words. Keep the frontend used by this model until an external
+    # phonemizer is shipped: https://github.com/k2-fsa/sherpa-onnx/pull/4055
+    version_text = getattr(sherpa_onnx, "__version__", "")
+    version = re.match(r"^(\d+)\.(\d+)\.(\d+)(?:$|[.+-])", version_text) if isinstance(version_text, str) else None
+    if version is None or not (1, 13, 8) <= tuple(map(int, version.groups())) < (2, 0, 0):
+        raise RuntimeError(
+            "Text to Voice requires sherpa-onnx>=1.13.8,<2 for unknown-word "
+            "pronunciation. Reinstall the application or its required dependencies."
+        )
+
     key = lang_code
     with _engine_lock:
         eng = _engines.get(key)
