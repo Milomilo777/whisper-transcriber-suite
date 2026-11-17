@@ -62,7 +62,8 @@ python-bidi>=0.6
 # Speaker diarisation (sherpa-onnx + pyannote-3.0 ONNX). No HF
 # token required. Lazy-imported — absence disables the feature
 # without crashing the app.
-sherpa-onnx>=1.10
+# 2.x removes the bundled espeak frontend needed for Kokoro unknown words.
+sherpa-onnx>=1.13.8,<2
 
 # Folder watcher (auto-transcribe on new file)
 watchdog>=3.0
