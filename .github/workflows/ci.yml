@@ -1,7 +1,7 @@
 name: CI
 
 # Run on master/release/integration pushes and the PR branches below.
-# Release and integration pushes use Ubuntu only; other events keep both OSes.
+# Release pushes use Ubuntu; integration also checks Windows on Python 3.11.
 #
 # The compiled-exe smoke tests under tests/smoke/ are intentionally
 # excluded from CI â€” they need the 3 GB Whisper model + a real
@@ -51,6 +51,7 @@ jobs:
         # core sanity check (no tkinter UI, the smoke tests skip).
         os: ${{ fromJSON(github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/release/') || github.ref == 'refs/heads/codex/integration-2.4.x') && '["ubuntu-latest"]' || '["windows-latest","ubuntu-latest"]') }}
         python-version: ["3.11", "3.12"]
+        include: ${{ fromJSON(github.event_name == 'push' && github.ref == 'refs/heads/codex/integration-2.4.x' && '[{"os":"windows-latest","python-version":"3.11"}]' || '[]') }}
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

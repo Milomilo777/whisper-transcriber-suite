@@ -17,6 +17,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 ### Fixed
 - Recognize stock model hub folders and cache snapshots when selecting calibrated CUDA batch memory budgets; keep custom model names on the conservative budget.
 - Calibrate CUDA batch memory budgets for model size, effective precision and beam size to improve GPU memory use.
+- Keep Windows packaging checks reliable for non-ASCII filenames and temporary-directory aliases, and run Windows tests on integration pushes.
 - Keep forced-language transcription working with runners that lack optional language-audit hooks.
 - Recover partially dropped speech using transcript-relative text rates, decode mixed-language audio in shorter windows, retain each cue's language in JSON, and warn when forced-language decoding disagrees with the audio.
 - Size CUDA transcription batches from current free VRAM and halve them after an out-of-memory error while preserving completed audio.
