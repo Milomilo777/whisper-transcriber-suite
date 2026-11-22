@@ -7,6 +7,7 @@ import os
 import shutil
 import threading
 import time
+from functools import partial
 from pathlib import Path
 from typing import Any, Callable, Generator, Iterable
 
@@ -1002,26 +1003,35 @@ def _progress_feed(
     approx_bytes: int,
     progress_cb: Callable[[dict[str, Any]], None] | None,
     interval: float = 1.0,
+    *,
+    measure_bytes: Callable[[], int] | None = None,
 ) -> Generator[None, None, None]:
     """Report download progress while either model downloader runs.
 
     ``faster_whisper.download_model`` has no progress hook, so a helper
-    thread measures the bytes in ``model_path`` (finished files plus the
-    ``.part`` files and legacy ``.incomplete`` blobs) against the model size.
+    thread measures the legacy folder or uses the pinned downloader's byte count.
     """
     if progress_cb is None or approx_bytes <= 0:
         yield
         return
     stop = threading.Event()
-    start_bytes = _tree_size(model_path)
+    def legacy_bytes() -> int:
+        return _tree_size(model_path)
+
+    measure = measure_bytes or legacy_bytes
+    start_bytes = measure()
     started = time.monotonic()
 
     def _feed() -> None:
         while not stop.wait(interval):
-            done = _tree_size(model_path)
+            done = measure()
             elapsed = max(0.001, time.monotonic() - started)
             speed = max(0.0, (done - start_bytes) / elapsed)
             left = max(0, approx_bytes - done)
+            remaining = left / speed if speed else None
+            if measure_bytes is not None and remaining is not None:
+                # Avoid displaying 00:00 while bytes are in flight or being verified.
+                remaining = math.ceil(remaining) if left else None
             _notify(
                 progress_cb,
                 phase="download",
@@ -1029,7 +1039,7 @@ def _progress_feed(
                 downloaded=done,
                 total=approx_bytes,
                 speed=speed,
-                remaining=(left / speed) if speed else None,
+                remaining=remaining,
                 # The catalog size is approximate: stay below 100 until done.
                 percent=min(99, int(done * 100 / approx_bytes)),
                 detail=f"about {_fmt_bytes(done)} of {_fmt_bytes(approx_bytes)}",
@@ -1223,8 +1233,12 @@ def _ensure_model(
         return str(model_path)
 
     offline.require_online(_offline_download_text(model))
-    approx_bytes = (sum(info.size for info in manifest_entry.files.values()) if manifest_entry else
-                    _approx_model_bytes(config, str(model.get("name") or "")))
+    measure_bytes: Callable[[], int] | None = None
+    if manifest_entry is not None:
+        approx_bytes = sum(info.size for info in manifest_entry.files.values())
+        measure_bytes = partial(model_download.downloaded_bytes, model_path, manifest_entry)
+    else:
+        approx_bytes = _approx_model_bytes(config, str(model.get("name") or ""))
     if not weights_present and manifest_entry is None:
         # An installed model with a leftover blob is used as it is if the
         # resume fails, so a full disk must not refuse it here.
@@ -1235,7 +1249,7 @@ def _ensure_model(
         )
     # The partial folder is kept: the download resumes from it.
     try:
-        with _progress_feed(model_path, approx_bytes, progress_cb):
+        with _progress_feed(model_path, approx_bytes, progress_cb, measure_bytes=measure_bytes):
             reason = _huggingface_failure(
                 model, model_path, status_cb, progress_cb, cancel_event, hf_repo
             )

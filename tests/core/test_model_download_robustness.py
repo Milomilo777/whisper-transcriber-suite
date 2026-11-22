@@ -573,7 +573,7 @@ def test_hub_download_reports_progress(tmp_path, monkeypatch):
     monkeypatch.setitem(sys.modules, "faster_whisper.utils", fake)
     real_feed = mm._progress_feed
     monkeypatch.setattr(mm, "_progress_feed",
-                        lambda p, b, cb: real_feed(p, b, cb, interval=0.05))
+                        lambda *args, **kwargs: real_feed(*args, interval=0.05, **kwargs))
     payloads: list[dict] = []
     mm.ensure_model(_config(model_path, HF_ONLY_ENTRY), progress_cb=payloads.append)
     sizes = [p["downloaded"] for p in payloads if p.get("downloaded")]

@@ -14,6 +14,7 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from queue import Queue
 from unittest.mock import Mock
 
 import pytest
@@ -527,6 +528,62 @@ def test_manifest_manager_checks_missing_tokenizer_and_progress(tmp_path, monkey
     assert (model / "config.json").read_bytes() == PAYLOAD
 
 
+def test_pinned_progress_counts_resumed_bytes_without_legacy_cache(tmp_path, monkeypatch):
+    config_bytes = b"{}"
+    (tmp_path / "config.json").write_bytes(config_bytes)
+    part = tmp_path / "model.bin.part"
+    part.write_bytes(PAYLOAD[:65536])
+    stale = tmp_path / ".cache" / "huggingface" / "download" / "old.incomplete"
+    stale.parent.mkdir(parents=True)
+    stale.write_bytes(PAYLOAD)
+    (tmp_path / "other.part").write_bytes(PAYLOAD)
+    pinned = entry(**{"config.json": config_bytes})
+    monkeypatch.setattr(md, "load_manifest", lambda: {REPO: pinned})
+    feed = mm._progress_feed
+    monkeypatch.setattr(mm, "_progress_feed",
+                        lambda *args, **kwargs: feed(*args, interval=0.02, **kwargs))
+    updates = Queue()
+
+    def on_progress(payload):
+        if "downloaded" in payload:
+            updates.put(payload)
+
+    transfer = md.ModelDownloader._transfer
+
+    def next_size_after(previous):
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline:
+            tick = updates.get(timeout=max(0, deadline - time.monotonic()))
+            if tick["downloaded"] != previous:
+                return tick
+        pytest.fail("progress did not report the growing part")
+
+    def sample_transfer(self, url, path, info, cancel):
+        before = updates.get(timeout=5)
+        assert before["downloaded"] == len(config_bytes) + 65536
+        with path.open("ab") as stream:
+            stream.write(PAYLOAD[65536:131072])
+        after = next_size_after(before["downloaded"])
+        assert after["downloaded"] == len(config_bytes) + 131072
+        assert after["downloaded"] < after["total"] == len(config_bytes) + len(PAYLOAD)
+        assert after["remaining"] >= 1
+        result = transfer(self, url, path, info, cancel)
+        full = next_size_after(after["downloaded"])
+        # The transfer may emit intermediate samples. Stay in the .part
+        # stage until the feeder observes the full-size file.
+        while full["downloaded"] != after["total"]:
+            full = next_size_after(full["downloaded"])
+        assert full["percent"] == 99 and full["remaining"] is None
+        return result
+
+    monkeypatch.setattr(md.ModelDownloader, "_transfer", sample_transfer)
+    with Server() as server:
+        monkeypatch.setattr(md, "DEFAULT_HOSTS", (server.url,))
+        config = {"model": {"name": "fixture", "hf_repo": REPO}, "model_path": str(tmp_path)}
+        assert Path(mm.ensure_model(config, progress_cb=on_progress)) == tmp_path
+        assert [value for _, value in server.gets] == ["bytes=131072-"]
+
+
 def test_part_counts_toward_tree_size_and_unfinished(tmp_path):
     part = tmp_path / "model.bin.part"
     part.write_bytes(b"retained prefix")
@@ -1008,10 +1065,11 @@ def test_weights_are_installed_last_so_a_cut_download_never_looks_installed(tmp_
 
 
 @pytest.mark.parametrize("leftover", ["orphan.part", ".cache/huggingface/download/old.incomplete"])
-def test_r3_pinned_install_ignores_unrelated_remnants(tmp_path, monkeypatch, leftover):
+def test_pinned_install_only_cleans_legacy_cache(tmp_path, monkeypatch, leftover):
     remnant = tmp_path / leftover
     remnant.parent.mkdir(parents=True, exist_ok=True)
     remnant.write_bytes(b"keep me")
+    (tmp_path / "preserve.incomplete").write_bytes(b"outside cache")
     monkeypatch.setattr(md, "load_manifest", lambda: {REPO: entry()})
     config = {"model": {"name": "fixture", "hf_repo": REPO}, "model_path": str(tmp_path)}
     with Server() as server:
@@ -1020,7 +1078,103 @@ def test_r3_pinned_install_ignores_unrelated_remnants(tmp_path, monkeypatch, lef
         assert Path(mm.ensure_model(config)) == tmp_path
         assert len(server.heads) == len(server.gets) == 1
     assert not mm._hf_download_unfinished(tmp_path, REPO)
-    assert remnant.read_bytes() == b"keep me"
+    if leftover.endswith(".incomplete"):
+        assert not remnant.exists()
+    else:
+        assert remnant.read_bytes() == b"keep me"
+    assert (tmp_path / "preserve.incomplete").read_bytes() == b"outside cache"
+    assert (tmp_path / "model.bin").read_bytes() == PAYLOAD
+
+
+@pytest.mark.parametrize("alias_at", ["cache_root", "nested"])
+def test_pinned_cleanup_keeps_partials_outside_model(tmp_path, alias_at):
+    model = tmp_path / "model"
+    cache = model / ".cache" / "huggingface" / "download"
+    outside = tmp_path / "other"
+    outside.mkdir()
+    marker = outside / "outside.incomplete"
+    marker.write_bytes(b"other model")
+    if alias_at == "cache_root":
+        alias = cache
+    else:
+        alias = cache / "alias"
+    alias.parent.mkdir(parents=True)
+    if os.name == "nt":
+        subprocess.run(["cmd", "/d", "/c", "mklink", "/J", str(alias), str(outside)],
+                       check=True, capture_output=True)
+    else:
+        alias.symlink_to(outside, target_is_directory=True)
+
+    assert (alias / marker.name).read_bytes() == b"other model"
+    with Server() as server:
+        assert downloader(server.url).download(REPO, model, entry())
+    assert marker.read_bytes() == b"other model"
+
+
+def test_pinned_cleanup_preserves_stale_blob_on_transfer_failure(tmp_path):
+    stale = tmp_path / ".cache" / "huggingface" / "download" / "old.incomplete"
+    stale.parent.mkdir(parents=True)
+    stale.write_bytes(b"saved legacy partial")
+    with Server(actions=[{"cut": 65536}]) as server:
+        with pytest.raises(mm.HuggingFaceDownloadError):
+            downloader(server.url).download(REPO, tmp_path, entry())
+    assert stale.read_bytes() == b"saved legacy partial"
+    assert (tmp_path / "model.bin.part").stat().st_size == 65536
+
+
+def test_pinned_cleanup_preserves_cache_while_legacy_lock_is_held(tmp_path):
+    from filelock import FileLock
+
+    stale = tmp_path / ".cache" / "huggingface" / "download" / "active.incomplete"
+    stale.parent.mkdir(parents=True)
+    stale.write_bytes(b"legacy transfer still owns this")
+    with Server() as server, FileLock(str(stale.parent / "model.bin.lock")):
+        assert downloader(server.url).download(REPO, tmp_path, entry())
+    assert stale.read_bytes() == b"legacy transfer still owns this"
+    assert (tmp_path / "model.bin").read_bytes() == PAYLOAD
+
+
+def test_pinned_cleanup_preserves_partial_when_legacy_starts_during_scan(tmp_path, monkeypatch):
+    from filelock import FileLock
+
+    stale = tmp_path / ".cache" / "huggingface" / "download" / "active.incomplete"
+    stale.parent.mkdir(parents=True)
+    stale.write_bytes(b"legacy partial")
+    lock = FileLock(str(stale.parent / "model.bin.lock"))
+    iterdir = Path.iterdir
+
+    def start_legacy_writer(path):
+        snapshot = list(iterdir(path))
+        if path == stale.parent and not lock.is_locked:
+            lock.acquire(timeout=0)
+        return iter(snapshot)
+
+    monkeypatch.setattr(Path, "iterdir", start_legacy_writer)
+    try:
+        with Server() as server:
+            assert downloader(server.url).download(REPO, tmp_path, entry())
+        assert lock.is_locked
+        assert stale.read_bytes() == b"legacy partial"
+    finally:
+        lock.release()
+
+
+def test_pinned_cleanup_honors_cancel_after_publishing_model(tmp_path, monkeypatch):
+    cancel = threading.Event()
+    stale = tmp_path / ".cache" / "huggingface" / "download" / "old.incomplete"
+    stale.parent.mkdir(parents=True)
+    stale.write_bytes(b"legacy partial")
+    lstat = Path.lstat
+
+    def cancel_when_inspecting_cache(path):
+        if path == stale.parent:
+            cancel.set()
+        return lstat(path)
+
+    monkeypatch.setattr(Path, "lstat", cancel_when_inspecting_cache)
+    with Server() as server:
+        assert not downloader(server.url).download(REPO, tmp_path, entry(), cancel_event=cancel)
+    assert stale.read_bytes() == b"legacy partial"
     assert (tmp_path / "model.bin").read_bytes() == PAYLOAD
 
 
