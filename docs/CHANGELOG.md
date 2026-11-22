@@ -4,17 +4,13 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+
 - Add an adjustable NVIDIA GPU temperature limit (default 75 °C) with predictive load reduction while transcription continues.
 - AI assistants can start a standalone stdio MCP server, transcribe explicitly allowed local media, inspect models and hardware, and save safe transcription settings, including GPU temperature limits.
 
-- macOS packaging rejects missing or unreadable native requirements and a build
-  host below the declared deployment target. The DMG must contain the exact
-  verified app and pass the copied app's strict native audit.
-- Hardware checks and diagnostics use a disposable process so a stalled native
-  library cannot freeze the app. An inconclusive check does not save an automatic
-  CPU preference, and CPU fallback uses a supported precision.
-
 ### Fixed
+
 - Split Windows CI tests into three balanced parallel shards per Python version to avoid full-suite timeouts.
 - Recognize stock model hub folders and cache snapshots when selecting calibrated CUDA batch memory budgets; keep custom model names on the conservative budget.
 - Calibrate CUDA batch memory budgets for model size, effective precision and beam size to improve GPU memory use.
@@ -29,228 +25,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Show “Downloading…” for active downloads in the Download tab while preserving other task status labels.
 - Preserve valid speed metadata when another field overflows, and normalize invalid audio durations before completion hooks and usage reporting.
 - Report copied macOS verification cleanup phases and unresolved process identities without exposing exception messages or changing cleanup outcomes.
-- Keep the Windows clipboard fallback from handling Ctrl+Alt chords that produce no text. Hosted keyboard checks record key events and distinguish unverified input from application or cleanup failures.
-- Preserve automatic GPU fallback intent and report the unavailable-runtime reason after worker logging starts. Explicit and saved CPU choices stay free of false GPU warnings.
-- Count CPU fallback as a diagnostic recovery after a model load or decode failure. Automatic preflight CPU selection keeps its warning without inflating recovery counts.
-- Keep original word timings when optional alignment assigns words outside their source cues, and retain trailing words inside a segment that extends beyond the audio end.
-- Show error dialogs when their parent is hidden or minimized, reattach them after the parent is restored, and keep them modal when a dropdown closes.
-- Report incomplete recordings when capture cannot stop promptly, retain the active recorder until it exits, and keep partial audio out of voice reference samples.
-- Keep saved checkpoint bytes aside after a failed resume read, before a fresh run can replace or delete them.
-- Keep subtitle cues separate when a zero-length cue is followed by an earlier-starting cue, preserving their text and original start times.
-- Compile both Windows installer scripts with the pinned Inno Setup 6 compiler, using supported handle types and a shared version definition for Compact shortcut cleanup.
-- Check upgrade inventories against every pinned published release, import legacy history even without settings, and reject installation folders that overlap a retained predecessor's files, including directory aliases.
-- Keep error dialogs usable with dropdowns and stacked dialogs, and let Enter activate their detail buttons without closing them. Dismissed notices release their close-button focus and stop consuming Escape; the clipboard virtual-key fallback runs only on Windows.
-- Preserve the error-report limit and duplicate suppression across backward clock corrections, while bounding recovery to one hour and ignoring corrupt timestamps.
 
-- Keep valid transcription timings when optional alignment returns malformed or out-of-bounds word times. Validate the complete refinement before publishing it, including a zero-length word exactly at the audio end.
-- Keep Quick start open when saving choices fails, without changing active settings or starting the sample. Explain language-specific model limits, and offer setup again after Close or Escape while keeping explicit Skip permanent.
-- Serialize legacy settings migration with settings saves, preserving newer choices and existing recovery backups when multiple instances start together.
-- Finish saved transcripts even when a worker reports malformed optional counts or speed metadata. Preserve the history update and release the queue slot before accepting another job.
-- Finish saved transcripts even when a worker reports malformed optional counts or speed metadata, including during app shutdown. Preserve the history update and release the queue slot before accepting another job.
-- Keep combining marks and Unicode hyphens attached to real words during filler removal, including nonbreaking “Mm-hmm” spellings and decomposed accents.
-
-- Limit filler-word punctuation cleanup to the removed words, preserving unrelated punctuation, spacing and paragraph breaks elsewhere in the transcript.
-
-- Keep the latest Save's pending export list separate from an older rebuild, so closing during overlapping saves names every file still waiting for the newest text.
-
-- Preserve external transcript edits made while Save is preparing its output. Regenerated subtitle exports retain the stamp of the version actually written, so later external edits require review.
-- Check macOS bundles against published minimum targets and reject escaping or unresolved library search paths. Keep older Rosetta systems on the Intel download and replace existing Mac apps without merging their contents.
-
-- Replace three retired modules left by older Windows installations with inert compatibility files. This removes their old executable behavior during an overlay upgrade while preserving neighboring user files.
-
-- Stop a worker in the background when a blocked command pipe cannot accept Cancel within five seconds. Preserve its cancelled status and any existing resume checkpoint, without waiting on the window thread.
-
-- Recheck the saved statistics identity before sending from another running instance, so switching statistics off and on cannot reuse a revoked cached identifier.
-
-- Give collapsed ASS cues a positive centisecond display interval and keep karaoke timing on that same interval. Preserve the rounded end where possible.
-
-- Preserve a zero-length trailing word exactly at the audio end, while still rejecting segments or words outside the media bounds.
-
-- Finish cancelled model downloads promptly even if a scanner locks the restart file. Close the response first and clean up only the owned file without replacing the cancellation error.
-
-- Keep the original word alignment when optional refinement returns missing segments, reordered text or incomplete words. Validate all replacements before changing any segment.
-
-- Check retired packaged files against every stable release tag, so a newer tag cannot hide files left by an older installation.
-
-- Report a selected export format failing even when another format succeeds. Keep the saved files, complete recovery text and resume checkpoint instead of marking the job complete.
-
-- Fix the advertised Windows source-update command for shell metacharacters. Paths with paired percent markers stop with manual-update instructions instead of selecting an environment-expanded checkout.
-
-- Gate Windows installer builds on retired-source inventory and a pinned historical upgrade/uninstall test at the default installation path.
-
-- Declare the actual bundled minimum macOS version and reject lower overrides, instead of capping it to an older build host. With the current dependencies, the 2.4.0 Intel package requires macOS 12.0; earlier Catalina runtime results do not change that package requirement.
-
-- Keep original and translated text on separate rows when repairing bilingual cues. Unusable earlier word ends use their word's start, final words retain the cue's remaining coverage, inferred word clocks stay bounded, and ASS speaker labels exclude control characters.
-
-- Preserve existing files beside settings backups and corrupt-config recovery by copying through an exclusively allocated temporary file; failed copies remove only their own scratch file.
-
-- Prevent a delayed telemetry identity write from restoring a revoked identifier or sending stale identifiers after statistics are switched off and on. Local model-path normalization runs on the background sender.
-
-- Windows upgrades preserve untracked files inside the installation folder and retire unsafe historical uninstall actions. Old installer shortcuts are removed only when their version, target and arguments match this application. Source updates use the project interpreter from paths containing spaces or shell punctuation.
-
-- Preserve word timing when exporting segments without a usable end, sanitize speaker labels, and repair short bilingual subtitle cues without losing distinct original/translation pairs.
-
-- Prevent repeated audio when optional word alignment misses a trailing decoded passage. Preserve usable alignment and avoid advancing through blank trailing text.
-
-- Transcription exports, partial subtitles and chapter sidecars preserve earlier files when a stale temporary filename is linked to another file.
-
-- Preserve literal markup and timecode-looking text when importing oTranscribe files, so format conversion does not silently remove or reinterpret transcript cues. OTR and Whisper JSON readers also accept UTF-16 and UTF-32 files.
-- Exclude local model-file writes and lock waits from network timeout and minimum-rate budgets, so a slow destination does not reject a healthy download mirror.
-- Honor download cancellation between checksum read blocks, retaining completed archive bytes for a retry without re-downloading them.
-- Restore the configured socket timeout after an HTTPS proxy CONNECT response, so a slow TLS handshake does not inherit the download reader's short polling interval.
-- Cancel verified downloads while a server stops sending headers, body bytes or redirect data. Keep received prefixes resumable and release the connection even when an error traceback is retained.
-- Resume model downloads without charging local prefix-copy time as a network stall or recopying the same owned bytes on every retry. Check temporary copy space separately from the remaining download.
-- Translate new preset, subtitle-quality and diagnostics messages in eight languages, and distinguish saved presets from defaults in Greek.
-- Preserve per-host login limits when IPv6 counter tables fill. Use the remaining tracked network tier before shared overflow, so subnet-table pressure cannot lock unrelated allocations out.
-- Report every incompatible macOS bundle component in the final verification verdict, so one highest minimum cannot hide other files that also prevent support for the declared OS.
-- Size subtitle-quality columns for their translated headings and current font, so longer labels remain readable.
-- Count every header and URL password candidate against its own authentication budget, including percent-decoded headers, and document the combined limits.
-- Keep live IPv6 subnet limits effective when the larger-prefix counter table fills. Shared overflow admission now checks and charges every available network counter before accepting a password comparison.
-
-- Keep live IPv6 subnet counters when their table fills. New untracked networks share the bounded overflow allowance instead of evicting counters and resetting password-guess limits.
-- IPv6 password throttling now shares a bounded allowance across the /64 networks of a routed /48. Rotating subnets or overflowing the counter table no longer resets that allocation's guessing budget.
-- Requests with a foreign Origin must authenticate their header password. A valid session cookie or URL token no longer lets an incorrect header bypass this check.
-
-### Added
-
-- Selecting Persian for voice generation shows Chatterbox Farsi as the first recommendation, with its non-commercial license, hardware caveats and model-page link. It remains an external recommendation and does not change the selected generation engine.
-
-- Added a separate Windows Store payload and MSIX staging pipeline with channel-specific update guidance and writable application data. Retained download tools and copied package assets are validated before staging is published.
-
-### Documentation
-
-- Record the reliability investigation checkpoint, distinguishing reviewed fixes from held reproductions and remaining runtime validation.
-
-### Fixed
-- Keep external custom model hubs when uninstalling, including shared model archives. Optional cleanup is limited to the default local app cache, rejects directory links and defaults to keeping models.
-- Preserve settings on uninstall and let the application import legacy profiles safely. Reinstalling no longer copies an old history database over newer entries when settings are missing.
-- Start enabled usage reporting without waiting for UI visibility or an obsolete profile marker. Keep saved off settings, offline mode and queued-send invalidation in effect.
-- Reject cross-site embedded browser navigations before checking API access passwords. External frames can no longer consume the local login allowance; shared document links and clients without destination metadata keep working.
-- Keep URL-token guesses in one allowance even when browser metadata is absent, protecting header-authenticated API access on plain HTTP LAN connections as well. Correct URL tokens refund only their own allowance.
-- Rate-limit foreign document-link password guesses separately, so they cannot lock out header-authenticated API clients at the same address. Both allowances retain bounded host tables, IPv6 subnet limits and overflow protection.
-- Reject cross-site and same-site embedded browser navigations before checking API access passwords. External frames can no longer consume the local login allowance; shared document links and clients without destination metadata keep working.
-- Reserve telemetry error quotas through exclusive, synced temporary files so an existing scratch file is preserved and a failed write suppresses the send.
-- Turning usage statistics off no longer waits for an in-flight request or local cleanup. Queued sends are invalidated, local diagnostic collection stops, and existing diagnostic and rate-limit files are erased in the background when accessible.
-- Filter quoted text and path-bearing spans before reducing error messages to technical vocabulary. Diagnostic and manual-report dialogs now explain what is sent and avoid promising that failed reports were retained.
-- Clarify secondary timing-recovery failures: avoid duplicate operating-system error prefixes, distinguish unrecoverable text from an empty decoder, and retain safe CUDA failure categories in diagnostics.
-- Stop CUDA retries and repetition restarts while collecting raw text after a timing error. Capture checks its limits between decoder steps, avoids duplicate records when no new cue arrives, and keeps the initial recovery path visible if saving additional text fails.
-- Preserve further text from a lazy decoder after a rejected timestamp, within cancellation and capture limits. Keep this raw text separate from valid checkpoints and timed output.
-- Recover the valid prefix of older checkpoints whose saved cues or words extend past the audio. The full raw text is preserved first; unsafe or unsupported tails keep the original checkpoint aside instead of inventing timestamps or declaring completion.
-- Resume keeps a fully transcribed checkpoint usable after switching decoding settings, model or device. It writes the saved text through the normal post-processing and output path without decoding or billing the audio again; changed media still cannot reuse it.
-
-- Keep the latest valid transcription prefix when cancellation races a decoding or timing error. Fresh and resumed jobs save their accepted work before reporting the error.
-- Keep the last valid transcript and resume cursor when a decoder cue or rescue result has unusable timing. The rejected text and original clocks remain in a separate recovery record instead of making the normal checkpoint unusable.
-- Verify optimized macOS slices and macOS-specific version metadata, separate native-tool warnings from architecture names, and identify the slice in inspection failures. Thin-architecture minimum checks have direct regression coverage.
-- Inspect each macOS binary architecture explicitly instead of relying on the host slice. Check all slices for external dependencies and compare deployment minima for the requested application architecture.
-- Reject macOS bundles when binary inspection fails or a bundled binary requires a newer macOS version than declared. Verification includes framework binaries without an executable bit and checks all architecture slices.
-
-- Honor cancellation after a runtime download is flushed or verified, during publication retries, and before installing its extracted files. Verified bytes remain available for a retry without another download; already completed installations are preserved.
-
-- Copy saved download prefixes into private files before resuming on network storage, where hardlink counts can be inaccurate. Interrupted preparation recovers the saved prefix without modifying another file that shares its original bytes.
-
-- Prevent resumable downloads from appending to or truncating another file through a linked partial or restart path. Validate the opened file before changing its contents while preserving ordinary resume and retry behavior.
-
-- Require confirmed filesystem locking before shared resumable file and model downloads. An unavailable lock now preserves saved prefixes and stops before network requests instead of allowing concurrent attempts to overwrite them.
-
-- Verify newly downloaded default whisper.cpp and AI Layer models against pinned sizes and SHA-256 checksums before installation, including responses without Content-Length. Oversized streams stop early and rejected attempts preserve existing files.
-- Preserve a model completed by another download while a slower response is still arriving. The cpp and GGUF downloaders now serialize publication, recheck the destination, and stop safely when publication locking is unavailable. GGUF cancellation is also checked after the final disk flush.
-- Apply the configured VAD window and speech threshold when checking transcript gaps for another decoding pass.
-- Check collapsed transcript windows before speculative gaps during the bounded rescue pass. Stretches left unchecked at the speech-check limit now produce a warning instead of silently appearing speechless.
-- Preserve API outputs in subfolders when an archive copy fails, including across server restarts. Retained copies keep their relative folders so same-named outputs cannot replace each other.
-
-
-- Voice cloning transcribes the exact reference audio with an already installed multilingual model before loading the voice model. Changed references release the previous voice model first; unchanged references reuse their transcript without allocating a second model.
-- Frozen voice-reference audio stays in a locked application scratch folder. Forced worker exits leave recoverable files for the existing age-based cleanup, which preserves active jobs and original recordings.
-
-- Stopping system-audio recording no longer waits for a silent output to resume playback. Loopback reads only available frames and closes its stream on the capture thread.
-- Isolate simultaneous whisper.cpp model downloads so a failed attempt cannot corrupt another one. Models are synced and atomically installed before reporting ready; a destination directory is rejected and existing partial copies are preserved.
-- Reject empty AI Layer and whisper.cpp model downloads, including responses without a size header. A failed empty response keeps the previous file and never reports the model ready; cancelled downloads retain their cancellation message.
-- Protect completed API output files when a crash or storage failure prevents writing their retry receipt. A retention guard now exists before transcription starts; late errors and cancellation collect saved outputs, and cleanup preserves any unaccounted-for files.
-- Support psutil 5.9 when locating offline AI server sockets and inspecting the app's open network connections.
-- Keep history results accessible after retrying an unsuccessful API output archive. Cleanup updates the saved paths before removing the originals, and retains them if history cannot be saved.
-- Preserve API outputs in subfolders when an archive copy fails, including across server restarts. Retained copies keep their relative folders so same-named outputs cannot replace each other.
-
-
-- Keep PDF combining marks with their available base font after right-to-left reordering, preserve leading-mark coverage, and prevent fallback marks from changing the following space's font.
-
-- Bound failed word alignment by exact GPU chunk durations and finish the current decode window when retaining late text, preventing rounded tail timestamps and repeated tail decoding.
-
-- Keep decoded text within its audio window when optional word alignment fails near the end of a file, avoiding a transcription failure from predicted timestamps after the window.
-
-- Use an available fallback font for combining marks that the preceding font cannot draw, preventing missing-glyph boxes in mixed-script PDF transcripts.
-
-- Loopback recording stops promptly when system audio becomes silent, preserving captured audio and releasing the capture thread.
-
-- Keep WebVTT karaoke markers strictly inside their final cue and in increasing order. Invalid markers are omitted while all words, spacing and speaker labels remain available.
-- Keep JSON word timestamps inside their segment, including when Whisper alignment extends the last word beyond the cue. Malformed segment times are normalized to a nonnegative, ordered interval without changing transcript text or word confidence.
-- Closing a transcript viewer or exiting asks before abandoning an active AI task whose later response might fail to save. Discard choices apply only to that task, and results completed during the question are checked separately.
-- When all requested output writers fail, an earlier allocation failure remains visible even if a later writer reports a disk error. Recovery avoids allocating another full transcript copy after that failure.
-
-- Preserve active or unknown-owner AI model downloads during stale-file cleanup. An old partial is removed only when its named producer is confirmed stopped, preventing loss just before a download is finalized.
-
-- Keep saved hardware preferences after temporary read failures. Only malformed data is treated as corrupt, so a later read can recover the existing choice.
-
-- Retry interrupted pre-rebrand hardware-choice transfers after settings were created. Copies are published only when complete and never overwrite a newly saved hardware choice.
-- Isolate hardware-preference save staging files so overlapping saves cannot remove or replace each other's in-progress file. Pre-existing temporary copies are left untouched.
-
-
-- Keep completed AI responses protected when exiting the whole app, including after a transcript edit was already saved or deliberately discarded. The same unsaved-response confirmation is used when closing its viewer; results completed during exit questions are checked again without repeating an unchanged result question.
-- Distinguish an invalid AI action-item reply from a valid empty list. Malformed, truncated or unsupported replies show a warning and keep the original response for review instead of reporting that no actions were found.
-- Preserve completed AI summaries, answers, action items and translation previews before UI delivery, including when the viewer closes or its callback is lost. Failed saves keep the response in memory for a file-only retry and warn before closing; provider calls are not repeated.
-- Restore the AI panel controls if its background thread cannot start. Summary, action-item, question and translation actions show their error and allow another attempt.
-- Keep temporary audio slices while their worker process is alive, even during long transcriptions. Startup cleanup removes an aged slice only after confirming its owner has exited; unknown owners are retained.
-- Keep timing-recovery transcripts during startup cleanup. Only files matching checkpoint, scratch and temporary-slice names expire; unrelated files and recovery records are retained.
-- Try to keep a separate recovery JSON when completed transcription outputs cannot be saved, including time-range runs. The error shows the path after recovery succeeds; requested export failures are still reported as errors.
-- Preserve committed search entries during profile upgrades with a consistent SQLite snapshot. Interrupted transfers retry safely, and existing indexes never receive sidecar files from the old profile.
-- Real disk-sync errors stop output and checkpoint publication, preserving the previous saved version instead of reporting success after a storage failure. Filesystems that explicitly do not support syncing remain usable.
-
-- The dedicated voice worker uses cached OmniVoice and Torch together when both are installed, avoiding an older host Torch taking priority. Other application processes retain their existing dependency order.
-- Windows voice workers initialize SciPy before their input reader starts, avoiding a native-library import stall while the command pipe remains open.
-- Reject unsupported blocking microphone host APIs and revalidate the selected input before opening an output file. The resolved default input stays pinned during native-rate retry.
-- Explain Windows microphone access denials while retaining the native error and keeping output-file permission failures separate.
-
-
-- Hardware selection no longer feeds an endless Tk event loop. Re-probing has a bounded wait, keeps Cancel available, and ignores timed-out or cancelled results without silently saving a CPU preference.
-
-- macOS packages select compatible shared libraries before bundling, so PDF export and tray images can load when Pillow and the audio decoder supply different liblzma versions.
-
-- Interrupted pre-rebrand history transfers retry after settings have been saved, merging old and new jobs without replacing current settings. SQLite snapshots retain committed WAL rows, and transactional import receipts prevent duplicate records or reimporting completed transfers.
-- Automatic subtitle companion exports preserve earlier TXT, oTranscribe and Word files, including manual edits and concurrent exports. Each successful export reports its actual saved filename; a failed write leaves existing companions intact.
-- Manual oTranscribe exports keep files created during rendering and honor the choice to save a new copy. Importing to the original OTR path saves a separate SRT file, and saves use independent short temporary filenames to preserve recovery files and support long valid names.
-- Regenerating bilingual subtitles and downloading episode descriptions keeps earlier saved or edited versions. Bilingual and HTML exports use separate short temporary filenames, preserving existing recovery files and supporting long valid output names.
-- Completed bilingual translations are saved before UI delivery and kept in local recovery ZIPs, so a closed viewer, lost callback or output-folder failure cannot discard a successfully retained result. Failed saves can retry without translating again, and closing a viewer or the application asks before discarding a result held only in memory; cancellation before translation finishes still writes nothing.
-
-- Store builds exclude the cached diarization download archive while retaining the extracted ONNX models needed at runtime.
-- Live transcription uses separate chunk files and respects saved-file protection during cleanup. A transcript saved with a chunk-style filename, or onto an active chunk, survives later transcription and session cleanup.
-- Subtitle conversions use separate temporary files and publish automatic filenames without replacing existing files, preserving concurrent conversions and files saved during rendering. Explicit output replacements keep their existing behavior; on POSIX filesystems without hard links, a failed exclusive copy can leave a new partial output for inspection.
-- Interrupted legacy settings migration leaves no partial current config and retries safely, including pre-rebrand profiles. Failed transfers keep privacy switches closed and automatic partial updates cannot replace unreadable legacy choices; settings can still be explicitly saved.
-- History recovery preserves committed WAL transactions alongside the damaged database. It checks existing files read-only and archives every file before removing originals; failed archiving leaves the originals available for repair.
-- Subtitle conversions use separate temporary files, preventing concurrent conversions from interfering with each other and allowing long output filenames. Failed staging never removes another writer's file.
-- Stopping live transcription drains all queued text before releasing the session. If the display queue dropped finished sentences, saving visible text keeps the journal and session audio for recovery until they are explicitly discarded.
-- Saving a live transcript publishes a complete temporary file before replacing an earlier save. Write, close, sync or replacement errors keep the previous transcript and the session's recovery files intact.
-- Voice-reference validation rejects duration-bearing files with no audio track, including video content using an audio filename.
-- Saving generated speech preserves an earlier destination file if copying or publishing the new WAV fails.
-- Server cleanup verifies archived transcript contents before removing the original. Failed archive copies preserve the previous output and the complete source for retry.
-- Downloads and format lookup stop if a private cookies-file copy cannot be created, keeping the original file away from yt-dlp's cookie writer.
-- Concurrent application instances use separate temporary files when saving transcript edits, so one save cannot publish another instance's staged text.
-- The Try it now sample repairs damaged copies even when their size matches. Failed updates preserve the previous sample and its transcript files.
-- Stopping after a failed partial write no longer replaces captured audio with an empty WAV. Finalization and disk-write errors are reported, and voice-reference capture shows a recovery path for files it can locate instead of silently accepting an incomplete recording.
-- Automatic reference trimming uses a WAV filename for compressed input clips, matching the decoded audio format.
-- Trimming voice references creates PCM WAV audio within the requested length, so the result passes its own duration check and compressed inputs remain usable.
-- ASS karaoke timing stays inside each cue when word times overlap, round to the same centisecond, or reach a fractional media endpoint. Zero-time syllables retain their text.
-- Long CUDA transcriptions with VAD disabled use sequential GPU decoding, preserving whole-file coverage and repetition-loop recovery. Malformed clip values are retained for validation.
-- CUDA recovery with empty clip ranges retains decoded speech and transcribes the remaining audio once.
-- API transcript downloads retain their requested format when an input name resembles a format suffix or an output writer fails.
-- Transcription endpoints stay within decoded audio, including time ranges, resumed work and output rounding. Timing that cannot be represented safely retains decoded text and word data for recovery.
-- History remains readable when an optional metadata field exceeds the JSON nesting limit, preserving access to healthy entries.
-- Search rebuilding continues past history metadata that exceeds JSON nesting or integer limits.
-- Malformed output-format entries no longer prevent Advanced settings from opening. Valid choices are retained; an entirely invalid list uses defaults.
-- Applying a preset with an explicit model clears the previous Accuracy selection, so later language changes retain the preset model.
-- The Linux source updater stops when Git cannot update the source, before changing installed dependencies.
-- Completed transcripts can be recovered after a worker exit when earlier numbered outputs were removed. Recovery uses a single fresh, complete output set and preserves files when names or source ownership are ambiguous.
-- Output failures retain the underlying permission or storage error in failure diagnostics. Persistent destination errors stop promptly, while filename collisions, transient access denials and successfully written formats keep their existing protections.
-
-## [2.4.0] - 2026-11-10
+## [2.4.0] - 2026-11-15
 
 ### Added
 
@@ -258,10 +34,11 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Download Videos has a remembered optional speed limit in KiB/s, with unlimited downloads by default. Audio, video and caption downloads pass the limit to yt-dlp; the UI explains protocol limitations.
 - **Named transcription presets**: save, apply and delete local bundles of transcription options, language and catalog Whisper models from the Transcribe tab. Credentials, folders, hardware and network preferences stay separate.
 - `CODEX.md`, `.codex/config.toml` and a `critic` agent: Codex defaults (`gpt-6.1-sol`, medium effort) and a two-round review workflow.
-
 - Automatic failure statistics include closed error codes, coarse run context, random run ids and hashes of permitted technical material, with no message text or private input details. Persistent hourly limits suppress repeated failures, and finished runs record automatic recovery.
 - **Open transcript on the Download Videos tab**: a finished row that was transcribed after download has an Open transcript button and menu entry (text first, then subtitles); the video's own Open button is unchanged.
 - **Optional technical details after an unexplained failure**: a quiet bar offers to send the failure's class, code locations and a word-filtered shape of the message (only vocabulary words survive). Nothing is sent before Send; at most one offer per session and per day, never while a job runs, and never with statistics off or Work offline. The last 30 records are also kept locally in the log folder (`diagnostics.jsonl`).
+- Selecting Persian for voice generation shows Chatterbox Farsi as the first recommendation, with its non-commercial license, hardware caveats and model-page link. It remains an external recommendation and does not change the selected generation engine.
+- Added a separate Windows Store payload and MSIX staging pipeline with channel-specific update guidance and writable application data. Retained download tools and copied package assets are validated before staging is published.
 
 ### Fixed
 
@@ -292,18 +69,179 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Diarized jobs reserve 0–85% for transcription and 85–99% for speaker detection, with monotonic updates and heartbeats throughout the native worker phase. Completion reaches 100% after outputs are saved.
 - Automatic speaker detection repeatedly merges clusters below the greater of 10 seconds or 3% of speech into the nearest speaker, using time adjacency when embeddings are unavailable. Explicit speaker counts are preserved.
 - Speaker detection releases completed Whisper runners and weights before starting its worker, decodes audio through a temporary file to avoid full pipe-buffer copies, and limits native worker threads. The next transcription reloads Whisper on demand.
-
 - Auto language detection now samples several audio windows and verifies ambiguous unfamiliar-language choices by comparing forced-language decodes against a plausible language. Inconclusive verification keeps engine auto-detection, avoiding probability-only overrides of genuine foreign speech.
 - Runs without recognised speech save the selected output formats, including an empty SRT, with a visible no-speech notice. Their statistics retain the measured audio span, and a damaged JSON sidecar no longer prevents counting a valid subtitle output.
 - The Time column of a download that is transcribed after download stopped counting when the download ended; it now runs until the transcription is done.
 - A URL job sent to a full job queue over the LAN server is refused with 503 before its request body is read, so a client that stalls mid-upload cannot hold its connection open for the whole read timeout.
 - A requested exit is no longer reported as a crash, failure details follow an implicit exception chain, an oversized timestamp no longer aborts oTranscribe to SRT, and merge or split accepts a number as segment text.
 - Files with an `.oga` extension dropped into a watched folder (or onto the window) are transcribed again: the watcher now takes its extension list from the same shared list as the file dialog and the transcript viewer, which had gained `.oga` on its own.
+- macOS packaging rejects missing or unreadable native requirements and a build
+  host below the declared deployment target. The DMG must contain the exact
+  verified app and pass the copied app's strict native audit.
+- Hardware checks and diagnostics use a disposable process so a stalled native
+  library cannot freeze the app. An inconclusive check does not save an automatic
+  CPU preference, and CPU fallback uses a supported precision.
+- Keep the Windows clipboard fallback from handling Ctrl+Alt chords that produce no text. Hosted keyboard checks record key events and distinguish unverified input from application or cleanup failures.
+- Preserve automatic GPU fallback intent and report the unavailable-runtime reason after worker logging starts. Explicit and saved CPU choices stay free of false GPU warnings.
+- Count CPU fallback as a diagnostic recovery after a model load or decode failure. Automatic preflight CPU selection keeps its warning without inflating recovery counts.
+- Keep original word timings when optional alignment assigns words outside their source cues, and retain trailing words inside a segment that extends beyond the audio end.
+- Show error dialogs when their parent is hidden or minimized, reattach them after the parent is restored, and keep them modal when a dropdown closes.
+- Report incomplete recordings when capture cannot stop promptly, retain the active recorder until it exits, and keep partial audio out of voice reference samples.
+- Keep saved checkpoint bytes aside after a failed resume read, before a fresh run can replace or delete them.
+- Keep subtitle cues separate when a zero-length cue is followed by an earlier-starting cue, preserving their text and original start times.
+- Compile both Windows installer scripts with the pinned Inno Setup 6 compiler, using supported handle types and a shared version definition for Compact shortcut cleanup.
+- Check upgrade inventories against every pinned published release, import legacy history even without settings, and reject installation folders that overlap a retained predecessor's files, including directory aliases.
+- Keep error dialogs usable with dropdowns and stacked dialogs, and let Enter activate their detail buttons without closing them. Dismissed notices release their close-button focus and stop consuming Escape; the clipboard virtual-key fallback runs only on Windows.
+- Preserve the error-report limit and duplicate suppression across backward clock corrections, while bounding recovery to one hour and ignoring corrupt timestamps.
+- Keep valid transcription timings when optional alignment returns malformed or out-of-bounds word times. Validate the complete refinement before publishing it, including a zero-length word exactly at the audio end.
+- Keep Quick start open when saving choices fails, without changing active settings or starting the sample. Explain language-specific model limits, and offer setup again after Close or Escape while keeping explicit Skip permanent.
+- Serialize legacy settings migration with settings saves, preserving newer choices and existing recovery backups when multiple instances start together.
+- Finish saved transcripts even when a worker reports malformed optional counts or speed metadata, including during app shutdown. Preserve the history update and release the queue slot before accepting another job.
+- Keep combining marks and Unicode hyphens attached to real words during filler removal, including nonbreaking “Mm-hmm” spellings and decomposed accents.
+- Limit filler-word punctuation cleanup to the removed words, preserving unrelated punctuation, spacing and paragraph breaks elsewhere in the transcript.
+- Keep the latest Save's pending export list separate from an older rebuild, so closing during overlapping saves names every file still waiting for the newest text.
+- Preserve external transcript edits made while Save is preparing its output. Regenerated subtitle exports retain the stamp of the version actually written, so later external edits require review.
+- Check macOS bundles against published minimum targets and reject escaping or unresolved library search paths. Keep older Rosetta systems on the Intel download and replace existing Mac apps without merging their contents.
+- Replace three retired modules left by older Windows installations with inert compatibility files. This removes their old executable behavior during an overlay upgrade while preserving neighboring user files.
+- Stop a worker in the background when a blocked command pipe cannot accept Cancel within five seconds. Preserve its cancelled status and any existing resume checkpoint, without waiting on the window thread.
+- Recheck the saved statistics identity before sending from another running instance, so switching statistics off and on cannot reuse a revoked cached identifier.
+- Give collapsed ASS cues a positive centisecond display interval and keep karaoke timing on that same interval. Preserve the rounded end where possible.
+- Preserve a zero-length trailing word exactly at the audio end, while still rejecting segments or words outside the media bounds.
+- Finish cancelled model downloads promptly even if a scanner locks the restart file. Close the response first and clean up only the owned file without replacing the cancellation error.
+- Keep the original word alignment when optional refinement returns missing segments, reordered text or incomplete words. Validate all replacements before changing any segment.
+- Check retired packaged files against every stable release tag, so a newer tag cannot hide files left by an older installation.
+- Report a selected export format failing even when another format succeeds. Keep the saved files, complete recovery text and resume checkpoint instead of marking the job complete.
+- Fix the advertised Windows source-update command for shell metacharacters. Paths with paired percent markers stop with manual-update instructions instead of selecting an environment-expanded checkout.
+- Gate Windows installer builds on retired-source inventory and a pinned historical upgrade/uninstall test at the default installation path.
+- Declare the actual bundled minimum macOS version and reject lower overrides, instead of capping it to an older build host. With the current dependencies, the 2.4.0 Intel package requires macOS 12.0; earlier Catalina runtime results do not change that package requirement.
+- Keep original and translated text on separate rows when repairing bilingual cues. Unusable earlier word ends use their word's start, final words retain the cue's remaining coverage, inferred word clocks stay bounded, and ASS speaker labels exclude control characters.
+- Preserve existing files beside settings backups and corrupt-config recovery by copying through an exclusively allocated temporary file; failed copies remove only their own scratch file.
+- Prevent a delayed telemetry identity write from restoring a revoked identifier or sending stale identifiers after statistics are switched off and on. Local model-path normalization runs on the background sender.
+- Windows upgrades preserve untracked files inside the installation folder and retire unsafe historical uninstall actions. Old installer shortcuts are removed only when their version, target and arguments match this application. Source updates use the project interpreter from paths containing spaces or shell punctuation.
+- Preserve word timing when exporting segments without a usable end, sanitize speaker labels, and repair short bilingual subtitle cues without losing distinct original/translation pairs.
+- Prevent repeated audio when optional word alignment misses a trailing decoded passage. Preserve usable alignment and avoid advancing through blank trailing text.
+- Transcription exports, partial subtitles and chapter sidecars preserve earlier files when a stale temporary filename is linked to another file.
+- Preserve literal markup and timecode-looking text when importing oTranscribe files, so format conversion does not silently remove or reinterpret transcript cues. OTR and Whisper JSON readers also accept UTF-16 and UTF-32 files.
+- Exclude local model-file writes and lock waits from network timeout and minimum-rate budgets, so a slow destination does not reject a healthy download mirror.
+- Honor download cancellation between checksum read blocks, retaining completed archive bytes for a retry without re-downloading them.
+- Restore the configured socket timeout after an HTTPS proxy CONNECT response, so a slow TLS handshake does not inherit the download reader's short polling interval.
+- Cancel verified downloads while a server stops sending headers, body bytes or redirect data. Keep received prefixes resumable and release the connection even when an error traceback is retained.
+- Resume model downloads without charging local prefix-copy time as a network stall or recopying the same owned bytes on every retry. Check temporary copy space separately from the remaining download.
+- Translate new preset, subtitle-quality and diagnostics messages in eight languages, and distinguish saved presets from defaults in Greek.
+- Preserve per-host login limits when IPv6 counter tables fill. Use the remaining tracked network tier before shared overflow, so subnet-table pressure cannot lock unrelated allocations out.
+- Report every incompatible macOS bundle component in the final verification verdict, so one highest minimum cannot hide other files that also prevent support for the declared OS.
+- Size subtitle-quality columns for their translated headings and current font, so longer labels remain readable.
+- Count every header and URL password candidate against its own authentication budget, including percent-decoded headers, and document the combined limits.
+- Keep live IPv6 subnet limits effective when the larger-prefix counter table fills. Shared overflow admission now checks and charges every available network counter before accepting a password comparison.
+- Keep live IPv6 subnet counters when their table fills. New untracked networks share the bounded overflow allowance instead of evicting counters and resetting password-guess limits.
+- IPv6 password throttling now shares a bounded allowance across the /64 networks of a routed /48. Rotating subnets or overflowing the counter table no longer resets that allocation's guessing budget.
+- Requests with a foreign Origin must authenticate their header password. A valid session cookie or URL token no longer lets an incorrect header bypass this check.
+- Keep external custom model hubs when uninstalling, including shared model archives. Optional cleanup is limited to the default local app cache, rejects directory links and defaults to keeping models.
+- Preserve settings on uninstall and let the application import legacy profiles safely. Reinstalling no longer copies an old history database over newer entries when settings are missing.
+- Start enabled usage reporting without waiting for UI visibility or an obsolete profile marker. Keep saved off settings, offline mode and queued-send invalidation in effect.
+- Keep URL-token guesses in one allowance even when browser metadata is absent, protecting header-authenticated API access on plain HTTP LAN connections as well. Correct URL tokens refund only their own allowance.
+- Rate-limit foreign document-link password guesses separately, so they cannot lock out header-authenticated API clients at the same address. Both allowances retain bounded host tables, IPv6 subnet limits and overflow protection.
+- Reject cross-site and same-site embedded browser navigations before checking API access passwords. External frames can no longer consume the local login allowance; shared document links and clients without destination metadata keep working.
+- Reserve telemetry error quotas through exclusive, synced temporary files so an existing scratch file is preserved and a failed write suppresses the send.
+- Turning usage statistics off no longer waits for an in-flight request or local cleanup. Queued sends are invalidated, local diagnostic collection stops, and existing diagnostic and rate-limit files are erased in the background when accessible.
+- Filter quoted text and path-bearing spans before reducing error messages to technical vocabulary. Diagnostic and manual-report dialogs now explain what is sent and avoid promising that failed reports were retained.
+- Clarify secondary timing-recovery failures: avoid duplicate operating-system error prefixes, distinguish unrecoverable text from an empty decoder, and retain safe CUDA failure categories in diagnostics.
+- Stop CUDA retries and repetition restarts while collecting raw text after a timing error. Capture checks its limits between decoder steps, avoids duplicate records when no new cue arrives, and keeps the initial recovery path visible if saving additional text fails.
+- Preserve further text from a lazy decoder after a rejected timestamp, within cancellation and capture limits. Keep this raw text separate from valid checkpoints and timed output.
+- Recover the valid prefix of older checkpoints whose saved cues or words extend past the audio. The full raw text is preserved first; unsafe or unsupported tails keep the original checkpoint aside instead of inventing timestamps or declaring completion.
+- Resume keeps a fully transcribed checkpoint usable after switching decoding settings, model or device. It writes the saved text through the normal post-processing and output path without decoding or billing the audio again; changed media still cannot reuse it.
+- Keep the latest valid transcription prefix when cancellation races a decoding or timing error. Fresh and resumed jobs save their accepted work before reporting the error.
+- Keep the last valid transcript and resume cursor when a decoder cue or rescue result has unusable timing. The rejected text and original clocks remain in a separate recovery record instead of making the normal checkpoint unusable.
+- Verify optimized macOS slices and macOS-specific version metadata, separate native-tool warnings from architecture names, and identify the slice in inspection failures. Thin-architecture minimum checks have direct regression coverage.
+- Inspect each macOS binary architecture explicitly instead of relying on the host slice. Check all slices for external dependencies and compare deployment minima for the requested application architecture.
+- Reject macOS bundles when binary inspection fails or a bundled binary requires a newer macOS version than declared. Verification includes framework binaries without an executable bit and checks all architecture slices.
+- Honor cancellation after a runtime download is flushed or verified, during publication retries, and before installing its extracted files. Verified bytes remain available for a retry without another download; already completed installations are preserved.
+- Copy saved download prefixes into private files before resuming on network storage, where hardlink counts can be inaccurate. Interrupted preparation recovers the saved prefix without modifying another file that shares its original bytes.
+- Prevent resumable downloads from appending to or truncating another file through a linked partial or restart path. Validate the opened file before changing its contents while preserving ordinary resume and retry behavior.
+- Require confirmed filesystem locking before shared resumable file and model downloads. An unavailable lock now preserves saved prefixes and stops before network requests instead of allowing concurrent attempts to overwrite them.
+- Verify newly downloaded default whisper.cpp and AI Layer models against pinned sizes and SHA-256 checksums before installation, including responses without Content-Length. Oversized streams stop early and rejected attempts preserve existing files.
+- Preserve a model completed by another download while a slower response is still arriving. The cpp and GGUF downloaders now serialize publication, recheck the destination, and stop safely when publication locking is unavailable. GGUF cancellation is also checked after the final disk flush.
+- Apply the configured VAD window and speech threshold when checking transcript gaps for another decoding pass.
+- Check collapsed transcript windows before speculative gaps during the bounded rescue pass. Stretches left unchecked at the speech-check limit now produce a warning instead of silently appearing speechless.
+- Preserve API outputs in subfolders when an archive copy fails, including across server restarts. Retained copies keep their relative folders so same-named outputs cannot replace each other.
+- Voice cloning transcribes the exact reference audio with an already installed multilingual model before loading the voice model. Changed references release the previous voice model first; unchanged references reuse their transcript without allocating a second model.
+- Frozen voice-reference audio stays in a locked application scratch folder. Forced worker exits leave recoverable files for the existing age-based cleanup, which preserves active jobs and original recordings.
+- Stopping system-audio recording no longer waits for a silent output to resume playback. Loopback reads only available frames and closes its stream on the capture thread.
+- Isolate simultaneous whisper.cpp model downloads so a failed attempt cannot corrupt another one. Models are synced and atomically installed before reporting ready; a destination directory is rejected and existing partial copies are preserved.
+- Reject empty AI Layer and whisper.cpp model downloads, including responses without a size header. A failed empty response keeps the previous file and never reports the model ready; cancelled downloads retain their cancellation message.
+- Protect completed API output files when a crash or storage failure prevents writing their retry receipt. A retention guard now exists before transcription starts; late errors and cancellation collect saved outputs, and cleanup preserves any unaccounted-for files.
+- Support psutil 5.9 when locating offline AI server sockets and inspecting the app's open network connections.
+- Keep history results accessible after retrying an unsuccessful API output archive. Cleanup updates the saved paths before removing the originals, and retains them if history cannot be saved.
+- Keep PDF combining marks with their available base font after right-to-left reordering, preserve leading-mark coverage, and prevent fallback marks from changing the following space's font.
+- Bound failed word alignment by exact GPU chunk durations and finish the current decode window when retaining late text, preventing rounded tail timestamps and repeated tail decoding.
+- Keep decoded text within its audio window when optional word alignment fails near the end of a file, avoiding a transcription failure from predicted timestamps after the window.
+- Use an available fallback font for combining marks that the preceding font cannot draw, preventing missing-glyph boxes in mixed-script PDF transcripts.
+- Keep WebVTT karaoke markers strictly inside their final cue and in increasing order. Invalid markers are omitted while all words, spacing and speaker labels remain available.
+- Keep JSON word timestamps inside their segment, including when Whisper alignment extends the last word beyond the cue. Malformed segment times are normalized to a nonnegative, ordered interval without changing transcript text or word confidence.
+- Closing a transcript viewer or exiting asks before abandoning an active AI task whose later response might fail to save. Discard choices apply only to that task, and results completed during the question are checked separately.
+- When all requested output writers fail, an earlier allocation failure remains visible even if a later writer reports a disk error. Recovery avoids allocating another full transcript copy after that failure.
+- Preserve active or unknown-owner AI model downloads during stale-file cleanup. An old partial is removed only when its named producer is confirmed stopped, preventing loss just before a download is finalized.
+- Keep saved hardware preferences after temporary read failures. Only malformed data is treated as corrupt, so a later read can recover the existing choice.
+- Retry interrupted pre-rebrand hardware-choice transfers after settings were created. Copies are published only when complete and never overwrite a newly saved hardware choice.
+- Isolate hardware-preference save staging files so overlapping saves cannot remove or replace each other's in-progress file. Pre-existing temporary copies are left untouched.
+- Keep completed AI responses protected when exiting the whole app, including after a transcript edit was already saved or deliberately discarded. The same unsaved-response confirmation is used when closing its viewer; results completed during exit questions are checked again without repeating an unchanged result question.
+- Distinguish an invalid AI action-item reply from a valid empty list. Malformed, truncated or unsupported replies show a warning and keep the original response for review instead of reporting that no actions were found.
+- Preserve completed AI summaries, answers, action items and translation previews before UI delivery, including when the viewer closes or its callback is lost. Failed saves keep the response in memory for a file-only retry and warn before closing; provider calls are not repeated.
+- Restore the AI panel controls if its background thread cannot start. Summary, action-item, question and translation actions show their error and allow another attempt.
+- Keep temporary audio slices while their worker process is alive, even during long transcriptions. Startup cleanup removes an aged slice only after confirming its owner has exited; unknown owners are retained.
+- Keep timing-recovery transcripts during startup cleanup. Only files matching checkpoint, scratch and temporary-slice names expire; unrelated files and recovery records are retained.
+- Try to keep a separate recovery JSON when completed transcription outputs cannot be saved, including time-range runs. The error shows the path after recovery succeeds; requested export failures are still reported as errors.
+- Preserve committed search entries during profile upgrades with a consistent SQLite snapshot. Interrupted transfers retry safely, and existing indexes never receive sidecar files from the old profile.
+- Real disk-sync errors stop output and checkpoint publication, preserving the previous saved version instead of reporting success after a storage failure. Filesystems that explicitly do not support syncing remain usable.
+- The dedicated voice worker uses cached OmniVoice and Torch together when both are installed, avoiding an older host Torch taking priority. Other application processes retain their existing dependency order.
+- Windows voice workers initialize SciPy before their input reader starts, avoiding a native-library import stall while the command pipe remains open.
+- Reject unsupported blocking microphone host APIs and revalidate the selected input before opening an output file. The resolved default input stays pinned during native-rate retry.
+- Explain Windows microphone access denials while retaining the native error and keeping output-file permission failures separate.
+- Hardware selection no longer feeds an endless Tk event loop. Re-probing has a bounded wait, keeps Cancel available, and ignores timed-out or cancelled results without silently saving a CPU preference.
+- macOS packages select compatible shared libraries before bundling, so PDF export and tray images can load when Pillow and the audio decoder supply different liblzma versions.
+- Interrupted pre-rebrand history transfers retry after settings have been saved, merging old and new jobs without replacing current settings. SQLite snapshots retain committed WAL rows, and transactional import receipts prevent duplicate records or reimporting completed transfers.
+- Automatic subtitle companion exports preserve earlier TXT, oTranscribe and Word files, including manual edits and concurrent exports. Each successful export reports its actual saved filename; a failed write leaves existing companions intact.
+- Manual oTranscribe exports keep files created during rendering and honor the choice to save a new copy. Importing to the original OTR path saves a separate SRT file, and saves use independent short temporary filenames to preserve recovery files and support long valid names.
+- Regenerating bilingual subtitles and downloading episode descriptions keeps earlier saved or edited versions. Bilingual and HTML exports use separate short temporary filenames, preserving existing recovery files and supporting long valid output names.
+- Completed bilingual translations are saved before UI delivery and kept in local recovery ZIPs, so a closed viewer, lost callback or output-folder failure cannot discard a successfully retained result. Failed saves can retry without translating again, and closing a viewer or the application asks before discarding a result held only in memory; cancellation before translation finishes still writes nothing.
+- Store builds exclude the cached diarization download archive while retaining the extracted ONNX models needed at runtime.
+- Live transcription uses separate chunk files and respects saved-file protection during cleanup. A transcript saved with a chunk-style filename, or onto an active chunk, survives later transcription and session cleanup.
+- Subtitle conversions use separate temporary files and publish automatic filenames without replacing existing files, preserving concurrent conversions and files saved during rendering. Explicit output replacements keep their existing behavior; on POSIX filesystems without hard links, a failed exclusive copy can leave a new partial output for inspection.
+- Interrupted legacy settings migration leaves no partial current config and retries safely, including pre-rebrand profiles. Failed transfers keep privacy switches closed and automatic partial updates cannot replace unreadable legacy choices; settings can still be explicitly saved.
+- History recovery preserves committed WAL transactions alongside the damaged database. It checks existing files read-only and archives every file before removing originals; failed archiving leaves the originals available for repair.
+- Subtitle conversions use separate temporary files, preventing concurrent conversions from interfering with each other and allowing long output filenames. Failed staging never removes another writer's file.
+- Stopping live transcription drains all queued text before releasing the session. If the display queue dropped finished sentences, saving visible text keeps the journal and session audio for recovery until they are explicitly discarded.
+- Saving a live transcript publishes a complete temporary file before replacing an earlier save. Write, close, sync or replacement errors keep the previous transcript and the session's recovery files intact.
+- Voice-reference validation rejects duration-bearing files with no audio track, including video content using an audio filename.
+- Saving generated speech preserves an earlier destination file if copying or publishing the new WAV fails.
+- Server cleanup verifies archived transcript contents before removing the original. Failed archive copies preserve the previous output and the complete source for retry.
+- Downloads and format lookup stop if a private cookies-file copy cannot be created, keeping the original file away from yt-dlp's cookie writer.
+- Concurrent application instances use separate temporary files when saving transcript edits, so one save cannot publish another instance's staged text.
+- The Try it now sample repairs damaged copies even when their size matches. Failed updates preserve the previous sample and its transcript files.
+- Stopping after a failed partial write no longer replaces captured audio with an empty WAV. Finalization and disk-write errors are reported, and voice-reference capture shows a recovery path for files it can locate instead of silently accepting an incomplete recording.
+- Automatic reference trimming uses a WAV filename for compressed input clips, matching the decoded audio format.
+- Trimming voice references creates PCM WAV audio within the requested length, so the result passes its own duration check and compressed inputs remain usable.
+- ASS karaoke timing stays inside each cue when word times overlap, round to the same centisecond, or reach a fractional media endpoint. Zero-time syllables retain their text.
+- Long CUDA transcriptions with VAD disabled use sequential GPU decoding, preserving whole-file coverage and repetition-loop recovery. Malformed clip values are retained for validation.
+- CUDA recovery with empty clip ranges retains decoded speech and transcribes the remaining audio once.
+- API transcript downloads retain their requested format when an input name resembles a format suffix or an output writer fails.
+- Transcription endpoints stay within decoded audio, including time ranges, resumed work and output rounding. Timing that cannot be represented safely retains decoded text and word data for recovery.
+- History remains readable when an optional metadata field exceeds the JSON nesting limit, preserving access to healthy entries.
+- Search rebuilding continues past history metadata that exceeds JSON nesting or integer limits.
+- Malformed output-format entries no longer prevent Advanced settings from opening. Valid choices are retained; an entirely invalid list uses defaults.
+- Applying a preset with an explicit model clears the previous Accuracy selection, so later language changes retain the preset model.
+- The Linux source updater stops when Git cannot update the source, before changing installed dependencies.
+- Completed transcripts can be recovered after a worker exit when earlier numbered outputs were removed. Recovery uses a single fresh, complete output set and preserves files when names or source ownership are ambiguous.
+- Output failures retain the underlying permission or storage error in failure diagnostics. Persistent destination errors stop promptly, while filename collisions, transient access denials and successfully written formats keep their existing protections.
 
 ### Changed
 
 - Updated bundled yt-dlp to 2026.10.26 for Windows and macOS.
 - Online configuration now uses the project's domain and validates remote statistics endpoints, version strings and model repository IDs; online model entries must come from a repository owner of the built-in catalog, and a statistics endpoint must be printable ASCII with a host of at most 253 characters. A 410 response removes cached overrides, and cached statistics endpoints expire after 30 days or at once when the cache has no saved time.
+
+### Documentation
+
+- Record the reliability investigation checkpoint, distinguishing reviewed fixes from held reproductions and remaining runtime validation.
 
 ## [2.3.1] — 2026-10-31
 
