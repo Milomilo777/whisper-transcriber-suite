@@ -11,6 +11,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Pin model download progress to the expected files and remove stale Hub partials after a successful download.
 - Split Windows CI tests into three balanced parallel shards per Python version to avoid full-suite timeouts.
 - Recognize stock model hub folders and cache snapshots when selecting calibrated CUDA batch memory budgets; keep custom model names on the conservative budget.
 - Calibrate CUDA batch memory budgets for model size, effective precision and beam size to improve GPU memory use.

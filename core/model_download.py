@@ -12,6 +12,7 @@ import os
 import re
 import socket
 import ssl
+import stat
 import threading
 import time
 import urllib.error
@@ -124,6 +125,88 @@ def model_complete(folder: Path, entry: ManifestEntry) -> bool:
         return False
     return (mm.model_weights_present(folder)
             or all((folder / name).is_file() for name in entry.files))
+
+
+def downloaded_bytes(folder: Path, entry: ManifestEntry) -> int:
+    """Measure the pinned download's saved progress in manifest bytes."""
+    total = 0
+    for name, info in entry.files.items():
+        final = folder / name
+        try:
+            if final.is_file():
+                # Existing finals are reused even if they are an older revision.
+                total += info.size
+                continue
+            partial = verified.part_stat(verified.part_path(final))
+            if partial is None:
+                # A concurrent promotion can move the part after the first check.
+                if final.is_file():
+                    total += info.size
+            elif partial.st_size <= info.size:
+                total += partial.st_size
+        except (OSError, verified.DownloadError):
+            continue
+    return total
+
+
+def _plain_directory(path: Path) -> bool:
+    info = path.lstat()
+    return (stat.S_ISDIR(info.st_mode)
+            and not getattr(info, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT)
+
+
+def _discard_hub_partials(folder: Path, entry: ManifestEntry, cancel: threading.Event | None) -> None:
+    """Reclaim legacy Hub partials after a successful pinned transfer."""
+    try:
+        if not _plain_directory(folder):
+            return
+        cache = folder.resolve(strict=True)
+        for component in (".cache", "huggingface", "download"):
+            cache /= component
+            if not _plain_directory(cache):
+                return
+    except (OSError, RuntimeError):
+        return
+
+    # Walk real directories only, including on Windows where junctions can
+    # look like directories. The pinned lock covers the whole cleanup.
+    pending = [cache]
+    while pending:
+        _check_cancel(cancel)
+        directory = pending.pop()
+        try:
+            if directory.resolve(strict=True) != directory:
+                continue
+            children = list(directory.iterdir())
+            # The legacy Hub uses per-file locks with names unrelated to the
+            # blob names. Take the manifest files' locks even if the legacy
+            # writer has only just started and its lock was absent at listing.
+            with contextlib.ExitStack() as locks:
+                if any(child.suffix == ".incomplete" for child in children):
+                    from huggingface_hub.utils import WeakFileLock
+
+                    lock_paths = {child for child in children if child.suffix == ".lock"}
+                    if directory == cache:
+                        lock_paths.update(directory / (name + ".lock") for name in entry.files)
+                    for path in sorted(lock_paths):
+                        _check_cancel(cancel)
+                        if directory.resolve(strict=True) != directory:
+                            raise OSError("Legacy model cache moved during cleanup")
+                        verified.part_stat(path)
+                        locks.enter_context(WeakFileLock(path, timeout=0.01))
+                for child in children:
+                    _check_cancel(cancel)
+                    try:
+                        if _plain_directory(child):
+                            pending.append(child)
+                        elif (child.suffix == ".incomplete"
+                                and verified.part_stat(child) is not None
+                                and directory.resolve(strict=True) == directory):
+                            child.unlink()
+                    except (OSError, RuntimeError) as exc:
+                        logger.debug("Could not remove legacy model partial %s: %s", child, exc)
+        except (ImportError, OSError, RuntimeError) as exc:
+            logger.debug("Could not clean legacy model cache %s: %s", directory, exc)
 
 
 class _Cancelled(Exception):
@@ -608,7 +691,12 @@ class ModelDownloader:
             busy = ("This file is already being downloaded (another window of the app?); "
                     "wait for that download to finish.")
             with verified.exclusive_lock(folder / ".model-download.lock", busy, strict=True):
-                return self._download(repo, folder, entry, cancel_event)
+                ok = self._download(repo, folder, entry, cancel_event)
+                if ok:
+                    _check_cancel(cancel_event)
+                    _discard_hub_partials(folder, entry, cancel_event)
+                    _check_cancel(cancel_event)
+                return ok
         except _Cancelled:
             return False
         except OSError as exc:
