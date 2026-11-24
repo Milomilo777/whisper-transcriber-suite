@@ -11,6 +11,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Serialize background engine probes with other imports that temporarily disable garbage collection.
 - Associate CLI transcription history only with outputs produced by that run.
 - Preserve tabs inside the text column of imported TSV transcripts.
 - Repair non-finite, negative, and inverted cue times when importing JSON, TSV, and ELAN transcripts while preserving the cue text.
