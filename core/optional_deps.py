@@ -858,7 +858,7 @@ def _install_impl(
         # pull torch/numpy; if a later install's torch/ merge fails (e.g. a
         # locked .pyd), the rollback must NOT delete the torch/numpy the
         # already-installed feature still needs.
-        created = [dst for _src, dst in units if not os.path.lexists(dst)]
+        created: list[str] = []
         merged_ok = True
         merge_err: Exception | None = None
         # Keep backups of every displaced entry until all units have been published.
@@ -876,7 +876,11 @@ def _install_impl(
                 if os.path.exists(tmp):
                     _rm(tmp)
                 if os.path.lexists(bak):
-                    _rm(bak)
+                    # A previous attempt may have failed while restoring this package.
+                    # Preserve its backup if the destination cannot safely be restored.
+                    if os.path.lexists(dst) or _is_reparse_point(bak):
+                        raise FileExistsError(bak)
+                    os.replace(bak, dst)
                 if os.path.isdir(src):
                     shutil.copytree(src, tmp)
                 else:
@@ -904,6 +908,8 @@ def _install_impl(
                         os.replace(bak, dst)
                         backups.pop(dst, None)
                     raise
+                if not displaced:
+                    created.append(dst)
             except Exception as e:  # noqa: BLE001
                 merged_ok = False
                 merge_err = e
@@ -919,7 +925,7 @@ def _install_impl(
                 try:
                     os.replace(b, d)
                 except OSError:
-                    pass
+                    logger.warning("Could not restore %s to %s", b, d, exc_info=True)
             backups.clear()
             if log_cb:
                 log_cb(f"Could not finalise install: {merge_err}")
