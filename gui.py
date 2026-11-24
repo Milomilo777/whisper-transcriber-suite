@@ -184,13 +184,6 @@ def _cli_transcribe(args: argparse.Namespace) -> int:
         p for p in list(getattr(task, "output_paths", None) or [])
         if os.path.isfile(p)
     ]
-    if not written:
-        base, _ = os.path.splitext(src)
-        written = []
-        for ext in formats:
-            candidate = f"{base}.{ext}"
-            if os.path.isfile(candidate):
-                written.append(candidate)
     if status == "finished":
         print(f"[cli] wrote {len(written)} output(s) next to {src}", flush=True)
         for p in written:
