@@ -3,6 +3,9 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import sys
+
+import pytest
 
 
 def test_activate_safe_mode_backs_up_config(tmp_path, monkeypatch):
@@ -87,3 +90,27 @@ def test_main_safe_mode_flag_stripped_before_argparse(monkeypatch, tmp_path):
     assert rc == 0
     assert activations == [True]
     assert launches == [True]
+
+
+@pytest.mark.parametrize(("argv", "exit_code"), [
+    (["--help"], 0),
+    (["transcribe"], 2),
+])
+def test_safe_mode_preserves_config_when_argparse_exits(
+    monkeypatch, tmp_path, argv, exit_code,
+):
+    import gui
+    from core import config
+
+    config_file = tmp_path / "config.json"
+    saved = '{"hub_folder": "original hub"}'
+    config_file.write_text(saved, encoding="utf-8")
+    monkeypatch.setattr(config, "config_path", lambda: str(config_file))
+    monkeypatch.setattr(sys, "argv", ["gui.py", "--safe-mode", *argv])
+
+    with pytest.raises(SystemExit) as exc:
+        gui.main()
+
+    assert exc.value.code == exit_code
+    assert config_file.read_text(encoding="utf-8") == saved
+    assert not list(tmp_path.glob("config.json.safemode_backup-*"))
