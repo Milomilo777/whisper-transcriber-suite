@@ -11,6 +11,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Keep subtitle and lyric timestamp formatting from overflowing on extreme finite values.
 - Keep usage statistics disabled when the opt-in preference cannot be saved.
 - Keep a package backup available if restoring it during an optional dependency rollback fails.
 - Serialize background engine probes with other imports that temporarily disable garbage collection.

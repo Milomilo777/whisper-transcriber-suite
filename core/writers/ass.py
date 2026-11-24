@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import math
 
-from .base import coerce_seconds, karaoke_tokens, normalize_text, replace_lone_surrogates
+from .base import coerce_seconds, karaoke_tokens, normalize_text, replace_lone_surrogates, time_ticks
 
 #: Playback resolution the default style is designed against. Players
 #: scale relative to this, so stating it keeps the subtitle the same
@@ -75,18 +75,7 @@ def fmt_ass_time(seconds: float) -> str:
     decimal places, and a player that meets ``00:00:01,500`` here will
     either drop the line or mis-time it.
     """
-    if seconds is None or not isinstance(seconds, (int, float)):
-        seconds = 0.0
-    try:
-        seconds = float(seconds)
-    except (TypeError, ValueError, OverflowError):
-        # An integer too large for a float (a hand-edited JSON can carry
-        # one) raises OverflowError here — clamp like NaN/Inf, mirroring
-        # fmt_srt_time / fmt_lrc_time.
-        seconds = 0.0
-    if not math.isfinite(seconds) or seconds < 0:
-        seconds = 0.0
-    total_cs = int(round(seconds * 100))
+    total_cs = time_ticks(seconds, 100)
     hours, rem = divmod(total_cs, 360_000)
     minutes, rem = divmod(rem, 6_000)
     sec, cs = divmod(rem, 100)

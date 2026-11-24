@@ -5,22 +5,25 @@ import math
 import unicodedata
 
 
-def fmt_srt_time(seconds: float) -> str:
-    """SRT-style ``HH:MM:SS,ms`` (comma decimal mark)."""
-    if seconds is None or not isinstance(seconds, (int, float)):
-        seconds = 0.0
+def time_ticks(seconds: float, ticks_per_second: int) -> int:
+    """Quantise a non-negative clock without overflowing the scaling step."""
+    if not isinstance(seconds, (int, float)):
+        return 0
     try:
         seconds = float(seconds)
     except (TypeError, ValueError, OverflowError):
-        # An integer too large for a float (a hand-edited JSON can carry
-        # one) raises OverflowError from float(); clamp like NaN/Inf.
-        seconds = 0.0
-    # NaN / Inf are valid floats but produce garbage in timestamps;
-    # clamp to 0 so a buggy backend doesn't poison every downstream
-    # parser.
+        return 0
     if not math.isfinite(seconds) or seconds < 0:
-        seconds = 0.0
-    total_ms = int(round(seconds * 1000))
+        return 0
+    scaled = seconds * ticks_per_second
+    if not math.isfinite(scaled):
+        scaled = MAX_SECONDS * ticks_per_second
+    return round(scaled)
+
+
+def fmt_srt_time(seconds: float) -> str:
+    """SRT-style ``HH:MM:SS,ms`` (comma decimal mark)."""
+    total_ms = time_ticks(seconds, 1000)
     hours, rem = divmod(total_ms, 3_600_000)
     minutes, rem = divmod(rem, 60_000)
     sec, ms = divmod(rem, 1000)
@@ -34,14 +37,6 @@ def fmt_vtt_time(seconds: float) -> str:
 
 def fmt_lrc_time(seconds: float) -> str:
     """LRC ``[mm:ss.xx]`` lyric timestamp."""
-    if seconds is None or not isinstance(seconds, (int, float)):
-        seconds = 0.0
-    try:
-        seconds = float(seconds)
-    except (TypeError, ValueError, OverflowError):
-        seconds = 0.0
-    if not math.isfinite(seconds) or seconds < 0:
-        seconds = 0.0
     # Quantise to integer centiseconds *before* splitting into
     # minutes/seconds — mirroring fmt_srt_time. Rounding the float
     # remainder after divmod (the old approach) let a value just below a
@@ -49,7 +44,7 @@ def fmt_lrc_time(seconds: float) -> str:
     # up to "60.00", emitting the illegal "[00:60.00]" (the ss field must
     # be 0-59). Carrying the carry through the divmod rolls it into the
     # next minute -> "[01:00.00]".
-    total_cs = int(round(seconds * 100))
+    total_cs = time_ticks(seconds, 100)
     minutes, rem_cs = divmod(total_cs, 6000)
     sec, cs = divmod(rem_cs, 100)
     return f"[{minutes:02d}:{sec:02d}.{cs:02d}]"
