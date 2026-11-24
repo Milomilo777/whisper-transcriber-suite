@@ -11,6 +11,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Keep ASS karaoke exports working when a word has an extreme negative clock.
 - Resume from the latest saved transcript cue when the recorded checkpoint cursor points earlier.
 - Keep subtitle and lyric timestamp formatting from overflowing on extreme finite values.
 - Keep usage statistics disabled when the opt-in preference cannot be saved.

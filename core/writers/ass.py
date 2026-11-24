@@ -22,8 +22,6 @@ Writing targets ASS (``ScriptType: v4.00+``) only. The parser in
 """
 from __future__ import annotations
 
-import math
-
 from .base import coerce_seconds, karaoke_tokens, normalize_text, replace_lone_surrogates, time_ticks
 
 #: Playback resolution the default style is designed against. Players
@@ -140,8 +138,8 @@ def _karaoke_payload(seg: dict, *, fill_end: bool = False) -> str:
     parts: list[str] = []
     emitted = False
     for index, (w, token, space_before) in enumerate(tokens):
-        start = _coerce(w.get("start"), cursor_cs / 100)
-        end = _coerce(w.get("end"), start)
+        start = coerce_seconds(w.get("start"), cursor_cs / 100)
+        end = coerce_seconds(w.get("end"), start)
         if end < start:
             end = start
         # Quantize cumulative endpoints on the same grid as the Dialogue.
@@ -161,14 +159,6 @@ def _karaoke_payload(seg: dict, *, fill_end: bool = False) -> str:
     if not emitted:
         return escape_ass_text(normalize_text(seg.get("text", "")))
     return "".join(parts)
-
-
-def _coerce(value: object, fallback: float) -> float:
-    try:
-        out = float(value)  # type: ignore[arg-type]
-    except (TypeError, ValueError, OverflowError):
-        return fallback
-    return out if math.isfinite(out) else fallback
 
 
 def write(segments: list[dict], audio_path: str = "") -> str:
