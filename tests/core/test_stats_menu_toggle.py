@@ -68,6 +68,22 @@ def test_menu_toggle_reports_a_failed_save(monkeypatch):
     assert stub.logs == ["Could not save preference: disk full"]
 
 
+def test_failed_opt_in_keeps_telemetry_disabled(monkeypatch):
+    stub = _stub(True, {"telemetry_opt_in": False, "install_id": ""})
+    flags_during_save = []
+
+    def fail(candidate):
+        flags_during_save.append((candidate["telemetry_opt_in"], stub.app_config["telemetry_opt_in"]))
+        raise OSError("disk full")
+
+    monkeypatch.setattr(app_mod, "save_config", fail)
+    App._save_telemetry_pref(stub)
+
+    assert flags_during_save == [(True, False)]
+    assert stub.app_config == {"telemetry_opt_in": False, "install_id": ""}
+    assert stub.telemetry_opt_in_var.get() is False
+
+
 def test_sync_reads_the_config_written_by_the_advanced_dialog():
     stub = _stub(True, {"telemetry_opt_in": False})
     App._sync_telemetry_menu(stub)  # type: ignore[arg-type]
