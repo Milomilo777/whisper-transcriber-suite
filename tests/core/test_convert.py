@@ -98,6 +98,16 @@ def test_import_repairs_invalid_cue_bounds_without_dropping_text(tmp_path, ext, 
     ]
 
 
+def test_import_tsv_keeps_tabs_within_transcript_text(tmp_path):
+    source = tmp_path / "tabs.tsv"
+    body = "سلام\tرونوشت\tspan"
+    source.write_text(f"start\tend\ttext\n1000\t2000\t{body}\n", encoding="utf-8")
+
+    assert convert.parse_to_segments(str(source)) == [
+        {"start": 1.0, "end": 2.0, "text": body},
+    ]
+
+
 @pytest.mark.parametrize("ext,content", [
     ("srt", SRT_SAMPLE), ("vtt", VTT_SAMPLE),
     ("tsv", TSV_SAMPLE), ("json", JSON_SAMPLE),

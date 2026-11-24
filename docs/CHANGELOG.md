@@ -11,6 +11,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Preserve tabs inside the text column of imported TSV transcripts.
 - Repair non-finite, negative, and inverted cue times when importing JSON, TSV, and ELAN transcripts while preserving the cue text.
 - Continue looking for evidence when the highest-ranked transcript window cannot fit even one cue.
 - Keep the active configuration in place when a safe-mode launch prints CLI help or rejects invalid arguments.

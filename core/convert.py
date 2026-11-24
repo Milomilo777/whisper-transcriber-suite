@@ -340,7 +340,7 @@ def _parse_tsv(text: str, path: str) -> list[dict]:
     for raw in text.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
         if not raw.strip():
             continue
-        parts = raw.split("\t")
+        parts = raw.split("\t", maxsplit=2)
         if len(parts) < 3:
             continue
         start_raw, end_raw = parts[0].strip(), parts[1].strip()
