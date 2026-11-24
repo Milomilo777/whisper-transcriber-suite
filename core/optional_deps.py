@@ -861,8 +861,8 @@ def _install_impl(
         created = [dst for _src, dst in units if not os.path.lexists(dst)]
         merged_ok = True
         merge_err: Exception | None = None
-        # Backups of live dst entries displaced this iteration, keyed by the
-        # final dst path: name -> bak path. Each entry's replace is made
+        # Keep backups of every displaced entry until all units have been published.
+        # Each entry's replace is made
         # atomic w.r.t. an EXISTING dst by moving the live dst aside to a
         # .bak first, so a mid-loop os.replace failure (locked .pyd / AV /
         # disk-full) can be undone and never leaves a pre-existing shared
@@ -904,11 +904,6 @@ def _install_impl(
                         os.replace(bak, dst)
                         backups.pop(dst, None)
                     raise
-                # Success for this entry: the staged copy is in place and the
-                # displaced original is now superseded — drop its backup.
-                if displaced:
-                    _rm(bak)
-                    backups.pop(dst, None)
             except Exception as e:  # noqa: BLE001
                 merged_ok = False
                 merge_err = e
@@ -945,6 +940,8 @@ def _install_impl(
                 _rm(dst)
             shutil.rmtree(staging, ignore_errors=True)
             return False
+        for bak in backups.values():
+            _rm(bak)
         for old in _superseded_dist_infos([os.path.basename(d) for _s, d in units], final_target):
             _rm(old)
         shutil.rmtree(staging, ignore_errors=True)

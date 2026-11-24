@@ -262,6 +262,44 @@ def test_a_package_in_use_asks_to_reopen_the_app(monkeypatch, tmp_path):
     assert any("Close and reopen the app" in line for line in lines)
 
 
+def test_merge_restores_earlier_packages_when_a_later_replace_fails(monkeypatch, tmp_path):
+    final = tmp_path / "pylibs"
+    old_package = final / "bigpkg"
+    old_package.mkdir(parents=True)
+    old_init = old_package / "__init__.py"
+    old_init.write_text("# installed for a sibling feature", encoding="utf-8")
+    old_later = final / "zzlater.py"
+    old_later.write_text("# original later module", encoding="utf-8")
+    monkeypatch.setattr(optional_deps, "extras_dir", lambda: str(final))
+    monkeypatch.setattr(optional_deps, "is_available", lambda _feature: False)
+    monkeypatch.setattr(optional_deps, "can_install", lambda: True)
+    monkeypatch.setattr(optional_deps.offline, "is_offline", lambda *a, **k: False)
+    monkeypatch.setattr(optional_deps.shutil, "disk_usage", lambda _p: _usage(20000))
+
+    def popen(cmd, **_kwargs):
+        staging = cmd[cmd.index("--target") + 1]
+        proc = _FinishedProc(staging)
+        for name in ("newly_added.py", "zzlater.py"):
+            with open(os.path.join(staging, name), "w", encoding="utf-8") as stream:
+                stream.write("# staged module")
+        return proc
+
+    real_replace = os.replace
+
+    def replace(src, dst):
+        if os.path.basename(dst) == "zzlater.py" and ".merge-" in os.path.basename(src):
+            raise PermissionError("staged replacement failed")
+        real_replace(src, dst)
+
+    monkeypatch.setattr(optional_deps.subprocess, "Popen", popen)
+    monkeypatch.setattr(optional_deps.os, "replace", replace)
+
+    assert optional_deps.install("alignment") is False
+    assert old_init.read_text(encoding="utf-8") == "# installed for a sibling feature"
+    assert old_later.read_text(encoding="utf-8") == "# original later module"
+    assert {p.name for p in final.iterdir() if p.suffix != ".lock"} == {"bigpkg", "zzlater.py"}
+
+
 
 def test_spec_parsing_is_linear_on_a_long_clause_list():
     """CodeQL py/redos: the pin regex backtracked exponentially (22 spaced clauses took 2.3 s)."""
