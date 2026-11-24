@@ -11,6 +11,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Continue looking for evidence when the highest-ranked transcript window cannot fit even one cue.
 - Keep the active configuration in place when a safe-mode launch prints CLI help or rejects invalid arguments.
 - Restore all replaced packages if an optional dependency install fails partway through publication.
 - Pin model download progress to the expected files and remove stale Hub partials after a successful download.
