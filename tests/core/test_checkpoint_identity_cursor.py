@@ -170,8 +170,8 @@ def test_quarantine_never_overwrites_an_earlier_one(transcriber, audio):
 # --- finding 2: malformed cursor --------------------------------------------
 
 
-@pytest.mark.parametrize("bad", ["abc", [1], {"x": 1}, float("nan"), -5.0, True])
-def test_malformed_cursor_is_recovered_from_segments(
+@pytest.mark.parametrize("bad", ["abc", [1], {"x": 1}, float("nan"), -5.0, True, 25.0])
+def test_malformed_or_stale_cursor_is_recovered_from_segments(
         transcriber, audio, monkeypatch, bad):
     from core.task import TranscriptionTask
 

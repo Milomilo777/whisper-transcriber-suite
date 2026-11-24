@@ -4663,53 +4663,39 @@ def _write_resumed_outputs(
 
 
 def _cursor_or_none(v: Any) -> float | None:
-    """``v`` as a float, or None when it is not a number."""
-    if v is None or v == "":
-        return 0.0
+    """``v`` as a valid non-negative media position, or None."""
     if isinstance(v, bool):
         return None
     try:
-        return float(v)
-    except (TypeError, ValueError):
+        cursor = float(v)
+    except (TypeError, ValueError, OverflowError):
         return None
+    return cursor if math.isfinite(cursor) and cursor >= 0.0 else None
 
 
 def _recover_resume_cursor(data: dict[str, Any]) -> float | None:
     """Cursor (seconds) to resume from, or None when none can be trusted.
 
-    Uses the checkpoint's ``last_end_time`` when it is a finite number
-    >= 0. A malformed one is recovered from the saved segments: the latest
-    end time among them is where the captured text stops. None means there
-    is no usable cursor and the caller must quarantine the checkpoint.
+    Resume at least as far as the latest valid segment end so already
+    captured audio is not decoded again. If the segment bounds cannot be
+    trusted, keep a usable explicit cursor. None means the caller must
+    quarantine the checkpoint.
     """
-    def _num(v: Any) -> float | None:
-        if isinstance(v, bool):
-            return None
-        try:
-            f = float(v)
-        except (TypeError, ValueError):
-            return None
-        return f if math.isfinite(f) and f >= 0.0 else None
-
     raw = data.get("last_end_time")
-    if (raw is None or raw == "") and not data.get("segments"):
+    segments = data.get("segments")
+    if (raw is None or raw == "") and not segments:
         return 0.0
-    # A missing/empty cursor with segments saved falls through to the
-    # segment recovery below: resuming from 0 would decode the captured
-    # stretch again and concatenate every saved line a second time.
-    cursor = _num(raw)
-    if cursor is not None:
+    cursor = _cursor_or_none(raw)
+    if not isinstance(segments, list):
         return cursor
-    segs = data.get("segments")
-    if not isinstance(segs, list) or not segs:
-        return None
-    ends = []
-    for seg in segs:
-        end = _num(seg.get("end")) if isinstance(seg, dict) else None
+    latest = cursor
+    for seg in segments:
+        end = _cursor_or_none(seg.get("end")) if isinstance(seg, dict) else None
         if end is None:
-            return None
-        ends.append(end)
-    return max(ends)
+            return cursor
+        if latest is None or end > latest:
+            latest = end
+    return latest
 
 
 def _keep_checkpoint_aside(
@@ -4928,7 +4914,10 @@ def resume_transcription(
                 log_cb,
             )
             return False
-        if recovered != _cursor_or_none(data.get("last_end_time")):
+        saved_cursor = data.get("last_end_time")
+        if recovered != _cursor_or_none(saved_cursor) and (
+            saved_cursor not in (None, "") or data.get("segments")
+        ):
             log(
                 "Resume: checkpoint last_end_time is malformed; using the "
                 f"latest saved segment end ({recovered:.2f}s) instead.",
