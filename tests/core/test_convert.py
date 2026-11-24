@@ -71,6 +71,33 @@ def test_parse_to_segments_structure(tmp_path, ext, content):
     assert segs[1]["end"] == pytest.approx(6.0)
 
 
+@pytest.mark.parametrize(("ext", "content"), [
+    ("json", '[{"start": NaN, "end": Infinity, "text": "First"},'
+             '{"start": 3, "end": -1, "text": "Second"}]'),
+    ("tsv", "start\tend\ttext\nNaN\tInf\tFirst\n3000\t-1000\tSecond\n"),
+    ("eaf", '<ANNOTATION_DOCUMENT><TIME_ORDER>'
+            '<TIME_SLOT TIME_SLOT_ID="a" TIME_VALUE="NaN"/>'
+            '<TIME_SLOT TIME_SLOT_ID="b" TIME_VALUE="Inf"/>'
+            '<TIME_SLOT TIME_SLOT_ID="c" TIME_VALUE="3000"/>'
+            '<TIME_SLOT TIME_SLOT_ID="d" TIME_VALUE="-1000"/>'
+            '</TIME_ORDER><TIER><ANNOTATION>'
+            '<ALIGNABLE_ANNOTATION TIME_SLOT_REF1="a" TIME_SLOT_REF2="b">'
+            '<ANNOTATION_VALUE>First</ANNOTATION_VALUE></ALIGNABLE_ANNOTATION>'
+            '</ANNOTATION><ANNOTATION>'
+            '<ALIGNABLE_ANNOTATION TIME_SLOT_REF1="c" TIME_SLOT_REF2="d">'
+            '<ANNOTATION_VALUE>Second</ANNOTATION_VALUE></ALIGNABLE_ANNOTATION>'
+            '</ANNOTATION></TIER></ANNOTATION_DOCUMENT>'),
+])
+def test_import_repairs_invalid_cue_bounds_without_dropping_text(tmp_path, ext, content):
+    source = tmp_path / f"bounds.{ext}"
+    source.write_text(content, encoding="utf-8")
+
+    assert convert.parse_to_segments(str(source)) == [
+        {"start": 0.0, "end": 0.0, "text": "First"},
+        {"start": 3.0, "end": 3.0, "text": "Second"},
+    ]
+
+
 @pytest.mark.parametrize("ext,content", [
     ("srt", SRT_SAMPLE), ("vtt", VTT_SAMPLE),
     ("tsv", TSV_SAMPLE), ("json", JSON_SAMPLE),
