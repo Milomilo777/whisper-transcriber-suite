@@ -83,3 +83,30 @@ def test_failed_copy_preserves_existing_output_and_cleans_only_owned_stage(tmp_p
             status, _, closed = config._recover_locked(str(source))
         assert status == "corrupt" and closed is True
     assert {p.name: p.read_bytes() for p in tmp_path.iterdir()} == before
+
+
+def test_failed_missing_config_repair_refuses_unrelated_save(tmp_path, monkeypatch):
+    source = tmp_path / "config.json"
+    backup = Path(str(source) + ".bak")
+    backup_text = '{"theme": "light", "telemetry_opt_in": false}'
+    backup.write_text(backup_text, encoding="utf-8")
+    corrupt = Path(str(source) + ".corrupt")
+    corrupt.write_text("interrupted recovery", encoding="utf-8")
+    monkeypatch.setattr(config, "config_path", lambda: str(source))
+    write = config._write_disk_dict
+    writes = []
+
+    def fail_first(path, settings):
+        writes.append(settings)
+        if len(writes) == 1:
+            raise PermissionError("transient failure restoring the backup")
+        write(path, settings)
+
+    monkeypatch.setattr(config, "_write_disk_dict", fail_first)
+
+    with pytest.raises(config.ConfigSaveError):
+        config.save_config({"theme": "dark"})
+
+    assert len(writes) == 1
+    assert not source.exists()
+    assert backup.read_text(encoding="utf-8") == backup_text

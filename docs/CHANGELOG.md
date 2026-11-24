@@ -11,6 +11,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Reject unrelated settings writes when an interrupted configuration restore cannot finish.
 - Keep ASS karaoke exports working when a word has an extreme negative clock.
 - Resume from the latest saved transcript cue when the recorded checkpoint cursor points earlier.
 - Keep subtitle and lyric timestamp formatting from overflowing on extreme finite values.
