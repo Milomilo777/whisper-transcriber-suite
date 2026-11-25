@@ -479,6 +479,33 @@ def test_failed_deep_probe_does_not_report_ready(App, monkeypatch, failure):
     assert "try again" in delivered[0].detail.lower()
 
 
+def test_inconclusive_engine_messages_use_the_active_language(App, monkeypatch):
+    from app import i18n
+
+    _run_probe_inline(monkeypatch)
+
+    def fail(*args, **kwargs):
+        raise RuntimeError("probe crashed")
+
+    monkeypatch.setattr(eng, "isolated_engine_status", fail)
+    app = _bare_app(App, engine_label=eng.VALUE_TO_LABEL["whisper_cpp"], backend="whisper_cpp")
+    previous_language = i18n.current_language()
+    try:
+        i18n.set_language(i18n.PSEUDO_LOCALE)
+        expected = i18n.pseudo_translate(App._ENGINE_PROBE_UNCONFIRMED)
+
+        delivered = []
+        App.probe_engine_status(app, "whisper_cpp", delivered.append)
+        assert delivered == [eng.EngineStatus("whisper_cpp", False, expected)]
+
+        app.engine_status_var.set(i18n._("Checking…"))
+        app._engine_status_seq = 1
+        App._engine_status_fallback(app, 1, "whisper_cpp")
+        assert expected in app.engine_status_var.get()
+    finally:
+        i18n.set_language(previous_language)
+
+
 def test_refresh_engine_status_paints_checking_then_real_result(App, monkeypatch):
     fw_label = eng.VALUE_TO_LABEL["faster_whisper"]
     a = _bare_app(App, engine_label=fw_label, backend="faster_whisper")

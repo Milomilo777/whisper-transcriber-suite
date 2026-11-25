@@ -3426,7 +3426,7 @@ class App(tk.Tk):
                 return
             from core.backends import availability as _eng
 
-            st = _eng.EngineStatus(value, False, translate(self._ENGINE_PROBE_UNCONFIRMED))
+            st = _eng.EngineStatus(value, False, translate(App._ENGINE_PROBE_UNCONFIRMED))
             logger.warning(
                 "Engine readiness probe for %s did not answer in %.0f s; "
                 "showing an inconclusive result.",
@@ -3477,7 +3477,7 @@ class App(tk.Tk):
                 if not current():
                     return
                 logger.debug("Isolated engine probe did not complete", exc_info=True)
-                st = _eng.EngineStatus(value, False, translate(self._ENGINE_PROBE_UNCONFIRMED))
+                st = _eng.EngineStatus(value, False, translate(App._ENGINE_PROBE_UNCONFIRMED))
             if current():
                 self.post_to_main(lambda: on_result(st) if current() else None)
 
