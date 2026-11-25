@@ -20,6 +20,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Resume interrupted transcription from the saved decode position even when aligned cues extend past it.
 - Keep engine readiness checks from blocking the interface while native packages load.
 - Show when an engine readiness check could not confirm that the engine is ready.
+- Keep API credentials and service-account paths out of engine readiness subprocesses.
 - Restore displaced packages after a failed optional install and preserve backups across restarts when recovery needs attention.
 - Keep locked packages intact when rolling back a failed optional install.
 - Preserve earlier package backups when startup cannot verify their replacement.

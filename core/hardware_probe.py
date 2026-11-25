@@ -11,12 +11,26 @@ import tempfile
 import threading
 from typing import Any, Callable
 
+from .paths import PROFILE_ENV
+
 _PROBE_LOCK = threading.Lock()
 _ENGINE_PROBE_LOCK = threading.Lock()
 _UNREAPED_PROCESS: subprocess.Popen[Any] | None = None
 _UNREAPED_ENGINE_PROCESS: subprocess.Popen[Any] | None = None
 PROBE_TIMEOUT_S = 25.0
 MAX_RESULT_BYTES = 2 * 1024 * 1024
+# Engine checks only need loader, profile and model-cache settings. Arbitrary
+# inherited variables can carry credentials unrelated to this operation.
+_ENGINE_ENV = frozenset({
+    "PATH", "HOME", "USERPROFILE", "APPDATA", "LOCALAPPDATA",
+    "SYSTEMROOT", "SYSTEMDRIVE", "WINDIR", "COMSPEC",
+    "TEMP", "TMP", "TMPDIR", "LANG", "LC_ALL", "LC_CTYPE",
+    "XDG_CACHE_HOME", "XDG_CONFIG_HOME", "XDG_DATA_HOME", PROFILE_ENV,
+    "HF_HOME", "HF_HUB_CACHE", "HUGGINGFACE_HUB_CACHE", "TORCH_HOME",
+    "LD_LIBRARY_PATH", "DYLD_LIBRARY_PATH", "PYTHONNOUSERSITE",
+    "_PYI_ARCHIVE_FILE", "_PYI_APPLICATION_HOME_DIR", "_PYI_PARENT_PROCESS_LEVEL",
+    "_PYI_SPLASH_IPC", "_PYI_LINUX_PROCESS_NAME",
+})
 
 
 def _command(operation: str, result: Path) -> list[str]:
@@ -39,6 +53,8 @@ def _run_command(
     options = _proc.new_session_kwargs()
     if sys.platform == "win32":
         options["creationflags"] = options.get("creationflags", 0) | subprocess.CREATE_NO_WINDOW
+    if engine:
+        options["env"] = {key: value for key, value in os.environ.items() if key in _ENGINE_ENV}
     global _UNREAPED_PROCESS, _UNREAPED_ENGINE_PROCESS
     child = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                              stderr=subprocess.DEVNULL, **options)
@@ -134,11 +150,15 @@ def worker_main() -> None:
                 value: dict[str, Any] = _native_component_report()
             elif args.operation == "engine":
                 from . import optional_deps
-                from .backends.availability import engine_status
+                from .backends.availability import engine_status, google_cloud_runtime_status
 
                 optional_deps.activate()
                 request = json.loads(args.result.with_name("request.json").read_text(encoding="utf-8"))
-                value = asdict(engine_status(request["engine"], request["config"], deep=True))
+                if request["engine"] == "google_cloud_stt":
+                    status = google_cloud_runtime_status(request["google_cloud_credentials_present"])
+                else:
+                    status = engine_status(request["engine"], request["config"], deep=True)
+                value = asdict(status)
             else:
                 from . import hardware as hw
 

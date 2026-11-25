@@ -344,7 +344,11 @@ def _nvidia_asr_status(cfg: Mapping[str, Any]) -> EngineStatus:
 
 
 def _google_cloud_stt_status(cfg: Mapping[str, Any]) -> EngineStatus:
-    have_key = has_gcloud_key(cfg)
+    return google_cloud_runtime_status(has_gcloud_key(cfg))
+
+
+def google_cloud_runtime_status(have_key: bool) -> EngineStatus:
+    """Check the client import using only the parent's credential-presence result."""
     try:
         from . import google_cloud_stt as gcs
 
@@ -429,11 +433,14 @@ def isolated_engine_status(
     model = cfg.get("model")
     probe_cfg: dict[str, Any] = {
         key: str(cfg.get(key) or "")
-        for key in ("model_path", "whisper_model", "hub_folder", "gcloud_stt_credentials_json")
+        for key in ("model_path", "whisper_model", "hub_folder")
     }
     if isinstance(model, dict):
         probe_cfg["model"] = {"name": str(model.get("name") or "")}
-    result = query("engine", request={"engine": engine, "config": probe_cfg}, current=current)
+    request = {"engine": engine, "config": probe_cfg}
+    if engine == "google_cloud_stt":
+        request["google_cloud_credentials_present"] = has_gcloud_key(cfg)
+    result = query("engine", request=request, current=current)
     return EngineStatus(**result)
 
 

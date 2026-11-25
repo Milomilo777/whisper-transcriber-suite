@@ -344,19 +344,47 @@ def test_isolated_engine_status_reads_the_model_path_on_the_child(tmp_path):
     assert verdict == eng.EngineStatus("faster_whisper", True)
 
 
-def test_isolated_engine_status_does_not_send_api_keys(monkeypatch):
+def test_isolated_engine_status_does_not_send_api_keys(monkeypatch, tmp_path):
     from core import hardware_probe
+
+    creds = tmp_path / "شهادة.json"
+    creds.write_text('{"private_key": "dummy"}', encoding="utf-8")
 
     def query(operation, *, request, current=None):
         assert operation == "engine"
         assert request["config"]["model"] == {"name": "small"}
         assert "key" not in repr(request)
-        return {"value": "faster_whisper", "ready": True}
+        assert "gcloud_stt_credentials_json" not in request["config"]
+        if request["engine"] == "google_cloud_stt":
+            assert request["google_cloud_credentials_present"] is True
+        return {"value": request["engine"], "ready": True}
 
     monkeypatch.setattr(hardware_probe, "query", query)
-    cfg = {"model": {"name": "small", "key": "nested"}, "cloud_stt_api_key": "secret"}
+    cfg = {"model": {"name": "small", "key": "nested"}, "cloud_stt_api_key": "secret",
+           "gcloud_stt_credentials_json": str(creds)}
     assert eng.isolated_engine_status("faster_whisper", cfg).ready
     assert eng.isolated_engine_status("cloud_stt", cfg).ready
+    assert eng.isolated_engine_status("google_cloud_stt", cfg).ready
+
+
+def test_engine_child_inherits_runtime_paths_without_parent_secrets(monkeypatch, tmp_path):
+    from core import hardware_probe
+
+    keys = ("OPENAI_API_KEY", "HF_TOKEN", "GOOGLE_APPLICATION_CREDENTIALS", "BUILD_SIGNING_SECRET")
+    for name in keys:
+        monkeypatch.setenv(name, "dummy")
+    monkeypatch.setenv("WTS_PROFILE_DIR", str(tmp_path))
+    result = tmp_path / "result.json"
+    code = (
+        "import json, os, sys; from pathlib import Path; "
+        "Path(sys.argv[1]).write_text(json.dumps("
+        "{name: os.getenv(name) is not None for name in sys.argv[2:]}), encoding='utf-8')"
+    )
+    verdict = hardware_probe._run_command(
+        [sys.executable, "-c", code, str(result), *keys, "WTS_PROFILE_DIR", "PATH"],
+        result, 5, engine=True,
+    )
+    assert verdict == {**dict.fromkeys(keys, False), "WTS_PROFILE_DIR": True, "PATH": True}
 
 
 def test_overlapping_engine_requests_both_get_deep_results(monkeypatch):
