@@ -827,6 +827,20 @@ def require_audio_stream(path: str) -> None:
         )
 
 
+def _prepare_transcription_audio(path: str, log_cb: Callable[[str], None] | None) -> float:
+    try:
+        duration = get_duration(path)
+    except RuntimeError as exc:
+        if not isinstance(exc.__cause__, subprocess.TimeoutExpired):
+            raise
+        # The decoder probes the audio independently. Avoid waiting on a
+        # second ffprobe call against the same slow source.
+        log("The duration probe timed out. Continuing without a duration estimate.", log_cb)
+        return 0.0
+    require_audio_stream(path)
+    return duration
+
+
 def fmt(sec: float) -> str:
     h = int(sec // 3600)
     m = int((sec % 3600) // 60)
@@ -3861,10 +3875,9 @@ def transcribe(
                 log(f"Demucs separation failed (using original audio): {e}", log_cb)
                 audio_path = task.file_path
 
-        duration = get_duration(audio_path)
+        duration = _prepare_transcription_audio(audio_path, log_cb)
         if duration > 0:
             task._input_duration = duration
-        require_audio_stream(audio_path)
         start = time.time()
         log(f"Processing: {audio_path}", log_cb)
 
@@ -4281,10 +4294,9 @@ def _transcribe_via_alt_backend(
             log(f"Demucs separation failed (using original audio): {e}", log_cb)
             audio_path = task.file_path
 
-    duration = get_duration(audio_path)
+    duration = _prepare_transcription_audio(audio_path, log_cb)
     if duration > 0:
         task._input_duration = duration
-    require_audio_stream(audio_path)
     start = time.time()
     log(f"Processing ({backend_name}): {task.file_path}", log_cb)
 
