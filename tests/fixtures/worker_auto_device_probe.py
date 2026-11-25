@@ -20,7 +20,6 @@ def boot(monkeypatch, tmp_path, wizard_cpu=False, entrypoint='worker', broken_wa
     fake_fw = ModuleType('faster_whisper')
     fake_fw.__path__ = []
     monkeypatch.setitem(sys.modules, 'faster_whisper', fake_fw)
-    backend = ModuleType('core.backends.faster_whisper_be')
     loads = []
 
     class FakeModel:
@@ -31,12 +30,9 @@ def boot(monkeypatch, tmp_path, wizard_cpu=False, entrypoint='worker', broken_wa
             if flip_after_cpu_model and device == 'cpu':
                 monkeypatch.setattr(hardware, 'cuda_status', lambda: hardware.CudaStatus(
                     usable=True, gpu_present=True, compute_types={'float16'}))
-    backend.WhisperModel = FakeModel
-    backend.BatchedInferencePipeline = None
+    # Keep the application adapter real and replace only its upstream driver.
     fake_fw.WhisperModel = FakeModel
     fake_fw.BatchedInferencePipeline = None
-    if entrypoint == 'worker' or entrypoint.startswith('legacy-'):
-        monkeypatch.setitem(sys.modules, 'core.backends.faster_whisper_be', backend)
     import platformdirs
     for name in ('user_config_dir', 'user_cache_dir', 'user_log_dir', 'user_data_dir', 'user_state_dir'):
         monkeypatch.setattr(platformdirs, name, lambda *a, **k: str(tmp_path))
