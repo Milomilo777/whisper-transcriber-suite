@@ -1,5 +1,7 @@
 """Tests for the speaker count UI on the Transcribe tab."""
 import tkinter as tk
+import threading
+import time
 import pytest
 from unittest.mock import patch
 
@@ -7,6 +9,74 @@ pytest.importorskip("tkinter")
 
 from app.app import App
 from core.config import DEFAULT_CONFIG
+
+
+def _wait_for_available(app):
+    deadline = time.monotonic() + 5
+    while app.diarization_check.instate(["disabled"]) and time.monotonic() < deadline:
+        app.update()
+        time.sleep(0.01)
+    assert app.diarization_check.instate(["!disabled"])
+
+
+@pytest.fixture
+def startup_config(tmp_path, monkeypatch):
+    cfg = dict(DEFAULT_CONFIG, diarization_enabled=True, diarization_num_speakers=3)
+    monkeypatch.setattr("core.config.user_config_dir", lambda: tmp_path / "c")
+    monkeypatch.setattr("core.config.user_data_dir", lambda: tmp_path / "d")
+    monkeypatch.setattr("core.config.user_cache_dir", lambda: tmp_path / "k")
+    monkeypatch.setattr("core.stats.post_stats_async", lambda *a, **kw: False)
+    monkeypatch.setattr("app.app.load_config", lambda: cfg)
+    monkeypatch.setattr("app.app.save_config", lambda *a, **kw: None)
+    return cfg
+
+
+def test_startup_returns_during_diarization_probe(startup_config, monkeypatch):
+    entered = threading.Event()
+    release = threading.Event()
+    threads = []
+
+    def available():
+        threads.append(threading.current_thread())
+        entered.set()
+        if threading.current_thread() is not threading.main_thread():
+            release.wait(10)
+        return True
+
+    monkeypatch.setattr("core.diarization.is_available", available)
+    app = App()
+    try:
+        try:
+            assert entered.wait(5)
+            assert threads[0] is not threading.current_thread()
+            assert app.diarization_check.instate(["disabled"])
+            assert not app.diarization_speakers_combo.winfo_manager()
+            app._save_transcribe_prefs()
+            assert startup_config["diarization_enabled"] is True
+        finally:
+            release.set()
+        _wait_for_available(app)
+        assert app.diarization_check.instate(["!disabled", "selected"])
+        assert app.diarization_speakers_combo.winfo_manager()
+    finally:
+        app.destroy()
+
+
+def test_startup_finishes_if_diarization_thread_cannot_start(startup_config, monkeypatch):
+    start = threading.Thread.start
+
+    def refuse_diarization(thread):
+        if thread.name == "diarization-availability":
+            raise RuntimeError("could not start thread")
+        start(thread)
+
+    monkeypatch.setattr(threading.Thread, "start", refuse_diarization)
+    app = App()
+    try:
+        assert app.diarization_check.instate(["disabled", "!selected"])
+        assert app.diarization_check.cget("text") == "Identify speakers (unavailable)"
+    finally:
+        app.destroy()
 
 
 @pytest.fixture
@@ -34,6 +104,7 @@ def app(tmp_path):
             with patch("core.diarization.is_available", return_value=True):
                 app_inst = App()
                 try:
+                    _wait_for_available(app_inst)
                     yield app_inst
                 finally:
                     try:

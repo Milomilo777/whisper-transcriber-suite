@@ -882,6 +882,44 @@ def sync_transcribe_empty_state(app: "App") -> None:
             sample_row.pack(pady=(10, 0), after=app.transcribe_browse_row)
 
 
+def _check_diarization_availability(app: "App", check: ttk.Checkbutton) -> None:
+    """Resolve the optional native component without holding up tab setup."""
+    post_to_main = app.post_to_main
+
+    def apply(available: bool, reason: str | None) -> None:
+        # The checkbutton is the ticket for this particular tab build.
+        if (getattr(app, "_closing", False) is True
+                or app.diarization_check is not check or not check.winfo_exists()):
+            return
+        if available:
+            check.state(["!disabled"])
+        else:
+            check.state(["disabled"])
+            app.diarization_var.set(False)
+            check.configure(text=_("Identify speakers (unavailable)"))
+            if reason is None:
+                reason = _("speaker identification is not installed (the optional sherpa-onnx part)")
+            # A long model path belongs in the tooltip rather than the row.
+            bind_tooltip(check, _("Unavailable: {reason}", reason=reason))
+        app._sync_diarization_speakers_option()
+
+    def worker() -> None:
+        try:
+            from core import diarization
+
+            available = diarization.is_available()
+            reason = "" if available else diarization.availability_reason()
+        except Exception:  # noqa: BLE001
+            available, reason = False, None
+        post_to_main(lambda: apply(available, reason))
+
+    try:
+        threading.Thread(target=worker, name="diarization-availability", daemon=True).start()
+    except RuntimeError:
+        logger.exception("Could not start the diarization availability check")
+        apply(False, None)
+
+
 def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     """Beginner-friendly Transcribe tab.
 
@@ -925,15 +963,10 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     app.translate_var = tk.BooleanVar(
         value=bool(app.app_config.get("translate_to_english", False))
     )
-    try:
-        from core import diarization as _diar  # type: ignore[import-not-found]
-        _diar_available = _diar.is_available()
-        _diar_reason = _diar.availability_reason() if not _diar_available else ""
-    except Exception:  # noqa: BLE001
-        _diar_available = False
-        _diar_reason = _("speaker identification is not installed (the optional sherpa-onnx part)")
+    # Keep the preference available to saves and presets while the checkbox
+    # is disabled. Applying a preset during the probe may update this value.
     app.diarization_var = tk.BooleanVar(
-        value=bool(_diar_available) and bool(app.app_config.get("diarization_enabled", False))
+        value=bool(app.app_config.get("diarization_enabled", False))
     )
     _speakers_val = app.app_config.get("diarization_num_speakers", -1)
     if type(_speakers_val) is not int or (_speakers_val not in range(2, 11) and _speakers_val != -1):
@@ -1295,26 +1328,17 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     # "Word timestamps". The research's vocabulary mapping: Aiko ships
     # "Produce timestamps" and "Skip silent parts"; speaker-detection
     # is universally framed as "Identify / detect speakers".
-    # The reason can carry a long file path; it goes in the hover text so the
-    # row doesn't run off the window (it did at the default size).
-    diar_label = (
-        _("Identify speakers")
-        if _diar_available
-        else _("Identify speakers (unavailable)")
-    )
     def _on_diar_check_changed() -> None:
         app._save_transcribe_prefs()
         app._sync_diarization_speakers_option()
 
     app.diarization_check = ttk.Checkbutton(
         opts_toggles,
-        text=diar_label,
+        text=_("Identify speakers"),
         variable=app.diarization_var,
         command=_on_diar_check_changed,
     )
-    if not _diar_available:
-        app.diarization_check.state(["disabled"])
-        bind_tooltip(app.diarization_check, _("Unavailable: {reason}", reason=_diar_reason))
+    app.diarization_check.state(["disabled"])
     app.diarization_check.pack(side="left", padx=(0, 4))
 
     app.diarization_help_icon = help_icon(
@@ -1624,6 +1648,7 @@ def build_transcribe_tab(app: "App", parent: ttk.Frame) -> None:
     app.last_result_body = ttk.Frame(app.last_result_frame)
     app.last_result_title_var = tk.StringVar(value="")
     app.last_result_files_frame = ttk.Frame(app.last_result_body)
+    _check_diarization_availability(app, app.diarization_check)
 
 
 def build_queue_tab(app: "App", parent: ttk.Frame) -> None:

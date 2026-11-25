@@ -20,6 +20,7 @@ import sys
 import threading
 import types
 from pathlib import Path
+from queue import SimpleQueue
 from typing import Any, Callable
 
 import pytest
@@ -159,6 +160,10 @@ class _StubApp:
         self.download_service = types.SimpleNamespace(
             enqueue_caption_only_from_form=_noop, poll=_noop)
         self.badge_hints: list[str] = []
+        self.posted: SimpleQueue[Callable[[], None]] = SimpleQueue()
+
+    def post_to_main(self, callback: Callable[[], None]) -> None:
+        self.posted.put(callback)
 
     def register_device_badge_label(self, _label: Any, tier_label: str | None = None) -> None:
         if tier_label:
@@ -204,6 +209,8 @@ def capture_main_tabs(mp: pytest.MonkeyPatch, root: tk.Tk) -> dict[str, Rows]:
     def build(name: str, builder: Callable[[Any, Any], None], app: _StubApp) -> Any:
         frame = ttk.Frame(root)
         builder(app, frame)
+        if builder is tabs.build_transcribe_tab:
+            app.posted.get(timeout=5)()
         frame.pack()
         root.update_idletasks()
         states[name] = _walk(frame) + tips.take()
@@ -574,6 +581,7 @@ def _stored_values(mp: pytest.MonkeyPatch, root: tk.Tk) -> dict[str, Any]:
     app = _StubApp(root)
     frame = ttk.Frame(root)
     tabs.build_transcribe_tab(app, frame)
+    app.posted.get(timeout=5)()
     combos = [w for w in _descendants(frame) if w.winfo_class() == "TCombobox"]
     # (the Accuracy combo now sits between the language and the speaker count)
     lang_combo, speakers_combo = combos[2], app.diarization_speakers_combo

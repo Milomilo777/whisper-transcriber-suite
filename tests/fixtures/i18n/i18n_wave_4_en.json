@@ -1197,10 +1197,6 @@
    "Checks this computer's NVIDIA GPU (and its memory) or CPU and RAM and suggests the fastest and the most accurate model that fit."
   ],
   [
-   "tooltip",
-   "Unavailable: speaker identification is not installed (the optional sherpa-onnx part)"
-  ],
-  [
    "help",
    "Splits the transcript by who is speaking (SPEAKER_00, SPEAKER_01, ...). Adds processing time and needs the optional sherpa-onnx component to be installed."
   ],
@@ -1231,6 +1227,10 @@
   [
    "help",
    "The output files from the most recently finished transcription, with quick Open/Reveal actions. Stays empty until a job completes; see the Transcription Queue tab for jobs in progress."
+  ],
+  [
+   "tooltip",
+   "Unavailable: speaker identification is not installed (the optional sherpa-onnx part)"
   ],
   [
    "badge",
@@ -2431,10 +2431,6 @@
    "Checks this computer's NVIDIA GPU (and its memory) or CPU and RAM and suggests the fastest and the most accurate model that fit."
   ],
   [
-   "tooltip",
-   "Unavailable: DIARIZATION REASON"
-  ],
-  [
    "help",
    "Splits the transcript by who is speaking (SPEAKER_00, SPEAKER_01, ...). Adds processing time and needs the optional sherpa-onnx component to be installed."
   ],
@@ -2465,6 +2461,10 @@
   [
    "help",
    "The output files from the most recently finished transcription, with quick Open/Reveal actions. Stays empty until a job completes; see the Transcription Queue tab for jobs in progress."
+  ],
+  [
+   "tooltip",
+   "Unavailable: DIARIZATION REASON"
   ]
  ],
  "transcribe_speakers_ready": [

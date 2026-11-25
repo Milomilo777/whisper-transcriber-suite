@@ -3162,7 +3162,8 @@ class App(tk.Tk):
             diar_var = _inst_attr(self, "diarization_var")
             if diar_var is None:
                 return
-            diar_enabled = bool(diar_var.get())
+            check = _inst_attr(self, "diarization_check")
+            diar_enabled = bool(diar_var.get()) and (check is None or not check.instate(["disabled"]))
             if not diar_enabled:
                 combo.state(["disabled"])
             else:
