@@ -34,6 +34,7 @@ def test_failed_merge_restores_or_retains_every_displaced_package(monkeypatch, t
         new = stage / "bigpkg"
         new.mkdir()
         (new / "__init__.py").write_text("# new", encoding="utf-8")
+        (new / "new_only.py").write_text("# complete new module", encoding="utf-8")
         (new / "locked.pyd").touch()
         (stage / "created.py").touch()
         (stage / "zzlater.py").touch()
@@ -44,6 +45,8 @@ def test_failed_merge_restores_or_retains_every_displaced_package(monkeypatch, t
     def publish(src, dst):
         if phase == "publish" and Path(dst) == later and ".merge-" in Path(src).name:
             raise PermissionError("later package could not be published")
+        if locked and Path(src) == package and ".rollback-new-" in Path(dst).name:
+            raise PermissionError("Windows cannot move the loaded package either")
         return replace(src, dst)
 
     remove = deps._rm
@@ -66,7 +69,9 @@ def test_failed_merge_restores_or_retains_every_displaced_package(monkeypatch, t
 
     backup = dest / f".bigpkg.bak-{os.getpid()}"
     assert (backup / "version.py").is_file()
-    assert list(package.iterdir()) == [package / "locked.pyd"]
+    assert (package / "__init__.py").read_text(encoding="utf-8") == "# new"
+    assert (package / "new_only.py").is_file()
+    assert (package / "locked.pyd").is_file()
     monkeypatch.setattr(deps, "is_available", lambda feature: True)
     monkeypatch.setattr(deps.subprocess, "Popen", lambda *a, **kw: pytest.fail("must refuse retry"))
     logs = []

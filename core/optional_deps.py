@@ -378,7 +378,7 @@ def extras_dir() -> str:
 
 # What a cut install leaves behind: ``.<name>.bak-<pid>`` (the live package moved aside),
 # ``.<name>.merge-<pid>`` (the half-copied new one) and pip's ``pylibs-stage-*`` folder.
-_LEFTOVER_RE = re.compile(r"^\.(?P<name>.+)\.(?P<kind>bak|merge)-(?P<pid>\d+)$")
+_LEFTOVER_RE = re.compile(r"^\.(?P<name>.+)\.(?P<kind>bak|merge|rollback-new)-(?P<pid>\d+)$")
 _STAGE_PREFIX = "pylibs-stage-"
 _ROLLBACK_RECORD = ".install-rollback.json"
 #: Folders below the extras folder an install merges into (``google/cloud/speech``).
@@ -496,7 +496,18 @@ def _recover_install(
             if backed_up and (not had_original or _is_reparse_point(backup)):
                 raise ValueError(f"Unexpected package backup: {backup}")
             if published is not None and dest in published and (backed_up or not had_original):
-                _rm(dest)
+                # A loaded extension can make rmtree stop after deleting some
+                # modules. Move the whole published entry out of the import path first.
+                if _entry_exists(dest):
+                    scratch = _merge_path(dest, "rollback-new", pid)
+                    if _entry_exists(scratch):
+                        raise FileExistsError(scratch)
+                    try:
+                        os.replace(dest, scratch)
+                    except OSError:
+                        logger.debug("Could not move the new package at %s", dest, exc_info=True)
+                    else:
+                        _rm(scratch)
             dest_exists = _entry_exists(dest)
             if dest_exists and (backed_up or not had_original):
                 complete = False
