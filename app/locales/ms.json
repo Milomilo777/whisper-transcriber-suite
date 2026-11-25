@@ -315,7 +315,7 @@
     "Delete": "Padam",
     "Delete preset?": "Padam praset?",
     "Delete this saved preset?": "Padam praset yang disimpan ini?",
-    "Deletes standalone filler words of the transcript's language (English um, uh, er; German äh, ähm; French euh; …) from every segment's text. Only whole filler words are removed and the punctuation stays. Languages without a list are left alone. Review the segment list before saving (there is no undo).": "Memadam perkataan pengisi yang berdiri sendiri dalam bahasa transkrip (Inggeris um, uh, er; Jerman äh, ähm; Perancis euh; …) daripada teks setiap segmen. Hanya perkataan pengisi yang lengkap dibuang dan tanda baca kekal. Bahasa tanpa senarai dibiarkan. Semak senarai segmen sebelum menyimpan (tiada buat asal).",
+    "Deletes standalone filler words of the transcript's language (English um, uh, er; German äh, ähm; French euh; …) from every segment's text. Only whole filler words are removed and the punctuation stays. Languages without a list are left alone. Review the segment list before saving.": "Deletes standalone filler words of the transcript's language (English um, uh, er; German äh, ähm; French euh; …) from every segment's text. Only whole filler words are removed and the punctuation stays. Languages without a list are left alone. Review the segment list before saving.",
     "Demucs isolates vocals from background music/noise before transcribing. Can improve accuracy on noisy recordings; adds processing time.": "Demucs mengasingkan vokal daripada muzik/hingar latar sebelum transkripsi. Boleh meningkatkan ketepatan pada rakaman bising; menambah masa pemprosesan.",
     "Describe what you did and what happened. Your message is sent to the project with the app version and your operating system. Do not include private information in your message. No logs or settings are attached automatically. There is no reply; for a conversation, use GitHub.": "Terangkan perkara yang anda lakukan dan perkara yang berlaku. Mesej anda dihantar kepada projek bersama versi aplikasi dan sistem pengendalian anda. Jangan sertakan maklumat peribadi dalam mesej anda. Tiada log atau tetapan dilampirkan secara automatik. Tiada balasan; untuk perbualan, gunakan GitHub.",
     "Design a voice": "Reka suara",
@@ -368,6 +368,9 @@
     "Drop a file here, paste a link, or try the sample": "Lepaskan fail di sini, tampal pautan, atau cuba sampel",
     "Dutch": "Belanda",
     "ELAN import/export (.eaf)": "Import/eksport ELAN (.eaf)",
+    "Edit": "Edit",
+    "Edit cue text": "Edit cue text",
+    "Edit cue text…": "Edit cue text…",
     "Edit timestamp": "Edit cap masa",
     "Edit timestamp...": "Edit cap masa...",
     "Editing": "Penyuntingan",
@@ -939,6 +942,8 @@
     "Recording failed": "Rakaman gagal",
     "Recording... {seconds}s": "Merakam... {seconds} s",
     "Recovery copy: {path}": "Salinan pemulihan: {path}",
+    "Redo": "Redo",
+    "Redo {action}": "Redo {action}",
     "Reduce background noise before transcribing": "Kurangkan hingar latar sebelum transkripsi",
     "Refine word timings with stable-ts (slower)": "Perhalus pemasaan perkataan dengan stable-ts (lebih perlahan)",
     "Refresh": "Muat semula",
@@ -964,6 +969,7 @@
     "Renamed {n} segment(s). Use Save changes ({shortcut}) to write.": [
       "{n} segmen dinamakan semula. Gunakan Simpan perubahan ({shortcut}) untuk menulis."
     ],
+    "Replace": "Replace",
     "Replace .otr file?": "Gantikan fail .otr?",
     "Replace all": "Ganti semua",
     "Replace preset?": "Ganti praset?",
@@ -1271,6 +1277,7 @@
     "This computer cannot capture microphone audio yet.": "Komputer ini belum dapat merakam audio mikrofon.",
     "This computer cannot capture that audio source yet.": "Komputer ini belum dapat merakam sumber audio itu.",
     "This copy of the app cannot update its video downloader by itself; a new app version brings a newer one.": "Salinan aplikasi ini tidak dapat mengemas kini pemuat turun videonya sendiri; versi aplikasi baharu membawa versi yang lebih baharu.",
+    "This cue changed. Reopen the timestamp editor.": "This cue changed. Reopen the timestamp editor.",
     "This file is not a transcript JSON (its root is not a list).": "Fail ini bukan JSON transkrip (akarnya bukan senarai).",
     "This file uses one language.": "Fail ini menggunakan satu bahasa.",
     "This folder was not found. No note is written until it exists.": "Folder ini tidak ditemui. Tiada nota ditulis sehingga folder itu wujud.",
@@ -1371,6 +1378,8 @@
     "Type-as-you-search filter": "Penapis semasa menaip",
     "Ukrainian": "Ukraine",
     "Unavailable: {reason}": "Tidak tersedia: {reason}",
+    "Undo": "Undo",
+    "Undo {action}": "Undo {action}",
     "Unfinished job found for this text and voice: {done} of {n} pieces are done. Continue it, or start over.": [
       "Tugasan yang belum selesai ditemui untuk teks dan suara ini: {done} daripada {n} bahagian sudah siap. Teruskan, atau mula semula."
     ],

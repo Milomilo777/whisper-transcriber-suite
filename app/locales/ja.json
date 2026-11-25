@@ -315,7 +315,7 @@
     "Delete": "削除",
     "Delete preset?": "プリセットを削除しますか？",
     "Delete this saved preset?": "この保存済みプリセットを削除しますか？",
-    "Deletes standalone filler words of the transcript's language (English um, uh, er; German äh, ähm; French euh; …) from every segment's text. Only whole filler words are removed and the punctuation stays. Languages without a list are left alone. Review the segment list before saving (there is no undo).": "文字起こしの言語の単独のフィラー語（英語の um、uh、er、ドイツ語の äh、ähm、フランス語の euh など）を各セグメントのテキストから削除します。削除されるのはフィラー語単体だけで、句読点は残ります。リストのない言語はそのままです。保存する前にセグメント一覧を確認してください（元に戻せません）。",
+    "Deletes standalone filler words of the transcript's language (English um, uh, er; German äh, ähm; French euh; …) from every segment's text. Only whole filler words are removed and the punctuation stays. Languages without a list are left alone. Review the segment list before saving.": "Deletes standalone filler words of the transcript's language (English um, uh, er; German äh, ähm; French euh; …) from every segment's text. Only whole filler words are removed and the punctuation stays. Languages without a list are left alone. Review the segment list before saving.",
     "Demucs isolates vocals from background music/noise before transcribing. Can improve accuracy on noisy recordings; adds processing time.": "Demucs は文字起こしの前に、背景の音楽やノイズからボーカル（声）を分離します。ノイズの多い録音で精度が上がることがありますが、処理時間が増えます。",
     "Describe what you did and what happened. Your message is sent to the project with the app version and your operating system. Do not include private information in your message. No logs or settings are attached automatically. There is no reply; for a conversation, use GitHub.": "行った操作と発生した状況を記入してください。メッセージはアプリバージョンとOS情報とともにプロジェクトへ送信されます。個人情報を含めないでください。ログや設定は自動添付されません。返信は行われないため、やり取りが必要な場合は GitHub をご利用ください。",
     "Design a voice": "声をデザイン",
@@ -368,6 +368,9 @@
     "Drop a file here, paste a link, or try the sample": "ここにファイルをドロップするか、リンクを貼り付けるか、サンプルを試してください",
     "Dutch": "オランダ語",
     "ELAN import/export (.eaf)": "ELAN のインポート/エクスポート（.eaf）",
+    "Edit": "Edit",
+    "Edit cue text": "Edit cue text",
+    "Edit cue text…": "Edit cue text…",
     "Edit timestamp": "タイムスタンプを編集",
     "Edit timestamp...": "タイムスタンプを編集...",
     "Editing": "編集",
@@ -939,6 +942,8 @@
     "Recording failed": "録音に失敗しました",
     "Recording... {seconds}s": "録音しています... {seconds} 秒",
     "Recovery copy: {path}": "復旧用コピー: {path}",
+    "Redo": "Redo",
+    "Redo {action}": "Redo {action}",
     "Reduce background noise before transcribing": "文字起こしの前に背景ノイズを低減",
     "Refine word timings with stable-ts (slower)": "stable-ts で単語のタイミングを精密化（低速）",
     "Refresh": "更新",
@@ -964,6 +969,7 @@
     "Renamed {n} segment(s). Use Save changes ({shortcut}) to write.": [
       "{n} 個のセグメントの名前を変更しました。書き込むには「変更を保存」（{shortcut}）を使ってください。"
     ],
+    "Replace": "Replace",
     "Replace .otr file?": ".otr ファイルを置き換えますか？",
     "Replace all": "すべて置換",
     "Replace preset?": "プリセットを置き換えますか？",
@@ -1271,6 +1277,7 @@
     "This computer cannot capture microphone audio yet.": "このコンピューターではまだマイクの音声を取り込めません。",
     "This computer cannot capture that audio source yet.": "このコンピューターではまだその音声ソースを取り込めません。",
     "This copy of the app cannot update its video downloader by itself; a new app version brings a newer one.": "このアプリでは動画ダウンローダーを自動で更新できません。新しいバージョンのアプリに新しいダウンローダーが含まれます。",
+    "This cue changed. Reopen the timestamp editor.": "This cue changed. Reopen the timestamp editor.",
     "This file is not a transcript JSON (its root is not a list).": "このファイルは文字起こしの JSON ではありません（ルートがリストではありません）。",
     "This file uses one language.": "このファイルは1つの言語のみを使用しています。",
     "This folder was not found. No note is written until it exists.": "このフォルダーが見つかりません。フォルダーが存在するまで、ノートは書き込まれません。",
@@ -1371,6 +1378,8 @@
     "Type-as-you-search filter": "入力しながら絞り込むフィルター",
     "Ukrainian": "ウクライナ語",
     "Unavailable: {reason}": "利用不可: {reason}",
+    "Undo": "Undo",
+    "Undo {action}": "Undo {action}",
     "Unfinished job found for this text and voice: {done} of {n} pieces are done. Continue it, or start over.": [
       "このテキストと声の未完了ジョブが見つかりました: {n} 個中 {done} 個の部分が完了しています。続行するか、最初からやり直してください。"
     ],

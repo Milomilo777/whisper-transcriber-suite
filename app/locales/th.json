@@ -315,7 +315,7 @@
     "Delete": "ลบ",
     "Delete preset?": "ลบค่าที่ตั้งไว้ล่วงหน้าหรือไม่",
     "Delete this saved preset?": "ลบค่าที่ตั้งไว้ล่วงหน้าที่บันทึกไว้นี้หรือไม่",
-    "Deletes standalone filler words of the transcript's language (English um, uh, er; German äh, ähm; French euh; …) from every segment's text. Only whole filler words are removed and the punctuation stays. Languages without a list are left alone. Review the segment list before saving (there is no undo).": "ลบคำเติมที่อยู่โดดเดี่ยวในภาษาของข้อความถอดเสียง (อังกฤษ um, uh, er; เยอรมัน äh, ähm; ฝรั่งเศส euh; …) ออกจากข้อความของทุกช่วง ลบเฉพาะคำเติมทั้งคำและคงเครื่องหมายวรรคตอนไว้ ภาษาที่ไม่มีรายการจะไม่ถูกแตะต้อง ตรวจรายการช่วงก่อนบันทึก (ไม่สามารถเลิกทำได้)",
+    "Deletes standalone filler words of the transcript's language (English um, uh, er; German äh, ähm; French euh; …) from every segment's text. Only whole filler words are removed and the punctuation stays. Languages without a list are left alone. Review the segment list before saving.": "Deletes standalone filler words of the transcript's language (English um, uh, er; German äh, ähm; French euh; …) from every segment's text. Only whole filler words are removed and the punctuation stays. Languages without a list are left alone. Review the segment list before saving.",
     "Demucs isolates vocals from background music/noise before transcribing. Can improve accuracy on noisy recordings; adds processing time.": "Demucs จะแยกเสียงร้อง/เสียงพูดออกจากดนตรีหรือเสียงรบกวนพื้นหลังก่อนถอดเสียง อาจช่วยเพิ่มความแม่นยำในไฟล์ที่มีเสียงรบกวน แต่ใช้เวลาประมวลผลเพิ่มขึ้น",
     "Describe what you did and what happened. Your message is sent to the project with the app version and your operating system. Do not include private information in your message. No logs or settings are attached automatically. There is no reply; for a conversation, use GitHub.": "อธิบายสิ่งที่คุณทำและสิ่งที่เกิดขึ้น ข้อความของคุณจะถูกส่งไปยังโปรเจกต์พร้อมกับเวอร์ชันของแอปและระบบปฏิบัติการของคุณ อย่าใส่ข้อมูลส่วนตัวลงในข้อความ ไม่มีบันทึกหรือการตั้งค่าใดๆ แนบไปโดยอัตโนมัติ จะไม่มีการตอบกลับ หากต้องการสนทนา โปรดใช้ GitHub",
     "Design a voice": "ออกแบบเสียง",
@@ -368,6 +368,9 @@
     "Drop a file here, paste a link, or try the sample": "วางไฟล์ที่นี่ วางลิงก์ หรือลองใช้ตัวอย่าง",
     "Dutch": "ดัตช์",
     "ELAN import/export (.eaf)": "นำเข้า/ส่งออก ELAN (.eaf)",
+    "Edit": "Edit",
+    "Edit cue text": "Edit cue text",
+    "Edit cue text…": "Edit cue text…",
     "Edit timestamp": "แก้ไขเวลาประทับ",
     "Edit timestamp...": "แก้ไขเวลาประทับ...",
     "Editing": "การแก้ไข",
@@ -939,6 +942,8 @@
     "Recording failed": "บันทึกเสียงล้มเหลว",
     "Recording... {seconds}s": "กำลังบันทึกเสียง... {seconds} วิ",
     "Recovery copy: {path}": "สำเนาการกู้คืน: {path}",
+    "Redo": "Redo",
+    "Redo {action}": "Redo {action}",
     "Reduce background noise before transcribing": "ลดเสียงรบกวนพื้นหลังก่อนถอดเสียง",
     "Refine word timings with stable-ts (slower)": "ปรับเวลาระดับคำด้วย stable-ts (ช้ากว่า)",
     "Refresh": "รีเฟรช",
@@ -964,6 +969,7 @@
     "Renamed {n} segment(s). Use Save changes ({shortcut}) to write.": [
       "เปลี่ยนชื่อ {n} ช่วงแล้ว ใช้บันทึกการเปลี่ยนแปลง ({shortcut}) เพื่อเขียนลงไฟล์"
     ],
+    "Replace": "Replace",
     "Replace .otr file?": "แทนที่ไฟล์ .otr หรือไม่",
     "Replace all": "แทนที่ทั้งหมด",
     "Replace preset?": "แทนที่ค่าที่ตั้งไว้ล่วงหน้าหรือไม่",
@@ -1271,6 +1277,7 @@
     "This computer cannot capture microphone audio yet.": "คอมพิวเตอร์นี้ยังรับเสียงจากไมโครโฟนไม่ได้",
     "This computer cannot capture that audio source yet.": "คอมพิวเตอร์นี้ยังรับเสียงจากแหล่งเสียงนั้นไม่ได้",
     "This copy of the app cannot update its video downloader by itself; a new app version brings a newer one.": "แอปชุดนี้อัปเดตตัวดาวน์โหลดวิดีโอเองไม่ได้ แอปเวอร์ชันใหม่จะมาพร้อมตัวที่ใหม่กว่า",
+    "This cue changed. Reopen the timestamp editor.": "This cue changed. Reopen the timestamp editor.",
     "This file is not a transcript JSON (its root is not a list).": "ไฟล์นี้ไม่ใช่ JSON ของข้อความถอดเสียง (ราก (root) ไม่ใช่รายการ)",
     "This file uses one language.": "ไฟล์นี้ใช้ภาษาเดียว",
     "This folder was not found. No note is written until it exists.": "ไม่พบโฟลเดอร์นี้ จะไม่มีการเขียนบันทึกจนกว่าโฟลเดอร์จะมีอยู่",
@@ -1371,6 +1378,8 @@
     "Type-as-you-search filter": "ตัวกรองแบบค้นหาขณะพิมพ์",
     "Ukrainian": "ยูเครน",
     "Unavailable: {reason}": "ใช้ไม่ได้: {reason}",
+    "Undo": "Undo",
+    "Undo {action}": "Undo {action}",
     "Unfinished job found for this text and voice: {done} of {n} pieces are done. Continue it, or start over.": [
       "พบงานที่ยังไม่เสร็จสำหรับข้อความและเสียงนี้: เสร็จแล้ว {done} จาก {n} ส่วน ทำต่อ หรือเริ่มใหม่"
     ],

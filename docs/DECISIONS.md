@@ -1075,3 +1075,22 @@ Rejected: a separate dispatcher (validation drift), arbitrary file access,
 assistant-editable folder grants, automatic public tunnels, arbitrary model
 URLs, and automatic model downloads. Model installation remains an explicit
 application operation. A future connection panel can generate client snippets.
+
+---
+
+## 0023 — Keep one bounded edit history per transcript viewer
+
+Status: Accepted for implementation
+
+**Context:** Cue edits and bulk tools operate on the same transcript. Undo
+must recover the metadata from before an edit and respect explicit saves.
+
+**Decision:** Record complete cue-list revisions with the segment history
+stack. Reuse unchanged cue records and their nested data. A viewer edit
+replaces the affected records and commits one revision, including for bulk
+operations. Keep at most 32 actions and let text widgets handle their own
+draft edits before a revision is committed.
+
+**Consequences:** Undo and redo restore cues, timing, and metadata together.
+Saving records the saved revision without clearing history. Restoring any
+other revision makes the viewer dirty. Branching after Undo discards Redo.

@@ -315,7 +315,7 @@
     "Delete": "删除",
     "Delete preset?": "删除预设？",
     "Delete this saved preset?": "确定删除此已保存的预设吗？",
-    "Deletes standalone filler words of the transcript's language (English um, uh, er; German äh, ähm; French euh; …) from every segment's text. Only whole filler words are removed and the punctuation stays. Languages without a list are left alone. Review the segment list before saving (there is no undo).": "从每个片段的文本中删除转录语言中单独出现的语气填充词（英语 um、uh、er；德语 äh、ähm；法语 euh；…）。只删除完整的填充词，标点保留。没有词表的语言不受影响。保存前请检查片段列表（无法撤销）。",
+    "Deletes standalone filler words of the transcript's language (English um, uh, er; German äh, ähm; French euh; …) from every segment's text. Only whole filler words are removed and the punctuation stays. Languages without a list are left alone. Review the segment list before saving.": "Deletes standalone filler words of the transcript's language (English um, uh, er; German äh, ähm; French euh; …) from every segment's text. Only whole filler words are removed and the punctuation stays. Languages without a list are left alone. Review the segment list before saving.",
     "Demucs isolates vocals from background music/noise before transcribing. Can improve accuracy on noisy recordings; adds processing time.": "Demucs 会在转录前将人声与背景音乐/噪声分离。可提高嘈杂录音的准确度；会增加处理时间。",
     "Describe what you did and what happened. Your message is sent to the project with the app version and your operating system. Do not include private information in your message. No logs or settings are attached automatically. There is no reply; for a conversation, use GitHub.": "请描述您的操作及发生的情况。您的消息将连同应用版本和操作系统信息一起发送给项目方。请勿在消息中包含隐私信息。系统不会自动附加日志或设置。此渠道不提供回复；如需交流，请前往 GitHub。",
     "Design a voice": "设计声音",
@@ -368,6 +368,9 @@
     "Drop a file here, paste a link, or try the sample": "将文件拖放到这里、粘贴链接，或试试示例",
     "Dutch": "荷兰语",
     "ELAN import/export (.eaf)": "ELAN 导入/导出（.eaf）",
+    "Edit": "Edit",
+    "Edit cue text": "Edit cue text",
+    "Edit cue text…": "Edit cue text…",
     "Edit timestamp": "编辑时间戳",
     "Edit timestamp...": "编辑时间戳...",
     "Editing": "编辑",
@@ -939,6 +942,8 @@
     "Recording failed": "录音失败",
     "Recording... {seconds}s": "正在录音... {seconds} 秒",
     "Recovery copy: {path}": "恢复副本：{path}",
+    "Redo": "Redo",
+    "Redo {action}": "Redo {action}",
     "Reduce background noise before transcribing": "转录前降低背景噪声",
     "Refine word timings with stable-ts (slower)": "使用 stable-ts 优化逐词时间（较慢）",
     "Refresh": "刷新",
@@ -964,6 +969,7 @@
     "Renamed {n} segment(s). Use Save changes ({shortcut}) to write.": [
       "已重命名 {n} 个片段。使用“保存更改”（{shortcut}）写入。"
     ],
+    "Replace": "Replace",
     "Replace .otr file?": "替换 .otr 文件？",
     "Replace all": "全部替换",
     "Replace preset?": "替换预设？",
@@ -1271,6 +1277,7 @@
     "This computer cannot capture microphone audio yet.": "这台电脑暂时无法采集麦克风音频。",
     "This computer cannot capture that audio source yet.": "这台电脑暂时无法采集该音频来源。",
     "This copy of the app cannot update its video downloader by itself; a new app version brings a newer one.": "当前安装的这份应用无法自行更新视频下载器；新版应用会自带更新的下载器。",
+    "This cue changed. Reopen the timestamp editor.": "This cue changed. Reopen the timestamp editor.",
     "This file is not a transcript JSON (its root is not a list).": "此文件不是转录 JSON（其根元素不是列表）。",
     "This file uses one language.": "此文件仅使用一种语言。",
     "This folder was not found. No note is written until it exists.": "未找到此文件夹。文件夹存在之前不会写入任何笔记。",
@@ -1371,6 +1378,8 @@
     "Type-as-you-search filter": "边输入边筛选",
     "Ukrainian": "乌克兰语",
     "Unavailable: {reason}": "不可用：{reason}",
+    "Undo": "Undo",
+    "Undo {action}": "Undo {action}",
     "Unfinished job found for this text and voice: {done} of {n} pieces are done. Continue it, or start over.": [
       "找到此文本和声音的未完成任务：{n} 段中已完成 {done} 段。继续该任务，或重新开始。"
     ],

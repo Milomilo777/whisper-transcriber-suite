@@ -58,7 +58,7 @@ from app.widgets.platform import (
     is_darwin, open_async, open_file, open_folder, reveal_label,
 )
 from app.widgets.tooltip import help_icon
-from core import subtitle_edit, subtitle_qc
+from core import segment_ops, subtitle_edit, subtitle_qc
 from core.media_types import MEDIA_EXTENSIONS
 from core.paths import path_key
 from core.search import find_folded_span, folded_contains, replace_folded
@@ -870,6 +870,8 @@ class TranscriptViewer(tk.Toplevel):
         # Find-and-replace shortcut.
         shortcuts.bind_shortcut(self, "f", self._open_find_replace)
         shortcuts.bind_shortcut(self, "s", self._save_changes)
+        shortcuts.bind_shortcut(self, "z", lambda: self._history_shortcut(self._undo_edit))
+        shortcuts.bind_shortcut(self, "y", lambda: self._history_shortcut(self._redo_edit))
 
         # Transport keyboard niceties — bound to THIS Toplevel only (not
         # bind_all) so they don't leak into the main app window. Left /
@@ -946,6 +948,14 @@ class TranscriptViewer(tk.Toplevel):
 
         # Edit tools group
         ttk.Separator(toolbar, orient="vertical").pack(side="left", padx=8, fill="y")
+        edit = ttk.Menubutton(toolbar, text=_("Edit"))
+        self._edit_menu = tk.Menu(edit, tearoff=False, postcommand=self._refresh_history_menu)
+        edit.configure(menu=self._edit_menu)
+        for label, key, command in ((_("Undo"), "z", self._undo_edit),
+                                    (_("Redo"), "y", self._redo_edit)):
+            self._edit_menu.add_command(label=label, accelerator=shortcuts.accel_text(key),
+                                        command=command, state="disabled")
+        edit.pack(side="left", padx=(0, 4))
         ttk.Button(toolbar, text=_("Find & Replace  ({shortcut})",
                                    shortcut=shortcuts.accel_text('f')),
                    command=self._open_find_replace).pack(side="left", padx=(0, 4))
@@ -957,7 +967,7 @@ class TranscriptViewer(tk.Toplevel):
             "(English um, uh, er; German äh, ähm; French euh; …) from every "
             "segment's text. Only whole filler words are removed and the "
             "punctuation stays. Languages without a list are left alone. "
-            "Review the segment list before saving (there is no undo)."),
+            "Review the segment list before saving."),
         ).pack(side="left", padx=(0, 4))
         ttk.Button(toolbar, text=_("Save changes  ({shortcut})",
                                    shortcut=shortcuts.accel_text('s')),
@@ -2188,6 +2198,7 @@ class TranscriptViewer(tk.Toplevel):
                 label=_("Rename '{speaker}' (everywhere)...", speaker=speaker),
                 command=lambda s=speaker: self._rename_speaker(s),
             )
+        menu.add_command(label=_("Edit cue text…"), command=lambda: self._edit_cue_text(idx))
         menu.add_command(
             label=_("Edit timestamp..."),
             command=lambda i=idx: self._open_edit_timestamp(i),
@@ -2321,6 +2332,74 @@ class TranscriptViewer(tk.Toplevel):
 
     # -- edit operations -------------------------------------------------
 
+    def _apply_edit(self, segments: list[dict[str, Any]], label: str) -> None:
+        # Replace changed cues before committing. Unchanged records, including
+        # nested word lists, are shared with earlier revisions.
+        if len(segments) == len(self.segments) and all(
+            old is new or old == new for old, new in zip(self.segments, segments)
+        ):
+            return
+        history = self.__dict__.get("_edit_history")
+        if history is None:
+            history = self._edit_history = segment_ops.History(
+                self.segments, capacity=32, copy_state=lambda state: state,
+            )
+            if not self._dirty:
+                self._saved_segments = self.segments
+        history.push(segments, label)
+        self._show_edit_revision(segments)
+
+    def _show_edit_revision(self, segments: list[dict[str, Any]]) -> None:
+        self.segments = segments
+        self._dirty = segments is not self.__dict__.get("_saved_segments")
+        self._populate_listbox()
+
+    def _refresh_history_menu(self) -> None:
+        history = self.__dict__.get("_edit_history")
+        undo = history.undo_label if history else None
+        redo = history.redo_label if history else None
+        self._edit_menu.entryconfigure(
+            0, label=_("Undo {action}", action=undo) if undo else _("Undo"),
+            state="normal" if undo else "disabled",
+        )
+        self._edit_menu.entryconfigure(
+            1, label=_("Redo {action}", action=redo) if redo else _("Redo"),
+            state="normal" if redo else "disabled",
+        )
+
+    def _history_shortcut(self, action: Callable[[], None]) -> str | None:
+        if isinstance(self.focus_get(), (tk.Text, tk.Entry, ttk.Entry, tk.Spinbox)):
+            return None
+        action()
+        return "break"
+
+    def _restore_edit(self, redo: bool) -> None:
+        history = self.__dict__.get("_edit_history")
+        if history is None or not (history.can_redo if redo else history.can_undo):
+            return
+        if self._find_dialog is not None:
+            self._find_dialog._forget_match()
+        self._show_edit_revision(history.redo() if redo else history.undo())
+
+    def _undo_edit(self) -> None:
+        self._restore_edit(redo=False)
+
+    def _redo_edit(self) -> None:
+        self._restore_edit(redo=True)
+
+    def _apply_cue_text(self, index: int, text: str, label: str) -> None:
+        if text == _seg_text(self.segments[index]):
+            return
+        segments = self.segments.copy()
+        segments[index] = segments[index].copy()
+        _set_segment_text(segments[index], text)
+        self._apply_edit(segments, label)
+
+    def _edit_cue_text(self, index: int) -> None:
+        dialog = EditCueDialog(self, _seg_text(self.segments[index]))
+        if dialog.result is not None:
+            self._apply_cue_text(index, dialog.result, _("Edit cue text"))
+
     def _open_find_replace(self) -> None:
         if self._find_dialog is not None:
             try:
@@ -2347,13 +2426,13 @@ class TranscriptViewer(tk.Toplevel):
         if not new_clean or new_clean == current:
             return
         renamed = 0
-        for seg in self.segments:
+        segments = self.segments.copy()
+        for index, seg in enumerate(self.segments):
             if _seg_text(seg, "speaker").strip() == current:
-                seg["speaker"] = new_clean
+                segments[index] = {**seg, "speaker": new_clean}
                 renamed += 1
         if renamed:
-            self._dirty = True
-            self._populate_listbox()
+            self._apply_edit(segments, _("Rename speaker"))
             notify(
                 self,
                 ngettext("Renamed {n} segment(s). Use Save changes ({shortcut}) to write.",
@@ -2387,15 +2466,16 @@ class TranscriptViewer(tk.Toplevel):
             return
         pattern = _filler_regex(words)
         changed = 0
-        for seg in self.segments:
+        segments = self.segments.copy()
+        for index, seg in enumerate(self.segments):
             original = _seg_text(seg)
             cleaned = _strip_fillers(original, pattern)
             if cleaned != original.strip():
-                _set_segment_text(seg, cleaned)
+                segments[index] = seg.copy()
+                _set_segment_text(segments[index], cleaned)
                 changed += 1
         if changed:
-            self._dirty = True
-            self._populate_listbox()
+            self._apply_edit(segments, _("Remove fillers"))
         notify(
             self,
             ngettext("Fillers removed: updated {n} segment(s). Use Save changes ({shortcut}) to write.",
@@ -2438,6 +2518,7 @@ class TranscriptViewer(tk.Toplevel):
             )
             return
         self._dirty = False
+        self._saved_segments = self.segments
         self._disk_stamp = written_stamp
         notify(
             self,
@@ -3208,6 +3289,43 @@ class TranscriptViewer(tk.Toplevel):
         super().destroy()
 
 
+class EditCueDialog(simpledialog.Dialog):
+    """Edit one cue using a local undo buffer for uncommitted typing."""
+
+    def __init__(self, viewer: TranscriptViewer, text: str) -> None:
+        self.initial_text = text
+        self.result: str | None = None
+        super().__init__(viewer, title=_("Edit cue text"))
+
+    def body(self, master: tk.Misc) -> tk.Text:
+        self.text = tk.Text(master, wrap="word", width=52, height=7, undo=True, maxundo=32)
+        self.text.pack(fill="both", expand=True, padx=8, pady=8)
+        self.text.insert("1.0", self.initial_text)
+        self.text.edit_reset()
+        for key, operation in (("z", self.text.edit_undo), ("y", self.text.edit_redo)):
+            for sequence in shortcuts.bind_sequences(key):
+                self.text.bind(sequence, lambda _event, op=operation: self._draft_history(op))
+        return self.text
+
+    @staticmethod
+    def _draft_history(operation: Callable[[], None]) -> str:
+        try:
+            operation()
+        except tk.TclError:
+            pass  # empty undo or redo stack
+        return "break"
+
+    def buttonbox(self) -> None:
+        buttons = ttk.Frame(self)
+        buttons.pack(pady=(0, 8))
+        ttk.Button(buttons, text=_("Save"), command=self.ok).pack(side="left", padx=4)
+        ttk.Button(buttons, text=_("Cancel"), command=self.cancel).pack(side="left", padx=4)
+        self.bind("<Escape>", self.cancel)
+
+    def apply(self) -> None:
+        self.result = self.text.get("1.0", "end-1c")
+
+
 class EditTimestampDialog(tk.Toplevel):
     """Small modal to hand-edit one segment's start/end time.
 
@@ -3224,7 +3342,7 @@ class EditTimestampDialog(tk.Toplevel):
         super().__init__(viewer)
         self.viewer = viewer
         self.seg_idx = seg_idx
-        seg = viewer.segments[seg_idx]
+        seg = self.original_cue = viewer.segments[seg_idx]
         self.title(_("Edit timestamp"))
         self.transient(viewer)
         self.resizable(False, False)
@@ -3277,11 +3395,12 @@ class EditTimestampDialog(tk.Toplevel):
         if end <= start:
             self.error_var.set(_("End must be after start."))
             return
-        seg = self.viewer.segments[self.seg_idx]
-        seg["start"] = start
-        seg["end"] = end
-        self.viewer._dirty = True
-        self.viewer._populate_listbox()
+        segments = self.viewer.segments.copy()
+        if self.seg_idx >= len(segments) or segments[self.seg_idx] is not self.original_cue:
+            self.error_var.set(_("This cue changed. Reopen the timestamp editor."))
+            return
+        segments[self.seg_idx] = {**self.original_cue, "start": start, "end": end}
+        self.viewer._apply_edit(segments, _("Edit timestamp"))
         self.destroy()
 
 
@@ -3455,9 +3574,9 @@ class FindReplaceDialog(tk.Toplevel):
             self.find_next()
             return
         replacement = self.replace_var.get() or ""
-        _set_segment_text(seg, text[: m[0]] + replacement + text[m[1]:])
-        self.viewer._dirty = True
-        self.viewer._populate_listbox()
+        self.viewer._apply_cue_text(
+            self.last_match_idx, text[:m[0]] + replacement + text[m[1]:], _("Replace"),
+        )
         # Continue after the inserted text, so it is not matched again.
         self.last_match_pos = m[0] + len(replacement) - 1
         self.find_next()
@@ -3469,15 +3588,17 @@ class FindReplaceDialog(tk.Toplevel):
         replacement = self.replace_var.get() or ""
         case_sensitive = self.case_var.get()
         count = 0
-        for seg in self.viewer.segments:
+        segments = self.viewer.segments.copy()
+        for index, seg in enumerate(self.viewer.segments):
             text = _seg_text(seg)
             new_text = self._safe_replace(text, needle, replacement, case_sensitive)
             if new_text != text:
-                _set_segment_text(seg, new_text)
+                segments[index] = seg.copy()
+                _set_segment_text(segments[index], new_text)
                 count += 1
         if count:
-            self.viewer._dirty = True
-            self.viewer._populate_listbox()
+            self._forget_match()
+            self.viewer._apply_edit(segments, _("Replace all"))
         messagebox.showinfo(
             _("Replace all"),
             ngettext("Replaced in {n} segment(s).", "Replaced in {n} segment(s).", count),

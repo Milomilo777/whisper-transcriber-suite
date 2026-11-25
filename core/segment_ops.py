@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 import copy
+from collections.abc import Callable
 import unicodedata
 
 class SegmentOpError(ValueError):
@@ -312,34 +313,41 @@ def set_times(segments: list[dict], index: int, start: float, end: float) -> lis
     return res
 
 class History:
-    """Undo/redo of whole segment lists. Input is never mutated."""
-    def __init__(self, initial: list[dict], capacity: int = 200):
+    """Bounded undo and redo for cue-list revisions.
+
+    Defaults to detached copies. A copy-on-write caller may share revisions
+    using an identity copier if it never mutates a committed revision.
+    """
+
+    def __init__(self, initial: list[dict], capacity: int = 200, *,
+                 copy_state: Callable[[list[dict]], list[dict]] = copy.deepcopy):
         self._capacity = capacity
-        self._undo_stack: list[tuple[list[dict], str | None]] = [(copy.deepcopy(initial), None)]
-        self._redo_stack = []
+        self._copy_state = copy_state
+        self._undo_stack: list[tuple[list[dict], str | None]] = [(copy_state(initial), None)]
+        self._redo_stack: list[tuple[list[dict], str | None]] = []
 
     def push(self, segments: list[dict], label: str):
         """Records a new state. Input is never mutated."""
-        self._undo_stack.append((copy.deepcopy(segments), label))
+        self._undo_stack.append((self._copy_state(segments), label))
         self._redo_stack.clear()
         if len(self._undo_stack) > self._capacity + 1:
             self._undo_stack.pop(0)
 
     def undo(self) -> list[dict]:
-        """Undoes the last operation. Returns a deep copy; stored state is never mutated."""
+        """Undo the last operation and return the restored revision."""
         if not self.can_undo:
             raise SegmentOpError("Nothing to undo.")
         state, label = self._undo_stack.pop()
         self._redo_stack.append((state, label))
-        return copy.deepcopy(self._undo_stack[-1][0])
+        return self._copy_state(self._undo_stack[-1][0])
 
     def redo(self) -> list[dict]:
-        """Redoes the last undone operation. Returns a deep copy; stored state is never mutated."""
+        """Redo the last operation and return its revision."""
         if not self.can_redo:
             raise SegmentOpError("Nothing to redo.")
         state, label = self._redo_stack.pop()
         self._undo_stack.append((state, label))
-        return copy.deepcopy(state)
+        return self._copy_state(state)
 
     @property
     def can_undo(self) -> bool:
