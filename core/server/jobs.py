@@ -1464,18 +1464,21 @@ class JobManager:
 
         Used only when the engine recorded no ``task.output_paths``. Match by
         extension against the requested formats; newest by mtime wins (the
-        "(1)" re-run case).
+        "(1)" re-run case). The staged media and job options are inputs.
         """
         out: list[tuple[str, str]] = []
         try:
             names = os.listdir(job.work_dir)
         except OSError:
             return out
-        media_name = os.path.basename(job.media_path)
+        input_names = {
+            os.path.normcase(os.path.basename(job.media_path)),
+            os.path.normcase(PROJECT_FILE_NAME),
+        }
         for fmt in job.formats:
             ext = f".{fmt.lower()}"
             matches = [n for n in names
-                       if n.lower().endswith(ext) and n != media_name]
+                       if n.lower().endswith(ext) and os.path.normcase(n) not in input_names]
             if not matches:
                 continue
             dated: list[tuple[float, str]] = []

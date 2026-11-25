@@ -8,6 +8,7 @@ collection, and per-job cleanup.
 """
 from __future__ import annotations
 
+import json
 import os
 import time
 from pathlib import Path
@@ -309,6 +310,43 @@ def test_output_path_resolves_finished_format(tmp_path):
         assert srt is not None and srt.endswith(".srt") and os.path.isfile(srt)
         assert mgr.output_path(jid, "vtt") is None  # not produced
         assert mgr.output_path("nope", "srt") is None
+    finally:
+        mgr.stop()
+
+
+@pytest.mark.parametrize("outcome", ["cancelled", "failed", "legacy"])
+def test_output_scan_does_not_offer_job_options_as_json(tmp_path, outcome):
+    def transcribe(task, *_args):
+        source = Path(task.file_path)
+        options = source.parent / jobs_mod.PROJECT_FILE_NAME
+        assert json.loads(options.read_text(encoding="utf-8")) == {"diarization_enabled": True}
+        if outcome == "cancelled":
+            task.cancelled = True
+        elif outcome == "failed":
+            raise RuntimeError("transcription stopped before writing an export")
+        else:
+            transcript = source.with_suffix(".json")
+            transcript.write_text('[{"text": "retained transcript"}]', encoding="utf-8")
+            # The legacy scan prefers the newest file. The options sidecar
+            # must stay out of the selection even when it is newer.
+            os.utime(transcript, (1, 1))
+
+    mgr = _make_manager(tmp_path, transcribe)
+    try:
+        jid = mgr.submit_upload("clip.wav", b"audio", ["json"],
+                                options={"diarization_enabled": True})
+        job = _wait_terminal(mgr, jid)
+        assert job is not None
+        path = mgr.output_path(jid, "json")
+        if outcome == "legacy":
+            assert job.status == STATUS_FINISHED
+            assert job.public_dict()["outputs"] == [{"fmt": "json", "name": "clip.json"}]
+            assert path is not None
+            assert json.loads(Path(path).read_text(encoding="utf-8")) == [{"text": "retained transcript"}]
+        else:
+            assert job.status == (STATUS_CANCELLED if outcome == "cancelled" else STATUS_ERROR)
+            assert job.public_dict()["outputs"] == []
+            assert path is None
     finally:
         mgr.stop()
 

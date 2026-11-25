@@ -17,6 +17,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Server jobs keep per-job settings out of JSON transcript downloads.
+
 - Explain empty transcripts when server jobs finish without recognising speech.
 - Close download responses cleanly when a redirect stalls or is cancelled.
 - Keep transcript viewer toolbar buttons visible at high display scaling.
