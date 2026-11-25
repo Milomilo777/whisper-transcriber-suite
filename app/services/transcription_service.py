@@ -26,6 +26,7 @@ from core import task_settings
 from core._proc import kill_process_tree, new_session_kwargs
 from core.speed_meter import apply_final_speed, apply_live_speed, reset_speed
 from core.task import task_run_options
+from core.media_audio import audio_ordinal
 from core.translate_task import TRANSLATED_SUFFIX
 
 from app.i18n import _, ngettext
@@ -460,6 +461,8 @@ def transcribe_command(t: Any) -> dict[str, Any]:
     return {
         "action": "transcribe",
         "file_path": t.file_path,
+        "audio_track": getattr(t, "audio_track", None),
+        "repair_name": getattr(t, "repair_name", None),
         "language": getattr(t, "language", None),
         # Mixed-language audio: the two languages (None = one language).
         "languages": list(t.languages) if getattr(t, "languages", None) else None,
@@ -486,6 +489,20 @@ def transcribe_command(t: Any) -> dict[str, Any]:
         "task_id": task_correlation_id(t),
         "run_id": getattr(t, "run_id", ""),
     }
+
+
+def _dispatchable_sources(waiting: list[Any], occupied: list[Any]) -> list[Any]:
+    """One worker per path while checkpoints are keyed by the source."""
+    busy = {
+        os.path.normcase(os.path.abspath(t.file_path)) for t in occupied
+    }
+    ready = []
+    for task in waiting:
+        key = os.path.normcase(os.path.abspath(task.file_path))
+        if key not in busy:
+            busy.add(key)
+            ready.append(task)
+    return ready
 
 
 # How long the headless ensure_worker_ready path (crash-resume, watched
@@ -2061,6 +2078,9 @@ class TranscriptionService:
                             # workers) — the authoritative word count even when no
                             # machine-readable output format was selected.
                             _apply_done_metadata(worker["task"], event)
+                            track = audio_ordinal(event.get("audio_track"))
+                            if track is not None:
+                                worker["task"].audio_track = track
                             worker["task"].no_speech = bool(event.get("no_speech"))
                             worker["task"].speaker_labels_failed = bool(
                                 event.get("speaker_labels_failed")
@@ -2115,10 +2135,23 @@ class TranscriptionService:
                                 if isinstance(outs, list) and outs:
                                     failed.output_paths = [str(p) for p in outs]
                                 failed.status = "error"
+                                track = audio_ordinal(event.get("audio_track"))
+                                if track is not None:
+                                    failed.audio_track = track
+                                failed.can_repair_audio = (
+                                    not getattr(failed, "repair_name", None)
+                                    and event.get("failure_site") in ("worker.prepare", "worker.decode")
+                                    and event.get("observed_code") in (
+                                        "av_invalid_data", "codec_unsupported", "corrupt_media",
+                                    )
+                                )
                                 _remember_failure_clue(failed, worker, event=event)
                                 # Kept for the Queue row and the history row; both
                                 # said only "error" before.
-                                failed.error_reason = failure_reason(failed.file_path, message)
+                                failed.error_reason = (
+                                    _("The audio could not be decoded.")
+                                    if failed.can_repair_audio else failure_reason(failed.file_path, message)
+                                )
                                 if not getattr(failed, "recovery_note", ""):
                                     failed.recovery_note = _short_message(message)
                                 app.log(message)
@@ -2358,6 +2391,10 @@ class TranscriptionService:
             tid: n for tid, n in self._history_insert_failures.items()
             if tid in waiting_ids
         }
+        occupied = [w["task"] for w in app.workers if w.get("task") is not None]
+        waiting = _dispatchable_sources(waiting, occupied)
+        if not waiting:
+            return
         active_count = len(self.active_workers())
         idle_count = len(self.idle_workers())
         limit = self.worker_limit()
@@ -2814,6 +2851,9 @@ class TranscriptionService:
                     if newly_finished else "",
                     model=str(getattr(task, "speed_model", "") or "")
                     if newly_finished else "",
+                    **({"run_options": task_run_options(task)}
+                       if getattr(task, "audio_track", None) is not None
+                       or getattr(task, "repair_name", None) else {}),
                 ))
                 if not persisted:
                     # Surfaced, not swallowed: the transcript FILES are
@@ -2917,6 +2957,8 @@ class TranscriptionService:
             except Exception:  # noqa: BLE001
                 pass
         worker["task"] = None
+        if getattr(task, "repair_name", None):
+            app._dismiss_repaired_audio(task)
         # The gentle star invitation counts real jobs only (not the sample clip)
         # and shows its bar when nothing else is running.
         if newly_finished and not getattr(task, "open_when_done", False):

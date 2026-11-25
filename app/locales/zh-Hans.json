@@ -63,6 +63,8 @@
     "About Whisper Transcriber Suite": "关于 Whisper Transcriber Suite",
     "About the same size and speed, and it understands other languages.": "大小和速度差不多，并且能理解其他语言。",
     "About the same size and speed, and it understands {language}.": "大小和速度差不多，并且能理解{language}。",
+    "About {recovered} is playable. Original duration unknown.": "About {recovered} is playable. Original duration unknown.",
+    "About {recovered} of {expected} is playable. Damaged sections may be silent.": "About {recovered} of {expected} is playable. Damaged sections may be silent.",
     "Accent (English)": "口音（英语）",
     "Access password (optional):": "访问密码（可选）：",
     "Accuracy:": "准确度：",
@@ -71,6 +73,7 @@
     "Action items…": "待办事项…",
     "Add a “{footer}” link at the bottom": "在底部添加“{footer}”链接",
     "Add files": "添加文件",
+    "Add to queue": "Add to queue",
     "Add {n} file to the queue? Each one becomes its own transcription job.": [
       "将 {n} 个文件添加到队列？每个文件都将成为独立的转录任务。"
     ],
@@ -216,6 +219,7 @@
     "Choose an .otr file": "选择 .otr 文件",
     "Choose another file name: this one is the transcript or media file itself.": "请换一个文件名：这个就是转录文本或媒体文件本身。",
     "Choose another model…": "选择其他模型…",
+    "Choose audio track": "Choose audio track",
     "Choose what to listen to. 'Microphone' captures an input device; 'System audio' captures whatever is currently playing on this computer — useful for a meeting, a video, or a call you are listening to.": "选择要收听的内容。“麦克风”采集输入设备；“系统音频”采集这台电脑当前正在播放的任何声音——适用于会议、视频或你正在收听的通话。",
     "Choose where Whisper Transcriber Suite should store its model files.": "选择 Whisper Transcriber Suite 存放模型文件的位置。",
     "Choose your Obsidian vault folder": "选择 Obsidian 仓库文件夹",
@@ -266,6 +270,7 @@
     "Could not download the speech model software.": "无法下载语音模型软件。",
     "Could not install NVIDIA's cuBLAS library.": "无法安装 NVIDIA 的 cuBLAS 库。",
     "Could not install the YouTube helper: {error}": "无法安装 YouTube 辅助组件：{error}",
+    "Could not make an audio copy.": "Could not make an audio copy.",
     "Could not measure this computer's speed ({error}); the estimate is from a reference computer.": "无法测量这台电脑的速度（{error}）；估算基于一台参考电脑。",
     "Could not open that file with your system's default app.": "无法用系统默认应用打开该文件。",
     "Could not open that folder.": "无法打开该文件夹。",
@@ -655,8 +660,10 @@
     "MCP setup command copied.": "已复制 MCP 设置命令。",
     "MP4 video": "MP4 视频",
     "Macedonian": "马其顿语",
+    "Make a repaired audio copy and try again": "Make a repaired audio copy and try again",
     "Make a subtitled video: burn the subtitles into a copy of the video, with progress and a Stop button": "制作带字幕的视频：将字幕烧录到视频副本中，显示进度并提供“停止”按钮",
     "Make subtitled video": "制作带字幕的视频",
+    "Making an audio copy…": "Making an audio copy…",
     "Malagasy": "马达加斯加语",
     "Malay": "马来语",
     "Malayalam": "马拉雅拉姆语",
@@ -740,6 +747,7 @@
     "No app is set to open {ext} files, and its folder could not be opened either.": "没有设置用于打开 {ext} 文件的应用，也无法打开其所在文件夹。",
     "No app is set to open {ext} files; the file is shown in its folder.": "没有设置用于打开 {ext} 文件的应用；已在文件夹中显示该文件。",
     "No app to open the file": "没有可打开该文件的应用",
+    "No audio could be recovered.": "No audio could be recovered.",
     "No captions found": "未找到字幕",
     "No chapters detected for this transcript.\n\nTurn on 'Generate auto-chapter markers' in Advanced Settings' AI Layer section before transcribing to get chapters here.": "此转录文本未检测到章节。\n\n如需在此显示章节，请在转录前于“高级设置”的“AI 层”部分开启“生成自动章节标记”。",
     "No cues to check.": "没有可检查的字幕条。",
@@ -964,6 +972,7 @@
     "Renamed {n} segment(s). Use Save changes ({shortcut}) to write.": [
       "已重命名 {n} 个片段。使用“保存更改”（{shortcut}）写入。"
     ],
+    "Repair audio": "Repair audio",
     "Replace .otr file?": "替换 .otr 文件？",
     "Replace all": "全部替换",
     "Replace preset?": "替换预设？",
@@ -1204,6 +1213,7 @@
     "The app is not allowed to write there. Choose another download folder and try again.": "应用没有权限在该位置写入文件。请选择其他下载文件夹，然后重试。",
     "The app stopped because of an unexpected error:\n\n{error}\n\nThe details are in app.log in the app's log folder.": "应用因意外错误而停止：\n\n{error}\n\n详细信息见应用日志文件夹中的 app.log。",
     "The app stopped because of an unexpected error:\n\n{error}\n\nThe details are in app.log in {folder}.": "应用因意外错误而停止：\n\n{error}\n\n详细信息见 {folder} 中的 app.log。",
+    "The audio could not be decoded.": "The audio could not be decoded.",
     "The audio is not copied into the page: it plays “{file_name}” from where that file is now, and it records the way there (the folder names between the page and the media). Keep the page and the media file together (for example in one folder) when you move or send them.": "音频不会复制到页面中：页面从“{file_name}”当前所在位置播放它，并记录前往该文件的路径（页面与媒体之间的文件夹名称）。移动或发送时，请将页面和媒体文件放在一起（例如同一个文件夹中）。",
     "The clips changed: tick the permission box again.": "片段已更改：请再次勾选许可框。",
     "The cloud backends above are the exception — they upload audio only when you choose one and start a job": "上面的云端后端是例外——只有在你选择其中一个并开始任务时才会上传音频",
@@ -1259,6 +1269,7 @@
     "There are unsaved transcript edits. Close anyway?": "有未保存的转录文本编辑。仍然关闭吗？",
     "There is no filler list for the language '{language}', so nothing was removed.": "没有“{language}”语言的填充词列表，因此未删除任何内容。",
     "There is no subtitle file (SRT, VTT, ASS) for this transcript yet.": "此转录文本还没有字幕文件（SRT、VTT、ASS）。",
+    "There is not enough disk space for a repaired audio copy.": "There is not enough disk space for a repaired audio copy.",
     "These files are large (1–3 GB each). The default is a\nprivate per-user cache folder that is always writable.\nPick a different folder (e.g. an external drive) if you\nwant to keep the models somewhere with more space.": "这些文件很大（每个 1–3 GB）。默认位置是\n每个用户专用、始终可写的私有缓存文件夹。\n如果想把模型放在空间更大的地方，\n请选择其他文件夹（例如外置硬盘）。",
     "These filtered technical details would be sent with the app version and your operating system. Review them before sending; choose Close to keep them private.": "这些经过筛选的技术详情将连同应用版本和操作系统信息一起发送。发送前请仔细检查；选择“关闭”可将其保留为私密。",
     "This JSON is a list, but none of its entries look like transcript segments — pick the .json next to your audio/video.": "此 JSON 是一个列表，但其中没有任何条目像是转录片段——请选择音频/视频旁边的 .json。",
@@ -1328,6 +1339,7 @@
     "Total: unknown": "总计：未知",
     "Total: {done} / {total}": "总计：{done} / {total}",
     "Total: {size}": "总计：{size}",
+    "Track {number}": "Track {number}",
     "Transcribe after download": "下载后转录",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "只转录文件的这一部分（格式 H:MM:SS）。如需转录整个文件，请将两者都保留为 0:00:00。",
     "Transcribing on {device}": "正在 {device} 上转录",
@@ -1362,6 +1374,7 @@
     "Translates every segment one at a time — needed to keep an exact line-for-line pairing with the original — and writes a new '.bilingual.<language>.srt' file with the original text and the translation under each cue. Can take a while on a long transcript with the local model.": "逐个翻译每个片段——这是与原文保持精确逐行对应所必需的——并写入一个新的“.bilingual.<language>.srt”文件，每条字幕下都有原文和译文。使用本地模型处理长转录文本时可能需要一些时间。",
     "Translate…": "翻译…",
     "Translating {done}/{total}…": "正在翻译 {done}/{total}…",
+    "Try again": "Try again",
     "Try it now (sample clip)": "立即试用（示例片段）",
     "Turkish": "土耳其语",
     "Turkmen": "土库曼语",
@@ -1739,6 +1752,9 @@
     "{name} writes {language} only, whatever language is picked.": "无论选择哪种语言，{name} 都只输出{language}。",
     "{name}: cancelled at {percent}%": "{name}：已在 {percent}% 时取消",
     "{name}: {percent}% done": "{name}：已完成 {percent}%",
+    "{n} channel": [
+      "{n} channel"
+    ],
     "{n} job": [
       "{n} 个任务"
     ],

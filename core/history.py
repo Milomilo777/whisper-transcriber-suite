@@ -689,7 +689,8 @@ class HistoryDB:
                              word_count: int = 0,
                              speed_x: float = 0.0,
                              device: str = "",
-                             model: str = "") -> bool:
+                             model: str = "",
+                             run_options: dict[str, Any] | None = None) -> bool:
         """Returns True iff a row was actually updated.
 
         ``speed_x`` / ``device`` record how fast the run went and on what;
@@ -711,10 +712,12 @@ class HistoryDB:
                 " output_paths=?, duration_seconds=?,"
                 " language=COALESCE(NULLIF(?, ''), language), error=?,"
                 " word_count=?, speed_x=?, device=?,"
-                " model=COALESCE(NULLIF(?, ''), model) WHERE id=?",
+                " model=COALESCE(NULLIF(?, ''), model),"
+                " run_options=COALESCE(?, run_options) WHERE id=?",
                 (status, int(time.time()), paths_json, duration_seconds,
                  language, error, int(word_count or 0), float(speed_x or 0.0),
-                 str(device or ""), str(model or ""), row_id),
+                 str(device or ""), str(model or ""),
+                 json.dumps(run_options) if run_options is not None else None, row_id),
             )
             if cur.rowcount != 1:
                 logger.error(

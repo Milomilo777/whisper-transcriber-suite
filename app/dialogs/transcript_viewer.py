@@ -47,6 +47,7 @@ from tkinter import filedialog, messagebox, simpledialog, ttk
 from typing import Any, Callable, Collection, Optional
 
 from app.dialogs import share_page, viewer_exports
+from app.dialogs.media_audio import play_transcript_audio
 from app import mac_native, rtl_layout, shortcuts
 from app.i18n import N_, _, lazy, ngettext, pgettext, plain, translate
 from app.dpi import place_over, px, scaled_size
@@ -859,6 +860,13 @@ class TranscriptViewer(tk.Toplevel):
 
         self._build_widgets()
         self._load_segments()
+        if self.segments and self.segments[0].get("audio_repaired") is True:
+            from core.media_audio import repair_input
+            from core._checkpoint import partials_dir
+
+            copy = repair_input(partials_dir(), os.path.basename(media_path or ""))
+            if copy is None or media_path is None or os.path.abspath(media_path) != str(copy):
+                self.media_path = None
         self._populate_listbox()
         self._load_chapters()
         if self.vlc_mod is not None and self.media_path:
@@ -1350,7 +1358,7 @@ class TranscriptViewer(tk.Toplevel):
     def _on_chapter_double_click(self, event: tk.Event) -> None:
         self._on_chapter_select(event)
         if self.vlc_player is not None and not self.vlc_player.is_playing():
-            self.vlc_player.play()
+            play_transcript_audio(self)
             self.play_btn.configure(text=_("⏸ Pause"))
 
     def _select_segment_near(self, seconds: float) -> None:
@@ -2161,7 +2169,7 @@ class TranscriptViewer(tk.Toplevel):
         if self._vlc_bind_pending:
             return
         if self.vlc_player is not None and not self.vlc_player.is_playing():
-            self.vlc_player.play()
+            play_transcript_audio(self)
             self.play_btn.configure(text=_("⏸ Pause"))
 
     def _on_segment_right_click(self, event: tk.Event) -> None:
@@ -2600,6 +2608,11 @@ class TranscriptViewer(tk.Toplevel):
             self.vlc_instance = self.vlc_mod.Instance("--no-xlib", "--quiet")
             self.vlc_player = self.vlc_instance.media_player_new()
             media = self.vlc_instance.media_new(self.media_path)
+            cue = self.segments[0] if self.segments else {}
+            ordinal = cue.get("audio_track")
+            if type(ordinal) is int and ordinal >= 0 and cue.get("audio_repaired") is not True:
+                self._playback_audio_track = ordinal
+                media.add_option(":start-paused")
             self.vlc_player.set_media(media)
             # CRITICAL: do NOT bind the native window handle here. This runs
             # during __init__, before the Toplevel has been realized/mapped,
@@ -2739,7 +2752,7 @@ class TranscriptViewer(tk.Toplevel):
             self.vlc_player.pause()
             self.play_btn.configure(text=_("▶ Play"))
         else:
-            self.vlc_player.play()
+            play_transcript_audio(self)
             self.play_btn.configure(text=_("⏸ Pause"))
 
     def _restart(self) -> None:
@@ -2747,7 +2760,7 @@ class TranscriptViewer(tk.Toplevel):
             return
         self.vlc_player.set_time(0)
         if not self.vlc_player.is_playing():
-            self.vlc_player.play()
+            play_transcript_audio(self)
             self.play_btn.configure(text=_("⏸ Pause"))
 
     def _seek_to(self, seconds: float) -> None:

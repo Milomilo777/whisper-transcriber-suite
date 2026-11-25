@@ -63,6 +63,8 @@
     "About Whisper Transcriber Suite": "Tentang Whisper Transcriber Suite",
     "About the same size and speed, and it understands other languages.": "Ukuran dan kecepatan kurang lebih sama, dan mengerti bahasa lain.",
     "About the same size and speed, and it understands {language}.": "Ukuran dan kecepatan kurang lebih sama, dan mengerti {language}.",
+    "About {recovered} is playable. Original duration unknown.": "About {recovered} is playable. Original duration unknown.",
+    "About {recovered} of {expected} is playable. Damaged sections may be silent.": "About {recovered} of {expected} is playable. Damaged sections may be silent.",
     "Accent (English)": "Aksen (Inggris)",
     "Access password (optional):": "Kata sandi akses (opsional):",
     "Accuracy:": "Akurasi:",
@@ -71,6 +73,7 @@
     "Action items…": "Butir tindakan…",
     "Add a “{footer}” link at the bottom": "Tambahkan tautan “{footer}” di bagian bawah",
     "Add files": "Tambah berkas",
+    "Add to queue": "Add to queue",
     "Add {n} file to the queue? Each one becomes its own transcription job.": [
       "Tambahkan {n} berkas ke antrean? Masing-masing akan menjadi tugas transkripsi tersendiri."
     ],
@@ -216,6 +219,7 @@
     "Choose an .otr file": "Pilih berkas .otr",
     "Choose another file name: this one is the transcript or media file itself.": "Pilih nama berkas lain: nama ini adalah berkas transkrip atau media itu sendiri.",
     "Choose another model…": "Pilih model lain…",
+    "Choose audio track": "Choose audio track",
     "Choose what to listen to. 'Microphone' captures an input device; 'System audio' captures whatever is currently playing on this computer — useful for a meeting, a video, or a call you are listening to.": "Pilih apa yang ingin didengarkan. “Mikrofon” merekam perangkat input; “Audio sistem” merekam apa pun yang sedang diputar di komputer ini — berguna untuk rapat, video, atau panggilan yang sedang Anda dengarkan.",
     "Choose where Whisper Transcriber Suite should store its model files.": "Pilih tempat Whisper Transcriber Suite menyimpan berkas modelnya.",
     "Choose your Obsidian vault folder": "Pilih folder vault Obsidian Anda",
@@ -266,6 +270,7 @@
     "Could not download the speech model software.": "Perangkat lunak model ucapan tidak dapat diunduh.",
     "Could not install NVIDIA's cuBLAS library.": "Pustaka cuBLAS NVIDIA tidak dapat diinstal.",
     "Could not install the YouTube helper: {error}": "Pembantu YouTube tidak dapat diinstal: {error}",
+    "Could not make an audio copy.": "Could not make an audio copy.",
     "Could not measure this computer's speed ({error}); the estimate is from a reference computer.": "Kecepatan komputer ini tidak dapat diukur ({error}); perkiraan berasal dari komputer acuan.",
     "Could not open that file with your system's default app.": "Berkas itu tidak dapat dibuka dengan aplikasi bawaan sistem Anda.",
     "Could not open that folder.": "Folder itu tidak dapat dibuka.",
@@ -655,8 +660,10 @@
     "MCP setup command copied.": "Perintah penyiapan MCP disalin.",
     "MP4 video": "Video MP4",
     "Macedonian": "Makedonia",
+    "Make a repaired audio copy and try again": "Make a repaired audio copy and try again",
     "Make a subtitled video: burn the subtitles into a copy of the video, with progress and a Stop button": "Buat video bersubtitel: tanamkan subtitel ke salinan video, dengan kemajuan dan tombol Hentikan",
     "Make subtitled video": "Buat video bersubtitel",
+    "Making an audio copy…": "Making an audio copy…",
     "Malagasy": "Malagasi",
     "Malay": "Melayu",
     "Malayalam": "Malayalam",
@@ -740,6 +747,7 @@
     "No app is set to open {ext} files, and its folder could not be opened either.": "Tidak ada aplikasi yang diatur untuk membuka berkas {ext}, dan foldernya juga tidak dapat dibuka.",
     "No app is set to open {ext} files; the file is shown in its folder.": "Tidak ada aplikasi yang diatur untuk membuka berkas {ext}; berkas ditampilkan di foldernya.",
     "No app to open the file": "Tidak ada aplikasi untuk membuka berkas",
+    "No audio could be recovered.": "No audio could be recovered.",
     "No captions found": "Teks tidak ditemukan",
     "No chapters detected for this transcript.\n\nTurn on 'Generate auto-chapter markers' in Advanced Settings' AI Layer section before transcribing to get chapters here.": "Tidak ada bab yang terdeteksi untuk transkrip ini.\n\nAktifkan “Buat penanda bab otomatis” di bagian Lapisan AI pada Pengaturan lanjutan sebelum mentranskripsikan agar bab muncul di sini.",
     "No cues to check.": "Tidak ada cue untuk diperiksa.",
@@ -964,6 +972,7 @@
     "Renamed {n} segment(s). Use Save changes ({shortcut}) to write.": [
       "{n} segmen diganti namanya. Gunakan Simpan perubahan ({shortcut}) untuk menulis."
     ],
+    "Repair audio": "Repair audio",
     "Replace .otr file?": "Ganti berkas .otr?",
     "Replace all": "Ganti semua",
     "Replace preset?": "Ganti preset?",
@@ -1204,6 +1213,7 @@
     "The app is not allowed to write there. Choose another download folder and try again.": "Aplikasi tidak memiliki izin untuk menyimpan file di lokasi tersebut. Pilih folder unduhan lain dan coba lagi.",
     "The app stopped because of an unexpected error:\n\n{error}\n\nThe details are in app.log in the app's log folder.": "Aplikasi berhenti karena kesalahan tak terduga:\n\n{error}\n\nDetailnya ada di app.log di folder log aplikasi.",
     "The app stopped because of an unexpected error:\n\n{error}\n\nThe details are in app.log in {folder}.": "Aplikasi berhenti karena kesalahan tak terduga:\n\n{error}\n\nDetailnya ada di app.log di {folder}.",
+    "The audio could not be decoded.": "The audio could not be decoded.",
     "The audio is not copied into the page: it plays “{file_name}” from where that file is now, and it records the way there (the folder names between the page and the media). Keep the page and the media file together (for example in one folder) when you move or send them.": "Audio tidak disalin ke halaman: halaman memutar “{file_name}” dari lokasinya saat ini, dan mencatat jalur ke sana (nama folder antara halaman dan media). Simpan halaman dan berkas media bersama-sama (misalnya dalam satu folder) saat Anda memindahkan atau mengirimnya.",
     "The clips changed: tick the permission box again.": "Klip berubah: centang kotak izin lagi.",
     "The cloud backends above are the exception — they upload audio only when you choose one and start a job": "Backend cloud di atas adalah pengecualian — backend itu mengunggah audio hanya jika Anda memilihnya dan memulai tugas",
@@ -1259,6 +1269,7 @@
     "There are unsaved transcript edits. Close anyway?": "Ada suntingan transkrip yang belum disimpan. Tetap tutup?",
     "There is no filler list for the language '{language}', so nothing was removed.": "Tidak ada daftar kata pengisi untuk bahasa “{language}”, jadi tidak ada yang dihapus.",
     "There is no subtitle file (SRT, VTT, ASS) for this transcript yet.": "Belum ada berkas subtitel (SRT, VTT, ASS) untuk transkrip ini.",
+    "There is not enough disk space for a repaired audio copy.": "There is not enough disk space for a repaired audio copy.",
     "These files are large (1–3 GB each). The default is a\nprivate per-user cache folder that is always writable.\nPick a different folder (e.g. an external drive) if you\nwant to keep the models somewhere with more space.": "Berkas ini besar (masing-masing 1–3 GB). Bawaannya adalah\nfolder cache pribadi per pengguna yang selalu dapat ditulisi.\nPilih folder lain (mis. drive eksternal) jika Anda\ningin menyimpan model di tempat yang lebih lega.",
     "These filtered technical details would be sent with the app version and your operating system. Review them before sending; choose Close to keep them private.": "Detail teknis yang telah difilter ini akan dikirim beserta versi aplikasi dan sistem operasi Anda. Tinjau sebelum mengirim; pilih Tutup untuk menjaga kerahasiaannya.",
     "This JSON is a list, but none of its entries look like transcript segments — pick the .json next to your audio/video.": "JSON ini berupa daftar, tetapi tidak ada entrinya yang tampak seperti segmen transkrip — pilih .json di samping audio/video Anda.",
@@ -1328,6 +1339,7 @@
     "Total: unknown": "Total: tidak diketahui",
     "Total: {done} / {total}": "Total: {done} / {total}",
     "Total: {size}": "Total: {size}",
+    "Track {number}": "Track {number}",
     "Transcribe after download": "Transkripsikan setelah diunduh",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "Transkripsikan hanya bagian berkas ini (format H:MM:SS). Biarkan keduanya 0:00:00 untuk mentranskripsikan seluruh berkas.",
     "Transcribing on {device}": "Mentranskripsikan di {device}",
@@ -1362,6 +1374,7 @@
     "Translates every segment one at a time — needed to keep an exact line-for-line pairing with the original — and writes a new '.bilingual.<language>.srt' file with the original text and the translation under each cue. Can take a while on a long transcript with the local model.": "Menerjemahkan setiap segmen satu per satu — diperlukan agar pasangan baris demi baris dengan aslinya tetap tepat — dan menulis berkas “.bilingual.<language>.srt” baru dengan teks asli dan terjemahannya di bawah setiap cue. Bisa memakan waktu pada transkrip panjang dengan model lokal.",
     "Translate…": "Terjemahkan…",
     "Translating {done}/{total}…": "Menerjemahkan {done}/{total}…",
+    "Try again": "Try again",
     "Try it now (sample clip)": "Coba sekarang (klip contoh)",
     "Turkish": "Turki",
     "Turkmen": "Turkmen",
@@ -1739,6 +1752,9 @@
     "{name} writes {language} only, whatever language is picked.": "{name} hanya menulis {language}, apa pun bahasa yang dipilih.",
     "{name}: cancelled at {percent}%": "{name}: dibatalkan pada {percent}%",
     "{name}: {percent}% done": "{name}: {percent}% selesai",
+    "{n} channel": [
+      "{n} channel"
+    ],
     "{n} job": [
       "{n} tugas"
     ],

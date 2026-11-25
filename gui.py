@@ -51,7 +51,7 @@ def _cli_transcribe(args: argparse.Namespace) -> int:
     import os
     import time
     from core.config import ConfigSaveError, load_config, save_config
-    from core.task import TranscriptionTask
+    from core.task import TranscriptionTask, task_run_options
     from core import transcriber as _trans
     from core.hub import model_weights_present
 
@@ -138,6 +138,7 @@ def _cli_transcribe(args: argparse.Namespace) -> int:
         return 3
 
     task = TranscriptionTask(src)
+    task.audio_track = getattr(args, "audio_track", None)
     if args.language:
         task.language = args.language
 
@@ -152,6 +153,7 @@ def _cli_transcribe(args: argparse.Namespace) -> int:
             src,
             model=(cfg.get("model") or {}).get("name", ""),
             language=args.language or "",
+            **({"run_options": task_run_options(task)} if task.audio_track is not None else {}),
         )
     except Exception as e:  # noqa: BLE001
         print(f"[cli] history.db unavailable: {e}", flush=True)
@@ -197,6 +199,7 @@ def _cli_transcribe(args: argparse.Namespace) -> int:
                 duration_seconds=duration_s,
                 language=getattr(task, "detected_language", "") or args.language or "",
                 error=error_msg,
+                **({"run_options": task_run_options(task)} if task.audio_track is not None else {}),
             )
         except Exception as e:  # noqa: BLE001
             print(f"[cli] could not finish history row: {e}", flush=True)
@@ -278,6 +281,13 @@ def _cli_serve(args: argparse.Namespace) -> int:
         https=https, webhook_url=webhook_url,
         webhook_secret=webhook_secret, webhook_header=webhook_header,
     )
+
+
+def _audio_track_number(value: str) -> int:
+    ordinal = int(value)
+    if ordinal < 0:
+        raise argparse.ArgumentTypeError("audio track must be zero or greater")
+    return ordinal
 
 
 def _port_number(value: str) -> int:
@@ -368,6 +378,8 @@ def _build_argparser() -> argparse.ArgumentParser:
 
     tr = sub.add_parser("transcribe", help="Transcribe a file and exit (no UI)")
     tr.add_argument("file", help="audio/video file to transcribe")
+    tr.add_argument("--audio-track", type=_audio_track_number,
+                    help="zero-based audio track number (default: the file's default track)")
     tr.add_argument(
         "--language", "-l", default="",
         help="force a language code (en, es, fa, …); empty = auto-detect",
