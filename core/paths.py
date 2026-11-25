@@ -1,4 +1,4 @@
-"""Resolve where bundled resources (bin/, faster_whisper assets) live.
+"""Resolve where bundled resources and the per-user cache live.
 
 Three runtime contexts:
 
@@ -17,6 +17,26 @@ import functools
 import os
 import sys
 from pathlib import Path
+
+APP_NAME = "WhisperTranscriberSuite"
+APP_AUTHOR = False  # platformdirs: omit author segment on Windows
+
+# Override all per-user folders for an isolated profile, including at TLS startup.
+PROFILE_ENV = "WTS_PROFILE_DIR"
+
+
+def profile_root() -> Path | None:
+    raw = os.environ.get(PROFILE_ENV, "").strip()
+    return Path(raw) if raw else None
+
+
+def user_cache_dir() -> Path:
+    root = profile_root()
+    if root is not None:
+        return root / "cache"
+    import platformdirs
+
+    return Path(platformdirs.user_cache_dir(APP_NAME, APP_AUTHOR))
 
 
 def resource_base() -> str:

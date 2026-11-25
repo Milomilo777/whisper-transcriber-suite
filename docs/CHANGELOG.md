@@ -11,6 +11,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Windows HTTPS requests now use both the system and bundled CA certificates by default, fixing model downloads when either source alone lacks the required certificate.
 - Reject unrelated settings writes when an interrupted configuration restore cannot finish.
 - Keep ASS karaoke exports working when a word has an extreme negative clock.
 - Keep subtitle and lyric timestamp formatting from overflowing on extreme finite values.

@@ -7,14 +7,12 @@ web lookups) failed with ``CERTIFICATE_VERIFY_FAILED: unable to get local issuer
 the build machine, which has the file, worked. ``requests`` and ``huggingface_hub`` were not affected:
 they use certifi's bundle on their own.
 
-:func:`configure` runs once at process start (``gui.py``), before any request, and points OpenSSL at
-certifi's bundle (shipped inside the app) through ``SSL_CERT_FILE`` where the default store is not
-reliable. OpenSSL reads that variable each time a context loads its default paths, so every caller is
-covered, and the worker processes the app starts inherit it. It must run before the first
-``urlopen``: since Python 3.13 urllib's shared opener keeps the SSL context it made first.
+:func:`configure` runs at process start (``gui.py``) before the first HTTPS request. New contexts
+load their default trust from ``SSL_CERT_FILE`` where set, and worker processes inherit the setting.
+Since Python 3.13 urllib's shared opener keeps the SSL context it made first.
 
 - A ``SSL_CERT_FILE`` / ``SSL_CERT_DIR`` the user has set is never touched.
-- Windows: left alone; Python reads the Windows certificate store there.
+- Windows: combine the Windows ROOT and CA stores with certifi for OpenSSL, HTTPX and Requests.
 - Frozen macOS build: always certifi; the default path belongs to the build machine.
 - Elsewhere (Linux, macOS from source): the default store when it holds certificates (a Linux
   distribution's store also carries local corporate CAs), else certifi.
@@ -22,12 +20,22 @@ covered, and the worker processes the app starts inherit it. It must run before 
 
 from __future__ import annotations
 
+import logging
 import os
 import ssl
 import sys
+import tempfile
+from pathlib import Path
+
+from core.paths import user_cache_dir
 
 _ENV_FILE = "SSL_CERT_FILE"
 _ENV_DIR = "SSL_CERT_DIR"
+_REQUESTS_FILE = "REQUESTS_CA_BUNDLE"
+_CURL_FILE = "CURL_CA_BUNDLE"
+_WINDOWS_UTF8 = "OPENSSL_WIN32_UTF8"
+
+logger = logging.getLogger(__name__)
 
 # What configure() chose in this process, for diagnostics ("--tls-self-check").
 source = "not configured"
@@ -69,14 +77,76 @@ def _use_certifi() -> str:
     return "certifi"
 
 
+def _windows_pem(certifi_path: str) -> bytes:
+    """Keep certifi's PEM and append each distinct Windows server-auth certificate."""
+    certifi_pem = Path(certifi_path).read_text(encoding="ascii")
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    context.load_verify_locations(cadata=certifi_pem)
+    certifi_certs = set(context.get_ca_certs(binary_form=True))
+    if not certifi_certs:
+        raise ValueError("certifi bundle contains no CA certificates")
+
+    if not hasattr(ssl, "enum_certificates"):
+        raise RuntimeError("Windows certificate store enumeration is unavailable")
+    windows_certs = set()
+    for store in ("ROOT", "CA"):
+        for der, encoding, trust in ssl.enum_certificates(store):
+            server_auth = trust is True or (isinstance(trust, set) and ssl.Purpose.SERVER_AUTH.oid in trust)
+            if encoding == "x509_asn" and server_auth:
+                windows_certs.add(der)
+    extra_pem = "".join(ssl.DER_cert_to_PEM_cert(der) for der in sorted(windows_certs - certifi_certs))
+    if extra_pem:
+        # Validate the Windows additions before publishing trust settings for the clients.
+        context.load_verify_locations(cadata=extra_pem)
+    return (certifi_pem.rstrip() + "\n" + extra_pem).encode("ascii")
+
+
+def _write_windows_bundle(path: Path, pem: bytes) -> None:
+    try:
+        if path.read_bytes() == pem:
+            return
+    except FileNotFoundError:
+        pass
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, staged = tempfile.mkstemp(dir=path.parent, prefix=".https-ca-", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "wb") as file:
+            file.write(pem)
+        os.replace(staged, path)
+    finally:
+        Path(staged).unlink(missing_ok=True)
+
+
+def _use_windows_bundle() -> str:
+    try:
+        certifi_path = _certifi_file()
+        if certifi_path is None:
+            raise FileNotFoundError("certifi bundle is unavailable")
+        path = (user_cache_dir() / "https-ca-bundle.pem").absolute()
+        _write_windows_bundle(path, _windows_pem(certifi_path))
+    except (OSError, ValueError, RuntimeError) as exc:
+        logger.warning("Windows HTTPS CA bundle unavailable. Using default trust (%s).", exc)
+        return "system"
+
+    bundle = str(path)
+    if not bundle.isascii():
+        # OpenSSL otherwise reads SSL_CERT_FILE through the Windows ANSI code page.
+        os.environ.setdefault(_WINDOWS_UTF8, "1")
+    os.environ[_ENV_FILE] = bundle
+    if _REQUESTS_FILE not in os.environ and _CURL_FILE not in os.environ:
+        os.environ[_REQUESTS_FILE] = bundle
+    return "system+certifi"
+
+
 def configure() -> str:
     """Pick the CA source for this process (see the module docstring) and return its name:
-    ``env`` (the user's own variable), ``system``, ``certifi`` or ``none`` (nothing usable)."""
+    ``env``, ``system+certifi``, ``system``, ``certifi`` or ``none`` (nothing usable)."""
     global source
     if os.environ.get(_ENV_FILE) or os.environ.get(_ENV_DIR):
         source = "env"
     elif sys.platform == "win32":
-        source = "system"
+        source = _use_windows_bundle()
     elif sys.platform == "darwin" and getattr(sys, "frozen", False):
         source = _use_certifi()
     elif _default_store_has_certs():

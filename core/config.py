@@ -26,6 +26,11 @@ from typing import Any, Mapping
 import platformdirs
 
 from core import offline
+from core.paths import APP_AUTHOR as APP_AUTHOR
+from core.paths import APP_NAME as APP_NAME
+from core.paths import PROFILE_ENV as PROFILE_ENV
+from core.paths import profile_root as _profile_root
+from core.paths import user_cache_dir as user_cache_dir
 from core.verified_download import urlopen_https_only
 
 # Module-level lock serialises concurrent save_config calls — on
@@ -47,9 +52,6 @@ class ConfigBusyError(ConfigSaveError):
     """Another process held ``config.json.lock`` past the deadline; nothing was written."""
 
 logger = logging.getLogger(__name__)
-
-APP_NAME = "WhisperTranscriberSuite"
-APP_AUTHOR = False  # platformdirs: omit author segment on Windows
 
 
 def _default_transcribe_backend() -> str:
@@ -761,25 +763,9 @@ def _legacy_config_path() -> str:
     return os.path.abspath(os.path.join(base, "..", "config.json"))
 
 
-# Puts every per-user folder (config, cache, logs, data) under one root, for GUI
-# test runs on a machine whose own profile must stay as it is. Nothing is migrated
-# into such a profile (no pre-rebrand profile, no next-to-source config.json).
-PROFILE_ENV = "WTS_PROFILE_DIR"
-
-
-def _profile_root() -> Path | None:
-    raw = os.environ.get(PROFILE_ENV, "").strip()
-    return Path(raw) if raw else None
-
-
 def user_config_dir() -> Path:
     root = _profile_root()
     return root / "config" if root else Path(platformdirs.user_config_dir(APP_NAME, APP_AUTHOR))
-
-
-def user_cache_dir() -> Path:
-    root = _profile_root()
-    return root / "cache" if root else Path(platformdirs.user_cache_dir(APP_NAME, APP_AUTHOR))
 
 
 def user_log_dir() -> Path:
