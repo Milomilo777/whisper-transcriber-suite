@@ -18,7 +18,6 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 ### Fixed
 
 - Keep transcript viewer toolbar buttons visible at high display scaling.
-- Refresh the transcript viewer localization fixture for the split toolbar.
 - Windows HTTPS requests now use both the system and bundled CA certificates by default, fixing model downloads when either source alone lacks the required certificate.
 - Preserve worker failure reports when startup delivery fails or native output leaves a partial line, and recognize terminal import failures.
 - Retry failed transcript exports in a recovery folder when the original destination cannot save them, and keep links to files already saved.
