@@ -291,6 +291,7 @@ class Job:
     # Local MCP inputs are staged; exports go beside the original under this grant.
     local_source: str = ""
     local_root: str = ""
+    no_speech: bool = False
 
     def public_dict(self) -> dict[str, Any]:
         """The JSON shape returned by ``GET /api/jobs/<id>``."""
@@ -309,6 +310,8 @@ class Job:
             data["warning"] = redact_paths(self.warning)
         if self.language_model_name:
             data["language_model"] = self.language_model_name
+        if self.status == STATUS_FINISHED and self.no_speech:
+            data["no_speech"] = True
         return data
 
     def list_dict(self) -> dict[str, Any]:
@@ -1196,6 +1199,7 @@ class JobManager:
                              time.time() - started, job.detected_language,
                              guard_created=guard_created)
             else:
+                job.no_speech = task.no_speech
                 job.progress = 100
                 self._settle(job, STATUS_FINISHED, history_db, history_id,
                              time.time() - started, job.detected_language,

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import os
 import time
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -124,6 +125,27 @@ def test_upload_job_runs_and_collects_outputs(tmp_path):
             assert os.path.isfile(p)
         # The uploaded media landed inside the per-job dir.
         assert os.path.dirname(job.media_path) == job.work_dir
+    finally:
+        mgr.stop()
+
+
+def test_finished_silent_upload_explains_empty_subtitles(tmp_path):
+    def transcribe(task, *_args):
+        output = Path(task.file_path).with_suffix(".srt")
+        output.write_bytes(b"")
+        task.output_paths = [str(output)]
+        task.no_speech = True
+
+    mgr = _make_manager(tmp_path, transcribe)
+    try:
+        jid = mgr.submit_upload("silence.wav", b"audio", ["srt"])
+        job = _wait_terminal(mgr, jid)
+        assert job is not None
+        detail = job.public_dict()
+        assert detail["status"] == STATUS_FINISHED
+        assert detail["no_speech"] is True
+        assert detail["outputs"] == [{"fmt": "srt", "name": "silence.srt"}]
+        assert os.path.getsize(job.outputs[0][1]) == 0
     finally:
         mgr.stop()
 

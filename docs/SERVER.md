@@ -728,6 +728,8 @@ Behaviour to know:
   is never deleted until the results have been copied (a later start
   retries; the list of unsaved files in the folder is `.wts-keep`, and an
   unreadable list keeps the whole folder).
+  When a finished job recognises no speech, `GET /api/jobs/<id>` includes
+  `"no_speech": true`. The requested empty transcript files remain available.
   A guard is saved before transcription starts. After a late error or
   cancellation, cleanup removes the folder only when every remaining result
   has a verified copy; unreported files remain protected.
