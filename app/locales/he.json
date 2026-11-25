@@ -266,6 +266,7 @@
     "Copy the transcript to an Obsidian vault folder:": "העתק את התמליל לתיקיית כספת של Obsidian:",
     "Corsican": "קורסיקנית",
     "Could not build the bilingual subtitle.": "לא ניתן היה לבנות את הכתוביות הדו-לשוניות.",
+    "Could not check engine readiness. Reopen the app to try again.": "לא ניתן היה לבדוק אם המנוע מוכן. פתח מחדש את האפליקציה כדי לנסות שוב.",
     "Could not check this computer, so no time estimate is shown.": "לא ניתן היה לבדוק את המחשב הזה, ולכן לא מוצגת הערכת זמן.",
     "Could not check this computer: {error}": "לא ניתן היה לבדוק את המחשב הזה: {error}",
     "Could not convert that .otr file to SRT.": "לא ניתן היה להמיר את קובץ ה-.otr הזה ל-SRT.",

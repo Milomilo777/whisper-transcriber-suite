@@ -266,6 +266,7 @@
     "Copy the transcript to an Obsidian vault folder:": "Kopijuoti transkripciją į Obsidian saugyklos aplanką:",
     "Corsican": "Korsikiečių",
     "Could not build the bilingual subtitle.": "Nepavyko sukurti dvikalbių subtitrų.",
+    "Could not check engine readiness. Reopen the app to try again.": "Nepavyko patikrinti, ar variklis paruoštas. Atidarykite programą iš naujo ir bandykite dar kartą.",
     "Could not check this computer, so no time estimate is shown.": "Nepavyko patikrinti šio kompiuterio, todėl laiko įvertis nerodomas.",
     "Could not check this computer: {error}": "Nepavyko patikrinti šio kompiuterio: {error}",
     "Could not convert that .otr file to SRT.": "Nepavyko konvertuoti to .otr failo į SRT.",

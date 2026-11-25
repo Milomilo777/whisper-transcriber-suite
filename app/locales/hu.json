@@ -264,6 +264,7 @@
     "Copy the transcript to an Obsidian vault folder:": "Átirat másolása egy Obsidian-széf mappájába:",
     "Corsican": "Korzikai",
     "Could not build the bilingual subtitle.": "A kétnyelvű felirat nem állítható össze.",
+    "Could not check engine readiness. Reopen the app to try again.": "Nem sikerült ellenőrizni, hogy a motor készen áll-e. Nyisd meg újra az alkalmazást, és próbálkozz újra.",
     "Could not check this computer, so no time estimate is shown.": "A számítógép nem ellenőrizhető, ezért nincs időbecslés.",
     "Could not check this computer: {error}": "A számítógép nem ellenőrizhető: {error}",
     "Could not convert that .otr file to SRT.": "Ez az .otr fájl nem konvertálható SRT-re.",

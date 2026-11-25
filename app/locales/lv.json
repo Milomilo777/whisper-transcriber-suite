@@ -266,6 +266,7 @@
     "Copy the transcript to an Obsidian vault folder:": "Kopēt transkriptu Obsidian glabātavas mapē:",
     "Corsican": "Korsikāņu",
     "Could not build the bilingual subtitle.": "Neizdevās izveidot divvalodu subtitrus.",
+    "Could not check engine readiness. Reopen the app to try again.": "Neizdevās pārbaudīt, vai dzinis ir gatavs. Atveriet lietotni vēlreiz, lai mēģinātu atkārtoti.",
     "Could not check this computer, so no time estimate is shown.": "Neizdevās pārbaudīt šo datoru, tāpēc laika aprēķins netiek rādīts.",
     "Could not check this computer: {error}": "Neizdevās pārbaudīt šo datoru: {error}",
     "Could not convert that .otr file to SRT.": "Neizdevās konvertēt šo .otr failu uz SRT.",

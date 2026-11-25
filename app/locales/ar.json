@@ -272,6 +272,7 @@
     "Copy the transcript to an Obsidian vault folder:": "نسخ النص المُفرَّغ إلى مجلد مخزن Obsidian:",
     "Corsican": "الكورسيكية",
     "Could not build the bilingual subtitle.": "تعذَّر إنشاء الترجمة المصاحبة ثنائية اللغة.",
+    "Could not check engine readiness. Reopen the app to try again.": "تعذّر التحقق من جاهزية المحرك. أعد فتح التطبيق للمحاولة مجددًا.",
     "Could not check this computer, so no time estimate is shown.": "تعذَّر فحص هذا الحاسوب، لذا لا يُعرض تقدير للوقت.",
     "Could not check this computer: {error}": "تعذَّر فحص هذا الحاسوب: {error}",
     "Could not convert that .otr file to SRT.": "تعذَّر تحويل ملف .otr هذا إلى SRT.",

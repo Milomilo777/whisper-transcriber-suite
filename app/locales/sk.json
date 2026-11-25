@@ -266,6 +266,7 @@
     "Copy the transcript to an Obsidian vault folder:": "Kopírovať prepis do priečinka trezora Obsidian:",
     "Corsican": "Korzičtina",
     "Could not build the bilingual subtitle.": "Dvojjazyčné titulky nemožno zostaviť.",
+    "Could not check engine readiness. Reopen the app to try again.": "Nepodarilo sa overiť pripravenosť modulu. Znova otvorte aplikáciu a skúste to ešte raz.",
     "Could not check this computer, so no time estimate is shown.": "Tento počítač nemožno skontrolovať, preto sa nezobrazuje odhad času.",
     "Could not check this computer: {error}": "Tento počítač nemožno skontrolovať: {error}",
     "Could not convert that .otr file to SRT.": "Tento súbor .otr nemožno previesť na SRT.",

@@ -264,6 +264,7 @@
     "Copy the transcript to an Obsidian vault folder:": "Kopyahin ang transcript sa isang folder ng Obsidian vault:",
     "Corsican": "Corsican",
     "Could not build the bilingual subtitle.": "Hindi mabuo ang bilingual na subtitle.",
+    "Could not check engine readiness. Reopen the app to try again.": "Hindi masuri kung handa na ang engine. Buksan muli ang app para subukan ulit.",
     "Could not check this computer, so no time estimate is shown.": "Hindi masuri ang computer na ito, kaya walang ipinapakitang tantiya ng oras.",
     "Could not check this computer: {error}": "Hindi masuri ang computer na ito: {error}",
     "Could not convert that .otr file to SRT.": "Hindi ma-convert ang .otr file na iyon sa SRT.",

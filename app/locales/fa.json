@@ -264,6 +264,7 @@
     "Copy the transcript to an Obsidian vault folder:": "کپی رونویسی در پوشه‌ی خزانه‌ی Obsidian:",
     "Corsican": "کُرسی",
     "Could not build the bilingual subtitle.": "ساختن زیرنویس دوزبانه ممکن نشد.",
+    "Could not check engine readiness. Reopen the app to try again.": "بررسی آمادگی موتور ممکن نشد. برای تلاش دوباره، برنامه را از نو باز کنید.",
     "Could not check this computer, so no time estimate is shown.": "بررسی این کامپیوتر ممکن نشد، بنابراین زمان تخمینی نشان داده نمی‌شود.",
     "Could not check this computer: {error}": "بررسی این کامپیوتر ممکن نشد: {error}",
     "Could not convert that .otr file to SRT.": "تبدیل آن فایل .otr به SRT ممکن نشد.",

@@ -262,6 +262,7 @@
     "Copy the transcript to an Obsidian vault folder:": "将转录文本复制到 Obsidian 仓库文件夹：",
     "Corsican": "科西嘉语",
     "Could not build the bilingual subtitle.": "无法生成双语字幕。",
+    "Could not check engine readiness. Reopen the app to try again.": "无法检查引擎是否就绪。请重新打开应用后重试。",
     "Could not check this computer, so no time estimate is shown.": "无法检查这台电脑，因此不显示时间估算。",
     "Could not check this computer: {error}": "无法检查这台电脑：{error}",
     "Could not convert that .otr file to SRT.": "无法将该 .otr 文件转换为 SRT。",

@@ -264,6 +264,7 @@
     "Copy the transcript to an Obsidian vault folder:": "Αντιγραφή της μεταγραφής σε φάκελο vault του Obsidian:",
     "Corsican": "Κορσικανικά",
     "Could not build the bilingual subtitle.": "Δεν ήταν δυνατή η δημιουργία των δίγλωσσων υποτίτλων.",
+    "Could not check engine readiness. Reopen the app to try again.": "Δεν ήταν δυνατός ο έλεγχος ετοιμότητας της μηχανής. Ανοίξτε ξανά την εφαρμογή και δοκιμάστε πάλι.",
     "Could not check this computer, so no time estimate is shown.": "Δεν ήταν δυνατός ο έλεγχος αυτού του υπολογιστή, οπότε δεν εμφανίζεται εκτίμηση χρόνου.",
     "Could not check this computer: {error}": "Δεν ήταν δυνατός ο έλεγχος αυτού του υπολογιστή: {error}",
     "Could not convert that .otr file to SRT.": "Δεν ήταν δυνατή η μετατροπή αυτού του αρχείου .otr σε SRT.",

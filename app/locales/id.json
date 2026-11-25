@@ -262,6 +262,7 @@
     "Copy the transcript to an Obsidian vault folder:": "Salin transkrip ke folder vault Obsidian:",
     "Corsican": "Korsika",
     "Could not build the bilingual subtitle.": "Subtitel dwibahasa tidak dapat dibuat.",
+    "Could not check engine readiness. Reopen the app to try again.": "Tidak dapat memeriksa kesiapan mesin. Buka kembali aplikasi untuk mencoba lagi.",
     "Could not check this computer, so no time estimate is shown.": "Komputer ini tidak dapat diperiksa, jadi perkiraan waktu tidak ditampilkan.",
     "Could not check this computer: {error}": "Komputer ini tidak dapat diperiksa: {error}",
     "Could not convert that .otr file to SRT.": "Berkas .otr itu tidak dapat dikonversi ke SRT.",

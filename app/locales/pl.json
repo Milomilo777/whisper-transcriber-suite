@@ -266,6 +266,7 @@
     "Copy the transcript to an Obsidian vault folder:": "Skopiuj transkrypt do folderu skarbca Obsidian:",
     "Corsican": "Korsykański",
     "Could not build the bilingual subtitle.": "Nie udało się utworzyć napisów dwujęzycznych.",
+    "Could not check engine readiness. Reopen the app to try again.": "Nie udało się sprawdzić, czy silnik jest gotowy. Otwórz aplikację ponownie, aby spróbować jeszcze raz.",
     "Could not check this computer, so no time estimate is shown.": "Nie udało się sprawdzić tego komputera, więc szacowany czas nie jest wyświetlany.",
     "Could not check this computer: {error}": "Nie udało się sprawdzić tego komputera: {error}",
     "Could not convert that .otr file to SRT.": "Nie udało się przekonwertować tego pliku .otr na SRT.",

@@ -264,6 +264,7 @@
     "Copy the transcript to an Obsidian vault folder:": "ट्रांसक्रिप्ट को Obsidian वॉल्ट फ़ोल्डर में कॉपी करें:",
     "Corsican": "कोर्सिकन",
     "Could not build the bilingual subtitle.": "द्विभाषी सबटाइटल नहीं बन सका।",
+    "Could not check engine readiness. Reopen the app to try again.": "इंजन तैयार है या नहीं, यह जाँचा नहीं जा सका। फिर से कोशिश करने के लिए ऐप दोबारा खोलें।",
     "Could not check this computer, so no time estimate is shown.": "इस कंप्यूटर की जांच नहीं हो सकी, इसलिए समय का कोई अनुमान नहीं दिखाया गया।",
     "Could not check this computer: {error}": "इस कंप्यूटर की जांच नहीं हो सकी: {error}",
     "Could not convert that .otr file to SRT.": "उस .otr फ़ाइल को SRT में नहीं बदला जा सका।",

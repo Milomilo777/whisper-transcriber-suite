@@ -268,6 +268,7 @@
     "Copy the transcript to an Obsidian vault folder:": "Kopiraj prepis v mapo trezorja Obsidian:",
     "Corsican": "Korziščina",
     "Could not build the bilingual subtitle.": "Dvojezičnih podnapisov ni bilo mogoče ustvariti.",
+    "Could not check engine readiness. Reopen the app to try again.": "Pripravljenosti pogona ni bilo mogoče preveriti. Za ponovni poskus znova odpri aplikacijo.",
     "Could not check this computer, so no time estimate is shown.": "Tega računalnika ni bilo mogoče preveriti, zato ocena časa ni prikazana.",
     "Could not check this computer: {error}": "Tega računalnika ni bilo mogoče preveriti: {error}",
     "Could not convert that .otr file to SRT.": "Datoteke .otr ni bilo mogoče pretvoriti v SRT.",

@@ -262,6 +262,7 @@
     "Copy the transcript to an Obsidian vault folder:": "Sao chép bản chép lời vào thư mục kho Obsidian:",
     "Corsican": "Tiếng Corse",
     "Could not build the bilingual subtitle.": "Không thể tạo phụ đề song ngữ.",
+    "Could not check engine readiness. Reopen the app to try again.": "Không thể kiểm tra xem công cụ đã sẵn sàng chưa. Mở lại ứng dụng để thử lại.",
     "Could not check this computer, so no time estimate is shown.": "Không thể kiểm tra máy tính này, nên không hiển thị ước tính thời gian.",
     "Could not check this computer: {error}": "Không thể kiểm tra máy tính này: {error}",
     "Could not convert that .otr file to SRT.": "Không thể chuyển tệp .otr đó sang SRT.",

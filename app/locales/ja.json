@@ -262,6 +262,7 @@
     "Copy the transcript to an Obsidian vault folder:": "文字起こしを Obsidian の保管庫フォルダーにコピー:",
     "Corsican": "コルシカ語",
     "Could not build the bilingual subtitle.": "2 か国語字幕を作成できませんでした。",
+    "Could not check engine readiness. Reopen the app to try again.": "エンジンの準備状況を確認できませんでした。アプリを開き直して再試行してください。",
     "Could not check this computer, so no time estimate is shown.": "このコンピューターを確認できなかったため、所要時間の目安は表示されません。",
     "Could not check this computer: {error}": "このコンピューターを確認できませんでした: {error}",
     "Could not convert that .otr file to SRT.": "その .otr ファイルを SRT に変換できませんでした。",

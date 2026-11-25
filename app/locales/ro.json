@@ -266,6 +266,7 @@
     "Copy the transcript to an Obsidian vault folder:": "Copiați transcrierea într-un dosar de seif Obsidian:",
     "Corsican": "Corsicană",
     "Could not build the bilingual subtitle.": "Subtitrarea bilingvă nu a putut fi creată.",
+    "Could not check engine readiness. Reopen the app to try again.": "Nu s-a putut verifica dacă motorul este pregătit. Redeschideți aplicația pentru a încerca din nou.",
     "Could not check this computer, so no time estimate is shown.": "Acest computer nu a putut fi verificat, așa că nu se afișează nicio estimare de timp.",
     "Could not check this computer: {error}": "Acest computer nu a putut fi verificat: {error}",
     "Could not convert that .otr file to SRT.": "Fișierul .otr nu a putut fi convertit în SRT.",

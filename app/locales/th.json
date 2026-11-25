@@ -262,6 +262,7 @@
     "Copy the transcript to an Obsidian vault folder:": "คัดลอกข้อความถอดเสียงไปยังโฟลเดอร์ Vault ของ Obsidian:",
     "Corsican": "คอร์ซิกา",
     "Could not build the bilingual subtitle.": "สร้างคำบรรยายสองภาษาไม่ได้",
+    "Could not check engine readiness. Reopen the app to try again.": "ตรวจสอบความพร้อมของเอนจินไม่ได้ เปิดแอปใหม่เพื่อลองอีกครั้ง",
     "Could not check this computer, so no time estimate is shown.": "ตรวจสอบคอมพิวเตอร์นี้ไม่ได้ จึงไม่แสดงเวลาโดยประมาณ",
     "Could not check this computer: {error}": "ตรวจสอบคอมพิวเตอร์นี้ไม่ได้: {error}",
     "Could not convert that .otr file to SRT.": "แปลงไฟล์ .otr นั้นเป็น SRT ไม่ได้",

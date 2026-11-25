@@ -264,6 +264,7 @@
     "Copy the transcript to an Obsidian vault folder:": "Transcript kopiëren naar een Obsidian-kluismap:",
     "Corsican": "Corsicaans",
     "Could not build the bilingual subtitle.": "Kan de tweetalige ondertitel niet maken.",
+    "Could not check engine readiness. Reopen the app to try again.": "Kon niet controleren of de engine klaar is. Open de app opnieuw om het nogmaals te proberen.",
     "Could not check this computer, so no time estimate is shown.": "Kan deze computer niet controleren, dus er wordt geen tijdsschatting getoond.",
     "Could not check this computer: {error}": "Kan deze computer niet controleren: {error}",
     "Could not convert that .otr file to SRT.": "Kan dat .otr-bestand niet naar SRT converteren.",

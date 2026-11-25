@@ -266,6 +266,7 @@
     "Copy the transcript to an Obsidian vault folder:": "Копирај транскрипт у фасциклу Obsidian сефа:",
     "Corsican": "Корзикански",
     "Could not build the bilingual subtitle.": "Двојезични титлови нису могли да се направе.",
+    "Could not check engine readiness. Reopen the app to try again.": "Провера спремности модула није успела. Поново отвори апликацију и покушај опет.",
     "Could not check this computer, so no time estimate is shown.": "Овај рачунар није могао да се провери, па се процена времена не приказује.",
     "Could not check this computer: {error}": "Овај рачунар није могао да се провери: {error}",
     "Could not convert that .otr file to SRT.": "Та .otr датотека није могла да се претвори у SRT.",

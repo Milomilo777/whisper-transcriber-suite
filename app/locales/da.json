@@ -264,6 +264,7 @@
     "Copy the transcript to an Obsidian vault folder:": "Kopiér transskriptionen til en mappe i en Obsidian-vault:",
     "Corsican": "Korsikansk",
     "Could not build the bilingual subtitle.": "Den tosprogede undertekst kunne ikke oprettes.",
+    "Could not check engine readiness. Reopen the app to try again.": "Kunne ikke kontrollere, om motoren er klar. Åbn appen igen for at prøve igen.",
     "Could not check this computer, so no time estimate is shown.": "Denne computer kunne ikke kontrolleres, så der vises intet tidsskøn.",
     "Could not check this computer: {error}": "Denne computer kunne ikke kontrolleres: {error}",
     "Could not convert that .otr file to SRT.": ".otr-filen kunne ikke konverteres til SRT.",
