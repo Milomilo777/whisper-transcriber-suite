@@ -73,6 +73,7 @@
     "Action items…": "Zadania do wykonania…",
     "Add a “{footer}” link at the bottom": "Dodaj na dole link „{footer}”",
     "Add files": "Dodaj pliki",
+    "Add to queue": "Add to queue",
     "Add {n} file to the queue? Each one becomes its own transcription job.": [
       "Dodać {n} plik do kolejki? Każdy z nich stanie się osobnym zadaniem transkrypcji.",
       "Dodać {n} pliki do kolejki? Każdy z nich stanie się osobnym zadaniem transkrypcji.",
@@ -220,6 +221,7 @@
     "Choose an .otr file": "Wybierz plik .otr",
     "Choose another file name: this one is the transcript or media file itself.": "Wybierz inną nazwę pliku: to jest sam transkrypt lub plik multimedialny.",
     "Choose another model…": "Wybierz inny model…",
+    "Choose audio track": "Choose audio track",
     "Choose what to listen to. 'Microphone' captures an input device; 'System audio' captures whatever is currently playing on this computer — useful for a meeting, a video, or a call you are listening to.": "Wybierz, czego słuchać. „Mikrofon” przechwytuje urządzenie wejściowe; „Dźwięk systemowy” przechwytuje to, co jest właśnie odtwarzane na tym komputerze — przydatne przy spotkaniu, filmie lub rozmowie, której słuchasz.",
     "Choose where Whisper Transcriber Suite should store its model files.": "Wybierz, gdzie Whisper Transcriber Suite ma przechowywać pliki modeli.",
     "Choose your Obsidian vault folder": "Wybierz folder skarbca Obsidian",
@@ -1374,6 +1376,7 @@
     "Total: unknown": "Łącznie: nieznane",
     "Total: {done} / {total}": "Łącznie: {done} / {total}",
     "Total: {size}": "Łącznie: {size}",
+    "Track {number}": "Track {number}",
     "Transcribe after download": "Transkrybuj po pobraniu",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "Transkrybuj tylko ten fragment pliku (format H:MM:SS). Zostaw oba pola na 0:00:00, aby transkrybować cały plik.",
     "Transcribing on {device}": "Transkrypcja na {device}",
@@ -1813,6 +1816,11 @@
     "{name} writes {language} only, whatever language is picked.": "{name} pisze tylko w języku {language}, niezależnie od wybranego języka.",
     "{name}: cancelled at {percent}%": "{name}: anulowano przy {percent}%",
     "{name}: {percent}% done": "{name}: {percent}% ukończono",
+    "{n} channel": [
+      "{n} channel",
+      "{n} channels",
+      "{n} channels"
+    ],
     "{n} job": [
       "{n} zadanie",
       "{n} zadania",

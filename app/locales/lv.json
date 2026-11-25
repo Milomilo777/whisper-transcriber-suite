@@ -73,6 +73,7 @@
     "Action items…": "Veicamie darbi…",
     "Add a “{footer}” link at the bottom": "Pievienot saiti „{footer}” apakšā",
     "Add files": "Pievienot failus",
+    "Add to queue": "Add to queue",
     "Add {n} file to the queue? Each one becomes its own transcription job.": [
       "Pievienot {n} failu rindai? Katrs no tiem kļūst par atsevišķu transkripcijas uzdevumu.",
       "Pievienot {n} failu rindai? Katrs no tiem kļūst par atsevišķu transkripcijas uzdevumu.",
@@ -220,6 +221,7 @@
     "Choose an .otr file": "Izvēlieties .otr failu",
     "Choose another file name: this one is the transcript or media file itself.": "Izvēlieties citu faila nosaukumu: šis ir pats transkripta vai multivides fails.",
     "Choose another model…": "Izvēlēties citu modeli…",
+    "Choose audio track": "Choose audio track",
     "Choose what to listen to. 'Microphone' captures an input device; 'System audio' captures whatever is currently playing on this computer — useful for a meeting, a video, or a call you are listening to.": "Izvēlieties, ko klausīties. „Mikrofons” ieraksta no ievades ierīces; „Sistēmas audio” ieraksta visu, kas pašlaik skan šajā datorā — noderīgi sapulcei, video vai zvanam, ko klausāties.",
     "Choose where Whisper Transcriber Suite should store its model files.": "Izvēlieties, kur Whisper Transcriber Suite glabās savus modeļu failus.",
     "Choose your Obsidian vault folder": "Izvēlieties savas Obsidian glabātavas mapi",
@@ -1374,6 +1376,7 @@
     "Total: unknown": "Kopā: nezināms",
     "Total: {done} / {total}": "Kopā: {done} / {total}",
     "Total: {size}": "Kopā: {size}",
+    "Track {number}": "Track {number}",
     "Transcribe after download": "Transkribēt pēc lejupielādes",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "Transkribēt tikai šo faila daļu (formāts H:MM:SS). Lai transkribētu visu failu, atstājiet abus kā 0:00:00.",
     "Transcribing on {device}": "Transkribē ar {device}",
@@ -1813,6 +1816,11 @@
     "{name} writes {language} only, whatever language is picked.": "{name} raksta tikai {language}, neatkarīgi no izvēlētās valodas.",
     "{name}: cancelled at {percent}%": "{name}: atcelts pie {percent}%",
     "{name}: {percent}% done": "{name}: {percent}% pabeigts",
+    "{n} channel": [
+      "{n} channel",
+      "{n} channels",
+      "{n} channels"
+    ],
     "{n} job": [
       "{n} uzdevumi",
       "{n} uzdevums",

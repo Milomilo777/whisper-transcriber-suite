@@ -72,6 +72,7 @@
     "Action items…": "Handlingspunkter…",
     "Add a “{footer}” link at the bottom": "Tilføj et ”{footer}”-link nederst",
     "Add files": "Tilføj filer",
+    "Add to queue": "Add to queue",
     "Add {n} file to the queue? Each one becomes its own transcription job.": [
       "Tilføj {n} fil til køen? Hver enkelt bliver sit eget transskriberingsjob.",
       "Tilføj {n} filer til køen? Hver enkelt bliver sit eget transskriberingsjob."
@@ -218,6 +219,7 @@
     "Choose an .otr file": "Vælg en .otr-fil",
     "Choose another file name: this one is the transcript or media file itself.": "Vælg et andet filnavn: dette er selve transskriptionen eller mediefilen.",
     "Choose another model…": "Vælg en anden model…",
+    "Choose audio track": "Choose audio track",
     "Choose what to listen to. 'Microphone' captures an input device; 'System audio' captures whatever is currently playing on this computer — useful for a meeting, a video, or a call you are listening to.": "Vælg, hvad der skal lyttes til. ”Mikrofon” optager fra en inputenhed; ”Systemlyd” optager alt, hvad der afspilles på computeren lige nu – nyttigt til et møde, en video eller et opkald, du lytter til.",
     "Choose where Whisper Transcriber Suite should store its model files.": "Vælg, hvor Whisper Transcriber Suite skal gemme sine modelfiler.",
     "Choose your Obsidian vault folder": "Vælg mappen til din Obsidian-vault",
@@ -1351,6 +1353,7 @@
     "Total: unknown": "I alt: ukendt",
     "Total: {done} / {total}": "I alt: {done} / {total}",
     "Total: {size}": "I alt: {size}",
+    "Track {number}": "Track {number}",
     "Transcribe after download": "Transskribér efter download",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "Transskribér kun denne del af filen (format H:MM:SS). Lad begge stå på 0:00:00 for at transskribere hele filen.",
     "Transcribing on {device}": "Transskriberer på {device}",
@@ -1776,6 +1779,10 @@
     "{name} writes {language} only, whatever language is picked.": "{name} skriver kun {language}, uanset hvilket sprog der vælges.",
     "{name}: cancelled at {percent}%": "{name}: annulleret ved {percent}%",
     "{name}: {percent}% done": "{name}: {percent}% færdig",
+    "{n} channel": [
+      "{n} channel",
+      "{n} channels"
+    ],
     "{n} job": [
       "{n} job",
       "{n} job"

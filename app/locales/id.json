@@ -71,6 +71,7 @@
     "Action items…": "Butir tindakan…",
     "Add a “{footer}” link at the bottom": "Tambahkan tautan “{footer}” di bagian bawah",
     "Add files": "Tambah berkas",
+    "Add to queue": "Add to queue",
     "Add {n} file to the queue? Each one becomes its own transcription job.": [
       "Tambahkan {n} berkas ke antrean? Masing-masing akan menjadi tugas transkripsi tersendiri."
     ],
@@ -216,6 +217,7 @@
     "Choose an .otr file": "Pilih berkas .otr",
     "Choose another file name: this one is the transcript or media file itself.": "Pilih nama berkas lain: nama ini adalah berkas transkrip atau media itu sendiri.",
     "Choose another model…": "Pilih model lain…",
+    "Choose audio track": "Choose audio track",
     "Choose what to listen to. 'Microphone' captures an input device; 'System audio' captures whatever is currently playing on this computer — useful for a meeting, a video, or a call you are listening to.": "Pilih apa yang ingin didengarkan. “Mikrofon” merekam perangkat input; “Audio sistem” merekam apa pun yang sedang diputar di komputer ini — berguna untuk rapat, video, atau panggilan yang sedang Anda dengarkan.",
     "Choose where Whisper Transcriber Suite should store its model files.": "Pilih tempat Whisper Transcriber Suite menyimpan berkas modelnya.",
     "Choose your Obsidian vault folder": "Pilih folder vault Obsidian Anda",
@@ -1328,6 +1330,7 @@
     "Total: unknown": "Total: tidak diketahui",
     "Total: {done} / {total}": "Total: {done} / {total}",
     "Total: {size}": "Total: {size}",
+    "Track {number}": "Track {number}",
     "Transcribe after download": "Transkripsikan setelah diunduh",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "Transkripsikan hanya bagian berkas ini (format H:MM:SS). Biarkan keduanya 0:00:00 untuk mentranskripsikan seluruh berkas.",
     "Transcribing on {device}": "Mentranskripsikan di {device}",
@@ -1739,6 +1742,9 @@
     "{name} writes {language} only, whatever language is picked.": "{name} hanya menulis {language}, apa pun bahasa yang dipilih.",
     "{name}: cancelled at {percent}%": "{name}: dibatalkan pada {percent}%",
     "{name}: {percent}% done": "{name}: {percent}% selesai",
+    "{n} channel": [
+      "{n} channel"
+    ],
     "{n} job": [
       "{n} tugas"
     ],

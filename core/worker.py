@@ -85,6 +85,7 @@ from .config import load_config
 from .keep_awake import keep_awake
 from .logging_setup import setup_logging, worker_log_filename
 from .task import TranscriptionTask
+from .media_audio import audio_ordinal
 from .translate_task import normalise_task
 from .transcriber import (
     get_effective_device,
@@ -210,6 +211,7 @@ def _emit_done(task: "TranscriptionTask", file_path: str, task_id: str) -> None:
         word_count=int(getattr(task, "word_count", 0) or 0),
         audio_duration=float(getattr(task, "audio_duration", 0.0) or 0.0),
         no_speech=bool(getattr(task, "no_speech", False)),
+        audio_track=getattr(task, "audio_track", None),
         speaker_labels_failed=bool(getattr(task, "speaker_labels_failed", False)),
         **recovery,
         **_speed_fields(task),
@@ -901,6 +903,7 @@ def _report_error(
             payload["id"] = chunk_id
         if file_path:
             payload.update(file_path=file_path, task_id=task_id)
+            payload["audio_track"] = getattr(task, "audio_track", None)
         written = getattr(task, "output_paths", None)
         if written:
             payload["outputs"] = [str(p) for p in written]
@@ -1297,6 +1300,7 @@ def _main() -> int:
             # a full re-transcribe so the user always gets an output
             # rather than an error.
             task.resume = bool(command.get("resume", False))
+            task.audio_track = audio_ordinal(command.get("audio_track"))
             # Time-slice (Transcribe-tab time range): transcribe only this
             # span via clip_timestamps. None = whole file.
             task.clip_start = command.get("clip_start")

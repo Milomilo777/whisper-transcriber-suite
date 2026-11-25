@@ -71,6 +71,7 @@
     "Action items…": "รายการสิ่งที่ต้องทำ…",
     "Add a “{footer}” link at the bottom": "เพิ่มลิงก์ “{footer}” ที่ด้านล่าง",
     "Add files": "เพิ่มไฟล์",
+    "Add to queue": "Add to queue",
     "Add {n} file to the queue? Each one becomes its own transcription job.": [
       "เพิ่ม {n} ไฟล์ลงในคิวหรือไม่? แต่ละไฟล์จะกลายเป็นงานถอดเสียงของตัวเอง"
     ],
@@ -216,6 +217,7 @@
     "Choose an .otr file": "เลือกไฟล์ .otr",
     "Choose another file name: this one is the transcript or media file itself.": "เลือกชื่อไฟล์อื่น: ชื่อนี้เป็นไฟล์ข้อความถอดเสียงหรือไฟล์สื่อเอง",
     "Choose another model…": "เลือกโมเดลอื่น…",
+    "Choose audio track": "Choose audio track",
     "Choose what to listen to. 'Microphone' captures an input device; 'System audio' captures whatever is currently playing on this computer — useful for a meeting, a video, or a call you are listening to.": "เลือกสิ่งที่จะฟัง 'ไมโครโฟน' จะรับเสียงจากอุปกรณ์อินพุต 'เสียงระบบ' จะรับเสียงที่กำลังเล่นบนคอมพิวเตอร์นี้ เหมาะสำหรับการประชุม วิดีโอ หรือการโทรที่คุณกำลังฟัง",
     "Choose where Whisper Transcriber Suite should store its model files.": "เลือกตำแหน่งที่ Whisper Transcriber Suite จะเก็บไฟล์โมเดล",
     "Choose your Obsidian vault folder": "เลือกโฟลเดอร์ Vault ของ Obsidian ของคุณ",
@@ -1328,6 +1330,7 @@
     "Total: unknown": "รวม: ไม่ทราบ",
     "Total: {done} / {total}": "รวม: {done} / {total}",
     "Total: {size}": "รวม: {size}",
+    "Track {number}": "Track {number}",
     "Transcribe after download": "ถอดเสียงหลังดาวน์โหลด",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "ถอดเสียงเฉพาะส่วนนี้ของไฟล์ (รูปแบบ H:MM:SS) ปล่อยทั้งสองค่าเป็น 0:00:00 เพื่อถอดเสียงทั้งไฟล์",
     "Transcribing on {device}": "กำลังถอดเสียงบน {device}",
@@ -1739,6 +1742,9 @@
     "{name} writes {language} only, whatever language is picked.": "{name} เขียนเป็น{language}เท่านั้น ไม่ว่าจะเลือกภาษาใดก็ตาม",
     "{name}: cancelled at {percent}%": "{name}: ยกเลิกที่ {percent}%",
     "{name}: {percent}% done": "{name}: เสร็จแล้ว {percent}%",
+    "{n} channel": [
+      "{n} channel"
+    ],
     "{n} job": [
       "{n} งาน"
     ],

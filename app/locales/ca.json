@@ -72,6 +72,7 @@
     "Action items…": "Tasques pendents…",
     "Add a “{footer}” link at the bottom": "Afegeix un enllaç «{footer}» a la part inferior",
     "Add files": "Afegeix fitxers",
+    "Add to queue": "Add to queue",
     "Add {n} file to the queue? Each one becomes its own transcription job.": [
       "Vols afegir {n} fitxer a la cua? Cadascun esdevé una tasca de transcripció pròpia.",
       "Vols afegir {n} fitxers a la cua? Cadascun esdevé una tasca de transcripció pròpia."
@@ -218,6 +219,7 @@
     "Choose an .otr file": "Trieu un fitxer .otr",
     "Choose another file name: this one is the transcript or media file itself.": "Trieu un altre nom de fitxer: aquest és el mateix fitxer de transcripció o multimèdia.",
     "Choose another model…": "Trieu un altre model…",
+    "Choose audio track": "Choose audio track",
     "Choose what to listen to. 'Microphone' captures an input device; 'System audio' captures whatever is currently playing on this computer — useful for a meeting, a video, or a call you are listening to.": "Trieu què voleu escoltar. «Micròfon» captura un dispositiu d'entrada; «Àudio del sistema» captura el que s'estigui reproduint en aquest ordinador, útil per a una reunió, un vídeo o una trucada que escolteu.",
     "Choose where Whisper Transcriber Suite should store its model files.": "Trieu on ha de desar Whisper Transcriber Suite els fitxers dels models.",
     "Choose your Obsidian vault folder": "Trieu la carpeta del vostre vault d'Obsidian",
@@ -1351,6 +1353,7 @@
     "Total: unknown": "Total: desconegut",
     "Total: {done} / {total}": "Total: {done} / {total}",
     "Total: {size}": "Total: {size}",
+    "Track {number}": "Track {number}",
     "Transcribe after download": "Transcriu després de baixar",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "Transcriu només aquesta part del fitxer (format H:MM:SS). Deixeu tots dos a 0:00:00 per transcriure tot el fitxer.",
     "Transcribing on {device}": "S'està transcrivint amb {device}",
@@ -1776,6 +1779,10 @@
     "{name} writes {language} only, whatever language is picked.": "{name} només escriu en {language}, sigui quina sigui la llengua triada.",
     "{name}: cancelled at {percent}%": "{name}: cancel·lat al {percent}%",
     "{name}: {percent}% done": "{name}: {percent}% completat",
+    "{n} channel": [
+      "{n} channel",
+      "{n} channels"
+    ],
     "{n} job": [
       "{n} tasca",
       "{n} tasques"

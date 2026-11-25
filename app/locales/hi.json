@@ -72,6 +72,7 @@
     "Action items…": "कार्य-बिंदु…",
     "Add a “{footer}” link at the bottom": "नीचे एक “{footer}” लिंक जोड़ें",
     "Add files": "फ़ाइलें जोड़ें",
+    "Add to queue": "Add to queue",
     "Add {n} file to the queue? Each one becomes its own transcription job.": [
       "कतार में {n} फ़ाइल जोड़ें? प्रत्येक का अपना ट्रांसक्रिप्शन कार्य बन जाएगा।",
       "कतार में {n} फ़ाइलें जोड़ें? प्रत्येक का अपना ट्रांसक्रिप्शन कार्य बन जाएगा।"
@@ -218,6 +219,7 @@
     "Choose an .otr file": "एक .otr फ़ाइल चुनें",
     "Choose another file name: this one is the transcript or media file itself.": "कोई दूसरा फ़ाइल नाम चुनें: यह तो खुद ट्रांसक्रिप्ट या मीडिया फ़ाइल है।",
     "Choose another model…": "दूसरा मॉडल चुनें…",
+    "Choose audio track": "Choose audio track",
     "Choose what to listen to. 'Microphone' captures an input device; 'System audio' captures whatever is currently playing on this computer — useful for a meeting, a video, or a call you are listening to.": "चुनें कि क्या सुनना है। 'माइक्रोफ़ोन' किसी इनपुट डिवाइस को कैप्चर करता है; 'सिस्टम ऑडियो' इस कंप्यूटर पर इस समय जो भी चल रहा है उसे कैप्चर करता है — किसी मीटिंग, वीडियो या कॉल के लिए उपयोगी जिसे आप सुन रहे हैं।",
     "Choose where Whisper Transcriber Suite should store its model files.": "चुनें कि Whisper Transcriber Suite अपनी मॉडल फ़ाइलें कहां रखे।",
     "Choose your Obsidian vault folder": "अपना Obsidian वॉल्ट फ़ोल्डर चुनें",
@@ -1351,6 +1353,7 @@
     "Total: unknown": "कुल: अज्ञात",
     "Total: {done} / {total}": "कुल: {done} / {total}",
     "Total: {size}": "कुल: {size}",
+    "Track {number}": "Track {number}",
     "Transcribe after download": "डाउनलोड के बाद ट्रांसक्राइब करें",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "फ़ाइल का केवल यह हिस्सा ट्रांसक्राइब करें (फ़ॉर्मेट H:MM:SS)। पूरी फ़ाइल ट्रांसक्राइब करने के लिए दोनों को 0:00:00 पर रहने दें।",
     "Transcribing on {device}": "{device} पर ट्रांसक्राइब हो रहा है",
@@ -1776,6 +1779,10 @@
     "{name} writes {language} only, whatever language is picked.": "{name} केवल {language} लिखता है, चाहे कोई भी भाषा चुनी गई हो।",
     "{name}: cancelled at {percent}%": "{name}: {percent}% पर रद्द किया गया",
     "{name}: {percent}% done": "{name}: {percent}% पूरा हुआ",
+    "{n} channel": [
+      "{n} channel",
+      "{n} channels"
+    ],
     "{n} job": [
       "{n} कार्य",
       "{n} कार्य"

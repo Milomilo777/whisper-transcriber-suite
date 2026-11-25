@@ -72,6 +72,7 @@
     "Action items…": "کارهای لازم…",
     "Add a “{footer}” link at the bottom": "افزودن لینک «{footer}» در پایین",
     "Add files": "افزودن فایل‌ها",
+    "Add to queue": "Add to queue",
     "Add {n} file to the queue? Each one becomes its own transcription job.": [
       "{n} فایل به صف اضافه شود؟ هر کدام به یک کار رونویسی جداگانه تبدیل می‌شود.",
       "{n} فایل به صف اضافه شوند؟ هر کدام به یک کار رونویسی جداگانه تبدیل می‌شود."
@@ -218,6 +219,7 @@
     "Choose an .otr file": "انتخاب فایل .otr",
     "Choose another file name: this one is the transcript or media file itself.": "نام فایل دیگری انتخاب کنید: این نام، خود فایل متن رونویسی یا فایل رسانه است.",
     "Choose another model…": "انتخاب مدل دیگر…",
+    "Choose audio track": "Choose audio track",
     "Choose what to listen to. 'Microphone' captures an input device; 'System audio' captures whatever is currently playing on this computer — useful for a meeting, a video, or a call you are listening to.": "انتخاب کنید به چه چیزی گوش داده شود. «میکروفون» صدای یک دستگاه ورودی را می‌گیرد؛ «صدای سیستم» هر چیزی را که الان روی این کامپیوتر پخش می‌شود می‌گیرد؛ برای جلسه، ویدیو یا تماسی که به آن گوش می‌دهید مفید است.",
     "Choose where Whisper Transcriber Suite should store its model files.": "انتخاب کنید Whisper Transcriber Suite فایل‌های مدل را کجا ذخیره کند.",
     "Choose your Obsidian vault folder": "انتخاب پوشه‌ی خزانه‌ی Obsidian",
@@ -1351,6 +1353,7 @@
     "Total: unknown": "مجموع: نامعلوم",
     "Total: {done} / {total}": "مجموع: {done} / {total}",
     "Total: {size}": "مجموع: {size}",
+    "Track {number}": "Track {number}",
     "Transcribe after download": "رونویسی پس از دانلود",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "فقط همین بخش از فایل رونویسی شود (فرمت H:MM:SS). برای رونویسی کل فایل، هر دو را روی 0:00:00 بگذارید.",
     "Transcribing on {device}": "رونویسی روی {device}",
@@ -1776,6 +1779,10 @@
     "{name} writes {language} only, whatever language is picked.": "{name} فقط {language} می‌نویسد، هر زبانی که انتخاب شود.",
     "{name}: cancelled at {percent}%": "{name}: در {percent}% لغو شد",
     "{name}: {percent}% done": "{name}: {percent}% انجام شد",
+    "{n} channel": [
+      "{n} channel",
+      "{n} channels"
+    ],
     "{n} job": [
       "{n} کار",
       "{n} کار"

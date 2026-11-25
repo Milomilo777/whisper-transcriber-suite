@@ -72,6 +72,7 @@
     "Action items…": "Aufgaben…",
     "Add a “{footer}” link at the bottom": "Einen Link „{footer}“ unten hinzufügen",
     "Add files": "Dateien hinzufügen",
+    "Add to queue": "Add to queue",
     "Add {n} file to the queue? Each one becomes its own transcription job.": [
       "{n} Datei zur Warteschlange hinzufügen? Jede wird zu einem eigenen Transkriptionsauftrag.",
       "{n} Dateien zur Warteschlange hinzufügen? Jede wird zu einem eigenen Transkriptionsauftrag."
@@ -218,6 +219,7 @@
     "Choose an .otr file": "Eine .otr-Datei wählen",
     "Choose another file name: this one is the transcript or media file itself.": "Wählen Sie einen anderen Dateinamen: Dies ist das Transkript oder die Mediendatei selbst.",
     "Choose another model…": "Anderes Modell wählen…",
+    "Choose audio track": "Choose audio track",
     "Choose what to listen to. 'Microphone' captures an input device; 'System audio' captures whatever is currently playing on this computer — useful for a meeting, a video, or a call you are listening to.": "Wählen Sie, was aufgenommen werden soll. „Mikrofon“ nimmt ein Eingabegerät auf; „Systemaudio“ nimmt auf, was gerade auf diesem Computer abgespielt wird – nützlich für ein Meeting, ein Video oder einen Anruf, den Sie gerade hören.",
     "Choose where Whisper Transcriber Suite should store its model files.": "Wählen Sie, wo Whisper Transcriber Suite seine Modelldateien speichern soll.",
     "Choose your Obsidian vault folder": "Obsidian-Tresorordner auswählen",
@@ -1351,6 +1353,7 @@
     "Total: unknown": "Gesamt: unbekannt",
     "Total: {done} / {total}": "Gesamt: {done} / {total}",
     "Total: {size}": "Gesamt: {size}",
+    "Track {number}": "Track {number}",
     "Transcribe after download": "Nach dem Download transkribieren",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "Nur diesen Abschnitt der Datei transkribieren (Format H:MM:SS). Lassen Sie beide Werte auf 0:00:00, um die ganze Datei zu transkribieren.",
     "Transcribing on {device}": "Transkription auf {device}",
@@ -1776,6 +1779,10 @@
     "{name} writes {language} only, whatever language is picked.": "{name} schreibt nur {language}, unabhängig von der ausgewählten Sprache.",
     "{name}: cancelled at {percent}%": "{name}: abgebrochen bei {percent}%",
     "{name}: {percent}% done": "{name}: {percent}% fertig",
+    "{n} channel": [
+      "{n} channel",
+      "{n} channels"
+    ],
     "{n} job": [
       "{n} Auftrag",
       "{n} Aufträge"

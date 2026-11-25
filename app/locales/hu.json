@@ -72,6 +72,7 @@
     "Action items…": "Teendők…",
     "Add a “{footer}” link at the bottom": "„{footer}” hivatkozás hozzáadása az aljára",
     "Add files": "Fájlok hozzáadása",
+    "Add to queue": "Add to queue",
     "Add {n} file to the queue? Each one becomes its own transcription job.": [
       "Hozzáad {n} fájlt a várólistához? Mindegyik külön átírási feladat lesz.",
       "Hozzáad {n} fájlt a várólistához? Mindegyik külön átírási feladat lesz."
@@ -218,6 +219,7 @@
     "Choose an .otr file": "Válasszon .otr fájlt",
     "Choose another file name: this one is the transcript or media file itself.": "Válasszon másik fájlnevet: ez maga az átirat vagy a médiafájl.",
     "Choose another model…": "Másik modell választása…",
+    "Choose audio track": "Choose audio track",
     "Choose what to listen to. 'Microphone' captures an input device; 'System audio' captures whatever is currently playing on this computer — useful for a meeting, a video, or a call you are listening to.": "Válassza ki, mit hallgasson. A „Mikrofon” egy bemeneti eszközt rögzít; a „Rendszerhang” mindazt, ami épp szól a számítógépen – hasznos értekezlethez, videóhoz vagy hallgatott híváshoz.",
     "Choose where Whisper Transcriber Suite should store its model files.": "Válassza ki, hová mentse a Whisper Transcriber Suite a modellfájlokat.",
     "Choose your Obsidian vault folder": "Válassza ki az Obsidian-széf mappáját",
@@ -1351,6 +1353,7 @@
     "Total: unknown": "Összesen: ismeretlen",
     "Total: {done} / {total}": "Összesen: {done} / {total}",
     "Total: {size}": "Összesen: {size}",
+    "Track {number}": "Track {number}",
     "Transcribe after download": "Átírás letöltés után",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "Csak a fájl ezen részének átírása (formátum: Ó:PP:MM). A teljes fájl átírásához hagyja mindkettőt 0:00:00 értéken.",
     "Transcribing on {device}": "Átírás ezen: {device}",
@@ -1776,6 +1779,10 @@
     "{name} writes {language} only, whatever language is picked.": "{name} csak {language} nyelven ír, bármilyen nyelv van kiválasztva.",
     "{name}: cancelled at {percent}%": "{name}: megszakítva {percent}%-nál",
     "{name}: {percent}% done": "{name}: {percent}% kész",
+    "{n} channel": [
+      "{n} channel",
+      "{n} channels"
+    ],
     "{n} job": [
       "{n} feladat",
       "{n} feladat"

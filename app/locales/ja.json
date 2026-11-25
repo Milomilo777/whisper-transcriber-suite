@@ -71,6 +71,7 @@
     "Action items…": "アクションアイテム…",
     "Add a “{footer}” link at the bottom": "下部に「{footer}」リンクを追加",
     "Add files": "ファイルを追加",
+    "Add to queue": "Add to queue",
     "Add {n} file to the queue? Each one becomes its own transcription job.": [
       "{n}個のファイルをキューに追加しますか？各ファイルが個別の文字起こしジョブになります。"
     ],
@@ -216,6 +217,7 @@
     "Choose an .otr file": ".otr ファイルの選択",
     "Choose another file name: this one is the transcript or media file itself.": "別のファイル名を選んでください。この名前は文字起こしファイルまたはメディア ファイルそのものです。",
     "Choose another model…": "別のモデルを選択…",
+    "Choose audio track": "Choose audio track",
     "Choose what to listen to. 'Microphone' captures an input device; 'System audio' captures whatever is currently playing on this computer — useful for a meeting, a video, or a call you are listening to.": "聞き取る対象を選びます。「マイク」は入力デバイスの音を、「システム音声」はこのコンピューターで再生中の音を取り込みます。聞いている会議、動画、通話に便利です。",
     "Choose where Whisper Transcriber Suite should store its model files.": "Whisper Transcriber Suite がモデル ファイルを保存する場所を選んでください。",
     "Choose your Obsidian vault folder": "Obsidian の保管庫フォルダーの選択",
@@ -1328,6 +1330,7 @@
     "Total: unknown": "合計: 不明",
     "Total: {done} / {total}": "合計: {done} / {total}",
     "Total: {size}": "合計: {size}",
+    "Track {number}": "Track {number}",
     "Transcribe after download": "ダウンロード後に文字起こし",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "ファイルのこの部分だけを文字起こしします（形式 H:MM:SS）。ファイル全体を文字起こしするには両方を 0:00:00 のままにしてください。",
     "Transcribing on {device}": "{device} で文字起こししています",
@@ -1739,6 +1742,9 @@
     "{name} writes {language} only, whatever language is picked.": "{name} はどの言語が選択されていても、{language}のみ書き起こします。",
     "{name}: cancelled at {percent}%": "{name}: {percent}% でキャンセルされました",
     "{name}: {percent}% done": "{name}: {percent}% 完了",
+    "{n} channel": [
+      "{n} channel"
+    ],
     "{n} job": [
       "ジョブ {n} 件"
     ],

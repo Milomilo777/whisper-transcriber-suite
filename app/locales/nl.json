@@ -72,6 +72,7 @@
     "Action items…": "Actiepunten…",
     "Add a “{footer}” link at the bottom": "Een link “{footer}” onderaan toevoegen",
     "Add files": "Bestanden toevoegen",
+    "Add to queue": "Add to queue",
     "Add {n} file to the queue? Each one becomes its own transcription job.": [
       "{n} bestand toevoegen aan de wachtrij? Elk bestand wordt een eigen transcriptietaak.",
       "{n} bestanden toevoegen aan de wachtrij? Elk bestand wordt een eigen transcriptietaak."
@@ -218,6 +219,7 @@
     "Choose an .otr file": "Kies een .otr-bestand",
     "Choose another file name: this one is the transcript or media file itself.": "Kies een andere bestandsnaam: dit is het transcript of het mediabestand zelf.",
     "Choose another model…": "Een ander model kiezen…",
+    "Choose audio track": "Choose audio track",
     "Choose what to listen to. 'Microphone' captures an input device; 'System audio' captures whatever is currently playing on this computer — useful for a meeting, a video, or a call you are listening to.": "Kies waarnaar je wilt luisteren. 'Microfoon' neemt een invoerapparaat op; 'Systeemaudio' neemt op wat er op dit moment op deze computer wordt afgespeeld — handig voor een vergadering, een video of een gesprek waarnaar je luistert.",
     "Choose where Whisper Transcriber Suite should store its model files.": "Kies waar Whisper Transcriber Suite de modelbestanden moet opslaan.",
     "Choose your Obsidian vault folder": "Kies de Obsidian-kluismap",
@@ -1351,6 +1353,7 @@
     "Total: unknown": "Totaal: onbekend",
     "Total: {done} / {total}": "Totaal: {done} / {total}",
     "Total: {size}": "Totaal: {size}",
+    "Track {number}": "Track {number}",
     "Transcribe after download": "Transcriberen na download",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "Transcribeer alleen dit deel van het bestand (formaat H:MM:SS). Laat beide op 0:00:00 staan om het hele bestand te transcriberen.",
     "Transcribing on {device}": "Transcriberen op {device}",
@@ -1776,6 +1779,10 @@
     "{name} writes {language} only, whatever language is picked.": "{name} schrijft alleen {language}, welke taal er ook is gekozen.",
     "{name}: cancelled at {percent}%": "{name}: geannuleerd op {percent}%",
     "{name}: {percent}% done": "{name}: {percent}% voltooid",
+    "{n} channel": [
+      "{n} channel",
+      "{n} channels"
+    ],
     "{n} job": [
       "{n} taak",
       "{n} taken"

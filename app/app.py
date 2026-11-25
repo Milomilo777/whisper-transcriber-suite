@@ -4689,6 +4689,9 @@ class App(tk.Tk):
         task = TranscriptionTask(text)
         if self._apply_task_options(task) is False:
             return
+        from app.dialogs.media_audio import choose_queued_audio
+        if not choose_queued_audio(self, task):
+            return
         if self._same_job_active(task):
             # A second click (the button showed no change) queued the same job twice
             # (screenshot reviews, 2026-10-21): show the one that is there. Another part of
@@ -5070,6 +5073,7 @@ class App(tk.Tk):
         enqueued (0 if the gate was declined or no path existed).
         """
         from core.watcher import is_transcribable
+        from app.dialogs.media_audio import choose_queued_audio
 
         files = [p for p in paths if p and os.path.isfile(p)]
         # Files that are not audio or video would only become failed jobs.
@@ -5096,6 +5100,8 @@ class App(tk.Tk):
             task = TranscriptionTask(path)
             if self._apply_task_options(task) is False:
                 return count
+            if not choose_queued_audio(self, task):
+                continue
             if self._same_job_active(task):
                 # Same rule as add(): a job already waiting, running or paused for this
                 # file (and time range) is not queued a second time.
@@ -5488,6 +5494,7 @@ class App(tk.Tk):
                 )
                 continue
             nt = TranscriptionTask(t.file_path)
+            nt.audio_track = getattr(t, "audio_track", None)
             if getattr(t, "language", None):
                 nt.language = t.language
             nt.languages = getattr(t, "languages", None)
@@ -5512,6 +5519,7 @@ class App(tk.Tk):
                 )
                 continue
             nt = TranscriptionTask(t.file_path)
+            nt.audio_track = getattr(t, "audio_track", None)
             if getattr(t, "language", None):
                 nt.language = t.language
             nt.languages = getattr(t, "languages", None)
@@ -5579,6 +5587,7 @@ class App(tk.Tk):
             )
             return
         new_task = TranscriptionTask(task.file_path)
+        new_task.audio_track = getattr(task, "audio_track", None)
         if getattr(task, "language", None):
             new_task.language = task.language
         new_task.languages = getattr(task, "languages", None)
@@ -5612,6 +5621,7 @@ class App(tk.Tk):
             )
             return
         new_task = TranscriptionTask(task.file_path)
+        new_task.audio_track = getattr(task, "audio_track", None)
         if getattr(task, "language", None):
             new_task.language = task.language
         new_task.languages = getattr(task, "languages", None)

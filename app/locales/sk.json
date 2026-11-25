@@ -73,6 +73,7 @@
     "Action items…": "Akčné body…",
     "Add a “{footer}” link at the bottom": "Pridať dole odkaz „{footer}“",
     "Add files": "Pridať súbory",
+    "Add to queue": "Add to queue",
     "Add {n} file to the queue? Each one becomes its own transcription job.": [
       "Pridať {n} súbor do frontu? Z každého sa stane samostatná úloha prepisu.",
       "Pridať {n} súbory do frontu? Z každého sa stane samostatná úloha prepisu.",
@@ -220,6 +221,7 @@
     "Choose an .otr file": "Zvoľte súbor .otr",
     "Choose another file name: this one is the transcript or media file itself.": "Zvoľte iný názov súboru: tento je samotný prepis alebo mediálny súbor.",
     "Choose another model…": "Zvoliť iný model…",
+    "Choose audio track": "Choose audio track",
     "Choose what to listen to. 'Microphone' captures an input device; 'System audio' captures whatever is currently playing on this computer — useful for a meeting, a video, or a call you are listening to.": "Zvoľte, čo počúvať. „Mikrofón“ zachytáva vstupné zariadenie; „Systémový zvuk“ zachytáva všetko, čo sa práve v tomto počítači prehráva – hodí sa na schôdzu, video alebo hovor, ktorý počúvate.",
     "Choose where Whisper Transcriber Suite should store its model files.": "Zvoľte, kam má Whisper Transcriber Suite ukladať súbory modelov.",
     "Choose your Obsidian vault folder": "Vyberte priečinok svojho trezora Obsidian",
@@ -1374,6 +1376,7 @@
     "Total: unknown": "Celkovo: neznáme",
     "Total: {done} / {total}": "Celkovo: {done} / {total}",
     "Total: {size}": "Celkovo: {size}",
+    "Track {number}": "Track {number}",
     "Transcribe after download": "Po stiahnutí prepísať",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "Prepísať len túto časť súboru (formát H:MM:SS). Na prepis celého súboru ponechajte obe hodnoty na 0:00:00.",
     "Transcribing on {device}": "Prepisuje sa na {device}",
@@ -1813,6 +1816,11 @@
     "{name} writes {language} only, whatever language is picked.": "{name} píše len v jazyku {language}, bez ohľadu na vybraný jazyk.",
     "{name}: cancelled at {percent}%": "{name}: zrušené pri {percent}%",
     "{name}: {percent}% done": "{name}: {percent}% hotovo",
+    "{n} channel": [
+      "{n} channel",
+      "{n} channels",
+      "{n} channels"
+    ],
     "{n} job": [
       "{n} úloha",
       "{n} úlohy",

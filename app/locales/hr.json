@@ -73,6 +73,7 @@
     "Action items…": "Radne stavke…",
     "Add a “{footer}” link at the bottom": "Dodaj poveznicu „{footer}” na dnu",
     "Add files": "Dodaj datoteke",
+    "Add to queue": "Add to queue",
     "Add {n} file to the queue? Each one becomes its own transcription job.": [
       "Dodati {n} datoteku u red čekanja? Svaka postaje zaseban zadatak transkripcije.",
       "Dodati {n} datoteke u red čekanja? Svaka postaje zaseban zadatak transkripcije.",
@@ -220,6 +221,7 @@
     "Choose an .otr file": "Odaberite .otr datoteku",
     "Choose another file name: this one is the transcript or media file itself.": "Odaberite drugi naziv datoteke: ovo je sama datoteka transkripcije ili medijska datoteka.",
     "Choose another model…": "Odaberi drugi model…",
+    "Choose audio track": "Choose audio track",
     "Choose what to listen to. 'Microphone' captures an input device; 'System audio' captures whatever is currently playing on this computer — useful for a meeting, a video, or a call you are listening to.": "Odaberite što želite slušati. „Mikrofon” snima s ulaznog uređaja; „Zvuk sustava” snima sve što se trenutačno reproducira na ovom računalu – korisno za sastanak, video ili poziv koji slušate.",
     "Choose where Whisper Transcriber Suite should store its model files.": "Odaberite gdje Whisper Transcriber Suite treba spremati datoteke modela.",
     "Choose your Obsidian vault folder": "Odaberite mapu svog Obsidian vaulta",
@@ -1374,6 +1376,7 @@
     "Total: unknown": "Ukupno: nepoznato",
     "Total: {done} / {total}": "Ukupno: {done} / {total}",
     "Total: {size}": "Ukupno: {size}",
+    "Track {number}": "Track {number}",
     "Transcribe after download": "Transkribiraj nakon preuzimanja",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "Transkribiraj samo ovaj dio datoteke (format H:MM:SS). Ostavite oba na 0:00:00 za transkripciju cijele datoteke.",
     "Transcribing on {device}": "Transkripcija na {device}",
@@ -1813,6 +1816,11 @@
     "{name} writes {language} only, whatever language is picked.": "{name} piše samo {language}, bez obzira na odabrani jezik.",
     "{name}: cancelled at {percent}%": "{name}: otkazano na {percent}%",
     "{name}: {percent}% done": "{name}: {percent}% dovršeno",
+    "{n} channel": [
+      "{n} channel",
+      "{n} channels",
+      "{n} channels"
+    ],
     "{n} job": [
       "{n} zadatak",
       "{n} zadatka",

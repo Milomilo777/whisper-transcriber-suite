@@ -72,6 +72,7 @@
     "Action items…": "Tareas pendientes…",
     "Add a “{footer}” link at the bottom": "Añadir un enlace «{footer}» al final",
     "Add files": "Añadir archivos",
+    "Add to queue": "Add to queue",
     "Add {n} file to the queue? Each one becomes its own transcription job.": [
       "¿Añadir {n} archivo a la cola? Cada uno se convertirá en su propia tarea de transcripción.",
       "¿Añadir {n} archivos a la cola? Cada uno se convertirá en su propia tarea de transcripción."
@@ -218,6 +219,7 @@
     "Choose an .otr file": "Elegir un archivo .otr",
     "Choose another file name: this one is the transcript or media file itself.": "Elija otro nombre de archivo: este es la propia transcripción o el archivo multimedia.",
     "Choose another model…": "Elegir otro modelo…",
+    "Choose audio track": "Choose audio track",
     "Choose what to listen to. 'Microphone' captures an input device; 'System audio' captures whatever is currently playing on this computer — useful for a meeting, a video, or a call you are listening to.": "Elija qué escuchar. «Micrófono» capta un dispositivo de entrada; «Audio del sistema» capta lo que se esté reproduciendo en este equipo: útil para una reunión, un video o una llamada que esté escuchando.",
     "Choose where Whisper Transcriber Suite should store its model files.": "Elija dónde debe guardar Whisper Transcriber Suite sus archivos de modelo.",
     "Choose your Obsidian vault folder": "Elegir la carpeta de la bóveda de Obsidian",
@@ -1351,6 +1353,7 @@
     "Total: unknown": "Total: desconocido",
     "Total: {done} / {total}": "Total: {done} / {total}",
     "Total: {size}": "Total: {size}",
+    "Track {number}": "Track {number}",
     "Transcribe after download": "Transcribir tras la descarga",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "Transcribir solo esta parte del archivo (formato H:MM:SS). Deje ambos en 0:00:00 para transcribir el archivo completo.",
     "Transcribing on {device}": "Transcribiendo en {device}",
@@ -1776,6 +1779,10 @@
     "{name} writes {language} only, whatever language is picked.": "{name} solo escribe en {language}, sea cual sea el idioma seleccionado.",
     "{name}: cancelled at {percent}%": "{name}: cancelado al {percent}%",
     "{name}: {percent}% done": "{name}: {percent}% completado",
+    "{n} channel": [
+      "{n} channel",
+      "{n} channels"
+    ],
     "{n} job": [
       "{n} tarea",
       "{n} tareas"

@@ -76,6 +76,7 @@
     "Action items…": "بنود العمل…",
     "Add a “{footer}” link at the bottom": "إضافة رابط «{footer}» في الأسفل",
     "Add files": "إضافة ملفات",
+    "Add to queue": "Add to queue",
     "Add {n} file to the queue? Each one becomes its own transcription job.": [
       "هل تريد إضافة {n} ملف إلى قائمة الانتظار؟ ستصبح كل منها مهمة تفريغ مستقلة.",
       "هل تريد إضافة {n} ملف إلى قائمة الانتظار؟ ستصبح مهمة تفريغ مستقلة.",
@@ -226,6 +227,7 @@
     "Choose an .otr file": "اختر ملف .otr",
     "Choose another file name: this one is the transcript or media file itself.": "اختر اسم ملف آخر: هذا الاسم هو النص المُفرَّغ أو ملف الوسائط نفسه.",
     "Choose another model…": "اختيار نموذج آخر…",
+    "Choose audio track": "Choose audio track",
     "Choose what to listen to. 'Microphone' captures an input device; 'System audio' captures whatever is currently playing on this computer — useful for a meeting, a video, or a call you are listening to.": "اختر ما تريد الاستماع إليه. «الميكروفون» يلتقط جهاز إدخال؛ و«صوت النظام» يلتقط كل ما يُشغَّل حاليًا على هذا الحاسوب — مفيد لاجتماع أو فيديو أو مكالمة تستمع إليها.",
     "Choose where Whisper Transcriber Suite should store its model files.": "اختر المكان الذي يخزِّن فيه Whisper Transcriber Suite ملفات النماذج.",
     "Choose your Obsidian vault folder": "اختيار مجلد مخزن Obsidian",
@@ -1443,6 +1445,7 @@
     "Total: unknown": "الإجمالي: غير معروف",
     "Total: {done} / {total}": "الإجمالي: {done} / {total}",
     "Total: {size}": "الإجمالي: {size}",
+    "Track {number}": "Track {number}",
     "Transcribe after download": "التفريغ بعد التنزيل",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "فرِّغ هذا الجزء فقط من الملف (التنسيق H:MM:SS). اترك الحقلين على 0:00:00 لتفريغ الملف كله.",
     "Transcribing on {device}": "جارٍ التفريغ على {device}",
@@ -1924,6 +1927,14 @@
     "{name} writes {language} only, whatever language is picked.": "{name} يكتب {language} فقط، أياً كانت اللغة المختارة.",
     "{name}: cancelled at {percent}%": "{name}: تم الإلغاء عند {percent}%",
     "{name}: {percent}% done": "{name}: اكتمل {percent}%",
+    "{n} channel": [
+      "{n} channel",
+      "{n} channels",
+      "{n} channels",
+      "{n} channels",
+      "{n} channels",
+      "{n} channels"
+    ],
     "{n} job": [
       "لا مهام",
       "مهمة واحدة",

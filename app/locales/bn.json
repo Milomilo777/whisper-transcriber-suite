@@ -72,6 +72,7 @@
     "Action items…": "করণীয়…",
     "Add a “{footer}” link at the bottom": "নিচে একটি “{footer}” লিংক যোগ করুন",
     "Add files": "ফাইল যোগ করুন",
+    "Add to queue": "Add to queue",
     "Add {n} file to the queue? Each one becomes its own transcription job.": [
       "সারিতে {n}টি ফাইল যোগ করবেন? প্রতিটির জন্য আলাদা ট্রান্সক্রিপশন কাজ তৈরি হবে।",
       "সারিতে {n}টি ফাইল যোগ করবেন? প্রতিটির জন্য আলাদা ট্রান্সক্রিপশন কাজ তৈরি হবে।"
@@ -218,6 +219,7 @@
     "Choose an .otr file": "একটি .otr ফাইল বেছে নিন",
     "Choose another file name: this one is the transcript or media file itself.": "অন্য একটি ফাইলের নাম বেছে নিন: এটিই ট্রান্সক্রিপ্ট বা মিডিয়া ফাইল।",
     "Choose another model…": "অন্য মডেল বেছে নিন…",
+    "Choose audio track": "Choose audio track",
     "Choose what to listen to. 'Microphone' captures an input device; 'System audio' captures whatever is currently playing on this computer — useful for a meeting, a video, or a call you are listening to.": "কী শুনবেন তা বেছে নিন। ‘মাইক্রোফোন’ একটি ইনপুট ডিভাইস থেকে ধারণ করে; ‘সিস্টেম অডিও’ এই কম্পিউটারে এখন যা বাজছে তা ধারণ করে — আপনি যে মিটিং, ভিডিও বা কল শুনছেন তার জন্য উপযোগী।",
     "Choose where Whisper Transcriber Suite should store its model files.": "Whisper Transcriber Suite তার মডেল ফাইল কোথায় রাখবে তা বেছে নিন।",
     "Choose your Obsidian vault folder": "আপনার Obsidian ভল্ট ফোল্ডার বেছে নিন",
@@ -1351,6 +1353,7 @@
     "Total: unknown": "মোট: অজানা",
     "Total: {done} / {total}": "মোট: {done} / {total}",
     "Total: {size}": "মোট: {size}",
+    "Track {number}": "Track {number}",
     "Transcribe after download": "ডাউনলোডের পর ট্রান্সক্রাইব করুন",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "ফাইলের শুধু এই অংশটি ট্রান্সক্রাইব করুন (ফরম্যাট H:MM:SS)। পুরো ফাইল ট্রান্সক্রাইব করতে দুটোই 0:00:00-এ রাখুন।",
     "Transcribing on {device}": "{device}-এ ট্রান্সক্রাইব করা হচ্ছে",
@@ -1776,6 +1779,10 @@
     "{name} writes {language} only, whatever language is picked.": "{name} শুধুমাত্র {language} লেখে, যে ভাষাই নির্বাচন করা হোক না কেন।",
     "{name}: cancelled at {percent}%": "{name}: {percent}%-এ বাতিল করা হয়েছে",
     "{name}: {percent}% done": "{name}: {percent}% সম্পন্ন",
+    "{n} channel": [
+      "{n} channel",
+      "{n} channels"
+    ],
     "{n} job": [
       "{n}টি কাজ",
       "{n}টি কাজ"

@@ -2600,6 +2600,9 @@ class TranscriptViewer(tk.Toplevel):
             self.vlc_instance = self.vlc_mod.Instance("--no-xlib", "--quiet")
             self.vlc_player = self.vlc_instance.media_player_new()
             media = self.vlc_instance.media_new(self.media_path)
+            ordinal = self.segments[0].get("audio_track") if self.segments else None
+            if type(ordinal) is int and ordinal >= 0:
+                media.add_option(f":audio-track={ordinal}")
             self.vlc_player.set_media(media)
             # CRITICAL: do NOT bind the native window handle here. This runs
             # during __init__, before the Toplevel has been realized/mapped,

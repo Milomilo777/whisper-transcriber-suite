@@ -72,6 +72,7 @@
     "Action items…": "Toimenpiteet…",
     "Add a “{footer}” link at the bottom": "Lisää ”{footer}”-linkki alareunaan",
     "Add files": "Lisää tiedostoja",
+    "Add to queue": "Add to queue",
     "Add {n} file to the queue? Each one becomes its own transcription job.": [
       "Lisätäänkö {n} tiedosto jonoon? Jokaisesta tulee oma litterointityönsä.",
       "Lisätäänkö {n} tiedostoa jonoon? Jokaisesta tulee oma litterointityönsä."
@@ -218,6 +219,7 @@
     "Choose an .otr file": "Valitse .otr-tiedosto",
     "Choose another file name: this one is the transcript or media file itself.": "Valitse toinen tiedostonimi: tämä on itse litterointi- tai mediatiedosto.",
     "Choose another model…": "Valitse toinen malli…",
+    "Choose audio track": "Choose audio track",
     "Choose what to listen to. 'Microphone' captures an input device; 'System audio' captures whatever is currently playing on this computer — useful for a meeting, a video, or a call you are listening to.": "Valitse, mitä kuunnellaan. ”Mikrofoni” tallentaa syöttölaitteelta; ”Järjestelmän ääni” tallentaa sen, mitä tällä tietokoneella parhaillaan toistetaan – hyödyllinen kokoukseen, videoon tai puheluun, jota kuuntelet.",
     "Choose where Whisper Transcriber Suite should store its model files.": "Valitse, minne Whisper Transcriber Suite tallentaa mallitiedostonsa.",
     "Choose your Obsidian vault folder": "Valitse Obsidian-holvisi kansio",
@@ -1351,6 +1353,7 @@
     "Total: unknown": "Yhteensä: tuntematon",
     "Total: {done} / {total}": "Yhteensä: {done} / {total}",
     "Total: {size}": "Yhteensä: {size}",
+    "Track {number}": "Track {number}",
     "Transcribe after download": "Litteroi latauksen jälkeen",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "Litteroi vain tämä osa tiedostosta (muoto H:MM:SS). Jätä molemmat arvoon 0:00:00, jos haluat litteroida koko tiedoston.",
     "Transcribing on {device}": "Litteroidaan laitteella {device}",
@@ -1776,6 +1779,10 @@
     "{name} writes {language} only, whatever language is picked.": "{name} kirjoittaa vain kieltä {language}, valitusta kielestä riippumatta.",
     "{name}: cancelled at {percent}%": "{name}: peruutettu kohdassa {percent}%",
     "{name}: {percent}% done": "{name}: {percent}% valmis",
+    "{n} channel": [
+      "{n} channel",
+      "{n} channels"
+    ],
     "{n} job": [
       "{n} työ",
       "{n} työtä"

@@ -73,6 +73,7 @@
     "Action items…": "משימות לביצוע…",
     "Add a “{footer}” link at the bottom": "הוסף קישור “{footer}” בתחתית",
     "Add files": "הוסף קבצים",
+    "Add to queue": "Add to queue",
     "Add {n} file to the queue? Each one becomes its own transcription job.": [
       "להוסיף {n} קובץ לתור? כל אחד מהם הופך למשימת תמלול משלו.",
       "להוסיף {n} קבצים לתור? כל אחד מהם הופך למשימת תמלול משלו.",
@@ -220,6 +221,7 @@
     "Choose an .otr file": "בחר קובץ .otr",
     "Choose another file name: this one is the transcript or media file itself.": "בחר שם קובץ אחר: זהו התמליל או קובץ המדיה עצמו.",
     "Choose another model…": "בחר מודל אחר…",
+    "Choose audio track": "Choose audio track",
     "Choose what to listen to. 'Microphone' captures an input device; 'System audio' captures whatever is currently playing on this computer — useful for a meeting, a video, or a call you are listening to.": "בחר למה להאזין. 'מיקרופון' קולט התקן קלט; 'שמע המערכת' קולט את כל מה שמתנגן כעת במחשב — שימושי לפגישה, לסרטון או לשיחה שאתה מאזין לה.",
     "Choose where Whisper Transcriber Suite should store its model files.": "בחר היכן Whisper Transcriber Suite ישמור את קובצי המודלים.",
     "Choose your Obsidian vault folder": "בחר את תיקיית הכספת של Obsidian",
@@ -1374,6 +1376,7 @@
     "Total: unknown": "סה\"כ: לא ידוע",
     "Total: {done} / {total}": "סה\"כ: {done} / {total}",
     "Total: {size}": "סה\"כ: {size}",
+    "Track {number}": "Track {number}",
     "Transcribe after download": "תמלל לאחר ההורדה",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "תמלל רק את החלק הזה של הקובץ (פורמט H:MM:SS). השאר את שניהם על 0:00:00 כדי לתמלל את כל הקובץ.",
     "Transcribing on {device}": "מתמלל על {device}",
@@ -1813,6 +1816,11 @@
     "{name} writes {language} only, whatever language is picked.": "{name} כותב {language} בלבד, ללא קשר לשפה שנבחרה.",
     "{name}: cancelled at {percent}%": "{name}: בוטל ב-{percent}%",
     "{name}: {percent}% done": "{name}: {percent}% הושלם",
+    "{n} channel": [
+      "{n} channel",
+      "{n} channels",
+      "{n} channels"
+    ],
     "{n} job": [
       "משימה אחת",
       "שתי משימות",

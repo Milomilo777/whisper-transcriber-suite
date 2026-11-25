@@ -73,6 +73,7 @@
     "Action items…": "Veiksmų punktai…",
     "Add a “{footer}” link at the bottom": "Apačioje pridėti nuorodą „{footer}“",
     "Add files": "Pridėti failus",
+    "Add to queue": "Add to queue",
     "Add {n} file to the queue? Each one becomes its own transcription job.": [
       "Pridėti {n} failą į eilę? Kiekvienas taps atskira transkribavimo užduotimi.",
       "Pridėti {n} failus į eilę? Kiekvienas taps atskira transkribavimo užduotimi.",
@@ -220,6 +221,7 @@
     "Choose an .otr file": "Pasirinkite .otr failą",
     "Choose another file name: this one is the transcript or media file itself.": "Pasirinkite kitą failo pavadinimą: šis yra pati transkripcija arba medijos failas.",
     "Choose another model…": "Pasirinkti kitą modelį…",
+    "Choose audio track": "Choose audio track",
     "Choose what to listen to. 'Microphone' captures an input device; 'System audio' captures whatever is currently playing on this computer — useful for a meeting, a video, or a call you are listening to.": "Pasirinkite, ko klausytis. „Mikrofonas“ įrašo įvesties įrenginį; „Sistemos garsas“ įrašo viską, kas tuo metu groja šiame kompiuteryje – naudinga susitikimui, vaizdo įrašui ar skambučiui, kurio klausotės.",
     "Choose where Whisper Transcriber Suite should store its model files.": "Pasirinkite, kur Whisper Transcriber Suite turėtų saugoti modelių failus.",
     "Choose your Obsidian vault folder": "Pasirinkite savo Obsidian saugyklos aplanką",
@@ -1374,6 +1376,7 @@
     "Total: unknown": "Iš viso: nežinoma",
     "Total: {done} / {total}": "Iš viso: {done} / {total}",
     "Total: {size}": "Iš viso: {size}",
+    "Track {number}": "Track {number}",
     "Transcribe after download": "Transkribuoti po atsisiuntimo",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "Transkribuoti tik šią failo dalį (formatas H:MM:SS). Norėdami transkribuoti visą failą, palikite abu 0:00:00.",
     "Transcribing on {device}": "Transkribuojama naudojant {device}",
@@ -1813,6 +1816,11 @@
     "{name} writes {language} only, whatever language is picked.": "{name} rašo tik {language} kalba, kad ir kokia kalba pasirinkta.",
     "{name}: cancelled at {percent}%": "{name}: atšaukta ties {percent}%",
     "{name}: {percent}% done": "{name}: {percent}% atlikta",
+    "{n} channel": [
+      "{n} channel",
+      "{n} channels",
+      "{n} channels"
+    ],
     "{n} job": [
       "{n} užduotis",
       "{n} užduotys",

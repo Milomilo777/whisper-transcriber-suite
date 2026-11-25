@@ -72,6 +72,7 @@
     "Action items…": "Ενέργειες προς υλοποίηση…",
     "Add a “{footer}” link at the bottom": "Προσθήκη συνδέσμου «{footer}» στο κάτω μέρος",
     "Add files": "Προσθήκη αρχείων",
+    "Add to queue": "Add to queue",
     "Add {n} file to the queue? Each one becomes its own transcription job.": [
       "Προσθήκη {n} αρχείου στην ουρά; Το καθένα γίνεται ξεχωριστή εργασία μεταγραφής.",
       "Προσθήκη {n} αρχείων στην ουρά; Το καθένα γίνεται ξεχωριστή εργασία μεταγραφής."
@@ -218,6 +219,7 @@
     "Choose an .otr file": "Επιλέξτε ένα αρχείο .otr",
     "Choose another file name: this one is the transcript or media file itself.": "Επιλέξτε άλλο όνομα αρχείου: αυτό είναι το ίδιο το αρχείο μεταγραφής ή πολυμέσων.",
     "Choose another model…": "Επιλογή άλλου μοντέλου…",
+    "Choose audio track": "Choose audio track",
     "Choose what to listen to. 'Microphone' captures an input device; 'System audio' captures whatever is currently playing on this computer — useful for a meeting, a video, or a call you are listening to.": "Επιλέξτε τι θα ακούσετε. Το «Μικρόφωνο» καταγράφει μια συσκευή εισόδου· ο «Ήχος συστήματος» καταγράφει ό,τι αναπαράγεται εκείνη τη στιγμή σε αυτόν τον υπολογιστή — χρήσιμο για μια σύσκεψη, ένα βίντεο ή μια κλήση που ακούτε.",
     "Choose where Whisper Transcriber Suite should store its model files.": "Επιλέξτε πού θα αποθηκεύει το Whisper Transcriber Suite τα αρχεία μοντέλων του.",
     "Choose your Obsidian vault folder": "Επιλέξτε τον φάκελο του vault σας στο Obsidian",
@@ -1351,6 +1353,7 @@
     "Total: unknown": "Σύνολο: άγνωστο",
     "Total: {done} / {total}": "Σύνολο: {done} / {total}",
     "Total: {size}": "Σύνολο: {size}",
+    "Track {number}": "Track {number}",
     "Transcribe after download": "Μεταγραφή μετά τη λήψη",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "Μεταγραφή μόνο αυτού του τμήματος του αρχείου (μορφή H:MM:SS). Αφήστε και τα δύο στο 0:00:00 για μεταγραφή ολόκληρου του αρχείου.",
     "Transcribing on {device}": "Μεταγραφή σε {device}",
@@ -1776,6 +1779,10 @@
     "{name} writes {language} only, whatever language is picked.": "Το {name} γράφει μόνο {language}, όποια γλώσσα κι αν επιλεγεί.",
     "{name}: cancelled at {percent}%": "{name}: ακυρώθηκε στο {percent}%",
     "{name}: {percent}% done": "{name}: {percent}% ολοκληρώθηκε",
+    "{n} channel": [
+      "{n} channel",
+      "{n} channels"
+    ],
     "{n} job": [
       "{n} εργασία",
       "{n} εργασίες"

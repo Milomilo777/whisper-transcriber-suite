@@ -22,7 +22,7 @@ import subprocess
 import threading
 import time
 import dataclasses
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Iterator
@@ -35,6 +35,7 @@ from .failure_clue import phase as _clue_phase
 from .job_progress import JobProgress
 from . import loop_guard as _loop_guard
 from . import mel_blocks as _mel_blocks
+from . import media_audio
 from . import speech_collect as _speech_collect
 from . import speed_meter as _speed_meter
 from . import task_settings as _task_settings
@@ -997,8 +998,9 @@ def _remember_audio_end(
     if duration is not None and pcm_end is not None:
         duration = min(duration, pcm_end)  # Resampling can add a fractional frame.
     end = offset + duration if duration is not None else None
-    source_end = (pcm_end if os.path.abspath(path) == os.path.abspath(task.file_path)
-                  else _pcm_duration(task.file_path))
+    source_path = _audio_input(task)
+    source_end = (pcm_end if os.path.abspath(path) == os.path.abspath(source_path)
+                  else _pcm_duration(source_path))
     if end is not None and source_end is not None:
         end = min(end, source_end)
     requested_end = _positive_duration(task.clip_end)
@@ -1589,7 +1591,7 @@ def _protect_existing_checkpoint(
     if data is None:
         reason = "the saved checkpoint file is unreadable"
     else:
-        reason = _checkpoint.media_identity_problem(data)
+        reason = _checkpoint.media_identity_problem(data) or _checkpoint_track_problem(task, data)
         if not reason:
             return
     kept = _keep_checkpoint_aside(task, reason, log_cb)
@@ -1598,6 +1600,43 @@ def _protect_existing_checkpoint(
         f"it is kept aside ({kept}) and the run starts fresh.",
         log_cb,
     )
+
+
+def _checkpoint_track_problem(task: TranscriptionTask, data: dict[str, Any]) -> str:
+    saved = data.get("audio_track")
+    if saved is not None and media_audio.audio_ordinal(saved) is None:
+        return "the saved audio track is invalid"
+    if saved != getattr(task, "audio_track", None):
+        return "the audio track has changed since the checkpoint"
+    return ""
+
+
+def _choose_default_track(task: TranscriptionTask) -> None:
+    if getattr(task, "audio_track", None) is None:
+        tracks = media_audio.probe_audio_tracks(task.file_path)
+        if len(tracks) > 1:
+            task.audio_track = media_audio.default_audio_track(tracks)
+
+
+def _audio_input(task: TranscriptionTask) -> str:
+    return getattr(task, "_prepared_audio", None) or task.file_path
+
+
+def _prepare_task_input(task: TranscriptionTask, stack: ExitStack) -> bool:
+    ordinal = getattr(task, "audio_track", None)
+    if ordinal is None:
+        return not task.cancelled
+    _clue_phase(task, "worker.prepare")
+    try:
+        path = media_audio.prepare_audio_track(
+            task.file_path, ordinal, _checkpoint.partials_dir(), lambda: task.cancelled,
+        )
+    except media_audio.AudioPreparationCancelled:
+        return False
+    task._prepared_audio = str(path)
+    stack.callback(setattr, task, "_prepared_audio", None)
+    stack.callback(_remove_quietly, str(path))
+    return not task.cancelled
 
 
 def _write_periodic_checkpoint(
@@ -1645,6 +1684,7 @@ def _write_periodic_checkpoint(
             languages=list(mixed_language_pair(task) or ()) or None,
             word_timestamps=effective_word_timestamps(config),
             audio_end=getattr(task, "_audio_end", None),
+            audio_track=getattr(task, "audio_track", None),
         )
         task.checkpoint_failures = 0
     except Exception as e:  # noqa: BLE001
@@ -1844,6 +1884,9 @@ class _WrittenOutputs(list[str]):
 
 
 def _write_task_outputs(task: TranscriptionTask, *args: Any, **kwargs: Any) -> list[str]:
+    ordinal = getattr(task, "audio_track", None)
+    if ordinal is not None:
+        kwargs["audio_track"] = ordinal
     written = _write_outputs(*args, **kwargs)
     task.output_paths = written
     if isinstance(written, _WrittenOutputs) and written.failure is not None:
@@ -1885,6 +1928,7 @@ def _write_outputs(
     speaker_count: int = 0,
     chapters: list[dict[str, Any]] | None = None,
     audio_end: float | None = None,
+    audio_track: int | None = None,
 ) -> list[str]:
     """Keep the completed transcript if normal output publication fails.
 
@@ -1897,6 +1941,7 @@ def _write_outputs(
         return _write_outputs_impl(
             base, segments_data, audio_path, formats, lang=lang,
             speaker_count=speaker_count, chapters=chapters, audio_end=audio_end,
+            **({"audio_track": audio_track} if audio_track is not None else {}),
         )
     except Exception as error:
         # Per-format failures can wrap the backend's OOM in RuntimeError.
@@ -1947,6 +1992,7 @@ def _write_outputs_impl(
     speaker_count: int = 0,
     chapters: list[dict[str, Any]] | None = None,
     audio_end: float | None = None,
+    audio_track: int | None = None,
 ) -> list[str]:
     """Write each requested format atomically.
 
@@ -2190,6 +2236,9 @@ def _write_outputs_impl(
                 elif is_binary(fmt_name):
                     payload = get_binary_writer(fmt_name)(format_segments, audio_path)
                 else:
+                    if fmt_name == "json" and audio_track is not None:
+                        format_segments = [dict(segment, audio_track=audio_track)
+                                           for segment in format_segments]
                     payload = get_writer(fmt_name)(format_segments, audio_path).encode("utf-8")
                 from .convert import _stage_output
                 part_path = _stage_output(path, payload)
@@ -2564,9 +2613,12 @@ def transcribe_with_language_model(
     # later resume could splice general-model segments onto this transcript.
     _LM_RUNNER.slot = _LmSlot(backend="nvidia_asr", model_id=model_id)
     try:
+        _choose_default_track(task)
         _protect_existing_checkpoint(task, log_cb)
         _note_run_identity(task)
-        with _runtime_overrides_scope(task):
+        with _runtime_overrides_scope(task), ExitStack() as media:
+            if not _prepare_task_input(task, media):
+                return
             logger.info("transcribe_backend=nvidia_asr language_model=%s file=%s", model_id, task.file_path)
             _transcribe_via_alt_backend("nvidia_asr", task, progress_cb, log_cb, language_cb, backend=backend)
     finally:
@@ -2618,7 +2670,7 @@ def _run_post_pipeline(
                 if progress_cb:
                     progress_cb(0.0)
                 diar_segments = _diar.diarize(
-                    task.file_path,
+                    _audio_input(task),
                     num_speakers=num_speakers,
                     cluster_threshold=threshold,
                     progress_cb=_diar_progress,
@@ -2660,7 +2712,7 @@ def _run_post_pipeline(
                 # timings that the subsequent media-bound guard would reject.
                 aligned_segments = copy.deepcopy(segments_data)
                 ok = _align.refine_word_timestamps_in_place(
-                    task.file_path,
+                    _audio_input(task),
                     aligned_segments,
                     language=detected_lang or None,
                     log_cb=log_cb,
@@ -3730,6 +3782,7 @@ def transcribe(
     # An earlier run's checkpoint of other media is kept aside first; then
     # remember which media this run starts on, so a later stat blip cannot
     # blank the identity stored in its checkpoints.
+    _choose_default_track(task)
     _protect_existing_checkpoint(task, log_cb)
     _note_run_identity(task)
     task._audio_end = None
@@ -3738,7 +3791,7 @@ def transcribe(
     # is reverted before the next file runs (audit P0-6). The scope
     # also returns the freshly-loaded ``runtime_cfg`` so the backend
     # dispatch below can read it without a second ``load_config``.
-    with _runtime_overrides_scope(task) as runtime_cfg:
+    with _runtime_overrides_scope(task) as runtime_cfg, ExitStack() as media:
         # Backend dispatch — when the user has chosen a non-default
         # engine via config["transcribe_backend"], delegate to a backend
         # implementation. The original faster_whisper code below remains
@@ -3754,6 +3807,8 @@ def transcribe(
             backend_name, task.file_path,
         )
         _checked_whisper_task(task, backend_name or "faster_whisper")
+        if not _prepare_task_input(task, media):
+            return
         if backend_name and backend_name != "faster_whisper":
             _transcribe_via_alt_backend(
                 backend_name, task, progress_cb, log_cb, language_cb
@@ -3783,18 +3838,18 @@ def transcribe(
         # Returns the input path unchanged when demucs isn't installed or
         # the feature is off, so this is safe to always call.
         _clue_phase(task, "worker.prepare")
-        audio_path = task.file_path
+        audio_path = _audio_input(task)
         if config.get("demucs_enabled", False):
             try:
                 from . import separator as _sep
                 audio_path = _sep.separate_vocals(
-                    task.file_path,
+                    audio_path,
                     enabled=True,
                     log=log_cb,
                 )
             except Exception as e:  # noqa: BLE001
                 log(f"Demucs separation failed (using original audio): {e}", log_cb)
-                audio_path = task.file_path
+                audio_path = _audio_input(task)
 
         duration = get_duration(audio_path)
         if duration > 0:
@@ -4202,18 +4257,18 @@ def _transcribe_via_alt_backend(
     # the config fingerprint records demucs as enabled, producing the
     # same conditioning-mismatch class as F4's resume bug.
     _clue_phase(task, "worker.prepare")
-    audio_path = task.file_path
+    audio_path = _audio_input(task)
     if config.get("demucs_enabled", False):
         try:
             from . import separator as _sep
             audio_path = _sep.separate_vocals(
-                task.file_path,
+                audio_path,
                 enabled=True,
                 log=log_cb,
             )
         except Exception as e:  # noqa: BLE001
             log(f"Demucs separation failed (using original audio): {e}", log_cb)
-            audio_path = task.file_path
+            audio_path = _audio_input(task)
 
     duration = get_duration(audio_path)
     if duration > 0:
@@ -4754,7 +4809,7 @@ def resume_transcription(
         # and the caller must not fall back to a fresh run.
         log("Task cancelled during resume.", log_cb)
         return True
-    with _runtime_overrides_scope(task) as runtime_cfg:
+    with _runtime_overrides_scope(task) as runtime_cfg, ExitStack() as media:
         progress = JobProgress(progress_cb, diarization=bool(config.get("diarization_enabled", False)))
         progress_cb = progress.transcription
         # A checkpoint is keyed to the whole file with no clip marker, and
@@ -4795,6 +4850,14 @@ def resume_transcription(
         # faster_whisper run of this file can still resume it if the
         # fallback crashes before writing anything.
         backend_for_check = backend
+        saved_track = media_audio.audio_ordinal(data.get("audio_track"))
+        if getattr(task, "audio_track", None) is None and saved_track is not None:
+            task.audio_track = saved_track
+        track_problem = _checkpoint_track_problem(task, data)
+        if track_problem:
+            _keep_checkpoint_aside(task, track_problem, log_cb)
+            return False
+
         # The checkpoint's own task wins over whatever the task was queued
         # with: the captured half is already in that task, so the tail must
         # use it too or one transcript would mix two tasks.
@@ -4834,7 +4897,9 @@ def resume_transcription(
             log(f"Resume: checkpoint invalid ({reason}); deleting partial.", log_cb)
             _checkpoint.delete_checkpoint(task.file_path)
             return False
-        source_end = _pcm_duration(task.file_path)
+        if not _prepare_task_input(task, media):
+            return True
+        source_end = _pcm_duration(_audio_input(task))
         saved_end = data.get("audio_end")
         if saved_end is not None and (
             isinstance(saved_end, bool) or not isinstance(saved_end, (int, float))
@@ -4974,7 +5039,7 @@ def resume_transcription(
         slice_dir = _checkpoint.partials_dir()
         try:
             slice_path = _slice_audio_from(
-                task.file_path, last_end_time, slice_dir
+                _audio_input(task), last_end_time, slice_dir
             )
         except RuntimeError as e:
             log(
@@ -5018,7 +5083,7 @@ def resume_transcription(
         # make the cleanup below unlink the denoised copy and leak the
         # original slice.
         try:
-            _tail_dur = max(0.0, get_duration(task.file_path) - last_end_time)
+            _tail_dur = max(0.0, get_duration(_audio_input(task)) - last_end_time)
         except Exception:  # noqa: BLE001
             _tail_dur = 0.0
         transcribe_slice, denoise_tmp = _maybe_denoise(
@@ -5033,7 +5098,7 @@ def resume_transcription(
         # The resumed run measures only the tail it decodes: the checkpoint
         # holds no timing from the first run.
         try:
-            _resume_total = get_duration(task.file_path)
+            _resume_total = get_duration(_audio_input(task))
             if _resume_total > 0:
                 task._input_duration = _resume_total
         except Exception:  # noqa: BLE001

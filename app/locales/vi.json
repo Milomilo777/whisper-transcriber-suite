@@ -71,6 +71,7 @@
     "Action items…": "Việc cần làm…",
     "Add a “{footer}” link at the bottom": "Thêm liên kết “{footer}” ở cuối trang",
     "Add files": "Thêm tệp",
+    "Add to queue": "Add to queue",
     "Add {n} file to the queue? Each one becomes its own transcription job.": [
       "Thêm {n} tệp vào hàng đợi? Mỗi tệp sẽ trở thành một tác vụ chép lời riêng."
     ],
@@ -216,6 +217,7 @@
     "Choose an .otr file": "Chọn một tệp .otr",
     "Choose another file name: this one is the transcript or media file itself.": "Hãy chọn tên tệp khác: tên này chính là bản chép lời hoặc tệp media.",
     "Choose another model…": "Chọn mô hình khác…",
+    "Choose audio track": "Choose audio track",
     "Choose what to listen to. 'Microphone' captures an input device; 'System audio' captures whatever is currently playing on this computer — useful for a meeting, a video, or a call you are listening to.": "Chọn nguồn để nghe. 'Micrô' thu từ thiết bị đầu vào; 'Âm thanh hệ thống' thu mọi thứ đang phát trên máy tính này — hữu ích cho cuộc họp, video hoặc cuộc gọi bạn đang nghe.",
     "Choose where Whisper Transcriber Suite should store its model files.": "Chọn nơi Whisper Transcriber Suite lưu các tệp mô hình.",
     "Choose your Obsidian vault folder": "Chọn thư mục kho Obsidian của bạn",
@@ -1328,6 +1330,7 @@
     "Total: unknown": "Tổng: không rõ",
     "Total: {done} / {total}": "Tổng: {done} / {total}",
     "Total: {size}": "Tổng: {size}",
+    "Track {number}": "Track {number}",
     "Transcribe after download": "Chép lời sau khi tải xuống",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "Chỉ chép lời phần này của tệp (định dạng H:MM:SS). Để cả hai là 0:00:00 để chép lời toàn bộ tệp.",
     "Transcribing on {device}": "Đang chép lời trên {device}",
@@ -1739,6 +1742,9 @@
     "{name} writes {language} only, whatever language is picked.": "{name} chỉ viết {language}, bất kể chọn ngôn ngữ nào.",
     "{name}: cancelled at {percent}%": "{name}: đã hủy tại {percent}%",
     "{name}: {percent}% done": "{name}: đã hoàn thành {percent}%",
+    "{n} channel": [
+      "{n} channel"
+    ],
     "{n} job": [
       "{n} tác vụ"
     ],

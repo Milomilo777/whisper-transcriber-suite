@@ -72,6 +72,7 @@
     "Action items…": "Mga action item…",
     "Add a “{footer}” link at the bottom": "Magdagdag ng link na “{footer}” sa ibaba",
     "Add files": "Magdagdag ng mga file",
+    "Add to queue": "Add to queue",
     "Add {n} file to the queue? Each one becomes its own transcription job.": [
       "Idagdag ang {n}ng file sa Pila? Ang bawat isa ay magiging sarili nitong trabaho sa pag-transcribe.",
       "Idagdag ang {n} na file sa Pila? Ang bawat isa ay magiging sarili nitong trabaho sa pag-transcribe."
@@ -218,6 +219,7 @@
     "Choose an .otr file": "Pumili ng .otr file",
     "Choose another file name: this one is the transcript or media file itself.": "Pumili ng ibang pangalan ng file: ito mismo ang transcript o media file.",
     "Choose another model…": "Pumili ng ibang model…",
+    "Choose audio track": "Choose audio track",
     "Choose what to listen to. 'Microphone' captures an input device; 'System audio' captures whatever is currently playing on this computer — useful for a meeting, a video, or a call you are listening to.": "Piliin kung ano ang pakikinggan. Kinukuha ng ‘Mikropono’ ang isang input device; kinukuha ng ‘System audio’ ang anumang tumutugtog ngayon sa computer na ito — kapaki-pakinabang para sa meeting, video, o tawag na pinakikinggan mo.",
     "Choose where Whisper Transcriber Suite should store its model files.": "Piliin kung saan itatabi ng Whisper Transcriber Suite ang mga model file nito.",
     "Choose your Obsidian vault folder": "Piliin ang folder ng iyong Obsidian vault",
@@ -1351,6 +1353,7 @@
     "Total: unknown": "Kabuuan: hindi alam",
     "Total: {done} / {total}": "Kabuuan: {done} / {total}",
     "Total: {size}": "Kabuuan: {size}",
+    "Track {number}": "Track {number}",
     "Transcribe after download": "I-transcribe pagkatapos ng download",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "I-transcribe lang ang bahaging ito ng file (format H:MM:SS). Iwan ang dalawa sa 0:00:00 para i-transcribe ang buong file.",
     "Transcribing on {device}": "Nagta-transcribe sa {device}",
@@ -1776,6 +1779,10 @@
     "{name} writes {language} only, whatever language is picked.": "Nagsusulat lamang ng {language} ang {name}, kahit anong wika ang piliin.",
     "{name}: cancelled at {percent}%": "{name}: kinansela sa {percent}%",
     "{name}: {percent}% done": "{name}: {percent}% tapos na",
+    "{n} channel": [
+      "{n} channel",
+      "{n} channels"
+    ],
     "{n} job": [
       "{n} gawain",
       "{n} gawain"

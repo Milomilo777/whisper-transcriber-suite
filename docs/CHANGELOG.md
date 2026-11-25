@@ -6,6 +6,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Added
 
+- Choose which audio track to transcribe in files with multiple tracks.
 - Add an adjustable NVIDIA GPU temperature limit (default 75 °C) with predictive load reduction while transcription continues.
 - AI assistants can start a standalone stdio MCP server, transcribe explicitly allowed local media, inspect models and hardware, and save safe transcription settings, including GPU temperature limits.
 

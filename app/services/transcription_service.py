@@ -26,6 +26,7 @@ from core import task_settings
 from core._proc import kill_process_tree, new_session_kwargs
 from core.speed_meter import apply_final_speed, apply_live_speed, reset_speed
 from core.task import task_run_options
+from core.media_audio import audio_ordinal
 from core.translate_task import TRANSLATED_SUFFIX
 
 from app.i18n import _, ngettext
@@ -460,6 +461,7 @@ def transcribe_command(t: Any) -> dict[str, Any]:
     return {
         "action": "transcribe",
         "file_path": t.file_path,
+        "audio_track": getattr(t, "audio_track", None),
         "language": getattr(t, "language", None),
         # Mixed-language audio: the two languages (None = one language).
         "languages": list(t.languages) if getattr(t, "languages", None) else None,
@@ -2061,6 +2063,9 @@ class TranscriptionService:
                             # workers) — the authoritative word count even when no
                             # machine-readable output format was selected.
                             _apply_done_metadata(worker["task"], event)
+                            track = audio_ordinal(event.get("audio_track"))
+                            if track is not None:
+                                worker["task"].audio_track = track
                             worker["task"].no_speech = bool(event.get("no_speech"))
                             worker["task"].speaker_labels_failed = bool(
                                 event.get("speaker_labels_failed")
@@ -2112,6 +2117,9 @@ class TranscriptionService:
                                 worker, failed, event, message
                             ):
                                 failed.status = "error"
+                                track = audio_ordinal(event.get("audio_track"))
+                                if track is not None:
+                                    failed.audio_track = track
                                 _remember_failure_clue(failed, worker, event=event)
                                 # Kept for the Queue row and the history row; both
                                 # said only "error" before.
@@ -2811,6 +2819,8 @@ class TranscriptionService:
                     if newly_finished else "",
                     model=str(getattr(task, "speed_model", "") or "")
                     if newly_finished else "",
+                    **({"run_options": task_run_options(task)}
+                       if getattr(task, "audio_track", None) is not None else {}),
                 ))
                 if not persisted:
                     # Surfaced, not swallowed: the transcript FILES are

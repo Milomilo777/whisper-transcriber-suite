@@ -7,6 +7,8 @@ import uuid
 class TranscriptionTask:
     def __init__(self, file_path: str) -> None:
         self.file_path: str = file_path
+        self.audio_track: int | None = None
+        self._prepared_audio: str | None = None
         self.status: str = "waiting"
         self.progress: int = 0
         self.start_time: float | None = None
@@ -154,10 +156,12 @@ class TranscriptionTask:
 def task_run_options(task: TranscriptionTask) -> dict[str, Any]:
     """The options of ``task`` that its history row keeps for a crash-resume.
 
-    Only what the user chose for this one file and what no setting restores:
-    the time range and the mixed languages. Empty for a plain run.
+    Only options specific to this file. Empty for a plain run.
     """
     out: dict[str, Any] = {}
+    ordinal = getattr(task, "audio_track", None)
+    if ordinal is not None:
+        out["audio_track"] = ordinal
     for key in ("clip_start", "clip_end"):
         value = getattr(task, key, None)
         if value is not None:
@@ -176,6 +180,9 @@ def apply_run_options(task: TranscriptionTask, options: Any) -> None:
     """
     if not isinstance(options, dict):
         return
+    from .media_audio import audio_ordinal
+
+    task.audio_track = audio_ordinal(options.get("audio_track"))
     for key in ("clip_start", "clip_end"):
         value = options.get(key)
         if isinstance(value, (int, float)) and not isinstance(value, bool) \

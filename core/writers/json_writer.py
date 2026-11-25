@@ -49,6 +49,9 @@ def write(segments: list[dict], audio_path: str = "") -> str:
         language = seg.get("language")
         if language not in (None, ""):
             item["language"] = str(language)
+        track = seg.get("audio_track")
+        if type(track) is int and track >= 0:
+            item["audio_track"] = track
         speaker = seg.get("speaker")
         if speaker not in (None, ""):
             item["speaker"] = str(speaker)

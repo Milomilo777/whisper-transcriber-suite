@@ -71,6 +71,7 @@
     "Action items…": "待办事项…",
     "Add a “{footer}” link at the bottom": "在底部添加“{footer}”链接",
     "Add files": "添加文件",
+    "Add to queue": "Add to queue",
     "Add {n} file to the queue? Each one becomes its own transcription job.": [
       "将 {n} 个文件添加到队列？每个文件都将成为独立的转录任务。"
     ],
@@ -216,6 +217,7 @@
     "Choose an .otr file": "选择 .otr 文件",
     "Choose another file name: this one is the transcript or media file itself.": "请换一个文件名：这个就是转录文本或媒体文件本身。",
     "Choose another model…": "选择其他模型…",
+    "Choose audio track": "Choose audio track",
     "Choose what to listen to. 'Microphone' captures an input device; 'System audio' captures whatever is currently playing on this computer — useful for a meeting, a video, or a call you are listening to.": "选择要收听的内容。“麦克风”采集输入设备；“系统音频”采集这台电脑当前正在播放的任何声音——适用于会议、视频或你正在收听的通话。",
     "Choose where Whisper Transcriber Suite should store its model files.": "选择 Whisper Transcriber Suite 存放模型文件的位置。",
     "Choose your Obsidian vault folder": "选择 Obsidian 仓库文件夹",
@@ -1328,6 +1330,7 @@
     "Total: unknown": "总计：未知",
     "Total: {done} / {total}": "总计：{done} / {total}",
     "Total: {size}": "总计：{size}",
+    "Track {number}": "Track {number}",
     "Transcribe after download": "下载后转录",
     "Transcribe only this portion of the file (format H:MM:SS). Leave both at 0:00:00 to transcribe the whole file.": "只转录文件的这一部分（格式 H:MM:SS）。如需转录整个文件，请将两者都保留为 0:00:00。",
     "Transcribing on {device}": "正在 {device} 上转录",
@@ -1739,6 +1742,9 @@
     "{name} writes {language} only, whatever language is picked.": "无论选择哪种语言，{name} 都只输出{language}。",
     "{name}: cancelled at {percent}%": "{name}：已在 {percent}% 时取消",
     "{name}: {percent}% done": "{name}：已完成 {percent}%",
+    "{n} channel": [
+      "{n} channel"
+    ],
     "{n} job": [
       "{n} 个任务"
     ],

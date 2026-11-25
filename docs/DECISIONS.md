@@ -1075,3 +1075,28 @@ Rejected: a separate dispatcher (validation drift), arbitrary file access,
 assistant-editable folder grants, automatic public tunnels, arbitrary model
 URLs, and automatic model downloads. Model installation remains an explicit
 application operation. A future connection panel can generate client snippets.
+
+---
+
+## 0023 — Store the audio track with the transcription job
+
+**Status:** Accepted
+**Date:** 2026-11-25
+
+**Context:** A container can carry different languages, commentary and other
+streams. The transcription engine and its post-processors do not all expose
+the same track-selection controls.
+
+**Decision:** Store the zero-based audio-stream ordinal on the task, in the
+worker command, in history run options and in checkpoints. Resolve automatic
+selection to the first default-marked stream, otherwise the first. Map the
+chosen stream once to a temporary single-stream audio file on the original
+timeline and give that file to decoding, slicing, recovery and post-processing.
+Keep the original source path for output names, project settings and identity.
+Add the track ordinal to JSON cues so portable transcripts retain playback
+metadata and the segment-list format stays compatible with existing readers.
+
+**Consequences:** Track selection is per file and adds no global setting.
+Missing fields in history still load. Checkpoints written before track
+selection use the legacy decoding path. A mismatch preserves the earlier
+checkpoint before re-transcription can write to the same key.
