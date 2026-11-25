@@ -3392,11 +3392,8 @@ class App(tk.Tk):
                 self._apply_engine_status(value, st)
 
             self.probe_engine_status(value, _on_result)
-            # 3) Safety net: the deep probe imports native libraries on a
-            #    thread and has no timeout of its own. If it never answers
-            #    (seen on macOS 10.15), "Checking…" stayed up forever; after
-            #    a while show the cheap status instead. A late real result
-            #    still replaces it.
+            # 3) Report an inconclusive check if the background queue or
+            #    child takes too long. A late real result still replaces it.
             self.after(
                 self._ENGINE_PROBE_FALLBACK_MS,
                 lambda: self._engine_status_fallback(seq, value),
@@ -3408,14 +3405,15 @@ class App(tk.Tk):
                 pass
 
     # How long the Transcribe-tab status line waits for the deep engine probe
-    # before falling back to the cheap status (see _refresh_engine_status).
+    # before reporting that readiness could not be confirmed.
     _ENGINE_PROBE_FALLBACK_MS = 15000
+    _ENGINE_PROBE_UNCONFIRMED = N_("Could not check engine readiness. Reopen the app to try again.")
     # Generation of the last status refresh / of the last probe that answered.
     _engine_status_seq: int = 0
     _engine_status_answered: int = 0
 
     def _engine_status_fallback(self, seq: int, value: str) -> None:
-        """Replace a still-pending "Checking…" with the cheap engine status."""
+        """Replace a still-pending "Checking…" with an inconclusive result."""
         if seq != getattr(self, "_engine_status_seq", 0):
             return  # a newer refresh owns the line
         if getattr(self, "_engine_status_answered", 0) >= seq:
@@ -3428,16 +3426,16 @@ class App(tk.Tk):
                 return
             from core.backends import availability as _eng
 
-            st = _eng.engine_status(value, self.app_config, deep=False)
+            st = _eng.EngineStatus(value, False, _(self._ENGINE_PROBE_UNCONFIRMED))
             logger.warning(
                 "Engine readiness probe for %s did not answer in %.0f s; "
-                "showing the quick status instead.",
+                "showing an inconclusive result.",
                 value, self._ENGINE_PROBE_FALLBACK_MS / 1000,
             )
             var.set(_eng.format_engine_status(st))
             lbl = getattr(self, "engine_status_label", None)
             if lbl is not None:
-                lbl.configure(foreground=tokens.themed(tokens.SUCCESS_TEXT) if st.ready else tokens.themed(tokens.WARNING_TEXT))
+                lbl.configure(foreground=tokens.themed(tokens.WARNING_TEXT))
         except Exception:  # noqa: BLE001 -- a status line must never raise
             logger.exception("Engine status fallback failed")
 
@@ -3479,7 +3477,7 @@ class App(tk.Tk):
                 if not current():
                     return
                 logger.debug("Isolated engine probe did not complete", exc_info=True)
-                st = _eng.engine_status(value, cfg_snapshot, deep=False)
+                st = _eng.EngineStatus(value, False, _(App._ENGINE_PROBE_UNCONFIRMED))
             if current():
                 self.post_to_main(lambda: on_result(st) if current() else None)
 

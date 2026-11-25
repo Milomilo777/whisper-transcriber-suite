@@ -25,6 +25,7 @@ Covered:
 """
 from __future__ import annotations
 
+import subprocess
 import sys
 import types
 
@@ -427,6 +428,29 @@ def test_superseded_advanced_probe_skips_child_and_callback(App, monkeypatch):
     assert delivered == [eng.EngineStatus("faster_whisper", False)]
 
 
+@pytest.mark.parametrize("failure", [
+    subprocess.TimeoutExpired("probe", 25),
+    RuntimeError("probe crashed"),
+    PermissionError("probe launch denied"),
+])
+def test_failed_deep_probe_does_not_report_ready(App, monkeypatch, failure):
+    from types import SimpleNamespace
+
+    _run_probe_inline(monkeypatch)
+    delivered = []
+    app = SimpleNamespace(post_to_main=lambda callback: callback())
+
+    def fail(*args, **kwargs):
+        raise failure
+
+    monkeypatch.setattr(eng, "isolated_engine_status", fail)
+    App.probe_engine_status(app, "whisper_cpp", delivered.append, cfg={})
+
+    assert len(delivered) == 1
+    assert not delivered[0].ready
+    assert "try again" in delivered[0].detail.lower()
+
+
 def test_refresh_engine_status_paints_checking_then_real_result(App, monkeypatch):
     fw_label = eng.VALUE_TO_LABEL["faster_whisper"]
     a = _bare_app(App, engine_label=fw_label, backend="faster_whisper")
@@ -490,8 +514,7 @@ def test_refresh_engine_status_drops_stale_result_after_engine_switch(App, monke
 
 
 def test_refresh_engine_status_falls_back_when_the_probe_never_answers(App, monkeypatch):
-    """A deep probe that hangs (seen on macOS 10.15) must not leave
-    "Checking…" up forever: the cheap status replaces it after a while."""
+    """A missing deep verdict must leave an actionable, inconclusive status."""
     fw_label = eng.VALUE_TO_LABEL["faster_whisper"]
     a = _bare_app(App, engine_label=fw_label, backend="faster_whisper")
     pending: list = []
@@ -511,7 +534,8 @@ def test_refresh_engine_status_falls_back_when_the_probe_never_answers(App, monk
     assert a.engine_status_var.get() == "Checking…"
     assert len(pending) == 1
     pending[0]()  # the fallback timer fires
-    assert a.engine_status_var.get().startswith("✓")
+    assert a.engine_status_var.get().startswith("⚠")
+    assert "try again" in a.engine_status_var.get().lower()
 
 
 def test_engine_status_fallback_keeps_a_real_answer(App, monkeypatch):
