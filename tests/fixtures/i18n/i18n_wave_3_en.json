@@ -95,10 +95,6 @@
    " ⓘ "
   ],
   [
-   ".!transcriptviewer.!frame.!frame.!label2",
-   "Media: (none found next to JSON)"
-  ],
-  [
    ".!transcriptviewer.!frame.!frame2.!label",
    " ⓘ "
   ],
@@ -111,31 +107,35 @@
    "Clear"
   ],
   [
-   ".!transcriptviewer.!frame.!frame2.!menubutton",
+   ".!transcriptviewer.!frame.!frame2.!label3",
+   "Media: (none found next to JSON)"
+  ],
+  [
+   ".!transcriptviewer.!frame.!frame3.!menubutton",
    "Edit"
   ],
   [
-   ".!transcriptviewer.!frame.!frame2.!menubutton.!menu#0",
+   ".!transcriptviewer.!frame.!frame3.!menubutton.!menu#0",
    "Undo"
   ],
   [
-   ".!transcriptviewer.!frame.!frame2.!menubutton.!menu#1",
+   ".!transcriptviewer.!frame.!frame3.!menubutton.!menu#1",
    "Redo"
   ],
   [
-   ".!transcriptviewer.!frame.!frame2.!button2",
+   ".!transcriptviewer.!frame.!frame3.!button",
    "Find & Replace  (Ctrl+F)"
   ],
   [
-   ".!transcriptviewer.!frame.!frame2.!button3",
+   ".!transcriptviewer.!frame.!frame3.!button2",
    "Remove fillers"
   ],
   [
-   ".!transcriptviewer.!frame.!frame2.!label3",
+   ".!transcriptviewer.!frame.!frame3.!label",
    " ⓘ "
   ],
   [
-   ".!transcriptviewer.!frame.!frame2.!button4",
+   ".!transcriptviewer.!frame.!frame3.!button3",
    "Save changes  (Ctrl+S)"
   ],
   [
@@ -695,10 +695,6 @@
    " ⓘ "
   ],
   [
-   ".!transcriptviewer2.!frame.!frame.!label2",
-   "Media: demo.mp4"
-  ],
-  [
    ".!transcriptviewer2.!frame.!frame2.!label",
    " ⓘ "
   ],
@@ -711,31 +707,35 @@
    "Clear"
   ],
   [
-   ".!transcriptviewer2.!frame.!frame2.!menubutton",
+   ".!transcriptviewer2.!frame.!frame2.!label3",
+   "Media: demo.mp4"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!frame3.!menubutton",
    "Edit"
   ],
   [
-   ".!transcriptviewer2.!frame.!frame2.!menubutton.!menu#0",
+   ".!transcriptviewer2.!frame.!frame3.!menubutton.!menu#0",
    "Undo"
   ],
   [
-   ".!transcriptviewer2.!frame.!frame2.!menubutton.!menu#1",
+   ".!transcriptviewer2.!frame.!frame3.!menubutton.!menu#1",
    "Redo"
   ],
   [
-   ".!transcriptviewer2.!frame.!frame2.!button2",
+   ".!transcriptviewer2.!frame.!frame3.!button",
    "Find & Replace  (Ctrl+F)"
   ],
   [
-   ".!transcriptviewer2.!frame.!frame2.!button3",
+   ".!transcriptviewer2.!frame.!frame3.!button2",
    "Remove fillers"
   ],
   [
-   ".!transcriptviewer2.!frame.!frame2.!label3",
+   ".!transcriptviewer2.!frame.!frame3.!label",
    " ⓘ "
   ],
   [
-   ".!transcriptviewer2.!frame.!frame2.!button4",
+   ".!transcriptviewer2.!frame.!frame3.!button3",
    "Save changes  (Ctrl+S)"
   ],
   [
