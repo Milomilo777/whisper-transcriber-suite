@@ -66,6 +66,7 @@ from xml.etree import ElementTree as ET
 
 from . import writers as _writers
 from .integrations import otranscribe as _otr
+from .writers.base import coerce_seconds
 from .writers.base import normalize_text as _normalize_text
 
 logger = logging.getLogger(__name__)
@@ -171,6 +172,11 @@ def _clock_to_seconds(
 
 # --- per-format parsers (return list of {start, end, text}) -----------------
 
+def _cue_bounds(start: object, end: object) -> tuple[float, float]:
+    start_s = max(0.0, coerce_seconds(start))
+    return start_s, max(start_s, coerce_seconds(end, start_s))
+
+
 def _parse_json(text: str, path: str) -> list[dict]:
     """Parse this app's JSON output — a list of segment dicts.
 
@@ -195,15 +201,7 @@ def _parse_json(text: str, path: str) -> list[dict]:
     for entry in data:
         if not isinstance(entry, dict):
             continue
-        try:
-            start = float(entry.get("start", 0.0))
-        except (TypeError, ValueError, OverflowError):
-            # OverflowError: an integer too large for a float.
-            start = 0.0
-        try:
-            end = float(entry.get("end", start))
-        except (TypeError, ValueError, OverflowError):
-            end = start
+        start, end = _cue_bounds(entry.get("start"), entry.get("end"))
         # A hand-edited JSON can put a non-string (e.g. a number) in
         # "text"; ``(value or "").strip()`` raised AttributeError (not a
         # ConvertError) and crashed the whole conversion.
@@ -342,7 +340,7 @@ def _parse_tsv(text: str, path: str) -> list[dict]:
     for raw in text.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
         if not raw.strip():
             continue
-        parts = raw.split("\t")
+        parts = raw.split("\t", maxsplit=2)
         if len(parts) < 3:
             continue
         start_raw, end_raw = parts[0].strip(), parts[1].strip()
@@ -354,6 +352,7 @@ def _parse_tsv(text: str, path: str) -> list[dict]:
             # Header row or malformed line — skip silently.
             continue
         if body:
+            start, end = _cue_bounds(start, end)
             segments.append({"start": start, "end": end, "text": body})
     return segments
 
@@ -416,8 +415,7 @@ def _parse_eaf(text: str, path: str) -> list[dict]:
         ref2 = annotation.get("TIME_SLOT_REF2")
         if ref1 not in slots or ref2 not in slots:
             continue
-        start = slots[ref1]
-        end = slots[ref2]
+        start, end = _cue_bounds(slots[ref1], slots[ref2])
         value_el = annotation.find("ANNOTATION_VALUE")
         body = (value_el.text or "").strip() if value_el is not None else ""
         if not body:

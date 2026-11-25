@@ -149,6 +149,16 @@ def test_context_never_exceeds_the_budget():
     assert _chars(qa.build_evidence(FA, picked).prompt_lines) <= 60
 
 
+def test_oversized_first_window_leaves_room_for_later_evidence(monkeypatch):
+    segments = _segs("pressure " * 20, "Check pressure daily.")
+    monkeypatch.setattr(qa, "rank_windows", lambda *_args: [0, 1])
+
+    assert qa.select_context(
+        segments, "pressure", count_tokens=_chars, budget_tokens=35,
+        max_chars=30, top_k=1, overlap=0,
+    ) == [1]
+
+
 def test_no_context_when_nothing_matches():
     assert qa.select_context(EN, "zebra", count_tokens=_chars, budget_tokens=50, max_chars=60) == []
 

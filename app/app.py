@@ -2213,12 +2213,21 @@ class App(tk.Tk):
     def _save_telemetry_pref(self) -> None:
         """Help → Usage statistics: store the choice like the Advanced checkbox does."""
         on = bool(self.telemetry_opt_in_var.get())
-        self.app_config["telemetry_opt_in"] = on
-        forget_install_id(self.app_config)
         try:
-            save_config(self.app_config)
+            if on:
+                candidate = copy.deepcopy(self.app_config)
+                candidate["telemetry_opt_in"] = True
+                save_config(candidate)
+                self.app_config["telemetry_opt_in"] = True
+                if isinstance(self.app_config, LoadedConfig) and isinstance(candidate, LoadedConfig):
+                    self.app_config._config_baseline = candidate._config_baseline
+            else:
+                self.app_config["telemetry_opt_in"] = False
+                forget_install_id(self.app_config)
+                save_config(self.app_config)
         except Exception as e:
             logger.exception("Failed to save the usage-statistics choice")
+            self.telemetry_opt_in_var.set(bool(self.app_config.get("telemetry_opt_in", True)))
             self.log(f"Could not save preference: {e}")
             return
         self.log("Usage statistics: on." if on else "Usage statistics: off (nothing is sent).")

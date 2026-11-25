@@ -5,8 +5,8 @@ import re
 import pytest
 
 from core import convert
-from core.writers import bilingual_srt, json_writer, md, srt, vtt
-from core.writers.base import prepare_cues
+from core.writers import ass, bilingual_srt, json_writer, md, srt, vtt
+from core.writers.base import MAX_SECONDS, fmt_lrc_time, fmt_srt_time, fmt_vtt_time, prepare_cues
 
 
 @pytest.mark.parametrize('end', [None, -1, 1, 1.0001], ids=['none','earlier','equal','rounding'])
@@ -80,3 +80,8 @@ def test_extreme_inferred_word_time_still_converts_to_subtitles(tmp_path):
     body=__import__('pathlib').Path(output).read_text(encoding='utf-8')
     assert 'retained word' in body
     assert convert.parse_to_segments(output)[0]['end'] > 2
+
+
+@pytest.mark.parametrize("format_time", [fmt_srt_time, fmt_vtt_time, fmt_lrc_time, ass.fmt_ass_time])
+def test_timestamp_formatters_do_not_overflow_on_large_finite_seconds(format_time):
+    assert format_time(1e308) == format_time(MAX_SECONDS)

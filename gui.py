@@ -184,13 +184,6 @@ def _cli_transcribe(args: argparse.Namespace) -> int:
         p for p in list(getattr(task, "output_paths", None) or [])
         if os.path.isfile(p)
     ]
-    if not written:
-        base, _ = os.path.splitext(src)
-        written = []
-        for ext in formats:
-            candidate = f"{base}.{ext}"
-            if os.path.isfile(candidate):
-                written.append(candidate)
     if status == "finished":
         print(f"[cli] wrote {len(written)} output(s) next to {src}", flush=True)
         for p in written:
@@ -584,19 +577,15 @@ def main() -> int:
     from core.paths import clear_bundled_quarantine
     clear_bundled_quarantine()
 
-    # --safe-mode is also handled before argparse so the user can
-    # combine it with the default GUI launch without juggling
-    # subcommands. The flag is sticky for this run only — the next
-    # launch picks up the (renamed) old config or the freshly-saved
-    # one, whichever the user committed via the first-run dialog.
-    if "--safe-mode" in sys.argv:
-        _activate_safe_mode()
-        # Remove the flag from argv so argparse below doesn't choke.
+    safe_mode = "--safe-mode" in sys.argv
+    if safe_mode:
         sys.argv = [a for a in sys.argv if a != "--safe-mode"]
 
     parser = _build_argparser()
     cli_args, open_paths = _split_launch_args(sys.argv[1:])
     args = parser.parse_args(cli_args)
+    if safe_mode:
+        _activate_safe_mode()
 
     if args.command == "mcp":
         from core.server.mcp_stdio import main as mcp_main

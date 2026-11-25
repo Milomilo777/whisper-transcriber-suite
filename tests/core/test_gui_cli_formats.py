@@ -91,3 +91,38 @@ def test_cli_transcribe_reports_real_output_paths(monkeypatch, tmp_path, capsys)
     assert "wrote 4 output(s)" in captured
     assert "clip (1).srt" in captured
     assert "clip -Transcription in English" in captured
+
+
+def test_cli_does_not_attach_existing_outputs_to_failed_run(monkeypatch, tmp_path):
+    import gui
+    from core import config, history, transcriber
+
+    source = tmp_path / "recording.wav"
+    source.touch()
+    stale = source.with_suffix(".srt")
+    stale.write_text("existing transcript", encoding="utf-8")
+    finish_calls = []
+
+    class History:
+        def insert_transcription(self, *_args, **_kwargs):
+            return 42
+
+        def finish_transcription(self, *_args, **kwargs):
+            finish_calls.append(kwargs["output_paths"])
+
+        def close(self):
+            pass
+
+    def fail(*_args, **_kwargs):
+        raise RuntimeError("test decoding error")
+
+    monkeypatch.setattr(config, "load_config", lambda: {"output_formats": ["srt"]})
+    monkeypatch.setattr(transcriber, "config", {})
+    monkeypatch.setattr(transcriber, "load_existing_model", lambda _callback: True)
+    monkeypatch.setattr(transcriber, "transcribe", fail)
+    monkeypatch.setattr(history, "HistoryDB", History)
+    args = gui._build_argparser().parse_args(["transcribe", str(source)])
+
+    assert gui._cli_transcribe(args) == 4
+    assert finish_calls == [[]]
+    assert stale.read_text(encoding="utf-8") == "existing transcript"

@@ -250,7 +250,8 @@ def select_context(segments: Sequence[Segment], question: str, *,
                 if count_tokens(build_evidence(segments, sorted(picked | {i})).prompt_lines) > budget_tokens:
                     break
                 picked.add(i)
-            taken += 1
+            if picked:
+                taken += 1
     return sorted(picked)
 
 

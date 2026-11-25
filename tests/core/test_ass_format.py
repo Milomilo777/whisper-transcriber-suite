@@ -367,6 +367,18 @@ def test_zero_duration_leading_word_does_not_extend_actual_gpu_cue():
     })
 
 
+def test_extreme_negative_word_clocks_stay_inside_dialogue():
+    _assert_karaoke_inside_dialogue({
+        "start": 1.0,
+        "end": 2.0,
+        "text": "first second",
+        "words": [
+            {"word": "first", "start": -1e308, "end": -1e308},
+            {"word": "second", "start": 1.25, "end": 2.0},
+        ],
+    })
+
+
 @pytest.mark.parametrize("offset", [0, 12.004, 598.24])
 @pytest.mark.parametrize("count", [2, 3, 100])
 @pytest.mark.parametrize("duration", [.018, .03, 1.0])

@@ -1912,17 +1912,19 @@ def _recover_locked(path: str) -> tuple[str, dict[str, Any] | None, bool]:
             logger.warning("Could not keep a copy of the corrupt config: %s", e)
             return "corrupt", _closed_switches(usable_bak), True
     recovered = _closed_switches(usable_bak)
-    logger.warning(
-        "Restored config.json from %s.bak; Work offline is on and usage statistics "
-        "and the update check are off until they are changed again", path,
-    )
     try:
         _write_disk_dict(path, recovered)
     except (OSError, ValueError) as e:
         # ValueError: a hand-edited backup with text that cannot be written
         # back (a lone surrogate escape); a launch must not crash on it.
         logger.warning("Could not restore config.json from the backup: %s", e)
-        return ("corrupt" if status == "corrupt" else "missing"), recovered, True
+        # A usable backup makes this a failed repair even if the primary
+        # file is absent. Writers must not mistake it for a new profile.
+        return "corrupt", recovered, True
+    logger.warning(
+        "Restored config.json from %s.bak; Work offline is on and usage statistics "
+        "and the update check are off until they are changed again", path,
+    )
     return "ok", recovered, True
 
 
