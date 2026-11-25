@@ -15,20 +15,29 @@ import sys
 import threading
 import urllib.error
 import urllib.request
+from contextlib import contextmanager
 from pathlib import Path
 
+import certifi
+import httpx
 import pytest
+import requests
 
 from core import tls_trust
+from core.server import tls as server_tls
 from core.server.tls import generate_self_signed_cert
 
 REPO = Path(__file__).resolve().parents[2]
 
 
 @pytest.fixture
-def clean_env(monkeypatch):
-    monkeypatch.delenv("SSL_CERT_FILE", raising=False)
-    monkeypatch.delenv("SSL_CERT_DIR", raising=False)
+def clean_env(monkeypatch, tmp_path):
+    for name in ("SSL_CERT_FILE", "SSL_CERT_DIR", "REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE", "OPENSSL_WIN32_UTF8"):
+        monkeypatch.setenv(name, "")
+        monkeypatch.delenv(name)
+    monkeypatch.setenv("WTS_PROFILE_DIR", str(tmp_path / "profile"))
+    monkeypatch.setenv("NO_PROXY", "*")
+    monkeypatch.setattr(urllib.request, "_opener", None)
     monkeypatch.setattr(tls_trust, "source", "not configured")
 
 
@@ -36,7 +45,7 @@ def clean_env(monkeypatch):
 def bundle(tmp_path, monkeypatch):
     """A stand-in for certifi's cacert.pem."""
     pem = tmp_path / "cacert.pem"
-    pem.write_text("-----BEGIN CERTIFICATE-----\nstand-in\n-----END CERTIFICATE-----\n", encoding="ascii")
+    pem.write_text("stand-in", encoding="ascii")
     monkeypatch.setattr(tls_trust, "_certifi_file", lambda: str(pem))
     return str(pem)
 
@@ -70,20 +79,25 @@ def test_a_usable_default_store_is_kept_when_not_frozen(clean_env, bundle, monke
 
 
 @pytest.mark.parametrize("frozen", [False, True])
-def test_windows_is_left_to_the_system_store(clean_env, bundle, monkeypatch, frozen):
+def test_windows_without_certifi_keeps_the_system_store(clean_env, monkeypatch, caplog, frozen):
     _platform(monkeypatch, "win32", frozen=frozen, default_has_certs=False)
+    monkeypatch.setattr(tls_trust, "_certifi_file", lambda: None)
     assert tls_trust.configure() == "system"
     assert "SSL_CERT_FILE" not in os.environ
+    assert "REQUESTS_CA_BUNDLE" not in os.environ
+    assert len([entry for entry in caplog.records if entry.name == tls_trust.__name__]) == 1
 
 
+@pytest.mark.parametrize("platform", ["darwin", "win32"])
 @pytest.mark.parametrize("var", ["SSL_CERT_FILE", "SSL_CERT_DIR"])
-def test_a_variable_the_user_set_is_never_overridden(clean_env, bundle, monkeypatch, var):
-    _platform(monkeypatch, "darwin", frozen=True, default_has_certs=False)
+def test_a_variable_the_user_set_is_never_overridden(clean_env, bundle, monkeypatch, var, platform):
+    _platform(monkeypatch, platform, frozen=True, default_has_certs=False)
     monkeypatch.setenv(var, "/users/own/ca.pem")
     assert tls_trust.configure() == "env"
     assert os.environ[var] == "/users/own/ca.pem"
     if var == "SSL_CERT_DIR":
         assert "SSL_CERT_FILE" not in os.environ
+    assert "REQUESTS_CA_BUNDLE" not in os.environ
 
 
 def test_no_certifi_and_no_store_reports_none_and_sets_nothing(clean_env, monkeypatch):
@@ -127,17 +141,23 @@ class _Hello(http.server.BaseHTTPRequestHandler):
 def https_server(tmp_path):
     cert, key = tmp_path / "server.pem", tmp_path / "server.key"
     generate_self_signed_cert(cert, key, hosts=["localhost", "127.0.0.1"])
-    httpd = http.server.HTTPServer(("127.0.0.1", 0), _Hello)
+    with _serve_https(cert, key) as url:
+        yield url, str(cert)
+
+
+@contextmanager
+def _serve_https(cert, key):
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     ctx.load_cert_chain(str(cert), str(key))
-    httpd.socket = ctx.wrap_socket(httpd.socket, server_side=True)
-    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
-    thread.start()
-    try:
-        yield f"https://127.0.0.1:{httpd.server_address[1]}/", str(cert)
-    finally:
-        httpd.shutdown()
-        httpd.server_close()
+    with http.server.HTTPServer(("127.0.0.1", 0), _Hello) as httpd:
+        httpd.socket = ctx.wrap_socket(httpd.socket, server_side=True)
+        thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+        thread.start()
+        try:
+            yield f"https://127.0.0.1:{httpd.server_address[1]}/"
+        finally:
+            httpd.shutdown()
+            thread.join()
 
 
 def _relaxed_default_context(monkeypatch):
@@ -173,13 +193,198 @@ def test_urllib_fails_without_the_bundle_and_works_after_configure(clean_env, ht
         assert resp.read() == b"hello"
 
 
+def _ca_der(path):
+    return ssl.PEM_cert_to_DER_cert(path.read_text(encoding="ascii"))
+
+
+@pytest.fixture
+def test_roots(tmp_path, monkeypatch):
+    """Generate independent trust anchors that can also serve loopback HTTPS."""
+    extension = server_tls._extension
+
+    def ca_extension(oid, value, *, critical=False):
+        # The app generates server leaves. Mark these fixtures as CA certificates so
+        # SSLContext.get_ca_certs() reports them and the union can deduplicate them.
+        if oid == server_tls._OID_BASIC_CONSTRAINTS:
+            value = server_tls._seq(server_tls._tlv(0x01, b"\xff"))  # cA = TRUE
+        elif oid == server_tls._OID_KEY_USAGE:
+            value = server_tls._tlv(0x03, b"\x02\x84")  # digitalSignature, keyCertSign
+        return extension(oid, value, critical=critical)
+
+    roots = {}
+    with monkeypatch.context() as patch:
+        patch.setattr(server_tls, "_extension", ca_extension)
+        for name in ("windows", "certifi"):
+            cert, key = tmp_path / f"{name}.pem", tmp_path / f"{name}.key"
+            generate_self_signed_cert(cert, key, common_name=f"Test {name}", hosts=["127.0.0.1", "localhost"])
+            roots[name] = cert, key
+    return roots
+
+
+@pytest.fixture
+def windows_cas(clean_env, monkeypatch, test_roots):
+    _platform(monkeypatch, "win32", frozen=False, default_has_certs=False)
+    monkeypatch.setattr(certifi, "where", lambda: str(test_roots["certifi"][0]))
+    windows_der = _ca_der(test_roots["windows"][0])
+    records = {"ROOT": [], "CA": [(windows_der, "x509_asn", {ssl.Purpose.SERVER_AUTH.oid})]}
+    monkeypatch.setattr(ssl, "enum_certificates", records.__getitem__, raising=False)
+    return records
+
+
+@pytest.mark.parametrize("store", ["ROOT", "CA"])
+def test_windows_https_clients_trust_both_ca_sources(windows_cas, test_roots, monkeypatch, store):
+    if store == "ROOT":
+        windows_cas["ROOT"].append(windows_cas["CA"].pop())
+    else:
+        profile = Path(os.environ["WTS_PROFILE_DIR"]) / "\u0641\u0627\u0631\u0633\u06cc"
+        monkeypatch.setenv("WTS_PROFILE_DIR", str(profile))
+    expected = {_ca_der(cert) for cert, _ in test_roots.values()}
+    assert len(expected) == 2
+    source = tls_trust.configure()
+
+    assert expected <= set(httpx.create_ssl_context().get_ca_certs(binary_form=True))
+    assert expected <= set(ssl.create_default_context().get_ca_certs(binary_form=True))
+    with requests.Session() as session:
+        verify = session.merge_environment_settings("https://example.invalid/", {}, None, None, None)["verify"]
+    assert verify == os.environ["SSL_CERT_FILE"]
+    requests_ca_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    requests_ca_context.load_verify_locations(cafile=verify)
+    assert expected == set(requests_ca_context.get_ca_certs(binary_form=True))
+    assert source == "system+certifi"
+    assert tls_trust.describe()["cafile"] == verify
+
+    with httpx.Client(timeout=10) as httpx_client, requests.Session() as requests_client:
+        for cert, key in test_roots.values():
+            with _serve_https(cert, key) as url:
+                assert httpx_client.get(url).content == b"hello"
+                assert requests_client.get(url, timeout=10).content == b"hello"
+                with urllib.request.urlopen(url, timeout=10) as response:
+                    assert response.read() == b"hello"
+
+
+def test_windows_bundle_keeps_distinct_server_auth_certificates(windows_cas, test_roots):
+    windows_ca = _ca_der(test_roots["windows"][0])
+    certifi_ca = _ca_der(test_roots["certifi"][0])
+    windows_cas["ROOT"] = [(certifi_ca, "x509_asn", True), (windows_ca, "x509_asn", True)]
+    windows_cas["CA"].extend([
+        (b"client only", "x509_asn", {ssl.Purpose.CLIENT_AUTH.oid}),
+        (b"not trusted", "x509_asn", False),
+        (b"other encoding", "pkcs_7_asn", True),
+    ])
+    assert tls_trust.configure() == "system+certifi"
+    pem = Path(os.environ["SSL_CERT_FILE"]).read_text(encoding="ascii")
+    assert pem == ssl.DER_cert_to_PEM_cert(certifi_ca) + ssl.DER_cert_to_PEM_cert(windows_ca)
+
+
+@pytest.mark.parametrize(("override", "other"), [
+    ("REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE"),
+    ("CURL_CA_BUNDLE", "REQUESTS_CA_BUNDLE"),
+])
+def test_windows_preserves_requests_ca_overrides(windows_cas, test_roots, monkeypatch, override, other):
+    path = str(test_roots["certifi"][0])
+    monkeypatch.setenv(override, path)
+    assert tls_trust.configure() == "system+certifi"
+    assert os.environ[override] == path
+    assert other not in os.environ
+    assert os.environ["SSL_CERT_FILE"] != path
+    with requests.Session() as session:
+        assert session.merge_environment_settings("https://example.invalid/", {}, None, None, None)["verify"] == path
+
+
+def test_windows_bundle_write_failure_keeps_the_system_store(windows_cas, monkeypatch, caplog):
+    old_bundle = Path(os.environ["WTS_PROFILE_DIR"]) / "cache" / "https-ca-bundle.pem"
+    old_bundle.parent.mkdir(parents=True)
+    old_bundle.write_bytes(b"earlier cache contents")
+
+    def cannot_replace(_source, _destination):
+        raise PermissionError("simulated read-only destination")
+
+    monkeypatch.setattr(os, "replace", cannot_replace)
+    assert tls_trust.configure() == "system"
+    assert "SSL_CERT_FILE" not in os.environ
+    assert "REQUESTS_CA_BUNDLE" not in os.environ
+    assert old_bundle.read_bytes() == b"earlier cache contents"
+    assert not list(old_bundle.parent.glob("*.tmp"))
+    warnings = [entry for entry in caplog.records if entry.name == tls_trust.__name__]
+    assert len(warnings) == 1
+    assert warnings[0].levelname == "WARNING"
+
+
+def test_windows_invalid_store_certificate_keeps_the_system_store(windows_cas, caplog):
+    windows_cas["CA"].append((b"invalid DER", "x509_asn", True))
+    assert tls_trust.configure() == "system"
+    assert "SSL_CERT_FILE" not in os.environ
+    assert "REQUESTS_CA_BUNDLE" not in os.environ
+    assert len([entry for entry in caplog.records if entry.name == tls_trust.__name__]) == 1
+
+
+def test_windows_worker_inherits_the_ca_bundle(windows_cas, test_roots, monkeypatch):
+    profile = Path(os.environ["WTS_PROFILE_DIR"]) / "\u0641\u0627\u0631\u0633\u06cc"
+    monkeypatch.setenv("WTS_PROFILE_DIR", str(profile))
+    assert tls_trust.configure() == "system+certifi"
+    script = """
+import json
+import os
+import ssl
+
+certs = ssl.create_default_context().get_ca_certs(binary_form=True)
+print(json.dumps([os.environ["SSL_CERT_FILE"], os.environ["REQUESTS_CA_BUNDLE"], [der.hex() for der in certs]]))
+"""
+    result = subprocess.run([sys.executable, "-c", script], check=True, capture_output=True, text=True, timeout=30)
+    cafile, requests_bundle, certs = json.loads(result.stdout)
+    assert cafile == requests_bundle == os.environ["SSL_CERT_FILE"]
+    assert {_ca_der(cert).hex() for cert, _ in test_roots.values()} <= set(certs)
+
+
+def test_windows_verified_fetches_use_the_bundle_after_startup(clean_env, test_roots):
+    script = """
+import http.client
+import ssl
+import sys
+from pathlib import Path
+
+import certifi
+from core import tls_trust
+
+sys.platform = "win32"
+ssl.enum_certificates = lambda store: []
+certifi.where = lambda: sys.argv[1]
+assert tls_trust.configure() == "system+certifi"
+
+from core.verified_download import urlopen_https_only
+
+class ContextChecked(Exception):
+    pass
+
+def check_context(connection):
+    cert = ssl.PEM_cert_to_DER_cert(Path(sys.argv[1]).read_text(encoding="ascii"))
+    assert cert in connection._context.get_ca_certs(binary_form=True)
+    raise ContextChecked
+
+http.client.HTTPSConnection.connect = check_context
+try:
+    urlopen_https_only("https://example.invalid/", timeout=10)
+except ContextChecked:
+    pass
+else:
+    raise AssertionError("HTTPS connection did not use the context")
+"""
+    result = subprocess.run([sys.executable, "-c", script, str(test_roots["certifi"][0])], cwd=REPO,
+                            capture_output=True, text=True, timeout=30)
+    assert result.returncode == 0, result.stderr
+
+
 def test_self_check_flag_prints_the_choice_and_exits(clean_env):
     env = {k: v for k, v in os.environ.items() if k not in ("SSL_CERT_FILE", "SSL_CERT_DIR")}
     out = subprocess.run([sys.executable, str(REPO / "gui.py"), "--tls-self-check"], cwd=REPO, env=env,
                          capture_output=True, text=True, timeout=120, check=True).stdout
     info = json.loads(out.strip().splitlines()[-1])
-    assert info["source"] in {"system", "certifi", "none"}
+    assert info["source"] in {"system+certifi", "system", "certifi", "none"}
     assert set(info) >= {"cafile", "capath", "openssl_cafile", "openssl"}
+    if info["source"] == "system+certifi":
+        expected = Path(os.environ["WTS_PROFILE_DIR"]) / "cache" / "https-ca-bundle.pem"
+        assert Path(info["cafile"]) == expected
+        assert expected.is_file()
 
 
 def test_a_child_process_inherits_the_choice(clean_env, bundle, monkeypatch):
