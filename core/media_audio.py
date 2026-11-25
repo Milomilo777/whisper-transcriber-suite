@@ -5,9 +5,11 @@ import json
 import math
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import tempfile
+import wave
 from collections.abc import Callable
 from dataclasses import dataclass
 
@@ -77,10 +79,39 @@ class AudioPreparationCancelled(Exception):
     pass
 
 
+class RepairSpaceError(OSError):
+    pass
+
+
+@dataclass(frozen=True)
+class RepairedAudio:
+    path: Path
+    recovered: float
+    expected: float | None
+
+
+REPAIR_NAME = re.compile(r"repaired-audio-(?P<pid>[1-9][0-9]*)-[a-z0-9_]{8}\.wav")
+PREPARED_NAME = re.compile(r"audio-copy-(?P<pid>[1-9][0-9]*)-[a-z0-9_]{8}\.wav")
+
+
+def repair_input(folder: Path, name: object) -> Path | None:
+    if not isinstance(name, str) or not REPAIR_NAME.fullmatch(name):
+        return None
+    path = folder / name
+    return path if not path.is_symlink() and path.is_file() else None
+
+
+def repair_identity(path: Path) -> tuple[int, int, int]:
+    stat = path.stat()
+    return stat.st_size, stat.st_mtime_ns, stat.st_ino
+
+
 def _decode(
     source: str, target: Path, ordinal: int | None, limit: int,
     cancelled: Callable[[], bool], *, repair: bool = False,
 ) -> tuple[int, str]:
+    if cancelled():
+        raise AudioPreparationCancelled
     flags = ["-fflags", "+discardcorrupt", "-err_detect", "ignore_err"] if repair else ["-xerror"]
     mapping = f"0:a:{ordinal}" if ordinal is not None else "0:a:0"
     with tempfile.TemporaryFile() as diagnostics, subprocess.Popen(
@@ -108,13 +139,15 @@ def _decode(
         return process.returncode, diagnostics.read(2048).decode("utf-8", errors="replace")
 
 
-def _new_copy(folder: Path) -> tuple[Path, int]:
+def _new_copy(folder: Path, *, repair: bool = False) -> tuple[Path, int]:
     folder.mkdir(parents=True, exist_ok=True)
     reserve = 64 * 1024**2
     limit = min(4 * 1024**3 - reserve, shutil.disk_usage(folder).free - reserve)
     if limit < 1024**2:
-        raise OSError("Not enough free space for temporary audio.")
-    descriptor, name = tempfile.mkstemp(prefix="audio-copy-", suffix=".wav", dir=folder)
+        raise RepairSpaceError("Not enough free space for temporary audio.")
+    kind = "repaired-audio" if repair else "audio-copy"
+    prefix = f"{kind}-{os.getpid()}-"
+    descriptor, name = tempfile.mkstemp(prefix=prefix, suffix=".wav", dir=folder)
     os.close(descriptor)
     return Path(name), limit
 
@@ -134,3 +167,46 @@ def prepare_audio_track(
     except BaseException:
         target.unlink(missing_ok=True)
         raise
+
+
+def repair_audio(
+    source: str, ordinal: int | None, folder: Path, cancelled: Callable[[], bool],
+) -> RepairedAudio | None:
+    """Salvage the chosen audio into an owned copy, even if decoding stops early."""
+    original = repair_identity(Path(source))
+    target, limit = _new_copy(folder, repair=True)
+    keep = False
+    try:
+        try:
+            probe = _probe(source, 3)
+            streams = probe.get("streams", [])
+            index = ordinal if ordinal is not None else 0
+            selected = streams[index] if index < len(streams) else {}
+            expected = _number(selected.get("duration")) or _number(probe.get("format", {}).get("duration"))
+        except (OSError, ValueError, subprocess.SubprocessError):
+            expected = None
+        if expected and expected > (limit - 65536) / 32000:
+            raise RepairSpaceError("Not enough free space for the expected audio duration.")
+        _decode(source, target, ordinal, limit, cancelled, repair=True)
+        if cancelled():
+            raise AudioPreparationCancelled
+        if target.stat().st_size >= limit - 65536:
+            raise RepairSpaceError("Not enough free space for recovered audio.")
+        try:
+            with wave.open(str(target), "rb") as audio:
+                frames = audio.getnframes()
+                if frames == 0:
+                    return None
+                audio.setpos(frames - 1)
+                if len(audio.readframes(1)) != audio.getsampwidth() * audio.getnchannels():
+                    return None
+                recovered = frames / audio.getframerate()
+        except (EOFError, wave.Error):
+            return None
+        if original != repair_identity(Path(source)):
+            raise OSError("The source changed while the copy was being made.")
+        keep = True
+        return RepairedAudio(target, recovered, expected)
+    finally:
+        if not keep:
+            target.unlink(missing_ok=True)

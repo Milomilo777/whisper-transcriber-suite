@@ -1301,6 +1301,9 @@ def _main() -> int:
             # rather than an error.
             task.resume = bool(command.get("resume", False))
             task.audio_track = audio_ordinal(command.get("audio_track"))
+            repair_name = command.get("repair_name")
+            if isinstance(repair_name, str) and repair_name:
+                task.repair_name = repair_name
             # Time-slice (Transcribe-tab time range): transcribe only this
             # span via clip_timestamps. None = whole file.
             task.clip_start = command.get("clip_start")

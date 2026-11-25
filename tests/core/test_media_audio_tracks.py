@@ -1,11 +1,13 @@
 import time
 import wave
 from pathlib import Path
+from types import SimpleNamespace
 
 from core.task import TranscriptionTask, apply_run_options, task_run_options
-from core import _checkpoint, media_audio, transcriber
+from core import _checkpoint, convert, media_audio, transcriber
 from core.media_audio import AudioTrack, default_audio_track
-from app.services.transcription_service import transcribe_command
+from app.app import App
+from app.services.transcription_service import _dispatchable_sources, transcribe_command
 
 
 def test_audio_track_round_trips_through_history_options():
@@ -72,3 +74,26 @@ def test_completed_resume_prepares_saved_track_for_postprocessing(tmp_path, monk
     assert seen == [(str(source), 1)]
     assert not temp.exists()
     assert '"audio_track": 1' in source.with_suffix(".json").read_text(encoding="utf-8")
+
+
+def test_alternative_tracks_queue_separately_but_share_an_execution_slot():
+    first = TranscriptionTask("lecture.mkv")
+    first.audio_track = 0
+    second = TranscriptionTask("lecture.mkv")
+    second.audio_track = 1
+    unrelated = TranscriptionTask("other.mkv")
+    app = SimpleNamespace(queue=[first])
+    assert not App._same_job_active(app, second)
+    assert App._same_job_active(app, first)
+    first.status = "paused"
+    assert _dispatchable_sources([second, unrelated], [first]) == [unrelated]
+    first.status = "cancelled"
+    assert _dispatchable_sources([second, unrelated], [first]) == [unrelated]
+    first.status = "waiting"
+    assert _dispatchable_sources([first, second, unrelated], []) == [first, unrelated]
+
+
+def test_json_conversion_retains_track():
+    assert convert._parse_json('[{"start":0,"end":1,"text":"Hi","audio_track":1}]', "clip.json")[0][
+        "audio_track"
+    ] == 1

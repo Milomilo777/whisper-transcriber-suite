@@ -1603,6 +1603,17 @@ def _protect_existing_checkpoint(
 
 
 def _checkpoint_track_problem(task: TranscriptionTask, data: dict[str, Any]) -> str:
+    repair_name = getattr(task, "repair_name", None)
+    if data.get("repair_name") != repair_name:
+        return "the audio repair copy has changed since the checkpoint"
+    if repair_name:
+        path = media_audio.repair_input(_checkpoint.partials_dir(), repair_name)
+        try:
+            identity = list(media_audio.repair_identity(path)) if path else None
+        except OSError:
+            identity = None
+        if identity is None or data.get("repair_identity") != identity:
+            return "the audio repair copy has changed since the checkpoint"
     saved = data.get("audio_track")
     if saved is not None and media_audio.audio_ordinal(saved) is None:
         return "the saved audio track is invalid"
@@ -1612,7 +1623,7 @@ def _checkpoint_track_problem(task: TranscriptionTask, data: dict[str, Any]) -> 
 
 
 def _choose_default_track(task: TranscriptionTask) -> None:
-    if getattr(task, "audio_track", None) is None:
+    if getattr(task, "audio_track", None) is None and not getattr(task, "repair_name", None):
         tracks = media_audio.probe_audio_tracks(task.file_path)
         if len(tracks) > 1:
             task.audio_track = media_audio.default_audio_track(tracks)
@@ -1623,6 +1634,15 @@ def _audio_input(task: TranscriptionTask) -> str:
 
 
 def _prepare_task_input(task: TranscriptionTask, stack: ExitStack) -> bool:
+    repair_name = getattr(task, "repair_name", None)
+    if repair_name:
+        path = media_audio.repair_input(_checkpoint.partials_dir(), repair_name)
+        if path is None:
+            raise FileNotFoundError("The repaired audio copy is missing.")
+        task.repair_identity = media_audio.repair_identity(path)
+        task._prepared_audio = str(path)
+        stack.callback(setattr, task, "_prepared_audio", None)
+        return not task.cancelled
     ordinal = getattr(task, "audio_track", None)
     if ordinal is None:
         return not task.cancelled
@@ -1685,6 +1705,8 @@ def _write_periodic_checkpoint(
             word_timestamps=effective_word_timestamps(config),
             audio_end=getattr(task, "_audio_end", None),
             audio_track=getattr(task, "audio_track", None),
+            repair_name=getattr(task, "repair_name", None),
+            repair_identity=getattr(task, "repair_identity", None),
         )
         task.checkpoint_failures = 0
     except Exception as e:  # noqa: BLE001
@@ -1887,6 +1909,8 @@ def _write_task_outputs(task: TranscriptionTask, *args: Any, **kwargs: Any) -> l
     ordinal = getattr(task, "audio_track", None)
     if ordinal is not None:
         kwargs["audio_track"] = ordinal
+    if getattr(task, "repair_name", None):
+        kwargs["audio_repaired"] = True
     written = _write_outputs(*args, **kwargs)
     task.output_paths = written
     if isinstance(written, _WrittenOutputs) and written.failure is not None:
@@ -1929,6 +1953,7 @@ def _write_outputs(
     chapters: list[dict[str, Any]] | None = None,
     audio_end: float | None = None,
     audio_track: int | None = None,
+    audio_repaired: bool = False,
 ) -> list[str]:
     """Keep the completed transcript if normal output publication fails.
 
@@ -1942,6 +1967,7 @@ def _write_outputs(
             base, segments_data, audio_path, formats, lang=lang,
             speaker_count=speaker_count, chapters=chapters, audio_end=audio_end,
             **({"audio_track": audio_track} if audio_track is not None else {}),
+            **({"audio_repaired": True} if audio_repaired else {}),
         )
     except Exception as error:
         # Per-format failures can wrap the backend's OOM in RuntimeError.
@@ -1993,6 +2019,7 @@ def _write_outputs_impl(
     chapters: list[dict[str, Any]] | None = None,
     audio_end: float | None = None,
     audio_track: int | None = None,
+    audio_repaired: bool = False,
 ) -> list[str]:
     """Write each requested format atomically.
 
@@ -2236,8 +2263,8 @@ def _write_outputs_impl(
                 elif is_binary(fmt_name):
                     payload = get_binary_writer(fmt_name)(format_segments, audio_path)
                 else:
-                    if fmt_name == "json" and audio_track is not None:
-                        format_segments = [dict(segment, audio_track=audio_track)
+                    if fmt_name == "json" and (audio_track is not None or audio_repaired):
+                        format_segments = [dict(segment, audio_track=audio_track, audio_repaired=audio_repaired)
                                            for segment in format_segments]
                     payload = get_writer(fmt_name)(format_segments, audio_path).encode("utf-8")
                 from .convert import _stage_output
@@ -4850,14 +4877,6 @@ def resume_transcription(
         # faster_whisper run of this file can still resume it if the
         # fallback crashes before writing anything.
         backend_for_check = backend
-        saved_track = media_audio.audio_ordinal(data.get("audio_track"))
-        if getattr(task, "audio_track", None) is None and saved_track is not None:
-            task.audio_track = saved_track
-        track_problem = _checkpoint_track_problem(task, data)
-        if track_problem:
-            _keep_checkpoint_aside(task, track_problem, log_cb)
-            return False
-
         # The checkpoint's own task wins over whatever the task was queued
         # with: the captured half is already in that task, so the tail must
         # use it too or one transcript would mix two tasks.
@@ -4880,6 +4899,13 @@ def resume_transcription(
                 "and a fresh run starts.",
                 log_cb,
             )
+            return False
+        saved_track = media_audio.audio_ordinal(data.get("audio_track"))
+        if getattr(task, "audio_track", None) is None and saved_track is not None:
+            task.audio_track = saved_track
+        track_problem = _checkpoint_track_problem(task, data)
+        if track_problem:
+            _keep_checkpoint_aside(task, track_problem, log_cb)
             return False
         # Decided only AFTER the media check above: a checkpoint of other
         # media must be kept aside before any fresh run can replace it.

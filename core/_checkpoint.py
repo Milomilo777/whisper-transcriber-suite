@@ -567,6 +567,8 @@ def write_checkpoint(
     word_timestamps: bool | None = None,
     audio_end: float | None = None,
     audio_track: int | None = None,
+    repair_name: str | None = None,
+    repair_identity: tuple[int, int, int] | None = None,
 ) -> Path:
     """Atomically persist a checkpoint.
 
@@ -610,6 +612,8 @@ def write_checkpoint(
         # a resumed job never switches task halfway through a transcript.
         "whisper_task": whisper_task,
         "audio_track": audio_track,
+        "repair_name": repair_name,
+        "repair_identity": repair_identity,
         # Add-only field: the two languages of a mixed-language run (None =
         # one language), so a resume keeps detecting per stretch.
         "languages": list(languages) if languages else None,
@@ -746,6 +750,7 @@ def sweep_partials(
     might still want to resume isn't reaped prematurely.
     """
     import time as _time
+    from .media_audio import PREPARED_NAME, REPAIR_NAME
 
     try:
         d = partials_dir()
@@ -768,8 +773,10 @@ def sweep_partials(
                 if p.stat().st_mtime < slice_cutoff:
                     p.unlink()
                     removed += 1
-            elif slice_name := _SLICE_NAME.fullmatch(name):
-                if p.stat().st_mtime < slice_cutoff:
+            elif (slice_name := (_SLICE_NAME.fullmatch(name) or PREPARED_NAME.fullmatch(name)
+                                 or REPAIR_NAME.fullmatch(name))):
+                cutoff = json_cutoff if name.startswith("repaired-audio-") else slice_cutoff
+                if p.stat().st_mtime < cutoff:
                     owner_pid = slice_name.group("pid")
                     if owner_pid is None:
                         continue  # Old hash-only names cannot identify a dead owner.

@@ -8,6 +8,9 @@ class TranscriptionTask:
     def __init__(self, file_path: str) -> None:
         self.file_path: str = file_path
         self.audio_track: int | None = None
+        self.repair_name: str | None = None
+        self.repair_identity: tuple[int, int, int] | None = None
+        self.can_repair_audio: bool = False
         self._prepared_audio: str | None = None
         self.status: str = "waiting"
         self.progress: int = 0
@@ -162,6 +165,9 @@ def task_run_options(task: TranscriptionTask) -> dict[str, Any]:
     ordinal = getattr(task, "audio_track", None)
     if ordinal is not None:
         out["audio_track"] = ordinal
+    repair_name = getattr(task, "repair_name", None)
+    if repair_name:
+        out["repair_name"] = repair_name
     for key in ("clip_start", "clip_end"):
         value = getattr(task, key, None)
         if value is not None:
@@ -183,6 +189,9 @@ def apply_run_options(task: TranscriptionTask, options: Any) -> None:
     from .media_audio import audio_ordinal
 
     task.audio_track = audio_ordinal(options.get("audio_track"))
+    repair_name = options.get("repair_name")
+    if isinstance(repair_name, str) and repair_name:
+        task.repair_name = repair_name
     for key in ("clip_start", "clip_end"):
         value = options.get(key)
         if isinstance(value, (int, float)) and not isinstance(value, bool) \
@@ -196,3 +205,14 @@ def apply_run_options(task: TranscriptionTask, options: Any) -> None:
     if (isinstance(languages, list) and len(languages) == 2
             and all(isinstance(code, str) and code for code in languages)):
         task.languages = (languages[0], languages[1])
+
+
+def task_repair_path(task: TranscriptionTask) -> str | None:
+    name = getattr(task, "repair_name", None)
+    if not name:
+        return None
+    from ._checkpoint import partials_dir
+    from .media_audio import repair_input
+
+    path = repair_input(partials_dir(), name)
+    return str(path) if path else None

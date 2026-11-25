@@ -1776,6 +1776,10 @@ def build_queue_tab(app: "App", parent: ttk.Frame) -> None:
         parent, textvariable=app.queue_failure_var,
         foreground=tokens.themed(tokens.DANGER_TEXT), wraplength=px(760), justify="left",
     )
+    app.queue_repair_button = ttk.Button(
+        parent, text=_("Make a repaired audio copy and try again"),
+        command=app._repair_selected_task,
+    )
     # No click-to-pause on the Status cell: a user picking a row to read it paused the job
     # without noticing (deep review, 2026-10-21). Pause and Resume are on the buttons and menu.
     app.tree.bind("<<TreeviewSelect>>", lambda _e: app._update_queue_action_bar())

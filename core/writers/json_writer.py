@@ -52,6 +52,8 @@ def write(segments: list[dict], audio_path: str = "") -> str:
         track = seg.get("audio_track")
         if type(track) is int and track >= 0:
             item["audio_track"] = track
+        if seg.get("audio_repaired") is True:
+            item["audio_repaired"] = True
         speaker = seg.get("speaker")
         if speaker not in (None, ""):
             item["speaker"] = str(speaker)

@@ -1100,3 +1100,7 @@ metadata and the segment-list format stays compatible with existing readers.
 Missing fields in history still load. Checkpoints written before track
 selection use the legacy decoding path. A mismatch preserves the earlier
 checkpoint before re-transcription can write to the same key.
+The desktop serializes jobs for the same source because they share that key.
+To keep full-media post-processing on the selected track, preparation covers
+the full track even for a short clip or a partial resume, costing scratch
+space and an extra decode pass.

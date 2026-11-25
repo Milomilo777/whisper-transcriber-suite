@@ -18,6 +18,8 @@ from pathlib import Path
 from types import TracebackType
 from typing import Any, Mapping
 
+from .media_audio import AudioPreparationError
+
 logger = logging.getLogger(__name__)
 
 
@@ -45,6 +47,7 @@ SITE_FRAMES: dict[tuple[str, str | None], str] = {
     ("core.transcriber", "_write_outputs"): "worker.output",
     ("core.transcriber", "get_duration"): "worker.prepare",
     ("core.transcriber", "require_audio_stream"): "worker.prepare",
+    ("core.media_audio", "prepare_audio_track"): "worker.prepare",
     ("core.transcriber", "_slice_audio_from"): "worker.prepare",
     ("core.transcriber", "_maybe_denoise"): "worker.prepare",
     ("core.transcriber", "_ensure_default_backend_loaded"): "worker.model",
@@ -155,6 +158,17 @@ def observed_code(exc: BaseException) -> str:
             return "codec_unsupported"
     if exception_family(exc) == "av.InvalidDataError":
         return "av_invalid_data"
+    if isinstance(exc, AudioPreparationError):
+        return "av_invalid_data"
+    cause = exc.__cause__
+    if (isinstance(cause, subprocess.CalledProcessError)
+            and _has_frame(exc.__traceback__, "core.transcriber", "get_duration")
+            and isinstance(cause.stderr, str)):
+        for line in cause.stderr.splitlines():
+            detail = line.rsplit(": ", 1)[-1].strip()
+            if (detail == "Invalid data found when processing input"
+                    or re.fullmatch(r"\[[^\]]+\] (?:moov atom not found|EBML header parsing failed)", detail)):
+                return "av_invalid_data"
     if isinstance(exc, RuntimeError) and _has_frame(exc.__traceback__, "core.transcriber", "require_audio_stream"):
         if str(exc).endswith(" has no audio track, so there is nothing to transcribe."):
             return "no_audio_stream"

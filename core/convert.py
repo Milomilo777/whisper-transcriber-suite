@@ -210,6 +210,11 @@ def _parse_json(text: str, path: str) -> list[dict]:
         if not body:
             continue
         seg: dict[str, Any] = {"start": start, "end": end, "text": body}
+        track = entry.get("audio_track")
+        if type(track) is int and track >= 0:
+            seg["audio_track"] = track
+        if entry.get("audio_repaired") is True:
+            seg["audio_repaired"] = True
         speaker = entry.get("speaker")
         if speaker not in (None, ""):
             seg["speaker"] = str(speaker)

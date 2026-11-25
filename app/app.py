@@ -94,7 +94,7 @@ from core.config import (
 )
 from core.history import EXIT_REASON, HistoryDB
 from core.stats import forget_install_id
-from core.task import apply_run_options
+from core.task import apply_run_options, task_repair_path, task_run_options
 from core.hub import voice_clone_tab_enabled
 from core.logging_setup import get_ui_logger, open_log_folder, setup_logging
 from core.paths import bin_dir as _resource_bin_dir
@@ -1302,6 +1302,7 @@ class App(tk.Tk):
     queue_empty_label: "ttk.Label"
     queue_failure_var: tk.StringVar
     queue_failure_label: "ttk.Label"
+    queue_repair_button: "ttk.Button"
     # Whether to chime the system bell when a job finishes (View menu)
     chime_on_complete_var: tk.BooleanVar
     # Recent-files submenu rebuilt every time it opens
@@ -2060,7 +2061,7 @@ class App(tk.Tk):
 
     def open_transcript_viewer_for(
         self, file_path: str, json_path: str | None = None,
-        language: str | None = None,
+        language: str | None = None, *, playback_path: str | None = None,
     ) -> None:
         """Open the viewer for the transcript JSON belonging to a task.
 
@@ -2082,14 +2083,14 @@ class App(tk.Tk):
         # name misses re-runs ("name (1).json") and relocated outputs.
         if json_path and os.path.isfile(json_path):
             _open_transcript_viewer(
-                self, json_path, language=language, media_path=file_path
+                self, json_path, language=language, media_path=playback_path or file_path
             )
             return
         base, _unused = os.path.splitext(file_path)
         guessed = base + ".json"
         if os.path.isfile(guessed):
             _open_transcript_viewer(
-                self, guessed, language=language, media_path=file_path
+                self, guessed, language=language, media_path=playback_path or file_path
             )
         else:
             # The viewer reads and saves .json files only; a run that wrote
@@ -4718,14 +4719,16 @@ class App(tk.Tk):
 
     def _same_job_active(self, task: TranscriptionTask) -> bool:
         """True when a waiting, running or paused job already does ``task``: the same
-        file and the same time range (None/None = the whole file)."""
+        file, time range and audio track."""
         key = (os.path.normcase(os.path.abspath(task.file_path)),
-               getattr(task, "clip_start", None), getattr(task, "clip_end", None))
+               getattr(task, "clip_start", None), getattr(task, "clip_end", None),
+               getattr(task, "audio_track", None))
         for existing in self.queue:
             if getattr(existing, "status", "") not in ("waiting", "running", "paused"):
                 continue
             other = (os.path.normcase(os.path.abspath(existing.file_path)),
-                     getattr(existing, "clip_start", None), getattr(existing, "clip_end", None))
+                     getattr(existing, "clip_start", None), getattr(existing, "clip_end", None),
+                     getattr(existing, "audio_track", None))
             if other == key:
                 return True
         return False
@@ -5334,6 +5337,7 @@ class App(tk.Tk):
                     command=lambda: self.open_transcript_viewer_for(
                         task.file_path, self._task_json_output(task),
                         task.language or task.detected_language,
+                        **({"playback_path": p} if (p := task_repair_path(task)) else {}),
                     ),
                 )
                 out_file = task_output_file(task)
@@ -5495,6 +5499,7 @@ class App(tk.Tk):
                 continue
             nt = TranscriptionTask(t.file_path)
             nt.audio_track = getattr(t, "audio_track", None)
+            nt.repair_name = getattr(t, "repair_name", None)
             if getattr(t, "language", None):
                 nt.language = t.language
             nt.languages = getattr(t, "languages", None)
@@ -5520,6 +5525,7 @@ class App(tk.Tk):
                 continue
             nt = TranscriptionTask(t.file_path)
             nt.audio_track = getattr(t, "audio_track", None)
+            nt.repair_name = getattr(t, "repair_name", None)
             if getattr(t, "language", None):
                 nt.language = t.language
             nt.languages = getattr(t, "languages", None)
@@ -5588,6 +5594,7 @@ class App(tk.Tk):
             return
         new_task = TranscriptionTask(task.file_path)
         new_task.audio_track = getattr(task, "audio_track", None)
+        new_task.repair_name = getattr(task, "repair_name", None)
         if getattr(task, "language", None):
             new_task.language = task.language
         new_task.languages = getattr(task, "languages", None)
@@ -5622,6 +5629,7 @@ class App(tk.Tk):
             return
         new_task = TranscriptionTask(task.file_path)
         new_task.audio_track = getattr(task, "audio_track", None)
+        new_task.repair_name = getattr(task, "repair_name", None)
         if getattr(task, "language", None):
             new_task.language = task.language
         new_task.languages = getattr(task, "languages", None)
@@ -6080,6 +6088,7 @@ class App(tk.Tk):
             desktop_alert.job_ended(self, t)
         if t in self.queue:
             self.queue.remove(t)
+        App._dismiss_repaired_audio(self, t)
         self.refresh()
 
     # --- R2: always-visible Queue action bar ---------------------------------
@@ -6180,6 +6189,7 @@ class App(tk.Tk):
         if task is not None:
             self.open_transcript_viewer_for(
                 task.file_path, self._task_json_output(task), task.language or task.detected_language,
+                **({"playback_path": p} if (p := task_repair_path(task)) else {}),
             )
 
     def _action_bar_open_folder(self) -> None:
@@ -6213,10 +6223,63 @@ class App(tk.Tk):
                 label.pack(fill="x", padx=10, pady=(0, 6))
         elif not line and shown:
             label.pack_forget()
+        repair = _inst_attr(self, "queue_repair_button")
+        if repair is not None:
+            tasks = self._selected_tasks()
+            if line and len(tasks) == 1 and getattr(tasks[0], "can_repair_audio", False):
+                if not repair.winfo_manager():
+                    repair.pack(anchor="w", padx=10, pady=(0, 6), after=label)
+            elif repair.winfo_manager():
+                repair.pack_forget()
+
+    def _repair_selected_task(self) -> None:
+        from app.dialogs.media_audio import offer_repaired_audio
+        from core._checkpoint import partials_dir
+
+        tasks = self._selected_tasks()
+        if len(tasks) != 1:
+            return
+        failed = tasks[0]
+        if (failed.status != "error" or not failed.can_repair_audio
+                or self._active_dup_in_queue(failed.file_path)):
+            return
+        repaired = offer_repaired_audio(self, failed, partials_dir())
+        if repaired is None:
+            return
+        if self._active_dup_in_queue(failed.file_path):
+            repaired.path.unlink(missing_ok=True)
+            return
+        retry = TranscriptionTask(failed.file_path)
+        apply_run_options(retry, task_run_options(failed))
+        retry.language = failed.language
+        retry.whisper_task = failed.whisper_task
+        retry.repair_name = repaired.path.name
+        task_settings.inherit(retry, failed)
+        self.queue.append(retry)
+        self.refresh()
 
     def clear_completed(self) -> None:
-        self.queue[:] = [t for t in self.queue if t.status not in ("finished", "cancelled", "error")]
+        previous = list(self.queue)
+        self.queue[:] = [t for t in previous if t.status not in ("finished", "cancelled", "error")]
+        for task in previous:
+            if task.status in ("finished", "cancelled", "error"):
+                App._dismiss_repaired_audio(self, task)
         self.refresh()
+
+    def _dismiss_repaired_audio(self, task: TranscriptionTask) -> None:
+        name = getattr(task, "repair_name", None)
+        if not name or any(getattr(other, "repair_name", None) == name for other in self.queue):
+            return
+        if any(getattr(worker.get("task"), "repair_name", None) == name for worker in self.workers):
+            return
+        path = task_repair_path(task)
+        if path:
+            try:
+                os.unlink(path)
+            except FileNotFoundError:
+                pass
+            except OSError as error:
+                logger.warning("Could not remove the repaired audio copy: %s", error)
 
     def clear_completed_downloads(self) -> None:
         """Download-tab counterpart to clear_completed() above -- the
@@ -6993,7 +7056,8 @@ class App(tk.Tk):
             ttk.Button(
                 button_row, text=_("View transcript"),
                 command=lambda jp=json_output: self.open_transcript_viewer_for(
-                    task.file_path, jp, task.language or task.detected_language
+                    task.file_path, jp, task.language or task.detected_language,
+                    **({"playback_path": p} if (p := task_repair_path(task)) else {}),
                 ),
             ).pack(side="left", padx=(8, 0))
             ttk.Button(
@@ -8435,6 +8499,7 @@ class App(tk.Tk):
         if not getattr(task, "no_speech", False) and task_transcript_json(task, must_exist=True):
             self.open_transcript_viewer_for(
                 task.file_path, self._task_json_output(task), task.language or task.detected_language,
+                **({"playback_path": p} if (p := task_repair_path(task)) else {}),
             )
             return
         self._open_task_output_folder(task)
