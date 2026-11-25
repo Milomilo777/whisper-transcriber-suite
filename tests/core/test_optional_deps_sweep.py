@@ -362,3 +362,22 @@ def test_unreadable_rollback_record_preserves_original_backup(extras: Path) -> N
     assert optional_deps.sweep_install_leftovers() == (0, 0)
     assert (backup / "__init__.py").read_text(encoding="utf-8") == "original"
     assert record.read_text(encoding="utf-8") == "{"
+    messages: list[str] = []
+    assert optional_deps._recover_install(str(extras), messages.append) == (False, 0)
+    assert "move" in messages[0] and str(extras) in messages[0] and "reinstall" in messages[0]
+
+
+def test_rollback_record_and_backup_recover_under_a_long_unicode_profile(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The folder and backup fit MAX_PATH. The journal's temporary filename does not.
+    folder = tmp_path / ("کاربر" * 8) / ("ب" * (240 - len(str(tmp_path)) - 48)) / "pylibs"
+    folder.mkdir(parents=True)
+    monkeypatch.setattr(optional_deps, "extras_dir", lambda: str(folder))
+    name = "ب.py"
+    (folder / f".{name}.bak-{DEAD}").write_text("original", encoding="utf-8")
+    optional_deps._write_rollback_record(str(folder), {name: True}, DEAD)
+
+    assert optional_deps.sweep_install_leftovers() == (1, 0)
+    assert (folder / name).read_text(encoding="utf-8") == "original"
+    assert optional_deps._ROLLBACK_RECORD not in {path.name for path in folder.iterdir()}

@@ -443,16 +443,31 @@ def _rollback_dest(folder: str, name: str) -> str:
     return dest
 
 
+def _rollback_record_path(folder: str) -> str:
+    record = os.path.join(folder, _ROLLBACK_RECORD)
+    if sys.platform != "win32":
+        return record
+    # The journal and its scratch filename can be longer than paths that
+    # already fit in the package folder when legacy MAX_PATH limits apply.
+    record = os.path.abspath(record)
+    if record.startswith("\\\\?\\"):
+        return record
+    if record.startswith("\\\\"):
+        return "\\\\?\\UNC\\" + record[2:]
+    return "\\\\?\\" + record
+
+
 def _write_rollback_record(folder: str, entries: dict[str, bool], pid: int) -> None:
     """Publish the complete recovery plan before moving any live files."""
-    stream = tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=folder,
+    record = _rollback_record_path(folder)
+    stream = tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=os.path.dirname(record),
                                          prefix=".install-rollback-", delete=False)
     try:
         with stream:
             json.dump({"pid": pid, "entries": entries}, stream)
             stream.flush()
             os.fsync(stream.fileno())
-        os.replace(stream.name, os.path.join(folder, _ROLLBACK_RECORD))
+        os.replace(stream.name, record)
     finally:
         _rm(stream.name)
 
@@ -468,7 +483,7 @@ def _recover_install(
     *, published: set[str] | None = None,
 ) -> tuple[bool, int]:
     """Retry rollback under the install lock. Only this install can discard its new entries."""
-    record = os.path.join(folder, _ROLLBACK_RECORD)
+    record = _rollback_record_path(folder)
     try:
         if not _entry_exists(record):
             return True, 0
@@ -482,8 +497,12 @@ def _recover_install(
         ):
             raise ValueError("Invalid install recovery record")
     except (OSError, ValueError, TypeError, KeyError) as e:
-        _recovery_message(f"Could not read package recovery record {record}. "
-                          f"Keep the record and package backups for repair. ({e})", log_cb)
+        logger.warning("Could not read package recovery record %s: %s", record, e)
+        _recovery_message(
+            f"Could not recover extra packages. Close all app windows, move the folder "
+            f"{folder} to a safe location outside the cache, then reopen the app and "
+            "reinstall the extra packages. Keep the folder for recovery.", log_cb,
+        )
         return False, 0
 
     restored = 0
@@ -1023,7 +1042,7 @@ def _install_impl(
             if not is_available(feature):
                 raise OSError("The installed package could not be found.")
             # Removing the record commits all published units before deleting old copies.
-            os.unlink(os.path.join(final_target, _ROLLBACK_RECORD))
+            os.unlink(_rollback_record_path(final_target))
         except Exception as merge_err:  # noqa: BLE001
             if temp is not None:
                 _rm(temp)
