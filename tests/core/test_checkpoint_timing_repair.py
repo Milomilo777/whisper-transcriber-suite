@@ -214,6 +214,21 @@ def test_unplaced_surrogate_text_round_trips_in_durable_recovery(endpoint_case, 
     assert sliced == [598.0] and records()[-1]["segments"] == original
 
 
+def test_legacy_cursor_beyond_audio_with_dropped_cue_resumes_valid_prefix(endpoint_case, monkeypatch):
+    case = endpoint_case
+    original, _path, _before = seed(case, monkeypatch)
+    original[-1].update(start=602.0, end=604.48, text="گفتار")
+    writer = output_task(case)
+    tr._remember_audio_end(writer, str(case.audio))
+    tr._write_periodic_checkpoint(writer, original, 604.48, "fa", 0.9, None)
+    sliced = install_tail(case, monkeypatch)
+
+    assert tr.resume_transcription(output_task(case)) is True
+    assert sliced == [598.0]
+    assert [s["text"] for s in case.writes[-1]] == ["valid prefix", "decoded tail"]
+    assert records()[-1]["segments"] == original
+
+
 @pytest.mark.parametrize("completed", [False, True])
 def test_cursor_only_overshoot_respects_completed_transcription(endpoint_case, monkeypatch, completed):
     case = endpoint_case

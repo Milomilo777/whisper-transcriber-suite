@@ -1145,8 +1145,12 @@ def _recover_checkpoint_timing(
             _warn_dropped_timing(task.file_path, segments, cues, words, log_cb)
             data = dict(data, segments=bounded, segment_count=len(bounded))
             cursor = _cursor_or_none(data.get("last_end_time"))
-            if cursor is not None and cursor > end:
-                data["last_end_time"] = end
+            if (data.get("transcription_completed") is not True and cursor is not None
+                    and (cursor > end or (cues and cursor == end))):
+                # An out-of-range legacy cue end is not a usable decode
+                # cursor. Restart from the text that survived timing repair.
+                data["last_end_time"] = max((float(s["end"]) for s in bounded), default=0.0)
+                return data, True
             return data, False
     prefix: list[dict[str, Any]] = []
     reason = ""
