@@ -2830,18 +2830,16 @@ class AdvancedDialog(tk.Toplevel):
         to ``self.app.log`` so the user can leave the dialog open
         while it runs.
         """
-        import threading
-        try:
-            from core import llm as _llm
-        except Exception as e:  # noqa: BLE001
-            self.app.log(f"LLM module unavailable: {e}")
-            return
-        if not _llm.runtime_available():
-            self.app.log(_llm.runtime_availability_reason())
-            return
-
         def _worker() -> None:
             try:
+                from core import llm as _llm
+            except Exception as e:  # noqa: BLE001
+                self.app.log_threadsafe(f"LLM module unavailable: {e}")
+                return
+            try:
+                if not _llm.runtime_available():
+                    self.app.log_threadsafe(_llm.runtime_availability_reason())
+                    return
                 self.app.log_threadsafe("Downloading Qwen2.5-1.5B LLM model (~1 GB)…")
                 path = _llm.download_default_model(log=self.app.log_threadsafe)
                 self.app.log_threadsafe(f"LLM model ready at {path}")

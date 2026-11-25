@@ -416,6 +416,27 @@ def engine_statuses(cfg: Mapping[str, Any]) -> dict[str, EngineStatus]:
     return {value: _PROBES[value](cfg) for _label, value in ENGINE_CHOICES}
 
 
+def isolated_engine_status(
+    value: str, cfg: Mapping[str, Any], *, current: Callable[[], bool] | None = None,
+) -> EngineStatus:
+    """Check native readiness in a disposable process so Tk never shares its import lock."""
+    from ..hardware_probe import query
+
+    engine = normalise_engine(value)
+    if engine == "cloud_stt":
+        # This engine only checks that a key was entered. Keep it in memory.
+        return _cloud_stt_status(cfg)
+    model = cfg.get("model")
+    probe_cfg: dict[str, Any] = {
+        key: str(cfg.get(key) or "")
+        for key in ("model_path", "whisper_model", "hub_folder", "gcloud_stt_credentials_json")
+    }
+    if isinstance(model, dict):
+        probe_cfg["model"] = {"name": str(model.get("name") or "")}
+    result = query("engine", request={"engine": engine, "config": probe_cfg}, current=current)
+    return EngineStatus(**result)
+
+
 # ------------------------------------------------------- picker presentation
 #
 # Shared by the Transcribe tab's Engine dropdown and the Advanced dialog's

@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import copy
-import gc
 import logging
 import os
 import re
@@ -3449,10 +3448,10 @@ class App(tk.Tk):
         *,
         cfg: Mapping[str, Any] | None = None,
     ) -> None:
-        """Deep-probe one engine on a daemon thread; ``on_result`` runs on Tk.
+        """Wait for the isolated engine probe off-thread; ``on_result`` runs on Tk.
 
         Shared by the Transcribe-tab status line and the Advanced dialog's
-        warning row so the GC-off thread discipline below exists in exactly
+        warning row so the isolation and fallback logic exist in exactly
         one place. ``on_result`` is always dispatched through
         :meth:`post_to_main` — never called on the probe thread.
 
@@ -3466,44 +3465,23 @@ class App(tk.Tk):
         from core.backends import availability as _eng
 
         cfg_snapshot = dict(cfg) if cfg is not None else dict(self.app_config)
+        ticket_field = "_advanced_engine_probe_ticket" if cfg is not None else "_engine_probe_ticket"
+        ticket = object()
+        setattr(self, ticket_field, ticket)
+
+        def current() -> bool:
+            return getattr(self, ticket_field) is ticket
 
         def _probe() -> None:
-            # GC disabled for this ENTIRE probe thread, not just the
-            # engine_status() call — a real crash was confirmed
-            # (2026-08-15, Python 3.14) three times, each narrower fix
-            # disproven by the next instrumented full-suite rerun:
-            # (1) GC firing mid-import inside engine_status() faulted a
-            # C-extension class-registration step; (2) narrowing the
-            # gc.disable() window to just that call "fixed" it once,
-            # then a later rerun faulted one line later in a plain
-            # EngineStatus(...) dataclass construction; (3) widening the
-            # window to the whole engine_status() try/finally "fixed" it
-            # again, then ANOTHER rerun faulted right after gc.enable()
-            # returned, inside the post_to_main() call below. gc.disable
-            # ()/gc.enable() are PROCESS-GLOBAL, not thread-local — every
-            # other thread's allocations pile up ungarbage-collected
-            # while this one holds GC off, so re-enabling it here was
-            # itself triggering an immediate, larger-than-usual
-            # collection at the exact moment this thread kept running.
-            # Holding GC off for the probe's ENTIRE body (including
-            # post_to_main) removes that re-enable-triggers-a-collision
-            # window too. See core/backends/google_cloud_stt.py's
-            # matching comment and ADR 0008 in docs/DECISIONS.md for the
-            # full three-round story — treat this as a mitigation that
-            # has repeatedly needed widening, not a proven-complete fix.
-            was_gc_enabled = gc.isenabled()
-            gc.disable()
             try:
-                try:
-                    st = _eng.engine_status(value, cfg_snapshot, deep=True)
-                except Exception as e:  # noqa: BLE001
-                    st = _eng.EngineStatus(value, False, str(e) or "probe failed")
-                # post_to_main, NOT self.after: this runs on a daemon
-                # thread, and off-thread after() raises on Python 3.14.
-                self.post_to_main(lambda: on_result(st))
-            finally:
-                if was_gc_enabled:
-                    gc.enable()
+                st = _eng.isolated_engine_status(value, cfg_snapshot, current=current)
+            except Exception:  # noqa: BLE001 - a stalled or crashed probe gives no deep verdict
+                if not current():
+                    return
+                logger.debug("Isolated engine probe did not complete", exc_info=True)
+                st = _eng.engine_status(value, cfg_snapshot, deep=False)
+            if current():
+                self.post_to_main(lambda: on_result(st) if current() else None)
 
         threading.Thread(target=_probe, daemon=True).start()
 

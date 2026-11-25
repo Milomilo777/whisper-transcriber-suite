@@ -17,6 +17,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Keep engine readiness checks from blocking the interface while native packages load.
 - Restore displaced packages after a failed optional install and preserve backups across restarts when recovery needs attention.
 - Explain empty transcripts when server jobs finish without recognising speech.
 - Close download responses cleanly when a redirect stalls or is cancelled.
