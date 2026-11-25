@@ -137,6 +137,8 @@ _TOKENIZER_PATTERN = re.compile(
 
 
 def observed_code(exc: BaseException) -> str:
+    if isinstance(exc, ImportError):
+        return "worker_import_failed"
     if isinstance(exc, OSError):
         if exc.errno == errno.ECONNRESET or getattr(exc, "winerror", None) == 10054:
             return "network_reset"
@@ -551,11 +553,12 @@ def stderr_clue(lines: list[str]) -> dict[str, str]:
             break
     result: dict[str, Any] = {"failure_site": "parent.worker_exit"}
     frames: list[str] = []
-    families = {cls.__name__: cls for cls in (
+    families: dict[str, type[BaseException]] = {cls.__name__: cls for cls in (
         MemoryError, RuntimeError, PermissionError, FileNotFoundError, TimeoutError, OSError,
         UnicodeError, ValueError, TypeError, KeyError, IndexError, AssertionError,
     )}
-    families.update(UnicodeEncodeError=UnicodeError, UnicodeDecodeError=UnicodeError)
+    families.update(UnicodeEncodeError=UnicodeError, UnicodeDecodeError=UnicodeError,
+                    ImportError=ImportError, ModuleNotFoundError=ModuleNotFoundError)
     families["ConnectionResetError"] = ConnectionResetError
     families["numpy._core._exceptions._ArrayMemoryError"] = MemoryError
     families["numpy.core._exceptions._ArrayMemoryError"] = MemoryError
@@ -602,6 +605,8 @@ def stderr_clue(lines: list[str]) -> dict[str, str]:
                     result["observed_code"] = "tokenizer_error"
             if name == "ConnectionResetError":
                 result["observed_code"] = "network_reset"
+            elif issubclass(cls, ImportError):
+                result["observed_code"] = "worker_import_failed"
     terminal = tail[-1].strip() if tail else ""
     if terminal == "Invalid data found when processing input":
         result["observed_code"] = "corrupt_media"

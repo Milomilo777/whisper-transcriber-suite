@@ -11,6 +11,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Preserve worker failure reports when startup delivery fails or native output leaves a partial line, and recognize terminal import failures.
 - Reject unrelated settings writes when an interrupted configuration restore cannot finish.
 - Keep ASS karaoke exports working when a word has an extreme negative clock.
 - Keep subtitle and lyric timestamp formatting from overflowing on extreme finite values.

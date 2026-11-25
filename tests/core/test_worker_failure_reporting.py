@@ -158,6 +158,52 @@ def test_parent_attaches_stderr_clue_to_exit_row(monkeypatch):
     assert "private" not in str(task.failure_clue)
 
 
+@pytest.mark.parametrize("name", ["ImportError", "ModuleNotFoundError"])
+def test_terminal_bootstrap_import_failure_gets_closed_reason(name):
+    clue = failure_clue.stderr_clue([
+        "Traceback (most recent call last):",
+        '  File "C:/private/worker.py", line 10, in <module>',
+        f"{name}: private module name",
+    ])
+    row = failure_clue.parent_clue("parent.worker_exit", exit_code=1, event=clue)
+    assert row["observed_code"] == "worker_import_failed"
+    assert "private" not in str(row)
+
+
+def test_failed_startup_event_keeps_model_cause_on_stderr(monkeypatch, capsys):
+    real_emit = worker.emit
+
+    def broken_startup(event, **payload):
+        if event == "startup_error":
+            raise OSError("synthetic stdout failure")
+        real_emit(event, **payload)
+
+    monkeypatch.setattr(worker, "emit", broken_startup)
+    monkeypatch.setattr(worker, "load_existing_model", lambda cb: False)
+    monkeypatch.setattr(worker, "get_model_error", lambda: "private model path")
+    monkeypatch.setattr(worker, "get_model_failure_clue", lambda: {
+        "exception_family": "RuntimeError", "observed_code": "model_load_failed",
+    })
+    assert worker.main() == 1
+    records = [json.loads(line) for line in capsys.readouterr().err.splitlines() if line.startswith("{")]
+    assert len(records) == 1
+    assert records[0]["event"] == "startup_error"
+    assert records[0]["failure_site"] == "worker.model"
+    assert records[0]["observed_code"] == "model_load_failed"
+    assert "private" not in str(records)
+
+
+def test_fatal_event_is_framed_after_unterminated_native_stdout(monkeypatch):
+    merged_pipe = io.StringIO()
+    monkeypatch.setattr(sys, "stdout", merged_pipe)
+    monkeypatch.setattr(worker, "_stdout_is_process_fd1", lambda: True)
+    merged_pipe.write("unterminated native output")
+    worker._report_error(SystemExit(1), file_path="input.wav", task_id="task-1")
+    records = [json.loads(line) for line in merged_pipe.getvalue().splitlines() if line.startswith("{")]
+    assert [record["event"] for record in records] == ["error"]
+    assert records[0]["task_id"] == "task-1"
+
+
 def test_broken_command_queue_reports_instead_of_hanging(monkeypatch, capsys):
     class BrokenQueue:
         def put(self, command):
