@@ -264,6 +264,7 @@
   "Copy the transcript to an Obsidian vault folder:": "Copy the transcript to an Obsidian vault folder:",
   "Corsican": "Corsican",
   "Could not build the bilingual subtitle.": "Could not build the bilingual subtitle.",
+  "Could not check engine readiness. Reopen the app to try again.": "Could not check engine readiness. Reopen the app to try again.",
   "Could not check this computer, so no time estimate is shown.": "Could not check this computer, so no time estimate is shown.",
   "Could not check this computer: {error}": "Could not check this computer: {error}",
   "Could not convert that .otr file to SRT.": "Could not convert that .otr file to SRT.",
