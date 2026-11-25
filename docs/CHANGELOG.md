@@ -17,6 +17,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Resume interrupted transcription from the saved decode position even when aligned cues extend past it.
 - Keep engine readiness checks from blocking the interface while native packages load.
 - Restore displaced packages after a failed optional install and preserve backups across restarts when recovery needs attention.
 - Explain empty transcripts when server jobs finish without recognising speech.
