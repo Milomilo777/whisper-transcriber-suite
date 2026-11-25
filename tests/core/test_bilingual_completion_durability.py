@@ -31,6 +31,7 @@ def job(tmp_path, monkeypatch):
         _ai_progress_var=SimpleNamespace(set=lambda value: None), _post_to_main=callbacks.append,
     )
     fake._finish_bilingual_translate = MethodType(viewer.TranscriptViewer._finish_bilingual_translate, fake)
+    fake._keep_open_for_cue_draft = MethodType(viewer.TranscriptViewer._keep_open_for_cue_draft, fake)
     monkeypatch.setattr(viewer.messagebox, "askyesno", lambda *args, **kwargs: True)
     for name in ("showinfo", "showwarning"):
         monkeypatch.setattr(viewer.messagebox, name, lambda title, message, **kwargs: shown.append(message))

@@ -24,6 +24,7 @@ def viewer():
     state._set_ai_buttons_busy = busy
     state._set_ai_result = lambda text, language=None: state.results.append((text, language))
     state._finish_ai_task = tv.TranscriptViewer._finish_ai_task.__get__(state)
+    state._keep_open_for_cue_draft = tv.TranscriptViewer._keep_open_for_cue_draft.__get__(state)
     state._get_llm_runner = lambda: (state.calls.append("runner") or object(), "")
     state._post_to_main = lambda fn: fn()
     return state

@@ -8,6 +8,10 @@ from core import config
 from core.writers import bilingual_srt
 
 
+class _ExitViewer(SimpleNamespace):
+    _keep_open_for_cue_draft = viewer.TranscriptViewer._keep_open_for_cue_draft
+
+
 def _failed_result(tmp_path, monkeypatch):
     blocked = tmp_path / "existing-file"
     blocked.write_bytes(b"keep this unrelated file")
@@ -25,7 +29,7 @@ def _failed_result(tmp_path, monkeypatch):
 @pytest.mark.parametrize("dirty,skip", [(False, False), (True, False), (False, True), (True, True)])
 def test_app_exit_keeps_completed_translation_until_explicit_discard(tmp_path, monkeypatch, dirty, skip):
     pending = _failed_result(tmp_path, monkeypatch)
-    fake = SimpleNamespace(_closing=False, _dirty=dirty, winfo_exists=lambda: True,
+    fake = _ExitViewer(_closing=False, _dirty=dirty, winfo_exists=lambda: True,
         _pending_bilingual_save=pending, json_path="source.json", _confirm_exit=lambda *_: True)
     monkeypatch.setattr(viewer, "_OPEN_VIEWERS", {"source": fake})
     calls = []
@@ -38,7 +42,7 @@ def test_app_exit_keeps_completed_translation_until_explicit_discard(tmp_path, m
 
 
 def test_final_exit_recheck_catches_translation_completed_during_other_prompts(tmp_path, monkeypatch):
-    fake = SimpleNamespace(_closing=False, _dirty=False, winfo_exists=lambda: True,
+    fake = _ExitViewer(_closing=False, _dirty=False, winfo_exists=lambda: True,
         _pending_bilingual_save=None, json_path="source.json", _confirm_exit=lambda *_: True)
     monkeypatch.setattr(viewer, "_OPEN_VIEWERS", {"source": fake})
     assert viewer.confirm_unsaved_before_exit() is True
@@ -56,7 +60,7 @@ def test_valid_recovery_allows_exit_but_corrupt_recovery_keeps_memory(tmp_path, 
         source_json=str(tmp_path / "source.json"), language="French",
         target=str(blocked / "out.srt"))
     assert pending.saved_path is None and pending.recovery_path
-    fake = SimpleNamespace(_closing=False, _dirty=False, winfo_exists=lambda: True,
+    fake = _ExitViewer(_closing=False, _dirty=False, winfo_exists=lambda: True,
         _pending_bilingual_save=pending, json_path="source.json", _confirm_exit=lambda *_: True)
     monkeypatch.setattr(viewer, "_OPEN_VIEWERS", {"source": fake})
     calls = []
