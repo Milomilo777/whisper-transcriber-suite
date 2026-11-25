@@ -201,19 +201,32 @@ def test_viewer_finds_nothing_for_unrelated_media(tmp_path):
 
 
 def test_open_viewer_passes_the_task_source_as_media(tmp_path, monkeypatch):
+    import tkinter as tk
+
     out_dir = tmp_path / "out"
     out_dir.mkdir()
     json_path = out_dir / "renamed.json"
     _write(json_path, "[]")
     media = tmp_path / "talk.mov"
     media.write_bytes(b"x")
-    opened: list[dict] = []
-    monkeypatch.setattr(tv, "TranscriptViewer", lambda master, jp, **k: opened.append(dict(k, json=jp)))
-    tv.open_viewer(None, str(json_path), media_path=str(media))  # type: ignore[arg-type]
-    tv.open_viewer(None, str(json_path), media_path=str(tmp_path / "gone.mp4"))  # type: ignore[arg-type]
-    assert opened[0]["media_path"] == str(media)
-    # A source that is gone falls back to the viewer's own pairing.
-    assert opened[1]["media_path"] is None
+    neighbor = out_dir / "renamed.mp4"
+    neighbor.touch()
+    missing = str(tmp_path / "gone.mp4")
+    monkeypatch.setattr(tv, "_try_load_vlc", lambda: (None, ""))
+    root = tk.Tk()
+    root.withdraw()
+    try:
+        viewer = tv.open_viewer(root, str(json_path), media_path=str(media))
+        assert viewer is not None
+        assert viewer.media_path == str(media)
+        viewer.destroy()
+
+        viewer = tv.open_viewer(root, str(json_path), media_path=missing)
+        assert viewer is not None
+        assert viewer.media_path == str(neighbor)
+        assert viewer._comparison_media_path == missing
+    finally:
+        root.destroy()
 
 
 def test_app_view_transcript_hands_over_the_source(tmp_path, monkeypatch):
