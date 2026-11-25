@@ -195,7 +195,42 @@ def test_vad_cue_guard_corrects_exact_end_with_legacy_timestamp_map():
     assert timestamps.get_original_time(result.end) == pytest.approx(1.37)
 
 
-def test_vad_cue_start_stays_with_following_chunk_on_catalina_fixture():
+def test_vad_cue_cannot_move_past_its_batched_decode_window(monkeypatch):
+    from core.speech_collect import batch_source_bounds, install
+
+    rate = 16000
+    chunks = [dict(start=rate, end=15 * rate),
+              dict(start=1020 * rate, end=1022 * rate)]
+    assert install()
+    with batch_source_bounds():
+        _, metadata = fw.collect_chunks(np.zeros(1022 * rate, np.float32), chunks,
+                                        rate, max_duration=15)
+    model = object.__new__(be.WhisperModel)
+    model.feature_extractor = SimpleNamespace(sampling_rate=rate)
+    model.frames_per_second = 100
+    model.time_precision = .02
+    pipeline = be.BatchedInferencePipeline(model)
+    tokenizer = SimpleNamespace(timestamp_begin=100, decode=lambda tokens: str(tokens))
+    options = SimpleNamespace(word_timestamps=False, temperatures=[0.])
+    token_groups = ([100, 42, 110, 796, 43, 835], [44])
+    monkeypatch.setattr(pipeline, "generate_segment_batched", lambda *args: (
+        None, [dict(tokens=tokens, avg_logprob=-.2, no_speech_prob=.1)
+               for tokens in token_groups],
+    ))
+    raw = pipeline._batched_segments_generator([None, None], tokenizer, metadata, 2, options, False)
+    with vad_window.clamp_vad_cue_bounds(400):
+        restored = fw.restore_speech_timestamps(raw, chunks, rate)
+    _, tail, following = list(restored)
+    assert not tail.words
+    assert tail.tokens == [796, 43, 835]
+    assert tail._decode_window_end == 15.
+    assert (tail.start, tail.end) == pytest.approx((14.92, 15.))
+    assert be.segment_decode_end(tail, tail.end) == 15.
+    assert following.start == pytest.approx(1020.)
+
+
+@pytest.mark.parametrize("decode_end", [None, 3595.408])
+def test_vad_cue_start_stays_with_following_chunk_on_catalina_fixture(decode_end):
     chunks = [
         dict(start=76032, end=147712),
         dict(start=16315648, end=16392448),
@@ -203,7 +238,10 @@ def test_vad_cue_start_stays_with_following_chunk_on_catalina_fixture():
         dict(start=48955648, end=49029888),
         dict(start=57454848, end=57526528),
     ]
-    result, = _decode_vad_cue(_vad_cue(18.72, 23.2), chunks, 400)
+    cue = _vad_cue(18.72, 23.2)
+    if decode_end is not None:
+        cue._decode_window_end = decode_end
+    result, = _decode_vad_cue(cue, chunks, 400)
     assert (result.start, result.end) == pytest.approx((3590.93, 3595.31))
 
 

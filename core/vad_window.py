@@ -198,11 +198,23 @@ def _clamp_cue_bounds(segments: Iterable[Any], chunks: list[dict[str, int]],
     for segment in segments:
         if not segment.words:
             start, end = segment.start, segment.end
+            start_sample = start * rate
+            start_index = bisect_right(boundaries, start_sample)
             raw_end_sample = end * rate
             end_sample = raw_end_sample
+            decode_end = getattr(segment, "_decode_window_end", None)
             index = bisect_right(boundaries, end_sample) - 1
+            # Use the batched window's source bound when a raw cue end
+            # overshoots the last VAD cut that window decoded.
+            overshoots_decode_cut = (
+                decode_end is not None and start_index < len(chunks) - 1
+                and round(decode_end * rate) == chunks[start_index]["end"]
+                and end_sample >= boundaries[start_index]
+            )
+            if overshoots_decode_cut:
+                index = start_index
             if (0 <= index < len(chunks) - 1
-                    and end_sample - boundaries[index] <= tolerance
+                    and (overshoots_decode_cut or end_sample - boundaries[index] <= tolerance)
                     and (not restores_exact_ends or int(end_sample) != boundaries[index])
                     and chunks[index + 1]["start"] > chunks[index]["end"]):
                 # An end within the next chunk's leading padding belongs to
@@ -214,8 +226,7 @@ def _clamp_cue_bounds(segments: Iterable[Any], chunks: list[dict[str, int]],
                     end = preceding_end
                     end_sample = end * rate
 
-            start_sample = start * rate
-            index = bisect_right(boundaries, start_sample)
+            index = start_index
             if index < len(chunks) - 1:
                 boundary = boundaries[index]
                 next_end = boundaries[index + 1]
@@ -223,7 +234,8 @@ def _clamp_cue_bounds(segments: Iterable[Any], chunks: list[dict[str, int]],
                         and end_sample < next_end
                         and (end_sample - boundary) * 1000 / rate > pad_ms
                         and round(raw_end_sample) != next_end
-                        and chunks[index + 1]["start"] > chunks[index]["end"]):
+                        and chunks[index + 1]["start"] > chunks[index]["end"]
+                        and (decode_end is None or (chunks[index + 1]["start"] + 1) / rate < decode_end)):
                     # A start in the trailing pad belongs to the next chunk
                     # when the cue continues inside that chunk's speech.
                     following_start = (boundary + 1) / rate

@@ -5,6 +5,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 ## [Unreleased]
 
 - Preserve subtitle cue ends when the VAD timestamp map already places them on the correct speech boundary.
+- Keep unaligned batched VAD cues from jumping to speech outside the window that decoded them.
 
 ### Added
 
