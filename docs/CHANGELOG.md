@@ -28,6 +28,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Keep locked packages intact when rolling back a failed optional install.
 - Preserve earlier package backups when startup cannot verify their replacement.
 - Keep optional-package recovery working in long Windows paths and explain how to recover an unreadable record.
+- Server jobs keep per-job settings out of JSON transcript downloads.
+- Subtitle cues end at the preceding speech when a timestamp overshoots into voice activity detection padding.
+- A subtitle that begins at a silence cut now starts with its speech instead of covering the preceding gap.
+
 - Explain empty transcripts when server jobs finish without recognising speech.
 - Close download responses cleanly when a redirect stalls or is cancelled.
 - Keep transcript viewer toolbar buttons visible at high display scaling.

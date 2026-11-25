@@ -315,13 +315,18 @@ class WhisperDecode:
 
     def transcribe(self, audio: Any, **kwargs: Any) -> tuple[Any, Any]:
         options = dict(kwargs)
+        vad_options = options.get("vad_parameters")
+        padding_ms = (vad_options.get("speech_pad_ms", 400) if isinstance(vad_options, dict)
+                      else getattr(vad_options, "speech_pad_ms", 400))
 
         def start(source: Any, source_offset: float = 0.0) -> tuple[Any, Any]:
             self.audio_offset = source_offset
             while True:
                 try:
-                    with (vad_window.windowed_vad(self._window_s)
-                          if self._window_s is not None else nullcontext()):
+                    with (
+                        vad_window.windowed_vad(self._window_s) if self._window_s is not None else nullcontext(),
+                        vad_window.clamp_vad_cue_bounds(padding_ms if options.get("vad_filter") else 0),
+                    ):
                         runner = self._runner(options)
                         factory = self._temperature
                         control = factory(runner) if factory is not None else None

@@ -1,7 +1,12 @@
 """Exercise fallback bounds through installed sequential and batched callers."""
+from collections import namedtuple
+from types import SimpleNamespace
+
+import faster_whisper.transcribe as fw
 import numpy as np
 import pytest
 
+from core import vad_window
 from core.backends import faster_whisper_be as be
 from tests.core.test_word_timing_safety import model_for_loop
 
@@ -118,6 +123,128 @@ def test_vad_merged_chunk_restores_original_timeline_after_fallback(monkeypatch)
     assert len(rows) == 1 and rows[0].text == " first late"
     assert (rows[0].start, rows[0].end) == pytest.approx((1.1, 3.54))
     assert not rows[0].words
+
+
+def _vad_cue(start, end, words=None):
+    return fw.Segment(id=1, seek=0, start=start, end=end, text=" text", tokens=[1],
+                      avg_logprob=-.1, compression_ratio=1., no_speech_prob=0.,
+                      words=words, temperature=0.)
+
+
+def _decode_vad_cue(cue, chunks, pad_ms, *, vad_filter=True):
+    def transcribe(_audio, **_options):
+        # Upstream captures its VAD map before returning lazy cues.
+        return fw.restore_speech_timestamps(iter([cue]), chunks, 16000), None
+
+    runner = SimpleNamespace(transcribe=transcribe)
+    decode = be.WhisperDecode(lambda _: runner, lambda: False, lambda *_: None, 0.)
+    rows, _ = decode.transcribe(None, vad_filter=vad_filter, vad_parameters={"speech_pad_ms": pad_ms})
+    return rows
+
+
+@pytest.mark.parametrize(
+    "pad_ms,raw_end,next_start,aligned,expected_end",
+    [
+        (400, 1.08, 1020., False, 2.),
+        (40, 1.032, 1020., False, 2.),
+        (40, 1.08, 1020., False, 1020.08),
+        (0, 1.08, 1020., False, 1020.08),
+        (400, 1.24, 1020., False, 1020.24),
+        (400, 1.08, 2., False, 2.08),
+        (400, 1.08, 1020., True, 1020.08),
+    ],
+)
+def test_vad_cue_end_does_not_jump_across_removed_silence(
+    pad_ms, raw_end, next_start, aligned, expected_end,
+):
+    rate = 16000
+    chunks = [dict(start=rate, end=2 * rate),
+              dict(start=round(next_start * rate), end=round((next_start + 1) * rate))]
+    words = [fw.Word(1.04, raw_end, " next", .9)] if aligned else []
+    result, = _decode_vad_cue(_vad_cue(.2, raw_end, words), chunks, pad_ms)
+    assert result.text == " text"
+    assert result.start == pytest.approx(next_start + .04 if aligned else 1.2)
+    assert result.end == pytest.approx(expected_end)
+
+
+def test_vad_cue_guard_preserves_positive_duration_after_restoration_rounding():
+    chunks = [dict(start=16000, end=33024), dict(start=16320000, end=16336000)]
+    result, = _decode_vad_cue(_vad_cue(1.06, 1.08), chunks, 400)
+    assert (result.start, result.end) == pytest.approx((2.06, 1020.02))
+
+
+def test_vad_cue_start_stays_with_following_chunk_on_catalina_fixture():
+    chunks = [
+        dict(start=76032, end=147712),
+        dict(start=16315648, end=16392448),
+        dict(start=32635648, end=32713984),
+        dict(start=48955648, end=49029888),
+        dict(start=57454848, end=57526528),
+    ]
+    result, = _decode_vad_cue(_vad_cue(18.72, 23.2), chunks, 400)
+    assert (result.start, result.end) == pytest.approx((3590.93, 3595.31))
+
+
+@pytest.mark.parametrize(
+    "pad_ms,raw_start,raw_end,next_start,aligned,expected",
+    [
+        (400, .904, 1.7, 1020., False, (1020., 1020.7)),
+        (40, .904, 1.7, 1020., False, (1.90, 1020.7)),
+        (0, .904, 1.7, 1020., False, (1.90, 1020.7)),
+        (400, .8, 1.7, 1020., False, (1.8, 1020.7)),
+        (400, .904, 1.7, 2., False, (1.90, 2.7)),
+        (400, .904, 1.08, 1020., False, (1.90, 2.)),
+        (400, .904, 1.2, 1020., False, (1.90, 1020.2)),
+        (400, .904, 1.7, 1020., True, (1020.04, 1020.7)),
+        (400, .904, 2., 1020., False, (1.90, 1021.)),
+        (400, .904, 2.08, 1020., False, (1020., 1021.)),
+        (400, .904, 2.7, 1020., False, (1.90, 2040.7)),
+    ],
+)
+def test_vad_cue_start_guard_only_moves_unaligned_cues_into_the_next_chunk(
+    pad_ms, raw_start, raw_end, next_start, aligned, expected,
+):
+    rate = 16000
+    chunks = [dict(start=rate, end=2 * rate),
+              dict(start=round(next_start * rate), end=round((next_start + 1) * rate)),
+              dict(start=2040 * rate, end=2041 * rate)]
+    words = [fw.Word(1.04, raw_end, " next", .9)] if aligned else []
+    result, = _decode_vad_cue(_vad_cue(raw_start, raw_end, words), chunks, pad_ms)
+    assert result.text == " text"
+    assert (result.start, result.end) == pytest.approx(expected)
+
+
+def test_vad_cue_start_guard_uses_sample_precision_for_an_exact_end():
+    chunks = [dict(start=16000, end=514688), dict(start=16320000, end=16335872)]
+    # The compressed end is sample 514560, but multiplication rounds below it.
+    result, = _decode_vad_cue(_vad_cue(31.08, 32.16), chunks, 400)
+    assert (result.start, result.end) == pytest.approx((32.08, 1020.99))
+
+
+def test_vad_cue_guard_isolates_lazy_decodes():
+    chunks = [dict(start=16000, end=32000), dict(start=16320000, end=16336000)]
+    padded = _decode_vad_cue(_vad_cue(.2, 1.08), chunks, 400)
+    disabled = _decode_vad_cue(_vad_cue(.2, 1.08), chunks, 400, vad_filter=False)
+    assert next(disabled).end == pytest.approx(1020.08)
+    assert next(padded).end == pytest.approx(2.)
+    outside = fw.restore_speech_timestamps(iter([_vad_cue(.2, 1.08)]), chunks, 16000)
+    assert next(outside).end == pytest.approx(1020.08)
+
+
+@pytest.mark.parametrize("edges,expected", [
+    ((.2, 1.08), (1.2, 2.)),
+    ((.904, 1.7), (1020., 1020.7)),
+])
+def test_vad_cue_guard_supports_immutable_legacy_segments(edges, expected):
+    cue_type = namedtuple("LegacyCue", "start end text words")
+    cue = cue_type(*edges, " text", None)
+    chunks = [dict(start=16000, end=32000), dict(start=16320000, end=16336000)]
+    timestamps = fw.SpeechTimestampsMap(chunks, 16000)
+    result, = vad_window._clamp_cue_bounds(iter([cue]), chunks, timestamps, 100.)
+    assert (cue.start, cue.end) == edges
+    assert result.text == cue.text
+    restored = (timestamps.get_original_time(result.start), timestamps.get_original_time(result.end))
+    assert restored == pytest.approx(expected)
 
 
 @pytest.mark.parametrize("error", [False, True])
