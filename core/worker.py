@@ -642,6 +642,10 @@ def emit(event: str, **payload: Any) -> None:
     # Atomic write+flush against other threads' emits (see _emit_lock).
     try:
         with _emit_lock:
+            # Native libraries can leave an unterminated line on the merged
+            # pipe. Keep a terminal failure on its own protocol line.
+            if event in {"error", "startup_error", "live_error"} and _stdout_is_process_fd1():
+                line = "\n" + line
             print(line, flush=True)
     except OSError as e:
         # The app closed its end of the pipe (it quit, or died). Nobody can
@@ -846,6 +850,26 @@ def _job_error_message(exc: BaseException) -> str:
         return type(exc).__name__
 
 
+def _try_emit_failure(event: str, payload: dict[str, Any]) -> bool:
+    try:
+        emit(event, **payload)
+        return not _output_pipe_reported
+    except BaseException:
+        return False
+
+
+def _emit_stderr_failure(event: str, fallback: dict[str, Any]) -> None:
+    try:
+        record = {"event": event, **fallback}
+        if _SESSION_TOKEN:
+            record["_token"] = _SESSION_TOKEN
+        with _emit_lock:
+            # A failed stdout write can leave a partial line on the merged pipe.
+            print("\n" + json.dumps(record), file=sys.stderr, flush=True)
+    except BaseException:
+        pass
+
+
 def _report_error(
     exc: BaseException, task: TranscriptionTask | None = None, *,
     file_path: str = "", task_id: str = "", event: str = "error",
@@ -904,33 +928,27 @@ def _report_error(
         written = getattr(task, "output_paths", None)
         if written:
             payload["outputs"] = [str(p) for p in written]
-        emit(event, **payload)
-        if not _output_pipe_reported:
+        if _try_emit_failure(event, payload):
             return
     except BaseException:
         pass
     try:
         cls = type(exc).__name__ if type(exc) in (SystemExit, KeyboardInterrupt) else family
-        record = {"event": event, "message": family, "diag": {"cls": cls}, **minimal}
-        if _SESSION_TOKEN:
-            record["_token"] = _SESSION_TOKEN
-        # Existing local protocol fields let the parent salvage finished files;
-        # none are included in the diagnostic or the closed failure clue.
+        fallback = {"message": family, "diag": {"cls": cls}, **minimal}
+        # Keep correlation and saved outputs in the local protocol only.
         try:
             if file_path:
-                record["file_path"] = file_path
+                fallback["file_path"] = file_path
             if task_id:
-                record["task_id"] = task_id
+                fallback["task_id"] = task_id
             if event == "live_error":
-                record["id"] = chunk_id
+                fallback["id"] = chunk_id
             written = getattr(task, "output_paths", None)
             if written:
-                record["outputs"] = [str(p) for p in written]
+                fallback["outputs"] = [str(p) for p in written]
         except BaseException:
             pass
-        with _emit_lock:
-            # A failed stdout write can leave a partial line on the merged pipe.
-            print("\n" + json.dumps(record), file=sys.stderr, flush=True)
+        _emit_stderr_failure(event, fallback)
     except BaseException:
         pass
 
@@ -1106,13 +1124,16 @@ def _main() -> int:
         return 1
     if not model_loaded:
         detail = get_model_error() or "Existing model failed to load in worker"
-        clue: dict[str, Any] = {}
+        clue: dict[str, Any] = {"failure_site": "worker.model", "observed_code": "model_load_failed"}
         try:
             from core.failure_clue import sanitise_clue
-            clue = sanitise_clue({"failure_site": "worker.model", **get_model_failure_clue()})
+            clue = sanitise_clue({**clue, **get_model_failure_clue()})
         except Exception:  # noqa: BLE001 - do not break the startup error event
             logger.debug("Startup failure clue unavailable", exc_info=True)
-        emit("startup_error", message=detail, **clue)
+        if not _try_emit_failure("startup_error", {**clue, "message": detail}):
+            _emit_stderr_failure(
+                "startup_error", {**clue, "message": "The worker could not load the transcription model."},
+            )
         heartbeat_stop.set()
         return 1
 

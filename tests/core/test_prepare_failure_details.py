@@ -7,6 +7,9 @@ from types import SimpleNamespace
 import pytest
 
 from core import failure_clue, transcriber as tr
+from tests.core.test_transcription_endpoint_bounds import (
+    Segment, endpoint_case, install_model, output_task,
+)
 
 
 def test_failed_probe_reports_called_process_family(monkeypatch, tmp_path):
@@ -22,6 +25,29 @@ def test_failed_probe_reports_called_process_family(monkeypatch, tmp_path):
     assert "invalid media" not in str(clue)
 
 
+def test_transcription_continues_after_duration_probe_times_out(monkeypatch, endpoint_case):
+    attempts = []
+
+    def timeout(cmd, **kwargs):
+        attempts.append(cmd)
+        raise subprocess.TimeoutExpired(cmd, kwargs["timeout"])
+
+    monkeypatch.setattr(tr, "get_duration", _REAL_GET_DURATION)
+    monkeypatch.setattr(tr, "subprocess", SimpleNamespace(
+        DEVNULL=subprocess.DEVNULL, CREATE_NO_WINDOW=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        run=timeout, TimeoutExpired=subprocess.TimeoutExpired,
+    ))
+    monkeypatch.setattr(tr, "require_audio_stream", lambda path: pytest.fail("repeated slow probe"))
+    install_model(monkeypatch, [Segment(0.2, 1.0, "kept text")])
+    task = output_task(endpoint_case)
+    notes = []
+    tr.transcribe(task, log_cb=notes.append)
+    assert len(attempts) == 1
+    assert any("timed out" in note and "Continuing" in note for note in notes)
+    assert endpoint_case.writes[-1][0]["text"] == "kept text"
+
+
+_REAL_GET_DURATION = tr.get_duration
 def test_invalid_prepare_override_keeps_value_error_family(monkeypatch):
     monkeypatch.setattr(tr, "config", {"diarization_enabled": "unusable"})
     monkeypatch.setattr(tr, "load_config", lambda: {})

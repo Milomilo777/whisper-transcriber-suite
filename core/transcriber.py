@@ -14,11 +14,13 @@ twice. Phase 2a additions:
 from __future__ import annotations
 
 import copy
+import errno
 import gc
 import math
 import logging
 import os
 import subprocess
+import tempfile
 import threading
 import time
 import dataclasses
@@ -823,6 +825,20 @@ def require_audio_stream(path: str) -> None:
             f"{os.path.basename(path)} has no audio track, so there is "
             "nothing to transcribe."
         )
+
+
+def _prepare_transcription_audio(path: str, log_cb: Callable[[str], None] | None) -> float:
+    try:
+        duration = get_duration(path)
+    except RuntimeError as exc:
+        if not isinstance(exc.__cause__, subprocess.TimeoutExpired):
+            raise
+        # The decoder probes the audio independently. Avoid waiting on a
+        # second ffprobe call against the same slow source.
+        log("The duration probe timed out. Continuing without a duration estimate.", log_cb)
+        return 0.0
+    require_audio_stream(path)
+    return duration
 
 
 def fmt(sec: float) -> str:
@@ -1840,26 +1856,88 @@ class _WrittenOutputs(list[str]):
         super().__init__()
         self.by_format: dict[str, str] = {}
         self.failure: Exception | None = None
-        self.errors: list[str] = []
+        self.errors: list[tuple[str, str]] = []
 
 
-def _write_task_outputs(task: TranscriptionTask, *args: Any, **kwargs: Any) -> list[str]:
-    written = _write_outputs(*args, **kwargs)
+class _OutputRecoveryError(RuntimeError):
+    def __init__(self, message: str, recovery_path: str) -> None:
+        super().__init__(f"{message} Recovery data: {recovery_path}")
+        self.recovery_path = recovery_path
+
+
+def _is_output_destination_error(error: BaseException | None) -> bool:
+    return isinstance(error, OSError) and (
+        error.errno in {errno.ENOENT, errno.ENOTDIR, errno.EEXIST, errno.EACCES, errno.EPERM,
+                        errno.EROFS, errno.ENOSPC, errno.EDQUOT, errno.ENAMETOOLONG}
+        or getattr(error, "winerror", None) in {2, 3, 5, 19, 39, 112, 183, 206}
+    )
+
+
+def _retry_output_destination(
+    task: TranscriptionTask, written: _WrittenOutputs, recovery_path: str,
+    segments_data: list[dict[str, Any]], audio_path: str, formats: list[str] | None,
+    log_cb: Callable[[str], None] | None, writer_options: dict[str, Any],
+) -> bool:
+    # The complete JSON is already verified on disk. An isolated folder and
+    # default names avoid reusing the destination and naming template.
+    try:
+        folder = tempfile.mkdtemp(prefix="exports-", dir=Path(recovery_path).parent)
+        retry = _write_outputs_impl(
+            os.path.join(folder, "transcript"), segments_data, audio_path, formats,
+            **writer_options, template="{base}.{ext}",
+        )
+    except Exception as retry_error:
+        logger.warning("Could not export in the recovery folder: %s", retry_error)
+        return False
+    written.extend(retry)
+    written.by_format.update(retry.by_format)
+    if retry.failure is not None:
+        return False
+    written.failure = None
+    written.errors.clear()
+    if getattr(task, "_telemetry_recovery", "none") == "none":
+        task._telemetry_recovery = "retried_ok"
+    log(f"Could not save some formats at the original destination. Recovered exports saved in {folder}", log_cb)
+    return True
+
+
+def _write_task_outputs(
+    task: TranscriptionTask, base: str, segments_data: list[dict[str, Any]], audio_path: str,
+    formats: list[str] | None = None, *, log_cb: Callable[[str], None] | None = None, **kwargs: Any,
+) -> list[str]:
+    try:
+        written = _write_outputs(base, segments_data, audio_path, formats, **kwargs)
+    except _OutputRecoveryError as error:
+        if not _is_output_destination_error(error.__cause__):
+            raise
+        recovered = _WrittenOutputs()
+        task.output_paths = recovered
+        if _retry_output_destination(
+            task, recovered, error.recovery_path, segments_data, audio_path, formats, log_cb, kwargs,
+        ):
+            return recovered
+        raise
     task.output_paths = written
     if isinstance(written, _WrittenOutputs) and written.failure is not None:
         error = written.failure
-        message = "Some output writers failed: " + "; ".join(written.errors)
+        message = "Some output writers failed: " + "; ".join(f"{name}: {detail}" for name, detail in written.errors)
         # A clipped run may have no checkpoint. Preserve the entire decoded
         # transcript as well as the successfully published selected formats.
         if not _caused_by_memory_error(error):
             try:
                 kept = _keep_output_recovery(
-                    args[2], args[1], kwargs.get("lang", ""),
+                    audio_path, segments_data, kwargs.get("lang", ""),
                     kwargs.get("chapters"), message,
                 )
-                message += f" Recovery data: {kept}"
             except Exception as recovery_error:
                 logger.warning("Could not keep completed output recovery: %s", recovery_error)
+            else:
+                message += f" Recovery data: {kept}"
+                if _is_output_destination_error(error) and _retry_output_destination(
+                    task, written, kept, segments_data, audio_path,
+                    [name for name, _ in written.errors], log_cb, kwargs,
+                ):
+                    return written
         raise RuntimeError(message) from error
     return written
 
@@ -1908,7 +1986,7 @@ def _write_outputs(
         except Exception as recovery_error:
             logger.warning("Could not keep completed output recovery: %s", recovery_error)
             raise error
-        raise RuntimeError(f"{error} Recovery data: {kept}") from (error.__cause__ or error)
+        raise _OutputRecoveryError(str(error), kept) from (error.__cause__ or error)
 
 
 def _keep_output_recovery(
@@ -1947,7 +2025,8 @@ def _write_outputs_impl(
     speaker_count: int = 0,
     chapters: list[dict[str, Any]] | None = None,
     audio_end: float | None = None,
-) -> list[str]:
+    template: str | None = None,
+) -> _WrittenOutputs:
     """Write each requested format atomically.
 
     Each writer uses a fresh exclusive ``.part`` file, then os.replace's onto
@@ -1972,10 +2051,10 @@ def _write_outputs_impl(
     The final path is composed by expanding the
     ``output_filename_template`` config key (default ``"{base}.{ext}"``).
     """
-    template = str(config.get("output_filename_template") or "{base}.{ext}")
+    template = template or str(config.get("output_filename_template") or "{base}.{ext}")
     written = _WrittenOutputs()
     timing_recovery: str | None = None
-    write_errors: list[str] = []
+    write_errors: list[tuple[str, str]] = []
     last_write_error: Exception | None = None
     allocation_error: Exception | None = None
     available = supported_formats()
@@ -2209,7 +2288,7 @@ def _write_outputs_impl(
                 # prior run), so there's nothing to roll back — log and move
                 # on to the next format.
                 logger.warning("output format %r failed: %s", fmt_name, e)
-                write_errors.append(f"{fmt_name}: {e}")
+                write_errors.append((fmt_name, str(e)))
                 last_write_error = e
                 if allocation_error is None and _caused_by_memory_error(e):
                     allocation_error = e
@@ -2217,9 +2296,9 @@ def _write_outputs_impl(
             written.append(path)
             written.by_format[fmt_name] = path
         if planned and not written:
+            last_format, last_detail = write_errors[-1]
             raise RuntimeError(
-                "All output writers failed; last error: "
-                + (write_errors[-1] if write_errors else "unknown")
+                f"All output writers failed; last error: {last_format}: {last_detail}"
             ) from (allocation_error if allocation_error is not None else last_write_error)
         written.errors = write_errors
         written.failure = allocation_error if allocation_error is not None else last_write_error
@@ -3796,10 +3875,9 @@ def transcribe(
                 log(f"Demucs separation failed (using original audio): {e}", log_cb)
                 audio_path = task.file_path
 
-        duration = get_duration(audio_path)
+        duration = _prepare_transcription_audio(audio_path, log_cb)
         if duration > 0:
             task._input_duration = duration
-        require_audio_stream(audio_path)
         start = time.time()
         log(f"Processing: {audio_path}", log_cb)
 
@@ -4152,6 +4230,7 @@ def transcribe(
             speaker_count=speaker_count,
             chapters=getattr(task, "_chapters_for_writer", None) or [],
             audio_end=getattr(task, "_audio_end", None),
+            log_cb=log_cb,
         )
         # Hand the real written paths to the UI (history + Last-result
         # card) so it never has to re-derive names from config — that
@@ -4215,10 +4294,9 @@ def _transcribe_via_alt_backend(
             log(f"Demucs separation failed (using original audio): {e}", log_cb)
             audio_path = task.file_path
 
-    duration = get_duration(audio_path)
+    duration = _prepare_transcription_audio(audio_path, log_cb)
     if duration > 0:
         task._input_duration = duration
-    require_audio_stream(audio_path)
     start = time.time()
     log(f"Processing ({backend_name}): {task.file_path}", log_cb)
 
@@ -4415,6 +4493,7 @@ def _transcribe_via_alt_backend(
         speaker_count=speaker_count,
         chapters=getattr(task, "_chapters_for_writer", None) or [],
         audio_end=getattr(task, "_audio_end", None),
+        log_cb=log_cb,
     )
     task.output_paths = written
     _record_transcript_stats(task, segments_data)
@@ -4649,6 +4728,7 @@ def _write_resumed_outputs(
         speaker_count=speaker_count,
         chapters=getattr(task, "_chapters_for_writer", None) or [],
         audio_end=getattr(task, "_audio_end", None),
+        log_cb=log_cb,
     )
     task.output_paths = written
     _record_transcript_stats(task, segments)

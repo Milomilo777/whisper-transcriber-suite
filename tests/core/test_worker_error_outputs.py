@@ -6,6 +6,8 @@ import io
 import json
 import sys
 
+import pytest
+
 from core import worker
 
 
@@ -39,6 +41,40 @@ def test_error_before_any_output_carries_no_outputs_field(monkeypatch, capsys):
 
     errs = [e for e in _run(monkeypatch, capsys, fake) if e["event"] == "error"]
     assert len(errs) == 1 and "outputs" not in errs[0]
+
+
+@pytest.mark.parametrize("formats, names", [
+    (["srt", "json"], ["kept.srt"]),
+    (["srt", "json"], ["kept.srt", "kept.chapters.json"]),
+    (["txt", "express_scribe"], ["kept.txt"]),
+])
+def test_failed_history_keeps_partial_output_paths(monkeypatch, tmp_path, formats, names):
+    from types import SimpleNamespace
+    from tests.core.test_worker_lifecycle_c251b import _Alive, _app, _svc
+
+    app = _app()
+    service = _svc(app)
+    saved = []
+    for name in names:
+        path = tmp_path / name
+        path.write_text("saved text", encoding="utf-8")
+        saved.append(str(path))
+    task = SimpleNamespace(
+        status="running", file_path="audio.wav", output_formats=formats,
+        output_paths=None, cancelled=False, recovery_note="", error_reason="",
+    )
+    worker_state = {"id": 1, "token": "tok1", "ready": True, "task": task,
+                    "process": _Alive(), "device": "cpu", "last_event_at": 0}
+    app.workers = [worker_state]
+    paths = []
+    monkeypatch.setattr(service, "finish_task", lambda worker, **kw: paths.append(task.output_paths))
+    app.worker_events.put({
+        "event": "error", "_pid": 4242, "_worker_id": 1, "_token": "tok1",
+        "message": "An export failed", "outputs": saved,
+    })
+    service.poll()
+    assert task.status == "error"
+    assert paths == [saved]
 
 
 def test_failed_export_recovery_is_reported_as_error_not_successful_output(monkeypatch, capsys, tmp_path):

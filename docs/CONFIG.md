@@ -602,7 +602,7 @@ requires a module in the [generated registry list](../core/telemetry_registry.js
 |---|---|
 | `failure_site` | `worker.decode`, `worker.vad`, `worker.features`, `worker.language`, `worker.segments`, `worker.postprocess`, `worker.output`, `worker.prepare`, `worker.model`, `parent.watchdog`, `parent.worker_exit`, `other` |
 | `exception_family` | `MemoryError`, `RuntimeError`, `OSError`, `PermissionError`, `FileNotFoundError`, `TimeoutError`, `ValueError`, `TypeError`, `KeyError`, `IndexError`, `UnicodeError`, `AssertionError`, `subprocess.TimeoutExpired`, `subprocess.CalledProcessError`, `av.InvalidDataError`, `other` |
-| `observed_code` | `numpy_alloc_failed`, `ct2_bad_alloc`, `cuda_out_of_memory`, `cublas_missing`, `cudnn_missing`, `av_invalid_data`, `no_audio_stream`, `probe_timeout`, `disk_full`, `access_denied`, `file_not_found`, `none`, `native_access_violation`, `dll_not_found`, `illegal_instruction`, `stack_overflow`, `killed_by_signal`, `worker_exit_unclassified`, `model_load_failed`, `tokenizer_error`, `network_reset`, `ffmpeg_missing`, `codec_unsupported`, `corrupt_media` |
+| `observed_code` | `numpy_alloc_failed`, `ct2_bad_alloc`, `cuda_out_of_memory`, `cublas_missing`, `cudnn_missing`, `av_invalid_data`, `no_audio_stream`, `probe_timeout`, `disk_full`, `access_denied`, `file_not_found`, `none`, `native_access_violation`, `dll_not_found`, `illegal_instruction`, `stack_overflow`, `killed_by_signal`, `worker_exit_unclassified`, `model_load_failed`, `tokenizer_error`, `network_reset`, `ffmpeg_missing`, `codec_unsupported`, `corrupt_media`, `worker_import_failed` |
 | `classifier_version` | `1`, `2` |
 | `os_error` | integer `0` to `4294967295`, step `1` |
 | `exit_code` | integer `-2147483648` to `4294967295`, step `1` |
@@ -670,6 +670,7 @@ requires a module in the [generated registry list](../core/telemetry_registry.js
 | killed_by_signal | Another negative POSIX exit, including SIGKILL. |
 | worker_exit_unclassified | Worker exit with no recognized native or stderr cause. |
 | model_load_failed | Failure at a known model-loader boundary after more specific causes were checked. |
+| worker_import_failed | Recognized Python import failure. Module names and error text stay local. |
 | tokenizer_error | Anchored tokenizer/vocabulary message with a tokenizer frame. |
 | network_reset | ECONNRESET, Windows error 10054 or a known worker exception header. |
 | ffmpeg_missing | Missing FFmpeg/ffprobe executable at a known media-probe boundary. |

@@ -16,7 +16,7 @@ import sys
 import threading
 import time
 import unicodedata
-from collections import deque
+from collections import Counter, deque
 from queue import Empty
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -2111,6 +2111,9 @@ class TranscriptionService:
                             elif not self._salvage_error_with_outputs(
                                 worker, failed, event, message
                             ):
+                                outs = event.get("outputs")
+                                if isinstance(outs, list) and outs:
+                                    failed.output_paths = [str(p) for p in outs]
                                 failed.status = "error"
                                 _remember_failure_clue(failed, worker, event=event)
                                 # Kept for the Queue row and the history row; both
@@ -2965,7 +2968,7 @@ class TranscriptionService:
 
     def _written_outputs_cover_formats(self, task: Any) -> bool:
         """True when the worker-reported output files exist, are non-empty and
-        include an extension for every requested output format."""
+        cover every requested output format, including formats sharing an extension."""
         try:
             written = [str(p) for p in (getattr(task, "output_paths", None) or [])]
             if not written:
@@ -2974,8 +2977,12 @@ class TranscriptionService:
             if formats is None:
                 formats = self.app.app_config.get("output_formats") or ["srt", "json"]
             from core.writers import extension_for
-            wanted = {extension_for(str(f)) for f in formats}
-            got = {os.path.splitext(p)[1].lower().lstrip(".") for p in written}
+            wanted = Counter(extension_for(f) for f in {str(f) for f in formats})
+            got = Counter(
+                os.path.splitext(p)[1].lower().lstrip(".")
+                for p in {os.path.normcase(p) for p in written}
+                if not is_sidecar_json(p)
+            )
             if not wanted <= got:
                 return False
             return all(os.path.getsize(p) > 0 for p in written)

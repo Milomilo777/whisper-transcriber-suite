@@ -22,6 +22,73 @@ def recovery_files():
     return list((_checkpoint.user_data_dir() / "transcript-recovery").glob("output-*.json"))
 
 
+@pytest.mark.parametrize("failure", [FileNotFoundError, PermissionError, OSError])
+def test_task_exports_to_recovery_folder_when_destination_fails(tmp_path, monkeypatch, caplog, failure):
+    from core.task import TranscriptionTask
+
+    destination = tmp_path / "exports"
+    destination.mkdir()
+    source = str(destination / "音声.wav")
+    base = str(destination / "音声")
+    replace = tr.os.replace
+    code = {FileNotFoundError: errno.ENOENT, PermissionError: errno.EACCES, OSError: errno.ENOSPC}[failure]
+
+    def refuse(src, dst):
+        if Path(dst).parent == destination:
+            raise failure(code, "synthetic output refusal")
+        return replace(src, dst)
+
+    monkeypatch.setattr(tr.os, "replace", refuse)
+    task = TranscriptionTask(source)
+    caplog.set_level("INFO", logger=tr.__name__)
+    saved = tr._write_task_outputs(task, base, SEGMENTS, source, ["srt", "json"])
+
+    assert saved == task.output_paths
+    assert {Path(path).suffix for path in saved} == {".srt", ".json"}
+    folder = Path(saved[0]).parent
+    assert folder.parent == _checkpoint.user_data_dir() / "transcript-recovery"
+    assert str(folder) in caplog.text and "saved" in caplog.text
+    assert "Completed clipped transcript" in Path(saved[0]).read_text(encoding="utf-8")
+    assert isinstance(json.loads(Path(saved[1]).read_text(encoding="utf-8")), list)
+    assert json.loads(recovery_files()[0].read_text(encoding="utf-8"))["segments"] == SEGMENTS
+    assert not list(destination.iterdir())
+
+
+def test_task_recovers_when_a_file_blocks_the_output_directory(tmp_path):
+    from core.task import TranscriptionTask
+
+    blocked = tmp_path / "exports"
+    blocked.write_bytes(b"keep this file")
+    source = str(tmp_path / "audio.wav")
+    task = TranscriptionTask(source)
+    written = tr._write_task_outputs(task, str(blocked / "audio"), SEGMENTS, source, ["srt"])
+    assert Path(written[0]).is_file()
+    assert blocked.read_bytes() == b"keep this file"
+
+
+def test_task_retries_the_failed_format_without_moving_successful_outputs(tmp_path, monkeypatch):
+    from core.task import TranscriptionTask
+
+    source = str(tmp_path / "audio.wav")
+    base = str(tmp_path / "audio")
+    replace = tr.os.replace
+
+    def refuse(src, dst):
+        if Path(dst) == tmp_path / "audio.json":
+            raise PermissionError(errno.EACCES, "synthetic publication refusal")
+        return replace(src, dst)
+
+    monkeypatch.setattr(tr.os, "replace", refuse)
+    task = TranscriptionTask(source)
+    saved = tr._write_task_outputs(task, base, SEGMENTS, source, ["srt", "json"])
+    assert saved == task.output_paths
+    assert len(saved) == 2
+    assert Path(saved[0]) == tmp_path / "audio.srt"
+    assert Path(saved[1]).parent.parent == _checkpoint.user_data_dir() / "transcript-recovery"
+    assert json.loads(Path(saved[1]).read_text(encoding="utf-8"))[0]["text"] == SEGMENTS[0]["text"]
+    assert not (tmp_path / "audio.json").exists()
+
+
 @pytest.mark.parametrize("phase", ["claim", "publish", "writer", "config"])
 def test_failed_outputs_keep_full_transcript_separate_from_success(tmp_path, monkeypatch, phase):
     source = tmp_path / "source.wav"
