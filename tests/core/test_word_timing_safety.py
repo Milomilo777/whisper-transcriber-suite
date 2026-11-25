@@ -14,7 +14,7 @@ from core.backends import faster_whisper_be as be
 
 def model_for_loop(model_type, monkeypatch, *, collapse=True, windows=1):
     model = object.__new__(model_type)
-    model.feature_extractor = SimpleNamespace(time_per_frame=.01, nb_max_frames=100)
+    model.feature_extractor = SimpleNamespace(sampling_rate=16000, time_per_frame=.01, nb_max_frames=100)
     model.frames_per_second = 100
     model.logger = logging.getLogger('word-timing-test')
     monkeypatch.setattr(model, 'encode', lambda features: features)
