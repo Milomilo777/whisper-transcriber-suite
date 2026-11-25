@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import math
 import copy
-from collections.abc import Callable
+import math
 import unicodedata
+from collections.abc import Callable
 
 class SegmentOpError(ValueError):
     """Raised when a segment operation is rejected."""
@@ -311,6 +311,101 @@ def set_times(segments: list[dict], index: int, start: float, end: float) -> lis
     res[index]["start"] = start
     res[index]["end"] = end
     return res
+
+
+def _cue_clocks(cue: dict) -> tuple[float, float]:
+    try:
+        start, end = float(cue["start"]), float(cue["end"])
+    except (KeyError, TypeError, ValueError, OverflowError):
+        raise SegmentOpError("Invalid cue timing.") from None
+    if not (0 <= start < end < math.inf):
+        raise SegmentOpError("Invalid cue timing.")
+    return start, end
+
+
+def _split_text(text: str, offset: int) -> tuple[str, str]:
+    if not 0 < offset < len(text):
+        raise SegmentOpError("Choose a boundary inside the text.")
+    if (unicodedata.category(text[offset]).startswith("M")
+            or text[offset] in "\u200c\u200d" or text[offset - 1] in "\u200c\u200d"):
+        raise SegmentOpError("Choose a boundary between characters.")
+    left, right = text[:offset].rstrip(), text[offset:].lstrip()
+    if not left.strip() or not right.strip():
+        raise SegmentOpError("Choose a boundary inside the text.")
+    return left, right
+
+
+def split_viewer_cue(cue: dict, offset: int, translation_offset: int | None = None) -> list[dict]:
+    """Split one cue without copying neighboring cues or losing word records."""
+    start, end = _cue_clocks(cue)
+    text = str(cue.get("text") or "")
+    left_text, right_text = _split_text(text, offset)
+    ratio = len(left_text.strip()) / (len(left_text.strip()) + len(right_text.strip()))
+    left_end = right_start = start + (end - start) * ratio
+    left, right = {**cue, "text": left_text}, {**cue, "text": right_text}
+    words = cue.get("words")
+    if words:
+        if not isinstance(words, list) or any(not isinstance(w, dict) for w in words):
+            raise SegmentOpError("Invalid word records.")
+        labels = ["".join(str(w.get("word") or "").split()) for w in words]
+        if not all(labels) or "".join(labels) != "".join(text.split()):
+            raise SegmentOpError("Word records do not match cue text.")
+        boundary = len("".join(left_text.split()))
+        split_index = 0
+        length = 0
+        for index, label in enumerate(labels, 1):
+            length += len(label)
+            if length >= boundary:
+                if length != boundary:
+                    raise SegmentOpError("Choose a boundary between timed words.")
+                split_index = index
+                break
+        left["words"], right["words"] = words[:split_index], words[split_index:]
+        try:
+            timed_end = float(left["words"][-1]["end"])
+            timed_start = float(right["words"][0]["start"])
+        except (KeyError, TypeError, ValueError, OverflowError):
+            pass
+        else:
+            if start < timed_end <= end and start <= timed_start < end:
+                left_end, right_start = timed_end, timed_start
+    if left_end <= start or right_start >= end:
+        raise SegmentOpError("This cue is too short to split.")
+    left.update(start=start, end=left_end)
+    right.update(start=right_start, end=end)
+    translation = cue.get("translation")
+    if translation:
+        if not isinstance(translation, str) or translation_offset is None:
+            raise SegmentOpError("Choose a boundary in both texts.")
+        left["translation"], right["translation"] = _split_text(translation, translation_offset)
+    return [left, right]
+
+
+def join_viewer_cues(left: dict, right: dict) -> dict:
+    """Join a pair if a single cue can represent their metadata."""
+    changing = {"start", "end", "text", "words", "translation", "suspect"}
+    for field in {"speaker", "language"} | ((left.keys() & right.keys()) - changing):
+        if left.get(field) != right.get(field):
+            raise SegmentOpError("Cue metadata differs.")
+    pair = []
+    for cue in (left, right):
+        start, end = _cue_clocks(cue)
+        if not isinstance(cue.get("translation", ""), str):
+            raise SegmentOpError("Invalid paired text.")
+        words = cue.get("words")
+        if words is not None and not isinstance(words, list):
+            raise SegmentOpError("Invalid word records.")
+        normalized = {**cue, "start": start, "end": end}
+        if words is None:
+            normalized.pop("words", None)
+        pair.append(normalized)
+    joined = merge_with_next(pair, 0)[0]
+    if "translation" in left or "translation" in right:
+        translations = [{"start": 0, "end": 1, "text": cue.get("translation", "")}
+                        for cue in pair]
+        joined["translation"] = merge_with_next(translations, 0)[0]["text"]
+    return joined
+
 
 class History:
     """Bounded undo and redo for cue-list revisions.

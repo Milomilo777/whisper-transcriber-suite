@@ -31,7 +31,7 @@ def _safe_float(value: object, default: float = 0.0) -> float:
     return f
 
 
-def write(segments: list[dict], audio_path: str = "") -> str:
+def write(segments: list[dict], audio_path: str = "", *, preserve_metadata: bool = False) -> str:
     out: list[dict] = []
     for seg in segments:
         # A hand-edited / externally produced JSON can put a non-string
@@ -62,6 +62,10 @@ def write(segments: list[dict], audio_path: str = "") -> str:
         reason = seg.get("suspect_reason")
         if reason not in (None, ""):
             item["suspect_reason"] = str(reason)
+        if preserve_metadata:
+            standard = {"start", "end", "text", "speaker", "language", "suspect",
+                        "suspect_reason", "words"}
+            item.update((key, value) for key, value in seg.items() if key not in standard)
         words = seg.get("words")
         if isinstance(words, list):
             # Carry through only dict word entries, mirroring convert's
@@ -91,6 +95,7 @@ def write(segments: list[dict], audio_path: str = "") -> str:
                     word_start, _safe_float(w.get("end", word_start), fallback_end)
                 ))
                 coerced_words.append({
+                    **(w if preserve_metadata else {}),
                     "start": word_start,
                     "end": word_end,
                     # str-coerce like text / speaker / suspect_reason: a

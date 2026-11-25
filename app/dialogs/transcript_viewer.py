@@ -2203,6 +2203,9 @@ class TranscriptViewer(tk.Toplevel):
             label=_("Edit timestamp..."),
             command=lambda i=idx: self._open_edit_timestamp(i),
         )
+        menu.add_command(label=_("Split cue…"), command=lambda: self._open_split_cue(idx))
+        menu.add_command(label=_("Join with next"), command=lambda: self._join_next(idx),
+                         state="normal" if idx + 1 < len(self.segments) else "disabled")
         menu.add_command(
             label=_("Copy text"), command=lambda: self._copy_to_clipboard(
                 _seg_text(seg).strip()
@@ -2350,6 +2353,10 @@ class TranscriptViewer(tk.Toplevel):
         self._show_edit_revision(segments)
 
     def _show_edit_revision(self, segments: list[dict[str, Any]]) -> None:
+        if len(segments) != len(self.segments):
+            self._active_segment_idx = None
+            if self._find_dialog is not None:
+                self._find_dialog._forget_match()
         self.segments = segments
         self._dirty = segments is not self.__dict__.get("_saved_segments")
         self._populate_listbox()
@@ -2399,6 +2406,31 @@ class TranscriptViewer(tk.Toplevel):
         dialog = EditCueDialog(self, _seg_text(self.segments[index]))
         if dialog.result is not None:
             self._apply_cue_text(index, dialog.result, _("Edit cue text"))
+
+    def _open_split_cue(self, index: int) -> None:
+        dialog = SplitCueDialog(self, self.segments[index])
+        if dialog.result is not None:
+            self._split_at_caret(index, *dialog.result)
+
+    def _split_at_caret(self, index: int, offset: int, translation_offset: int | None = None) -> None:
+        try:
+            pieces = segment_ops.split_viewer_cue(self.segments[index], offset, translation_offset)
+        except segment_ops.SegmentOpError:
+            notify(self, _("Choose a valid boundary in each text."), "warning")
+            return
+        self._apply_edit([*self.segments[:index], *pieces, *self.segments[index + 1:]],
+                         _("Split cue"))
+
+    def _join_next(self, index: int) -> None:
+        if not 0 <= index < len(self.segments) - 1:
+            return
+        try:
+            joined = segment_ops.join_viewer_cues(self.segments[index], self.segments[index + 1])
+        except segment_ops.SegmentOpError:
+            notify(self, _("These cues have incompatible timing or metadata."), "warning")
+            return
+        self._apply_edit([*self.segments[:index], joined, *self.segments[index + 2:]],
+                         _("Join cues"))
 
     def _open_find_replace(self) -> None:
         if self._find_dialog is not None:
@@ -2500,13 +2532,10 @@ class TranscriptViewer(tk.Toplevel):
             ):
                 return
         try:
-            from core.writers import json_writer as _jw  # type: ignore[import-not-found]
-            payload_s = _jw.write(self.segments, audio_path=self.media_path or "")
-        except Exception:  # noqa: BLE001
-            # Fall back to a stdlib json.dumps if the project import
-            # ever fails in a stripped-down environment.
-            payload_s = json.dumps(self.segments, indent=2, ensure_ascii=False) + "\n"
-        try:
+            from core.writers import json_writer
+            payload_s = json_writer.write(
+                self.segments, audio_path=self.media_path or "", preserve_metadata=True,
+            )
             written_stamp = _write_text_atomically(
                 self.json_path, payload_s, expect_stamp=disk_stamp, check_missing=True,
             )
@@ -3324,6 +3353,59 @@ class EditCueDialog(simpledialog.Dialog):
 
     def apply(self) -> None:
         self.result = self.text.get("1.0", "end-1c")
+
+
+class SplitCueDialog(simpledialog.Dialog):
+    """Choose the break in the original and, when present, the paired text."""
+
+    def __init__(self, viewer: TranscriptViewer, cue: dict[str, Any]) -> None:
+        self.cue = cue
+        self.result: tuple[int, int | None] | None = None
+        self.fields: list[tk.Text] = []
+        super().__init__(viewer, title=_("Split cue…"))
+
+    def body(self, master: tk.Misc) -> tk.Text:
+        ttk.Label(master, text=_("Place the caret at the split in each text.")).pack(anchor="w")
+        texts = [_seg_text(self.cue)]
+        if self.cue.get("translation"):
+            texts.append(_seg_text(self.cue, "translation"))
+        for text in texts:
+            field = tk.Text(master, wrap="word", width=52, height=5, takefocus=True)
+            field.pack(fill="both", expand=True, pady=4)
+            field.insert("1.0", text)
+            field.mark_set("insert", "1.0")
+            field.configure(state="disabled")
+            field.tag_configure("split_boundary", background=tokens.themed(tokens.ROW_ACTIVE))
+            field.bind("<ButtonRelease-1>", lambda _event, widget=field: self._mark_caret(widget))
+            field.bind("<KeyRelease>", lambda _event, widget=field: self._mark_caret(widget))
+            self.fields.append(field)
+        self.error_var = tk.StringVar()
+        ttk.Label(master, textvariable=self.error_var, wraplength=px(350)).pack(anchor="w")
+        return self.fields[0]
+
+    @staticmethod
+    def _mark_caret(field: tk.Text) -> None:
+        # Tk hides the native caret in a read-only Text.
+        field.tag_remove("split_boundary", "1.0", "end")
+        field.tag_add("split_boundary", "insert", "insert + 1 chars")
+
+    def buttonbox(self) -> None:
+        buttons = ttk.Frame(self)
+        buttons.pack(pady=(0, 8))
+        ttk.Button(buttons, text=_("Split cue"), command=self.ok).pack(side="left", padx=4)
+        ttk.Button(buttons, text=_("Cancel"), command=self.cancel).pack(side="left", padx=4)
+        self.bind("<Escape>", self.cancel)
+
+    def validate(self) -> bool:
+        offsets = [len(field.get("1.0", "insert")) for field in self.fields]
+        arguments = offsets[0], offsets[1] if len(offsets) == 2 else None
+        try:
+            segment_ops.split_viewer_cue(self.cue, *arguments)
+        except segment_ops.SegmentOpError:
+            self.error_var.set(_("Choose a valid boundary in each text."))
+            return False
+        self.result = arguments
+        return True
 
 
 class EditTimestampDialog(tk.Toplevel):
