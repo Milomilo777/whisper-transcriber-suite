@@ -344,7 +344,11 @@ def _nvidia_asr_status(cfg: Mapping[str, Any]) -> EngineStatus:
 
 
 def _google_cloud_stt_status(cfg: Mapping[str, Any]) -> EngineStatus:
-    have_key = has_gcloud_key(cfg)
+    return google_cloud_runtime_status(has_gcloud_key(cfg))
+
+
+def google_cloud_runtime_status(have_key: bool) -> EngineStatus:
+    """Check the client import using only the parent's credential-presence result."""
     try:
         from . import google_cloud_stt as gcs
 
@@ -414,6 +418,30 @@ def engine_status(value: Any, cfg: Mapping[str, Any], *, deep: bool = True) -> E
 def engine_statuses(cfg: Mapping[str, Any]) -> dict[str, EngineStatus]:
     """Deep status of every engine, keyed by backend value (for tests/audits)."""
     return {value: _PROBES[value](cfg) for _label, value in ENGINE_CHOICES}
+
+
+def isolated_engine_status(
+    value: str, cfg: Mapping[str, Any], *, current: Callable[[], bool] | None = None,
+) -> EngineStatus:
+    """Check native readiness in a disposable process so Tk never shares its import lock."""
+    from ..hardware_probe import query
+
+    engine = normalise_engine(value)
+    if engine == "cloud_stt":
+        # This engine only checks that a key was entered. Keep it in memory.
+        return _cloud_stt_status(cfg)
+    model = cfg.get("model")
+    probe_cfg: dict[str, Any] = {
+        key: str(cfg.get(key) or "")
+        for key in ("model_path", "whisper_model", "hub_folder")
+    }
+    if isinstance(model, dict):
+        probe_cfg["model"] = {"name": str(model.get("name") or "")}
+    request = {"engine": engine, "config": probe_cfg}
+    if engine == "google_cloud_stt":
+        request["google_cloud_credentials_present"] = has_gcloud_key(cfg)
+    result = query("engine", request=request, current=current)
+    return EngineStatus(**result)
 
 
 # ------------------------------------------------------- picker presentation

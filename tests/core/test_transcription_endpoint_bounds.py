@@ -165,6 +165,91 @@ def test_resume_tail_caps_after_offset_on_original_timeline(endpoint_case, monke
     assert last["words"][0]["end"] == pytest.approx(case.duration)
 
 
+@pytest.mark.parametrize(("captured", "cursor", "second_aligned_end"), [
+    (1, 5.25, 6.18),
+    (2, 6.18, 6.18),
+    (2, 32.25, 32.60),
+])
+def test_batched_overhang_keeps_cue_bounds_and_resumes_at_decode_cursor(
+    endpoint_case, monkeypatch, captured, cursor, second_aligned_end,
+):
+    import numpy as np
+    from faster_whisper.transcribe import restore_speech_timestamps
+    from faster_whisper.vad import collect_chunks
+    from core.speech_collect import batch_source_bounds
+    from core.backends.faster_whisper_be import BatchedInferencePipeline, WhisperModel
+
+    rate = 16000
+    case = endpoint_case
+    with wave.open(str(case.audio), "wb") as output:
+        output.setparams((1, 2, rate, 0, "NONE", ""))
+        output.writeframes(b"\0\0" * (40 * rate))
+    monkeypatch.setattr(tr, "get_duration", lambda path: 40.0)
+    second_end = 32.25 if second_aligned_end > 32 else 32.
+    speech = [{"start": 0, "end": int(5.25 * rate)}, {"start": 6 * rate, "end": int(second_end * rate)}]
+    with batch_source_bounds():
+        _, metadata = collect_chunks(np.zeros(40 * rate), speech, rate, max_duration=30)
+    model = object.__new__(WhisperModel)
+    model.frames_per_second = 100
+    model.time_precision = 0.02
+    model.feature_extractor = SimpleNamespace(sampling_rate=rate)
+
+    def align(tokenizer, tokens, encoder_output, num_frames):
+        assert num_frames == [600, 2700 if second_end > 32 else 2600]
+        return [[dict(word=" again", tokens=[42], start=5.1, end=5.6, probability=1.)],
+                [dict(word=" again", tokens=[43], start=.04, end=second_aligned_end - 6, probability=1.)]]
+
+    model.find_alignment = align
+    batch = BatchedInferencePipeline(model=model)
+    batch.generate_segment_batched = lambda *args: (
+        None, [dict(tokens=[token], avg_logprob=-.2, no_speech_prob=.1) for token in (42, 43)])
+    tokenizer = SimpleNamespace(timestamp_begin=100, eot=99, decode=lambda tokens: "again")
+    options = SimpleNamespace(word_timestamps=True, prepend_punctuations="",
+                              append_punctuations="", temperatures=[0.])
+    produced = batch._batched_segments_generator([None, None], tokenizer, metadata, 2, options, False)
+    segments = list(restore_speech_timestamps(produced, speech, rate))
+    cue_ends = [6.35, second_aligned_end]
+    assert [s.end for s in segments] == cue_ends
+
+    task = output_task(case)
+
+    def cancel_after_prefix():
+        yield from segments[:captured]
+        task.cancelled = True
+
+    install_model(monkeypatch, cancel_after_prefix(), duration=40.)
+    tr.transcribe(task)
+    saved = cp.load_checkpoint(str(case.audio))
+    assert [s["end"] for s in saved["segments"]] == cue_ends[:captured]
+
+    seen = []
+    slice_audio = tr._slice_audio_from
+
+    def slice_at(source, start, directory, **kwargs):
+        seen.append(start)
+        return slice_audio(source, start, directory, **kwargs)
+
+    monkeypatch.setattr(tr, "_slice_audio_from", slice_at)
+    paused_resume = output_task(case)
+
+    def cancel_before_next_cue():
+        paused_resume.cancelled = True
+        yield from ()
+
+    install_model(monkeypatch, cancel_before_next_cue(), duration=40. - cursor)
+    assert tr.resume_transcription(paused_resume)
+    saved = cp.load_checkpoint(str(case.audio))
+    assert saved["last_end_time"] == pytest.approx(cursor)
+
+    tail = [Segment(6.04 - cursor, 6.18 - cursor, "again")] if captured == 1 else []
+    next_start = max(cursor, 6.18) + .04
+    install_model(monkeypatch, tail + [Segment(next_start - cursor, next_start - cursor + .08, "next")],
+                  duration=40. - cursor)
+    assert tr.resume_transcription(output_task(case))
+    assert seen == pytest.approx([cursor, cursor])
+    assert [s["text"] for s in case.writes[-1]] == ["again", "again", "next"]
+
+
 def test_post_alignment_cannot_reintroduce_out_of_media_end(endpoint_case, monkeypatch):
     case = endpoint_case
     task = output_task(case)

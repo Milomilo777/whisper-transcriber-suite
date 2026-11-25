@@ -12,10 +12,73 @@ from __future__ import annotations
 
 import gc
 import threading
+from types import SimpleNamespace
 
 import pytest
 
 from core._gc_import_guard import gc_disabled_import
+
+
+def test_ai_install_click_returns_while_isolated_engine_probe_runs(monkeypatch):
+    from app.app import App
+    from app.dialogs.advanced import AdvancedDialog
+    from core import _threads, llm
+    from core.backends import availability
+
+    probing = threading.Event()
+    release_probe = threading.Event()
+    returned = threading.Event()
+    unrelated_guard_entered = threading.Event()
+    callback_posted = threading.Event()
+    verdict = []
+    workers = []
+
+    def deep(*args, **kwargs):
+        probing.set()
+        assert release_probe.wait(5)
+        return availability.EngineStatus("nvidia_asr", True)
+
+    def other_import():
+        with gc_disabled_import():
+            unrelated_guard_entered.set()
+
+    def observe():
+        verdict.append(returned.wait(1))
+        release_probe.set()
+
+    def runtime():
+        with gc_disabled_import():
+            return False
+
+    monkeypatch.setattr(availability, "isolated_engine_status", deep, raising=False)
+    monkeypatch.setattr(availability, "engine_status", deep)
+    monkeypatch.setattr(_threads, "safe_thread", lambda target, **kwargs: workers.append(target))
+    monkeypatch.setattr(llm, "runtime_available", runtime)
+    monkeypatch.setattr(llm, "runtime_availability_reason", lambda: "runtime missing")
+    logs = []
+    app = SimpleNamespace(app_config={}, post_to_main=lambda callback: callback_posted.set(),
+                          log=logs.append, log_threadsafe=logs.append)
+    App.probe_engine_status(app, "nvidia_asr", lambda status: None)
+    assert probing.wait(5)
+    importer = threading.Thread(target=other_import, daemon=True)
+    watcher = threading.Thread(target=observe, daemon=True)
+    try:
+        importer.start()
+        parent_guard_available = unrelated_guard_entered.wait(1)
+        watcher.start()
+        AdvancedDialog._install_ai_model(SimpleNamespace(app=app))
+        returned.set()
+    finally:
+        release_probe.set()
+        importer.join(5)
+        if watcher.ident is not None:
+            watcher.join(5)
+        assert callback_posted.wait(5)
+    assert verdict == [True], "Tk click handler waited for the background probe"
+    assert parent_guard_available, "the engine probe held the Tk process's import guard"
+    assert len(workers) == 1 and not logs
+    workers[0]()
+    assert logs == ["runtime missing"]
 
 
 def test_gc_disabled_import_restores_prior_state():

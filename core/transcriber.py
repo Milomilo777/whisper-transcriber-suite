@@ -29,7 +29,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Iterator
 
-from .backends.faster_whisper_be import BatchedInferencePipeline, WhisperModel
+from .backends.faster_whisper_be import BatchedInferencePipeline, WhisperModel, segment_decode_end
 
 from . import _checkpoint
 from . import language_prior as _language_prior
@@ -1143,8 +1143,14 @@ def _recover_checkpoint_timing(
     else:
         if cues or words:
             _warn_dropped_timing(task.file_path, segments, cues, words, log_cb)
-            data = dict(data, segments=bounded, segment_count=len(bounded),
-                        last_end_time=max((float(s["end"]) for s in bounded), default=0.0))
+            data = dict(data, segments=bounded, segment_count=len(bounded))
+            cursor = _cursor_or_none(data.get("last_end_time"))
+            if (data.get("transcription_completed") is not True and cursor is not None
+                    and (cursor > end or (cues and cursor == end))):
+                # An out-of-range legacy cue end is not a usable decode
+                # cursor. Restart from the text that survived timing repair.
+                data["last_end_time"] = max((float(s["end"]) for s in bounded), default=0.0)
+                return data, True
             return data, False
     prefix: list[dict[str, Any]] = []
     reason = ""
@@ -3668,7 +3674,11 @@ def _shift_segments(segments: Any, offset: float) -> Any:
             except Exception:  # noqa: BLE001 — best-effort word shift
                 pass
         try:
-            yield _shifted_copy(s, offset, words=words)
+            shifted = _shifted_copy(s, offset, words=words)
+            window_end = getattr(s, "_decode_window_end", None)
+            if window_end is not None:
+                shifted._decode_window_end = window_end + offset
+            yield shifted
         except Exception:  # noqa: BLE001 — non-NamedTuple fallback
             try:
                 s.start = s.start + offset
@@ -4142,6 +4152,7 @@ def transcribe(
         )
 
         segments_data: list[dict[str, Any]] = []
+        decode_cursor = 0.0
         # Set once the whole file is transcribed and saved, so a cancel during
         # the post steps keeps the checkpoint marked as complete.
         transcript_complete = False
@@ -4149,7 +4160,7 @@ def transcribe(
         def _save_before_retry() -> None:
             if segments_data and clip is None:
                 _write_periodic_checkpoint(
-                    task, segments_data, float(segments_data[-1]["end"]),
+                    task, segments_data, decode_cursor,
                     detected_lang_so_far, lang_prob_so_far, log_cb,
                 )
 
@@ -4165,7 +4176,7 @@ def transcribe(
                 _write_periodic_checkpoint(
                     task,
                     segments_data,
-                    float(segments_data[-1].get("end", 0.0)),
+                    decode_cursor,
                     detected_lang_so_far,
                     lang_prob_so_far,
                     log_cb,
@@ -4214,6 +4225,7 @@ def transcribe(
                 if not bounded:
                     continue
                 segments_data.append(bounded[0])
+                decode_cursor = max(decode_cursor, segment_decode_end(seg, float(bounded[0]["end"])))
                 segments_since_checkpoint += 1
 
                 now = time.time()
@@ -4227,7 +4239,7 @@ def transcribe(
                     _write_periodic_checkpoint(
                         task,
                         segments_data,
-                        float(segments_data[-1]["end"]),
+                        decode_cursor,
                         detected_lang_so_far,
                         lang_prob_so_far,
                         log_cb,
@@ -4253,7 +4265,7 @@ def transcribe(
                 _write_periodic_checkpoint(
                     task,
                     segments_data,
-                    float(segments_data[-1].get("end", 0.0)),
+                    decode_cursor,
                     detected_lang_so_far,
                     lang_prob_so_far,
                     log_cb,
@@ -4284,7 +4296,7 @@ def transcribe(
         if segments_data and clip is None:
             transcript_complete = True
             _write_periodic_checkpoint(
-                task, segments_data, float(segments_data[-1].get("end", 0.0)),
+                task, segments_data, decode_cursor,
                 lang_code, lang_prob,
                 log_cb, transcription_completed=True,
             )
@@ -4838,10 +4850,9 @@ def _cursor_or_none(v: Any) -> float | None:
 def _recover_resume_cursor(data: dict[str, Any]) -> float | None:
     """Cursor (seconds) to resume from, or None when none can be trusted.
 
-    Uses the checkpoint's ``last_end_time`` when it is a finite number
-    >= 0. A malformed one is recovered from the saved segments: the latest
-    end time among them is where the captured text stops. None means there
-    is no usable cursor and the caller must quarantine the checkpoint.
+    A valid explicit cursor is the saved decode position. Word alignment can
+    place an earlier cue past it. Use cue ends only to recover legacy records
+    without a usable cursor. None tells the caller to keep the file aside.
     """
     def _num(v: Any) -> float | None:
         if isinstance(v, bool):
@@ -5105,6 +5116,7 @@ def resume_transcription(
                 log_cb,
             )
         last_end_time = recovered
+        decode_cursor = last_end_time
         prior_segments = list(data.get("segments") or [])
         # A mixed-language run continues as one, also when the task was rebuilt
         # from history after a crash (the history row has no field for it).
@@ -5241,7 +5253,7 @@ def resume_transcription(
                 merged = prior_segments + new_segments_data
                 if merged:
                     _write_periodic_checkpoint(
-                        task, merged, max(last_end_time, float(merged[-1]["end"])), cp_language, cp_lang_prob, log_cb,
+                        task, merged, decode_cursor, cp_language, cp_lang_prob, log_cb,
                     )
 
             runner.before_retry = _save_before_retry
@@ -5298,11 +5310,11 @@ def resume_transcription(
                 # before the tail yields anything; replace it with the merged
                 # progress when some new tail segments were captured.
                 merged_so_far = prior_segments + new_segments_data
-                if merged_so_far:
+                if new_segments_data:
                     _write_periodic_checkpoint(
                         task,
                         merged_so_far,
-                        float(merged_so_far[-1].get("end", last_end_time)),
+                        decode_cursor,
                         cp_language,
                         cp_lang_prob,
                         log_cb,
@@ -5354,6 +5366,7 @@ def resume_transcription(
                 if not bounded:
                     continue
                 new_segments_data.append(bounded[0])
+                decode_cursor = max(decode_cursor, segment_decode_end(seg, float(bounded[0]["end"]), last_end_time))
 
                 if progress_cb:
                     # d["end"] is on the original timeline; scale against the
@@ -5366,9 +5379,8 @@ def resume_transcription(
                         progress_cb(99)
 
                 # Same periodic checkpoint as transcribe(), so a crash late
-                # in a long tail does not repeat the whole tail. The cursor
-                # is the merged list's last end; ``last_end_time`` stays the
-                # slice origin used for the shift above.
+                # in a long tail does not repeat the whole tail. The slice
+                # origin stays fixed while the accepted decode cursor advances.
                 segments_since_checkpoint += 1
                 now = time.time()
                 if (
@@ -5379,7 +5391,7 @@ def resume_transcription(
                     _write_periodic_checkpoint(
                         task,
                         merged,
-                        float(merged[-1].get("end", last_end_time)),
+                        decode_cursor,
                         cp_language,
                         cp_lang_prob,
                         log_cb,
@@ -5395,7 +5407,7 @@ def resume_transcription(
                 _write_periodic_checkpoint(
                     task,
                     merged,
-                    float(merged[-1].get("end", last_end_time)),
+                    decode_cursor,
                     cp_language,
                     cp_lang_prob,
                     log_cb,
@@ -5428,7 +5440,7 @@ def resume_transcription(
         if final_segments:
             resume_complete = True
             _write_periodic_checkpoint(
-                task, final_segments, float(final_segments[-1].get("end", last_end_time)),
+                task, final_segments, decode_cursor,
                 cp_language, cp_lang_prob, log_cb, transcription_completed=True,
             )
 

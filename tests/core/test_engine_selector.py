@@ -25,6 +25,7 @@ Covered:
 """
 from __future__ import annotations
 
+import subprocess
 import sys
 import types
 
@@ -329,7 +330,153 @@ def _run_probe_inline(monkeypatch):
                 self._target()
 
     monkeypatch.setattr("app.app.threading.Thread", _InlineThread)
+    monkeypatch.setattr(
+        eng, "isolated_engine_status", lambda value, cfg, **kwargs: eng.engine_status(value, cfg),
+    )
     _ = _threading  # keep the import referenced for clarity
+
+
+def test_isolated_engine_status_reads_the_model_path_on_the_child(tmp_path):
+    model = tmp_path / "model with spaces 漢"
+    model.mkdir()
+    (model / "model.bin").write_bytes(b"weights")
+    verdict = eng.isolated_engine_status("faster_whisper", {"model_path": str(model)})
+    assert verdict == eng.EngineStatus("faster_whisper", True)
+
+
+def test_isolated_engine_status_does_not_send_api_keys(monkeypatch, tmp_path):
+    from core import hardware_probe
+
+    creds = tmp_path / "شهادة.json"
+    creds.write_text('{"private_key": "dummy"}', encoding="utf-8")
+
+    def query(operation, *, request, current=None):
+        assert operation == "engine"
+        assert request["config"]["model"] == {"name": "small"}
+        assert "key" not in repr(request)
+        assert "gcloud_stt_credentials_json" not in request["config"]
+        if request["engine"] == "google_cloud_stt":
+            assert request["google_cloud_credentials_present"] is True
+        return {"value": request["engine"], "ready": True}
+
+    monkeypatch.setattr(hardware_probe, "query", query)
+    cfg = {"model": {"name": "small", "key": "nested"}, "cloud_stt_api_key": "secret",
+           "gcloud_stt_credentials_json": str(creds)}
+    assert eng.isolated_engine_status("faster_whisper", cfg).ready
+    assert eng.isolated_engine_status("cloud_stt", cfg).ready
+    assert eng.isolated_engine_status("google_cloud_stt", cfg).ready
+
+
+def test_engine_child_inherits_runtime_paths_without_parent_secrets(monkeypatch, tmp_path):
+    from core import hardware_probe
+
+    keys = ("OPENAI_API_KEY", "HF_TOKEN", "GOOGLE_APPLICATION_CREDENTIALS", "BUILD_SIGNING_SECRET")
+    for name in keys:
+        monkeypatch.setenv(name, "dummy")
+    monkeypatch.setenv("WTS_PROFILE_DIR", str(tmp_path))
+    result = tmp_path / "result.json"
+    code = (
+        "import json, os, sys; from pathlib import Path; "
+        "Path(sys.argv[1]).write_text(json.dumps("
+        "{name: os.getenv(name) is not None for name in sys.argv[2:]}), encoding='utf-8')"
+    )
+    verdict = hardware_probe._run_command(
+        [sys.executable, "-c", code, str(result), *keys, "WTS_PROFILE_DIR", "PATH"],
+        result, 5, engine=True,
+    )
+    assert verdict == {**dict.fromkeys(keys, False), "WTS_PROFILE_DIR": True, "PATH": True}
+
+
+def test_overlapping_engine_requests_both_get_deep_results(monkeypatch):
+    import json
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Event
+    from core import hardware_probe
+
+    entered, release_a, release_b = Event(), Event(), Event()
+    requesting_b, requesting_c = Event(), Event()
+    calls = []
+
+    def run(command, result, timeout, **kwargs):
+        engine = json.loads(result.with_name("request.json").read_text(encoding="utf-8"))["engine"]
+        calls.append(engine)
+        if engine == "nvidia_asr":
+            entered.set()
+            assert release_a.wait(5)
+        elif engine == "whisper_cpp":
+            assert release_b.wait(5)
+        return {"value": engine, "ready": False, "detail": "deep verdict"}
+
+    def request(engine, requesting):
+        requesting.set()
+        return eng.isolated_engine_status(engine, {})
+
+    monkeypatch.setattr(hardware_probe, "_run_command", run)
+    monkeypatch.setattr(hardware_probe, "PROBE_TIMEOUT_S", -3.8)  # shrink the old slot-wait limit
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        first = pool.submit(eng.isolated_engine_status, "nvidia_asr", {})
+        try:
+            assert entered.wait(5)
+            second = pool.submit(request, "whisper_cpp", requesting_b)
+            third = pool.submit(request, "faster_whisper", requesting_c)
+            assert requesting_b.wait(5) and requesting_c.wait(5)
+            # Even the latest caller behind an occupied slot gets a verdict.
+            with pytest.raises(TimeoutError):
+                third.result(timeout=0.35)
+        finally:
+            release_a.set()
+            release_b.set()
+        assert first.result(timeout=5).detail == "deep verdict"
+        assert second.result(timeout=5).detail == "deep verdict"
+        assert third.result(timeout=5) == eng.EngineStatus("faster_whisper", False, "deep verdict")
+    assert sorted(calls) == ["faster_whisper", "nvidia_asr", "whisper_cpp"]
+
+
+def test_superseded_advanced_probe_skips_child_and_callback(App, monkeypatch):
+    from types import SimpleNamespace
+    from core import hardware_probe
+
+    pending, callbacks, delivered, launched = [], [], [], []
+    app = SimpleNamespace(post_to_main=callbacks.append)
+    monkeypatch.setattr("app.app.threading.Thread",
+                        lambda *, target, daemon: SimpleNamespace(start=lambda: pending.append(target)))
+
+    def run(command, result, timeout, **kwargs):
+        launched.append(command)
+        return {"value": "faster_whisper", "ready": False}
+
+    monkeypatch.setattr(hardware_probe, "_run_command", run)
+    App.probe_engine_status(app, "faster_whisper", delivered.append, cfg={"whisper_model": "small"})
+    App.probe_engine_status(app, "faster_whisper", delivered.append, cfg={"whisper_model": "large-v3"})
+    for probe in pending:
+        probe()
+    for callback in callbacks:
+        callback()
+    assert len(launched) == 1
+    assert delivered == [eng.EngineStatus("faster_whisper", False)]
+
+
+@pytest.mark.parametrize("failure", [
+    subprocess.TimeoutExpired("probe", 25),
+    RuntimeError("probe crashed"),
+    PermissionError("probe launch denied"),
+])
+def test_failed_deep_probe_does_not_report_ready(App, monkeypatch, failure):
+    from types import SimpleNamespace
+
+    _run_probe_inline(monkeypatch)
+    delivered = []
+    app = SimpleNamespace(post_to_main=lambda callback: callback())
+
+    def fail(*args, **kwargs):
+        raise failure
+
+    monkeypatch.setattr(eng, "isolated_engine_status", fail)
+    App.probe_engine_status(app, "whisper_cpp", delivered.append, cfg={})
+
+    assert len(delivered) == 1
+    assert not delivered[0].ready
+    assert "try again" in delivered[0].detail.lower()
 
 
 def test_refresh_engine_status_paints_checking_then_real_result(App, monkeypatch):
@@ -395,8 +542,7 @@ def test_refresh_engine_status_drops_stale_result_after_engine_switch(App, monke
 
 
 def test_refresh_engine_status_falls_back_when_the_probe_never_answers(App, monkeypatch):
-    """A deep probe that hangs (seen on macOS 10.15) must not leave
-    "Checking…" up forever: the cheap status replaces it after a while."""
+    """A missing deep verdict must leave an actionable, inconclusive status."""
     fw_label = eng.VALUE_TO_LABEL["faster_whisper"]
     a = _bare_app(App, engine_label=fw_label, backend="faster_whisper")
     pending: list = []
@@ -416,7 +562,8 @@ def test_refresh_engine_status_falls_back_when_the_probe_never_answers(App, monk
     assert a.engine_status_var.get() == "Checking…"
     assert len(pending) == 1
     pending[0]()  # the fallback timer fires
-    assert a.engine_status_var.get().startswith("✓")
+    assert a.engine_status_var.get().startswith("⚠")
+    assert "try again" in a.engine_status_var.get().lower()
 
 
 def test_engine_status_fallback_keeps_a_real_answer(App, monkeypatch):

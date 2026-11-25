@@ -48,14 +48,18 @@ def test_a_displaced_package_is_restored_when_its_destination_is_missing(extras:
     assert not (extras / f".torch.bak-{DEAD}").exists()
 
 
-def test_a_backup_is_dropped_when_the_new_package_is_already_in_place(extras: Path) -> None:
+def test_a_legacy_backup_is_kept_when_the_new_package_is_already_in_place(extras: Path) -> None:
     _pkg(extras / "torch", "new")
     _pkg(extras / f".torch.bak-{DEAD}", "old")
 
-    assert optional_deps.sweep_install_leftovers() == (0, 1)
+    assert optional_deps.sweep_install_leftovers() == (0, 0)
 
     assert (extras / "torch" / "__init__.py").read_text(encoding="utf-8") == "new"
-    assert not (extras / f".torch.bak-{DEAD}").exists()
+    assert (extras / f".torch.bak-{DEAD}" / "__init__.py").read_text(encoding="utf-8") == "old"
+
+    (extras / "torch").rename(extras.parent / "package-to-repair")
+    assert optional_deps.sweep_install_leftovers() == (1, 0)
+    assert (extras / "torch" / "__init__.py").read_text(encoding="utf-8") == "old"
 
 
 def test_a_half_copied_merge_folder_and_file_are_removed(extras: Path) -> None:
@@ -147,7 +151,7 @@ def test_an_unrestorable_backup_is_kept_not_deleted(
     def _fail(src: Any, dst: Any) -> None:
         raise PermissionError(13, "locked")
 
-    monkeypatch.setattr(optional_deps.os, "replace", _fail)
+    monkeypatch.setattr(optional_deps.os, "rename", _fail)
 
     assert optional_deps.sweep_install_leftovers() == (0, 0)
     assert (extras / f".torch.bak-{DEAD}" / "__init__.py").exists()  # nothing lost
@@ -347,3 +351,33 @@ def test_a_cleaned_up_install_tells_the_user_how_to_repair(
 
     assert any("install" in r.getMessage() and "again" in r.getMessage()
                for r in caplog.records if r.levelno >= logging.WARNING)
+
+
+def test_unreadable_rollback_record_preserves_original_backup(extras: Path) -> None:
+    record = extras / ".install-rollback.json"
+    record.write_text("{", encoding="utf-8")
+    _pkg(extras / "torch", "partial")
+    backup = _pkg(extras / f".torch.bak-{DEAD}", "original")
+
+    assert optional_deps.sweep_install_leftovers() == (0, 0)
+    assert (backup / "__init__.py").read_text(encoding="utf-8") == "original"
+    assert record.read_text(encoding="utf-8") == "{"
+    messages: list[str] = []
+    assert optional_deps._recover_install(str(extras), messages.append) == (False, 0)
+    assert "move" in messages[0] and str(extras) in messages[0] and "reinstall" in messages[0]
+
+
+def test_rollback_record_and_backup_recover_under_a_long_unicode_profile(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The folder and backup fit MAX_PATH. The journal's temporary filename does not.
+    folder = tmp_path / ("کاربر" * 8) / ("ب" * (240 - len(str(tmp_path)) - 48)) / "pylibs"
+    folder.mkdir(parents=True)
+    monkeypatch.setattr(optional_deps, "extras_dir", lambda: str(folder))
+    name = "ب.py"
+    (folder / f".{name}.bak-{DEAD}").write_text("original", encoding="utf-8")
+    optional_deps._write_rollback_record(str(folder), {name: True}, DEAD)
+
+    assert optional_deps.sweep_install_leftovers() == (1, 0)
+    assert (folder / name).read_text(encoding="utf-8") == "original"
+    assert optional_deps._ROLLBACK_RECORD not in {path.name for path in folder.iterdir()}

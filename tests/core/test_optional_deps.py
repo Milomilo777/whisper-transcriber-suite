@@ -4,10 +4,86 @@ from __future__ import annotations
 import os
 import subprocess
 import threading
+from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
 from core import optional_deps
+
+
+@pytest.mark.parametrize("locked", [False, True])
+@pytest.mark.parametrize("phase", ["publish", "verify"])
+def test_failed_merge_restores_or_retains_every_displaced_package(monkeypatch, tmp_path, locked, phase):
+    deps = optional_deps
+    dest = tmp_path / "pylibs"
+    package = dest / "bigpkg"
+    package.mkdir(parents=True)
+    (package / "__init__.py").write_text("# original", encoding="utf-8")
+    (package / "version.py").write_text("# original version", encoding="utf-8")
+    later = dest / "zzlater.py"
+    later.write_text("# original later module", encoding="utf-8")
+    monkeypatch.setattr(deps, "extras_dir", lambda: str(dest))
+    monkeypatch.setattr(deps, "can_install", lambda: True)
+    monkeypatch.setattr(deps, "is_available", lambda feature: False)
+    monkeypatch.setattr(deps.offline, "is_offline", lambda: False)
+    monkeypatch.setattr(deps, "_has_room", lambda *args: True)
+
+    def pip(cmd, **kwargs):
+        stage = Path(cmd[cmd.index("--target") + 1])
+        new = stage / "bigpkg"
+        new.mkdir()
+        (new / "__init__.py").write_text("# new", encoding="utf-8")
+        (new / "new_only.py").write_text("# complete new module", encoding="utf-8")
+        (new / "locked.pyd").touch()
+        (stage / "created.py").touch()
+        (stage / "zzlater.py").touch()
+        return SimpleNamespace(stdout=iter(()), returncode=0, wait=lambda timeout=None: 0)
+
+    replace = os.replace
+
+    def publish(src, dst):
+        if phase == "publish" and Path(dst) == later and ".merge-" in Path(src).name:
+            raise PermissionError("later package could not be published")
+        if locked and Path(src) == package and ".rollback-new-" in Path(dst).name:
+            raise PermissionError("Windows cannot move the loaded package either")
+        return replace(src, dst)
+
+    remove = deps._rm
+
+    def partially_remove(path):
+        if locked and Path(path) == package:
+            (package / "__init__.py").unlink(missing_ok=True)
+            return  # Windows can leave a directory with a loaded extension behind.
+        return remove(path)
+
+    monkeypatch.setattr(deps.subprocess, "Popen", pip)
+    monkeypatch.setattr(deps.os, "replace", publish)
+    monkeypatch.setattr(deps, "_rm", partially_remove)
+    assert not deps.install("alignment")
+    assert later.read_text(encoding="utf-8") == "# original later module"
+    assert not (dest / "created.py").exists()
+    if not locked:
+        assert (package / "version.py").read_text(encoding="utf-8") == "# original version"
+        return
+
+    backup = dest / f".bigpkg.bak-{os.getpid()}"
+    assert (backup / "version.py").is_file()
+    assert (package / "__init__.py").read_text(encoding="utf-8") == "# new"
+    assert (package / "new_only.py").is_file()
+    assert (package / "locked.pyd").is_file()
+    monkeypatch.setattr(deps, "is_available", lambda feature: True)
+    monkeypatch.setattr(deps.subprocess, "Popen", lambda *a, **kw: pytest.fail("must refuse retry"))
+    logs = []
+    assert not deps.install("alignment", log_cb=logs.append)
+    assert any("move" in line and str(package) in line for line in logs)
+    monkeypatch.setattr(deps, "_pid_alive", lambda pid: False)
+    assert deps.sweep_install_leftovers() == (0, 0)
+    assert (backup / "version.py").is_file()
+
+    package.rename(dest.parent / "quarantined-package")
+    assert deps.sweep_install_leftovers() == (1, 0)
+    assert (package / "version.py").read_text(encoding="utf-8") == "# original version"
 
 
 def test_packages_for_known_features():

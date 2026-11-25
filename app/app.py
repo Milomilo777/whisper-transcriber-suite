@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import copy
-import gc
 import logging
 import os
 import re
@@ -3393,11 +3392,8 @@ class App(tk.Tk):
                 self._apply_engine_status(value, st)
 
             self.probe_engine_status(value, _on_result)
-            # 3) Safety net: the deep probe imports native libraries on a
-            #    thread and has no timeout of its own. If it never answers
-            #    (seen on macOS 10.15), "Checking…" stayed up forever; after
-            #    a while show the cheap status instead. A late real result
-            #    still replaces it.
+            # 3) Report an inconclusive check if the background queue or
+            #    child takes too long. A late real result still replaces it.
             self.after(
                 self._ENGINE_PROBE_FALLBACK_MS,
                 lambda: self._engine_status_fallback(seq, value),
@@ -3409,14 +3405,15 @@ class App(tk.Tk):
                 pass
 
     # How long the Transcribe-tab status line waits for the deep engine probe
-    # before falling back to the cheap status (see _refresh_engine_status).
+    # before reporting that readiness could not be confirmed.
     _ENGINE_PROBE_FALLBACK_MS = 15000
+    _ENGINE_PROBE_UNCONFIRMED = N_("Could not check engine readiness. Reopen the app to try again.")
     # Generation of the last status refresh / of the last probe that answered.
     _engine_status_seq: int = 0
     _engine_status_answered: int = 0
 
     def _engine_status_fallback(self, seq: int, value: str) -> None:
-        """Replace a still-pending "Checking…" with the cheap engine status."""
+        """Replace a still-pending "Checking…" with an inconclusive result."""
         if seq != getattr(self, "_engine_status_seq", 0):
             return  # a newer refresh owns the line
         if getattr(self, "_engine_status_answered", 0) >= seq:
@@ -3429,16 +3426,16 @@ class App(tk.Tk):
                 return
             from core.backends import availability as _eng
 
-            st = _eng.engine_status(value, self.app_config, deep=False)
+            st = _eng.EngineStatus(value, False, _(self._ENGINE_PROBE_UNCONFIRMED))
             logger.warning(
                 "Engine readiness probe for %s did not answer in %.0f s; "
-                "showing the quick status instead.",
+                "showing an inconclusive result.",
                 value, self._ENGINE_PROBE_FALLBACK_MS / 1000,
             )
             var.set(_eng.format_engine_status(st))
             lbl = getattr(self, "engine_status_label", None)
             if lbl is not None:
-                lbl.configure(foreground=tokens.themed(tokens.SUCCESS_TEXT) if st.ready else tokens.themed(tokens.WARNING_TEXT))
+                lbl.configure(foreground=tokens.themed(tokens.WARNING_TEXT))
         except Exception:  # noqa: BLE001 -- a status line must never raise
             logger.exception("Engine status fallback failed")
 
@@ -3449,10 +3446,10 @@ class App(tk.Tk):
         *,
         cfg: Mapping[str, Any] | None = None,
     ) -> None:
-        """Deep-probe one engine on a daemon thread; ``on_result`` runs on Tk.
+        """Wait for the isolated engine probe off-thread; ``on_result`` runs on Tk.
 
         Shared by the Transcribe-tab status line and the Advanced dialog's
-        warning row so the GC-off thread discipline below exists in exactly
+        warning row so the isolation and fallback logic exist in exactly
         one place. ``on_result`` is always dispatched through
         :meth:`post_to_main` — never called on the probe thread.
 
@@ -3466,44 +3463,23 @@ class App(tk.Tk):
         from core.backends import availability as _eng
 
         cfg_snapshot = dict(cfg) if cfg is not None else dict(self.app_config)
+        ticket_field = "_advanced_engine_probe_ticket" if cfg is not None else "_engine_probe_ticket"
+        ticket = object()
+        setattr(self, ticket_field, ticket)
+
+        def current() -> bool:
+            return getattr(self, ticket_field) is ticket
 
         def _probe() -> None:
-            # GC disabled for this ENTIRE probe thread, not just the
-            # engine_status() call — a real crash was confirmed
-            # (2026-08-15, Python 3.14) three times, each narrower fix
-            # disproven by the next instrumented full-suite rerun:
-            # (1) GC firing mid-import inside engine_status() faulted a
-            # C-extension class-registration step; (2) narrowing the
-            # gc.disable() window to just that call "fixed" it once,
-            # then a later rerun faulted one line later in a plain
-            # EngineStatus(...) dataclass construction; (3) widening the
-            # window to the whole engine_status() try/finally "fixed" it
-            # again, then ANOTHER rerun faulted right after gc.enable()
-            # returned, inside the post_to_main() call below. gc.disable
-            # ()/gc.enable() are PROCESS-GLOBAL, not thread-local — every
-            # other thread's allocations pile up ungarbage-collected
-            # while this one holds GC off, so re-enabling it here was
-            # itself triggering an immediate, larger-than-usual
-            # collection at the exact moment this thread kept running.
-            # Holding GC off for the probe's ENTIRE body (including
-            # post_to_main) removes that re-enable-triggers-a-collision
-            # window too. See core/backends/google_cloud_stt.py's
-            # matching comment and ADR 0008 in docs/DECISIONS.md for the
-            # full three-round story — treat this as a mitigation that
-            # has repeatedly needed widening, not a proven-complete fix.
-            was_gc_enabled = gc.isenabled()
-            gc.disable()
             try:
-                try:
-                    st = _eng.engine_status(value, cfg_snapshot, deep=True)
-                except Exception as e:  # noqa: BLE001
-                    st = _eng.EngineStatus(value, False, str(e) or "probe failed")
-                # post_to_main, NOT self.after: this runs on a daemon
-                # thread, and off-thread after() raises on Python 3.14.
-                self.post_to_main(lambda: on_result(st))
-            finally:
-                if was_gc_enabled:
-                    gc.enable()
+                st = _eng.isolated_engine_status(value, cfg_snapshot, current=current)
+            except Exception:  # noqa: BLE001 - a stalled or crashed probe gives no deep verdict
+                if not current():
+                    return
+                logger.debug("Isolated engine probe did not complete", exc_info=True)
+                st = _eng.EngineStatus(value, False, _(App._ENGINE_PROBE_UNCONFIRMED))
+            if current():
+                self.post_to_main(lambda: on_result(st) if current() else None)
 
         threading.Thread(target=_probe, daemon=True).start()
 

@@ -21,11 +21,41 @@ from __future__ import annotations
 
 import logging
 import math
-from typing import Any, Callable
+from bisect import bisect_left
+from contextlib import contextmanager
+from contextvars import ContextVar
+from itertools import accumulate
+from typing import Any, Callable, Iterator
 
 logger = logging.getLogger(__name__)
 
 _MARKER = "_wts_speech_collect"
+_batch_source_bounds: ContextVar[bool] = ContextVar("batch_source_bounds", default=False)
+
+
+@contextmanager
+def batch_source_bounds() -> Iterator[None]:
+    """Include original audio bounds in the metadata returned to the batched decoder."""
+    token = _batch_source_bounds.set(True)
+    try:
+        yield
+    finally:
+        _batch_source_bounds.reset(token)
+
+
+def _add_source_ends(chunks: list[dict], metadata: list[dict], rate: int) -> list[dict]:
+    cumulative_ends = list(accumulate(piece["end"] - piece["start"] for piece in chunks))
+    result = []
+    for window in metadata:
+        end = round((window["offset"] + window["duration"]) * rate)
+        index = bisect_left(cumulative_ends, end)
+        if end > 0 and index < len(chunks):
+            # Equality belongs to the preceding piece. The next one can
+            # start after a silence gap or after a different decoder window.
+            source_end = chunks[index]["end"] - (cumulative_ends[index] - end)
+            window = dict(window, _wts_source_end=source_end / rate)
+        result.append(window)
+    return result
 
 
 def gather_speech(audio: Any, chunks: list[dict], sampling_rate: int = 16000) -> tuple[list, list]:
@@ -50,7 +80,11 @@ def _make_collect(original: Callable[..., Any]) -> Callable[..., Any]:
                 isinstance(max_duration, float) and math.isinf(max_duration)
                 and max_duration > 0):
             # Arguments a later faster-whisper may add: only upstream knows them.
-            return original(audio, chunks, sampling_rate, max_duration, *args, **kwargs)
+            result = original(audio, chunks, sampling_rate, max_duration, *args, **kwargs)
+            if _batch_source_bounds.get() and chunks:
+                audio_chunks, metadata = result
+                return audio_chunks, _add_source_ends(chunks, metadata, sampling_rate)
+            return result
         return gather_speech(audio, chunks, sampling_rate)
 
     setattr(collect_chunks, _MARKER, True)

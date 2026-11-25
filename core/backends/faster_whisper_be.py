@@ -14,6 +14,7 @@ import math
 import os
 import threading
 import time
+from collections import deque
 from contextlib import nullcontext
 from contextvars import ContextVar
 from pathlib import Path
@@ -29,7 +30,7 @@ try:  # 1.0.3+ ships this; older wheels do not
 except ImportError:  # pragma: no cover
     _BatchedInferencePipeline = None  # type: ignore[assignment]
 
-from .. import gpu_temperature, loop_guard, vad_window
+from .. import gpu_temperature, loop_guard, speech_collect, vad_window
 from ..config import load_config
 from ..model_manager import DownloadCancelled, ensure_model
 from .base import Backend, LanguageInfo
@@ -40,18 +41,61 @@ logger = logging.getLogger(__name__)
 # upstream restores VAD gaps afterwards. Keep the exact duration local to this
 # forward call without mutating the shared model or upstream rounded frames.
 _batch_alignment: ContextVar[Any] = ContextVar("batch_alignment", default=None)
+_batch_window_ends: ContextVar[deque[float | None] | None] = ContextVar(
+    "batch_window_ends", default=None,
+)
 
 
 if _BatchedInferencePipeline is not None:
     class BatchedInferencePipeline(_BatchedInferencePipeline):
         """Pass exact chunk bounds to fallback without altering valid alignment."""
 
+        def transcribe(self, audio, *args, **kwargs):
+            with speech_collect.batch_source_bounds():
+                return super().transcribe(audio, *args, **kwargs)
+
         def forward(self, features, tokenizer, chunks_metadata, options):
             token = _batch_alignment.set((self.model, chunks_metadata))
             try:
-                return super().forward(features, tokenizer, chunks_metadata, options)
+                groups = super().forward(features, tokenizer, chunks_metadata, options)
             finally:
                 _batch_alignment.reset(token)
+            bounds = _batch_window_ends.get()
+            if bounds is not None:
+                for group, chunk in zip(groups, chunks_metadata):
+                    # The source sample bounds survive VAD timestamp remapping.
+                    end = chunk.get("_wts_source_end")
+                    pieces = chunk.get("segments")
+                    if end is None and pieces:
+                        # Explicit clips bypass collect_chunks.
+                        end = pieces[-1]["end"] / self.model.feature_extractor.sampling_rate
+                    bounds.extend([end] * len(group))
+            return groups
+
+        def _batched_segments_generator(
+            self, features, tokenizer, chunks_metadata, batch_size, options, log_progress,
+        ):
+            # Associate bounds in yield order because nearby chunks can share a
+            # rounded seek. Scope the queue to each next() for interleaved decodes.
+            bounds: deque[float | None] = deque()
+            segments = super()._batched_segments_generator(
+                features, tokenizer, chunks_metadata, batch_size, options, log_progress,
+            )
+            try:
+                while True:
+                    token = _batch_window_ends.set(bounds)
+                    try:
+                        segment = next(segments)
+                    except StopIteration:
+                        return
+                    finally:
+                        _batch_window_ends.reset(token)
+                    end = bounds.popleft() if bounds else None
+                    if end is not None and hasattr(segment, "__dict__"):
+                        setattr(segment, "_decode_window_end", end)
+                    yield segment
+            finally:
+                segments.close()
 else:  # pragma: no cover - compatibility with older faster-whisper wheels
     BatchedInferencePipeline = None  # type: ignore[assignment]
 
@@ -69,6 +113,12 @@ def _chunk_window(chunk):
             or start < 0 or duration <= 0 or end <= start):
         return None
     return start, end
+
+
+def segment_decode_end(seg: Any, cue_end: float, offset: float = 0.0) -> float:
+    """Bound accepted progress by the audio window that could produce the cue."""
+    window_end = getattr(seg, "_decode_window_end", None)
+    return min(cue_end, window_end + offset) if window_end is not None else cue_end
 
 
 def _alignment_window(original, frames, frames_per_second):
@@ -304,7 +354,9 @@ class WhisperDecode:
                 while True:
                     try:
                         for seg in _shift_segments(iterator, offset) if offset else iterator:
-                            cursor = max(cursor, float(getattr(seg, "end", 0.0) or 0.0))
+                            cursor = max(cursor, segment_decode_end(
+                                seg, float(getattr(seg, "end", 0.0) or 0.0),
+                            ))
                             yield seg
                         return
                     except RuntimeError as exc:

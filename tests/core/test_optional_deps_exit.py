@@ -110,6 +110,7 @@ def test_the_exit_waits_for_a_merge_in_progress_and_nothing_is_half_done(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
 ) -> None:
     final = _env(monkeypatch, tmp_path)
+    monkeypatch.setattr(optional_deps, "is_available", lambda feat: (final / "bigpkg").is_dir())
     monkeypatch.setattr(optional_deps.subprocess, "Popen",
                         lambda cmd, **_k: _FinishedProc(cmd[cmd.index("--target") + 1]))
     in_merge, release = threading.Event(), threading.Event()

@@ -16,6 +16,7 @@ import contextlib
 import importlib
 import importlib.metadata
 import importlib.util
+import json
 import logging
 import os
 import re
@@ -205,9 +206,8 @@ def _extras_file_lock(
     and the worker processes (Parakeet, voice cloning) all install into the
     same extras folder, and two merges of a shared package such as torch/
     could interleave. The OS drops the lock when its process dies, so a
-    crashed install never leaves it held. A lock file that cannot be opened
-    or locked at all lets the install go on without it, logged; ``strict`` callers (the
-    start-up sweep, which deletes folders the lock protects) get ``""`` there instead.
+    crashed install never leaves it held. In strict mode, an unusable lock
+    returns ``""`` so package recovery and publication cannot race.
     """
     from .config import _lock_is_contended
 
@@ -216,7 +216,7 @@ def _extras_file_lock(
     try:
         fh = open(os.path.join(folder, ".install.lock"), "a+b")
     except OSError as e:
-        logger.warning("Could not use the extras install lock (%s); installing without it", e)
+        logger.warning("Could not open the extras install lock: %s", e)
     deadline = (time.monotonic() + timeout) if timeout else None
     told = False  # set once the lock was found held by another process
     while fh is not None:
@@ -232,7 +232,7 @@ def _extras_file_lock(
             break
         except OSError as e:
             if not _lock_is_contended(e):
-                logger.warning("Could not lock the extras install lock (%s); installing without it", e)
+                logger.warning("Could not take the extras install lock: %s", e)
                 break
         if not told and log_cb is not None:
             log_cb("Another Whisper window or worker is installing a package; waiting for it...")
@@ -252,6 +252,8 @@ def _extras_file_lock(
     if strict and not locked:
         if fh is not None:
             fh.close()
+        if log_cb is not None:
+            log_cb("Could not lock the package folder. Close the app and try again.")
         yield ""
         return
     try:
@@ -376,8 +378,9 @@ def extras_dir() -> str:
 
 # What a cut install leaves behind: ``.<name>.bak-<pid>`` (the live package moved aside),
 # ``.<name>.merge-<pid>`` (the half-copied new one) and pip's ``pylibs-stage-*`` folder.
-_LEFTOVER_RE = re.compile(r"^\.(?P<name>.+)\.(?P<kind>bak|merge)-(?P<pid>\d+)$")
+_LEFTOVER_RE = re.compile(r"^\.(?P<name>.+)\.(?P<kind>bak|merge|rollback-new)-(?P<pid>\d+)$")
 _STAGE_PREFIX = "pylibs-stage-"
+_ROLLBACK_RECORD = ".install-rollback.json"
 #: Folders below the extras folder an install merges into (``google/cloud/speech``).
 _SWEEP_MAX_DEPTH = 3
 
@@ -412,6 +415,144 @@ def _pid_alive(pid: int) -> bool:
         return True
 
 
+def _merge_path(dest: str, kind: str, pid: int) -> str:
+    return os.path.join(os.path.dirname(dest), f".{os.path.basename(dest)}.{kind}-{pid}")
+
+
+def _entry_exists(path: str) -> bool:
+    """An unreadable entry is not proof that its name is free."""
+    try:
+        os.lstat(path)
+    except FileNotFoundError:
+        return False
+    return True
+
+
+def _rollback_dest(folder: str, name: str) -> str:
+    parts = name.split("/")
+    if len(parts) > _SWEEP_MAX_DEPTH + 1 or any(
+        not part or part.startswith(".") or any(c in part for c in "\\:\0")
+        or part.rstrip(" .") != part for part in parts
+    ):
+        raise ValueError("Invalid package path in install recovery record")
+    dest = folder
+    for part in parts:
+        dest = os.path.join(dest, part)
+        if _entry_exists(dest) and _is_reparse_point(dest):
+            raise ValueError(f"Package recovery would cross a link at {dest}")
+    return dest
+
+
+def _rollback_record_path(folder: str) -> str:
+    record = os.path.join(folder, _ROLLBACK_RECORD)
+    if sys.platform != "win32":
+        return record
+    # The journal and its scratch filename can be longer than paths that
+    # already fit in the package folder when legacy MAX_PATH limits apply.
+    record = os.path.abspath(record)
+    if record.startswith("\\\\?\\"):
+        return record
+    if record.startswith("\\\\"):
+        return "\\\\?\\UNC\\" + record[2:]
+    return "\\\\?\\" + record
+
+
+def _write_rollback_record(folder: str, entries: dict[str, bool], pid: int) -> None:
+    """Publish the complete recovery plan before moving any live files."""
+    record = _rollback_record_path(folder)
+    stream = tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=os.path.dirname(record),
+                                         prefix=".install-rollback-", delete=False)
+    try:
+        with stream:
+            json.dump({"pid": pid, "entries": entries}, stream)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(stream.name, record)
+    finally:
+        _rm(stream.name)
+
+
+def _recovery_message(message: str, log_cb: Callable[[str], None] | None) -> None:
+    logger.warning("%s", message)
+    if log_cb is not None:
+        log_cb(message)
+
+
+def _recover_install(
+    folder: str, log_cb: Callable[[str], None] | None,
+    *, published: set[str] | None = None,
+) -> tuple[bool, int]:
+    """Retry rollback under the install lock. Only this install can discard its new entries."""
+    record = _rollback_record_path(folder)
+    try:
+        if not _entry_exists(record):
+            return True, 0
+        if _is_reparse_point(record):
+            raise ValueError("The recovery record is a link")
+        with open(record, encoding="utf-8") as stream:
+            journal = json.load(stream)
+        pid, entries = journal["pid"], journal["entries"]
+        if type(pid) is not int or pid <= 0 or not isinstance(entries, dict) or any(
+            type(had_original) is not bool for had_original in entries.values()
+        ):
+            raise ValueError("Invalid install recovery record")
+    except (OSError, ValueError, TypeError, KeyError) as e:
+        logger.warning("Could not read package recovery record %s: %s", record, e)
+        _recovery_message(
+            f"Could not recover extra packages. Close all app windows, move the folder "
+            f"{folder} to a safe location outside the cache, then reopen the app and "
+            "reinstall the extra packages. Keep the folder for recovery.", log_cb,
+        )
+        return False, 0
+
+    restored = 0
+    complete = True
+    for name, had_original in entries.items():
+        try:
+            dest = _rollback_dest(folder, name)
+            backup = _merge_path(dest, "bak", pid)
+            backed_up = _entry_exists(backup)
+            if backed_up and (not had_original or _is_reparse_point(backup)):
+                raise ValueError(f"Unexpected package backup: {backup}")
+            if published is not None and dest in published and (backed_up or not had_original):
+                # A loaded extension can make rmtree stop after deleting some
+                # modules. Move the whole published entry out of the import path first.
+                if _entry_exists(dest):
+                    scratch = _merge_path(dest, "rollback-new", pid)
+                    if _entry_exists(scratch):
+                        raise FileExistsError(scratch)
+                    try:
+                        os.replace(dest, scratch)
+                    except OSError:
+                        logger.debug("Could not move the new package at %s", dest, exc_info=True)
+                    else:
+                        _rm(scratch)
+            dest_exists = _entry_exists(dest)
+            if dest_exists and (backed_up or not had_original):
+                complete = False
+                _recovery_message(
+                    f"Package recovery is paused. Close the app, then move {dest} to a safe "
+                    "location outside the package folder and reopen the app. Keep all backups.", log_cb,
+                )
+            elif backed_up:
+                os.rename(backup, dest)
+                restored += 1
+            elif had_original and not dest_exists:
+                raise ValueError(f"Both the original and its backup are missing: {dest}")
+        except (OSError, ValueError) as e:
+            complete = False
+            _recovery_message(f"Could not restore a package. Keep the backups, close and reopen "
+                              f"the app, then try again. ({e})", log_cb)
+    if complete:
+        try:
+            os.unlink(record)
+        except OSError as e:
+            _recovery_message(f"Could not finish package recovery. Close and reopen the app, "
+                              f"then try again. ({e})", log_cb)
+            complete = False
+    return complete, restored
+
+
 def _sweep_folder(folder: str, depth: int) -> tuple[int, int]:
     """Handle the leftovers directly in *folder*, then those of its shared sub-folders."""
     restored = removed = 0
@@ -426,10 +567,16 @@ def _sweep_folder(folder: str, depth: int) -> tuple[int, int]:
             if _is_reparse_point(path) or _pid_alive(int(match.group("pid"))):
                 continue  # a link is never ours to move; or that install is still running
             dest = os.path.join(folder, match.group("name"))
-            if match.group("kind") == "bak" and not os.path.lexists(dest):
-                # Cut between "move the live package aside" and "move the new one in".
+            if match.group("kind") == "bak":
                 try:
-                    os.replace(path, dest)
+                    if _entry_exists(dest):
+                        # Older releases left no record of whether the live copy
+                        # is usable. Preserve the original until repair is possible.
+                        logger.warning("Keeping an earlier package backup at %s. If the package "
+                                       "fails, close the app, move %s out of the package "
+                                       "folder and reopen the app to restore it.", path, dest)
+                        continue
+                    os.rename(path, dest)
                 except OSError as e:
                     logger.warning("Could not restore %s to %s: %s", path, dest, e)
                 else:
@@ -456,8 +603,9 @@ def _sweep_folder(folder: str, depth: int) -> tuple[int, int]:
 def sweep_install_leftovers() -> tuple[int, int]:
     """Clean up after an install that was cut short; returns ``(restored, removed)``.
 
-    A backup whose destination is missing is moved back; a backup whose destination exists, a
-    half-copied merge folder and stale ``pylibs-stage-*`` folders are removed. Only inside the
+    A pending rollback takes precedence over legacy scratch cleanup. A legacy backup whose
+    destination is missing is moved back. Legacy backups with a live destination are kept.
+    Scratch copies and stale ``pylibs-stage-*`` folders are removed. Only inside the
     extras folder and its sibling staging folders, only for processes that no longer exist,
     and only while no install anywhere holds the cross-process install lock. Never raises.
     """
@@ -468,7 +616,11 @@ def sweep_install_leftovers() -> tuple[int, int]:
         with _extras_file_lock(folder, None, 0.01, None, strict=True) as got:
             if not got:
                 return 0, 0  # an install is running, or the lock cannot be held: do nothing
-            restored, removed = _sweep_folder(folder, 0)
+            recovered, restored = _recover_install(folder, None)
+            if not recovered:
+                return restored, 0
+            legacy_restored, removed = _sweep_folder(folder, 0)
+            restored += legacy_restored
             parent = os.path.dirname(folder)
             try:
                 siblings = os.listdir(parent)
@@ -727,17 +879,20 @@ def _install_impl(
         # not reported as already installed.
         if _stop_requested.is_set():
             return False  # the app is exiting: do not start another pip
-        if not force and is_available(feature):
-            return True
         final_target = extras_dir()
         os.makedirs(final_target, exist_ok=True)
-        got = held.enter_context(_extras_file_lock(final_target, cancel_event, timeout, log_cb))
+        got = held.enter_context(
+            _extras_file_lock(final_target, cancel_event, timeout, log_cb, strict=True)
+        )
         if not got:
             return False
-        if got == "waited":
+        recovered, restored = _recover_install(final_target, log_cb)
+        if not recovered:
+            return False
+        if restored or got == "waited":
             importlib.invalidate_caches()
-            if not force and is_available(feature):
-                return True  # the other process installed it meanwhile
+        if not force and is_available(feature):
+            return True
         # pip unpacks into staging, then the merge copies it next to the
         # extras: about twice the installed size.
         if not _has_room(feature, final_target, 2 * _FEATURE_SIZE_MB.get(feature, 500), log_cb):
@@ -851,106 +1006,63 @@ def _install_impl(
             # The merge copies the staged tree once more.
             shutil.rmtree(staging, ignore_errors=True)
             return False
-        units = _merge_units(staging, final_target)
-        # Remember which destinations THIS install creates (as opposed to
-        # replaces) so rollback can tell them apart from entries a sibling
-        # feature already installed. 'alignment' and 'whisper_backend' both
-        # pull torch/numpy; if a later install's torch/ merge fails (e.g. a
-        # locked .pyd), the rollback must NOT delete the torch/numpy the
-        # already-installed feature still needs.
-        created = [dst for _src, dst in units if not os.path.lexists(dst)]
-        merged_ok = True
-        merge_err: Exception | None = None
-        # Backups of live dst entries displaced this iteration, keyed by the
-        # final dst path: name -> bak path. Each entry's replace is made
-        # atomic w.r.t. an EXISTING dst by moving the live dst aside to a
-        # .bak first, so a mid-loop os.replace failure (locked .pyd / AV /
-        # disk-full) can be undone and never leaves a pre-existing shared
-        # dir (e.g. torch/) destroyed with no restore path.
-        backups: dict[str, str] = {}
-        for src, dst in units:
-            name = os.path.basename(dst)
-            tmp = os.path.join(os.path.dirname(dst), f".{name}.merge-{os.getpid()}")
-            bak = os.path.join(os.path.dirname(dst), f".{name}.bak-{os.getpid()}")
-            try:
-                if os.path.exists(tmp):
-                    _rm(tmp)
-                if os.path.lexists(bak):
-                    _rm(bak)
+        pid = os.getpid()
+        temp: str | None = None
+        journal_written = False
+        published: set[str] = set()
+        planned: list[tuple[str, str, str, bool]] = []
+        try:
+            entries: dict[str, bool] = {}
+            for src, dst in _merge_units(staging, final_target):
+                rel = os.path.relpath(dst, final_target).replace(os.sep, "/")
+                _rollback_dest(final_target, rel)
+                backup = _merge_path(dst, "bak", pid)
+                if _entry_exists(backup):
+                    raise OSError(f"A package backup already exists at {backup}. Close the app, "
+                                  "move the backup to a safe location outside the package folder, "
+                                  "and reopen the app before trying again.")
+                had_original = _entry_exists(dst)
+                entries[rel] = had_original
+                planned.append((src, dst, backup, had_original))
+            _write_rollback_record(final_target, entries, pid)
+            journal_written = True
+            for src, dst, backup, had_original in planned:
+                temp = _merge_path(dst, "merge", pid)
+                _rm(temp)
                 if os.path.isdir(src):
-                    shutil.copytree(src, tmp)
+                    shutil.copytree(src, temp)
                 else:
-                    shutil.copy2(src, tmp)
-                # os.replace is atomic on the same volume for files and for
-                # replacing a non-existent / file target. For an existing
-                # destination DIRECTORY it would fail outright, and a plain
-                # _rm(dst) before the replace is NON-atomic: if the replace
-                # then fails (locked .pyd, AV, disk-full) the live dst — which
-                # may be a torch/ a sibling feature still needs — is already
-                # gone with no way back. Instead move the live dst aside to a
-                # .bak FIRST, then replace; restore the .bak on any failure.
-                displaced = False
-                if os.path.lexists(dst):
-                    os.replace(dst, bak)
-                    backups[dst] = bak
-                    displaced = True
-                try:
-                    os.replace(tmp, dst)
-                except Exception:
-                    # Replace failed — put the original dst back so the
-                    # pre-existing entry is never left missing, then re-raise
-                    # into the outer handler to roll the whole merge back.
-                    if displaced:
-                        os.replace(bak, dst)
-                        backups.pop(dst, None)
-                    raise
-                # Success for this entry: the staged copy is in place and the
-                # displaced original is now superseded — drop its backup.
-                if displaced:
-                    _rm(bak)
-                    backups.pop(dst, None)
-            except Exception as e:  # noqa: BLE001
-                merged_ok = False
-                merge_err = e
-                _rm(tmp)
-                break
-
-        if not merged_ok:
-            # Restore every still-displaced original (entries replaced earlier
-            # in this loop before the failing one) so no pre-existing shared
-            # dir is left missing after a partial merge.
-            for d, b in backups.items():
-                _rm(d)
-                try:
-                    os.replace(b, d)
-                except OSError:
-                    pass
-            backups.clear()
+                    shutil.copy2(src, temp)
+                if had_original:
+                    os.replace(dst, backup)
+                os.replace(temp, dst)
+                temp = None
+                published.add(dst)
+            importlib.invalidate_caches()
+            if not is_available(feature):
+                raise OSError("The installed package could not be found.")
+            # Removing the record commits all published units before deleting old copies.
+            os.unlink(_rollback_record_path(final_target))
+        except Exception as merge_err:  # noqa: BLE001
+            if temp is not None:
+                _rm(temp)
+            if journal_written:
+                _recover_install(final_target, log_cb, published=published)
+                importlib.invalidate_caches()
             if log_cb:
                 log_cb(f"Could not finalise install: {merge_err}")
                 if isinstance(merge_err, PermissionError) or getattr(
                         merge_err, "winerror", None) in (5, 32, 33):
-                    # A loaded .pyd (torch imported by this very app) cannot
-                    # be replaced on Windows.
                     log_cb(
                         "A file of this package is in use, often by the app "
                         "itself. Close and reopen the app, then install again."
                     )
-            # Roll back: delete only the entries THIS install newly created,
-            # so is_available() cannot observe a partial tree — but leave
-            # pre-existing shared dirs (e.g. torch/numpy a sibling feature
-            # already installed) untouched, or rolling back one feature's
-            # failed merge would silently break another.
-            for dst in created:
-                _rm(dst)
-            shutil.rmtree(staging, ignore_errors=True)
             return False
-        for old in _superseded_dist_infos([os.path.basename(d) for _s, d in units], final_target):
+        finally:
+            shutil.rmtree(staging, ignore_errors=True)
+        for _src, _dst, backup, had_original in planned:
+            if had_original:
+                _rm(backup)
+        for old in _superseded_dist_infos([os.path.basename(d) for _s, d, _b, _h in planned], final_target):
             _rm(old)
-        shutil.rmtree(staging, ignore_errors=True)
-
-        activate()
-        # Verify the feature actually imports now (not just that a partial
-        # top-level dir exists) before reporting success.
-        importlib.invalidate_caches()
-        return is_available(feature)
+        return True
