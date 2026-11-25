@@ -86,11 +86,13 @@ def _windows_pem(certifi_path: str) -> bytes:
     if not certifi_certs:
         raise ValueError("certifi bundle contains no CA certificates")
 
-    if not hasattr(ssl, "enum_certificates"):
+    # Windows-only in the standard library; looked up at run time so type checks pass on every OS.
+    enum_certificates = getattr(ssl, "enum_certificates", None)
+    if enum_certificates is None:
         raise RuntimeError("Windows certificate store enumeration is unavailable")
     windows_certs = set()
     for store in ("ROOT", "CA"):
-        for der, encoding, trust in ssl.enum_certificates(store):
+        for der, encoding, trust in enum_certificates(store):
             server_auth = trust is True or (isinstance(trust, set) and ssl.Purpose.SERVER_AUTH.oid in trust)
             if encoding == "x509_asn" and server_auth:
                 windows_certs.add(der)
