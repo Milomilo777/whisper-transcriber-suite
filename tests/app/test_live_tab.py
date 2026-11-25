@@ -1049,7 +1049,7 @@ def ask(built, monkeypatch):
     """Answer the English-only dialog with ``ask.answer``; record each prompt."""
     from app.dialogs import english_only_model as dlg
 
-    monkeypatch.setattr(live_tab, "_live_device", lambda app: "cpu")
+    monkeypatch.setattr("core.hardware.detect_device_for", lambda config: ("cpu", "int8"))
     monkeypatch.setattr("core.config.save_config", lambda cfg: None)
     prompts: list = []
 
@@ -1060,6 +1060,7 @@ def ask(built, monkeypatch):
     fake.answer = dlg.CHOICE_CANCEL
     fake.prompts = prompts
     monkeypatch.setattr(dlg, "ask_english_only", fake)
+    built.post_to_main = built.posted.append
     return fake
 
 
@@ -1070,6 +1071,24 @@ def _pick(built, slug, language):
     built.live_lang_var.set(language)
 
 
+def _finish_device_check(built):
+    deadline = time.monotonic() + 5
+    while not built.posted and time.monotonic() < deadline:
+        time.sleep(0.01)
+    assert built.posted, "the Live device check never posted its result"
+    built.posted.pop(0)()
+
+
+def _check_language(built, *, on_start=True, probes=True):
+    ready = []
+    live_tab._check_model_language(built, (lambda: ready.append(True)) if on_start else None)
+    if probes:
+        _finish_device_check(built)
+    else:
+        assert not built.posted
+    return bool(ready)
+
+
 @pytest.mark.parametrize("slug,language,expected", [
     ("tiny.en", "English", None),
     ("tiny.en", "Persian", ("tiny.en", "small", "small", "cpu")),
@@ -1078,38 +1097,44 @@ def _pick(built, slug, language):
     ("small", "Persian", None),
     ("auto", "Persian", None),       # Automatic picks a multilingual model on a CPU
 ])
-def test_english_only_pair_decision(built, ask, slug, language, expected):
+def test_english_only_pair_decision(built, slug, language, expected):
     _pick(built, slug, language)
     lang = live_tab._selected_language_code(built)
-    assert live_tab._english_only_pair(built, lang) == expected
+    assert live_tab._english_only_pair(built, lang, "cpu") == expected
 
 
-def test_main_model_counts_when_live_uses_it(built, ask):
+def test_main_model_counts_when_live_uses_it(built):
     built.app_config["whisper_model"] = "medium.en"
     _pick(built, "main", "Persian")
-    assert live_tab._english_only_pair(built, "fa") == ("medium.en", "small", "small", "cpu")
+    assert live_tab._english_only_pair(built, "fa", "cpu") == ("medium.en", "small", "small", "cpu")
 
 
-def test_automatic_on_a_gpu_with_an_english_only_main_model(built, ask, monkeypatch):
-    monkeypatch.setattr(live_tab, "_live_device", lambda app: "cuda")
+def test_automatic_on_a_gpu_with_an_english_only_main_model(built):
     built.app_config["whisper_model"] = "distil-large-v3"
     _pick(built, "auto", "Persian")
-    assert live_tab._english_only_pair(built, "fa") == (
+    assert live_tab._english_only_pair(built, "fa", "cuda") == (
         "distil-large-v3", "large-v3-turbo", "large-v3-turbo", "cuda",
     )
 
 
+def test_automatic_on_cpu_does_not_warn_about_the_main_model(built, ask):
+    built.app_config["whisper_model"] = "tiny.en"
+    _pick(built, "auto", "Persian")
+    assert _check_language(built)
+    assert ask.prompts == []
+
+
 def test_fine_pair_never_asks(built, ask):
     _pick(built, "tiny.en", "English")
-    assert live_tab._confirm_model_language(built, on_start=True) is True
+    assert _check_language(built, probes=False)
     _pick(built, "small", "Persian")
-    assert live_tab._confirm_model_language(built, on_start=True) is True
+    assert _check_language(built, probes=False)
     assert ask.prompts == []
 
 
 def test_prompt_names_the_problem_and_the_fix(built, ask):
     _pick(built, "tiny.en", "Persian")
-    live_tab._confirm_model_language(built, on_start=True)
+    _check_language(built)
     prompt = ask.prompts[0]
     assert prompt.model == "tiny.en" and prompt.alternative == "small"
     assert "Persian speech will come out as wrong English text" in prompt.problem()
@@ -1122,7 +1147,7 @@ def test_switch_changes_the_live_model_and_lets_start_go_on(built, ask):
 
     ask.answer = dlg.CHOICE_SWITCH
     _pick(built, "tiny.en", "Persian")
-    assert live_tab._confirm_model_language(built, on_start=True) is True
+    assert _check_language(built)
     assert built.app_config["live_model"] == "small"
     assert live_tab._selected_live_value(built) == "small"
     assert len(ask.prompts) == 1  # the switch itself does not ask again
@@ -1137,7 +1162,7 @@ def test_switch_on_a_change_downloads_a_missing_model(built, ask, monkeypatch, t
                         lambda app: fetched.append(live_tab._selected_live_value(app)))
     ask.answer = dlg.CHOICE_SWITCH
     _pick(built, "tiny.en", "Persian")
-    assert live_tab._confirm_model_language(built, on_start=False) is True
+    _check_language(built, on_start=False)
     assert fetched == ["small"]
 
 
@@ -1146,12 +1171,12 @@ def test_keep_is_remembered_for_the_session(built, ask):
 
     ask.answer = dlg.CHOICE_KEEP
     _pick(built, "tiny.en", "Persian")
-    assert live_tab._confirm_model_language(built, on_start=True) is True
+    assert _check_language(built)
     assert built.app_config["live_model"] == "tiny.en"  # never switched silently
-    assert live_tab._confirm_model_language(built, on_start=True) is True
+    assert _check_language(built, probes=False)
     assert len(ask.prompts) == 1
     built.live_lang_var.set("German")  # a different pair asks again
-    live_tab._confirm_model_language(built, on_start=True)
+    _check_language(built)
     assert len(ask.prompts) == 2
 
 
@@ -1161,6 +1186,7 @@ def test_cancel_stops_start_before_anything_runs(built, ask, monkeypatch):
     monkeypatch.setattr(_live, "is_available", lambda mode="mic": True)
     _pick(built, "tiny.en", "Persian")
     live_tab._start(built)
+    _finish_device_check(built)
     assert len(ask.prompts) == 1
     assert built.live_status_var.get() == "Idle."
     assert str(built.live_start_btn.cget("state")) == "normal"
@@ -1174,7 +1200,7 @@ def test_choose_another_opens_the_model_menu(built, ask, monkeypatch, root):
     monkeypatch.setattr(live_tab, "_open_model_menu", lambda app: opened.append(app))
     ask.answer = dlg.CHOICE_CHOOSE
     _pick(built, "tiny.en", "Persian")
-    assert live_tab._confirm_model_language(built, on_start=True) is False
+    assert not _check_language(built)
     deadline = time.time() + 2
     while not opened and time.time() < deadline:
         root.update()
@@ -1187,7 +1213,96 @@ def test_changing_the_language_asks(built, ask, root):
     built.live_lang_var.set("Persian")
     built.live_lang_combo.event_generate("<<ComboboxSelected>>")
     root.update()
+    _finish_device_check(built)
     assert len(ask.prompts) == 1
+
+
+def test_live_language_callback_returns_during_device_probe(built, ask, root, monkeypatch):
+    entered = threading.Event()
+    release = threading.Event()
+    threads = []
+    built.post_to_main = built.posted.append
+    _pick(built, "auto", "Persian")
+    built.app_config["whisper_model"] = "tiny.en"
+
+    def device(_config):
+        threads.append(threading.current_thread())
+        entered.set()
+        if threading.current_thread() is not threading.main_thread():
+            release.wait(5)
+        return "cuda", "float16"
+
+    monkeypatch.setattr("core.hardware.detect_device_for", device)
+    try:
+        built.live_lang_combo.event_generate("<<ComboboxSelected>>")
+        root.update()
+        assert entered.wait(5)
+        assert threads[0] is not threading.current_thread()
+        assert ask.prompts == []
+    finally:
+        release.set()
+    _drain_posted(built, root, lambda: bool(ask.prompts))
+    assert [prompt.model for prompt in ask.prompts] == ["tiny.en"]
+
+
+@pytest.mark.parametrize("change", [
+    "language", "device", "source", "destroy", "stop",
+    "_closing", "_exit_prompt_open", "_exit_waiting",
+])
+def test_pending_live_start_discards_stale_device_result(built, ask, monkeypatch, change):
+    from app.dialogs import english_only_model as dlg
+    from core import live as _live
+
+    starts = []
+    ask.answer = dlg.CHOICE_KEEP
+    _pick(built, "tiny.en", "Persian")
+    monkeypatch.setattr(_live, "is_available", lambda mode="mic": True)
+    monkeypatch.setattr(live_tab, "_start_session", lambda app, mode: starts.append(mode))
+    built.live_start_btn.invoke()
+
+    if change == "language":
+        # Change away and back while the result is queued. The newer checks
+        # supersede the start request even when its values match again.
+        built.live_lang_var.set("English")
+        live_tab._check_model_language(built)
+        built.live_lang_var.set("Persian")
+        live_tab._check_model_language(built)
+    elif change == "device":
+        built.app_config["device"] = "cuda"
+    elif change == "source":
+        built.live_source_var.set(live_tab._SOURCE_SYSTEM)
+    elif change == "destroy":
+        built.live_start_btn.destroy()
+    elif change == "stop":
+        live_tab._stop(built)
+    else:
+        setattr(built, change, True)
+
+    _finish_device_check(built)
+    if change == "language":
+        _finish_device_check(built)
+        assert len(ask.prompts) == 1
+    else:
+        assert ask.prompts == []
+    assert starts == []
+
+
+def test_current_live_start_continues_once_after_confirmation(built, ask, monkeypatch):
+    from app.dialogs import english_only_model as dlg
+    from core import live as _live
+
+    starts = []
+    ask.answer = dlg.CHOICE_KEEP
+    _pick(built, "tiny.en", "Persian")
+    monkeypatch.setattr(_live, "is_available", lambda mode="mic": True)
+    monkeypatch.setattr(live_tab, "_start_session", lambda app, mode: starts.append(mode))
+    built.live_start_btn.invoke()
+    built.live_start_btn.invoke()
+    assert starts == []
+    _finish_device_check(built)
+    _finish_device_check(built)
+    assert len(ask.prompts) == 1
+    assert starts == ["mic"]
 
 
 def test_changing_the_model_asks(built, ask):
@@ -1195,6 +1310,7 @@ def test_changing_the_model_asks(built, ask):
     label = next(lbl for lbl, v in live_tab._live_model_choices(built) if v == "base.en")
     built.live_model_var.set(label)
     live_tab._on_live_model_selected(built)
+    _finish_device_check(built)
     assert [p.model for p in ask.prompts] == ["base.en"]
 
 

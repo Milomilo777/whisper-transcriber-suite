@@ -21,6 +21,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Recover the undecoded tail when a legacy checkpoint has a cue and cursor past the end of the audio.
 - Keep engine readiness checks from blocking the interface while native packages load.
 - Keep the Transcribe tab responsive while it checks whether speaker identification is available.
+- Keep the Live tab responsive while it checks which device will run the speech model.
 - Show a translated retry message when an engine readiness check cannot confirm that the engine is ready.
 - Keep API credentials and service-account paths out of engine readiness subprocesses.
 - Restore displaced packages after a failed optional install and preserve backups across restarts when recovery needs attention.

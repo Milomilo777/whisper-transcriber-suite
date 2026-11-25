@@ -21,6 +21,7 @@ from __future__ import annotations
 import logging
 import os
 import sys
+import threading
 import time
 import tkinter as tk
 import uuid
@@ -345,53 +346,47 @@ def _on_live_model_selected(app: Any) -> None:
         save_config(app.app_config)
     except Exception:  # noqa: BLE001
         logger.exception("Could not save the Live tab model choice")
-    _confirm_model_language(app, on_start=False)
+    _check_model_language(app)
 
 
 # ------------------------------------------- English-only model guard
 
 
-def _live_device(app: Any) -> str:
+def _live_device(config: dict[str, Any]) -> str:
     try:
         from core.hardware import detect_device_for
 
-        device, _ct = detect_device_for(app.app_config)
+        device, _ct = detect_device_for(config)
         return str(device or "cpu")
     except Exception:  # noqa: BLE001
         return "cpu"
 
 
-def _english_only_pair(
-    app: Any, language: str | None
-) -> tuple[str, str, str, str] | None:
-    """``(model, alternative live_model value, alternative slug, device)`` when the
-    Live tab would run an English-only model on speech that may not be
-    English; None when the pair is fine or the user already kept it.
-
-    The device is only probed when it matters (Automatic, or a
-    recommendation to make), so a fine pair costs no CUDA probe.
-    """
+def _english_only_slug(app: Any, language: str | None, device: str) -> str | None:
+    """Return the incompatible model for a known or hypothetical device."""
     from core import live_model as _lm
-    from core.model_manager import english_only_mismatch, is_english_only
+    from core.model_manager import english_only_mismatch
 
     if (language or "").strip().lower() == "en":
         return None
     config = app.app_config
-    choice = str(config.get("live_model") or _lm.LIVE_DEFAULT).strip()
-    if choice == _lm.LIVE_AUTO:
-        # Automatic picks a multilingual model for other languages on a
-        # CPU; only on a GPU does it run the main model, maybe English-only.
-        main = _lm.effective_live_slug(config, language, "cuda")
-        if is_english_only(config, main) is not True:
-            return None
-    device = _live_device(app) if choice == _lm.LIVE_AUTO else ""
-    slug = _lm.effective_live_slug(config, language, device or "cpu")
+    slug = _lm.effective_live_slug(config, language, device)
     if not english_only_mismatch(config, slug, language):
         return None
     if (slug, language or "") in getattr(app, "_live_en_only_kept", set()):
         return None
-    device = device or _live_device(app)
-    alt_value, alt_slug = _lm.live_alternative(config, language, device, slug)
+    return slug
+
+
+def _english_only_pair(
+    app: Any, language: str | None, device: str,
+) -> tuple[str, str, str, str] | None:
+    from core.live_model import live_alternative
+
+    slug = _english_only_slug(app, language, device)
+    if slug is None:
+        return None
+    alt_value, alt_slug = live_alternative(app.app_config, language, device, slug)
     return slug, alt_value, alt_slug, device
 
 
@@ -449,44 +444,103 @@ def _open_model_menu(app: Any) -> None:
         logger.debug("Could not open the Live model menu", exc_info=True)
 
 
-def _confirm_model_language(app: Any, *, on_start: bool) -> bool:
-    """Guide the user away from an English-only model + another language.
+def _exit_in_progress(app: Any) -> bool:
+    return (
+        getattr(app, "_closing", False)
+        or getattr(app, "_exit_prompt_open", False)
+        or getattr(app, "_exit_waiting", False)
+    )
 
-    Returns True when listening may go ahead (``on_start``), False when
-    the user cancelled or went to pick another model. Never switches
-    without asking: the dialog offers the switch, a free choice, or
-    keeping the model (remembered for this session).
-    """
-    if getattr(app, "_live_en_only_asking", False):
-        return False
+
+def _check_model_language(app: Any, on_ready: Callable[[], None] | None = None) -> None:
+    """Check a possible English-only mismatch before proceeding on Tk."""
+    if _exit_in_progress(app) or getattr(app, "_live_en_only_asking", False):
+        return
+    ticket = app._live_language_check = object()
     language = _selected_language_code(app)
-    pair = _english_only_pair(app, language)
-    if pair is None:
-        return True
-    slug, alt_value, alt_slug, device = pair
+    # Automatic only risks English-only speech on a GPU. Most pairs never
+    # need device detection, including the default English language.
+    if _english_only_slug(app, language, "cuda") is None:
+        if on_ready is not None:
+            on_ready()
+        return
+
+    def config_values():
+        return tuple(app.app_config.get(key) for key in (
+            "live_model", "whisper_model", "device", "compute_type",
+        ))
+
+    selection = config_values()
+    probe_config = {"device": selection[2], "compute_type": selection[3]}
+    button = app.live_start_btn
+    post_to_main = app.post_to_main
+    audio_source = app.live_source_var.get() if on_ready is not None else None
+    device_index = _selected_device_index(app) if on_ready is not None else None
+
+    def current() -> bool:
+        return (
+            not _exit_in_progress(app)
+            and app._live_language_check is ticket
+            and app.live_start_btn is button
+            and button.winfo_exists()
+            and _selected_language_code(app) == language
+            and config_values() == selection
+            and (audio_source is None or (
+                app.live_source_var.get() == audio_source
+                and _selected_device_index(app) == device_index
+                and not button.instate(["disabled"])
+            ))
+        )
+
+    def apply(device: str) -> None:
+        if not current():
+            return
+        pair = _english_only_pair(app, language, device)
+        if pair is None or _confirm_model_language(
+                app, language, pair, current, on_start=on_ready is not None):
+            if on_ready is not None:
+                on_ready()
+
+    def worker() -> None:
+        device = _live_device(probe_config)
+        post_to_main(lambda: apply(device))
+
+    try:
+        threading.Thread(target=worker, name="live-device-check", daemon=True).start()
+    except RuntimeError:
+        logger.exception("Could not start the Live device check")
+        # Automatic may still use the English-only main model on a GPU.
+        apply("cuda")
+
+
+def _confirm_model_language(
+    app: Any, language: str | None, pair: tuple[str, str, str, str],
+    current: Callable[[], bool], *, on_start: bool,
+) -> bool:
     from app.dialogs import english_only_model as dlg
 
+    slug, alt_value, alt_slug, device = pair
     prompt = _english_only_prompt(app, slug, alt_value, alt_slug, device)
     app._live_en_only_asking = True
     try:
         choice = dlg.ask_english_only(app, prompt)
+        if not current():
+            return False
+        if choice == dlg.CHOICE_SWITCH:
+            if not _switch_live_model(app, alt_value):
+                return False
+            app.log(f"Live: switched from '{slug}' (English only) to '{alt_slug}'.")
+            if not on_start and not _slug_downloaded(app, alt_slug) and alt_value == alt_slug:
+                _download_live_model(app)
+            return True
+        if choice == dlg.CHOICE_KEEP:
+            app._live_en_only_kept.add((slug, language or ""))
+            return True
+        if choice == dlg.CHOICE_CHOOSE:
+            app.after(50, lambda: _open_model_menu(app) if current() else None)
+        return False
     finally:
         app._live_en_only_asking = False
-    if choice == dlg.CHOICE_SWITCH:
-        if not _switch_live_model(app, alt_value):
-            return False
-        app.log(f"Live: switched from '{slug}' (English only) to '{alt_slug}'.")
-        if not on_start and not _slug_downloaded(app, alt_slug) and alt_value == alt_slug:
-            _download_live_model(app)
-        return True
-    if choice == dlg.CHOICE_KEEP:
-        if not hasattr(app, "_live_en_only_kept"):
-            app._live_en_only_kept = set()
-        app._live_en_only_kept.add((slug, language or ""))
-        return True
-    if choice == dlg.CHOICE_CHOOSE:
-        app.after(50, lambda: _open_model_menu(app))
-    return False
 
 
 def build_live_tab(app: Any, parent: Any) -> None:
@@ -507,6 +561,8 @@ def build_live_tab(app: Any, parent: Any) -> None:
     app._live_cancel_pending = False
     app._live_stop_reason = ""
     app._live_signal_hint = False
+    app._live_language_check = None
+    app._live_en_only_kept = set()
 
     app.live_source_var = tk.StringVar(value=_SOURCE_MIC)
     app.live_device_var = tk.StringVar(value=translate(_DEFAULT_DEVICE))
@@ -582,7 +638,7 @@ def build_live_tab(app: Any, parent: Any) -> None:
     app.live_lang_combo.grid(row=2, column=1, sticky="w", padx=8, pady=6)
     app.live_lang_combo.bind(
         "<<ComboboxSelected>>",
-        lambda _e: _confirm_model_language(app, on_start=False),
+        lambda _e: _check_model_language(app),
     )
     help_icon(
         src,
@@ -821,7 +877,10 @@ def _mac_mic_gate(app: Any, mode: str) -> bool:
 def _start(app: Any) -> None:
     from core import live as _live
 
-    mode = "loopback" if app.live_source_var.get() == _SOURCE_SYSTEM else "mic"
+    if _exit_in_progress(app) or app.live_start_btn.instate(["disabled"]):
+        return
+    source = app.live_source_var.get()
+    mode = "loopback" if source == _SOURCE_SYSTEM else "mic"
     if not _live.is_available(mode):
         show_error(
             app, _("Cannot listen yet"),
@@ -831,8 +890,12 @@ def _start(app: Any) -> None:
         return
     if not _mac_mic_gate(app, mode):
         return
-    if not _confirm_model_language(app, on_start=True):
-        return
+    if app.live_source_var.get() == source:
+        _check_model_language(app, lambda: _start_session(app, mode))
+
+
+def _start_session(app: Any, mode: str) -> None:
+    from core import live as _live
 
     app.live_status_var.set(_("Loading the speech model…"))
     app._live_cancel_pending = False
@@ -905,8 +968,6 @@ def _start(app: Any) -> None:
         app.post_to_main(lambda: _started(app, transcriber, session))
 
     app.post_to_main  # touch attr early so a missing bridge fails loudly
-    import threading
-
     threading.Thread(target=worker, name="live-start", daemon=True).start()
 
 
@@ -1059,6 +1120,7 @@ _STOP_DEBOUNCE_S = 2.0
 
 
 def _stop(app: Any) -> None:
+    app._live_language_check = None
     session = app.live_session
     transcriber = app.live_transcriber
     if session is None:
@@ -1287,6 +1349,7 @@ def _incomplete_note(session: Any) -> str:
 
 def stop_live_session(app: Any) -> None:
     """Tear the session down on app exit. Safe when nothing is running."""
+    app._live_language_check = None
     session = getattr(app, "live_session", None)
     transcriber = getattr(app, "live_transcriber", None)
     settled = True  # no more text can still arrive for this session
