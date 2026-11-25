@@ -18,6 +18,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 ### Fixed
 
 - Explain empty transcripts when server jobs finish without recognising speech.
+- Close download responses cleanly when a redirect stalls or is cancelled.
 - Keep transcript viewer toolbar buttons visible at high display scaling.
 - Windows HTTPS requests now use both the system and bundled CA certificates by default, fixing model downloads when either source alone lacks the required certificate.
 - Preserve worker failure reports when startup delivery fails or native output leaves a partial line, and recognize terminal import failures.

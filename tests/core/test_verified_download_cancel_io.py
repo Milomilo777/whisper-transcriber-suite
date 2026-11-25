@@ -198,7 +198,15 @@ def test_polling_does_not_turn_timeout_into_a_total_transfer_deadline(tmp_path):
     b"HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\n",
     b"HTTP/1.1 302 Found\r\nLocation: /next\r\nContent-Length: 4\r\n\r\nd",
 ])
-def test_timeout_disposes_transport_even_with_retained_exception(tmp_path, initial):
+def test_timeout_disposes_transport_even_with_retained_exception(tmp_path, monkeypatch, initial):
+    responses = []
+    begin = http.client.HTTPResponse.begin
+
+    def track_response(response):
+        responses.append(response)
+        return begin(response)
+
+    monkeypatch.setattr(http.client.HTTPResponse, "begin", track_response)
     server = _Server([_stall(initial)])
     try:
         with pytest.raises(vd.DownloadError) as error:
@@ -206,6 +214,7 @@ def test_timeout_disposes_transport_even_with_retained_exception(tmp_path, initi
         assert error.value is not None  # Keep the entire exception chain alive.
         assert not server.release.is_set()
         assert server.peer_closed.wait(1)
+        assert responses and all(response.closed for response in responses)
         assert not (tmp_path / "file").exists()
     finally:
         server.close()

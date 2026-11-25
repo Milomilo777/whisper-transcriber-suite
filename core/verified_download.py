@@ -426,12 +426,12 @@ def replace_with_retry(src: Path, dst: Path, attempts: int = 10, delay: float = 
 
 
 class _ReadContext:
-    """Own only this verified request's readers, including failed redirects."""
+    """Own only this verified request's responses, including failed redirects."""
 
     def __init__(self, check_cancel: Callable[[], None], timeout: float):
         self.check_cancel = check_cancel
         self.timeout = timeout
-        self.readers: set[_PollingReader] = set()
+        self.readers: dict[_PollingReader, http.client.HTTPResponse] = {}
 
     def __enter__(self) -> _ReadContext:
         return self
@@ -439,7 +439,11 @@ class _ReadContext:
     def __exit__(self, *_args: Any) -> None:
         # open() can fail before yielding a response. Do not let a stored
         # traceback retain its socket, or a cleanup error hide cancellation.
-        for reader in tuple(self.readers):
+        for reader, response in tuple(self.readers.items()):
+            # urllib can fail while draining a redirect body, before returning
+            # the response to its caller. Close it while its buffer is live.
+            with contextlib.suppress(Exception):
+                response.close()
             with contextlib.suppress(Exception):
                 reader.close()
             with contextlib.suppress(Exception):
@@ -455,7 +459,6 @@ class _PollingReader(io.RawIOBase):
         # Keep the transport alive when urllib closes its connection object.
         # Never read through this SocketIO; it owns only a socket reference.
         self.holder = sock.makefile("rb", buffering=0)
-        context.readers.add(self)
 
     def readable(self) -> bool:
         return True
@@ -490,7 +493,7 @@ class _PollingReader(io.RawIOBase):
         try:
             self.holder.close()
         finally:
-            self.context.readers.discard(self)
+            self.context.readers.pop(self, None)
             super().close()
 
 
@@ -507,10 +510,13 @@ def _download_connection(base: Any, req: urllib.request.Request) -> Any:
             try:
                 raw = _PollingReader(sock, context)
                 self.fp = io.BufferedReader(raw)
+                context.readers[raw] = self
             except BaseException:
+                with contextlib.suppress(Exception):
+                    self.close()
                 if raw is not None:
-                    raw.close()
-                self.close()
+                    with contextlib.suppress(Exception):
+                        raw.close()
                 raise
             finally:
                 if original is not None:
