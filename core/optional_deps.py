@@ -548,10 +548,16 @@ def _sweep_folder(folder: str, depth: int) -> tuple[int, int]:
             if _is_reparse_point(path) or _pid_alive(int(match.group("pid"))):
                 continue  # a link is never ours to move; or that install is still running
             dest = os.path.join(folder, match.group("name"))
-            if match.group("kind") == "bak" and not os.path.lexists(dest):
-                # Cut between "move the live package aside" and "move the new one in".
+            if match.group("kind") == "bak":
                 try:
-                    os.replace(path, dest)
+                    if _entry_exists(dest):
+                        # Older releases left no record of whether the live copy
+                        # is usable. Preserve the original until repair is possible.
+                        logger.warning("Keeping an earlier package backup at %s. If the package "
+                                       "fails, close the app, move %s out of the package "
+                                       "folder and reopen the app to restore it.", path, dest)
+                        continue
+                    os.rename(path, dest)
                 except OSError as e:
                     logger.warning("Could not restore %s to %s: %s", path, dest, e)
                 else:
@@ -579,8 +585,8 @@ def sweep_install_leftovers() -> tuple[int, int]:
     """Clean up after an install that was cut short; returns ``(restored, removed)``.
 
     A pending rollback takes precedence over legacy scratch cleanup. A legacy backup whose
-    destination is missing is moved back. Other legacy backups, half-copied merge folders
-    and stale ``pylibs-stage-*`` folders are removed. Only inside the
+    destination is missing is moved back. Legacy backups with a live destination are kept.
+    Scratch copies and stale ``pylibs-stage-*`` folders are removed. Only inside the
     extras folder and its sibling staging folders, only for processes that no longer exist,
     and only while no install anywhere holds the cross-process install lock. Never raises.
     """
@@ -993,8 +999,9 @@ def _install_impl(
                 _rollback_dest(final_target, rel)
                 backup = _merge_path(dst, "bak", pid)
                 if _entry_exists(backup):
-                    raise OSError(f"A package backup already exists at {backup}. Keep it "
-                                  "for recovery and restart the app before trying again.")
+                    raise OSError(f"A package backup already exists at {backup}. Close the app, "
+                                  "move the backup to a safe location outside the package folder, "
+                                  "and reopen the app before trying again.")
                 had_original = _entry_exists(dst)
                 entries[rel] = had_original
                 planned.append((src, dst, backup, had_original))

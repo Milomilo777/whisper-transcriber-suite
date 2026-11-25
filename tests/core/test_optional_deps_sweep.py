@@ -48,14 +48,18 @@ def test_a_displaced_package_is_restored_when_its_destination_is_missing(extras:
     assert not (extras / f".torch.bak-{DEAD}").exists()
 
 
-def test_a_backup_is_dropped_when_the_new_package_is_already_in_place(extras: Path) -> None:
+def test_a_legacy_backup_is_kept_when_the_new_package_is_already_in_place(extras: Path) -> None:
     _pkg(extras / "torch", "new")
     _pkg(extras / f".torch.bak-{DEAD}", "old")
 
-    assert optional_deps.sweep_install_leftovers() == (0, 1)
+    assert optional_deps.sweep_install_leftovers() == (0, 0)
 
     assert (extras / "torch" / "__init__.py").read_text(encoding="utf-8") == "new"
-    assert not (extras / f".torch.bak-{DEAD}").exists()
+    assert (extras / f".torch.bak-{DEAD}" / "__init__.py").read_text(encoding="utf-8") == "old"
+
+    (extras / "torch").rename(extras.parent / "package-to-repair")
+    assert optional_deps.sweep_install_leftovers() == (1, 0)
+    assert (extras / "torch" / "__init__.py").read_text(encoding="utf-8") == "old"
 
 
 def test_a_half_copied_merge_folder_and_file_are_removed(extras: Path) -> None:
@@ -147,7 +151,7 @@ def test_an_unrestorable_backup_is_kept_not_deleted(
     def _fail(src: Any, dst: Any) -> None:
         raise PermissionError(13, "locked")
 
-    monkeypatch.setattr(optional_deps.os, "replace", _fail)
+    monkeypatch.setattr(optional_deps.os, "rename", _fail)
 
     assert optional_deps.sweep_install_leftovers() == (0, 0)
     assert (extras / f".torch.bak-{DEAD}" / "__init__.py").exists()  # nothing lost
