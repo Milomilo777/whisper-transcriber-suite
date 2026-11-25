@@ -4,6 +4,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+- Preserve subtitle cue ends when the VAD timestamp map already places them on the correct speech boundary.
+
 ### Added
 
 - Choose which audio track to transcribe in files with multiple tracks.

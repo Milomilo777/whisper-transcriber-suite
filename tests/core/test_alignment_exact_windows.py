@@ -173,6 +173,28 @@ def test_vad_cue_guard_preserves_positive_duration_after_restoration_rounding():
     assert (result.start, result.end) == pytest.approx((2.06, 1020.02))
 
 
+@pytest.mark.parametrize("end", [1.375, 1.37501])
+def test_vad_cue_end_already_mapped_to_preceding_chunk_keeps_its_time(end):
+    chunks = [dict(start=0, end=22000), dict(start=160000, end=176000)]
+    cue = _vad_cue(.2, end)
+    cue._decode_window_end = 1.375
+    result, = _decode_vad_cue(cue, chunks, 343)
+    assert (result.start, result.end) == pytest.approx((.2, 1.38))
+    assert be.segment_decode_end(result, result.end) == pytest.approx(1.375)
+
+
+def test_vad_cue_guard_corrects_exact_end_with_legacy_timestamp_map():
+    chunks = [dict(start=0, end=22000), dict(start=160000, end=176000)]
+
+    class LegacyTimestampsMap(fw.SpeechTimestampsMap):
+        def get_original_time(self, time, chunk_index=None):
+            return super().get_original_time(time, chunk_index)
+
+    timestamps = LegacyTimestampsMap(chunks, 16000)
+    result, = vad_window._clamp_cue_bounds([_vad_cue(.2, 1.375)], chunks, timestamps, 343)
+    assert timestamps.get_original_time(result.end) == pytest.approx(1.37)
+
+
 def test_vad_cue_start_stays_with_following_chunk_on_catalina_fixture():
     chunks = [
         dict(start=76032, end=147712),

@@ -194,6 +194,7 @@ def _clamp_cue_bounds(segments: Iterable[Any], chunks: list[dict[str, int]],
     boundaries = timestamps.chunk_end_sample
     rate = timestamps.sampling_rate
     tolerance = min(100.0, pad_ms) * rate / 1000
+    restores_exact_ends = "is_end" in inspect.signature(timestamps.get_original_time).parameters
     for segment in segments:
         if not segment.words:
             start, end = segment.start, segment.end
@@ -202,10 +203,11 @@ def _clamp_cue_bounds(segments: Iterable[Any], chunks: list[dict[str, int]],
             index = bisect_right(boundaries, end_sample) - 1
             if (0 <= index < len(chunks) - 1
                     and end_sample - boundaries[index] <= tolerance
+                    and (not restores_exact_ends or int(end_sample) != boundaries[index])
                     and chunks[index + 1]["start"] > chunks[index]["end"]):
                 # An end within the next chunk's leading padding belongs to
-                # the preceding clip. Use its final sample for older wheels
-                # that also resolve exact end boundaries to the next chunk.
+                # the preceding clip. Leave exact ends alone on wheels that
+                # already restore them to the preceding chunk.
                 preceding_end = (boundaries[index] - 1) / rate
                 if (start < preceding_end and timestamps.get_original_time(start)
                         < timestamps.get_original_time(preceding_end, index)):
