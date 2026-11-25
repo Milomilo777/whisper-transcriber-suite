@@ -370,12 +370,19 @@ def test_unreadable_rollback_record_preserves_original_backup(extras: Path) -> N
 def test_rollback_record_and_backup_recover_under_a_long_unicode_profile(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    # The folder and backup fit MAX_PATH. The journal's temporary filename does not.
-    folder = tmp_path / ("کاربر" * 8) / ("ب" * (240 - len(str(tmp_path)) - 48)) / "pylibs"
+    # Keep the backup within MAX_PATH and the journal beyond it.
+    # Split the padding to also fit Linux's per-component byte limit.
+    profile = tmp_path / ("کاربر" * 8)
+    padding = 241 - len(str(profile / "pylibs")) - 2  # Two padding separators.
+    half = padding // 2
+    folder = profile / ("ب" * half) / ("ب" * (padding - half)) / "pylibs"
+    assert all(len(part.encode("utf-8")) <= 255 for part in folder.relative_to(tmp_path).parts)
+    name = "ب.py"
+    backup = folder / f".{name}.bak-{DEAD}"
+    assert len(str(backup)) < 260 < len(str(folder / optional_deps._ROLLBACK_RECORD))
     folder.mkdir(parents=True)
     monkeypatch.setattr(optional_deps, "extras_dir", lambda: str(folder))
-    name = "ب.py"
-    (folder / f".{name}.bak-{DEAD}").write_text("original", encoding="utf-8")
+    backup.write_text("original", encoding="utf-8")
     optional_deps._write_rollback_record(str(folder), {name: True}, DEAD)
 
     assert optional_deps.sweep_install_leftovers() == (1, 0)
