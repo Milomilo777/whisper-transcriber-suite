@@ -1,7 +1,7 @@
 """Actual worker resume/fresh dispatch with real checkpoint files and no ASR."""
 import ast
 import builtins
-from contextlib import nullcontext
+from contextlib import ExitStack, nullcontext
 import logging
 import os
 from pathlib import Path
@@ -9,7 +9,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from core import _checkpoint as cp
+from core import _checkpoint as cp, media_audio
 from core.task import TranscriptionTask
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -29,6 +29,7 @@ def route(tmp_path, monkeypatch):
     monkeypatch.setattr(cp, '_RUN_IDENTITY', {})
     source = tmp_path / 'audio.wav'
     source.write_bytes(b'owned media identity fixture')
+    monkeypatch.setattr(media_audio, '_probe', lambda source, timeout: {'streams': []})
     checkpoint = write_checkpoint(source)
     started, outputs, logs = [], [], []
 
@@ -50,10 +51,12 @@ def route(tmp_path, monkeypatch):
         '_clip_timestamps_arg': lambda task: None,
         'JobProgress': lambda callback, **kwargs: SimpleNamespace(transcription=callback),
         '_checked_whisper_task': lambda *a: None, '_transcribe_via_alt_backend': backend,
-        'log': lambda message, callback=None: logs.append(message), 'keep_awake': nullcontext}
+        'log': lambda message, callback=None: logs.append(message), 'keep_awake': nullcontext,
+        'ExitStack': ExitStack, 'media_audio': media_audio}
     tree = ast.parse((ROOT / 'core/transcriber.py').read_text(encoding='utf-8'))
     names = {'resume_transcription', 'transcribe', '_protect_existing_checkpoint',
-             '_keep_checkpoint_aside', '_note_run_identity'}
+             '_keep_checkpoint_aside', '_note_run_identity', '_checkpoint_track_problem',
+             '_choose_default_track', '_prepare_task_input'}
     functions = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name in names]
     assert len(functions) == len(names)
     # Execute the actual worker's fallback branch, not a handwritten substitute.
