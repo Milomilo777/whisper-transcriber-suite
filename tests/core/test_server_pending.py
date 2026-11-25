@@ -9,6 +9,7 @@ import socket
 import time
 
 from core.server import httpd
+from tests.core._server_handler_burst import HandlerBurst
 from tests.core.test_server_limits import (
     _closed_by_server,
     _read_status,
@@ -179,43 +180,16 @@ def test_connections_that_sent_their_header_are_never_evicted(tmp_path):
         srv.close()
 
 
-def _track_live_handlers(monkeypatch, cls, delay=0.4):
-    """Count LIVING handler threads: from the start of a handler to the end of
-    its slot release, which is slowed down so a late exit is visible."""
-    import threading
-    lock = threading.Lock()
-    live = {"now": 0, "peak": 0}
-    orig_thread = cls.process_request_thread
-    orig_release = cls._release_slot
-
-    def thread(self, request, client_address):
-        with lock:
-            live["now"] += 1
-            live["peak"] = max(live["peak"], live["now"])
-        try:
-            orig_thread(self, request, client_address)
-        finally:
-            with lock:
-                live["now"] -= 1
-
-    def release(self, *a):
-        time.sleep(delay)
-        return orig_release(self, *a)
-
-    monkeypatch.setattr(cls, "process_request_thread", thread)
-    monkeypatch.setattr(cls, "_release_slot", release)
-    return live
-
-
 def test_evicted_handlers_never_exceed_the_hard_bound(tmp_path, monkeypatch):
     """A burst of new connections evicts stalled ones; the number of LIVING
     handlers (not a counter) stays within capacity plus a small bound."""
-    live = _track_live_handlers(monkeypatch, httpd.JobHTTPServer)
+    connections = 40
+    burst = HandlerBurst(monkeypatch, httpd.JobHTTPServer, connections)
     srv = _Server(tmp_path, max_connections=4, max_pending=4,
                   max_pending_per_host=100)
     socks = []
     try:
-        for _ in range(40):
+        for _ in range(connections):
             s = socket.create_connection(("127.0.0.1", srv.port))
             try:
                 s.sendall(b"GET /api/he")
@@ -223,12 +197,13 @@ def test_evicted_handlers_never_exceed_the_hard_bound(tmp_path, monkeypatch):
                 pass
             socks.append(s)
             time.sleep(0.01)
-        time.sleep(0.5)
-        assert live["peak"] <= 4 + 4 // 4 + 1, live
+        burst.wait_processed()
     finally:
         for s in socks:
             s.close()
         srv.close()
+    burst.wait_finished()
+    assert 0 < burst.peak <= 4 + 4 // 4 + 1
 
 
 def test_the_default_per_address_limit_does_not_lock_out_a_shared_address(

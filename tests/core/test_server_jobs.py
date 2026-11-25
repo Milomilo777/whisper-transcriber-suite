@@ -9,6 +9,7 @@ collection, and per-job cleanup.
 from __future__ import annotations
 
 import os
+import threading
 import time
 from pathlib import Path
 from typing import Any
@@ -236,23 +237,24 @@ def test_transcribe_exception_becomes_error_status(tmp_path):
 
 def test_queued_cap_rejects_with_queuefull(tmp_path):
     # A transcribe that blocks so jobs pile up in the queue.
-    gate = []
+    entered = threading.Event()
+    release = threading.Event()
 
     def slow(task, progress_cb=None, log_cb=None, language_cb=None):
-        while not gate:
-            time.sleep(0.01)
+        entered.set()
+        release.wait(10)
 
     mgr = _make_manager(tmp_path, slow, max_queued=2)
     try:
         # First is picked up by the worker (running); the next two queue.
         mgr.submit_upload("a.mp4", b"d", ["srt"])
-        time.sleep(0.1)
+        assert entered.wait(5)
         mgr.submit_upload("b.mp4", b"d", ["srt"])
         mgr.submit_upload("c.mp4", b"d", ["srt"])
         with pytest.raises(QueueFull):
             mgr.submit_upload("d.mp4", b"d", ["srt"])
     finally:
-        gate.append(True)  # release the blocked worker
+        release.set()
         mgr.stop()
 
 
@@ -275,18 +277,25 @@ def test_total_jobs_cap_evicts_oldest_terminal(tmp_path):
 # --- cancellation ------------------------------------------------------------
 
 def test_cancel_before_run_marks_cancelled(tmp_path):
+    entered = threading.Event()
+    release = threading.Event()
+
     def slow(task, progress_cb=None, log_cb=None, language_cb=None):
-        time.sleep(0.5)
+        entered.set()
+        release.wait(10)
 
     mgr = _make_manager(tmp_path, slow)
     try:
         # Fill the worker with one job, queue a second, cancel the second.
         mgr.submit_upload("a.mp4", b"d", ["srt"])
+        assert entered.wait(5)
         jid = mgr.submit_upload("b.mp4", b"d", ["srt"])
         assert mgr.cancel(jid) is True
+        release.set()
         job = _wait_terminal(mgr, jid)
         assert job is not None and job.status == STATUS_CANCELLED
     finally:
+        release.set()
         mgr.stop()
 
 

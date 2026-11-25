@@ -49,13 +49,6 @@ def _wait(mgr, job_id, timeout=10.0):
     raise AssertionError("job did not finish")
 
 
-def _wait_idle(mgr, job_id, timeout=10.0):
-    """Terminal AND the worker has finished its clean-up for the job."""
-    job = _wait(mgr, job_id, timeout)
-    time.sleep(0.3)
-    return job
-
-
 def _partial_transcribe(task, progress_cb=None, log_cb=None, language_cb=None):
     """What core.transcriber does when a paid cloud run dies part-way."""
     path = os.path.splitext(task.file_path)[0] + ".partial.srt"
@@ -79,7 +72,7 @@ def test_failed_job_keeps_and_exposes_its_partial(tmp_path):
     mgr.start()
     try:
         job_id = mgr.submit_upload("talk.wav", b"RIFF0000", ["srt"])
-        job = _wait_idle(mgr, job_id)
+        job = _wait(mgr, job_id)
     finally:
         mgr.stop()
     assert job.status == STATUS_ERROR
@@ -100,7 +93,7 @@ def test_partial_is_not_served_as_a_complete_srt(tmp_path):
     mgr.start()
     try:
         job_id = mgr.submit_upload("talk.wav", b"RIFF0000", ["srt"])
-        _wait_idle(mgr, job_id)
+        _wait(mgr, job_id)
     finally:
         mgr.stop()
     assert mgr.output_path(job_id, "srt") is None
@@ -114,7 +107,11 @@ def test_failed_job_without_partial_still_reclaims_its_folder(tmp_path):
     mgr.start()
     try:
         job_id = mgr.submit_upload("talk.wav", b"RIFF0000", ["srt"])
-        job = _wait_idle(mgr, job_id)
+        job = _wait(mgr, job_id)
+        deadline = time.monotonic() + 5.0
+        while os.path.isdir(job.work_dir) and time.monotonic() < deadline:
+            time.sleep(0.02)
+        assert not os.path.isdir(job.work_dir)
     finally:
         mgr.stop()
     assert job.status == STATUS_ERROR and not job.outputs
@@ -386,7 +383,7 @@ def test_outputs_are_archived_and_history_written_before_finished(tmp_path):
     mgr.start()
     try:
         job_id = mgr.submit_upload("a.wav", b"x", ["srt"])
-        _wait_idle(mgr, job_id)
+        _wait(mgr, job_id)
     finally:
         mgr.stop()
     assert "finished" in events
@@ -411,7 +408,7 @@ def test_a_finishing_job_cannot_be_evicted(tmp_path):
     mgr.start()
     try:
         job_id = mgr.submit_upload("a.wav", b"x", ["srt"])
-        job = _wait_idle(mgr, job_id)
+        job = _wait(mgr, job_id)
     finally:
         mgr.stop()
     assert seen == {"still_there": True, "dir": True}
@@ -426,7 +423,7 @@ def test_finished_upload_media_is_deleted_outputs_kept(tmp_path):
     mgr.start()
     try:
         job_id = mgr.submit_upload("a.wav", b"x" * 100, ["srt"])
-        job = _wait_idle(mgr, job_id)
+        job = _wait(mgr, job_id)
     finally:
         mgr.stop()
     assert job.status == STATUS_FINISHED
@@ -451,10 +448,10 @@ def test_downloaded_media_is_deleted_but_a_users_own_file_is_not(tmp_path):
     mgr = _manager(tmp_path, _srt_transcribe, download_fn=download_own)
     mgr.start()
     try:
-        j1 = _wait_idle(mgr, mgr.submit_url("http://93.184.216.34/a.wav", ["srt"]))
+        j1 = _wait(mgr, mgr.submit_url("http://93.184.216.34/a.wav", ["srt"]))
         assert own.read_bytes() == b"precious"
         mgr._download = download_inside
-        j2 = _wait_idle(mgr, mgr.submit_url("http://93.184.216.34/b.wav", ["srt"]))
+        j2 = _wait(mgr, mgr.submit_url("http://93.184.216.34/b.wav", ["srt"]))
     finally:
         mgr.stop()
     assert j1.status == STATUS_FINISHED and j2.status == STATUS_FINISHED
@@ -475,7 +472,7 @@ def test_media_delete_failure_does_not_fail_the_job(tmp_path, monkeypatch):
     mgr.start()
     try:
         job_id = mgr.submit_upload("a.wav", b"x", ["srt"])
-        job = _wait_idle(mgr, job_id)
+        job = _wait(mgr, job_id)
     finally:
         mgr.stop()
     assert job.status == STATUS_FINISHED
@@ -528,7 +525,7 @@ def test_uploaded_file_named_partial_is_never_copied_to_outputs(tmp_path):
     mgr.start()
     try:
         job_id = mgr.submit_upload("big.partial.srt", b"X" * 1000, ["srt"])
-        _wait_idle(mgr, job_id)
+        _wait(mgr, job_id)
     finally:
         mgr.stop()
     assert _outputs_files(tmp_path) == []
@@ -614,7 +611,7 @@ def test_failed_archive_warns_and_protects_the_outputs_folder(
     mgr.start()
     try:
         job_id = mgr.submit_upload("a.wav", b"RIFF", ["srt"])
-        job = _wait_idle(mgr, job_id)
+        job = _wait(mgr, job_id)
         assert job.status == STATUS_FINISHED
         assert job.warning
         assert job.public_dict()["warning"] == job.warning
@@ -680,7 +677,7 @@ def test_cancel_is_refused_once_the_job_is_settling(tmp_path):
         assert entered.wait(10)
         assert mgr.cancel(job_id) is False
         gate.set()
-        job = _wait_idle(mgr, job_id)
+        job = _wait(mgr, job_id)
     finally:
         gate.set()
         mgr.stop()
@@ -703,7 +700,7 @@ def test_media_removal_is_retried_while_the_file_is_open(tmp_path, monkeypatch):
     mgr.start()
     try:
         job_id = mgr.submit_upload("a.wav", b"x", ["srt"])
-        job = _wait_idle(mgr, job_id)
+        job = _wait(mgr, job_id)
     finally:
         mgr.stop()
     assert calls["n"] == 3
@@ -810,7 +807,7 @@ def test_keep_list_is_written_before_the_history_row(tmp_path, monkeypatch):
                  record_history=False)
     mgr.start()
     try:
-        _wait_idle(mgr, mgr.submit_upload("a.wav", b"x", ["srt"]))
+        _wait(mgr, mgr.submit_upload("a.wav", b"x", ["srt"]))
     finally:
         mgr.stop()
     assert seen == {"keep": True}
@@ -835,7 +832,7 @@ def test_failed_keep_list_write_logs_the_unsaved_names(
     mgr.start()
     try:
         with caplog.at_level("ERROR", logger="core.server.jobs"):
-            job = _wait_idle(mgr, mgr.submit_upload("a.wav", b"x", ["srt"]))
+            job = _wait(mgr, mgr.submit_upload("a.wav", b"x", ["srt"]))
     finally:
         mgr.stop()
     assert job.status == STATUS_FINISHED and job.warning

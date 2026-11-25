@@ -12,6 +12,7 @@ import re
 import threading
 import time
 import types
+import urllib.error
 
 import pytest
 
@@ -117,11 +118,43 @@ def test_unusable_header_is_refused_without_leaking(
 
 # --- the secret never reaches the logs ---------------------------------------
 
+def _wait_for_webhook_log(caplog, matches):
+    deadline = time.monotonic() + 10.0
+    while True:
+        # The capture handler appends a record before formatting its text.
+        with caplog.handler.lock:
+            if any(r.name == jobs_mod.__name__ and matches(r) for r in caplog.records):
+                return True
+        if time.monotonic() >= deadline:
+            return False
+        time.sleep(0.02)
+
+
 def test_failed_delivery_does_not_log_the_secret(
         tmp_path, caplog, monkeypatch):
     monkeypatch.setattr(jobs_mod, "is_safe_url", lambda url: True)
     monkeypatch.setattr(
         netguard, "address_blocked", lambda ip, allow_private=True: False)
+
+    def slow_failure(*args, **kwargs):
+        try:
+            post_webhook(*args, **kwargs)
+        except urllib.error.HTTPError:
+            # Delay the sender after the receiver has recorded the request.
+            time.sleep(1.5)
+            raise
+
+    monkeypatch.setattr(jobs_mod, "post_webhook", slow_failure)
+
+    def logged_http_500(record):
+        return (
+            record.getMessage().startswith("server: webhook POST to ")
+            and record.getMessage().endswith(" failed")
+            and record.exc_info is not None
+            and isinstance(record.exc_info[1], urllib.error.HTTPError)
+            and record.exc_info[1].code == 500
+        )
+
     rec = _Receiver(status=500)
     mgr = JobManager(
         _writing_transcribe, jobs_root=str(tmp_path / "jobs"),
@@ -130,13 +163,13 @@ def test_failed_delivery_does_not_log_the_secret(
     try:
         with caplog.at_level(logging.DEBUG):
             mgr.submit_upload("clip.mp4", b"d", ["srt"])
-            rec.wait()
-            time.sleep(0.5)  # let the sender thread log the HTTP 500
+            logged = _wait_for_webhook_log(caplog, logged_http_500)
     finally:
         mgr.stop()
         rec.close()
     assert rec.requests, "the webhook should have been attempted"
     assert "failed" in caplog.text, "the 500 should have been logged"
+    assert logged, "the delivery thread should have logged the HTTP 500"
     assert SECRET not in caplog.text
     for record in caplog.records:
         assert SECRET not in record.getMessage()
@@ -386,11 +419,13 @@ def test_manager_refuses_delivery_for_invalid_secret(
     try:
         with caplog.at_level(logging.DEBUG):
             mgr.submit_upload("clip.mp4", b"d", ["srt"])
-            time.sleep(1.0)
+            logged = _wait_for_webhook_log(
+                caplog, lambda r: "cannot be used in an HTTP header" in r.getMessage())
     finally:
         mgr.stop()
     assert receiver.requests == [], "an invalid secret must not send anything"
     assert "cannot be used" in caplog.text
+    assert logged, "the delivery thread should have logged the unusable header"
     assert "credential" not in caplog.text
     assert "dummy" not in caplog.text.replace("dummy srt", "")
 

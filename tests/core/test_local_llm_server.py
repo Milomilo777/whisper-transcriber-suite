@@ -666,13 +666,23 @@ def test_cancel_works_before_the_server_has_answered(model, tmp_path, monkeypatc
     monkeypatch.setenv("FAKE_LLAMA_HEADER_DELAY", "30")
     server = make(model, tmp_path)
     stream = server.open_chat([{"role": "user", "content": "q"}])
+    waiting = threading.Event()
+    getresponse = stream._conn.getresponse
+
+    def observe_response_wait():
+        waiting.set()
+        return getresponse()
+
+    monkeypatch.setattr(stream._conn, "getresponse", observe_response_wait)
     got: list[str] = []
     t = threading.Thread(target=lambda: got.extend(stream))
     t.start()
-    time.sleep(0.5)
-    started = time.monotonic()
-    stream.cancel()
-    t.join(timeout=5)
+    try:
+        assert waiting.wait(5), "the reader never entered the response wait"
+        started = time.monotonic()
+    finally:
+        stream.cancel()
+        t.join(timeout=5)
     assert not t.is_alive(), "cancel did not interrupt the wait for the reply"
     assert time.monotonic() - started < 3
     assert got == []
@@ -762,10 +772,18 @@ def _start_in_thread(server: lls.LocalLLMServer) -> tuple[threading.Thread, list
 def test_stop_during_a_load_does_not_wait_for_the_load(model, tmp_path, monkeypatch):
     monkeypatch.setenv("FAKE_LLAMA_LOAD_S", "60")
     server = make(model, tmp_path, load_timeout_s=120.0)
+    loading = threading.Event()
+    wait_ready = server._wait_ready_locked
+
+    def observe_model_load(stop_gen):
+        loading.set()
+        return wait_ready(stop_gen)
+
+    monkeypatch.setattr(server, "_wait_ready_locked", observe_model_load)
     t, errors = _start_in_thread(server)
     pid = server.pid
     assert pid
-    time.sleep(0.3)
+    assert loading.wait(5), "the server never entered the model readiness wait"
     started = time.monotonic()
     server.stop()
     assert time.monotonic() - started < 5

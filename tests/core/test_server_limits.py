@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import os
+import select
 import socket
 import threading
 import time
@@ -585,13 +586,13 @@ def test_client_gone_helper_treats_only_a_reset_as_gone():
         assert gone(sv) is False
         # pipelined bytes are seen but never consumed
         c.sendall(b"GET /next")
-        time.sleep(0.2)
+        assert select.select([sv], [], [], 2)[0]
         assert gone(sv) is False
         sv.settimeout(2)
         assert sv.recv(100) == b"GET /next"
         # FIN: a half-close or a finished client, not "gone"
         c.shutdown(socket.SHUT_WR)
-        time.sleep(0.2)
+        assert select.select([sv], [], [], 2)[0]
         assert gone(sv) is False
         c.close()
         sv.close()
@@ -600,8 +601,7 @@ def test_client_gone_helper_treats_only_a_reset_as_gone():
         c.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER,
                      struct.pack("ii", 1, 0))
         c.close()
-        time.sleep(0.3)
-        assert gone(sv) is True
+        assert _wait_until(lambda: gone(sv) is True)
         sv.close()
     finally:
         listener.close()

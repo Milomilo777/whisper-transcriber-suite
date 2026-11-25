@@ -612,16 +612,24 @@ def test_a_client_hanging_up_is_logged_not_printed(tmp_path, capsys, caplog):
 
 # --- S11-1: the TLS handshake cannot freeze the server -----------------------
 
-def test_idle_tls_connection_does_not_block_other_clients(tmp_path):
+def test_idle_tls_connection_does_not_block_other_clients(tmp_path, monkeypatch):
     from core.server import tls
 
+    handshaking = threading.Event()
+    finish_request = JobHTTPServer.finish_request
+
+    def observe_handshake(server, request, address):
+        handshaking.set()
+        return finish_request(server, request, address)
+
+    monkeypatch.setattr(JobHTTPServer, "finish_request", observe_handshake)
     cert, key = tmp_path / "c.pem", tmp_path / "k.pem"
     tls.generate_self_signed_cert(cert, key)
     ctx = tls.build_server_ssl_context(cert, key)
     with _RunningServer(tmp_path, ssl_context=ctx) as srv:
         idle = socket.create_connection(("127.0.0.1", srv.port))
         try:
-            time.sleep(0.3)
+            assert handshaking.wait(5), "the idle TLS connection never entered its handler"
             conn = http.client.HTTPSConnection(
                 "127.0.0.1", srv.port, timeout=5,
                 context=ssl._create_unverified_context())

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 import time
 from typing import Any
 
@@ -100,18 +101,17 @@ def test_pause_resume_flips_job_and_task(tmp_path):
     stall it. We assert the live task sees the flag via a transcribe fn that
     waits for resume.
     """
-    seen = {"paused_during": False}
-    release = []
+    saw_pause = threading.Event()
+    release = threading.Event()
 
     def _slow(task, progress_cb=None, log_cb=None, language_cb=None):
         # Spin until the test pauses then resumes us, proving the bridge.
-        deadline = time.time() + 3
-        while time.time() < deadline:
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
             if task.paused:
-                seen["paused_during"] = True
-            if release:
+                saw_pause.set()
+            if release.wait(0.02):
                 break
-            time.sleep(0.02)
         base, _ = os.path.splitext(task.file_path)
         with open(f"{base}.srt", "w", encoding="utf-8") as f:
             f.write("done")
@@ -129,15 +129,15 @@ def test_pause_resume_flips_job_and_task(tmp_path):
         assert mgr.pause(jid) is True
         job = mgr.get(jid)
         assert job is not None and job.paused is True
-        time.sleep(0.1)  # let the worker observe the flag
+        assert saw_pause.wait(5), "the live task never observed the pause"
         assert mgr.resume(jid) is True
         assert mgr.get(jid).paused is False
-        release.append(True)  # let it finish
+        release.set()
         final = _wait_terminal(mgr, jid)
         assert final is not None and final.status == STATUS_FINISHED
-        assert seen["paused_during"] is True
+        assert saw_pause.is_set()
     finally:
-        release.append(True)
+        release.set()
         mgr.stop()
 
 

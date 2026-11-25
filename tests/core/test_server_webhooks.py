@@ -39,15 +39,37 @@ def _writing_transcribe(task, progress_cb=None, log_cb=None, language_cb=None):
         progress_cb(100)
 
 
-def _make_manager(tmp_path, **kw) -> JobManager:
+def _make_manager(tmp_path, *, transcribe=_writing_transcribe, **kw) -> JobManager:
     mgr = JobManager(
-        _writing_transcribe,
+        transcribe,
         jobs_root=str(tmp_path / "server_jobs"),
         record_history=False,
         **kw,
     )
     mgr.start()
     return mgr
+
+
+@pytest.fixture
+def webhook_threads(monkeypatch):
+    """Allow negative delivery checks after all dispatched sends finish."""
+    threads = []
+    start = threading.Thread.start
+
+    def track(thread):
+        start(thread)
+        if thread.name == "server-webhook":
+            threads.append(thread)
+
+    monkeypatch.setattr(threading.Thread, "start", track)
+    return threads
+
+
+def _join_webhook_threads(threads):
+    # Call after stopping the manager, so it cannot dispatch any later sends.
+    for thread in threads:
+        thread.join(timeout=10)
+        assert not thread.is_alive()
 
 
 def _wait_terminal(mgr: JobManager, job_id: str, timeout: float = 5.0) -> Job | None:
@@ -141,7 +163,6 @@ def test_webhook_payload_error_shape():
 def test_post_webhook_refuses_loopback_target():
     with _Recorder() as rec:
         post_webhook(rec.url, {"event": "job.finished"})
-        time.sleep(0.2)
         assert rec.received == [], "loopback webhook target must be refused"
 
 
@@ -195,7 +216,6 @@ def test_post_webhook_does_not_follow_redirects(monkeypatch):
             with pytest.raises(urllib.error.HTTPError):
                 post_webhook(
                     f"http://127.0.0.1:{server.server_address[1]}/hook", {})
-            time.sleep(0.2)
             assert redirects, "the first endpoint should have been hit"
             assert target.received == [], "redirect target must not be hit"
         finally:
@@ -253,37 +273,49 @@ def test_manager_fires_webhook_on_error(tmp_path):
         mgr.stop()
 
 
-def test_manager_does_not_fire_webhook_on_cancel(tmp_path):
+def test_manager_does_not_fire_webhook_on_cancel(tmp_path, webhook_threads):
+    entered = threading.Event()
+    release = threading.Event()
+
     def slow(task, progress_cb=None, log_cb=None, language_cb=None):
-        time.sleep(0.5)
+        entered.set()
+        if release.wait(10):
+            _writing_transcribe(task, progress_cb, log_cb, language_cb)
 
     calls: list[dict] = []
     mgr = _make_manager(
-        tmp_path, webhook_url="https://example.com/hook",
+        tmp_path, transcribe=slow, webhook_url="https://example.com/hook",
         webhook_sender=lambda url, payload: calls.append(payload))
     try:
-        mgr.submit_upload("a.mp4", b"d", ["srt"])  # occupies the worker
+        first_id = mgr.submit_upload("a.mp4", b"d", ["srt"])
+        assert entered.wait(5)
         jid = mgr.submit_upload("b.mp4", b"d", ["srt"])
         assert mgr.cancel(jid) is True
-        assert _wait_terminal(mgr, jid) is not None
-        time.sleep(0.2)
-        # The other (finished) job may fire; the cancelled one must not.
-        assert all(c["job_id"] != jid for c in calls)
+        release.set()
+        cancelled = _wait_terminal(mgr, jid)
+        assert cancelled is not None and cancelled.status == STATUS_CANCELLED
+        finished = _wait_terminal(mgr, first_id)
+        assert finished is not None and finished.status == STATUS_FINISHED
     finally:
+        release.set()
         mgr.stop()
+    _join_webhook_threads(webhook_threads)
+    assert all(c["job_id"] != jid for c in calls)
+    assert [c["job_id"] for c in calls] == [first_id]
 
 
-def test_manager_does_not_fire_when_no_url(tmp_path):
+def test_manager_does_not_fire_when_no_url(tmp_path, webhook_threads):
     calls: list[dict] = []
     mgr = _make_manager(
         tmp_path, webhook_sender=lambda url, payload: calls.append(payload))
     try:
         jid = mgr.submit_upload("clip.mp4", b"d", ["srt"])
-        assert _wait_terminal(mgr, jid) is not None
-        time.sleep(0.2)
-        assert calls == []
+        finished = _wait_terminal(mgr, jid)
+        assert finished is not None and finished.status == STATUS_FINISHED
     finally:
         mgr.stop()
+    _join_webhook_threads(webhook_threads)
+    assert calls == []
 
 
 def test_webhook_sender_exception_is_swallowed(tmp_path):
@@ -325,14 +357,16 @@ def test_slow_webhook_does_not_block_job_completion(tmp_path):
         mgr.stop()
 
 
-def test_manager_default_sender_refuses_loopback(tmp_path):
+def test_manager_default_sender_refuses_loopback(tmp_path, webhook_threads):
     """The production sender (no injection) must apply the SSRF guard."""
     with _Recorder() as rec:
         mgr = _make_manager(tmp_path, webhook_url=rec.url)
         try:
             jid = mgr.submit_upload("clip.mp4", b"d", ["srt"])
-            assert _wait_terminal(mgr, jid) is not None
-            time.sleep(0.3)
-            assert rec.received == []
+            finished = _wait_terminal(mgr, jid)
+            assert finished is not None and finished.status == STATUS_FINISHED
         finally:
             mgr.stop()
+        assert len(webhook_threads) == 1
+        _join_webhook_threads(webhook_threads)
+        assert rec.received == []
