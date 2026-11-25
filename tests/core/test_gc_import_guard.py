@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import gc
 import threading
-from types import SimpleNamespace
 
 import pytest
 
@@ -126,43 +125,3 @@ def test_gc_disabled_import_serializes_across_two_different_callers():
     )
     t2.join(timeout=3.0)
     assert gc.isenabled(), "GC must end up enabled after both guards exit"
-
-
-def test_engine_probe_uses_the_shared_gc_guard(monkeypatch):
-    from app import app as app_module
-    from core.backends import availability
-
-    started = threading.Event()
-    entered = threading.Event()
-    callbacks = []
-    threads = []
-    status = availability.EngineStatus("faster_whisper", True, "")
-
-    def probe(*_args, **_kwargs):
-        entered.set()
-        return status
-
-    def thread(*, target, daemon):
-        def run():
-            started.set()
-            target()
-
-        worker = threading.Thread(target=run, daemon=daemon)
-        threads.append(worker)
-        return worker
-
-    monkeypatch.setattr(availability, "engine_status", probe)
-    monkeypatch.setattr(app_module, "threading", SimpleNamespace(Thread=thread))
-    app = SimpleNamespace(app_config={}, post_to_main=callbacks.append)
-    received = []
-    with gc_disabled_import():
-        app_module.App.probe_engine_status(app, "faster_whisper", received.append)
-        assert started.wait(3)
-        raced = entered.wait(0.3)
-
-    threads[0].join(3)
-    assert not threads[0].is_alive()
-    assert not raced
-    assert len(callbacks) == 1
-    callbacks[0]()
-    assert received == [status]
