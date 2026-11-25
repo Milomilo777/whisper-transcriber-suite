@@ -139,6 +139,22 @@
    "Save changes  (Ctrl+S)"
   ],
   [
+   ".!transcriptviewer.!frame.!panedwindow.!frame.!frame.!checkbutton",
+   "Reading view"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame.!frame.!menubutton",
+   "Export paragraphs"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame.!frame.!menubutton.!menu#0",
+   "Plain text (.txt)"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame.!frame.!menubutton.!menu#1",
+   "Markdown (.md)"
+  ],
+  [
    ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook:.!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame",
    "Media"
   ],
@@ -721,6 +737,22 @@
   [
    ".!transcriptviewer2.!frame.!frame2.!button4",
    "Save changes  (Ctrl+S)"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame.!frame.!checkbutton",
+   "Reading view"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame.!frame.!menubutton",
+   "Export paragraphs"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame.!frame.!menubutton.!menu#0",
+   "Plain text (.txt)"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame.!frame.!menubutton.!menu#1",
+   "Markdown (.md)"
   ],
   [
    ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook:.!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame",

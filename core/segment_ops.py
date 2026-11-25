@@ -4,8 +4,12 @@ from __future__ import annotations
 
 import copy
 import math
+import string
 import unicodedata
 from collections.abc import Callable
+from dataclasses import dataclass
+
+from core.writers.base import coerce_seconds, normalize_text
 
 class SegmentOpError(ValueError):
     """Raised when a segment operation is rejected."""
@@ -405,6 +409,76 @@ def join_viewer_cues(left: dict, right: dict) -> dict:
                         for cue in pair]
         joined["translation"] = merge_with_next(translations, 0)[0]["text"]
     return joined
+
+
+@dataclass(frozen=True)
+class ReadingParagraph:
+    start: float
+    speaker: str
+    text: str
+
+    def display_text(self) -> str:
+        return f"{self.speaker}: {self.text}" if self.speaker else self.text
+
+
+_PARAGRAPH_LIMIT = 420
+_SENTENCE_ENDS = ".!?\u061f\u3002\uff01\uff1f"
+_MARKDOWN_ESCAPES = str.maketrans({char: "\\" + char for char in string.punctuation})
+
+
+def _reading_join(left: str, right: str) -> str:
+    def east_asian(char: str) -> bool:
+        return _is_cjk(char) or 0x3000 <= ord(char) <= 0x303F or 0xFF01 <= ord(char) <= 0xFF60
+
+    if not left:
+        return right
+    return left + ("" if east_asian(left[-1]) and east_asian(right[0]) else " ") + right
+
+
+def _reading_chunks(text: str):
+    while len(text) > _PARAGRAPH_LIMIT:
+        boundary = text.rfind(" ", _PARAGRAPH_LIMIT // 2, _PARAGRAPH_LIMIT + 1)
+        if boundary < 0:
+            boundary = _PARAGRAPH_LIMIT
+            while boundary > 1 and unicodedata.category(text[boundary]).startswith("M"):
+                boundary -= 1
+        yield text[:boundary].rstrip()
+        text = text[boundary:].lstrip()
+    if text:
+        yield text
+
+
+def reading_paragraphs(segments: list[dict]) -> list[ReadingParagraph]:
+    """Group transcript text once for both the viewer and paragraph exports."""
+    paragraphs: list[ReadingParagraph] = []
+    text = speaker = ""
+    start = last_end = 0.0
+    sentences = 0
+    for cue in segments:
+        cue_start = coerce_seconds(cue.get("start"))
+        cue_end = max(cue_start, coerce_seconds(cue.get("end"), cue_start))
+        cue_speaker = normalize_text(cue.get("speaker"))
+        for chunk in _reading_chunks(normalize_text(cue.get("text"))):
+            combined = _reading_join(text, chunk)
+            if text and (cue_speaker != speaker or cue_start - last_end > 2.0
+                         or sentences >= 4 or len(combined) > _PARAGRAPH_LIMIT):
+                paragraphs.append(ReadingParagraph(start, speaker, text))
+                text, sentences = "", 0
+            if not text:
+                start, speaker, last_end = cue_start, cue_speaker, cue_end
+            text = _reading_join(text, chunk)
+            last_end = max(last_end, cue_end)
+            sentences += sum(char in _SENTENCE_ENDS for char in chunk)
+    if text:
+        paragraphs.append(ReadingParagraph(start, speaker, text))
+    return paragraphs
+
+
+def render_reading(paragraphs: list[ReadingParagraph], format_key: str) -> str:
+    rows = [p.display_text() for p in paragraphs]
+    if format_key == "md":
+        rows = [row.translate(_MARKDOWN_ESCAPES) for row in rows]
+    return "\n\n".join(rows) + ("\n" if rows else "")
 
 
 class History:

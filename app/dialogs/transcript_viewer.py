@@ -48,7 +48,7 @@ from typing import Any, Callable, Collection, Optional
 
 from app.dialogs import share_page, viewer_exports
 from app import mac_native, rtl_layout, shortcuts
-from app.i18n import N_, _, lazy, ngettext, pgettext, plain, translate
+from app.i18n import N_, _, display, embed_rtl, lazy, ngettext, pgettext, plain, translate
 from app.dpi import place_over, px, scaled_size
 from app.theme import script_fonts, tokens
 from app.widgets.error_dialog import show_error
@@ -940,11 +940,12 @@ class TranscriptViewer(tk.Toplevel):
         ttk.Label(toolbar, text=_("Search:")).pack(side="left", padx=(0, 4))
         self.search_var = tk.StringVar()
         self.search_var.trace_add("write", lambda *_: self._refilter())
-        ttk.Entry(toolbar, textvariable=self.search_var, width=24).pack(side="left")
-        ttk.Button(toolbar, text=pgettext("button", "Clear"),
-                   command=lambda: self.search_var.set("")).pack(
-            side="left", padx=(4, 0)
+        self._search_entry = ttk.Entry(toolbar, textvariable=self.search_var, width=24)
+        self._search_entry.pack(side="left")
+        self._search_clear = ttk.Button(
+            toolbar, text=pgettext("button", "Clear"), command=lambda: self.search_var.set(""),
         )
+        self._search_clear.pack(side="left", padx=(4, 0))
 
         # Edit tools group
         ttk.Separator(toolbar, orient="vertical").pack(side="left", padx=8, fill="y")
@@ -1011,6 +1012,7 @@ class TranscriptViewer(tk.Toplevel):
         vsb.grid(row=0, column=1, sticky="ns")
         left.rowconfigure(0, weight=1)
         left.columnconfigure(0, weight=1)
+        self._build_reading_controls(left, vsb)
         self.tree.bind("<<TreeviewSelect>>", self._on_segment_select)
         self.tree.bind("<Double-Button-1>", self._on_segment_double_click)
         # Right-click menu — currently only the speaker rename entry,
@@ -1042,6 +1044,105 @@ class TranscriptViewer(tk.Toplevel):
         self._build_media_panel(media_tab)
         self._build_chapters_panel(chapters_tab)
         self._build_ai_panel(ai_tab)
+
+    def _build_reading_controls(self, parent: ttk.Frame, scroll: ttk.Scrollbar) -> None:
+        self._reading_enabled = tk.BooleanVar(master=self)
+        self._reading_scroll = scroll
+        self._reading_text = tk.Text(
+            parent, wrap="word", state="disabled", width=1, padx=10, pady=8,
+            cursor="hand2", takefocus=True, height=1,
+        )
+        self._reading_text.configure(yscrollcommand=scroll.set)
+        self._reading_text.bind("<Return>", self._seek_reading_caret)
+        script_fonts.use_text_font(self._reading_text)
+        bar = ttk.Frame(parent)
+        bar.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(6, 0))
+        ttk.Checkbutton(bar, text=_("Reading view"), variable=self._reading_enabled,
+                        command=self._toggle_reading).pack(side="left")
+        export = ttk.Menubutton(bar, text=_("Export paragraphs"))
+        menu = tk.Menu(export, tearoff=False)
+        menu.add_command(label=_("Plain text (.txt)"), command=lambda: self._export_paragraphs("txt"))
+        menu.add_command(label=_("Markdown (.md)"), command=lambda: self._export_paragraphs("md"))
+        export.configure(menu=menu)
+        export.pack(side="left", padx=(8, 0))
+
+    def _toggle_reading(self) -> None:
+        reading = self._reading_enabled.get()
+        for widget in (self._search_entry, self._search_clear):
+            widget.state(["disabled" if reading else "!disabled"])
+        if reading:
+            self.tree.grid_remove()
+            self._reading_text.grid(row=0, column=0, sticky="nsew")
+            self._reading_scroll.configure(command=self._reading_text.yview)
+            self._refresh_reading()
+        else:
+            self._reading_text.grid_remove()
+            self.tree.grid()
+            self._reading_scroll.configure(command=self.tree.yview)
+            self._reading_scroll.set(*self.tree.yview())
+
+    def _show_cue_list(self) -> None:
+        enabled = self.__dict__.get("_reading_enabled")
+        if enabled is not None and enabled.get():
+            enabled.set(False)
+            self._toggle_reading()
+
+    def _refresh_reading(self) -> None:
+        enabled = self.__dict__.get("_reading_enabled")
+        if enabled is None or not enabled.get():
+            return
+        widget = self._reading_text
+        fraction = widget.yview()[0]
+        widget.configure(state="normal")
+        widget.delete("1.0", "end")
+        for tag in widget.tag_names():
+            if tag.startswith("paragraph_"):
+                widget.tag_delete(tag)
+        self._reading_paragraphs = segment_ops.reading_paragraphs(self.segments)
+        for index, paragraph in enumerate(self._reading_paragraphs):
+            tag = f"paragraph_{index}"
+            body = paragraph.display_text()
+            direction = next((bidi for ch in paragraph.text
+                              if (bidi := unicodedata.bidirectional(ch)) in {"L", "R", "AL"}), "L")
+            if direction != "L":
+                body = embed_rtl(display(body, logical=True))
+                widget.tag_configure(tag, justify="right")
+            widget.insert("end", body + "\n\n", tag)
+            widget.tag_bind(tag, "<Button-1>", lambda _event, t=paragraph.start: self._seek_to(t))
+        widget.mark_set("insert", "1.0")
+        widget.configure(state="disabled")
+        widget.yview_moveto(fraction)
+
+    def _seek_reading_caret(self, _event: tk.Event) -> str:
+        for tag in self._reading_text.tag_names("insert"):
+            if tag.startswith("paragraph_"):
+                self._seek_to(self._reading_paragraphs[int(tag.split("_", 1)[1])].start)
+                break
+        return "break"
+
+    def _export_paragraphs(self, format_key: str) -> None:
+        paragraphs = segment_ops.reading_paragraphs(self.segments)
+        if not paragraphs:
+            notify(self, _("The transcript is empty."), "info")
+            return
+        folder, filename = os.path.split(self.json_path)
+        stem = os.path.splitext(filename)[0]
+        path = filedialog.asksaveasfilename(
+            parent=self, title=_("Export paragraphs"), initialdir=folder,
+            initialfile=f"{stem}.paragraphs.{format_key}", defaultextension=f".{format_key}",
+            confirmoverwrite=False,
+        )
+        if not path:
+            return
+        try:
+            body = segment_ops.render_reading(paragraphs, format_key)
+            viewer_exports.write_atomically(path, body.encode("utf-8"), create_only=True)
+        except FileExistsError:
+            show_error(self, _("Save failed"), _("That file already exists. Choose another name."))
+        except OSError as exc:
+            show_error(self, _("Save failed"), _("Could not export paragraphs."), detail=str(exc))
+        else:
+            notify(self, _("Paragraphs exported."), "success")
 
     def _build_quality_panel(self, parent: ttk.Frame) -> None:
         """Advisory report only: checking never changes cues or blocks saving."""
@@ -1148,6 +1249,7 @@ class TranscriptViewer(tk.Toplevel):
         idx = issue.index
         if not 0 <= idx < len(self.segments):
             return
+        self._show_cue_list()
         start = _cue_seek_seconds(self.segments[idx])
         self._qc_detail_var.set(_("Cue {cue} at {time}: {message}",
                                   cue=idx + 1, time=(_fmt_hms_ms(start) if start is not None else
@@ -2125,6 +2227,7 @@ class TranscriptViewer(tk.Toplevel):
             )
         self._refresh_caption()
         self._refresh_quality()
+        self._refresh_reading()
 
     def _refilter(self) -> None:
         self._populate_listbox()
@@ -2901,7 +3004,7 @@ class TranscriptViewer(tk.Toplevel):
             return False
         if focused is None:
             return False
-        return isinstance(focused, (tk.Entry, ttk.Entry))
+        return isinstance(focused, (tk.Entry, ttk.Entry, tk.Text, tk.Spinbox))
 
     def _focus_on_tree(self) -> bool:
         """True when the segment Treeview holds keyboard focus.
@@ -3613,6 +3716,7 @@ class FindReplaceDialog(tk.Toplevel):
     def _reveal(self, idx: int) -> None:
         item = str(idx)
         try:
+            self.viewer._show_cue_list()
             if not self.viewer.tree.exists(item):
                 # The search box hides this row: clear the filter so the
                 # match can be shown.

@@ -235,14 +235,14 @@ class ChangedWhileBuilding(Exception):
 
 def write_atomically(
     path: str, data: bytes, expect_stamp: tuple[int, int] | None = None,
-    *, check_missing: bool = False,
+    *, check_missing: bool = False, create_only: bool = False,
 ) -> tuple[int, int]:
     """Write ``data`` to a temp sibling of ``path``, then move it into place.
 
     With ``expect_stamp`` the target is checked once more right before the move and left
     alone (``ChangedWhileBuilding``) when someone changed it while ``data`` was being built.
-    ``check_missing`` also checks an expected absent target. Return the staged
-    file's stamp, never the name's potentially newer contents after publication.
+    ``check_missing`` also checks an expected absent target. ``create_only``
+    publishes only to a new name. Return the staged file's stamp.
     """
     part = os.path.join(os.path.dirname(os.path.abspath(path)), f".viewer-{uuid.uuid4().hex}.part")
     created = False
@@ -258,8 +258,12 @@ def write_atomically(
             file_stamp(path) != expect_stamp or link_reason(path) is not None
         ):
             raise ChangedWhileBuilding(path)
-        os.replace(part, path)
-        created = False
+        if create_only and os.name != "nt":
+            os.link(part, path)  # publish atomically without replacing an existing name
+        else:
+            publish = os.rename if create_only else os.replace
+            publish(part, path)  # Windows rename fails if the target already exists
+            created = False
         return stamp
     finally:
         if created:
