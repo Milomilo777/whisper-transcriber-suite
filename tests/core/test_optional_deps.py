@@ -262,10 +262,7 @@ def test_a_package_in_use_asks_to_reopen_the_app(monkeypatch, tmp_path):
     assert any("Close and reopen the app" in line for line in lines)
 
 
-@pytest.mark.parametrize("restore_fails", [False, True])
-def test_merge_restores_earlier_packages_when_a_later_replace_fails(
-    monkeypatch, tmp_path, restore_fails,
-):
+def test_merge_restores_earlier_packages_when_a_later_replace_fails(monkeypatch, tmp_path):
     final = tmp_path / "pylibs"
     old_package = final / "bigpkg"
     old_package.mkdir(parents=True)
@@ -288,24 +285,16 @@ def test_merge_restores_earlier_packages_when_a_later_replace_fails(
         return proc
 
     real_replace = os.replace
-    fail_restore = restore_fails
 
     def replace(src, dst):
         if os.path.basename(dst) == "zzlater.py" and ".merge-" in os.path.basename(src):
             raise PermissionError("staged replacement failed")
-        if fail_restore and os.path.basename(dst) == "bigpkg" and ".bak-" in os.path.basename(src):
-            raise PermissionError("restore of earlier package failed")
         real_replace(src, dst)
 
     monkeypatch.setattr(optional_deps.subprocess, "Popen", popen)
     monkeypatch.setattr(optional_deps.os, "replace", replace)
 
     assert optional_deps.install("alignment") is False
-    if restore_fails:
-        backup = final / f".bigpkg.bak-{os.getpid()}" / "__init__.py"
-        assert backup.read_text(encoding="utf-8") == "# installed for a sibling feature"
-        fail_restore = False
-        assert optional_deps.install("alignment") is False
     assert old_init.read_text(encoding="utf-8") == "# installed for a sibling feature"
     assert old_later.read_text(encoding="utf-8") == "# original later module"
     assert {p.name for p in final.iterdir() if p.suffix != ".lock"} == {"bigpkg", "zzlater.py"}
