@@ -768,13 +768,7 @@ class TranscriptViewer(tk.Toplevel):
         # macOS: end above the Dock; the window may then be dragged shorter (see minsize below).
         height = mac_native.fit_height(self, height)
         self.geometry(f"{width}x{height}")
-        # No resizable()/minsize() existed before — Tk's default is
-        # resizable in both directions, so nothing stopped a user from
-        # shrinking below the width the toolbar (media label + search +
-        # Find&Replace + Remove fillers + Save + Open JSON folder, now
-        # plus 2 hover icons) actually needs. Floor it at the window's
-        # own launch size, which was already fixed regardless of screen
-        # size, so this doesn't change anything about small-screen fit.
+        # Keep the toolbars visible at the viewer's launch width.
         self.minsize(
             width,
             min(height, mac_native.FITTED_MIN_HEIGHT_PX) if mac_native.is_aqua(self) else height,
@@ -910,10 +904,8 @@ class TranscriptViewer(tk.Toplevel):
         outer = ttk.Frame(self, padding=8)
         outer.pack(fill="both", expand=True)
 
-        # Two bars, so every button keeps its full label at 100-150 % scaling (one bar cut
-        # "Open in Subtitle Edit" to "Oper" at 100 %). Top: the media file and the file
-        # actions; the right-hand buttons are packed first, so a long file name is what gives
-        # way. Second: search and the edit tools.
+        # Give file, search and edit controls separate rows so their labels fit
+        # when fonts grow at high display scaling.
         topbar = ttk.Frame(outer)
         topbar.pack(fill="x", pady=(0, 4))
         ttk.Button(
@@ -933,19 +925,11 @@ class TranscriptViewer(tk.Toplevel):
             ).pack(side="right", padx=(0, 4))
             help_icon(topbar, lambda: translate(subtitle_edit_ui.HELP_TEXT)).pack(
                 side="right", padx=(0, 4))
-        media_label = (
-            _("Media: {name}", name=os.path.basename(self.media_path))
-            if self.media_path
-            else _("Media: (none found next to JSON)")
-        )
-        ttk.Label(topbar, text=media_label, foreground=tokens.themed(tokens.TEXT_MUTED)).pack(
-            side="left"
-        )
 
-        toolbar = ttk.Frame(outer)
-        toolbar.pack(fill="x", pady=(0, 6))
+        searchbar = ttk.Frame(outer)
+        searchbar.pack(fill="x", pady=(0, 6))
         help_icon(
-            toolbar,
+            searchbar,
             lazy("Segment list colours: green/amber/red text is the model's "
             "confidence (high/medium/low). A red row background "
             "means the hallucination detector flagged that segment as "
@@ -954,18 +938,28 @@ class TranscriptViewer(tk.Toplevel):
             "after a manual 'Edit timestamp...' edit). A yellow "
             "highlight marks the segment now playing."),
         ).pack(side="right")
-        ttk.Label(toolbar, text=_("Search:")).pack(side="left", padx=(0, 4))
+        ttk.Label(searchbar, text=_("Search:")).pack(side="left", padx=(0, 4))
         self.search_var = tk.StringVar()
         self.search_var.trace_add("write", lambda *_: self._refilter())
-        self._search_entry = ttk.Entry(toolbar, textvariable=self.search_var, width=24)
+        self._search_entry = ttk.Entry(searchbar, textvariable=self.search_var, width=24)
         self._search_entry.pack(side="left")
         self._search_clear = ttk.Button(
-            toolbar, text=pgettext("button", "Clear"), command=lambda: self.search_var.set(""),
+            searchbar, text=pgettext("button", "Clear"), command=lambda: self.search_var.set(""),
         )
         self._search_clear.pack(side="left", padx=(4, 0))
 
-        # Edit tools group
-        ttk.Separator(toolbar, orient="vertical").pack(side="left", padx=8, fill="y")
+        media_label = (
+            _("Media: {name}", name=os.path.basename(self.media_path))
+            if self.media_path
+            else _("Media: (none found next to JSON)")
+        )
+        # Pack the file name last so a long name yields space to the search controls.
+        ttk.Label(searchbar, text=media_label, foreground=tokens.themed(tokens.TEXT_MUTED)).pack(
+            side="right", padx=8,
+        )
+
+        toolbar = ttk.Frame(outer)
+        toolbar.pack(fill="x", pady=(0, 6))
         edit = ttk.Menubutton(toolbar, text=_("Edit"))
         self._edit_menu = tk.Menu(edit, tearoff=False, postcommand=self._refresh_history_menu)
         edit.configure(menu=self._edit_menu)
