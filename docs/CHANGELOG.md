@@ -13,17 +13,13 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 - Reject unrelated settings writes when an interrupted configuration restore cannot finish.
 - Keep ASS karaoke exports working when a word has an extreme negative clock.
-- Resume from the latest saved transcript cue when the recorded checkpoint cursor points earlier.
 - Keep subtitle and lyric timestamp formatting from overflowing on extreme finite values.
 - Keep usage statistics disabled when the opt-in preference cannot be saved.
-- Keep a package backup available if restoring it during an optional dependency rollback fails.
-- Serialize background engine probes with other imports that temporarily disable garbage collection.
 - Associate CLI transcription history only with outputs produced by that run.
 - Preserve tabs inside the text column of imported TSV transcripts.
 - Repair non-finite, negative, and inverted cue times when importing JSON, TSV, and ELAN transcripts while preserving the cue text.
 - Continue looking for evidence when the highest-ranked transcript window cannot fit even one cue.
 - Keep the active configuration in place when a safe-mode launch prints CLI help or rejects invalid arguments.
-- Restore all replaced packages if an optional dependency install fails partway through publication.
 - Pin model download progress to the expected files and remove stale Hub partials after a successful download.
 - Split Windows CI tests into three balanced parallel shards per Python version to avoid full-suite timeouts.
 - Recognize stock model hub folders and cache snapshots when selecting calibrated CUDA batch memory budgets; keep custom model names on the conservative budget.
