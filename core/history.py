@@ -27,6 +27,7 @@ from urllib.parse import quote
 from urllib.request import pathname2url
 
 from .config import user_data_dir
+from .paths import path_key
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +75,16 @@ CREATE TABLE IF NOT EXISTS transcriptions (
 );
 CREATE INDEX IF NOT EXISTS idx_downloads_status ON downloads(status);
 CREATE INDEX IF NOT EXISTS idx_transcriptions_status ON transcriptions(status);
+CREATE TABLE IF NOT EXISTS transcript_comparisons (
+    id INTEGER PRIMARY KEY,
+    original_key TEXT NOT NULL,
+    result_key TEXT NOT NULL,
+    original_path TEXT NOT NULL,
+    result_path TEXT NOT NULL,
+    preferred_path TEXT,
+    UNIQUE (original_key, result_key)
+);
+CREATE INDEX IF NOT EXISTS idx_comparison_result ON transcript_comparisons(result_key);
 """
 
 
@@ -772,7 +783,32 @@ class HistoryDB:
                                      (json.dumps(updated), row["id"]))
                         changed += 1
                 after = int(rows[-1]["id"])
+            self._relocate_comparisons(conn, {path_key(old): os.path.abspath(new)
+                                              for old, new in replacements.items()})
         return changed
+
+    @staticmethod
+    def _relocate_comparisons(conn: sqlite3.Connection, destinations: dict[str, str]) -> None:
+        by_id: dict[int, sqlite3.Row] = {}
+        for key in destinations:
+            for row in conn.execute(
+                "SELECT * FROM transcript_comparisons WHERE original_key = ? OR result_key = ?", (key, key),
+            ):
+                by_id[row["id"]] = row
+        for row in by_id.values():
+            original = destinations.get(row["original_key"], str(row["original_path"]))
+            result = destinations.get(row["result_key"], str(row["result_path"]))
+            original_key, result_key = path_key(original), path_key(result)
+            if original_key == result_key:
+                raise ValueError("Relocation would combine two transcript versions")
+            preferred = row["preferred_path"]
+            if preferred is not None:
+                preferred = destinations.get(path_key(preferred), preferred)
+            conn.execute(
+                "UPDATE transcript_comparisons SET original_key = ?, result_key = ?, original_path = ?, "
+                "result_path = ?, preferred_path = ? WHERE id = ?",
+                (original_key, result_key, original, result, preferred, row["id"]),
+            )
 
     def list_transcriptions(self, limit: int = 200) -> list[dict[str, Any]]:
         # Serialise the read through _write_lock — see list_downloads().
@@ -781,6 +817,42 @@ class HistoryDB:
                 "SELECT * FROM transcriptions ORDER BY id DESC LIMIT ?", (limit,)
             )
             return [_row_to_dict(r, ("output_paths", "run_options")) for r in cur.fetchall()]
+
+    def record_transcript_comparison(self, original: str, result: str) -> None:
+        """Remember two saved files without changing an existing preference."""
+        original_key, result_key = path_key(original), path_key(result)
+        if original_key == result_key:
+            raise ValueError("A comparison requires two distinct paths")
+        with self._txn() as conn:
+            conn.execute(
+                "INSERT INTO transcript_comparisons (original_key, result_key, original_path, result_path) "
+                "VALUES (?, ?, ?, ?) ON CONFLICT (original_key, result_key) DO NOTHING",
+                (original_key, result_key, os.path.abspath(original), os.path.abspath(result)),
+            )
+
+    def transcript_comparison_for(self, path: str) -> tuple[str, str, str | None] | None:
+        """An exact rerun first, otherwise the most recent comparison of the original."""
+        key = path_key(path)
+        with self._write_lock:
+            row = self._conn.execute(
+                "SELECT original_path, result_path, preferred_path FROM transcript_comparisons "
+                "WHERE original_key = ? OR result_key = ? ORDER BY (result_key = ?) DESC, id DESC LIMIT 1",
+                (key, key, key),
+            ).fetchone()
+        return (row[0], row[1], row[2]) if row is not None else None
+
+    def prefer_transcript(self, original: str, result: str, preferred: str | None) -> None:
+        """Set or clear a preference. Both files and their history rows are retained."""
+        original_key, result_key = path_key(original), path_key(result)
+        if preferred is not None and path_key(preferred) not in (original_key, result_key):
+            raise ValueError("The preferred file must belong to this comparison")
+        with self._txn() as conn:
+            updated = conn.execute(
+                "UPDATE transcript_comparisons SET preferred_path = ? WHERE original_key = ? AND result_key = ?",
+                (preferred, original_key, result_key),
+            )
+            if updated.rowcount != 1:
+                raise LookupError("The comparison no longer exists")
 
     def recent_finished_languages(self, limit: int = 20) -> list[str]:
         """Detected languages of the last finished jobs, including empty entries in the limit."""

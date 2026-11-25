@@ -4706,6 +4706,74 @@ class App(tk.Tk):
         self.log(f"Queued: {os.path.basename(text)}")
         self.refresh()
 
+    def queue_transcript_comparison(
+        self, media_path: str, source_json: str, preset: dict[str, Any],
+    ) -> bool:
+        """Queue an independent rerun without applying a preset to the app."""
+        from app.domain.languages import SUBTITLE_LANGUAGES
+        from core.presets import capture_settings
+        from core.watcher import is_transcribable
+        from core.writers import WRITERS
+
+        media_path = os.path.abspath(media_path)
+        if not os.path.isfile(media_path) or not is_transcribable(media_path):
+            show_error(self, _("File missing"),
+                       _("That file is no longer at:\n{path}", path=media_path))
+            return False
+        options = capture_settings(preset)
+        model = options.pop("whisper_model", None)
+        if model is not None and model != self.app_config.get("whisper_model"):
+            show_error(self, _("Transcribe again"), _("This preset uses a different model."))
+            return False
+        task = TranscriptionTask(media_path)
+        if self._same_job_active(task):
+            show_error(self, _("Transcribe again"), _("This file is already in the queue."))
+            return False
+        language = options.get("language")
+        task.language = (dict(SUBTITLE_LANGUAGES).get(language) if language is not None
+                         else self._selected_transcribe_language())
+        if not self._confirm_english_only_model(language_override=task.language):
+            return False
+        if not self._ensure_transcribe_ready():
+            return False
+        if self._same_job_active(task):
+            return False  # another job was queued while readiness showed a dialog
+        if not os.path.isfile(media_path):
+            show_error(self, _("File missing"),
+                       _("That file is no longer at:\n{path}", path=media_path))
+            return False
+        task.comparison_source = os.path.abspath(source_json)
+        configured = options.get("output_formats", self.app_config.get("output_formats"))
+        safe_formats = WRITERS.keys() | {"docx", "pdf"}
+        task.output_formats = [fmt for fmt in (configured or ["srt"]) if fmt in safe_formats]
+        if "json" not in task.output_formats:
+            task.output_formats.append("json")
+        if options.get("translate_to_english", self.app_config.get("translate_to_english")):
+            reason = self._translate_unsupported_reason()
+            if reason:
+                show_error(self, _("Transcribe again"), reason)
+                return False
+            task.whisper_task = "translate"
+        baseline = task_settings.stamp(task, self.app_config) or {}
+        overrides = task_settings.snapshot({**self.app_config, **options})
+        task.task_settings = {**baseline, **{key: val for key, val in overrides.items() if key in options}}
+        self.queue.append(task)
+        self.refresh()
+        self.show_task_in_queue(task)
+        return True
+
+    def complete_transcript_comparison(self, task: TranscriptionTask) -> None:
+        """Link the exact output reported by a successfully persisted run."""
+        from app.dialogs.transcript_viewer import show_transcript_comparison
+
+        original = task.comparison_source
+        result = task_transcript_json(task, must_exist=True)
+        history = self.history
+        if history is None or not original or not result or not task.output_paths or _same_file(original, result):
+            return
+        history.record_transcript_comparison(original, result)
+        self.after_idle(lambda: show_transcript_comparison(self, original, result, history))
+
     def show_task_in_queue(self, task: "TranscriptionTask | None") -> None:
         """The Transcribe tab's "Show in Queue": open the Queue with ``task``'s row selected."""
         self.nb.select(self.t2)
@@ -4912,7 +4980,7 @@ class App(tk.Tk):
             self.log(_("Mixed-language audio applies to files added on the Transcribe tab; "
                        "{name} uses one language.", name=name))
 
-    def _confirm_english_only_model(self) -> bool:
+    def _confirm_english_only_model(self, *, language_override: str | None = "") -> bool:
         """Before queueing: guide the user off an English-only model when the
         language is not English (auto-detect included).
 
@@ -4933,7 +5001,7 @@ class App(tk.Tk):
             multilingual_counterpart,
         )
 
-        language = self._selected_transcribe_language()
+        language = self._selected_transcribe_language() if language_override == "" else language_override
         slug = str(self.app_config.get("whisper_model") or DEFAULT_MODEL_SLUG).strip()
         if not english_only_mismatch(self.app_config, slug, language):
             return True
@@ -4947,10 +5015,14 @@ class App(tk.Tk):
         alt = multilingual_counterpart(self.app_config, slug)
         name = ""
         lang_var = getattr(self, "transcribe_lang_var", None)
-        if language and lang_var is not None:
+        if language:
             # The variable keeps the English name (the stored value); show it translated.
-            from app.domain.languages import subtitle_language_label
-            name = subtitle_language_label(lang_var.get().strip())
+            from app.domain.languages import SUBTITLE_LANGUAGES, subtitle_language_label
+            if language_override == "" and lang_var is not None:
+                stored_name = lang_var.get().strip()
+            else:
+                stored_name = next((name for name, code in SUBTITLE_LANGUAGES if code == language), language)
+            name = subtitle_language_label(stored_name)
         prompt = dlg.EnglishOnlyPrompt(
             model=slug, language=name, alternative=alt,
             reason=(_("About the same size and speed, and it understands {language}.",

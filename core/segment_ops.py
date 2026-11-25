@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
-import math
 import copy
+import math
+import string
 import unicodedata
+from collections.abc import Callable
+from dataclasses import dataclass
+
+from core.writers.base import coerce_seconds, normalize_text
 
 class SegmentOpError(ValueError):
     """Raised when a segment operation is rejected."""
@@ -311,35 +316,242 @@ def set_times(segments: list[dict], index: int, start: float, end: float) -> lis
     res[index]["end"] = end
     return res
 
+
+def _cue_clocks(cue: dict) -> tuple[float, float]:
+    try:
+        start, end = float(cue["start"]), float(cue["end"])
+    except (KeyError, TypeError, ValueError, OverflowError):
+        raise SegmentOpError("Invalid cue timing.") from None
+    if not (0 <= start < end < math.inf):
+        raise SegmentOpError("Invalid cue timing.")
+    return start, end
+
+
+def _split_text(text: str, offset: int) -> tuple[str, str]:
+    if not 0 < offset < len(text):
+        raise SegmentOpError("Choose a boundary inside the text.")
+    if (unicodedata.category(text[offset]).startswith("M")
+            or text[offset] in "\u200c\u200d" or text[offset - 1] in "\u200c\u200d"):
+        raise SegmentOpError("Choose a boundary between characters.")
+    left, right = text[:offset].rstrip(), text[offset:].lstrip()
+    if not left.strip() or not right.strip():
+        raise SegmentOpError("Choose a boundary inside the text.")
+    return left, right
+
+
+def split_viewer_cue(cue: dict, offset: int, translation_offset: int | None = None) -> list[dict]:
+    """Split one cue without copying neighboring cues or losing word records."""
+    start, end = _cue_clocks(cue)
+    text = str(cue.get("text") or "")
+    left_text, right_text = _split_text(text, offset)
+    ratio = len(left_text.strip()) / (len(left_text.strip()) + len(right_text.strip()))
+    left_end = right_start = start + (end - start) * ratio
+    left, right = {**cue, "text": left_text}, {**cue, "text": right_text}
+    words = cue.get("words")
+    if words:
+        if not isinstance(words, list) or any(not isinstance(w, dict) for w in words):
+            raise SegmentOpError("Invalid word records.")
+        labels = ["".join(str(w.get("word") or "").split()) for w in words]
+        if not all(labels) or "".join(labels) != "".join(text.split()):
+            raise SegmentOpError("Word records do not match cue text.")
+        boundary = len("".join(left_text.split()))
+        split_index = 0
+        length = 0
+        for index, label in enumerate(labels, 1):
+            length += len(label)
+            if length >= boundary:
+                if length != boundary:
+                    raise SegmentOpError("Choose a boundary between timed words.")
+                split_index = index
+                break
+        left["words"], right["words"] = words[:split_index], words[split_index:]
+        try:
+            timed_end = float(left["words"][-1]["end"])
+            timed_start = float(right["words"][0]["start"])
+        except (KeyError, TypeError, ValueError, OverflowError):
+            pass
+        else:
+            if start < timed_end <= end and start <= timed_start < end:
+                left_end, right_start = timed_end, timed_start
+    if left_end <= start or right_start >= end:
+        raise SegmentOpError("This cue is too short to split.")
+    left.update(start=start, end=left_end)
+    right.update(start=right_start, end=end)
+    translation = cue.get("translation")
+    if translation:
+        if not isinstance(translation, str) or translation_offset is None:
+            raise SegmentOpError("Choose a boundary in both texts.")
+        left["translation"], right["translation"] = _split_text(translation, translation_offset)
+    return [left, right]
+
+
+def join_viewer_cues(left: dict, right: dict) -> dict:
+    """Join a pair if a single cue can represent their metadata."""
+    changing = {"start", "end", "text", "words", "translation", "suspect"}
+    for field in {"speaker", "language"} | ((left.keys() & right.keys()) - changing):
+        if left.get(field) != right.get(field):
+            raise SegmentOpError("Cue metadata differs.")
+    pair = []
+    for cue in (left, right):
+        start, end = _cue_clocks(cue)
+        if not isinstance(cue.get("translation", ""), str):
+            raise SegmentOpError("Invalid paired text.")
+        words = cue.get("words")
+        if words is not None and not isinstance(words, list):
+            raise SegmentOpError("Invalid word records.")
+        normalized = {**cue, "start": start, "end": end}
+        if words is None:
+            normalized.pop("words", None)
+        pair.append(normalized)
+    joined = merge_with_next(pair, 0)[0]
+    if "translation" in left or "translation" in right:
+        translations = [{"start": 0, "end": 1, "text": cue.get("translation", "")}
+                        for cue in pair]
+        joined["translation"] = merge_with_next(translations, 0)[0]["text"]
+    return joined
+
+
+@dataclass(frozen=True)
+class ReadingParagraph:
+    start: float
+    speaker: str
+    text: str
+
+    def display_text(self) -> str:
+        return f"{self.speaker}: {self.text}" if self.speaker else self.text
+
+
+_PARAGRAPH_LIMIT = 420
+_SENTENCE_ENDS = ".!?\u061f\u3002\uff01\uff1f"
+_MARKDOWN_ESCAPES = str.maketrans({char: "\\" + char for char in string.punctuation})
+
+
+def _reading_join(left: str, right: str) -> str:
+    def east_asian(char: str) -> bool:
+        return _is_cjk(char) or 0x3000 <= ord(char) <= 0x303F or 0xFF01 <= ord(char) <= 0xFF60
+
+    if not left:
+        return right
+    return left + ("" if east_asian(left[-1]) and east_asian(right[0]) else " ") + right
+
+
+def _reading_chunks(text: str):
+    while len(text) > _PARAGRAPH_LIMIT:
+        boundary = text.rfind(" ", _PARAGRAPH_LIMIT // 2, _PARAGRAPH_LIMIT + 1)
+        if boundary < 0:
+            boundary = _PARAGRAPH_LIMIT
+            while boundary > 1 and unicodedata.category(text[boundary]).startswith("M"):
+                boundary -= 1
+        yield text[:boundary].rstrip()
+        text = text[boundary:].lstrip()
+    if text:
+        yield text
+
+
+def reading_paragraphs(segments: list[dict]) -> list[ReadingParagraph]:
+    """Group transcript text once for both the viewer and paragraph exports."""
+    paragraphs: list[ReadingParagraph] = []
+    text = speaker = ""
+    start = last_end = 0.0
+    sentences = 0
+    for cue in segments:
+        cue_start = coerce_seconds(cue.get("start"))
+        cue_end = max(cue_start, coerce_seconds(cue.get("end"), cue_start))
+        cue_speaker = normalize_text(cue.get("speaker"))
+        for chunk in _reading_chunks(normalize_text(cue.get("text"))):
+            combined = _reading_join(text, chunk)
+            if text and (cue_speaker != speaker or cue_start - last_end > 2.0
+                         or sentences >= 4 or len(combined) > _PARAGRAPH_LIMIT):
+                paragraphs.append(ReadingParagraph(start, speaker, text))
+                text, sentences = "", 0
+            if not text:
+                start, speaker, last_end = cue_start, cue_speaker, cue_end
+            text = _reading_join(text, chunk)
+            last_end = max(last_end, cue_end)
+            sentences += sum(char in _SENTENCE_ENDS for char in chunk)
+    if text:
+        paragraphs.append(ReadingParagraph(start, speaker, text))
+    return paragraphs
+
+
+def render_reading(paragraphs: list[ReadingParagraph], format_key: str) -> str:
+    rows = [p.display_text() for p in paragraphs]
+    if format_key == "md":
+        rows = [row.translate(_MARKDOWN_ESCAPES) for row in rows]
+    return "\n\n".join(rows) + ("\n" if rows else "")
+
+
+@dataclass(frozen=True)
+class ComparisonBlock:
+    start: float
+    original: str
+    result: str
+
+
+def compare_time_blocks(original: list[dict], result: list[dict]) -> list[ComparisonBlock]:
+    """Align overlapping cues from different versions without dropping any cue."""
+    entries: list[tuple[float, float, int, str]] = []
+    for side, segments in enumerate((original, result)):
+        for cue in segments:
+            text = normalize_text(cue.get("text"))
+            if text:
+                start = coerce_seconds(cue.get("start"))
+                end = max(start, coerce_seconds(cue.get("end"), start))
+                entries.append((start, end, side, text))
+    entries.sort(key=lambda entry: entry[0])
+    blocks: list[ComparisonBlock] = []
+    start = end = 0.0
+    sides: tuple[list[str], list[str]] = ([], [])
+    for cue_start, cue_end, side, text in entries:
+        if not any(sides):
+            start, end = cue_start, cue_end
+        elif cue_start >= end and cue_start != start:
+            blocks.append(ComparisonBlock(start, "\n".join(sides[0]), "\n".join(sides[1])))
+            sides = ([], [])
+            start, end = cue_start, cue_end
+        sides[side].append(text)
+        end = max(end, cue_end)
+    if any(sides):
+        blocks.append(ComparisonBlock(start, "\n".join(sides[0]), "\n".join(sides[1])))
+    return blocks
+
+
 class History:
-    """Undo/redo of whole segment lists. Input is never mutated."""
-    def __init__(self, initial: list[dict], capacity: int = 200):
+    """Bounded undo and redo for cue-list revisions.
+
+    Defaults to detached copies. A copy-on-write caller may share revisions
+    using an identity copier if it never mutates a committed revision.
+    """
+
+    def __init__(self, initial: list[dict], capacity: int = 200, *,
+                 copy_state: Callable[[list[dict]], list[dict]] = copy.deepcopy):
         self._capacity = capacity
-        self._undo_stack: list[tuple[list[dict], str | None]] = [(copy.deepcopy(initial), None)]
-        self._redo_stack = []
+        self._copy_state = copy_state
+        self._undo_stack: list[tuple[list[dict], str | None]] = [(copy_state(initial), None)]
+        self._redo_stack: list[tuple[list[dict], str | None]] = []
 
     def push(self, segments: list[dict], label: str):
         """Records a new state. Input is never mutated."""
-        self._undo_stack.append((copy.deepcopy(segments), label))
+        self._undo_stack.append((self._copy_state(segments), label))
         self._redo_stack.clear()
         if len(self._undo_stack) > self._capacity + 1:
             self._undo_stack.pop(0)
 
     def undo(self) -> list[dict]:
-        """Undoes the last operation. Returns a deep copy; stored state is never mutated."""
+        """Undo the last operation and return the restored revision."""
         if not self.can_undo:
             raise SegmentOpError("Nothing to undo.")
         state, label = self._undo_stack.pop()
         self._redo_stack.append((state, label))
-        return copy.deepcopy(self._undo_stack[-1][0])
+        return self._copy_state(self._undo_stack[-1][0])
 
     def redo(self) -> list[dict]:
-        """Redoes the last undone operation. Returns a deep copy; stored state is never mutated."""
+        """Redo the last operation and return its revision."""
         if not self.can_redo:
             raise SegmentOpError("Nothing to redo.")
         state, label = self._redo_stack.pop()
         self._undo_stack.append((state, label))
-        return copy.deepcopy(state)
+        return self._copy_state(state)
 
     @property
     def can_undo(self) -> bool:

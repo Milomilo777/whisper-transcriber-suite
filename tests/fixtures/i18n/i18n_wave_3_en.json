@@ -111,6 +111,18 @@
    "Clear"
   ],
   [
+   ".!transcriptviewer.!frame.!frame2.!menubutton",
+   "Edit"
+  ],
+  [
+   ".!transcriptviewer.!frame.!frame2.!menubutton.!menu#0",
+   "Undo"
+  ],
+  [
+   ".!transcriptviewer.!frame.!frame2.!menubutton.!menu#1",
+   "Redo"
+  ],
+  [
    ".!transcriptviewer.!frame.!frame2.!button2",
    "Find & Replace  (Ctrl+F)"
   ],
@@ -125,6 +137,22 @@
   [
    ".!transcriptviewer.!frame.!frame2.!button4",
    "Save changes  (Ctrl+S)"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame.!frame.!checkbutton",
+   "Reading view"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame.!frame.!menubutton",
+   "Export paragraphs"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame.!frame.!menubutton.!menu#0",
+   "Plain text (.txt)"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame.!frame.!menubutton.!menu#1",
+   "Markdown (.md)"
   ],
   [
    ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook:.!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame",
@@ -328,7 +356,7 @@
   ],
   [
    "help_icon#0",
-   "Deletes standalone filler words of the transcript's language (English um, uh, er; German äh, ähm; French euh; …) from every segment's text. Only whole filler words are removed and the punctuation stays. Languages without a list are left alone. Review the segment list before saving (there is no undo)."
+   "Deletes standalone filler words of the transcript's language (English um, uh, er; German äh, ähm; French euh; …) from every segment's text. Only whole filler words are removed and the punctuation stays. Languages without a list are left alone. Review the segment list before saving."
   ],
   [
    "help_icon#0",
@@ -342,18 +370,42 @@
   ],
   [
    "menu#1",
-   "Edit timestamp..."
+   "Edit cue text…"
   ],
   [
    "menu#2",
+   "Edit timestamp..."
+  ],
+  [
+   "menu#3",
+   "Split cue…"
+  ],
+  [
+   "menu#4",
+   "Join with next"
+  ],
+  [
+   "menu#5",
    "Copy text"
   ],
   [
    "menu#0",
-   "Edit timestamp..."
+   "Edit cue text…"
   ],
   [
    "menu#1",
+   "Edit timestamp..."
+  ],
+  [
+   "menu#2",
+   "Split cue…"
+  ],
+  [
+   "menu#3",
+   "Join with next"
+  ],
+  [
+   "menu#4",
    "Copy text"
   ]
  ],
@@ -659,6 +711,18 @@
    "Clear"
   ],
   [
+   ".!transcriptviewer2.!frame.!frame2.!menubutton",
+   "Edit"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!frame2.!menubutton.!menu#0",
+   "Undo"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!frame2.!menubutton.!menu#1",
+   "Redo"
+  ],
+  [
    ".!transcriptviewer2.!frame.!frame2.!button2",
    "Find & Replace  (Ctrl+F)"
   ],
@@ -673,6 +737,22 @@
   [
    ".!transcriptviewer2.!frame.!frame2.!button4",
    "Save changes  (Ctrl+S)"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame.!frame.!checkbutton",
+   "Reading view"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame.!frame.!menubutton",
+   "Export paragraphs"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame.!frame.!menubutton.!menu#0",
+   "Plain text (.txt)"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame.!frame.!menubutton.!menu#1",
+   "Markdown (.md)"
   ],
   [
    ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook:.!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame",
@@ -876,7 +956,7 @@
   ],
   [
    "help_icon#0",
-   "Deletes standalone filler words of the transcript's language (English um, uh, er; German äh, ähm; French euh; …) from every segment's text. Only whole filler words are removed and the punctuation stays. Languages without a list are left alone. Review the segment list before saving (there is no undo)."
+   "Deletes standalone filler words of the transcript's language (English um, uh, er; German äh, ähm; French euh; …) from every segment's text. Only whole filler words are removed and the punctuation stays. Languages without a list are left alone. Review the segment list before saving."
   ],
   [
    "help_icon#0",

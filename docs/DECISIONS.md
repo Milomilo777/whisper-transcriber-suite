@@ -1104,3 +1104,22 @@ The desktop serializes jobs for the same source because they share that key.
 To keep full-media post-processing on the selected track, preparation covers
 the full track even for a short clip or a partial resume, costing scratch
 space and an extra decode pass.
+
+---
+
+## 0024 — Keep one bounded edit history per transcript viewer
+
+Status: Accepted for implementation
+
+**Context:** Cue edits and bulk tools operate on the same transcript. Undo
+must recover the metadata from before an edit and respect explicit saves.
+
+**Decision:** Record complete cue-list revisions with the segment history
+stack. Reuse unchanged cue records and their nested data. A viewer edit
+replaces the affected records and commits one revision, including for bulk
+operations. Keep at most 32 actions and let text widgets handle their own
+draft edits before a revision is committed.
+
+**Consequences:** Undo and redo restore cues, timing, and metadata together.
+Saving records the saved revision without clearing history. Restoring any
+other revision makes the viewer dirty. Branching after Undo discards Redo.
