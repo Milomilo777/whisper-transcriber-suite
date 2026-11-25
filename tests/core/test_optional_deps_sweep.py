@@ -347,3 +347,14 @@ def test_a_cleaned_up_install_tells_the_user_how_to_repair(
 
     assert any("install" in r.getMessage() and "again" in r.getMessage()
                for r in caplog.records if r.levelno >= logging.WARNING)
+
+
+def test_unreadable_rollback_record_preserves_original_backup(extras: Path) -> None:
+    record = extras / ".install-rollback.json"
+    record.write_text("{", encoding="utf-8")
+    _pkg(extras / "torch", "partial")
+    backup = _pkg(extras / f".torch.bak-{DEAD}", "original")
+
+    assert optional_deps.sweep_install_leftovers() == (0, 0)
+    assert (backup / "__init__.py").read_text(encoding="utf-8") == "original"
+    assert record.read_text(encoding="utf-8") == "{"
