@@ -44,8 +44,8 @@ _WINDOW_S: contextvars.ContextVar[float] = contextvars.ContextVar(
 )
 
 _MARKER = "_wts_windowed_vad"
-_CUE_END_PAD_MS: contextvars.ContextVar[float] = contextvars.ContextVar(
-    "wts_vad_cue_end_pad_ms", default=0.0,
+_CUE_PAD_MS: contextvars.ContextVar[float] = contextvars.ContextVar(
+    "wts_vad_cue_pad_ms", default=0.0,
 )
 
 
@@ -189,14 +189,16 @@ def windowed_vad(seconds: float) -> Generator[None, None, None]:
         _WINDOW_S.reset(token)
 
 
-def _clamp_cue_ends(segments: Iterable[Any], chunks: list[dict[str, int]],
-                    timestamps: Any, pad_ms: float) -> Iterable[Any]:
+def _clamp_cue_bounds(segments: Iterable[Any], chunks: list[dict[str, int]],
+                     timestamps: Any, pad_ms: float) -> Iterable[Any]:
     boundaries = timestamps.chunk_end_sample
     rate = timestamps.sampling_rate
-    tolerance = pad_ms * rate / 1000
+    tolerance = min(100.0, pad_ms) * rate / 1000
     for segment in segments:
         if not segment.words:
-            end_sample = segment.end * rate
+            start, end = segment.start, segment.end
+            raw_end_sample = end * rate
+            end_sample = raw_end_sample
             index = bisect_right(boundaries, end_sample) - 1
             if (0 <= index < len(chunks) - 1
                     and end_sample - boundaries[index] <= tolerance
@@ -204,18 +206,39 @@ def _clamp_cue_ends(segments: Iterable[Any], chunks: list[dict[str, int]],
                 # An end within the next chunk's leading padding belongs to
                 # the preceding clip. Use its final sample for older wheels
                 # that also resolve exact end boundaries to the next chunk.
-                end = (boundaries[index] - 1) / rate
-                if (segment.start < end
-                        and timestamps.get_original_time(segment.start) < timestamps.get_original_time(end, index)):
-                    replace = getattr(segment, "_replace", None)
-                    if callable(replace):
-                        segment = replace(end=end)
-                    else:
-                        segment.end = end
+                preceding_end = (boundaries[index] - 1) / rate
+                if (start < preceding_end and timestamps.get_original_time(start)
+                        < timestamps.get_original_time(preceding_end, index)):
+                    end = preceding_end
+                    end_sample = end * rate
+
+            start_sample = start * rate
+            index = bisect_right(boundaries, start_sample)
+            if index < len(chunks) - 1:
+                boundary = boundaries[index]
+                next_end = boundaries[index + 1]
+                if (boundary - start_sample <= tolerance
+                        and end_sample < next_end
+                        and (end_sample - boundary) * 1000 / rate > pad_ms
+                        and round(raw_end_sample) != next_end
+                        and chunks[index + 1]["start"] > chunks[index]["end"]):
+                    # A start in the trailing pad belongs to the next chunk
+                    # when the cue continues inside that chunk's speech.
+                    following_start = (boundary + 1) / rate
+                    if (following_start < end and timestamps.get_original_time(following_start, index + 1)
+                            < timestamps.get_original_time(end, index + 1)):
+                        start = following_start
+
+            if (start, end) != (segment.start, segment.end):
+                replace = getattr(segment, "_replace", None)
+                if callable(replace):
+                    segment = replace(start=start, end=end)
+                else:
+                    segment.start, segment.end = start, end
         yield segment
 
 
-def _install_cue_end_guard() -> None:
+def _install_cue_bound_guard() -> None:
     try:
         import faster_whisper.transcribe as fw
     except ImportError:
@@ -223,30 +246,29 @@ def _install_cue_end_guard() -> None:
     original = getattr(fw, "restore_speech_timestamps", None)
     map_type = getattr(fw, "SpeechTimestampsMap", None)
     if (not callable(original) or not callable(map_type)
-            or getattr(original, "_wts_vad_cue_end_guard", False)):
+            or getattr(original, "_wts_vad_cue_bound_guard", False)):
         return
 
     def restore(segments, speech_chunks, sampling_rate):
         # Capture the scope when transcribe() builds the lazy iterator.
-        pad_ms = _CUE_END_PAD_MS.get()
+        pad_ms = _CUE_PAD_MS.get()
         if pad_ms and len(speech_chunks) > 1:
             timestamps = map_type(speech_chunks, sampling_rate)
-            segments = _clamp_cue_ends(segments, speech_chunks, timestamps, pad_ms)
+            segments = _clamp_cue_bounds(segments, speech_chunks, timestamps, pad_ms)
         return original(segments, speech_chunks, sampling_rate)
 
-    setattr(restore, "_wts_vad_cue_end_guard", True)
+    setattr(restore, "_wts_vad_cue_bound_guard", True)
     fw.restore_speech_timestamps = restore
 
 
 @contextmanager
-def clamp_vad_cue_ends(padding_ms: object) -> Generator[None, None, None]:
-    """Avoid mapping slight cue-end overshoot across a removed silence."""
-    # Limit the correction to a small fraction of the default 400 ms pad.
-    pad_ms = min(100.0, padding_ms) if isinstance(padding_ms, (int, float)) and padding_ms > 0 else 0.0
+def clamp_vad_cue_bounds(padding_ms: object) -> Generator[None, None, None]:
+    """Keep cue edges close to speech across a removed silence."""
+    pad_ms = padding_ms if isinstance(padding_ms, (int, float)) and padding_ms > 0 else 0.0
     if pad_ms:
-        _install_cue_end_guard()
-    token = _CUE_END_PAD_MS.set(pad_ms)
+        _install_cue_bound_guard()
+    token = _CUE_PAD_MS.set(pad_ms)
     try:
         yield
     finally:
-        _CUE_END_PAD_MS.reset(token)
+        _CUE_PAD_MS.reset(token)

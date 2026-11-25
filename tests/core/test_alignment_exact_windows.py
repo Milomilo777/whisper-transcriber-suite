@@ -173,6 +173,54 @@ def test_vad_cue_guard_preserves_positive_duration_after_restoration_rounding():
     assert (result.start, result.end) == pytest.approx((2.06, 1020.02))
 
 
+def test_vad_cue_start_stays_with_following_chunk_on_catalina_fixture():
+    chunks = [
+        dict(start=76032, end=147712),
+        dict(start=16315648, end=16392448),
+        dict(start=32635648, end=32713984),
+        dict(start=48955648, end=49029888),
+        dict(start=57454848, end=57526528),
+    ]
+    result, = _decode_vad_cue(_vad_cue(18.72, 23.2), chunks, 400)
+    assert (result.start, result.end) == pytest.approx((3590.93, 3595.31))
+
+
+@pytest.mark.parametrize(
+    "pad_ms,raw_start,raw_end,next_start,aligned,expected",
+    [
+        (400, .904, 1.7, 1020., False, (1020., 1020.7)),
+        (40, .904, 1.7, 1020., False, (1.90, 1020.7)),
+        (0, .904, 1.7, 1020., False, (1.90, 1020.7)),
+        (400, .8, 1.7, 1020., False, (1.8, 1020.7)),
+        (400, .904, 1.7, 2., False, (1.90, 2.7)),
+        (400, .904, 1.08, 1020., False, (1.90, 2.)),
+        (400, .904, 1.2, 1020., False, (1.90, 1020.2)),
+        (400, .904, 1.7, 1020., True, (1020.04, 1020.7)),
+        (400, .904, 2., 1020., False, (1.90, 1021.)),
+        (400, .904, 2.08, 1020., False, (1020., 1021.)),
+        (400, .904, 2.7, 1020., False, (1.90, 2040.7)),
+    ],
+)
+def test_vad_cue_start_guard_only_moves_unaligned_cues_into_the_next_chunk(
+    pad_ms, raw_start, raw_end, next_start, aligned, expected,
+):
+    rate = 16000
+    chunks = [dict(start=rate, end=2 * rate),
+              dict(start=round(next_start * rate), end=round((next_start + 1) * rate)),
+              dict(start=2040 * rate, end=2041 * rate)]
+    words = [fw.Word(1.04, raw_end, " next", .9)] if aligned else []
+    result, = _decode_vad_cue(_vad_cue(raw_start, raw_end, words), chunks, pad_ms)
+    assert result.text == " text"
+    assert (result.start, result.end) == pytest.approx(expected)
+
+
+def test_vad_cue_start_guard_uses_sample_precision_for_an_exact_end():
+    chunks = [dict(start=16000, end=514688), dict(start=16320000, end=16335872)]
+    # The compressed end is sample 514560, but multiplication rounds below it.
+    result, = _decode_vad_cue(_vad_cue(31.08, 32.16), chunks, 400)
+    assert (result.start, result.end) == pytest.approx((32.08, 1020.99))
+
+
 def test_vad_cue_guard_isolates_lazy_decodes():
     chunks = [dict(start=16000, end=32000), dict(start=16320000, end=16336000)]
     padded = _decode_vad_cue(_vad_cue(.2, 1.08), chunks, 400)
@@ -183,15 +231,20 @@ def test_vad_cue_guard_isolates_lazy_decodes():
     assert next(outside).end == pytest.approx(1020.08)
 
 
-def test_vad_cue_guard_supports_immutable_legacy_segments():
+@pytest.mark.parametrize("edges,expected", [
+    ((.2, 1.08), (1.2, 2.)),
+    ((.904, 1.7), (1020., 1020.7)),
+])
+def test_vad_cue_guard_supports_immutable_legacy_segments(edges, expected):
     cue_type = namedtuple("LegacyCue", "start end text words")
-    cue = cue_type(.2, 1.08, " text", None)
+    cue = cue_type(*edges, " text", None)
     chunks = [dict(start=16000, end=32000), dict(start=16320000, end=16336000)]
     timestamps = fw.SpeechTimestampsMap(chunks, 16000)
-    result, = vad_window._clamp_cue_ends(iter([cue]), chunks, timestamps, 100.)
-    assert cue.end == 1.08
-    assert result.start == cue.start and result.text == cue.text
-    assert timestamps.get_original_time(result.end) == pytest.approx(2.)
+    result, = vad_window._clamp_cue_bounds(iter([cue]), chunks, timestamps, 100.)
+    assert (cue.start, cue.end) == edges
+    assert result.text == cue.text
+    restored = (timestamps.get_original_time(result.start), timestamps.get_original_time(result.end))
+    assert restored == pytest.approx(expected)
 
 
 @pytest.mark.parametrize("error", [False, True])
