@@ -103,6 +103,9 @@ class TranscriptionTask:
         # re-deriving names from config (which missed docx/pdf and the
         # de-duped "name (1).srt" form). None until a run completes.
         self.output_paths: list[str] | None = None
+        # This rerun has its own outputs and history row. This path identifies
+        # the original JSON to compare after the new result is saved.
+        self.comparison_source: str | None = None
         # True for the "Try it now" sample clip: when it finishes, the app opens
         # the transcript in the viewer instead of leaving the user in the queue.
         self.open_when_done: bool = False

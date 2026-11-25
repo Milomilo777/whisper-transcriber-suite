@@ -37,6 +37,7 @@ import logging
 import math
 import os
 import re
+import sqlite3
 import sys
 import threading
 import time
@@ -44,7 +45,7 @@ import tkinter as tk
 import unicodedata
 from tkinter import font as tkfont
 from tkinter import filedialog, messagebox, simpledialog, ttk
-from typing import Any, Callable, Collection, Optional
+from typing import TYPE_CHECKING, Any, Callable, Collection, Optional
 
 from app.dialogs import share_page, viewer_exports
 from app import mac_native, rtl_layout, shortcuts
@@ -63,6 +64,9 @@ from core.media_types import MEDIA_EXTENSIONS
 from core.paths import path_key
 from core.search import find_folded_span, folded_contains, replace_folded
 from core.writers.base import words_match_text
+
+if TYPE_CHECKING:
+    from core.history import HistoryDB
 
 
 logger = logging.getLogger(__name__)
@@ -812,7 +816,11 @@ class TranscriptViewer(tk.Toplevel):
         self._export_reports: list[viewer_exports.ExportReport] = []
         self._export_remaining: set[str] = set()  # files of the running job not yet dealt with
         self._export_poll_id: str | None = None
-        self.media_path = media_path or _find_media_next_to(json_path)
+        self.media_path = (media_path if media_path and os.path.isfile(media_path)
+                           else _find_media_next_to(json_path))
+        # Playback can use a neighboring copy. A rerun of a known source must
+        # fail if that exact file is missing, even when another file matches.
+        self._comparison_media_path = media_path or self.media_path
         # The transcript's language when the opener knows it (a queue task); the JSON itself has
         # none. Picks the regional font for Han text without kana (app.theme.script_fonts);
         # None (file picker, search results) leaves Han to Tk's default fallback font.
@@ -830,6 +838,7 @@ class TranscriptViewer(tk.Toplevel):
         # parent viewer closes (otherwise it becomes a zombie that
         # crashes on the next button click).
         self._find_dialog: "FindReplaceDialog | None" = None
+        self._cue_drafts: set[EditCueDialog | EditTimestampDialog] = set()
 
         self.vlc_mod, self.vlc_unavailable_reason = _try_load_vlc()
         self.vlc_instance: Any = None
@@ -1065,6 +1074,13 @@ class TranscriptViewer(tk.Toplevel):
         menu.add_command(label=_("Markdown (.md)"), command=lambda: self._export_paragraphs("md"))
         export.configure(menu=menu)
         export.pack(side="left", padx=(8, 0))
+        if callable(getattr(self.master, "queue_transcript_comparison", None)):
+            versions = ttk.Menubutton(bar, text=_("Versions"))
+            versions_menu = tk.Menu(versions, tearoff=False)
+            versions_menu.add_command(label=_("Transcribe again…"), command=self._transcribe_again)
+            versions_menu.add_command(label=_("Compare transcripts"), command=self._open_comparison)
+            versions.configure(menu=versions_menu)
+            versions.pack(side="left", padx=(8, 0))
 
     def _toggle_reading(self) -> None:
         reading = self._reading_enabled.get()
@@ -1143,6 +1159,46 @@ class TranscriptViewer(tk.Toplevel):
             show_error(self, _("Save failed"), _("Could not export paragraphs."), detail=str(exc))
         else:
             notify(self, _("Paragraphs exported."), "success")
+
+    def _transcribe_again(self) -> None:
+        from core.presets import PresetStore
+
+        media = self._comparison_media_path
+        if not media or not os.path.isfile(media):
+            show_error(self, _("Transcribe again"), _("The original media file could not be found."))
+            return
+        config = self._app_config()
+        try:
+            saved = PresetStore().load()
+        except (ValueError, OSError) as exc:
+            logger.warning("Could not load comparison presets: %s", exc)
+            saved = {}
+        choices = [
+            (_("With word timestamps"), {"word_timestamps": True}),
+            (_("Without word timestamps"), {"word_timestamps": False}),
+        ]
+        choices.extend((name, preset) for name, preset in sorted(saved.items(), key=lambda v: v[0].casefold())
+                       if preset.get("whisper_model") in (None, config.get("whisper_model")))
+        dialog = ComparisonPresetDialog(self, [name for name, _preset in choices])
+        queue = getattr(self.master, "queue_transcript_comparison", None)
+        if dialog.result is not None and callable(queue):
+            queue(media, self.json_path, choices[dialog.result][1])
+
+    def _open_comparison(self) -> None:
+        parent = self.master
+        history = getattr(parent, "history", None)
+        if history is None or not isinstance(parent, (tk.Tk, tk.Toplevel)):
+            return
+        try:
+            pair = history.transcript_comparison_for(self.json_path)
+        except sqlite3.Error as exc:
+            show_error(self, _("Compare transcripts"), _("Could not read comparison history."), detail=str(exc))
+            return
+        if pair is None:
+            notify(self, _("Transcribe again to create a comparison."), "info")
+            return
+        original, result, preferred = pair
+        show_transcript_comparison(parent, original, result, history, preferred)
 
     def _build_quality_panel(self, parent: ttk.Frame) -> None:
         """Advisory report only: checking never changes cues or blocks saving."""
@@ -2262,6 +2318,8 @@ class TranscriptViewer(tk.Toplevel):
             idx = int(item)
         except ValueError:
             return
+        if not 0 <= idx < len(self.segments):
+            return
         seg = self.segments[idx]
         start = _cue_seek_seconds(seg)
         if start is not None:
@@ -2478,7 +2536,10 @@ class TranscriptViewer(tk.Toplevel):
         )
 
     def _history_shortcut(self, action: Callable[[], None]) -> str | None:
-        if isinstance(self.focus_get(), (tk.Text, tk.Entry, ttk.Entry, tk.Spinbox)):
+        focused = self.focus_get()
+        if isinstance(focused, (tk.Entry, ttk.Entry, tk.Spinbox)):
+            return None
+        if isinstance(focused, tk.Text) and focused.cget("state") != "disabled":
             return None
         action()
         return "break"
@@ -3231,7 +3292,7 @@ class TranscriptViewer(tk.Toplevel):
 
         seg = self.segments[active_idx]
         words = _seg_words(seg)
-        if not words:
+        if not words or not words_match_text(seg):
             self._words_lbl.configure(text=_seg_text(seg).strip())
             return
         # Find the active word inside the segment. Non-dict entries are
@@ -3269,7 +3330,18 @@ class TranscriptViewer(tk.Toplevel):
 
     # -- cleanup ---------------------------------------------------------
 
+    def _keep_open_for_cue_draft(self) -> bool:
+        for draft in self.__dict__.get("_cue_drafts", ()):
+            if draft.has_changes():
+                self._bring_forward()
+                draft.lift()
+                notify(draft, _("Finish or cancel the open cue edit first."), "warning")
+                return True
+        return False
+
     def _on_close(self) -> None:
+        if self._keep_open_for_cue_draft():
+            return
         decisions: _ResultDiscardDecisions = {}
         if not _confirm_completed_results(lambda: [self], decisions):
             return
@@ -3283,6 +3355,8 @@ class TranscriptViewer(tk.Toplevel):
                 return
         # The edit prompt can run callbacks that finish another AI result.
         if not _confirm_completed_results(lambda: [self], decisions):
+            return
+        if self._keep_open_for_cue_draft():
             return
         # Set the closing flag FIRST so any after()-loop tick in
         # flight (notably _update_position → _update_karaoke) sees
@@ -3421,10 +3495,158 @@ class TranscriptViewer(tk.Toplevel):
         super().destroy()
 
 
+class ComparisonPresetDialog(simpledialog.Dialog):
+    """Choose per-run options without altering the main transcription form."""
+
+    def __init__(self, parent: tk.Misc, choices: list[str]) -> None:
+        self.choices = choices
+        self.result: int | None = None
+        super().__init__(parent, title=_("Transcribe again"))
+
+    def body(self, master: tk.Misc) -> ttk.Combobox:
+        ttk.Label(master, text=_("Choose a preset for this run.")).pack(anchor="w", pady=(4, 6))
+        self.combo = ttk.Combobox(master, values=self.choices, state="readonly", width=36)
+        self.combo.current(0)
+        self.combo.pack(fill="x")
+        return self.combo
+
+    def buttonbox(self) -> None:
+        buttons = ttk.Frame(self)
+        buttons.pack(pady=8)
+        ttk.Button(buttons, text=_("Transcribe again"), command=self.ok).pack(side="left", padx=4)
+        ttk.Button(buttons, text=_("Cancel"), command=self.cancel).pack(side="left", padx=4)
+        self.bind("<Escape>", self.cancel)
+
+    def apply(self) -> None:
+        self.result = self.combo.current()
+
+
+def _segments_for_comparison(path: str) -> list[dict[str, Any]]:
+    viewer = _OPEN_VIEWERS.get(_viewer_key(path))
+    return viewer.segments if viewer is not None else share_page.load_transcript(path)
+
+
+def show_transcript_comparison(
+    parent: tk.Tk | tk.Toplevel, original: str, result: str, history: HistoryDB,
+    preferred: str | None = None,
+) -> None:
+    try:
+        blocks = segment_ops.compare_time_blocks(
+            _segments_for_comparison(original), _segments_for_comparison(result),
+        )
+    except (OSError, ValueError, RecursionError) as exc:
+        show_error(parent, _("Compare transcripts"), _("Could not read both transcripts."), detail=str(exc))
+        return
+    TranscriptComparison(parent, (original, result), history, preferred, blocks)
+
+
+class TranscriptComparison(tk.Toplevel):
+    _non_modal = True
+
+    def __init__(
+        self, parent: tk.Tk | tk.Toplevel, paths: tuple[str, str], history: HistoryDB,
+        preferred: str | None, blocks: list[segment_ops.ComparisonBlock],
+    ) -> None:
+        super().__init__(parent)
+        self.paths = paths
+        self.history = history
+        self.blocks = blocks
+        self.title(_("Compare transcripts"))
+        self.transient(parent)
+        self.protocol("WM_DELETE_WINDOW", self.destroy)
+        self.bind("<Escape>", lambda _event: self.destroy())
+        width, height = scaled_size(self, 960, 620)
+        place_over(self, parent, width, height)
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(0, weight=1)
+        self.rowconfigure(1, weight=2)
+
+        row_list = ttk.Frame(self, padding=(10, 10, 10, 0))
+        row_list.grid(row=0, column=0, sticky="nsew")
+        row_list.columnconfigure(0, weight=1)
+        row_list.rowconfigure(0, weight=1)
+        self.rows = ttk.Treeview(row_list, columns=("time", "original", "result"),
+                                 show="headings", selectmode="browse", height=6)
+        self.rows.grid(row=0, column=0, sticky="nsew")
+        scrollbar = ttk.Scrollbar(row_list, command=self.rows.yview)
+        scrollbar.grid(row=0, column=1, sticky="ns")
+        self.rows.configure(yscrollcommand=scrollbar.set)
+        self.rows.heading("time", text=pgettext("column", "Time"))
+        self.rows.heading("original", text=_("Original transcript"))
+        self.rows.heading("result", text=_("New transcript"))
+        self.rows.column("time", width=px(110), stretch=False)
+        self.rows.column("original", width=px(350))
+        self.rows.column("result", width=px(350))
+        for index, block in enumerate(blocks):
+            self.rows.insert("", "end", iid=str(index), values=(
+                _fmt_hms_ms(block.start), self._preview(block.original), self._preview(block.result),
+            ))
+
+        detail = ttk.Frame(self, padding=10)
+        detail.grid(row=1, column=0, sticky="nsew")
+        detail.columnconfigure((0, 1), weight=1, uniform="version")
+        detail.rowconfigure(1, weight=1)
+        self.texts: list[tk.Text] = []
+        for index, path in enumerate(paths):
+            label = _("Original transcript") if index == 0 else _("New transcript")
+            ttk.Label(detail, text=f"{label} — {os.path.basename(path)}").grid(
+                row=0, column=index, sticky="w", padx=4,
+            )
+            frame = ttk.Frame(detail)
+            frame.grid(row=1, column=index, sticky="nsew", padx=4, pady=(4, 0))
+            text = tk.Text(frame, width=1, height=6, wrap="word", state="disabled", padx=8, pady=8)
+            scroll = ttk.Scrollbar(frame, command=text.yview)
+            scroll.pack(side="right", fill="y")
+            text.configure(yscrollcommand=scroll.set)
+            text.pack(side="left", fill="both", expand=True)
+            script_fonts.use_text_font(text)
+            self.texts.append(text)
+
+        footer = ttk.Frame(self, padding=(10, 0, 10, 10))
+        footer.grid(row=2, column=0, sticky="ew")
+        self.preferred = preferred
+        self.preference = tk.StringVar(self, preferred or "")
+        for label, path in ((_("Keep both"), ""), (_("Prefer original"), paths[0]),
+                            (_("Prefer new"), paths[1])):
+            ttk.Radiobutton(footer, text=label, variable=self.preference, value=path,
+                            command=self._save_preference).pack(side="left", padx=(0, 10))
+        self.rows.bind("<<TreeviewSelect>>", self._show_block)
+        if blocks:
+            self.rows.selection_set("0")
+            self.rows.focus("0")
+            self._show_block()
+
+    @staticmethod
+    def _preview(text: str) -> str:
+        return embed_rtl(display(" ".join(text.split())[:180], logical=True))
+
+    def _show_block(self, _event: tk.Event | None = None) -> None:
+        selected = self.rows.selection()
+        if not selected:
+            return
+        block = self.blocks[int(selected[0])]
+        for widget, text in zip(self.texts, (block.original, block.result)):
+            widget.configure(state="normal")
+            widget.delete("1.0", "end")
+            widget.insert("1.0", embed_rtl(display(text, logical=True)))
+            widget.configure(state="disabled")
+
+    def _save_preference(self) -> None:
+        preferred = self.preference.get() or None
+        try:
+            self.history.prefer_transcript(*self.paths, preferred)
+        except (sqlite3.Error, LookupError, ValueError) as exc:
+            self.preference.set(self.preferred or "")
+            show_error(self, _("Save failed"), _("Could not save the preferred transcript."), detail=str(exc))
+        else:
+            self.preferred = preferred
+
+
 class EditCueDialog(simpledialog.Dialog):
     """Edit one cue using a local undo buffer for uncommitted typing."""
 
     def __init__(self, viewer: TranscriptViewer, text: str) -> None:
+        self.viewer = viewer
         self.initial_text = text
         self.result: str | None = None
         super().__init__(viewer, title=_("Edit cue text"))
@@ -3437,6 +3659,7 @@ class EditCueDialog(simpledialog.Dialog):
         for key, operation in (("z", self.text.edit_undo), ("y", self.text.edit_redo)):
             for sequence in shortcuts.bind_sequences(key):
                 self.text.bind(sequence, lambda _event, op=operation: self._draft_history(op))
+        self.viewer._cue_drafts.add(self)
         return self.text
 
     @staticmethod
@@ -3456,6 +3679,13 @@ class EditCueDialog(simpledialog.Dialog):
 
     def apply(self) -> None:
         self.result = self.text.get("1.0", "end-1c")
+
+    def has_changes(self) -> bool:
+        return self.text.get("1.0", "end-1c") != self.initial_text
+
+    def destroy(self) -> None:
+        self.viewer._cue_drafts.discard(self)
+        super().destroy()
 
 
 class SplitCueDialog(simpledialog.Dialog):
@@ -3537,6 +3767,7 @@ class EditTimestampDialog(tk.Toplevel):
         end_default = _seg_float(seg, "end", start_default)
         self.start_var = tk.StringVar(value=_fmt_hms_ms(start_default))
         self.end_var = tk.StringVar(value=_fmt_hms_ms(end_default))
+        self.initial_times = (self.start_var.get(), self.end_var.get())
 
         body = ttk.Frame(self, padding=10)
         body.pack(fill="both", expand=True)
@@ -3568,6 +3799,14 @@ class EditTimestampDialog(tk.Toplevel):
         place_over(self, viewer)
         start_entry.focus_set()
         start_entry.selection_range(0, "end")
+        self.viewer._cue_drafts.add(self)
+
+    def has_changes(self) -> bool:
+        return (self.start_var.get(), self.end_var.get()) != self.initial_times
+
+    def destroy(self) -> None:
+        self.viewer._cue_drafts.discard(self)
+        super().destroy()
 
     def _save(self) -> None:
         start = _parse_hms_ms(self.start_var.get())
@@ -3979,6 +4218,8 @@ def confirm_unsaved_before_exit(
     viewers = lambda: list(_OPEN_VIEWERS.values())
     if not _confirm_completed_results(viewers, decisions):
         return False
+    if any(viewer._keep_open_for_cue_draft() for viewer in viewers()):
+        return False
     dirty = [v for v in _dirty_viewers() if v not in skip]
     names = [os.path.normcase(os.path.basename(v.json_path)) for v in dirty]
     for viewer in dirty:
@@ -4059,8 +4300,6 @@ def open_viewer(
     media next to the JSON instead. Returns the viewer, or None when
     nothing was opened.
     """
-    if media_path and not os.path.isfile(media_path):
-        media_path = None
     if json_path is None:
         chosen = filedialog.askopenfilename(
             title=_("Open transcript JSON"),
@@ -4085,6 +4324,8 @@ def open_viewer(
         except tk.TclError:
             alive = False
         if alive:
+            if media_path:
+                existing._comparison_media_path = media_path
             if language and not existing.language:
                 existing.language = language
                 existing._refresh_quality()

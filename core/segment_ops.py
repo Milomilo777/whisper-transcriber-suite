@@ -481,6 +481,41 @@ def render_reading(paragraphs: list[ReadingParagraph], format_key: str) -> str:
     return "\n\n".join(rows) + ("\n" if rows else "")
 
 
+@dataclass(frozen=True)
+class ComparisonBlock:
+    start: float
+    original: str
+    result: str
+
+
+def compare_time_blocks(original: list[dict], result: list[dict]) -> list[ComparisonBlock]:
+    """Align overlapping cues from different versions without dropping any cue."""
+    entries: list[tuple[float, float, int, str]] = []
+    for side, segments in enumerate((original, result)):
+        for cue in segments:
+            text = normalize_text(cue.get("text"))
+            if text:
+                start = coerce_seconds(cue.get("start"))
+                end = max(start, coerce_seconds(cue.get("end"), start))
+                entries.append((start, end, side, text))
+    entries.sort(key=lambda entry: entry[0])
+    blocks: list[ComparisonBlock] = []
+    start = end = 0.0
+    sides: tuple[list[str], list[str]] = ([], [])
+    for cue_start, cue_end, side, text in entries:
+        if not any(sides):
+            start, end = cue_start, cue_end
+        elif cue_start >= end and cue_start != start:
+            blocks.append(ComparisonBlock(start, "\n".join(sides[0]), "\n".join(sides[1])))
+            sides = ([], [])
+            start, end = cue_start, cue_end
+        sides[side].append(text)
+        end = max(end, cue_end)
+    if any(sides):
+        blocks.append(ComparisonBlock(start, "\n".join(sides[0]), "\n".join(sides[1])))
+    return blocks
+
+
 class History:
     """Bounded undo and redo for cue-list revisions.
 

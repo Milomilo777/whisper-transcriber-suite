@@ -77,3 +77,19 @@ def test_split_cannot_cut_a_timed_word_or_erase_a_pair():
         segment_ops.split_viewer_cue(cue, 3, 4)
     with pytest.raises(segment_ops.SegmentOpError):
         segment_ops.split_viewer_cue(cue, 5)
+
+
+def test_joined_partial_word_times_keep_the_full_playback_caption(tmp_path):
+    from types import SimpleNamespace
+
+    words = [{"start": 0, "end": 1, "word": "Hello"}]
+    viewer = _viewer(tmp_path, [{"start": 0, "end": 1, "text": "Hello", "words": words},
+                                {"start": 1, "end": 2, "text": "world"}])
+    viewer._join_next(0)
+    viewer._active_segment_idx = 0
+    viewer._active_word_idx = None
+    captions = []
+    viewer._words_lbl = SimpleNamespace(configure=lambda *, text: captions.append(text))
+    viewer._update_karaoke(0.5)
+    assert viewer.segments[0]["words"] == words
+    assert captions == ["Hello world"]

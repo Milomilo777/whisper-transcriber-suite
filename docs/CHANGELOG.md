@@ -9,6 +9,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Undo and redo transcript edits, including bulk replacements, before or after saving.
 - Split cues at a chosen text boundary or join compatible neighboring cues in the transcript viewer.
 - Read transcripts as paragraphs and export the same paragraphs to plain text or Markdown.
+- Transcribe the same media with another preset, compare both versions by time, and mark a preferred result.
 - Add an adjustable NVIDIA GPU temperature limit (default 75 °C) with predictive load reduction while transcription continues.
 - AI assistants can start a standalone stdio MCP server, transcribe explicitly allowed local media, inspect models and hardware, and save safe transcription settings, including GPU temperature limits.
 

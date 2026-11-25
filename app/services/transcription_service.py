@@ -106,7 +106,8 @@ _MAX_HISTORY_INSERT_ATTEMPTS = 60
 def output_formats_for(task: Any, configured: Any) -> list[str]:
     """The formats *task* writes: the current selection, plus ``srt`` when
     a "Make subtitled video" download waits to burn this run's SRT."""
-    formats = list(configured or ["srt", "json"])
+    comparison_formats = getattr(task, "output_formats", None) if getattr(task, "comparison_source", None) else None
+    formats = list(comparison_formats or configured or ["srt", "json"])
     if (
         getattr(getattr(task, "source_download", None), "make_subbed_video", False)
         and "srt" not in formats
@@ -2750,6 +2751,7 @@ class TranscriptionService:
         word_count, audio_duration = (
             self._derive_transcript_stats(task) if newly_finished else (0, 0.0)
         )
+        persisted = False
         if history is not None and getattr(task, "history_id", 0):
             import time as _time
             try:
@@ -2837,6 +2839,12 @@ class TranscriptionService:
         if newly_finished:
             task.status = "finished"
             task.progress = 100
+            if persisted and getattr(task, "comparison_source", None):
+                try:
+                    app.complete_transcript_comparison(task)
+                except Exception:  # the result is already recorded in History
+                    logger.exception("Could not link the transcript comparison")
+                    app.log(_("The transcript was saved, but the comparison could not be opened."))
             # Surface the success on the Transcribe tab so the user
             # sees a real "this is done, here are the files" card
             # rather than just a Treeview row flipping to "finished".
