@@ -147,7 +147,7 @@ def observed_code(exc: BaseException) -> str:
             return "network_reset"
         if getattr(exc, "winerror", None) == 112 or exc.errno == errno.ENOSPC:
             return "disk_full"
-        if getattr(exc, "winerror", None) == 5 or exc.errno == errno.EACCES:
+        if getattr(exc, "winerror", None) == 5 or exc.errno in {errno.EACCES, errno.EPERM}:
             return "access_denied"
         if isinstance(exc, FileNotFoundError) or exc.errno == errno.ENOENT:
             if (_has_frame(exc.__traceback__, "subprocess", "_execute_child") and
