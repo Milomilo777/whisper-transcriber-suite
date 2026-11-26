@@ -37,7 +37,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Server jobs skip chapter files when looking for an unrecorded JSON transcript.
 - Cancelling a second reading of suspected missing speech preserves the original text in the interrupted span.
 - Reuse loaded local speech models between assistant jobs with the same model settings.
-- Save assistant exports beside the original media only after the complete file is written.
+- Save completed assistant exports beside the original media, including on filesystems without hard links.
 - Keep assistant jobs recoverable when the original media moves during transcription.
 - Allow the server to start after a rejected webhook header is corrected.
 - Subtitle cues end at the preceding speech when a timestamp overshoots into voice activity detection padding.
