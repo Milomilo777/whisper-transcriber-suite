@@ -65,11 +65,9 @@ def check_release_page_250(notes: str) -> tuple[str, ...]:
     assert 3 <= len(bullets) <= 7 and all(re.match(r"- \*\*[^*]+\*\* .+", bullet) for bullet in bullets), "invalid highlight bullets"
     assert release_highlights(notes) == tuple(bullet[2:].replace("**", "") for bullet in bullets[:3]), "highlights change in the update bar"
 
-    # Keep the checked-in release valid while the first master badge run seeds the SVGs.
-    badge_base = BADGES if BADGES in notes else BADGES.replace("/master/docs/badges/", "/badges/")
     for alt, filename, target in (("downloads", "total.svg", RELEASE.rstrip("/")),
                                   ("v2.5.0 downloads", "v2.5.0-this-version.svg", RELEASE + "tag/v2.5.0")):
-        assert f"[![{alt}]({badge_base}{filename})]({target})" in notes, f"missing badge: {filename}"
+        assert f"[![{alt}]({BADGES}{filename})]({target})" in notes, f"missing badge: {filename}"
     files = ("Installer-Windows-v2.5.0.exe", "Portable-Windows-v2.5.0.zip",
              "v2.5.0-macOS-arm64.dmg", "v2.5.0-macOS-x64.dmg")
     for row, filename in zip((line for line in notes.splitlines() if line.startswith("| [")), files):

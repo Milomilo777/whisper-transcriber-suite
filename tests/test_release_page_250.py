@@ -83,12 +83,14 @@ def test_highlight_limit_counts_separated_bullets(notes):
     bad_notes = notes.replace("- **Compare a re-run.**", "\n- **Compare a re-run.**", 1)
     screenshot = '\n\n<p align="center"><img src="https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/master/docs/img/screenshot-macos.png"'
     assert bad_notes.count(screenshot) == 1
-    bad_notes = bad_notes.replace(screenshot, "\n\n- **Extra item.** More detail." + screenshot, 1)
+    # Keep the extra bullet within the release body's length limit.
+    bad_notes = bad_notes.replace(screenshot, "\n\n- **Extra.** x" + screenshot, 1)
     with pytest.raises(AssertionError, match="invalid highlight bullets"):
         page.check_release_page_250(bad_notes)
 
 
 @pytest.mark.parametrize("old,new,message", [
+    ("/master/docs/badges/", "/badges/", "missing badge"),
     ("v2.5.0-this-version.svg", "v2.4.0-this-version.svg", "missing badge"),
     ("/download/v2.5.0/WhisperTranscriberSuite-Installer", "/download/v2.4.0/WhisperTranscriberSuite-Installer",
      "invalid download"),

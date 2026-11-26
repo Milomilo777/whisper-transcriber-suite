@@ -8,7 +8,7 @@
 
 [![CI](https://github.com/Milomilo777/whisper-transcriber-suite/actions/workflows/ci.yml/badge.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/actions/workflows/ci.yml)
 [![release](https://img.shields.io/github/v/release/Milomilo777/whisper-transcriber-suite?label=release&color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest)
-[![downloads](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/badges/total.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases)
+[![downloads](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/master/docs/badges/total.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases)
 [![License: BSD-3-Clause](https://img.shields.io/badge/license-BSD--3--Clause-green.svg)](../../LICENSE)
 
 ### [下载 Windows 版](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest)
@@ -131,16 +131,16 @@ ffmpeg 与 yt-dlp 已内置。首次启动时，一个快速入门窗口会为�
 
 **各版本下载量**（每个徽章仅计算该特定版本自身的发布数 —— 旧版本始终保留且计数永不清零）：
 
-[![all versions](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/badges/total-all-versions.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases)
-[![v2.1.0](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/badges/v2.1.0.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v2.1.0)
-[![v2.0.0](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/badges/v2.0.0-grey.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v2.0.0)
-[![v1.9.3](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/badges/v1.9.3-grey.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.9.3)
-[![v1.9.1](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/badges/v1.9.1-grey.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.9.1)
-[![v1.9.0](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/badges/v1.9.0-grey.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.9.0)
-[![v1.8.0](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/badges/v1.8.0-grey.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.8.0)
-[![v1.7.0](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/badges/v1.7.0-grey.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.7.0)
-[![v1.6.0](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/badges/v1.6.0-grey.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.6.0)
-[![v1.5.0](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/badges/v1.5.0-grey.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.5.0)
+[![all versions](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/master/docs/badges/total-all-versions.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases)
+[![v2.1.0](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/master/docs/badges/v2.1.0.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v2.1.0)
+[![v2.0.0](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/master/docs/badges/v2.0.0-grey.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v2.0.0)
+[![v1.9.3](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/master/docs/badges/v1.9.3-grey.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.9.3)
+[![v1.9.1](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/master/docs/badges/v1.9.1-grey.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.9.1)
+[![v1.9.0](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/master/docs/badges/v1.9.0-grey.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.9.0)
+[![v1.8.0](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/master/docs/badges/v1.8.0-grey.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.8.0)
+[![v1.7.0](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/master/docs/badges/v1.7.0-grey.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.7.0)
+[![v1.6.0](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/master/docs/badges/v1.6.0-grey.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.6.0)
+[![v1.5.0](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/master/docs/badges/v1.5.0-grey.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.5.0)
 
 ## 有什么信息会离开你的电脑
 
