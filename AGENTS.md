@@ -3,7 +3,7 @@
 > **Codex:** read [`CODEX.md`](CODEX.md) right after this file — Codex model defaults and the two-round review workflow.
 
 > **Current work / RESUME:** read [`docs/BOARD.md`](docs/BOARD.md) after the standing
-> orders. It tracks the 2.4.0 scope, validation and remaining release checks.
+> orders. It tracks the latest release and the work still open after it.
 
 Rules and commands for anyone changing this repository: human contributors and AI coding agents
 (Claude Code, Codex, Cursor, Copilot, …). `CLAUDE.md` only imports this file. If a document under
