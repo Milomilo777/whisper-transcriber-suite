@@ -34,6 +34,8 @@ def test_llm_release_summaries_have_no_provenance_ids():
     "\n[checksums](SHA256SUMS.txt)",
     "\n[verify](files/package.sha512)",
     "\n[source](https://example.org/commit/" + "c" * 40 + ")",
+    "\n[source](https://example.org/commit/1234567)",
+    "\nRevision: `1234567`",
     "\n[verify](files/package%2Esha256)",
 ])
 def test_release_guard_rejects_verification_metadata(extra):
