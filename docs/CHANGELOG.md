@@ -22,6 +22,12 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 - Update bundled yt-dlp to 2026.11.23 so YouTube format discovery works without a player warning.
 - Keep the viewer clock visible beside the seek bar, stop calling the viewer read-only when VLC is missing, and show progress times and speed within the audio's length.
+- Keep recovered audio available when clearing a completed job while a comparison rerun still needs it.
+- Catch numeric commit IDs in release-note links and revision labels.
+- Reject Windows installer and Portable builds that are missing bundled media tools or speaker identification models.
+- Prepare the bundled macOS tools when the app starts in MCP mode.
+- Restore the default GPU temperature limit with the other transcription settings.
+- Support punctuation in Windows build paths and allow the Portable launcher to run from a network share.
 - Keep the original audio track when transcribing again from the transcript viewer.
 - Report denied media reads and writes as access errors, including macOS privacy denials.
 - Resume interrupted transcription from the saved decode position even when aligned cues extend past it.

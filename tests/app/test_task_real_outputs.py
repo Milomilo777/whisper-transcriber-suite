@@ -241,6 +241,42 @@ def test_app_view_transcript_hands_over_the_source(tmp_path, monkeypatch):
     assert kwargs["media_path"] == task.file_path
 
 
+@pytest.mark.parametrize("already_open", [False, True])
+def test_repaired_viewer_plays_the_managed_copy_and_keeps_the_original_source(
+    tmp_path, monkeypatch, already_open,
+):
+    import tkinter as tk
+    from core import _checkpoint
+
+    source = tmp_path / "recording.mkv"
+    source.touch()
+    repaired = tmp_path / "repaired-audio-123-abcd1234.wav"
+    repaired.touch()
+    transcript = source.with_suffix(".json")
+    _write(transcript, '[{"start":0,"end":1,"text":"Recovered","audio_repaired":true}]')
+    monkeypatch.setattr(_checkpoint, "partials_dir", lambda: tmp_path)
+    monkeypatch.setattr(tv, "_try_load_vlc", lambda: (None, ""))
+    root = tk.Tk()
+    root.withdraw()
+    try:
+        original_viewer = None
+        if already_open:
+            original_viewer = tv.open_viewer(root, str(transcript))
+            assert original_viewer is not None
+            assert original_viewer.media_path is None
+            original_viewer._apply_cue_text(0, "Unsaved recovered text", "Edit cue text")
+        viewer = tv.open_viewer(root, str(transcript), media_path=str(source), playback_path=str(repaired))
+        assert viewer is not None
+        assert viewer.media_path == str(repaired)
+        assert viewer._comparison_media_path == str(source)
+        if already_open:
+            assert viewer is original_viewer
+            assert viewer.segments[0]["text"] == "Unsaved recovered text"
+        viewer.destroy()
+    finally:
+        root.destroy()
+
+
 # --- stats fallback for a translate run (S03-15) --------------------------
 
 

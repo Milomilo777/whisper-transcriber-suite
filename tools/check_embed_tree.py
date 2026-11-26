@@ -5,6 +5,7 @@ are made from). It reads the import table of every .dll / .pyd / .exe in the tre
 reader for the PE file format (standard library only, so the build needs no extra package), and
 reports:
 
+  * missing bundled media tools or speaker identification models;
   * an imported DLL that is not in the tree, not an API-set name (api-ms-win-*, ext-ms-win-*)
     and not on the list of DLLs every Windows 10 install has. Such a DLL loads on a developer PC
     that has some other program's copy and fails on a clean one.
@@ -137,6 +138,12 @@ def check_tree(root: Path, app_dir: str = "python") -> list[str]:
     problems: list[str] = []
     if not root.is_dir():
         return [f"{root}: not a folder"]
+    for relative in (
+        "bin/ffmpeg.exe", "bin/ffprobe.exe", "bin/yt-dlp.exe", "bin/deno.exe",
+        "bin/diarization/segmentation.onnx", "bin/diarization/embedding.onnx",
+    ):
+        if not (root / relative).is_file():
+            problems.append(f"{relative}: missing from the tree")
     binaries = sorted(p for p in root.rglob("*") if p.is_file() and p.suffix.lower() in BINARY_SUFFIXES)
     in_tree = {p.name.lower() for p in binaries if p.suffix.lower() != ".exe"}
     app_files = {p.name.lower() for p in (root / app_dir).glob("*") if p.is_file()}

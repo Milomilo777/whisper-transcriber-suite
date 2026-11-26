@@ -571,13 +571,9 @@ def main() -> int:
         from core.diarization_worker import main as _diarize_worker_main
         return _diarize_worker_main()
 
-    if sys.argv[1:] == ["mcp"]:
-        from core import offline
-        offline.install_network_guard()
-        from core.server.mcp_stdio import main as mcp_main
-        return mcp_main()
-
-    _ensure_safe_stdio_encoding()
+    stdio_mcp = sys.argv[1:] == ["mcp"]
+    if not stdio_mcp:
+        _ensure_safe_stdio_encoding()
 
     # Work offline backstop for the CLI, the server and the GUI (the worker
     # branches above install their own); inert while the switch is off.
@@ -588,6 +584,10 @@ def main() -> int:
     # Gatekeeper does not block them after a browser download.
     from core.paths import clear_bundled_quarantine
     clear_bundled_quarantine()
+
+    if stdio_mcp:
+        from core.server.mcp_stdio import main as mcp_main
+        return mcp_main()
 
     safe_mode = "--safe-mode" in sys.argv
     if safe_mode:

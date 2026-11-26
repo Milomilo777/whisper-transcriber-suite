@@ -22,7 +22,7 @@ ASSET = re.compile(
 def check_release_notes(notes: str) -> None:
     """Reject digests, source IDs and checksum links in any release body."""
     decoded = unquote(notes)
-    assert not HASH.search(decoded), "hash or commit ID in public release text"
+    assert not HASH.search(decoded) and not SOURCE_ID.search(decoded), "hash or commit ID in public release text"
     assert not METADATA.search(decoded), "verification metadata in public release text"
     assert re.search(r"^## 🐞 (?:More than )?[1-9]\d* bugs fixed\s*$", notes, re.M), "missing numbered bugs-fixed heading"
 

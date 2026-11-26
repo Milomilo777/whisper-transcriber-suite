@@ -99,3 +99,18 @@ def test_worker_mode_never_touches_stdio_encoding(monkeypatch):
 
     assert rc == 0
     assert called == []
+
+
+def test_mcp_prepares_bundled_tools_before_starting_raw_stdio(monkeypatch):
+    from core import offline, paths
+    from core.server import mcp_stdio
+
+    calls = []
+    monkeypatch.setattr(sys, "argv", ["gui.py", "mcp"])
+    monkeypatch.setattr(_gui, "_ensure_safe_stdio_encoding", lambda: calls.append("reconfigure"))
+    monkeypatch.setattr(offline, "install_network_guard", lambda: calls.append("offline"))
+    monkeypatch.setattr(paths, "clear_bundled_quarantine", lambda: calls.append("tools"))
+    monkeypatch.setattr(mcp_stdio, "main", lambda: calls.append("mcp") or 0)
+
+    assert _gui.main() == 0
+    assert calls == ["offline", "tools", "mcp"]

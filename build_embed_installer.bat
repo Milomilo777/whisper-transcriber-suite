@@ -1,5 +1,5 @@
 @echo off
-setlocal EnableDelayedExpansion
+setlocal DisableDelayedExpansion
 REM build_embed_installer.bat — produce the embed_build\ tree that
 REM installer_embed.iss turns into WhisperTranscriberSuite-vX.Y.Z-Setup-Standard.exe.
 REM
@@ -28,8 +28,8 @@ REM pinned in platform\windows\build-deps.json, like the bin\ binaries;
 REM tools\fetch_windows_build_deps.py fetches bin\ and refuses any download
 REM that does not match its pin.
 
-set ROOT=%~dp0
-set BUILD=%ROOT%embed_build
+set "ROOT=%~dp0"
+set "BUILD=%ROOT%embed_build"
 
 if exist "%BUILD%" rmdir /S /Q "%BUILD%"
 mkdir "%BUILD%"
@@ -181,8 +181,8 @@ if not exist "%BUILD%\core\server\static\index.html" (
 
 echo [embed] writing the portable launcher
 > "%BUILD%\Run Whisper Transcriber Suite.bat" echo @echo off
->> "%BUILD%\Run Whisper Transcriber Suite.bat" echo cd /d "%%~dp0"
->> "%BUILD%\Run Whisper Transcriber Suite.bat" echo start "" "python\pythonw.exe" "gui.py"
+>> "%BUILD%\Run Whisper Transcriber Suite.bat" echo setlocal DisableDelayedExpansion
+>> "%BUILD%\Run Whisper Transcriber Suite.bat" echo start "" /D "%%~dp0." "%%~dp0python\pythonw.exe" "%%~dp0gui.py"
 
 echo [embed] writing no_voice_clone.flag (Portable ships this feature OFF by default; the Setup-Standard installer removes this marker if the user opts in via the "voiceclone" task)
 type nul > "%BUILD%\no_voice_clone.flag"
@@ -235,7 +235,7 @@ if not "%_CORE_RC%"=="0" (
 )
 
 echo [embed] verifying gui.py worker entry point parses
-"%BUILD%\python\python.exe" -c "import ast; ast.parse(open(r'%BUILD%\gui.py','rb').read())"
+"%BUILD%\python\python.exe" -c "import ast, sys; ast.parse(open(sys.argv[1], 'rb').read())" "%BUILD%\gui.py"
 if errorlevel 1 (
   echo [embed] gui.py parse failed
   exit /b 6

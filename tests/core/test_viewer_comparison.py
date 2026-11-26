@@ -119,7 +119,7 @@ def test_viewer_comparison_reruns_the_original_audio_track(
     )
     app.comparison_audio_track = lambda *args: app_module.App.comparison_audio_track(app, *args)
     viewer = SimpleNamespace(
-        _comparison_media_path=str(media), _app_config=lambda: app.app_config,
+        _comparison_media_path=str(media), _comparison_repair_path=None, _app_config=lambda: app.app_config,
         master=app, json_path=str(source_json), segments=cues,
     )
     if recorded_in == "history aliases":
@@ -167,6 +167,64 @@ def test_preference_persists_without_deleting_either_file(tmp_path):
         assert history.transcript_comparison_for(source) == (source, result, None)
     assert (tmp_path / "original.json").read_text(encoding="utf-8") == "original.json"
     assert (tmp_path / "original (1).json").read_text(encoding="utf-8") == "original (1).json"
+
+
+def test_comparison_rerun_keeps_repaired_audio_when_completed_jobs_are_cleared(tmp_path, monkeypatch):
+    from core import _checkpoint
+
+    media = tmp_path / "recording.mkv"
+    media.touch()
+    source_json = media.with_suffix(".json")
+    source_json.write_text("[]", encoding="utf-8")
+    partials = tmp_path / "partials"
+    partials.mkdir()
+    repaired = partials / "repaired-audio-123-abcd1234.wav"
+    repaired.write_bytes(b"recovered audio")
+    monkeypatch.setattr(_checkpoint, "partials_dir", lambda: partials)
+    original = app_module.TranscriptionTask(str(media))
+    original.status = "finished"
+    original.audio_track = 1
+    original.repair_name = repaired.name
+    original.output_paths = [str(source_json)]
+    app = SimpleNamespace(
+        queue=[original], workers=[], history=None, app_config={},
+        _same_job_active=lambda task: False,
+        _confirm_english_only_model=lambda **kwargs: True,
+        _ensure_transcribe_ready=lambda: True,
+        _selected_transcribe_language=lambda: None,
+        refresh=lambda: None, show_task_in_queue=lambda task: None,
+    )
+    app.queue_transcript_comparison = lambda *args, **kwargs: (
+        app_module.App.queue_transcript_comparison(app, *args, **kwargs)
+    )
+    app.comparison_audio_track = lambda *args: app_module.App.comparison_audio_track(app, *args)
+    monkeypatch.setattr(PresetStore, "load", lambda store: {})
+    monkeypatch.setattr(transcript_viewer, "ComparisonPresetDialog",
+                        lambda *args: SimpleNamespace(result=0))
+
+    rerun = transcript_viewer.TranscriptViewer._transcribe_again
+    opened = []
+    monkeypatch.setattr(transcript_viewer, "TranscriptViewer", lambda *args, **kwargs: opened.append(kwargs))
+    app_module.App.open_transcript_viewer_for(
+        app, str(media), str(source_json), playback_path=str(repaired),
+    )
+    viewer = SimpleNamespace(
+        _comparison_media_path=opened[0]["media_path"],
+        _comparison_repair_path=opened[0].get("playback_path"),
+        _app_config=lambda: app.app_config, master=app,
+        json_path=str(source_json), segments=[{"audio_repaired": True, "audio_track": 1}],
+    )
+    rerun(viewer)
+    app_module.App.clear_completed(app)
+
+    assert repaired.read_bytes() == b"recovered audio"
+    comparison, = app.queue
+    assert comparison.file_path == str(media)
+    assert transcribe_command(comparison)["repair_name"] == repaired.name
+    assert transcribe_command(comparison)["audio_track"] == 1
+    app.queue.clear()
+    app_module.App._dismiss_repaired_audio(app, comparison)
+    assert not repaired.exists()
 
 
 def test_output_relocation_moves_comparison_and_its_preference(tmp_path):

@@ -6,6 +6,10 @@ a marker left by an older install when the user upgrades.
 
 import os
 import re
+import shutil
+import subprocess
+import sys
+from pathlib import Path
 
 import pytest
 
@@ -167,4 +171,78 @@ def test_build_script_parses_gui_py_independent_of_the_windows_code_page():
     with open(os.path.join(_ROOT, "build_embed_installer.bat"), encoding="utf-8") as fh:
         lines = [ln for ln in fh.read().splitlines() if "ast.parse" in ln]
     assert len(lines) == 1
-    assert "gui.py','rb')" in lines[0]
+    assert re.search(r",\s*'rb'\)", lines[0])
+
+
+def _run_batch(path, *, cwd, env=None):
+    cmd = os.environ.get("COMSPEC", r"C:\Windows\System32\cmd.exe")
+    return subprocess.run(
+        f'"{cmd}" /d /s /c ""{path}""', cwd=cwd, env=env,
+        capture_output=True, text=True, timeout=30,
+        creationflags=subprocess.CREATE_NO_WINDOW,
+    )
+
+
+@pytest.mark.skipif(os.name != "nt", reason="runs Windows batch code")
+@pytest.mark.parametrize("folder", ["Checkout !", "Author's checkout"])
+def test_embed_builder_keeps_literal_checkout_paths(tmp_path, folder):
+    text = Path(_ROOT, "build_embed_installer.bat").read_text(encoding="utf-8")
+    # Run the real path setup and syntax probe, with no extraction, downloads or cleanup.
+    prefix, _ = text.split('\nif exist "%BUILD%" rmdir ', 1)
+    probe_line = next(line for line in text.splitlines() if "ast.parse" in line)
+    probe_line = probe_line.replace(r'"%BUILD%\python\python.exe"', f'"{sys.executable}"')
+    project = tmp_path / folder
+    build = project / "embed_build"
+    build.mkdir(parents=True)
+    (build / "gui.py").write_text('sample = "مرحبا"\n', encoding="utf-8")
+    probe = project / "path_probe.bat"
+    probe.write_text(f'{prefix}\nset BUILD\n{probe_line}\nexit /b %errorlevel%\n', encoding="utf-8")
+
+    result = _run_batch(probe, cwd=tmp_path)
+    assert f"BUILD={build}" in result.stdout.splitlines(), result.stdout + result.stderr
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.skipif(os.name != "nt", reason="runs Windows batch code")
+def test_windows_portable_launcher_finds_its_files_on_a_unc_share(tmp_path):
+    drive, relative = os.path.splitdrive(str(tmp_path))
+    if not re.fullmatch(r"[a-zA-Z]:", drive):
+        pytest.skip("the test needs a local temporary drive")
+    share = Path(f"\\\\localhost\\{drive[0]}$\\" + relative.lstrip("\\"))
+    try:
+        share_available = share.is_dir()
+    except PermissionError:
+        share_available = False
+    if not share_available:
+        pytest.skip("local administrative share is unavailable")
+    text = Path(_ROOT, "build_embed_installer.bat").read_text(encoding="utf-8")
+    commands = [line for line in text.splitlines() if 'Run Whisper Transcriber Suite.bat" echo ' in line]
+    assert commands
+    tree = tmp_path / "Portable files"
+    interpreter = tree / "python"
+    interpreter.mkdir(parents=True)
+    (tree / "gui.py").write_text(
+        'import os\nfrom pathlib import Path\n'
+        'Path(os.environ["WTS_LAUNCH_RECEIPT"]).write_text(os.getcwd(), encoding="utf-8")\n',
+        encoding="ascii",
+    )
+    receipt = tmp_path / "launched.txt"
+    base_exe = Path(sys._base_executable)
+    shutil.copyfile(base_exe, interpreter / "pythonw.exe")
+    for dll in base_exe.parent.glob("*.dll"):
+        shutil.copyfile(dll, interpreter / dll.name)
+    # Catch the old relative launch without letting START open a missing-file dialog.
+    fallback = tmp_path / "python"
+    shutil.copytree(interpreter, fallback)
+    (tmp_path / "gui.py").write_text("raise SystemExit(1)\n", encoding="ascii")
+    generator = tmp_path / "generate.bat"
+    lines = [line.replace('start "" ', 'start "" /b /wait ') for line in commands]
+    generator.write_text(f'@echo off\nset "BUILD={tree}"\n' + "\n".join(lines) + "\n", encoding="utf-8")
+    generated = _run_batch(generator, cwd=tmp_path)
+    assert generated.returncode == 0, generated.stdout + generated.stderr
+    unc_launcher = share / tree.name / "Run Whisper Transcriber Suite.bat"
+    result = _run_batch(unc_launcher, cwd=tmp_path, env={
+        **os.environ, "PYTHONHOME": sys.base_prefix, "WTS_LAUNCH_RECEIPT": str(receipt),
+    })
+    assert receipt.is_file(), result.stdout + result.stderr
+    assert tree.samefile(receipt.read_text(encoding="utf-8"))
