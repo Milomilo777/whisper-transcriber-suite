@@ -1,6 +1,9 @@
 """Headless assistant-control security and transport checks."""
+import errno
 import io
 import json
+import os
+from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
@@ -180,6 +183,378 @@ def test_local_job_preserves_original_and_exports_before_done(tmp_path):
         manager._export_local_outputs(job)
     assert exported.read_text() == "existing"
     manager.stop()
+
+
+def test_local_export_publishes_only_complete_output(tmp_path, monkeypatch):
+    from core.server import jobs
+
+    source = tmp_path / "media.wav"
+    source.write_bytes(b"original")
+    output = tmp_path / "archived.txt"
+    output.write_bytes(b"complete transcript")
+    job = jobs.Job("job", "upload", ["txt"], local_source=str(source),
+                   local_root=str(tmp_path), outputs=[("txt", str(output))])
+    manager = object.__new__(jobs.JobManager)
+    target = tmp_path / "media.job.0.txt"
+
+    with monkeypatch.context() as patch:
+        def interrupted_copy(src, dest):
+            dest.write(src.read(4))
+            assert not target.exists()
+            raise OSError(errno.ENOSPC, "disk full")
+
+        patch.setattr(jobs.shutil, "copyfileobj", interrupted_copy)
+        with pytest.raises(OSError, match="disk full"):
+            manager._export_local_outputs(job)
+
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["archived.txt", "media.wav"]
+    manager._export_local_outputs(job)
+    assert target.read_bytes() == output.read_bytes()
+
+
+@pytest.fixture
+def posix_export(tmp_path, monkeypatch):
+    from contextlib import nullcontext
+    from core.server import mcp_files
+
+    folder = tmp_path.resolve()
+    if os.name == "nt":
+        # Windows cannot open directory-relative FDs. Translate them to paths
+        # while leaving exclusive creation, writes and file identity to the OS.
+        directory_fd = -2
+        nofollow = 1 << 20
+        posix_os = SimpleNamespace(**vars(os))
+        posix_os.name = "posix"
+        posix_os.O_NOFOLLOW = nofollow
+        deferred_unlinks = set()
+
+        def open_at(name, flags, mode, *, dir_fd):
+            assert dir_fd == directory_fd
+            assert flags & nofollow
+            return os.open(folder / name, (flags & ~nofollow) | os.O_BINARY, mode)
+
+        def stat_at(name, *, dir_fd, follow_symlinks):
+            assert dir_fd == directory_fd
+            return os.stat(folder / name, follow_symlinks=follow_symlinks)
+
+        def unlink_at(name, *, dir_fd):
+            assert dir_fd == directory_fd
+            try:
+                os.unlink(folder / name)
+            except PermissionError:
+                # POSIX permits unlink while the owned descriptor is open.
+                deferred_unlinks.add(name)
+
+        def close(fd):
+            os.close(fd)
+            for name in tuple(deferred_unlinks):
+                os.unlink(folder / name)
+                deferred_unlinks.remove(name)
+
+        posix_os.open = open_at
+        posix_os.stat = stat_at
+        posix_os.unlink = unlink_at
+        posix_os.close = close
+        monkeypatch.setattr(mcp_files, "os", posix_os)
+        monkeypatch.setattr(mcp_files, "_pinned_directory", lambda *_: nullcontext(directory_fd))
+        monkeypatch.setattr(mcp_files, "opened_path", lambda _: folder)
+
+    return mcp_files, folder
+
+
+def _fail_export_link(monkeypatch, mcp_files, code):
+    def fail_link(_entry, _name, *, src_dir_fd, dst_dir_fd, follow_symlinks):
+        assert src_dir_fd is not None and src_dir_fd == dst_dir_fd
+        assert not follow_symlinks
+        raise OSError(code, "synthetic link error")
+
+    monkeypatch.setattr(mcp_files.os, "link", fail_link)
+
+
+@pytest.mark.parametrize("code", [errno.EPERM, errno.ENOTSUP, errno.EOPNOTSUPP,
+                                 errno.EXDEV, errno.ENOSYS, errno.EMLINK])
+def test_posix_export_copies_when_hard_links_are_unavailable(posix_export, monkeypatch, code):
+    mcp_files, folder = posix_export
+    _fail_export_link(monkeypatch, mcp_files, code)
+    name = "résumé.txt"
+    payload = bytes(range(256)) * 513
+    with mcp_files.confined_open(folder, folder, name, "xb") as dest:
+        dest.write(payload)
+        assert not (folder / name).exists()
+
+    assert (folder / name).read_bytes() == payload
+    assert list(folder.iterdir()) == [folder / name]
+
+
+@pytest.mark.parametrize("code", [errno.EEXIST, errno.EACCES])
+def test_posix_export_propagates_other_link_errors(posix_export, monkeypatch, code):
+    mcp_files, folder = posix_export
+    _fail_export_link(monkeypatch, mcp_files, code)
+    with pytest.raises(OSError) as failure:
+        with mcp_files.confined_open(folder, folder, "transcript.txt", "xb") as dest:
+            dest.write(b"new transcript")
+
+    assert failure.value.errno == code
+    assert list(folder.iterdir()) == []
+
+
+def test_posix_export_copy_refuses_an_existing_output(posix_export, monkeypatch):
+    mcp_files, folder = posix_export
+    _fail_export_link(monkeypatch, mcp_files, errno.EPERM)
+    target = folder / "transcript.txt"
+    target.write_bytes(b"previous transcript")
+    with pytest.raises(FileExistsError):
+        with mcp_files.confined_open(folder, folder, target.name, "xb") as dest:
+            dest.write(b"new transcript")
+
+    assert target.read_bytes() == b"previous transcript"
+    assert list(folder.iterdir()) == [target]
+
+
+@pytest.mark.parametrize("raises", [True, False], ids=["write-error", "short-copy"])
+def test_posix_export_copy_cleans_up_partial_output(posix_export, monkeypatch, raises):
+    mcp_files, folder = posix_export
+    _fail_export_link(monkeypatch, mcp_files, errno.EPERM)
+
+    def partial_copy(source, output, *args):
+        output.write(source.read(3))
+        output.flush()
+        if raises:
+            raise OSError(errno.ENOSPC, "synthetic write failure")
+
+    monkeypatch.setattr("shutil.copyfileobj", partial_copy)
+    with pytest.raises(OSError, match="synthetic write failure" if raises else "size"):
+        with mcp_files.confined_open(folder, folder, "transcript.txt", "xb") as dest:
+            dest.write(b"complete transcript")
+
+    assert list(folder.iterdir()) == []
+
+
+@pytest.mark.parametrize("fail_sync", [False, True], ids=["synced", "sync-error"])
+def test_posix_export_copy_syncs_the_complete_output(posix_export, monkeypatch, fail_sync):
+    mcp_files, folder = posix_export
+    _fail_export_link(monkeypatch, mcp_files, errno.EPERM)
+    target = folder / "transcript.txt"
+    payload = b"complete transcript"
+    real_fsync = os.fsync
+    synced = []
+
+    def sync(fd):
+        identity = os.fstat(fd)
+        assert os.path.samestat(identity, target.stat())
+        assert identity.st_size == len(payload)
+        synced.append(fd)
+        if fail_sync:
+            raise OSError(errno.EIO, "synthetic sync failure")
+        real_fsync(fd)
+
+    def export():
+        with mcp_files.confined_open(folder, folder, target.name, "xb") as dest:
+            dest.write(payload)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(mcp_files.os, "fsync", sync)
+        if fail_sync:
+            with pytest.raises(OSError, match="synthetic sync failure"):
+                export()
+        else:
+            export()
+
+    assert len(synced) == 1
+    if fail_sync:
+        assert list(folder.iterdir()) == []
+    else:
+        assert target.read_bytes() == payload
+        assert list(folder.iterdir()) == [target]
+
+
+@pytest.mark.skipif(os.name == "nt", reason="requires POSIX replacement of an open file")
+def test_posix_export_copy_failure_preserves_a_replacement(posix_export, monkeypatch):
+    mcp_files, folder = posix_export
+    _fail_export_link(monkeypatch, mcp_files, errno.EPERM)
+    target = folder / "transcript.txt"
+    replacement = folder / "replacement.txt"
+    replacement.write_bytes(b"other writer's transcript")
+
+    def partial_copy(source, output):
+        output.write(source.read(3))
+        output.flush()
+        replacement.replace(target)
+        raise OSError(errno.ENOSPC, "synthetic write failure")
+
+    monkeypatch.setattr("shutil.copyfileobj", partial_copy)
+    with pytest.raises(OSError, match="synthetic write failure"):
+        with mcp_files.confined_open(folder, folder, target.name, "xb") as dest:
+            dest.write(b"complete transcript")
+
+    assert target.read_bytes() == b"other writer's transcript"
+    assert list(folder.iterdir()) == [target]
+
+
+@pytest.fixture
+def fat_inode_numbers(posix_export, monkeypatch):
+    mcp_files, folder = posix_export
+    fd_stat = mcp_files.os.fstat
+    entry_stat = mcp_files.os.stat
+
+    def simulate_unallocated_inode(info):
+        if info.st_size:
+            return info
+        fields = list(info)
+        fields[1] = 999_999_999
+        return os.stat_result(fields)
+
+    def stat_at(path, *args, **kwargs):
+        info = entry_stat(path, *args, **kwargs)
+        return simulate_unallocated_inode(info) if kwargs.get("dir_fd") is not None else info
+
+    monkeypatch.setattr(mcp_files.os, "fstat", lambda fd: simulate_unallocated_inode(fd_stat(fd)))
+    monkeypatch.setattr(mcp_files.os, "stat", stat_at)
+    return mcp_files, folder
+
+
+@pytest.mark.parametrize("fail_copy", [False, True], ids=["publish", "rollback"])
+def test_posix_export_handles_identity_changes_after_allocation(fat_inode_numbers, monkeypatch, fail_copy):
+    mcp_files, folder = fat_inode_numbers
+    _fail_export_link(monkeypatch, mcp_files, errno.ENOTSUP)
+    target = folder / "transcript.txt"
+    payload = b"complete transcript"
+
+    def partial(source, output):
+        output.write(source.read(3))
+        output.flush()
+        raise OSError(errno.ENOSPC, "synthetic write failure")
+
+    def export():
+        with mcp_files.confined_open(folder, folder, target.name, "xb") as dest:
+            dest.write(payload)
+
+    if fail_copy:
+        monkeypatch.setattr("shutil.copyfileobj", partial)
+        with pytest.raises(OSError, match="synthetic write failure"):
+            export()
+        assert list(folder.iterdir()) == []
+    else:
+        export()
+        assert target.read_bytes() == payload
+        assert list(folder.iterdir()) == [target]
+
+
+@pytest.mark.skipif(os.name == "nt", reason="requires POSIX metadata changes on an open file")
+@pytest.mark.parametrize("replaced", [False, True], ids=["owned", "replaced"])
+def test_posix_export_rollback_distinguishes_empty_fat_files(fat_inode_numbers, monkeypatch, replaced):
+    mcp_files, folder = fat_inode_numbers
+    monkeypatch.setattr(mcp_files, "sys", SimpleNamespace(platform="darwin"), raising=False)
+    _fail_export_link(monkeypatch, mcp_files, errno.ENOTSUP)
+    target = folder / "transcript.txt"
+    timestamp = 1_800_000_000
+
+    def fail_before_writing(_source, output):
+        os.utime(output.fileno(), (timestamp, timestamp))
+        if replaced:
+            other = folder / "other.txt"
+            other.touch()
+            os.utime(other, (timestamp, timestamp))
+            other.replace(target)
+        raise OSError(errno.ENOSPC, "synthetic write failure")
+
+    monkeypatch.setattr("shutil.copyfileobj", fail_before_writing)
+    with pytest.raises(OSError, match="synthetic write failure"):
+        with mcp_files.confined_open(folder, folder, target.name, "xb") as dest:
+            dest.write(b"complete transcript")
+
+    if replaced:
+        assert list(folder.iterdir()) == [target]
+        assert target.stat().st_mtime == timestamp
+    else:
+        assert list(folder.iterdir()) == []
+
+
+def test_local_job_retains_transcript_if_original_media_is_moved(tmp_path):
+    from pathlib import Path
+    from core.server.jobs import JobManager, STATUS_ERROR
+
+    source = tmp_path / "media.wav"
+    source.write_bytes(b"original")
+
+    def transcribe(task, *_args):
+        source.rename(source.with_name("moved.wav"))
+        result = Path(task.file_path).with_suffix(".txt")
+        result.write_text("transcript", encoding="utf-8")
+        task.output_paths = [str(result)]
+
+    manager = JobManager(transcribe, jobs_root=str(tmp_path / "jobs"),
+                         outputs_root=str(tmp_path / "outputs"), record_history=False)
+    try:
+        job_id = manager.submit_local(str(source), str(tmp_path), ["txt"])
+        job = manager.get(job_id)
+        manager._run_one(job)
+        assert job.status == STATUS_ERROR
+        assert job.warning == "Results retained by the server; saving beside the original failed."
+        kept = manager.output_path(job_id, "txt")
+        assert kept and Path(kept).read_text(encoding="utf-8") == "transcript"
+    finally:
+        manager.stop()
+
+
+@pytest.mark.parametrize("first_backend", ["faster_whisper", "whisper_cpp"])
+def test_stdio_reuses_models_until_their_settings_change(monkeypatch, first_backend):
+    from core import config, hardware, server, transcriber
+    from core.server import jobs, mcp_stdio
+
+    cfg = {**config.DEFAULT_CONFIG, "model_path": "first", "device": "cpu",
+           "transcribe_backend": first_backend}
+    monkeypatch.setattr(config, "load_config", lambda: dict(cfg))
+    monkeypatch.setattr(hardware, "detect_device_for", lambda cfg: (cfg["device"], "int8"))
+    monkeypatch.setattr(transcriber, "config", {})
+    for key, value in (("MODEL", None), ("PIPELINE", None), ("MODEL_READY", False),
+                       ("_ALT_BACKEND", None), ("_ALT_BACKEND_NAME", ""),
+                       ("_DEVICE_DOWNGRADED", False), ("_CUDA_BATCH_SIZE", 0),
+                       ("device", "cpu"), ("compute_type", "int8")):
+        monkeypatch.setattr(transcriber, key, value)
+    loads = []
+    alternate = Mock()
+
+    def load(_status):
+        assert transcriber.MODEL is None
+        assert transcriber._ALT_BACKEND is None
+        backend = transcriber.config["transcribe_backend"]
+        loads.append((backend, transcriber.config["model_path"], transcriber.device))
+        if backend == "whisper_cpp":
+            transcriber._ALT_BACKEND = alternate
+            transcriber._ALT_BACKEND_NAME = backend
+        else:
+            transcriber.MODEL = object()
+        transcriber.MODEL_READY = True
+        return True
+
+    monkeypatch.setattr(transcriber, "load_existing_model", load)
+    decode = Mock()
+    monkeypatch.setattr(server, "_real_transcribe", decode)
+    factory = Mock()
+    monkeypatch.setattr(jobs, "JobManager", factory)
+    monkeypatch.setattr(mcp_stdio.sys, "stdin", io.StringIO())
+    monkeypatch.setattr(mcp_stdio.sys, "stdout", io.StringIO())
+
+    def serve(*_args):
+        submit = factory.call_args.args[0]
+        submit("first job")
+        cfg["batch_size"] = 3
+        submit("second job")
+        assert transcriber.config["batch_size"] == 3
+        cfg["transcribe_backend"] = "faster_whisper"
+        cfg["model_path"] = "second"
+        submit("changed model")
+        cfg["device"] = "cuda"
+        submit("changed device")
+
+    monkeypatch.setattr(mcp_stdio, "serve", serve)
+    assert mcp_stdio.main() == 0
+    assert loads == [(first_backend, "first", "cpu"),
+                     ("faster_whisper", "second", "cpu"),
+                     ("faster_whisper", "second", "cuda")]
+    assert alternate.unload.call_count == int(first_backend == "whisper_cpp")
+    assert decode.call_count == 4
 
 
 def test_stdio_oversize_frame_and_diagnostic_isolation(monkeypatch, capsys):

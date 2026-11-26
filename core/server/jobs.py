@@ -70,6 +70,19 @@ from core.server.netguard import (
 logger = logging.getLogger(__name__)
 
 
+_JSON_TRANSCRIPT_HEADER = re.compile(
+    rb'\s*\[\s*(?:\]|\{\s*"start"\s*:\s*[0-9.eE+-]+\s*,'
+    rb'\s*"end"\s*:\s*[0-9.eE+-]+\s*,\s*"text"\s*:)'
+)
+
+
+def _is_transcript_with_chapter_suffix(path: str) -> bool:
+    # A media stem or template can end in ".chapters". The transcript writer
+    # emits its fixed keys before the text, so long cues need no full JSON read.
+    with open(path, "rb") as stream:
+        return _JSON_TRANSCRIPT_HEADER.match(stream.read(256)) is not None
+
+
 def _same_output_contents(source: str, destination: str) -> bool:
     if os.path.getsize(source) != os.path.getsize(destination):
         return False
@@ -1304,12 +1317,16 @@ class JobManager:
     def _export_local_outputs(self, job: Job) -> None:
         """Export without replacing existing files or following output links."""
         from pathlib import Path
+        from core.server.mcp import _ToolError
         from core.server.mcp_control import allowed_file
         from core.server.mcp_files import confined_open
-        source, _root = allowed_file(job.local_source, {"mcp_allowed_folders": [job.local_root]})
+        try:
+            source, _root = allowed_file(job.local_source, {"mcp_allowed_folders": [job.local_root]})
+        except _ToolError as exc:
+            raise ValueError(str(exc)) from exc
         for index, (_fmt, path) in enumerate(job.outputs):
             target = source.parent / f"{source.stem[:80]}.{job.job_id}.{index}{Path(path).suffix}"
-            # Exclusive creation refuses both existing files and dangling symlinks.
+            # Publish only after the copy is complete and synced.
             with open(path, "rb") as src, confined_open(source.parent, Path(job.local_root), target.name, "xb") as dest:
                 shutil.copyfileobj(src, dest)
                 dest.flush()
@@ -1464,7 +1481,7 @@ class JobManager:
 
         Used only when the engine recorded no ``task.output_paths``. Match by
         extension against the requested formats; newest by mtime wins (the
-        "(1)" re-run case). The staged media and job options are inputs.
+        "(1)" re-run case). Ignore inputs and chapter sidecars.
         """
         out: list[tuple[str, str]] = []
         try:
@@ -1484,8 +1501,10 @@ class JobManager:
             dated: list[tuple[float, str]] = []
             for n in matches:
                 try:
-                    dated.append(
-                        (os.path.getmtime(os.path.join(job.work_dir, n)), n))
+                    path = os.path.join(job.work_dir, n)
+                    if n.lower().endswith(".chapters.json") and not _is_transcript_with_chapter_suffix(path):
+                        continue
+                    dated.append((os.path.getmtime(path), n))
                 except OSError:
                     continue  # vanished since the listing
             if not dated:

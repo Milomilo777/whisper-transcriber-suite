@@ -253,6 +253,8 @@ def rescue(
             if cancelled():
                 break
             new.extend(s for s in transcribe_piece(start, end) if str(s.get("text") or "").strip())
+        if cancelled():
+            break
         old = result[span.first:span.last]
         ok, why = accept(old, new, kind=span.kind, speech_s=sum(b - a for a, b in speech))
         if ok and span.kind == "gap":
