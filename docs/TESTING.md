@@ -156,7 +156,7 @@ These workflows run on a timer and can also be started by hand ("Run workflow").
 |---|---|---|
 | `ytdlp-watch.yml` | daily 03:37 | Installs the newest yt-dlp and reads the metadata (no download) of the pages in `tools/ytdlp_watch_urls.json`. A site whose extractor broke fails the run. A site that refuses the CI network (bot check, 429) only warns, so a YouTube block on the runner is not a verdict. |
 | `model-links-weekly.yml` | Saturday 02:17 | Every Hugging Face repository named in `core/model_manager.py`, `core/language_models.py` and the website's Try page, and the Try page's jsDelivr script: a gone link fails the run. |
-| `download-badges.yml` | Every six hours at :23 | Refreshes the static SVGs on the `badges` data branch. Eligible release events also trigger it. A failed API request leaves the previously published badges in place. |
+| `download-badges.yml` | Every six hours at :23 | Refreshes the static SVGs in `docs/badges/` on `master`. Eligible release events also trigger it. Badge commits use `[skip ci]` to skip GitHub Actions and Cloudflare Pages builds. A failed API request leaves the previously published badges in place. |
 
 The logic lives in `tools/ytdlp_watch.py`, `tools/check_model_links.py` and
 `tools/download_badges.py`. Their matching tests use a fake network.

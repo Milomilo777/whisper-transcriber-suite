@@ -7,7 +7,36 @@ from tools.release_badges_rewrite import rewrite
 
 REPO = "Milomilo777/whisper-transcriber-suite"
 SHIELDS = f"https://img.shields.io/github/downloads/{REPO}/"
-RAW = f"https://raw.githubusercontent.com/{REPO}/badges/"
+LEGACY_RAW = f"https://raw.githubusercontent.com/{REPO}/badges/"
+RAW = f"https://raw.githubusercontent.com/{REPO}/master/docs/badges/"
+
+
+def test_legacy_and_shields_images_move_to_master():
+    legacy = LEGACY_RAW + "v2.5.0-this-version.svg"
+    shields = SHIELDS + "total?label=downloads"
+    body = f"[![بارگیری](<{legacy}> 'Title')](https://example.org)\r\n<img src='{shields}'>"
+    expected = body.replace(legacy, RAW + "v2.5.0-this-version.svg").replace(shields, RAW + "total.svg")
+    assert rewrite(body) == expected
+    assert rewrite(expected) == expected
+
+
+def test_legacy_html_and_escaped_tag_are_rewritten():
+    url = LEGACY_RAW + "v2.5.0%2Bbuild-grey.svg"
+    body = f"<IMG alt='downloads' SRC={url}>"
+    assert rewrite(body) == body.replace(LEGACY_RAW, RAW)
+
+
+def test_legacy_image_keeps_query_and_fragment():
+    url = LEGACY_RAW + "total.svg?raw=1#badge"
+    body = f"![downloads]({url})\n<img src='{url}'>"
+    assert rewrite(body) == body.replace(LEGACY_RAW, RAW)
+
+
+def test_legacy_non_images_and_other_paths_are_preserved():
+    url = LEGACY_RAW + "total.svg"
+    body = (f"[ordinary link]({url})\n`![example]({url})`\n<!-- <img src='{url}'> -->\n"
+            f"![nested]({LEGACY_RAW}subdir/total.svg)\n![foreign]({url.replace(REPO, 'example/other')})")
+    assert rewrite(body) == body
 
 
 @pytest.mark.parametrize(("suffix", "filename"), [

@@ -1,4 +1,4 @@
-"""Rewrite the project's inline Shields download images in GitHub release Markdown."""
+"""Move inline release download images to the static badges on master."""
 from __future__ import annotations
 
 from html import unescape
@@ -10,7 +10,8 @@ from urllib.parse import parse_qs, quote, unquote, urlsplit
 REPOSITORY = "Milomilo777/whisper-transcriber-suite"
 SHIELDS_PATH = f"/github/downloads/{REPOSITORY}/"
 SHIELDS_URL = f"https://img.shields.io{SHIELDS_PATH}"
-RAW = f"https://raw.githubusercontent.com/{REPOSITORY}/badges/"
+LEGACY_RAW = f"https://raw.githubusercontent.com/{REPOSITORY}/badges/"
+RAW = f"https://raw.githubusercontent.com/{REPOSITORY}/master/docs/badges/"
 ATTRIBUTE = re.compile(r'''([^\s/="'<>]+)(?:\s*=\s*("[^"]*"|'[^']*'|[^\s<>]+))?''')
 LIST_ITEM = re.compile(r"^ {0,3}(?:[-+*]|[0-9]{1,9}[.)])[ \t]+")
 BLOCK_BOUNDARY = re.compile(r"^ {0,3}(?:#{1,6}(?:[ \t]|$)|`{3,}|~{3,}|[<>]|(?:=+|-+)[ \t]*$)")
@@ -23,13 +24,19 @@ TOKENS = re.compile(
     r"|<!--.*?(?:-->|\Z)"
     r"|(?<!`)(?P<ticks>`+)(?!`).*?(?<!`)(?P=ticks)(?!`)"
     r"|(?P<md>(?<!\\)(?:\\\\)*!\[(?:\\[^\r\n]|[^\]\\\r\n])*\]\([ \t]*<?)"
-    r"(?P<url>https://img\.shields\.io/[^\s<>)]+)(?=[>\s)])"
+    rf"(?P<url>(?:https://img\.shields\.io/|{re.escape(LEGACY_RAW)})[^\s<>)]+)(?=[>\s)])"
     r'''|(?P<html><img(?=[\s/>])(?:"[^"]*"|'[^']*'|[^'">])*>)''',
     re.M | re.S | re.I,
 )
 
 
 def badge_url(url: str) -> str:
+    if url.lower().startswith(LEGACY_RAW.lower()):
+        suffix = url[len(LEGACY_RAW):]
+        filename = re.split(r"[?#]", suffix, maxsplit=1)[0]
+        if re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9._+-]*\.svg", unquote(filename)):
+            return RAW + suffix
+        return url
     if not url.lower().startswith(SHIELDS_URL.lower()):
         return url
     parts = urlsplit(unescape(url))

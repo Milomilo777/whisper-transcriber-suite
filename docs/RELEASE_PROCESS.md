@@ -86,19 +86,19 @@ bullet bundles several fixes. Thank reporters and invite further reports.
 
 ### Download badges
 
-Use `https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/badges/`
+Use `https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/master/docs/badges/`
 as the image base. The release body uses `total.svg` (linked to the list of releases)
 and `vX.Y.Z-this-version.svg` (linked to this release). The README Download section
 adds `vX.Y.Z.svg` and keeps the badges for previous versions.
 
-Once the release draft has its tag, run **Download badges** from the default branch
+Once the release draft has its tag, run **Download badges** from `master`
 in GitHub Actions. Draft creation and edits do not trigger GitHub Actions. Wait for
 the run to succeed and verify the two release image URLs and the new README badge
 before publishing the release or merging the README link. Draft badges initially
-show zero downloads. Keep historical image URLs valid by leaving the `badges` data
-branch under the workflow's control.
+show zero downloads. The workflow commits updates under `docs/badges/` on `master`.
+Rebase onto the latest `origin/master` before pushing release changes.
 
-For a historical release with inline Shields download images, pass its UTF-8 body
+For a historical release with inline Shields or legacy branch badge images, pass its UTF-8 body
 to `python tools/release_badges_rewrite.py` on stdin. Review the output and verify
 the raw image URLs before using it as the release body.
 
