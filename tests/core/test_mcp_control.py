@@ -237,6 +237,66 @@ def test_local_job_retains_transcript_if_original_media_is_moved(tmp_path):
         manager.stop()
 
 
+@pytest.mark.parametrize("first_backend", ["faster_whisper", "whisper_cpp"])
+def test_stdio_reuses_models_until_their_settings_change(monkeypatch, first_backend):
+    from core import config, hardware, server, transcriber
+    from core.server import jobs, mcp_stdio
+
+    cfg = {**config.DEFAULT_CONFIG, "model_path": "first", "device": "cpu",
+           "transcribe_backend": first_backend}
+    monkeypatch.setattr(config, "load_config", lambda: dict(cfg))
+    monkeypatch.setattr(hardware, "detect_device_for", lambda cfg: (cfg["device"], "int8"))
+    monkeypatch.setattr(transcriber, "config", {})
+    for key, value in (("MODEL", None), ("PIPELINE", None), ("MODEL_READY", False),
+                       ("_ALT_BACKEND", None), ("_ALT_BACKEND_NAME", ""),
+                       ("_DEVICE_DOWNGRADED", False), ("_CUDA_BATCH_SIZE", 0),
+                       ("device", "cpu"), ("compute_type", "int8")):
+        monkeypatch.setattr(transcriber, key, value)
+    loads = []
+    alternate = Mock()
+
+    def load(_status):
+        assert transcriber.MODEL is None
+        assert transcriber._ALT_BACKEND is None
+        backend = transcriber.config["transcribe_backend"]
+        loads.append((backend, transcriber.config["model_path"], transcriber.device))
+        if backend == "whisper_cpp":
+            transcriber._ALT_BACKEND = alternate
+            transcriber._ALT_BACKEND_NAME = backend
+        else:
+            transcriber.MODEL = object()
+        transcriber.MODEL_READY = True
+        return True
+
+    monkeypatch.setattr(transcriber, "load_existing_model", load)
+    decode = Mock()
+    monkeypatch.setattr(server, "_real_transcribe", decode)
+    factory = Mock()
+    monkeypatch.setattr(jobs, "JobManager", factory)
+    monkeypatch.setattr(mcp_stdio.sys, "stdin", io.StringIO())
+    monkeypatch.setattr(mcp_stdio.sys, "stdout", io.StringIO())
+
+    def serve(*_args):
+        submit = factory.call_args.args[0]
+        submit("first job")
+        cfg["batch_size"] = 3
+        submit("second job")
+        assert transcriber.config["batch_size"] == 3
+        cfg["transcribe_backend"] = "faster_whisper"
+        cfg["model_path"] = "second"
+        submit("changed model")
+        cfg["device"] = "cuda"
+        submit("changed device")
+
+    monkeypatch.setattr(mcp_stdio, "serve", serve)
+    assert mcp_stdio.main() == 0
+    assert loads == [(first_backend, "first", "cpu"),
+                     ("faster_whisper", "second", "cpu"),
+                     ("faster_whisper", "second", "cuda")]
+    assert alternate.unload.call_count == int(first_backend == "whisper_cpp")
+    assert decode.call_count == 4
+
+
 def test_stdio_oversize_frame_and_diagnostic_isolation(monkeypatch, capsys):
     from core.server import mcp_stdio
     monkeypatch.setattr(mcp_stdio, "MAX_MESSAGE", 80)

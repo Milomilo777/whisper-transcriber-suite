@@ -2591,6 +2591,22 @@ def release_default_model() -> bool:
     return True
 
 
+def release_alternate_backend() -> None:
+    """Unload the cached alternate engine before a standalone server switches models."""
+    global _ALT_BACKEND, _ALT_BACKEND_NAME
+    with _ALT_BACKEND_LOCK:
+        backend = _ALT_BACKEND
+        _ALT_BACKEND = None
+        _ALT_BACKEND_NAME = ""
+    if backend is not None:
+        try:
+            backend.unload()
+        except Exception:
+            logger.debug("Alternate backend unload failed", exc_info=True)
+        del backend
+        gc.collect()
+
+
 def release_language_model() -> bool:
     """Free the web/LAN language model, if one is loaded; True when something was freed."""
     with _LM_SLOT_LOCK:

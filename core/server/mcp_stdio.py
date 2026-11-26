@@ -72,6 +72,23 @@ def serve(manager: Any, source: TextIO, output: TextIO) -> None:
             output.flush()
 
 
+def _model_settings(cfg: dict[str, Any], target: tuple[str, str]) -> tuple[object, ...] | None:
+    backend = str(cfg.get("transcribe_backend") or "faster_whisper").strip().lower()
+    if backend == "faster_whisper":
+        return (backend, *target, cfg.get("model_path"))
+    if backend == "whisper_cpp":
+        return (backend, *target)
+    if backend == "mlx_whisper":
+        from core.backends.mlx_whisper_be import model_folder
+
+        return (backend, *target, model_folder(cfg))
+    if backend == "nvidia_asr":
+        return (backend, *target, cfg.get("nvidia_asr_model_id"), cfg.get("nvidia_asr_device"),
+                cfg.get("nvidia_asr_dtype"), cfg.get("nvidia_asr_chunk_seconds"))
+    # Cloud engines refresh their credentials and connection settings each job.
+    return None
+
+
 def main() -> int:
     _restore_windows_pipes()
     if sys.stdin is None or sys.stdout is None:
@@ -86,15 +103,27 @@ def main() -> int:
         from core.server import _download_url, _real_transcribe
         from core.server.jobs import JobManager
 
+        loaded_settings: tuple[object, ...] | None = None
+
         def transcribe(task: Any, progress_cb: Any = None, log_cb: Any = None,
                        language_cb: Any = None) -> None:
+            nonlocal loaded_settings
             from core import config, transcriber
+            from core.hardware import detect_device_for
+
             cfg = config.load_config()
             transcriber.config.update(cfg)
-            from core.hardware import detect_device_for
-            transcriber.device, transcriber.compute_type = detect_device_for(cfg)
-            if not transcriber.load_existing_model(lambda text: logging.info("%s", text)):
-                raise RuntimeError("Configured model is unavailable; install it using the app")
+            target = detect_device_for(cfg)
+            requested = _model_settings(cfg, target)
+            if requested is None or requested != loaded_settings or not transcriber.is_model_ready():
+                loaded_settings = None
+                transcriber.release_language_model()
+                transcriber.release_default_model()
+                transcriber.release_alternate_backend()
+                transcriber.device, transcriber.compute_type = target
+                if not transcriber.load_existing_model(lambda text: logging.info("%s", text)):
+                    raise RuntimeError("Configured model is unavailable; install it using the app")
+                loaded_settings = requested
             _real_transcribe(task, progress_cb, log_cb, language_cb)
 
         manager = JobManager(transcribe, download_fn=_download_url)
