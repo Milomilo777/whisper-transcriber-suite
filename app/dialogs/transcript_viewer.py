@@ -195,6 +195,18 @@ def _write_text_atomically(
     )
 
 
+def _managed_repair_path(path: str | None) -> str | None:
+    if not path:
+        return None
+    from core._checkpoint import partials_dir
+    from core.media_audio import repair_input
+
+    copy = repair_input(partials_dir(), os.path.basename(path))
+    if copy is not None and os.path.normcase(os.path.abspath(path)) == os.path.normcase(str(copy)):
+        return str(copy)
+    return None
+
+
 def _find_media_next_to(json_path: str) -> str | None:
     """Find a media file that pairs with the JSON next to it.
 
@@ -761,6 +773,8 @@ class TranscriptViewer(tk.Toplevel):
         media_path: str | None = None,
         initial_seek_seconds: float | None = None,
         language: str | None = None,
+        *,
+        playback_path: str | None = None,
     ) -> None:
         super().__init__(master)
         self.title(_("Transcript — {name}", name=os.path.basename(json_path)))
@@ -811,11 +825,15 @@ class TranscriptViewer(tk.Toplevel):
         self._export_reports: list[viewer_exports.ExportReport] = []
         self._export_remaining: set[str] = set()  # files of the running job not yet dealt with
         self._export_poll_id: str | None = None
-        self.media_path = (media_path if media_path and os.path.isfile(media_path)
-                           else _find_media_next_to(json_path))
+        if playback_path:
+            self.media_path = _managed_repair_path(playback_path)
+        else:
+            self.media_path = (media_path if media_path and os.path.isfile(media_path)
+                               else _find_media_next_to(json_path))
         # Playback can use a neighboring copy. A rerun of a known source must
         # fail if that exact file is missing, even when another file matches.
         self._comparison_media_path = media_path or self.media_path
+        self._comparison_repair_path = playback_path
         # The transcript's language when the opener knows it (a queue task); the JSON itself has
         # none. Picks the regional font for Han text without kana (app.theme.script_fonts);
         # None (file picker, search results) leaves Han to Tk's default fallback font.
@@ -863,13 +881,11 @@ class TranscriptViewer(tk.Toplevel):
 
         self._build_widgets()
         self._load_segments()
-        if self.segments and self.segments[0].get("audio_repaired") is True:
-            from core.media_audio import repair_input
-            from core._checkpoint import partials_dir
-
-            copy = repair_input(partials_dir(), os.path.basename(media_path or ""))
-            if copy is None or media_path is None or os.path.abspath(media_path) != str(copy):
-                self.media_path = None
+        if not playback_path and self.segments and self.segments[0].get("audio_repaired") is True:
+            self.media_path = _managed_repair_path(media_path)
+            self._refresh_media_label()
+            if self.media_path is None:
+                self._disable_embedded_playback()
         self._populate_listbox()
         self._load_chapters()
         if self.vlc_mod is not None and self.media_path:
@@ -948,15 +964,10 @@ class TranscriptViewer(tk.Toplevel):
         )
         self._search_clear.pack(side="left", padx=(4, 0))
 
-        media_label = (
-            _("Media: {name}", name=os.path.basename(self.media_path))
-            if self.media_path
-            else _("Media: (none found next to JSON)")
-        )
         # Pack the file name last so a long name yields space to the search controls.
-        ttk.Label(searchbar, text=media_label, foreground=tokens.themed(tokens.TEXT_MUTED)).pack(
-            side="right", padx=8,
-        )
+        self._media_label = ttk.Label(searchbar, foreground=tokens.themed(tokens.TEXT_MUTED))
+        self._refresh_media_label()
+        self._media_label.pack(side="right", padx=8)
 
         toolbar = ttk.Frame(outer)
         toolbar.pack(fill="x", pady=(0, 6))
@@ -1162,6 +1173,12 @@ class TranscriptViewer(tk.Toplevel):
         else:
             notify(self, _("Paragraphs exported."), "success")
 
+    def _refresh_media_label(self) -> None:
+        self._media_label.configure(text=(
+            _("Media: {name}", name=os.path.basename(self.media_path))
+            if self.media_path else _("Media: (none found next to JSON)")
+        ))
+
     def _transcribe_again(self) -> None:
         from core.media_audio import audio_ordinal
         from core.presets import PresetStore
@@ -1187,15 +1204,17 @@ class TranscriptViewer(tk.Toplevel):
         if dialog.result is not None and callable(queue):
             tracks = {audio_ordinal(cue.get("audio_track")) for cue in self.segments}
             tracks.discard(None)
-            # A repaired playback file contains just the salvaged track.
-            if any(cue.get("audio_repaired") is True for cue in self.segments):
+            if not self._comparison_repair_path and any(
+                cue.get("audio_repaired") is True for cue in self.segments
+            ):
                 tracks.clear()
             track = next(iter(tracks)) if len(tracks) == 1 else None
             if not self.segments:
                 find_track = getattr(self.master, "comparison_audio_track", None)
                 if callable(find_track):
                     track = find_track(media, self.json_path)
-            queue(media, self.json_path, choices[dialog.result][1], audio_track=track)
+            queue(media, self.json_path, choices[dialog.result][1],
+                  audio_track=track, repair_path=self._comparison_repair_path)
 
     def _open_comparison(self) -> None:
         parent = self.master
@@ -4306,6 +4325,8 @@ def open_viewer(
     initial_seek_seconds: float | None = None,
     language: str | None = None,
     media_path: str | None = None,
+    *,
+    playback_path: str | None = None,
 ) -> "TranscriptViewer | None":
     """Open the viewer, or bring forward the one already showing this JSON.
 
@@ -4315,7 +4336,8 @@ def open_viewer(
     result" action. ``language`` is the transcript's language when the
     caller knows it (``TranscriptViewer.language``). ``media_path`` is the
     task's real source; when it is missing on disk the viewer looks for
-    media next to the JSON instead. Returns the viewer, or None when
+    media next to the JSON instead. The playback path can point to a
+    repaired copy of the source audio. Returns the viewer, or None when
     nothing was opened.
     """
     if json_path is None:
@@ -4344,6 +4366,14 @@ def open_viewer(
         if alive:
             if media_path:
                 existing._comparison_media_path = media_path
+            if playback_path:
+                existing._comparison_repair_path = playback_path
+                if existing.media_path is None:
+                    existing.media_path = _managed_repair_path(playback_path)
+                    if existing.media_path:
+                        existing._refresh_media_label()
+                        if existing.vlc_mod is not None:
+                            existing._init_vlc_player()
             if language and not existing.language:
                 existing.language = language
                 existing._refresh_quality()
@@ -4357,5 +4387,5 @@ def open_viewer(
         _OPEN_VIEWERS.pop(key, None)
     return TranscriptViewer(
         master, json_path, media_path=media_path,
-        initial_seek_seconds=initial_seek_seconds, language=language,
+        initial_seek_seconds=initial_seek_seconds, language=language, playback_path=playback_path,
     )

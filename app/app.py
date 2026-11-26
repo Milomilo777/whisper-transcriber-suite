@@ -2083,14 +2083,14 @@ class App(tk.Tk):
         # name misses re-runs ("name (1).json") and relocated outputs.
         if json_path and os.path.isfile(json_path):
             _open_transcript_viewer(
-                self, json_path, language=language, media_path=playback_path or file_path
+                self, json_path, language=language, media_path=file_path, playback_path=playback_path,
             )
             return
         base, _unused = os.path.splitext(file_path)
         guessed = base + ".json"
         if os.path.isfile(guessed):
             _open_transcript_viewer(
-                self, guessed, language=language, media_path=playback_path or file_path
+                self, guessed, language=language, media_path=file_path, playback_path=playback_path,
             )
         else:
             # The viewer reads and saves .json files only; a run that wrote
@@ -4707,7 +4707,7 @@ class App(tk.Tk):
 
     def queue_transcript_comparison(
         self, media_path: str, source_json: str, preset: dict[str, Any], *,
-        audio_track: int | None = None,
+        audio_track: int | None = None, repair_path: str | None = None,
     ) -> bool:
         """Queue an independent rerun without applying a preset to the app."""
         from app.domain.languages import SUBTITLE_LANGUAGES
@@ -4727,6 +4727,13 @@ class App(tk.Tk):
             return False
         task = TranscriptionTask(media_path)
         task.audio_track = audio_track
+        if repair_path:
+            task.repair_name = os.path.basename(repair_path)
+            copy = task_repair_path(task)
+            if not copy or not _same_file(copy, repair_path):
+                show_error(self, _("File missing"),
+                           _("That file is no longer at:\n{path}", path=repair_path))
+                return False
         if self._same_job_active(task):
             show_error(self, _("Transcribe again"), _("This file is already in the queue."))
             return False
@@ -4739,9 +4746,11 @@ class App(tk.Tk):
             return False
         if self._same_job_active(task):
             return False  # another job was queued while readiness showed a dialog
-        if not os.path.isfile(media_path):
+        missing = next((path for path in (media_path, repair_path)
+                        if path and not os.path.isfile(path)), None)
+        if missing:
             show_error(self, _("File missing"),
-                       _("That file is no longer at:\n{path}", path=media_path))
+                       _("That file is no longer at:\n{path}", path=missing))
             return False
         task.comparison_source = os.path.abspath(source_json)
         configured = options.get("output_formats", self.app_config.get("output_formats"))

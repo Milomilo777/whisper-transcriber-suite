@@ -20,6 +20,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Keep recovered audio available when clearing a completed job while a comparison rerun still needs it.
 - Keep the original audio track when transcribing again from the transcript viewer.
 - Report denied media reads and writes as access errors, including macOS privacy denials.
 - Resume interrupted transcription from the saved decode position even when aligned cues extend past it.
