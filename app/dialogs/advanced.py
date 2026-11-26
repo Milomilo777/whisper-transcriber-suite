@@ -2442,6 +2442,8 @@ class AdvancedDialog(tk.Toplevel):
         self._vad_threshold.set(0.5)
         self._vad_speech_pad.set(400)
         self._sync_vad_controls_state()
+        self._gpu_temperature_enabled.set(DEFAULT_CONFIG["gpu_temperature_limit_enabled"])
+        self._gpu_temperature_c.set(str(DEFAULT_CONFIG["gpu_temperature_limit_c"]))
         self._hallucination_detect.set(True)
         self._alignment_enabled.set(False)
         self._demucs_enabled.set(False)

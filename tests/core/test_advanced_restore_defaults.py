@@ -31,6 +31,8 @@ def _dirty_dialog(sync_calls: list[str]) -> types.SimpleNamespace:
     plus a couple of untouched fields that must survive unchanged."""
     return types.SimpleNamespace(
         _vad_enabled=_V(False),
+        _gpu_temperature_enabled=_V(False),
+        _gpu_temperature_c=_V("90"),
         _vad_min_silence=_V(1500),
         _vad_threshold=_V(0.2),
         _vad_speech_pad=_V(900),
@@ -96,6 +98,17 @@ def test_restore_transcription_defaults_resyncs_denoise_combobox_state() -> None
         "enabled/disabled state, and resetting _denoise_enabled must "
         "re-sync the strength combobox's enabled/disabled state"
     )
+
+
+def test_restore_transcription_defaults_resets_gpu_temperature_limit() -> None:
+    from app.dialogs import advanced as adv
+    from core.config import DEFAULT_CONFIG
+
+    dlg = _dirty_dialog([])
+    adv.AdvancedDialog._restore_transcription_defaults(dlg)
+
+    assert dlg._gpu_temperature_enabled.get() is DEFAULT_CONFIG["gpu_temperature_limit_enabled"]
+    assert dlg._gpu_temperature_c.get() == str(DEFAULT_CONFIG["gpu_temperature_limit_c"])
 
 
 def test_defaults_match_core_config_default_config() -> None:
