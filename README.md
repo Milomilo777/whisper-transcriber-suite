@@ -8,7 +8,7 @@
 
 [![CI](https://github.com/Milomilo777/whisper-transcriber-suite/actions/workflows/ci.yml/badge.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/actions/workflows/ci.yml)
 [![release](https://img.shields.io/github/v/release/Milomilo777/whisper-transcriber-suite?label=release&color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest)
-[![downloads](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/total?label=downloads&color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite/releases)
+[![downloads](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/badges/total.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases)
 [![License: BSD-3-Clause](https://img.shields.io/badge/license-BSD--3--Clause-green.svg)](LICENSE)
 
 ### [Download for Windows](https://github.com/Milomilo777/whisper-transcriber-suite/releases/latest)
@@ -799,18 +799,19 @@ runs through Rosetta.
 release — older versions stay published and their counts are never
 reset):
 
-[![all versions](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/total?label=all%20versions&color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite/releases)
-[![v2.3.0](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/v2.3.0/total?label=v2.3.0&color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v2.3.0) [![v2.3.1](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/v2.3.1/total?label=v2.3.1&color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v2.3.1)
-[![v2.2.0](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/v2.2.0/total?label=v2.2.0&color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v2.2.0)
-[![v2.1.0](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/v2.1.0/total?label=v2.1.0&color=207a80)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v2.1.0)
-[![v2.0.0](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/v2.0.0/total?label=v2.0.0&color=8a8a8a)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v2.0.0)
-[![v1.9.3](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/v1.9.3/total?label=v1.9.3&color=8a8a8a)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.9.3)
-[![v1.9.1](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/v1.9.1/total?label=v1.9.1&color=8a8a8a)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.9.1)
-[![v1.9.0](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/v1.9.0/total?label=v1.9.0&color=8a8a8a)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.9.0)
-[![v1.8.0](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/v1.8.0/total?label=v1.8.0&color=8a8a8a)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.8.0)
-[![v1.7.0](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/v1.7.0/total?label=v1.7.0&color=8a8a8a)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.7.0)
-[![v1.6.0](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/v1.6.0/total?label=v1.6.0&color=8a8a8a)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.6.0)
-[![v1.5.0](https://img.shields.io/github/downloads/Milomilo777/whisper-transcriber-suite/v1.5.0/total?label=v1.5.0&color=8a8a8a)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.5.0)
+[![all versions](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/badges/total-all-versions.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases)
+[![v2.4.0](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/badges/v2.4.0.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v2.4.0)
+[![v2.3.0](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/badges/v2.3.0.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v2.3.0) [![v2.3.1](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/badges/v2.3.1.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v2.3.1)
+[![v2.2.0](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/badges/v2.2.0.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v2.2.0)
+[![v2.1.0](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/badges/v2.1.0.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v2.1.0)
+[![v2.0.0](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/badges/v2.0.0-grey.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v2.0.0)
+[![v1.9.3](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/badges/v1.9.3-grey.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.9.3)
+[![v1.9.1](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/badges/v1.9.1-grey.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.9.1)
+[![v1.9.0](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/badges/v1.9.0-grey.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.9.0)
+[![v1.8.0](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/badges/v1.8.0-grey.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.8.0)
+[![v1.7.0](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/badges/v1.7.0-grey.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.7.0)
+[![v1.6.0](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/badges/v1.6.0-grey.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.6.0)
+[![v1.5.0](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/badges/v1.5.0-grey.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v1.5.0)
 
 ## System requirements
 
