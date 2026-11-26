@@ -17,7 +17,7 @@ def test_promo_timing_and_resources():
     svg = (ROOT / "docs/img/promo-release.svg").read_text(encoding="utf-8")
     check_svg(svg, BASELINE)
     assert animation_timing(svg)["cycle"] == 36
-    assert "Saved presets" in svg and "Subtitle quality review" in svg
+    assert "Pick the audio track · 2.5" in svg and "Compare a re-run" in svg
 
 
 def test_shortened_real_hold_is_rejected():

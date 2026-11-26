@@ -1,34 +1,62 @@
-"""Offline checks for the 2.4 release-page draft; no network or GUI required."""
+"""Offline checks for the release notes, website and promo animation."""
 from __future__ import annotations
 
 import argparse
 import json
 import re
+import sys
 import xml.etree.ElementTree as ET
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
+if not __package__:
+    sys.path.insert(0, str(ROOT))
+
+from core.updates import release_headline, release_highlights
+from tools.check_public_release import check_release_notes, release_placeholders
+
 LANGUAGES = "en ar bg bn ca cs da de el es fa fi fil fr he hi hr hu id it ja ko lt lv ms nb nl pl pt pt-br ro ru sk sl sr sv th tr uk vi zh-cn zh-tw".split()
 FEATURES = ["presets", "subtitle-quality", "download-limit"]
 RELEASE = "https://github.com/Milomilo777/whisper-transcriber-suite/releases/"
+BADGES = "https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/badges/"
 
 
-def check_release_artifacts(notes: str) -> None:
+def check_release_artifacts(notes: str, *, allow_draft: bool = False) -> None:
     """Validate the public download table without publishing build identities."""
-    try:
-        from tools.check_public_release import check_release_notes
-    except ModuleNotFoundError:
-        from check_public_release import check_release_notes
-
-    check_release_notes(notes)
+    check_release_notes(notes, allow_draft=allow_draft)
     rows = [line for line in notes.splitlines() if line.startswith("| [")]
     assert len(rows) == 4, "expected four release artifact rows"
-    for row in rows:
+    for row, kind in zip(rows, ("INSTALLER", "PORTABLE", "ARM64", "X64")):
         cells = [part.strip() for part in row.strip("|").split("|")]
         assert len(cells) == 3, "artifact row must contain file, platform and size only"
-        assert re.fullmatch(r"[1-9][0-9]* (?:B|KB|MB|GB)", cells[2]), "invalid artifact size"
+        is_size = re.fullmatch(r"[1-9][0-9]* (?:B|KB|MB|GB)", cells[2])
+        assert is_size or (allow_draft and cells[2] == f"SIZE_{kind}"), "invalid artifact size"
+
+
+def check_release_page_250(notes: str) -> tuple[str, ...]:
+    notes = notes.replace("\r\n", "\n").replace("\r", "\n")
+    check_release_artifacts(notes, allow_draft=True)
+    assert len(notes) <= 5300, "release body exceeds 5,300 characters"
+    assert re.search(r"^Released (?:RELEASE_DATE|\d{4}-\d{2}-\d{2})\.$", notes, re.M), "missing release date"
+
+    headline = notes.splitlines()[0].replace("**", "")
+    assert release_headline(notes) == headline and 0 < len(headline) <= 160, "headline changes in the update bar"
+    section = re.search(r"^## What's new in 2\.5\n(.*?)(?=^## |\Z)", notes, re.M | re.S)
+    assert section, "missing 2.5 highlights"
+    bullets = re.findall(r"^(?:[-+*]|\d+[.)]) .+$", section[1], re.M)
+    assert 3 <= len(bullets) <= 7 and all(re.match(r"- \*\*[^*]+\*\* .+", bullet) for bullet in bullets), "invalid highlight bullets"
+    assert release_highlights(notes) == tuple(bullet[2:].replace("**", "") for bullet in bullets[:3]), "highlights change in the update bar"
+
+    for alt, filename, target in (("downloads", "total.svg", RELEASE.rstrip("/")),
+                                  ("v2.5.0 downloads", "v2.5.0-this-version.svg", RELEASE + "tag/v2.5.0")):
+        assert f"[![{alt}]({BADGES}{filename})]({target})" in notes, f"missing badge: {filename}"
+    files = ("Installer-Windows-v2.5.0.exe", "Portable-Windows-v2.5.0.zip",
+             "v2.5.0-macOS-arm64.dmg", "v2.5.0-macOS-x64.dmg")
+    for row, filename in zip((line for line in notes.splitlines() if line.startswith("| [")), files):
+        assert f"]({RELEASE}download/v2.5.0/WhisperTranscriberSuite-{filename})" in row, f"invalid download: {filename}"
+    return release_placeholders(notes)
 
 
 def animation_timing(svg: str) -> dict:
@@ -196,6 +224,9 @@ def main() -> int:
     args = parser.parse_args()
     root = args.root
     check_release_artifacts((root / "docs/releases/2.4.0.md").read_text(encoding="utf-8"))
+    placeholders = check_release_page_250((root / "docs/releases/2.5.0.md").read_text(encoding="utf-8"))
+    if placeholders:
+        print(f"Draft 2.5.0 has unfilled release placeholders: {', '.join(placeholders)}")
     if args.baseline_svg:
         old_svg = args.baseline_svg.read_text(encoding="utf-8")
         ET.fromstring(old_svg)
