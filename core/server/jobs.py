@@ -1317,12 +1317,16 @@ class JobManager:
     def _export_local_outputs(self, job: Job) -> None:
         """Export without replacing existing files or following output links."""
         from pathlib import Path
+        from core.server.mcp import _ToolError
         from core.server.mcp_control import allowed_file
         from core.server.mcp_files import confined_open
-        source, _root = allowed_file(job.local_source, {"mcp_allowed_folders": [job.local_root]})
+        try:
+            source, _root = allowed_file(job.local_source, {"mcp_allowed_folders": [job.local_root]})
+        except _ToolError as exc:
+            raise ValueError(str(exc)) from exc
         for index, (_fmt, path) in enumerate(job.outputs):
             target = source.parent / f"{source.stem[:80]}.{job.job_id}.{index}{Path(path).suffix}"
-            # Exclusive creation refuses both existing files and dangling symlinks.
+            # Publish only after the copy is complete and synced.
             with open(path, "rb") as src, confined_open(source.parent, Path(job.local_root), target.name, "xb") as dest:
                 shutil.copyfileobj(src, dest)
                 dest.flush()

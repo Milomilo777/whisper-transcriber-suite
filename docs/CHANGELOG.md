@@ -36,6 +36,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Server jobs keep per-job settings out of JSON transcript downloads.
 - Server jobs skip chapter files when looking for an unrecorded JSON transcript.
 - Cancelling a second reading of suspected missing speech preserves the original text in the interrupted span.
+- Save assistant exports beside the original media only after the complete file is written.
+- Keep assistant jobs recoverable when the original media moves during transcription.
 - Subtitle cues end at the preceding speech when a timestamp overshoots into voice activity detection padding.
 - A subtitle that begins at a silence cut now starts with its speech instead of covering the preceding gap.
 

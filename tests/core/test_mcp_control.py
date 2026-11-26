@@ -1,4 +1,5 @@
 """Headless assistant-control security and transport checks."""
+import errno
 import io
 import json
 from unittest.mock import Mock
@@ -180,6 +181,60 @@ def test_local_job_preserves_original_and_exports_before_done(tmp_path):
         manager._export_local_outputs(job)
     assert exported.read_text() == "existing"
     manager.stop()
+
+
+def test_local_export_publishes_only_complete_output(tmp_path, monkeypatch):
+    from core.server import jobs
+
+    source = tmp_path / "media.wav"
+    source.write_bytes(b"original")
+    output = tmp_path / "archived.txt"
+    output.write_bytes(b"complete transcript")
+    job = jobs.Job("job", "upload", ["txt"], local_source=str(source),
+                   local_root=str(tmp_path), outputs=[("txt", str(output))])
+    manager = object.__new__(jobs.JobManager)
+    target = tmp_path / "media.job.0.txt"
+
+    with monkeypatch.context() as patch:
+        def interrupted_copy(src, dest):
+            dest.write(src.read(4))
+            assert not target.exists()
+            raise OSError(errno.ENOSPC, "disk full")
+
+        patch.setattr(jobs.shutil, "copyfileobj", interrupted_copy)
+        with pytest.raises(OSError, match="disk full"):
+            manager._export_local_outputs(job)
+
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["archived.txt", "media.wav"]
+    manager._export_local_outputs(job)
+    assert target.read_bytes() == output.read_bytes()
+
+
+def test_local_job_retains_transcript_if_original_media_is_moved(tmp_path):
+    from pathlib import Path
+    from core.server.jobs import JobManager, STATUS_ERROR
+
+    source = tmp_path / "media.wav"
+    source.write_bytes(b"original")
+
+    def transcribe(task, *_args):
+        source.rename(source.with_name("moved.wav"))
+        result = Path(task.file_path).with_suffix(".txt")
+        result.write_text("transcript", encoding="utf-8")
+        task.output_paths = [str(result)]
+
+    manager = JobManager(transcribe, jobs_root=str(tmp_path / "jobs"),
+                         outputs_root=str(tmp_path / "outputs"), record_history=False)
+    try:
+        job_id = manager.submit_local(str(source), str(tmp_path), ["txt"])
+        job = manager.get(job_id)
+        manager._run_one(job)
+        assert job.status == STATUS_ERROR
+        assert job.warning == "Results retained by the server; saving beside the original failed."
+        kept = manager.output_path(job_id, "txt")
+        assert kept and Path(kept).read_text(encoding="utf-8") == "transcript"
+    finally:
+        manager.stop()
 
 
 def test_stdio_oversize_frame_and_diagnostic_isolation(monkeypatch, capsys):
