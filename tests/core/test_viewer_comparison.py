@@ -1,15 +1,18 @@
 """Comparison reruns use indexed outputs and retain the original transcript."""
 from __future__ import annotations
 
+import os
 import time
 from types import SimpleNamespace
 
 import pytest
 
 from app import app as app_module
-from app.services.transcription_service import TranscriptionService
+from app.dialogs import transcript_viewer
+from app.services.transcription_service import TranscriptionService, transcribe_command
 from core import segment_ops
 from core.history import HistoryDB
+from core.presets import PresetStore
 
 
 def test_comparison_groups_one_to_many_and_retains_unmatched_cues():
@@ -80,6 +83,71 @@ def test_queue_comparison_preserves_source_and_freezes_preset(tmp_path, monkeypa
     assert not app_module.App.queue_transcript_comparison(fake, str(tmp_path / "missing.wav"), str(source), {})
     assert fake.queue == [task]
     assert source.read_bytes() == b"original"
+
+
+@pytest.mark.parametrize(("cues", "track", "recorded_in"), [
+    ([{"audio_track": 1}, {"audio_track": 1}], 1, None),
+    ([{"audio_track": 0}], 0, None),
+    ([{"audio_track": 1}, {}], 1, None),
+    ([{"audio_track": 1}, {"audio_track": 0}], None, None),
+    ([{"audio_track": 1, "audio_repaired": True}], None, None),
+    ([{"audio_track": True}], None, None),
+    ([{"text": "Legacy transcript"}], None, None),
+    ([], 1, "queue"),
+    ([], 1, "history"),
+    ([], 1, "history aliases"),
+])
+def test_viewer_comparison_reruns_the_original_audio_track(
+    tmp_path, monkeypatch, cues, track, recorded_in,
+):
+    media = tmp_path / "گفتار دو ترک.mkv"
+    media.touch()
+    source_json = media.with_suffix(".json")
+    source_json.write_text("[]", encoding="utf-8")
+    selected = []
+    app = SimpleNamespace(
+        queue=[], app_config={}, history=None,
+        _same_job_active=lambda task: selected.append(task.audio_track) or False,
+        _confirm_english_only_model=lambda **kwargs: True,
+        _ensure_transcribe_ready=lambda: True,
+        _selected_transcribe_language=lambda: None,
+        refresh=lambda: None,
+        show_task_in_queue=lambda task: None,
+    )
+    app.queue_transcript_comparison = lambda *args, **kwargs: (
+        app_module.App.queue_transcript_comparison(app, *args, **kwargs)
+    )
+    app.comparison_audio_track = lambda *args: app_module.App.comparison_audio_track(app, *args)
+    viewer = SimpleNamespace(
+        _comparison_media_path=str(media), _app_config=lambda: app.app_config,
+        master=app, json_path=str(source_json), segments=cues,
+    )
+    if recorded_in == "history aliases":
+        for path, attribute in ((media, "_comparison_media_path"), (source_json, "json_path")):
+            alias = path.with_suffix(path.suffix.upper())
+            if not alias.exists():
+                os.link(path, alias)
+            setattr(viewer, attribute, str(alias))
+    monkeypatch.setattr(PresetStore, "load", lambda store: {})
+    monkeypatch.setattr(transcript_viewer, "ComparisonPresetDialog",
+                        lambda *args: SimpleNamespace(result=0))
+
+    with HistoryDB(tmp_path / "history.db") as history:
+        if recorded_in == "queue":
+            original = app_module.TranscriptionTask(str(media))
+            original.status = "finished"
+            original.audio_track = track
+            original.output_paths = [viewer.json_path]
+            app.queue.append(original)
+        if recorded_in in ("history", "history aliases"):
+            app.history = history
+            for path, ordinal in ((str(source_json), track), (str(tmp_path / "new.json"), 0)):
+                source = history.insert_transcription(str(media), run_options={"audio_track": ordinal})
+                history.finish_transcription(source, "finished", output_paths=[path])
+        transcript_viewer.TranscriptViewer._transcribe_again(viewer)
+
+    assert selected == [track, track]
+    assert transcribe_command(app.queue[-1])["audio_track"] == track
 
 
 def test_preference_persists_without_deleting_either_file(tmp_path):

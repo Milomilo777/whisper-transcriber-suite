@@ -27,7 +27,7 @@ from urllib.parse import quote
 from urllib.request import pathname2url
 
 from .config import user_data_dir
-from .paths import path_key
+from .paths import path_key, same_file
 
 logger = logging.getLogger(__name__)
 
@@ -817,6 +817,28 @@ class HistoryDB:
                 "SELECT * FROM transcriptions ORDER BY id DESC LIMIT ?", (limit,)
             )
             return [_row_to_dict(r, ("output_paths", "run_options")) for r in cur.fetchall()]
+
+    def audio_track_for_transcript(self, media_path: str, transcript_path: str) -> int | None:
+        """Look up the track for this output, including JSON with no cues."""
+        from .media_audio import audio_ordinal
+
+        with self._write_lock:
+            rows = self._conn.execute(
+                "SELECT file_path, output_paths, run_options FROM transcriptions "
+                "WHERE status='finished' AND run_options LIKE ? ORDER BY id DESC",
+                ('%"audio_track"%',),
+            ).fetchall()
+        for row in rows:
+            saved_media = row["file_path"]
+            if not isinstance(saved_media, str) or not same_file(saved_media, media_path):
+                continue
+            saved = _row_to_dict(row, ("output_paths", "run_options"))
+            outputs, options = saved["output_paths"], saved["run_options"]
+            if isinstance(outputs, list) and any(
+                isinstance(path, str) and same_file(path, transcript_path) for path in outputs
+            ):
+                return audio_ordinal(options.get("audio_track")) if isinstance(options, dict) else None
+        return None
 
     def record_transcript_comparison(self, original: str, result: str) -> None:
         """Remember two saved files without changing an existing preference."""

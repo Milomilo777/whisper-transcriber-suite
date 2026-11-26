@@ -5,6 +5,7 @@ import copy
 import logging
 import os
 import re
+import sqlite3
 import sys
 import threading
 import time
@@ -4683,8 +4684,30 @@ class App(tk.Tk):
         self.log(f"Queued: {os.path.basename(text)}")
         self.refresh()
 
+    def comparison_audio_track(self, media_path: str, source_json: str) -> int | None:
+        """Recover the selected track when an empty transcript has no cue metadata."""
+        from core.media_audio import audio_ordinal
+
+        for previous in reversed(self.queue):
+            if previous.status != "finished" or not _same_file(previous.file_path, media_path):
+                continue
+            original = task_transcript_json(previous)
+            if original and _same_file(original, source_json):
+                track = audio_ordinal(getattr(previous, "audio_track", None))
+                if track is not None:
+                    return track
+                break
+        history = self.history
+        if history is not None:
+            try:
+                return history.audio_track_for_transcript(media_path, source_json)
+            except sqlite3.Error:
+                logger.warning("Could not read the original transcription's audio track", exc_info=True)
+        return None
+
     def queue_transcript_comparison(
-        self, media_path: str, source_json: str, preset: dict[str, Any],
+        self, media_path: str, source_json: str, preset: dict[str, Any], *,
+        audio_track: int | None = None,
     ) -> bool:
         """Queue an independent rerun without applying a preset to the app."""
         from app.domain.languages import SUBTITLE_LANGUAGES
@@ -4703,6 +4726,7 @@ class App(tk.Tk):
             show_error(self, _("Transcribe again"), _("This preset uses a different model."))
             return False
         task = TranscriptionTask(media_path)
+        task.audio_track = audio_track
         if self._same_job_active(task):
             show_error(self, _("Transcribe again"), _("This file is already in the queue."))
             return False

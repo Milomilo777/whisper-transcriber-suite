@@ -1,6 +1,8 @@
 """Prepare failures keep their concrete cause; terminal tasks are not retried."""
 from __future__ import annotations
 
+import errno
+import os
 import subprocess
 from types import SimpleNamespace
 
@@ -23,6 +25,49 @@ def test_failed_probe_reports_called_process_family(monkeypatch, tmp_path):
     assert clue["failure_site"] == "worker.prepare"
     assert clue["exception_family"] == "subprocess.CalledProcessError"
     assert "invalid media" not in str(clue)
+
+
+@pytest.mark.parametrize("denied_errno", [errno.EPERM, errno.EACCES])
+def test_probe_access_denial_keeps_os_error(monkeypatch, tmp_path, denied_errno):
+    audio = tmp_path / "گفتار نمونه.wav"
+    audio.touch()
+    detail = f"{audio}: {os.strerror(denied_errno)}\n"
+    monkeypatch.setattr(tr.subprocess, "run", lambda command, **kwargs: subprocess.CompletedProcess(
+        command, 1, stdout="", stderr=detail))
+
+    with pytest.raises(PermissionError) as caught:
+        tr.get_duration(str(audio))
+
+    assert caught.value.filename == str(audio)
+    clue = failure_clue.worker_clue(caught.value)
+    assert clue["failure_site"] == "worker.prepare"
+    assert clue["exception_family"] == "PermissionError"
+    assert clue["observed_code"] == "access_denied"
+    assert clue["os_error"] == str(denied_errno)
+    assert str(audio) not in str(clue)
+
+
+def test_output_operation_not_permitted_is_access_denied():
+    clue = failure_clue.worker_clue(
+        PermissionError(errno.EPERM, os.strerror(errno.EPERM)), site="worker.output",
+    )
+    assert clue["observed_code"] == "access_denied"
+    assert clue["os_error"] == str(errno.EPERM)
+
+
+def test_probe_does_not_treat_another_paths_error_as_input_denial(monkeypatch, tmp_path):
+    audio = tmp_path / "input.wav"
+    audio.touch()
+    detail = f"{tmp_path / 'other.wav'}: {os.strerror(errno.EPERM)}\n"
+    monkeypatch.setattr(tr.subprocess, "run", lambda command, **kwargs: subprocess.CompletedProcess(
+        command, 1, stdout="", stderr=detail))
+
+    with pytest.raises(RuntimeError) as caught:
+        tr.get_duration(str(audio))
+
+    clue = failure_clue.worker_clue(caught.value)
+    assert clue["exception_family"] == "subprocess.CalledProcessError"
+    assert clue["observed_code"] != "access_denied"
 
 
 def test_transcription_continues_after_duration_probe_times_out(monkeypatch, endpoint_case):

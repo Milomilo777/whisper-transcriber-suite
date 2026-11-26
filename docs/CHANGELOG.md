@@ -20,6 +20,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Keep the original audio track when transcribing again from the transcript viewer.
+- Report denied media reads and writes as access errors, including macOS privacy denials.
 - Resume interrupted transcription from the saved decode position even when aligned cues extend past it.
 - Recover the undecoded tail when a legacy checkpoint has a cue and cursor past the end of the audio.
 - Keep engine readiness checks from blocking the interface while native packages load.

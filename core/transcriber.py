@@ -775,9 +775,17 @@ def get_duration(path: str) -> float:
         raise RuntimeError(f"ffprobe timed out for {path}") from e
     if r.returncode != 0 or not r.stdout.strip():
         os.stat(path)  # the source may have disappeared while ffprobe ran
+        # On macOS privacy restrictions can allow stat but deny the probe's read.
+        # Match only FFprobe's exact diagnostic for this input.
+        detail = r.stderr.rstrip("\r\n")
+        if r.returncode > 0:
+            for denied_errno in (errno.EPERM, errno.EACCES):
+                reason = os.strerror(denied_errno)
+                if detail == f"{path}: {reason}":
+                    raise PermissionError(denied_errno, reason, path) from None
         error = RuntimeError(
             f"ffprobe failed (exit={r.returncode}) for {path}: "
-            f"{r.stderr.strip() or 'no output'}"
+            f"{detail.strip() or 'no output'}"
         )
         if r.returncode:
             raise error from subprocess.CalledProcessError(
