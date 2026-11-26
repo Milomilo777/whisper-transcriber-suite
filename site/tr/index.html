@@ -84,7 +84,7 @@
 <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/shots/transcribe.webp" as="image" type="image/webp" imagesrcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" imagesizes="(max-width: 1080px) 72vw, 480px">
 <script src="/js/motion-init.js?v=20260927b"></script>
-<link rel="stylesheet" href="/styles.css?v=20261022a">
+<link rel="stylesheet" href="/styles.css?v=20261126geo">
 
 <script type="application/ld+json">
 {
@@ -906,6 +906,7 @@
       <div class="rail sr" aria-hidden="true"><span class="rail-pulse"></span></div>
       <a class="text-link sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md" rel="noopener">Mimarinin tamamını okuyun<svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
       <p class="muted guide-links">Adım adım kılavuzlar: <a href="/tr/youtube-to-text/">YouTube videosundan metne</a> · <a href="/tr/video-to-srt/">videodan SRT altyazıya</a> · <a href="/tr/speaker-labels/">konuşmacı etiketli dökümler</a></p>
+      <p class="muted guide-links"><a href="/windows-offline-transcription/" hreflang="en">Windows’ta çevrimdışı yazıya dökme (İngilizce)</a></p>
     </div>
   </section>
 
@@ -959,6 +960,13 @@ python gui.py</code></pre>
           <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS — tek satırda kurulum</p>
           <h3>Terminal'e yapıştırın. Bu kadar.</h3>
           <p>Mac'iniz için doğru sürümü indirir (macOS 14+ üzerinde Apple Silicon, aksi takdirde Rosetta aracılığıyla Intel), uygulamayı <code>Applications</code> içine kopyalar ve açar. <code>curl</code> ile indirilen dosyalar karantinaya alınmaz; bu sayede tıklayıp geçmeniz gereken bir "tanımlanamayan geliştirici" uyarısı olmaz.</p>
+          <table class="mac-builds">
+            <thead><tr><th scope="col">Mac</th><th scope="col">En düşük macOS sürümü</th><th scope="col">İndirme</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Intel</bdi></th><td><bdi dir="ltr" translate="no">macOS 12+</bdi></td><td><bdi dir="ltr" translate="no">x64 DMG</bdi></td></tr>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Apple Silicon</bdi></th><td><bdi dir="ltr" translate="no">macOS 14+</bdi></td><td><bdi dir="ltr" translate="no">arm64 DMG</bdi></td></tr>
+            </tbody>
+          </table>
         </div>
         <div class="code-box">
           <button class="copy-btn" type="button" data-copy="#mac-cmd">Kopyala</button>
@@ -976,24 +984,39 @@ python gui.py</code></pre>
       <header class="section-head sr">
         <p class="eyebrow">Karşılaştır</p>
         <h2 id="compare-title">Diğer Whisper uygulamalarına kıyasla nasıl?</h2>
-        <p class="section-lede">Whisper Transcriber Suite, kendi bilgisayarınızda yazıya dökme işlemi yapan ücretsiz ve açık kaynaklı birkaç masaüstü uygulamasından biridir. Başka bir uygulamanın ne zaman daha uygun olacağı da dahil olmak üzere; Subtitle Edit, Vibe ve Buzz ile nasıl karşılaştırıldığını burada görebilirsiniz. Her bilginin kaynağını ve noScribe ile aTrain adlı iki ek uygulamayı içeren <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">karşılaştırmanın tamamını okuyun</a>.</p>
+        <p class="section-lede"><a href="/compare/" hreflang="en">Tam karşılaştırma (İngilizce)</a></p>
       </header>
-      <div class="table-wrap sr">
-        <table class="compare-table">
-          <caption>2026-10-05 tarihinde her projenin kendi README, doküman ve sürümleri üzerinden kontrol edilmiştir. Uygulamalar hızla değişir: Kaynaklar için <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">tam karşılaştırmaya</a> bakın.</caption>
+      <div class="table-wrap sr" tabindex="0" role="region" aria-labelledby="compare-title">
+        <table class="compare-table" aria-describedby="compare-note">
           <thead>
             <tr><th scope="col"><span class="sr-only">Özellik</span></th><th scope="col">Whisper Transcriber Suite</th><th scope="col">Subtitle Edit</th><th scope="col">Vibe</th><th scope="col">Buzz</th></tr>
           </thead>
           <tbody>
             <tr><th scope="row">Fiyat, lisans</th><td>Ücretsiz, BSD-3-Clause</td><td>Ücretsiz, MIT</td><td>Ücretsiz, MIT</td><td>Ücretsiz, MIT</td></tr>
-            <tr><th scope="row">İndirmeler</th><td>Windows yükleyici ve taşınabilir ZIP, macOS (Apple silicon, Intel); kaynaktan Linux</td><td>Windows (x64, ARM64), macOS, Linux (Flatpak, tar.gz)</td><td>Windows, macOS, Linux (.deb, .rpm)</td><td>Windows, macOS (1.4.5, Intel Mac'ler için son sürümdür), Linux (Flatpak, Snap, AppImage), PyPI</td></tr>
-            <tr><th scope="row">GPU hızlandırma</th><td>NVIDIA (CUDA)</td><td>NVIDIA (CUDA), Vulkan</td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">İndirmeler</th><td>Windows yükleyici ve taşınabilir ZIP, macOS (Apple silicon, Intel); kaynaktan Linux</td><td>Windows: kurulum dosyası ve ZIP · macOS · Linux</td><td>Windows: kurulum dosyası · macOS · Linux</td><td>Windows: kurulum dosyası · macOS · Linux</td></tr>
+            <tr><th scope="row">Çevrimdışı yazıya dökme</th><td>Evet</td><td>Evet</td><td>Evet</td><td>Evet</td></tr>
+            <tr><th scope="row">Toplu yazıya dökme</th><td>Evet</td><td>Evet</td><td>Evet</td><td>izlenen klasör</td></tr>
+            <tr><th scope="row">GPU hızlandırma</th><td><bdi dir="ltr" translate="no">NVIDIA (CUDA); Apple Silicon (MLX)</bdi></td><td><bdi dir="ltr" translate="no">NVIDIA (CUDA), Vulkan, Metal</bdi></td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Konuşmacı etiketleri</th><td>Evet</td><td>Motora göre</td><td>Evet</td><td>Evet</td></tr>
+            <tr><th scope="row">YouTube kaynağı</th><td>İndir ve yazıya dök</td><td>URL’den oynat</td><td>URL’den yazıya dök</td><td>URL’den yazıya dök</td></tr>
+            <tr><th scope="row">Dışa aktarma biçimleri</th><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF + 10</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, ASS</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, TXT</bdi></td></tr>
             <tr><th scope="row">İmzalı Windows yükleyicisi</th><td>Hayır</td><td>Belirtilmemiş</td><td>Evet, dokümantasyonuna göre</td><td>Hayır</td></tr>
-            <tr><th scope="row">Arayüz dilleri</th><td>42</td><td>35</td><td>22</td><td>16</td></tr>
-            <tr><th scope="row">Şu durumlarda tercih edin</th><td>Ayrıca canlı mikrofon, video indirme, 14 çıktı formatı ve OpenAI uyumlu bir rotaya sahip yerel ağ modu istiyorsanız</td><td>Birçok konuşma motoru (Parakeet, Canary, Qwen3-ASR ve daha fazlası) veya noter onaylı bir Mac uygulaması istiyorsanız</td><td>Belgelerinde imzalı olduğu belirtilen bir Windows yükleyicisi veya AMD ve Intel'i belirten GPU desteği istiyorsanız</td><td>Linux paketleri (Flatpak, Snap, AppImage) veya bir PyPI kurulumu istiyorsanız</td></tr>
+            <tr><th scope="row">Arayüz dilleri</th><td>42</td><td>36</td><td>22</td><td>15</td></tr>
+            <tr><th scope="row">Farsça arayüz</th><td>Evet</td><td>Evet</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Sağdan sola düzen</th><td>Evet</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Canlı altyazı</th><td>Evet</td><td>—</td><td>—</td><td>Evet</td></tr>
+            <tr><th scope="row">Ses parçası seçimi</th><td>Evet</td><td>Evet</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Hasarlı medya kurtarma</th><td>Evet</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Dökümü düzenleme</th><td>Evet</td><td>Evet</td><td>—</td><td>Evet</td></tr>
+            <tr><th scope="row">Yeni dökümü karşılaştırma</th><td>Evet</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Yerel MCP ile yapay zekâ asistanları</th><td>Evet</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">GPU sıcaklık sınırı</th><td><bdi dir="ltr" translate="no">NVIDIA</bdi></td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row" translate="no">Obsidian / n8n</th><td>Evet</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Yerleşik sunucu</th><td>Web ve API</td><td>—</td><td><bdi dir="ltr" translate="no">HTTP API</bdi></td><td>—</td></tr>
           </tbody>
         </table>
       </div>
+      <p class="compare-note" id="compare-note"><time dir="ltr" datetime="2026-11-26">2026-11-26</time> tarihinde kontrol edildi. Çizgi, doğrulanamayan özelliği gösterir. <a href="/compare/" hreflang="en">Resmî kaynaklara</a> bakın.</p>
     </div>
   </section>
 

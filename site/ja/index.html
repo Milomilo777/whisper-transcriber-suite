@@ -82,7 +82,7 @@
 
 <link rel="preload" href="/assets/shots/transcribe.webp" as="image" type="image/webp" imagesrcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" imagesizes="(max-width: 1080px) 72vw, 480px">
 <script src="/js/motion-init.js?v=20260927b"></script>
-<link rel="stylesheet" href="/styles.css?v=20261022a">
+<link rel="stylesheet" href="/styles.css?v=20261126geo">
 
 <script type="application/ld+json">
 {
@@ -904,6 +904,7 @@
       <div class="rail sr" aria-hidden="true"><span class="rail-pulse"></span></div>
       <a class="text-link sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md" rel="noopener">アーキテクチャの詳細を見る<svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
       <p class="muted guide-links">ステップ別ガイド：<a href="/ja/youtube-to-text/">YouTube動画をテキスト化</a> · <a href="/ja/video-to-srt/">動画からSRT字幕を作成</a> · <a href="/ja/speaker-labels/">話者ラベル付きの文字起こし</a></p>
+      <p class="muted guide-links"><a href="/windows-offline-transcription/" hreflang="en">Windows でオフライン文字起こし（英語）</a></p>
     </div>
   </section>
 
@@ -957,6 +958,13 @@ python gui.py</code></pre>
           <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS — 1行インストール</p>
           <h3>ターミナルに貼り付けるだけです。</h3>
           <p>お使いの Mac に適したビルド（macOS 14+ では Apple Silicon、それ以外では Rosetta 経由の Intel）をダウンロードし、アプリを <code>Applications</code> にコピーして開きます。<code>curl</code> で取得したファイルは隔離されないため、「開発元が未確認」の警告をクリックしてやり過ごす必要もありません。</p>
+          <table class="mac-builds">
+            <thead><tr><th scope="col">Mac</th><th scope="col">最小対応 macOS</th><th scope="col">ダウンロード</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Intel</bdi></th><td><bdi dir="ltr" translate="no">macOS 12+</bdi></td><td><bdi dir="ltr" translate="no">x64 DMG</bdi></td></tr>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Apple Silicon</bdi></th><td><bdi dir="ltr" translate="no">macOS 14+</bdi></td><td><bdi dir="ltr" translate="no">arm64 DMG</bdi></td></tr>
+            </tbody>
+          </table>
         </div>
         <div class="code-box">
           <button class="copy-btn" type="button" data-copy="#mac-cmd">コピー</button>
@@ -974,24 +982,39 @@ python gui.py</code></pre>
       <header class="section-head sr">
         <p class="eyebrow">比較</p>
         <h2 id="compare-title">他の Whisper アプリとの違いは？</h2>
-        <p class="section-lede">Whisper Transcriber Suite は、お使いのコンピューター上で文字起こしを行える、いくつかの無料オープンソース・デスクトップアプリの1つです。ここでは、他のアプリのほうが適しているケースも含め、Subtitle Edit、Vibe、Buzz との比較を紹介します。すべての根拠となる出典と、さらに2つのアプリ（noScribe と aTrain）を掲載した<a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">詳しい比較表をご覧ください</a>。</p>
+        <p class="section-lede"><a href="/compare/" hreflang="en">詳しい比較（英語）</a></p>
       </header>
-      <div class="table-wrap sr">
-        <table class="compare-table">
-          <caption>2026-10-05 時点で各プロジェクトの公式 README、ドキュメント、リリース情報をもとに確認済み。アプリは急速に変化するため、出典については<a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">完全な比較</a>をご覧ください。</caption>
+      <div class="table-wrap sr" tabindex="0" role="region" aria-labelledby="compare-title">
+        <table class="compare-table" aria-describedby="compare-note">
           <thead>
             <tr><th scope="col"><span class="sr-only">機能</span></th><th scope="col">Whisper Transcriber Suite</th><th scope="col">Subtitle Edit</th><th scope="col">Vibe</th><th scope="col">Buzz</th></tr>
           </thead>
           <tbody>
             <tr><th scope="row">価格、ライセンス</th><td>無料、BSD-3-Clause</td><td>無料、MIT</td><td>無料、MIT</td><td>無料、MIT</td></tr>
-            <tr><th scope="row">ダウンロード</th><td>Windows インストーラーおよびポータブル ZIP、macOS（Apple silicon、Intel）、Linux（ソースから）</td><td>Windows (x64, ARM64)、macOS、Linux (Flatpak, tar.gz)</td><td>Windows、macOS、Linux (.deb, .rpm)</td><td>Windows、macOS（Intel Mac 向けは 1.4.5 が最終）、Linux (Flatpak, Snap, AppImage)、PyPI</td></tr>
-            <tr><th scope="row">GPU アクセラレーション</th><td>NVIDIA (CUDA)</td><td>NVIDIA (CUDA)、Vulkan</td><td>NVIDIA、AMD、Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA)、Apple silicon、Vulkan</td></tr>
+            <tr><th scope="row">ダウンロード</th><td>Windows インストーラーおよびポータブル ZIP、macOS（Apple silicon、Intel）、Linux（ソースから）</td><td>Windows：インストーラーと ZIP · macOS · Linux</td><td>Windows：インストーラー · macOS · Linux</td><td>Windows：インストーラー · macOS · Linux</td></tr>
+            <tr><th scope="row">オフライン文字起こし</th><td>対応</td><td>対応</td><td>対応</td><td>対応</td></tr>
+            <tr><th scope="row">一括文字起こし</th><td>対応</td><td>対応</td><td>対応</td><td>フォルダー監視</td></tr>
+            <tr><th scope="row">GPU アクセラレーション</th><td><bdi dir="ltr" translate="no">NVIDIA (CUDA); Apple Silicon (MLX)</bdi></td><td><bdi dir="ltr" translate="no">NVIDIA (CUDA), Vulkan, Metal</bdi></td><td>NVIDIA、AMD、Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA)、Apple silicon、Vulkan</td></tr>
+            <tr><th scope="row">話者ラベル</th><td>対応</td><td>エンジンによる</td><td>対応</td><td>対応</td></tr>
+            <tr><th scope="row">YouTube からの入力</th><td>ダウンロードして文字起こし</td><td>URL から再生</td><td>URL から文字起こし</td><td>URL から文字起こし</td></tr>
+            <tr><th scope="row">書き出し形式</th><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF + 10</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, ASS</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, TXT</bdi></td></tr>
             <tr><th scope="row">署名済み Windows インストーラー</th><td>なし</td><td>記載なし</td><td>あり（ドキュメントによる）</td><td>なし</td></tr>
-            <tr><th scope="row">インターフェース言語</th><td>42</td><td>35</td><td>22</td><td>16</td></tr>
-            <tr><th scope="row">こんな場合におすすめ</th><td>マイクからのリアルタイム文字起こし、動画のダウンロード、14種類の出力形式、OpenAI 互換ルートを備えたローカルネットワークモードも利用したい場合</td><td>多数の音声認識エンジン（Parakeet、Canary、Qwen3-ASR など）や、公証された Mac アプリを希望する場合</td><td>ドキュメント上で署名済みとされている Windows インストーラーや、AMD や Intel が明記された GPU サポートを必要とする場合</td><td>Linux 向けパッケージ（Flatpak、Snap、AppImage）や PyPI でのインストールを利用したい場合</td></tr>
+            <tr><th scope="row">インターフェース言語</th><td>42</td><td>36</td><td>22</td><td>15</td></tr>
+            <tr><th scope="row">ペルシャ語の画面表示</th><td>対応</td><td>対応</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">右から左へのレイアウト</th><td>対応</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">リアルタイム字幕</th><td>対応</td><td>—</td><td>—</td><td>対応</td></tr>
+            <tr><th scope="row">音声トラックの選択</th><td>対応</td><td>対応</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">破損したメディアの復旧</th><td>対応</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">文字起こし結果の編集</th><td>対応</td><td>対応</td><td>—</td><td>対応</td></tr>
+            <tr><th scope="row">再文字起こしの結果を比較</th><td>対応</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">ローカル MCP で AI アシスタントと連携</th><td>対応</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">GPU の温度上限</th><td><bdi dir="ltr" translate="no">NVIDIA</bdi></td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row" translate="no">Obsidian / n8n</th><td>対応</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">内蔵サーバー</th><td>Web 画面と API</td><td>—</td><td><bdi dir="ltr" translate="no">HTTP API</bdi></td><td>—</td></tr>
           </tbody>
         </table>
       </div>
+      <p class="compare-note" id="compare-note">確認日：<time dir="ltr" datetime="2026-11-26">2026-11-26</time>。横線は確認できなかった機能を示します。<a href="/compare/" hreflang="en">公式の情報源</a>をご覧ください。</p>
     </div>
   </section>
 

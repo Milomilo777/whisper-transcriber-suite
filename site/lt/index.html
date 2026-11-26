@@ -84,7 +84,7 @@
 <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/shots/transcribe.webp" as="image" type="image/webp" imagesrcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" imagesizes="(max-width: 1080px) 72vw, 480px">
 <script src="/js/motion-init.js?v=20260927b"></script>
-<link rel="stylesheet" href="/styles.css?v=20261022a">
+<link rel="stylesheet" href="/styles.css?v=20261126geo">
 
 <script type="application/ld+json">
 {
@@ -906,6 +906,7 @@
       <div class="rail sr" aria-hidden="true"><span class="rail-pulse"></span></div>
       <a class="text-link sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md" rel="noopener">Perskaitykite visą architektūros aprašymą<svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
       <p class="muted guide-links">Nuoseklūs vadovai: <a href="/lt/youtube-to-text/">„YouTube“ vaizdo įrašas į tekstą</a> · <a href="/lt/video-to-srt/">vaizdo įrašas į SRT subtitrus</a> · <a href="/lt/speaker-labels/">transkripcijos su kalbėtojų žymomis</a></p>
+      <p class="muted guide-links"><a href="/windows-offline-transcription/" hreflang="en">Transkribavimas be interneto sistemoje „Windows“ (anglų k.)</a></p>
     </div>
   </section>
 
@@ -959,6 +960,13 @@ python gui.py</code></pre>
           <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS — diegimas viena eilute</p>
           <h3>Įklijuokite į terminalą. Štai ir viskas.</h3>
           <p>Atsisiunčia jūsų Mac tinkamą versiją (Apple Silicon sistemai macOS 14+, kitu atveju – Intel per Rosetta), nukopijuoja programą į <code>Applications</code> ir ją atidaro. Failai, gauti naudojant <code>curl</code>, nėra karantinuojami, todėl nėra jokio „neatpažinto kūrėjo“ įspėjimo, kurį reikėtų praleisti.</p>
+          <table class="mac-builds">
+            <thead><tr><th scope="col">Mac</th><th scope="col">Minimali „macOS“ versija</th><th scope="col">Atsisiuntimas</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Intel</bdi></th><td><bdi dir="ltr" translate="no">macOS 12+</bdi></td><td><bdi dir="ltr" translate="no">x64 DMG</bdi></td></tr>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Apple Silicon</bdi></th><td><bdi dir="ltr" translate="no">macOS 14+</bdi></td><td><bdi dir="ltr" translate="no">arm64 DMG</bdi></td></tr>
+            </tbody>
+          </table>
         </div>
         <div class="code-box">
           <button class="copy-btn" type="button" data-copy="#mac-cmd">Kopijuoti</button>
@@ -976,24 +984,39 @@ python gui.py</code></pre>
       <header class="section-head sr">
         <p class="eyebrow">Palyginti</p>
         <h2 id="compare-title">Kaip ji atrodo, palyginti su kitomis Whisper programomis?</h2>
-        <p class="section-lede">„Whisper Transcriber Suite“ yra viena iš kelių nemokamų atvirojo kodo darbalaukio programų, atliekančių transkripciją jūsų pačių kompiuteryje. Štai kaip ji atrodo, palyginti su Subtitle Edit, Vibe ir Buzz, įskaitant atvejus, kada labiau tinka kita programa. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">Perskaitykite visą palyginimą</a> su šaltiniais kiekvienam faktui ir dar dviem programomis – noScribe bei aTrain.</p>
+        <p class="section-lede"><a href="/compare/" hreflang="en">Visas palyginimas (anglų k.)</a></p>
       </header>
-      <div class="table-wrap sr">
-        <table class="compare-table">
-          <caption>Patikrinta 2026-10-05 pagal kiekvieno projekto README, dokumentaciją ir leidimus. Programos greitai keičiasi: šaltinius rasite <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">išsamiame palyginime</a>.</caption>
+      <div class="table-wrap sr" tabindex="0" role="region" aria-labelledby="compare-title">
+        <table class="compare-table" aria-describedby="compare-note">
           <thead>
             <tr><th scope="col"><span class="sr-only">Funkcija</span></th><th scope="col">Whisper Transcriber Suite</th><th scope="col">Subtitle Edit</th><th scope="col">Vibe</th><th scope="col">Buzz</th></tr>
           </thead>
           <tbody>
             <tr><th scope="row">Kaina, licencija</th><td>Nemokama, BSD-3-Clause</td><td>Nemokama, MIT</td><td>Nemokama, MIT</td><td>Nemokama, MIT</td></tr>
-            <tr><th scope="row">Atsisiuntimai</th><td>Windows diegimo programa ir nešiojamasis ZIP, macOS (Apple silicon, Intel); Linux iš pirminio kodo</td><td>Windows (x64, ARM64), macOS, Linux (Flatpak, tar.gz)</td><td>Windows, macOS, Linux (.deb, .rpm)</td><td>Windows, macOS (1.4.5 yra paskutinė versija „Intel Mac“ kompiuteriams), Linux (Flatpak, Snap, AppImage), PyPI</td></tr>
-            <tr><th scope="row">GPU spartinimas</th><td>NVIDIA (CUDA)</td><td>NVIDIA (CUDA), Vulkan</td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Atsisiuntimai</th><td>Windows diegimo programa ir nešiojamasis ZIP, macOS (Apple silicon, Intel); Linux iš pirminio kodo</td><td>Windows: diegimo programa ir ZIP · macOS · Linux</td><td>Windows: diegimo programa · macOS · Linux</td><td>Windows: diegimo programa · macOS · Linux</td></tr>
+            <tr><th scope="row">Transkribavimas be interneto</th><td>Taip</td><td>Taip</td><td>Taip</td><td>Taip</td></tr>
+            <tr><th scope="row">Kelių failų transkribavimas</th><td>Taip</td><td>Taip</td><td>Taip</td><td>stebimas aplankas</td></tr>
+            <tr><th scope="row">GPU spartinimas</th><td><bdi dir="ltr" translate="no">NVIDIA (CUDA); Apple Silicon (MLX)</bdi></td><td><bdi dir="ltr" translate="no">NVIDIA (CUDA), Vulkan, Metal</bdi></td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Kalbėtojų etiketės</th><td>Taip</td><td>Priklauso nuo atpažinimo modulio</td><td>Taip</td><td>Taip</td></tr>
+            <tr><th scope="row">„YouTube“ šaltinis</th><td>Atsisiųsti ir transkribuoti</td><td>Leisti iš URL</td><td>Transkribuoti iš URL</td><td>Transkribuoti iš URL</td></tr>
+            <tr><th scope="row">Eksporto formatai</th><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF + 10</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, ASS</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, TXT</bdi></td></tr>
             <tr><th scope="row">Pasirašyta Windows diegimo programa</th><td>Ne</td><td>Nenurodyta</td><td>Taip, pagal jos dokumentaciją</td><td>Ne</td></tr>
-            <tr><th scope="row">Sąsajos kalbos</th><td>42</td><td>35</td><td>22</td><td>16</td></tr>
-            <tr><th scope="row">Rinkitės ją, jei</th><td>Taip pat norite tiesioginio mikrofono palaikymo, vaizdo įrašų atsisiuntimo, 14 išvesties formatų ir vietinio tinklo režimo su OpenAI suderinamu maršrutu</td><td>Norite daugelio kalbos variklių (Parakeet, Canary, Qwen3-ASR ir kitų) arba notarizuotos Mac programos</td><td>Norite Windows diegimo programos, kuri, pasak jos dokumentacijos, yra pasirašyta, arba GPU palaikymo, apimančio AMD ir Intel</td><td>Norite Linux paketų (Flatpak, Snap, AppImage) arba diegimo per PyPI</td></tr>
+            <tr><th scope="row">Sąsajos kalbos</th><td>42</td><td>36</td><td>22</td><td>15</td></tr>
+            <tr><th scope="row">Sąsaja persų kalba</th><td>Taip</td><td>Taip</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Išdėstymas iš dešinės į kairę</th><td>Taip</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Subtitrai tiesiogiai</th><td>Taip</td><td>—</td><td>—</td><td>Taip</td></tr>
+            <tr><th scope="row">Garso takelio pasirinkimas</th><td>Taip</td><td>Taip</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Sugadintų medijos failų atkūrimas</th><td>Taip</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Transkripcijos redagavimas</th><td>Taip</td><td>Taip</td><td>—</td><td>Taip</td></tr>
+            <tr><th scope="row">Naujos transkripcijos palyginimas</th><td>Taip</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">DI asistentai per vietinį MCP</th><td>Taip</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">GPU temperatūros riba</th><td><bdi dir="ltr" translate="no">NVIDIA</bdi></td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row" translate="no">Obsidian / n8n</th><td>Taip</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Integruotas serveris</th><td>Žiniatinklis ir API</td><td>—</td><td><bdi dir="ltr" translate="no">HTTP API</bdi></td><td>—</td></tr>
           </tbody>
         </table>
       </div>
+      <p class="compare-note" id="compare-note">Patikrinta <time dir="ltr" datetime="2026-11-26">2026-11-26</time>. Brūkšnys žymi nepatvirtintą funkciją. Žr. <a href="/compare/" hreflang="en">oficialius šaltinius</a>.</p>
     </div>
   </section>
 

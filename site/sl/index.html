@@ -84,7 +84,7 @@
 <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/shots/transcribe.webp" as="image" type="image/webp" imagesrcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" imagesizes="(max-width: 1080px) 72vw, 480px">
 <script src="/js/motion-init.js?v=20260927b"></script>
-<link rel="stylesheet" href="/styles.css?v=20261022a">
+<link rel="stylesheet" href="/styles.css?v=20261126geo">
 
 <script type="application/ld+json">
 {
@@ -906,6 +906,7 @@
       <div class="rail sr" aria-hidden="true"><span class="rail-pulse"></span></div>
       <a class="text-link sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md" rel="noopener">Preberite celotno arhitekturo<svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
       <p class="muted guide-links">Vodniki po korakih: <a href="/sl/youtube-to-text/">videoposnetek YouTube v besedilo</a> · <a href="/sl/video-to-srt/">videoposnetek v podnapise SRT</a> · <a href="/sl/speaker-labels/">prepisi z oznakami govorcev</a></p>
+      <p class="muted guide-links"><a href="/windows-offline-transcription/" hreflang="en">Prepisovanje brez povezave v sistemu Windows (v angleščini)</a></p>
     </div>
   </section>
 
@@ -959,6 +960,13 @@ python gui.py</code></pre>
           <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS — namestitev v eni vrstici</p>
           <h3>Prilepite v Terminal. To je vse.</h3>
           <p>Prenese pravo različico za vaš Mac (Apple Silicon v sistemu macOS 14+, sicer Intel prek orodja Rosetta), kopira aplikacijo v <code>Applications</code> in jo odpre. Datoteke, prenesene z <code>curl</code>, niso v karanteni, zato ni opozorila o »neznanem razvijalcu«, ki bi ga bilo treba klikniti za nadaljevanje.</p>
+          <table class="mac-builds">
+            <thead><tr><th scope="col">Mac</th><th scope="col">Najnižja različica macOS</th><th scope="col">Prenos</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Intel</bdi></th><td><bdi dir="ltr" translate="no">macOS 12+</bdi></td><td><bdi dir="ltr" translate="no">x64 DMG</bdi></td></tr>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Apple Silicon</bdi></th><td><bdi dir="ltr" translate="no">macOS 14+</bdi></td><td><bdi dir="ltr" translate="no">arm64 DMG</bdi></td></tr>
+            </tbody>
+          </table>
         </div>
         <div class="code-box">
           <button class="copy-btn" type="button" data-copy="#mac-cmd">Kopiraj</button>
@@ -976,24 +984,39 @@ python gui.py</code></pre>
       <header class="section-head sr">
         <p class="eyebrow">Primerjava</p>
         <h2 id="compare-title">Kako se obnese v primerjavi z drugimi aplikacijami Whisper?</h2>
-        <p class="section-lede">Whisper Transcriber Suite je ena izmed več brezplačnih, odprtokodnih namiznih aplikacij, ki prepisujejo na vašem računalniku. Tukaj je primerjava z orodji Subtitle Edit, Vibe in Buzz, vključno s primeri, ko je bolj primerna druga aplikacija. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">Preberite celotno primerjavo</a> z viri za vsako dejstvo ter še dvema aplikacijama, noScribe in aTrain.</p>
+        <p class="section-lede"><a href="/compare/" hreflang="en">Celotna primerjava (v angleščini)</a></p>
       </header>
-      <div class="table-wrap sr">
-        <table class="compare-table">
-          <caption>Preverjeno 2026-10-05 glede na README, dokumentacijo in izdaje posameznih projektov. Aplikacije se hitro spreminjajo: oglejte si <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">celotno primerjavo</a> za vire.</caption>
+      <div class="table-wrap sr" tabindex="0" role="region" aria-labelledby="compare-title">
+        <table class="compare-table" aria-describedby="compare-note">
           <thead>
             <tr><th scope="col"><span class="sr-only">Funkcija</span></th><th scope="col">Whisper Transcriber Suite</th><th scope="col">Subtitle Edit</th><th scope="col">Vibe</th><th scope="col">Buzz</th></tr>
           </thead>
           <tbody>
             <tr><th scope="row">Cena, licenca</th><td>Brezplačno, BSD-3-Clause</td><td>Brezplačno, MIT</td><td>Brezplačno, MIT</td><td>Brezplačno, MIT</td></tr>
-            <tr><th scope="row">Prenosi</th><td>Namestitveni program za Windows in prenosni ZIP, macOS (Apple silicon, Intel); Linux iz izvorne kode</td><td>Windows (x64, ARM64), macOS, Linux (Flatpak, tar.gz)</td><td>Windows, macOS, Linux (.deb, .rpm)</td><td>Windows, macOS (1.4.5 je zadnja različica za računalnike Mac z Intelom), Linux (Flatpak, Snap, AppImage), PyPI</td></tr>
-            <tr><th scope="row">Pospeševanje z GPE</th><td>NVIDIA (CUDA)</td><td>NVIDIA (CUDA), Vulkan</td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Prenosi</th><td>Namestitveni program za Windows in prenosni ZIP, macOS (Apple silicon, Intel); Linux iz izvorne kode</td><td>Windows: namestitveni program in ZIP · macOS · Linux</td><td>Windows: namestitveni program · macOS · Linux</td><td>Windows: namestitveni program · macOS · Linux</td></tr>
+            <tr><th scope="row">Prepisovanje brez povezave</th><td>Da</td><td>Da</td><td>Da</td><td>Da</td></tr>
+            <tr><th scope="row">Paketno prepisovanje</th><td>Da</td><td>Da</td><td>Da</td><td>spremljana mapa</td></tr>
+            <tr><th scope="row">Pospeševanje z GPE</th><td><bdi dir="ltr" translate="no">NVIDIA (CUDA); Apple Silicon (MLX)</bdi></td><td><bdi dir="ltr" translate="no">NVIDIA (CUDA), Vulkan, Metal</bdi></td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Oznake govorcev</th><td>Da</td><td>Odvisno od mehanizma</td><td>Da</td><td>Da</td></tr>
+            <tr><th scope="row">YouTube kot vir</th><td>Prenesi in prepiši</td><td>Predvajaj z naslova URL</td><td>Prepiši z naslova URL</td><td>Prepiši z naslova URL</td></tr>
+            <tr><th scope="row">Formati za izvoz</th><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF + 10</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, ASS</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, TXT</bdi></td></tr>
             <tr><th scope="row">Podpisan namestitveni program za Windows</th><td>Ne</td><td>Ni navedeno</td><td>Da, glede na dokumentacijo</td><td>Ne</td></tr>
-            <tr><th scope="row">Jeziki vmesnika</th><td>42</td><td>35</td><td>22</td><td>16</td></tr>
-            <tr><th scope="row">Izberite to, če</th><td>Želite tudi mikrofon v živo, prenos videov, 14 izhodnih formatov in način za lokalno omrežje s potjo, združljivo z OpenAI</td><td>Želite več govornih mehanizmov (Parakeet, Canary, Qwen3-ASR in več) ali overjeno aplikacijo za Mac</td><td>Želite namestitveni program za Windows, ki je po navedbah v dokumentaciji podpisan, ali podporo za GPE, ki navaja AMD in Intel</td><td>Želite pakete za Linux (Flatpak, Snap, AppImage) ali namestitev prek PyPI</td></tr>
+            <tr><th scope="row">Jeziki vmesnika</th><td>42</td><td>36</td><td>22</td><td>15</td></tr>
+            <tr><th scope="row">Vmesnik v perzijščini</th><td>Da</td><td>Da</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Postavitev od desne proti levi</th><td>Da</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Podnapisi v živo</th><td>Da</td><td>—</td><td>—</td><td>Da</td></tr>
+            <tr><th scope="row">Izbira zvočne sledi</th><td>Da</td><td>Da</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Obnovitev poškodovanih predstavnostnih datotek</th><td>Da</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Urejanje prepisa</th><td>Da</td><td>Da</td><td>—</td><td>Da</td></tr>
+            <tr><th scope="row">Primerjava novega prepisa</th><td>Da</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Pomočniki UI prek lokalnega MCP</th><td>Da</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Omejitev temperature GPU-ja</th><td><bdi dir="ltr" translate="no">NVIDIA</bdi></td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row" translate="no">Obsidian / n8n</th><td>Da</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Vgrajeni strežnik</th><td>Splet in API</td><td>—</td><td><bdi dir="ltr" translate="no">HTTP API</bdi></td><td>—</td></tr>
           </tbody>
         </table>
       </div>
+      <p class="compare-note" id="compare-note">Preverjeno <time dir="ltr" datetime="2026-11-26">2026-11-26</time>. Črtica označuje nepotrjeno funkcijo. Oglejte si <a href="/compare/" hreflang="en">uradne vire</a>.</p>
     </div>
   </section>
 

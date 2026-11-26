@@ -84,7 +84,7 @@
 <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/shots/transcribe.webp" as="image" type="image/webp" imagesrcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" imagesizes="(max-width: 1080px) 72vw, 480px">
 <script src="/js/motion-init.js?v=20260927b"></script>
-<link rel="stylesheet" href="/styles.css?v=20261022a">
+<link rel="stylesheet" href="/styles.css?v=20261126geo">
 
 <script type="application/ld+json">
 {
@@ -906,6 +906,7 @@
       <div class="rail sr" aria-hidden="true"><span class="rail-pulse"></span></div>
       <a class="text-link sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md" rel="noopener">Đọc kiến trúc đầy đủ<svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
       <p class="muted guide-links">Hướng dẫn từng bước: <a href="/vi/youtube-to-text/">Chuyển video YouTube thành văn bản</a> · <a href="/vi/video-to-srt/">chuyển video thành phụ đề SRT</a> · <a href="/vi/speaker-labels/">chép lời kèm nhãn người nói</a></p>
+      <p class="muted guide-links"><a href="/windows-offline-transcription/" hreflang="en">Chép lời ngoại tuyến trên Windows (tiếng Anh)</a></p>
     </div>
   </section>
 
@@ -959,6 +960,13 @@ python gui.py</code></pre>
           <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS — cài đặt một dòng</p>
           <h3>Dán vào Terminal. Xong.</h3>
           <p>Tải xuống bản build phù hợp với Mac của bạn (Apple Silicon trên macOS 14+, nếu không thì Intel qua Rosetta), sao chép ứng dụng vào <code>Applications</code> và mở nó. Các tệp do <code>curl</code> Tải xuống không bị cách ly, nên không có cảnh báo "nhà phát triển không xác định" để bấm qua.</p>
+          <table class="mac-builds">
+            <thead><tr><th scope="col">Máy Mac</th><th scope="col">Phiên bản macOS tối thiểu</th><th scope="col">Tải xuống</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Intel</bdi></th><td><bdi dir="ltr" translate="no">macOS 12+</bdi></td><td><bdi dir="ltr" translate="no">x64 DMG</bdi></td></tr>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Apple Silicon</bdi></th><td><bdi dir="ltr" translate="no">macOS 14+</bdi></td><td><bdi dir="ltr" translate="no">arm64 DMG</bdi></td></tr>
+            </tbody>
+          </table>
         </div>
         <div class="code-box">
           <button class="copy-btn" type="button" data-copy="#mac-cmd">Sao chép</button>
@@ -976,24 +984,39 @@ python gui.py</code></pre>
       <header class="section-head sr">
         <p class="eyebrow">So sánh</p>
         <h2 id="compare-title">So với các ứng dụng Whisper khác thì sao?</h2>
-        <p class="section-lede">Whisper Transcriber Suite là một trong số các ứng dụng desktop mã nguồn mở, miễn phí chép lời ngay trên máy của bạn. Dưới đây là so sánh với Subtitle Edit, Vibe và Buzz, kể cả khi ứng dụng khác phù hợp hơn. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">Đọc bài so sánh đầy đủ</a>, có nguồn cho từng thông tin và thêm hai ứng dụng nữa, noScribe và aTrain.</p>
+        <p class="section-lede"><a href="/compare/" hreflang="en">So sánh đầy đủ (tiếng Anh)</a></p>
       </header>
-      <div class="table-wrap sr">
-        <table class="compare-table">
-          <caption>Đã kiểm tra 2026-10-05 với README, tài liệu và bản phát hành của từng dự án. Ứng dụng thay đổi nhanh: xem <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">bài so sánh đầy đủ</a> để biết nguồn.</caption>
+      <div class="table-wrap sr" tabindex="0" role="region" aria-labelledby="compare-title">
+        <table class="compare-table" aria-describedby="compare-note">
           <thead>
             <tr><th scope="col"><span class="sr-only">Tính năng</span></th><th scope="col">Whisper Transcriber Suite</th><th scope="col">Subtitle Edit</th><th scope="col">Vibe</th><th scope="col">Buzz</th></tr>
           </thead>
           <tbody>
             <tr><th scope="row">Giá, giấy phép</th><td>Miễn phí, BSD-3-Clause</td><td>Miễn phí, MIT</td><td>Miễn phí, MIT</td><td>Miễn phí, MIT</td></tr>
-            <tr><th scope="row">Tải xuống</th><td>Bộ cài Windows và ZIP di động, macOS (Apple silicon, Intel); Linux từ mã nguồn</td><td>Windows (x64, ARM64), macOS, Linux (Flatpak, tar.gz)</td><td>Windows, macOS, Linux (.deb, .rpm)</td><td>Windows, macOS (1.4.5 là bản cuối cho Mac Intel), Linux (Flatpak, Snap, AppImage), PyPI</td></tr>
-            <tr><th scope="row">Tăng tốc GPU</th><td>NVIDIA (CUDA)</td><td>NVIDIA (CUDA), Vulkan</td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Tải xuống</th><td>Bộ cài Windows và ZIP di động, macOS (Apple silicon, Intel); Linux từ mã nguồn</td><td>Windows: bộ cài và ZIP · macOS · Linux</td><td>Windows: bộ cài · macOS · Linux</td><td>Windows: bộ cài · macOS · Linux</td></tr>
+            <tr><th scope="row">Chép lời ngoại tuyến</th><td>Có</td><td>Có</td><td>Có</td><td>Có</td></tr>
+            <tr><th scope="row">Chép lời hàng loạt</th><td>Có</td><td>Có</td><td>Có</td><td>thư mục theo dõi</td></tr>
+            <tr><th scope="row">Tăng tốc GPU</th><td><bdi dir="ltr" translate="no">NVIDIA (CUDA); Apple Silicon (MLX)</bdi></td><td><bdi dir="ltr" translate="no">NVIDIA (CUDA), Vulkan, Metal</bdi></td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Nhãn người nói</th><td>Có</td><td>Tùy bộ máy</td><td>Có</td><td>Có</td></tr>
+            <tr><th scope="row">Nguồn YouTube</th><td>Tải xuống và chép lời</td><td>Phát trực tuyến từ URL</td><td>Chép lời từ URL</td><td>Chép lời từ URL</td></tr>
+            <tr><th scope="row">Định dạng xuất</th><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF + 10</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, ASS</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, TXT</bdi></td></tr>
             <tr><th scope="row">Bộ cài Windows có chữ ký</th><td>Không</td><td>Không ghi rõ</td><td>Có, theo tài liệu</td><td>Không</td></tr>
-            <tr><th scope="row">Ngôn ngữ giao diện</th><td>42</td><td>35</td><td>22</td><td>16</td></tr>
-            <tr><th scope="row">Chọn nếu</th><td>Bạn cũng muốn micro trực tiếp, tải video, 14 định dạng đầu ra và chế độ mạng cục bộ với route tương thích OpenAI</td><td>Bạn muốn nhiều engine nhận dạng giọng nói (Parakeet, Canary, Qwen3-ASR và hơn thế) hoặc ứng dụng Mac được notarize</td><td>Bạn muốn bộ cài Windows mà tài liệu nói là có chữ ký, hoặc hỗ trợ GPU cho AMD và Intel</td><td>Bạn muốn gói Linux (Flatpak, Snap, AppImage) hoặc cài qua PyPI</td></tr>
+            <tr><th scope="row">Ngôn ngữ giao diện</th><td>42</td><td>36</td><td>22</td><td>15</td></tr>
+            <tr><th scope="row">Giao diện tiếng Ba Tư</th><td>Có</td><td>Có</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Bố cục từ phải sang trái</th><td>Có</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Phụ đề trực tiếp</th><td>Có</td><td>—</td><td>—</td><td>Có</td></tr>
+            <tr><th scope="row">Chọn rãnh âm thanh</th><td>Có</td><td>Có</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Khôi phục tệp đa phương tiện bị hỏng</th><td>Có</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Sửa bản chép lời</th><td>Có</td><td>Có</td><td>—</td><td>Có</td></tr>
+            <tr><th scope="row">So sánh kết quả chép lại</th><td>Có</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Trợ lý AI qua MCP cục bộ</th><td>Có</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Giới hạn nhiệt độ GPU</th><td><bdi dir="ltr" translate="no">NVIDIA</bdi></td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row" translate="no">Obsidian / n8n</th><td>Có</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Máy chủ tích hợp</th><td>Web và API</td><td>—</td><td><bdi dir="ltr" translate="no">HTTP API</bdi></td><td>—</td></tr>
           </tbody>
         </table>
       </div>
+      <p class="compare-note" id="compare-note">Kiểm tra ngày <time dir="ltr" datetime="2026-11-26">2026-11-26</time>. Dấu gạch ngang biểu thị tính năng chưa xác minh. Xem <a href="/compare/" hreflang="en">các nguồn chính thức</a>.</p>
     </div>
   </section>
 

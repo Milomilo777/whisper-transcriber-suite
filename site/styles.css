@@ -514,6 +514,39 @@ html.js [data-tilt-card].sr.in:hover, [data-tilt-card]:hover { transform: perspe
 .compare-table thead th:nth-child(2), .compare-table td:nth-child(2) { background: var(--teal-soft); }
 .compare-table tbody th { color: var(--ink-2); font-weight: 600; }
 .compare-table tbody tr:last-child th, .compare-table tbody tr:last-child td { border-bottom: 0; }
+.compare-table th, .compare-table td { overflow-wrap: anywhere; hyphens: auto; }
+.compare-note { margin: 12px 0 0; color: var(--muted); font-size: 0.82rem; }
+.table-wrap:focus-visible { outline: 2px solid var(--teal); outline-offset: 3px; }
+@media (max-width: 760px) {
+  .compare-table tr > :first-child {
+    position: sticky;
+    inset-inline-start: 0;
+    background: var(--surface-2);
+    z-index: 1;
+  }
+  .compare-table th, .compare-table td { padding-inline: 12px; }
+}
+.mac-builds { width: 100%; margin: 14px 0; border-collapse: collapse; }
+.mac-builds th, .mac-builds td { padding: 8px; border-bottom: 1px solid var(--line); text-align: start; }
+.mac-builds tbody th { font-weight: 600; }
+
+/* ---------- Text-only guides ---------- */
+.plain-guide-header { position: static; background: var(--surface); border-bottom: 1px solid var(--line); }
+.plain-guide-header .header-row { justify-content: space-between; }
+.plain-guide-header .brand { white-space: normal; }
+.plain-guide-header .btn { flex-shrink: 0; }
+.plain-guide { padding-block: clamp(30px, 5vw, 60px); }
+.plain-guide .crumbs { font-size: 0.9rem; color: var(--muted); margin-bottom: 14px; }
+.plain-guide h1 { max-width: 21ch; font-size: clamp(2rem, 4vw, 3.65rem); margin: 0 0 18px; }
+.plain-guide h2 { margin: 32px 0 10px; font-size: clamp(1.3rem, 3vw, 1.75rem); }
+.plain-guide p, .plain-guide ul, .plain-guide ol { max-width: 73ch; }
+.plain-guide p, .plain-guide li { margin-bottom: 10px; }
+.plain-guide .plain-lede { color: var(--ink-2); font-size: 1.12rem; }
+.plain-guide a:not(.btn):not(.brand) { text-decoration: underline; text-underline-offset: 0.16em; }
+.plain-guide .full-comparison { margin-block: 20px; }
+.full-comparison .compare-table { min-width: 1120px; }
+.full-comparison .compare-table tr > :first-child { width: 130px; }
+.full-comparison .compare-table th, .full-comparison .compare-table td { padding-inline: 12px; }
 
 /* ---------- FAQ as visible Q&A ---------- */
 .faq-list .qa { border-radius: var(--r); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-sm); padding: 18px 22px; }
@@ -692,6 +725,7 @@ html:lang(ja) :where(h1, h2, h3, .hero-title), html:lang(ko) :where(h1, h2, h3, 
   .lang-en { padding-inline: 8px; }
 }
 @media (max-width: 340px) {
+  .site-header .header-row { width: calc(100% - 20px); }
   .header-cta { gap: 4px; }
   .header-cta .btn-sm { padding-inline: 8px; font-size: 0.82rem; }
   .lang-en { padding-inline: 6px; }

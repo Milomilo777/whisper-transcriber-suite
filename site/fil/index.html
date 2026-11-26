@@ -84,7 +84,7 @@
 <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/shots/transcribe.webp" as="image" type="image/webp" imagesrcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" imagesizes="(max-width: 1080px) 72vw, 480px">
 <script src="/js/motion-init.js?v=20260927b"></script>
-<link rel="stylesheet" href="/styles.css?v=20261022a">
+<link rel="stylesheet" href="/styles.css?v=20261126geo">
 
 <script type="application/ld+json">
 {
@@ -906,6 +906,7 @@
       <div class="rail sr" aria-hidden="true"><span class="rail-pulse"></span></div>
       <a class="text-link sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md" rel="noopener">Basahin ang buong architecture<svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
       <p class="muted guide-links">Mga step-by-step na gabay: <a href="/fil/youtube-to-text/">YouTube video patungong text</a> · <a href="/fil/video-to-srt/">video patungong SRT subtitles</a> · <a href="/fil/speaker-labels/">mga transcript na may label ng speaker</a></p>
+      <p class="muted guide-links"><a href="/windows-offline-transcription/" hreflang="en">Offline na transkripsiyon sa Windows (Ingles)</a></p>
     </div>
   </section>
 
@@ -959,6 +960,13 @@ python gui.py</code></pre>
           <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS — pag-install sa isang linya</p>
           <h3>I-paste sa Terminal. Iyon lang.</h3>
           <p>Nagda-download ng tamang build para sa iyong Mac (Apple Silicon sa macOS 14+, kung hindi Intel sa pamamagitan ng Rosetta), kinokopya ang app papunta sa <code>Applications</code> at binubuksan ito. Hindi nakakarantina ang mga file na nakuha ng <code>curl</code>, kaya walang babala na "unidentified developer" na kailangan mong i-click.</p>
+          <table class="mac-builds">
+            <thead><tr><th scope="col">Mac</th><th scope="col">Pinakamababang bersiyon ng macOS</th><th scope="col">I-download</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Intel</bdi></th><td><bdi dir="ltr" translate="no">macOS 12+</bdi></td><td><bdi dir="ltr" translate="no">x64 DMG</bdi></td></tr>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Apple Silicon</bdi></th><td><bdi dir="ltr" translate="no">macOS 14+</bdi></td><td><bdi dir="ltr" translate="no">arm64 DMG</bdi></td></tr>
+            </tbody>
+          </table>
         </div>
         <div class="code-box">
           <button class="copy-btn" type="button" data-copy="#mac-cmd">Kopyahin</button>
@@ -976,24 +984,39 @@ python gui.py</code></pre>
       <header class="section-head sr">
         <p class="eyebrow">Ihambing</p>
         <h2 id="compare-title">Paano ito ihinahambing sa iba pang mga Whisper app?</h2>
-        <p class="section-lede">Ang Whisper Transcriber Suite ay isa sa ilang libreng, open-source na desktop app na nagta-transcribe sa sarili mong computer. Narito kung paano ito ihinahambing sa Subtitle Edit, Vibe at Buzz, kabilang kung kailan mas angkop ang ibang app. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">Basahin ang buong paghahambing</a>, na may source para sa bawat katotohanan at dalawa pang app, noScribe at aTrain.</p>
+        <p class="section-lede"><a href="/compare/" hreflang="en">Buong paghahambing (Ingles)</a></p>
       </header>
-      <div class="table-wrap sr">
-        <table class="compare-table">
-          <caption>Sinuri noong 2026-10-05 laban sa sariling README, docs at releases ng bawat proyekto. Mabilis magbago ang mga app: tingnan ang <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">buong paghahambing</a> para sa mga source.</caption>
+      <div class="table-wrap sr" tabindex="0" role="region" aria-labelledby="compare-title">
+        <table class="compare-table" aria-describedby="compare-note">
           <thead>
             <tr><th scope="col"><span class="sr-only">Katangian</span></th><th scope="col">Whisper Transcriber Suite</th><th scope="col">Subtitle Edit</th><th scope="col">Vibe</th><th scope="col">Buzz</th></tr>
           </thead>
           <tbody>
             <tr><th scope="row">Presyo, lisensya</th><td>Libre, BSD-3-Clause</td><td>Libre, MIT</td><td>Libre, MIT</td><td>Libre, MIT</td></tr>
-            <tr><th scope="row">Mga download</th><td>Windows installer at portable ZIP, macOS (Apple silicon, Intel); Linux mula sa source</td><td>Windows (x64, ARM64), macOS, Linux (Flatpak, tar.gz)</td><td>Windows, macOS, Linux (.deb, .rpm)</td><td>Windows, macOS (1.4.5 ang huli para sa Intel Macs), Linux (Flatpak, Snap, AppImage), PyPI</td></tr>
-            <tr><th scope="row">Pagpapabilis ng GPU</th><td>NVIDIA (CUDA)</td><td>NVIDIA (CUDA), Vulkan</td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Mga download</th><td>Windows installer at portable ZIP, macOS (Apple silicon, Intel); Linux mula sa source</td><td>Windows: installer at ZIP · macOS · Linux</td><td>Windows: installer · macOS · Linux</td><td>Windows: installer · macOS · Linux</td></tr>
+            <tr><th scope="row">Offline na transkripsiyon</th><td>Oo</td><td>Oo</td><td>Oo</td><td>Oo</td></tr>
+            <tr><th scope="row">Transkripsiyon ng maraming file</th><td>Oo</td><td>Oo</td><td>Oo</td><td>binabantayang folder</td></tr>
+            <tr><th scope="row">Pagpapabilis ng GPU</th><td><bdi dir="ltr" translate="no">NVIDIA (CUDA); Apple Silicon (MLX)</bdi></td><td><bdi dir="ltr" translate="no">NVIDIA (CUDA), Vulkan, Metal</bdi></td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Mga label ng speaker</th><td>Oo</td><td>Depende sa engine</td><td>Oo</td><td>Oo</td></tr>
+            <tr><th scope="row">YouTube bilang source</th><td>I-download at i-transcribe</td><td>I-stream mula sa URL</td><td>I-transcribe mula sa URL</td><td>I-transcribe mula sa URL</td></tr>
+            <tr><th scope="row">Mga format sa pag-export</th><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF + 10</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, ASS</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, TXT</bdi></td></tr>
             <tr><th scope="row">Naka-sign na Windows installer</th><td>Hindi</td><td>Hindi nakasaad</td><td>Oo, base sa docs nito</td><td>Hindi</td></tr>
-            <tr><th scope="row">Mga wika ng interface</th><td>42</td><td>35</td><td>22</td><td>16</td></tr>
-            <tr><th scope="row">Piliin ito kung</th><td>Gusto mo rin ng live na mikropono, mga pag-download ng video, 14 na format ng output at isang local-network mode na may OpenAI-compatible na route</td><td>Gusto mo ng maraming speech engine (Parakeet, Canary, Qwen3-ASR at higit pa) o isang notarized na Mac app</td><td>Gusto mo ng Windows installer na sinasabi sa docs nito ay naka-sign, o GPU support na binanggit ang AMD at Intel</td><td>Gusto mo ng mga Linux package (Flatpak, Snap, AppImage) o PyPI install</td></tr>
+            <tr><th scope="row">Mga wika ng interface</th><td>42</td><td>36</td><td>22</td><td>15</td></tr>
+            <tr><th scope="row">Interface sa Persian</th><td>Oo</td><td>Oo</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Ayos mula kanan pakaliwa</th><td>Oo</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Live na caption</th><td>Oo</td><td>—</td><td>—</td><td>Oo</td></tr>
+            <tr><th scope="row">Pagpili ng audio track</th><td>Oo</td><td>Oo</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Pagbawi ng nasirang media</th><td>Oo</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Pag-edit ng transcript</th><td>Oo</td><td>Oo</td><td>—</td><td>Oo</td></tr>
+            <tr><th scope="row">Paghahambing ng inulit na transkripsiyon</th><td>Oo</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Mga AI assistant gamit ang lokal na MCP</th><td>Oo</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Hangganan ng temperatura ng GPU</th><td><bdi dir="ltr" translate="no">NVIDIA</bdi></td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row" translate="no">Obsidian / n8n</th><td>Oo</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Built-in na server</th><td>Web at API</td><td>—</td><td><bdi dir="ltr" translate="no">HTTP API</bdi></td><td>—</td></tr>
           </tbody>
         </table>
       </div>
+      <p class="compare-note" id="compare-note">Sinuri noong <time dir="ltr" datetime="2026-11-26">2026-11-26</time>. Ang gitling ay para sa feature na hindi nakumpirma. Tingnan ang <a href="/compare/" hreflang="en">mga opisyal na sanggunian</a>.</p>
     </div>
   </section>
 

@@ -82,7 +82,7 @@
 
 <link rel="preload" href="/assets/shots/transcribe.webp" as="image" type="image/webp" imagesrcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" imagesizes="(max-width: 1080px) 72vw, 480px">
 <script src="/js/motion-init.js?v=20260927b"></script>
-<link rel="stylesheet" href="/styles.css?v=20261022a">
+<link rel="stylesheet" href="/styles.css?v=20261126geo">
 
 <script type="application/ld+json">
 {
@@ -904,6 +904,7 @@
       <div class="rail sr" aria-hidden="true"><span class="rail-pulse"></span></div>
       <a class="text-link sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md" rel="noopener">पूरी आर्किटेक्चर पढ़ें<svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
       <p class="muted guide-links">चरण-दर-चरण गाइड: <a href="/hi/youtube-to-text/">YouTube वीडियो को टेक्स्ट में</a> · <a href="/hi/video-to-srt/">वीडियो को SRT सबटाइटल में</a> · <a href="/hi/speaker-labels/">वक्ता लेबल के साथ ट्रांसक्रिप्ट</a></p>
+      <p class="muted guide-links"><a href="/windows-offline-transcription/" hreflang="en">Windows पर ऑफ़लाइन लिप्यंतरण (अंग्रेज़ी में)</a></p>
     </div>
   </section>
 
@@ -957,6 +958,13 @@ python gui.py</code></pre>
           <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS — एक लाइन इंस्टॉल</p>
           <h3>टर्मिनल में चिपकाएं। बस।</h3>
           <p>आपके Mac के लिए सही बिल्ड डाउनलोड करता है (macOS 14+ पर Apple Silicon, अन्यथा Rosetta के माध्यम से Intel), ऐप को <code>Applications</code> में कॉपी करता है और उसे खोलता है। <code>curl</code> द्वारा लाई गई फ़ाइलें क्वारंटाइन नहीं होती हैं, इसलिए पास करने के लिए कोई "अज्ञात डेवलपर" चेतावनी नहीं होती है।</p>
+          <table class="mac-builds">
+            <thead><tr><th scope="col">Mac</th><th scope="col">न्यूनतम macOS संस्करण</th><th scope="col">डाउनलोड</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Intel</bdi></th><td><bdi dir="ltr" translate="no">macOS 12+</bdi></td><td><bdi dir="ltr" translate="no">x64 DMG</bdi></td></tr>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Apple Silicon</bdi></th><td><bdi dir="ltr" translate="no">macOS 14+</bdi></td><td><bdi dir="ltr" translate="no">arm64 DMG</bdi></td></tr>
+            </tbody>
+          </table>
         </div>
         <div class="code-box">
           <button class="copy-btn" type="button" data-copy="#mac-cmd">कॉपी करें</button>
@@ -974,24 +982,39 @@ python gui.py</code></pre>
       <header class="section-head sr">
         <p class="eyebrow">तुलना करें</p>
         <h2 id="compare-title">यह अन्य Whisper ऐप्स से कैसे तुलना करता है?</h2>
-        <p class="section-lede">Whisper Transcriber Suite कई मुफ़्त, ओपन-सोर्स डेस्कटॉप ऐप्स में से एक है जो आपके अपने कंप्यूटर पर ट्रांसक्रिप्ट करते हैं। यहाँ बताया गया है कि यह Subtitle Edit, Vibe और Buzz के साथ कैसे तुलना करता है, जिसमें यह भी शामिल है कि कब कोई अन्य ऐप बेहतर फिट बैठता है। हर तथ्य के लिए स्रोत और दो और ऐप्स, noScribe और aTrain के साथ <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">पूरी तुलना पढ़ें</a>।</p>
+        <p class="section-lede"><a href="/compare/" hreflang="en">पूरी तुलना (अंग्रेज़ी में)</a></p>
       </header>
-      <div class="table-wrap sr">
-        <table class="compare-table">
-          <caption>हर प्रोजेक्ट के अपने README, डॉक्स और रिलीज़ के विरुद्ध 2026-10-05 को जाँचा गया। ऐप्स जल्दी बदलते हैं: स्रोतों के लिए <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">पूरी तुलना</a> देखें।</caption>
+      <div class="table-wrap sr" tabindex="0" role="region" aria-labelledby="compare-title">
+        <table class="compare-table" aria-describedby="compare-note">
           <thead>
             <tr><th scope="col"><span class="sr-only">विशेषता</span></th><th scope="col">Whisper Transcriber Suite</th><th scope="col">Subtitle Edit</th><th scope="col">Vibe</th><th scope="col">Buzz</th></tr>
           </thead>
           <tbody>
             <tr><th scope="row">मूल्य, लाइसेंस</th><td>मुफ़्त, BSD-3-Clause</td><td>मुफ़्त, MIT</td><td>मुफ़्त, MIT</td><td>मुफ़्त, MIT</td></tr>
-            <tr><th scope="row">डाउनलोड</th><td>Windows इंस्टॉलर और पोर्टेबल ZIP, macOS (Apple silicon, Intel); सोर्स से Linux</td><td>Windows (x64, ARM64), macOS, Linux (Flatpak, tar.gz)</td><td>Windows, macOS, Linux (.deb, .rpm)</td><td>Windows, macOS (1.4.5 Intel Macs के लिए अंतिम है), Linux (Flatpak, Snap, AppImage), PyPI</td></tr>
-            <tr><th scope="row">GPU त्वरण</th><td>NVIDIA (CUDA)</td><td>NVIDIA (CUDA), Vulkan</td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">डाउनलोड</th><td>Windows इंस्टॉलर और पोर्टेबल ZIP, macOS (Apple silicon, Intel); सोर्स से Linux</td><td>Windows: इंस्टॉलर और ZIP · macOS · Linux</td><td>Windows: इंस्टॉलर · macOS · Linux</td><td>Windows: इंस्टॉलर · macOS · Linux</td></tr>
+            <tr><th scope="row">ऑफ़लाइन लिप्यंतरण</th><td>हाँ</td><td>हाँ</td><td>हाँ</td><td>हाँ</td></tr>
+            <tr><th scope="row">बैच लिप्यंतरण</th><td>हाँ</td><td>हाँ</td><td>हाँ</td><td>फ़ोल्डर की निगरानी</td></tr>
+            <tr><th scope="row">GPU त्वरण</th><td><bdi dir="ltr" translate="no">NVIDIA (CUDA); Apple Silicon (MLX)</bdi></td><td><bdi dir="ltr" translate="no">NVIDIA (CUDA), Vulkan, Metal</bdi></td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">वक्ता लेबल</th><td>हाँ</td><td>इंजन पर निर्भर</td><td>हाँ</td><td>हाँ</td></tr>
+            <tr><th scope="row">YouTube स्रोत</th><td>डाउनलोड करें और लिखित रूप में बदलें</td><td>URL से स्ट्रीम करें</td><td>URL से लिखित रूप में बदलें</td><td>URL से लिखित रूप में बदलें</td></tr>
+            <tr><th scope="row">निर्यात फ़ॉर्मेट</th><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF + 10</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, ASS</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, TXT</bdi></td></tr>
             <tr><th scope="row">साइन किया गया Windows इंस्टॉलर</th><td>नहीं</td><td>उल्लेखित नहीं</td><td>हाँ, इसके डॉक्स के अनुसार</td><td>नहीं</td></tr>
-            <tr><th scope="row">इंटरफ़ेस भाषाएँ</th><td>42</td><td>35</td><td>22</td><td>16</td></tr>
-            <tr><th scope="row">इसे चुनें यदि</th><td>आपको एक लाइव माइक्रोफ़ोन, वीडियो डाउनलोड, 14 आउटपुट फ़ॉर्मैट और OpenAI-संगत रूट के साथ एक लोकल-नेटवर्क मोड भी चाहिए</td><td>आपको कई स्पीच इंजन (Parakeet, Canary, Qwen3-ASR और अधिक) या एक नोटराइज़्ड Mac ऐप चाहिए</td><td>आपको एक ऐसा Windows इंस्टॉलर चाहिए जिसके डॉक्स में साइन किए गए होने का उल्लेख हो, या AMD और Intel का नाम लेने वाला GPU समर्थन चाहिए</td><td>आपको Linux पैकेज (Flatpak, Snap, AppImage) या PyPI इंस्टॉल चाहिए</td></tr>
+            <tr><th scope="row">इंटरफ़ेस भाषाएँ</th><td>42</td><td>36</td><td>22</td><td>15</td></tr>
+            <tr><th scope="row">फ़ारसी इंटरफ़ेस</th><td>हाँ</td><td>हाँ</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">दाएँ से बाएँ लेआउट</th><td>हाँ</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">लाइव कैप्शन</th><td>हाँ</td><td>—</td><td>—</td><td>हाँ</td></tr>
+            <tr><th scope="row">ऑडियो ट्रैक चुनना</th><td>हाँ</td><td>हाँ</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">क्षतिग्रस्त मीडिया की रिकवरी</th><td>हाँ</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">लिप्यंतरण संपादित करना</th><td>हाँ</td><td>हाँ</td><td>—</td><td>हाँ</td></tr>
+            <tr><th scope="row">दोबारा लिप्यंतरण के परिणाम की तुलना</th><td>हाँ</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">स्थानीय MCP से AI सहायक</th><td>हाँ</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">GPU तापमान सीमा</th><td><bdi dir="ltr" translate="no">NVIDIA</bdi></td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row" translate="no">Obsidian / n8n</th><td>हाँ</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">अंतर्निर्मित सर्वर</th><td>वेब और API</td><td>—</td><td><bdi dir="ltr" translate="no">HTTP API</bdi></td><td>—</td></tr>
           </tbody>
         </table>
       </div>
+      <p class="compare-note" id="compare-note"><time dir="ltr" datetime="2026-11-26">2026-11-26</time> को जाँचा गया। डैश उस सुविधा को दर्शाता है जिसकी पुष्टि नहीं हो सकी। <a href="/compare/" hreflang="en">आधिकारिक स्रोत</a> देखें।</p>
     </div>
   </section>
 

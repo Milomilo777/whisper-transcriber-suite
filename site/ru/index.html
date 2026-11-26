@@ -82,7 +82,7 @@
 
 <link rel="preload" href="/assets/shots/transcribe.webp" as="image" type="image/webp" imagesrcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" imagesizes="(max-width: 1080px) 72vw, 480px">
 <script src="/js/motion-init.js?v=20260927b"></script>
-<link rel="stylesheet" href="/styles.css?v=20261022a">
+<link rel="stylesheet" href="/styles.css?v=20261126geo">
 
 <script type="application/ld+json">
 {
@@ -904,6 +904,7 @@
       <div class="rail sr" aria-hidden="true"><span class="rail-pulse"></span></div>
       <a class="text-link sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md" rel="noopener">Подробнее об архитектуре<svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
       <p class="muted guide-links">Пошаговые руководства: <a href="/ru/youtube-to-text/">видео с YouTube в текст</a> · <a href="/ru/video-to-srt/">видео в субтитры SRT</a> · <a href="/ru/speaker-labels/">транскрипции с метками говорящих</a></p>
+      <p class="muted guide-links"><a href="/windows-offline-transcription/" hreflang="en">Офлайн-транскрипция в Windows (на английском)</a></p>
     </div>
   </section>
 
@@ -957,6 +958,13 @@ python gui.py</code></pre>
           <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS — установка одной командой</p>
           <h3>Вставьте в Терминал. И всё.</h3>
           <p>Скачивает подходящую сборку для вашего Mac (Apple Silicon на macOS 14+, в остальных случаях Intel через Rosetta), копирует приложение в <code>Applications</code> и открывает его. Файлы, загруженные через <code>curl</code>, не помещаются в карантин, поэтому вам не придётся закрывать предупреждение о «неустановленном разработчике».</p>
+          <table class="mac-builds">
+            <thead><tr><th scope="col">Mac</th><th scope="col">Минимальная версия macOS</th><th scope="col">Скачать</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Intel</bdi></th><td><bdi dir="ltr" translate="no">macOS 12+</bdi></td><td><bdi dir="ltr" translate="no">x64 DMG</bdi></td></tr>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Apple Silicon</bdi></th><td><bdi dir="ltr" translate="no">macOS 14+</bdi></td><td><bdi dir="ltr" translate="no">arm64 DMG</bdi></td></tr>
+            </tbody>
+          </table>
         </div>
         <div class="code-box">
           <button class="copy-btn" type="button" data-copy="#mac-cmd">Копировать</button>
@@ -974,24 +982,39 @@ python gui.py</code></pre>
       <header class="section-head sr">
         <p class="eyebrow">Сравнение</p>
         <h2 id="compare-title">Как приложение выглядит в сравнении с другими программами на базе Whisper?</h2>
-        <p class="section-lede">Whisper Transcriber Suite — одно из нескольких бесплатных приложений с открытым исходным кодом, выполняющих транскрибацию прямо на вашем компьютере. Ниже показано, как оно соотносится с Subtitle Edit, Vibe и Buzz, а также в каких случаях лучше подойдёт другое приложение. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">Ознакомьтесь с полным сравнением</a>, где указан источник каждого факта и рассмотрены ещё две программы — noScribe и aTrain.</p>
+        <p class="section-lede"><a href="/compare/" hreflang="en">Полное сравнение (на английском)</a></p>
       </header>
-      <div class="table-wrap sr">
-        <table class="compare-table">
-          <caption>Проверено 2026-10-05 по README, документации и релизам каждого проекта. Приложения быстро меняются: ссылки на источники смотрите в <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">полном сравнении</a>.</caption>
+      <div class="table-wrap sr" tabindex="0" role="region" aria-labelledby="compare-title">
+        <table class="compare-table" aria-describedby="compare-note">
           <thead>
             <tr><th scope="col"><span class="sr-only">Функция</span></th><th scope="col">Whisper Transcriber Suite</th><th scope="col">Subtitle Edit</th><th scope="col">Vibe</th><th scope="col">Buzz</th></tr>
           </thead>
           <tbody>
             <tr><th scope="row">Цена, лицензия</th><td>Бесплатно, BSD-3-Clause</td><td>Бесплатно, MIT</td><td>Бесплатно, MIT</td><td>Бесплатно, MIT</td></tr>
-            <tr><th scope="row">Загрузки</th><td>Установщик для Windows и портативный ZIP, macOS (Apple silicon, Intel); Linux из исходного кода</td><td>Windows (x64, ARM64), macOS, Linux (Flatpak, tar.gz)</td><td>Windows, macOS, Linux (.deb, .rpm)</td><td>Windows, macOS (1.4.5 — последняя версия для Mac с Intel), Linux (Flatpak, Snap, AppImage), PyPI</td></tr>
-            <tr><th scope="row">Ускорение на GPU</th><td>NVIDIA (CUDA)</td><td>NVIDIA (CUDA), Vulkan</td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Загрузки</th><td>Установщик для Windows и портативный ZIP, macOS (Apple silicon, Intel); Linux из исходного кода</td><td>Windows: установщик и ZIP · macOS · Linux</td><td>Windows: установщик · macOS · Linux</td><td>Windows: установщик · macOS · Linux</td></tr>
+            <tr><th scope="row">Офлайн-транскрипция</th><td>Да</td><td>Да</td><td>Да</td><td>Да</td></tr>
+            <tr><th scope="row">Пакетная транскрипция</th><td>Да</td><td>Да</td><td>Да</td><td>отслеживание папки</td></tr>
+            <tr><th scope="row">Ускорение на GPU</th><td><bdi dir="ltr" translate="no">NVIDIA (CUDA); Apple Silicon (MLX)</bdi></td><td><bdi dir="ltr" translate="no">NVIDIA (CUDA), Vulkan, Metal</bdi></td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Метки говорящих</th><td>Да</td><td>Зависит от движка</td><td>Да</td><td>Да</td></tr>
+            <tr><th scope="row">Источник — YouTube</th><td>Скачать и транскрибировать</td><td>Воспроизводить по ссылке</td><td>Транскрибировать по ссылке</td><td>Транскрибировать по ссылке</td></tr>
+            <tr><th scope="row">Форматы экспорта</th><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF + 10</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, ASS</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, TXT</bdi></td></tr>
             <tr><th scope="row">Подписанный установщик для Windows</th><td>Нет</td><td>Не указано</td><td>Да, согласно документации</td><td>Нет</td></tr>
-            <tr><th scope="row">Языки интерфейса</th><td>42</td><td>35</td><td>22</td><td>16</td></tr>
-            <tr><th scope="row">Выбирайте его, если</th><td>Вам также нужны транскрибация с микрофона в реальном времени, скачивание видео, 14 форматов вывода и режим работы в локальной сети с OpenAI-совместимым маршрутом</td><td>Вам требуется множество речевых движков (Parakeet, Canary, Qwen3-ASR и др.) или приложение для Mac, прошедшее нотаризацию Apple</td><td>Вам нужен установщик для Windows, который, согласно документации, имеет цифровую подпись, или поддержка GPU с явным указанием AMD и Intel</td><td>Вам нужны пакеты для Linux (Flatpak, Snap, AppImage) или установка через PyPI</td></tr>
+            <tr><th scope="row">Языки интерфейса</th><td>42</td><td>36</td><td>22</td><td>15</td></tr>
+            <tr><th scope="row">Интерфейс на персидском</th><td>Да</td><td>Да</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Разметка справа налево</th><td>Да</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Субтитры в реальном времени</th><td>Да</td><td>—</td><td>—</td><td>Да</td></tr>
+            <tr><th scope="row">Выбор аудиодорожки</th><td>Да</td><td>Да</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Восстановление повреждённых медиафайлов</th><td>Да</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Редактирование транскрипции</th><td>Да</td><td>Да</td><td>—</td><td>Да</td></tr>
+            <tr><th scope="row">Сравнение повторной транскрипции</th><td>Да</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">ИИ-ассистенты через локальный MCP</th><td>Да</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Лимит температуры GPU</th><td><bdi dir="ltr" translate="no">NVIDIA</bdi></td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row" translate="no">Obsidian / n8n</th><td>Да</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Встроенный сервер</th><td>Веб и API</td><td>—</td><td><bdi dir="ltr" translate="no">HTTP API</bdi></td><td>—</td></tr>
           </tbody>
         </table>
       </div>
+      <p class="compare-note" id="compare-note">Проверено <time dir="ltr" datetime="2026-11-26">2026-11-26</time>. Прочерк означает, что функцию подтвердить не удалось. См. <a href="/compare/" hreflang="en">официальные источники</a>.</p>
     </div>
   </section>
 

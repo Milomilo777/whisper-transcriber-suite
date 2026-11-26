@@ -82,7 +82,7 @@
 
 <link rel="preload" href="/assets/shots/transcribe.webp" as="image" type="image/webp" imagesrcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" imagesizes="(max-width: 1080px) 72vw, 480px">
 <script src="/js/motion-init.js?v=20260927b"></script>
-<link rel="stylesheet" href="/styles.css?v=20261022a">
+<link rel="stylesheet" href="/styles.css?v=20261126geo">
 
 <script type="application/ld+json">
 {
@@ -904,6 +904,7 @@
       <div class="rail sr" aria-hidden="true"><span class="rail-pulse"></span></div>
       <a class="text-link sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md" rel="noopener">Прочитајте комплетан опис архитектуре<svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
       <p class="muted guide-links">Водичи корак по корак: <a href="/sr/youtube-to-text/">YouTube видео у текст</a> · <a href="/sr/video-to-srt/">видео у SRT титлове</a> · <a href="/sr/speaker-labels/">транскрипти са ознакама говорника</a></p>
+      <p class="muted guide-links"><a href="/windows-offline-transcription/" hreflang="en">Ванмрежни препис на Windows-у (на енглеском)</a></p>
     </div>
   </section>
 
@@ -957,6 +958,13 @@ python gui.py</code></pre>
           <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS — инсталација у једном реду</p>
           <h3>Налепите у Terminal. То је све.</h3>
           <p>Преузима одговарајућу верзију за ваш Mac (Apple Silicon на macOS 14+, у супротном Intel путем софтвера Rosetta), копира апликацију у <code>Applications</code> и отвара је. Датотеке које преузме <code>curl</code> нису у карантину, па нема упозорења о „неидентификованом програмеру” које морате да прескочите кликом.</p>
+          <table class="mac-builds">
+            <thead><tr><th scope="col">Mac</th><th scope="col">Најнижа верзија macOS-а</th><th scope="col">Преузимање</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Intel</bdi></th><td><bdi dir="ltr" translate="no">macOS 12+</bdi></td><td><bdi dir="ltr" translate="no">x64 DMG</bdi></td></tr>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Apple Silicon</bdi></th><td><bdi dir="ltr" translate="no">macOS 14+</bdi></td><td><bdi dir="ltr" translate="no">arm64 DMG</bdi></td></tr>
+            </tbody>
+          </table>
         </div>
         <div class="code-box">
           <button class="copy-btn" type="button" data-copy="#mac-cmd">Копирај</button>
@@ -974,24 +982,39 @@ python gui.py</code></pre>
       <header class="section-head sr">
         <p class="eyebrow">Упореди</p>
         <h2 id="compare-title">Како се пореди са другим Whisper апликацијама?</h2>
-        <p class="section-lede">Whisper Transcriber Suite је једна од неколико бесплатних десктоп апликација отвореног кода које транскрибују на вашем сопственом рачунару. Ево како се пореди са Subtitle Edit, Vibe и Buzz, укључујући и ситуације када нека друга апликација више одговара. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">Прочитајте комплетно поређење</a>, са извором за сваку чињеницу и још две апликације, noScribe и aTrain.</p>
+        <p class="section-lede"><a href="/compare/" hreflang="en">Потпуно поређење (на енглеском)</a></p>
       </header>
-      <div class="table-wrap sr">
-        <table class="compare-table">
-          <caption>Проверено 2026-10-05 на основу сопствених README датотека, документације и издања сваког пројекта. Апликације се брзо мењају: погледајте <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">комплетно поређење</a> за изворе.</caption>
+      <div class="table-wrap sr" tabindex="0" role="region" aria-labelledby="compare-title">
+        <table class="compare-table" aria-describedby="compare-note">
           <thead>
             <tr><th scope="col"><span class="sr-only">Функција</span></th><th scope="col">Whisper Transcriber Suite</th><th scope="col">Subtitle Edit</th><th scope="col">Vibe</th><th scope="col">Buzz</th></tr>
           </thead>
           <tbody>
             <tr><th scope="row">Цена, лиценца</th><td>Бесплатно, BSD-3-Clause</td><td>Бесплатно, MIT</td><td>Бесплатно, MIT</td><td>Бесплатно, MIT</td></tr>
-            <tr><th scope="row">Преузимања</th><td>Windows инсталатер и преносиви ZIP, macOS (Apple silicon, Intel); Linux из изворног кода</td><td>Windows (x64, ARM64), macOS, Linux (Flatpak, tar.gz)</td><td>Windows, macOS, Linux (.deb, .rpm)</td><td>Windows, macOS (1.4.5 је последња за Intel Mac рачунаре), Linux (Flatpak, Snap, AppImage), PyPI</td></tr>
-            <tr><th scope="row">GPU убрзање</th><td>NVIDIA (CUDA)</td><td>NVIDIA (CUDA), Vulkan</td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Преузимања</th><td>Windows инсталатер и преносиви ZIP, macOS (Apple silicon, Intel); Linux из изворног кода</td><td>Windows: инсталатер и ZIP · macOS · Linux</td><td>Windows: инсталатер · macOS · Linux</td><td>Windows: инсталатер · macOS · Linux</td></tr>
+            <tr><th scope="row">Ванмрежни препис</th><td>Да</td><td>Да</td><td>Да</td><td>Да</td></tr>
+            <tr><th scope="row">Групни препис</th><td>Да</td><td>Да</td><td>Да</td><td>надгледана фасцикла</td></tr>
+            <tr><th scope="row">GPU убрзање</th><td><bdi dir="ltr" translate="no">NVIDIA (CUDA); Apple Silicon (MLX)</bdi></td><td><bdi dir="ltr" translate="no">NVIDIA (CUDA), Vulkan, Metal</bdi></td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Ознаке говорника</th><td>Да</td><td>Зависи од механизма</td><td>Да</td><td>Да</td></tr>
+            <tr><th scope="row">YouTube као извор</th><td>Преузми и препиши</td><td>Пусти са URL-а</td><td>Препиши са URL-а</td><td>Препиши са URL-а</td></tr>
+            <tr><th scope="row">Формати извоза</th><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF + 10</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, ASS</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, TXT</bdi></td></tr>
             <tr><th scope="row">Потписани Windows инсталатер</th><td>Не</td><td>Није наведено</td><td>Да, према документацији</td><td>Не</td></tr>
-            <tr><th scope="row">Језици интерфејса</th><td>42</td><td>35</td><td>22</td><td>16</td></tr>
-            <tr><th scope="row">Изаберите га ако</th><td>Желите и микрофон уживо, преузимање видеа, 14 излазних формата и режим локалне мреже са рутом компатибилном са OpenAI</td><td>Желите много механизама за говор (Parakeet, Canary, Qwen3-ASR и друге) или нотаризовану Mac апликацију</td><td>Желите Windows инсталатер за који документација наводи да је потписан, или GPU подршку која наводи AMD и Intel</td><td>Желите Linux пакете (Flatpak, Snap, AppImage) или инсталацију преко PyPI</td></tr>
+            <tr><th scope="row">Језици интерфејса</th><td>42</td><td>36</td><td>22</td><td>15</td></tr>
+            <tr><th scope="row">Интерфејс на персијском</th><td>Да</td><td>Да</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Распоред здесна налево</th><td>Да</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Титлови уживо</th><td>Да</td><td>—</td><td>—</td><td>Да</td></tr>
+            <tr><th scope="row">Избор звучне стазе</th><td>Да</td><td>Да</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Опоравак оштећених медијских датотека</th><td>Да</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Уређивање преписа</th><td>Да</td><td>Да</td><td>—</td><td>Да</td></tr>
+            <tr><th scope="row">Поређење новог преписа</th><td>Да</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">ВИ асистенти преко локалног MCP-а</th><td>Да</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Ограничење температуре GPU-а</th><td><bdi dir="ltr" translate="no">NVIDIA</bdi></td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row" translate="no">Obsidian / n8n</th><td>Да</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Уграђени сервер</th><td>Веб и API</td><td>—</td><td><bdi dir="ltr" translate="no">HTTP API</bdi></td><td>—</td></tr>
           </tbody>
         </table>
       </div>
+      <p class="compare-note" id="compare-note">Проверено <time dir="ltr" datetime="2026-11-26">2026-11-26</time>. Црта означава непотврђену функцију. Видите <a href="/compare/" hreflang="en">званичне изворе</a>.</p>
     </div>
   </section>
 

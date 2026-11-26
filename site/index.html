@@ -84,7 +84,7 @@
 <link rel="preload" href="assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/shots/transcribe.webp" as="image" type="image/webp" imagesrcset="assets/shots/transcribe-640.webp 640w, assets/shots/transcribe.webp 1180w" imagesizes="(max-width: 1080px) 72vw, 480px">
 <script src="js/motion-init.js?v=20260927b"></script>
-<link rel="stylesheet" href="styles.css?v=20261022a">
+<link rel="stylesheet" href="styles.css?v=20261126geo">
 
 <script type="application/ld+json">
 {
@@ -877,6 +877,7 @@ Below them, what 2.2, 2.1 and 2.0 added.--></p>
       <div class="rail sr" aria-hidden="true"><span class="rail-pulse"></span></div>
       <a class="text-link sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md" rel="noopener">Read the full architecture<svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
       <p class="muted guide-links">Step-by-step guides: <a href="/youtube-to-text/">YouTube video to text</a> · <a href="/video-to-srt/">video to SRT subtitles</a> · <a href="/speaker-labels/">transcripts with speaker labels</a></p>
+      <p class="muted guide-links"><a href="/windows-offline-transcription/" hreflang="en">Windows offline transcription (English)</a></p>
     </div>
   </section>
 
@@ -930,6 +931,13 @@ python gui.py</code></pre>
           <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS — one-line install</p>
           <h3>Paste into Terminal. That's it.</h3>
           <p>Downloads the right build for your Mac (Apple Silicon on macOS 14+, otherwise Intel via Rosetta), copies the app into <code>Applications</code> and opens it. Files fetched by <code>curl</code> aren't quarantined, so there's no "unidentified developer" warning to click past.</p>
+          <table class="mac-builds">
+            <thead><tr><th scope="col">Mac</th><th scope="col">Minimum macOS</th><th scope="col">Download</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Intel</bdi></th><td><bdi dir="ltr" translate="no">macOS 12+</bdi></td><td><bdi dir="ltr" translate="no">x64 DMG</bdi></td></tr>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Apple Silicon</bdi></th><td><bdi dir="ltr" translate="no">macOS 14+</bdi></td><td><bdi dir="ltr" translate="no">arm64 DMG</bdi></td></tr>
+            </tbody>
+          </table>
         </div>
         <div class="code-box">
           <button class="copy-btn" type="button" data-copy="#mac-cmd">Copy</button>
@@ -947,24 +955,39 @@ python gui.py</code></pre>
       <header class="section-head sr">
         <p class="eyebrow">Compare</p>
         <h2 id="compare-title">How does it compare to other Whisper apps?</h2>
-        <p class="section-lede">Whisper Transcriber Suite is one of several free, open-source desktop apps that transcribe on your own computer. Here is how it compares with Subtitle Edit, Vibe and Buzz, including when another app fits better. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">Read the full comparison</a>, with a source for every fact and two more apps, noScribe and aTrain.</p>
+        <p class="section-lede"><a href="/compare/" hreflang="en">Full comparison (English)</a></p>
       </header>
-      <div class="table-wrap sr">
-        <table class="compare-table">
-          <caption>Checked 2026-10-05 against each project's own README, docs and releases. Apps change quickly: see the <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">full comparison</a> for sources.</caption>
+      <div class="table-wrap sr" tabindex="0" role="region" aria-labelledby="compare-title">
+        <table class="compare-table" aria-describedby="compare-note">
           <thead>
             <tr><th scope="col"><span class="sr-only">Feature</span></th><th scope="col">Whisper Transcriber Suite</th><th scope="col">Subtitle Edit</th><th scope="col">Vibe</th><th scope="col">Buzz</th></tr>
           </thead>
           <tbody>
             <tr><th scope="row">Price, licence</th><td>Free, BSD-3-Clause</td><td>Free, MIT</td><td>Free, MIT</td><td>Free, MIT</td></tr>
-            <tr><th scope="row">Downloads</th><td>Windows installer and portable ZIP, macOS (Apple silicon, Intel); Linux from source</td><td>Windows (x64, ARM64), macOS, Linux (Flatpak, tar.gz)</td><td>Windows, macOS, Linux (.deb, .rpm)</td><td>Windows, macOS (1.4.5 is the last for Intel Macs), Linux (Flatpak, Snap, AppImage), PyPI</td></tr>
-            <tr><th scope="row">GPU acceleration</th><td>NVIDIA (CUDA)</td><td>NVIDIA (CUDA), Vulkan</td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Downloads</th><td>Windows installer and portable ZIP, macOS (Apple silicon, Intel); Linux from source</td><td>Windows installer and ZIP; macOS and Linux</td><td>Windows installer; macOS and Linux</td><td>Windows installer; macOS and Linux</td></tr>
+            <tr><th scope="row">Offline transcription</th><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
+            <tr><th scope="row">Batch transcription</th><td>Yes</td><td>Yes</td><td>Yes</td><td>Watch folder</td></tr>
+            <tr><th scope="row">GPU acceleration</th><td><bdi dir="ltr" translate="no">NVIDIA (CUDA); Apple Silicon (MLX)</bdi></td><td><bdi dir="ltr" translate="no">NVIDIA (CUDA), Vulkan, Metal</bdi></td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Speaker labels</th><td>Yes</td><td>By engine</td><td>Yes</td><td>Yes</td></tr>
+            <tr><th scope="row">YouTube input</th><td>Download and transcribe</td><td>Stream from URL</td><td>Transcribe from URL</td><td>Transcribe from URL</td></tr>
+            <tr><th scope="row">Export formats</th><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF + 10</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, ASS</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, TXT</bdi></td></tr>
             <tr><th scope="row">Signed Windows installer</th><td>No</td><td>Not stated</td><td>Yes, per its docs</td><td>No</td></tr>
-            <tr><th scope="row">Interface languages</th><td>42</td><td>35</td><td>22</td><td>16</td></tr>
-            <tr><th scope="row">Choose it if</th><td>You also want a live microphone, video downloads, 14 output formats and a local-network mode with an OpenAI-compatible route</td><td>You want many speech engines (Parakeet, Canary, Qwen3-ASR and more) or a notarized Mac app</td><td>You want a Windows installer its docs say is signed, or GPU support that names AMD and Intel</td><td>You want Linux packages (Flatpak, Snap, AppImage) or a PyPI install</td></tr>
+            <tr><th scope="row">Interface languages</th><td>42</td><td>36</td><td>22</td><td>15</td></tr>
+            <tr><th scope="row">Persian interface</th><td>Yes</td><td>Yes</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Right-to-left layout</th><td>Yes</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Live captions</th><td>Yes</td><td>—</td><td>—</td><td>Yes</td></tr>
+            <tr><th scope="row">Audio track choice</th><td>Yes</td><td>Yes</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Damaged media recovery</th><td>Yes</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Transcript editing</th><td>Yes</td><td>Yes</td><td>—</td><td>Yes</td></tr>
+            <tr><th scope="row">Re-run comparison</th><td>Yes</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">AI assistants via local MCP</th><td>Yes</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">GPU temperature limit</th><td><bdi dir="ltr" translate="no">NVIDIA</bdi></td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row" translate="no">Obsidian / n8n</th><td>Yes</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Built-in server</th><td>Web and API</td><td>—</td><td><bdi dir="ltr" translate="no">HTTP API</bdi></td><td>—</td></tr>
           </tbody>
         </table>
       </div>
+      <p class="compare-note" id="compare-note">Checked <time dir="ltr" datetime="2026-11-26">2026-11-26</time>. A dash marks a feature we could not verify. See the <a href="/compare/" hreflang="en">official sources</a>.</p>
     </div>
   </section>
 

@@ -82,7 +82,7 @@
 
 <link rel="preload" href="/assets/shots/transcribe.webp" as="image" type="image/webp" imagesrcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" imagesizes="(max-width: 1080px) 72vw, 480px">
 <script src="/js/motion-init.js?v=20260927b"></script>
-<link rel="stylesheet" href="/styles.css?v=20261022a">
+<link rel="stylesheet" href="/styles.css?v=20261126geo">
 
 <script type="application/ld+json">
 {
@@ -904,6 +904,7 @@
       <div class="rail sr" aria-hidden="true"><span class="rail-pulse"></span></div>
       <a class="text-link sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md" rel="noopener">전체 아키텍처 살펴보기<svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
       <p class="muted guide-links">단계별 가이드: <a href="/ko/youtube-to-text/">YouTube 동영상을 텍스트로 변환</a> · <a href="/ko/video-to-srt/">동영상을 SRT 자막으로 변환</a> · <a href="/ko/speaker-labels/">화자 라벨이 포함된 전사</a></p>
+      <p class="muted guide-links"><a href="/windows-offline-transcription/" hreflang="en">Windows 오프라인 전사 (영어)</a></p>
     </div>
   </section>
 
@@ -957,6 +958,13 @@ python gui.py</code></pre>
           <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS — 한 줄 설치</p>
           <h3>터미널에 붙여넣기만 하면 끝입니다.</h3>
           <p>사용자의 Mac에 맞는 빌드(macOS 14 이상에서는 Apple Silicon, 그 외에는 Rosetta를 통한 Intel)를 다운로드하여 앱을 <code>Applications</code>에 복사하고 실행합니다. <code>curl</code>에서 가져온 파일은 격리되지 않으므로, "확인되지 않은 개발자" 경고를 클릭해 넘길 필요가 없습니다.</p>
+          <table class="mac-builds">
+            <thead><tr><th scope="col">Mac</th><th scope="col">최소 macOS 버전</th><th scope="col">다운로드</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Intel</bdi></th><td><bdi dir="ltr" translate="no">macOS 12+</bdi></td><td><bdi dir="ltr" translate="no">x64 DMG</bdi></td></tr>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Apple Silicon</bdi></th><td><bdi dir="ltr" translate="no">macOS 14+</bdi></td><td><bdi dir="ltr" translate="no">arm64 DMG</bdi></td></tr>
+            </tbody>
+          </table>
         </div>
         <div class="code-box">
           <button class="copy-btn" type="button" data-copy="#mac-cmd">복사</button>
@@ -974,24 +982,39 @@ python gui.py</code></pre>
       <header class="section-head sr">
         <p class="eyebrow">비교</p>
         <h2 id="compare-title">다른 Whisper 앱과 비교하면 어떤가요?</h2>
-        <p class="section-lede">Whisper Transcriber Suite는 사용자 컴퓨터에서 직접 전사 작업을 수행하는 여러 무료 오픈소스 데스크톱 앱 중 하나입니다. Subtitle Edit, Vibe, Buzz와의 비교는 물론 다른 앱이 더 적합한 경우까지 함께 안내합니다. 모든 사실에 대한 출처와 noScribe, aTrain 두 앱까지 포함된 <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">전체 비교를 읽어보세요</a>.</p>
+        <p class="section-lede"><a href="/compare/" hreflang="en">전체 비교 (영어)</a></p>
       </header>
-      <div class="table-wrap sr">
-        <table class="compare-table">
-          <caption>2026-10-05 기준 각 프로젝트의 자체 README, 문서 및 릴리스를 기반으로 확인했습니다. 앱은 빠르게 변경되므로 출처는 <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">전체 비교</a>를 참조하세요.</caption>
+      <div class="table-wrap sr" tabindex="0" role="region" aria-labelledby="compare-title">
+        <table class="compare-table" aria-describedby="compare-note">
           <thead>
             <tr><th scope="col"><span class="sr-only">기능</span></th><th scope="col">Whisper Transcriber Suite</th><th scope="col">Subtitle Edit</th><th scope="col">Vibe</th><th scope="col">Buzz</th></tr>
           </thead>
           <tbody>
             <tr><th scope="row">가격, 라이선스</th><td>무료, BSD-3-Clause</td><td>무료, MIT</td><td>무료, MIT</td><td>무료, MIT</td></tr>
-            <tr><th scope="row">다운로드</th><td>Windows 설치 프로그램 및 포터블 ZIP, macOS(Apple silicon, Intel); Linux 소스에서 빌드</td><td>Windows (x64, ARM64), macOS, Linux (Flatpak, tar.gz)</td><td>Windows, macOS, Linux (.deb, .rpm)</td><td>Windows, macOS(Intel Mac은 1.4.5가 마지막 버전), Linux (Flatpak, Snap, AppImage), PyPI</td></tr>
-            <tr><th scope="row">GPU 가속</th><td>NVIDIA (CUDA)</td><td>NVIDIA (CUDA), Vulkan</td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">다운로드</th><td>Windows 설치 프로그램 및 포터블 ZIP, macOS(Apple silicon, Intel); Linux 소스에서 빌드</td><td>Windows: 설치 프로그램 및 ZIP · macOS · Linux</td><td>Windows: 설치 프로그램 · macOS · Linux</td><td>Windows: 설치 프로그램 · macOS · Linux</td></tr>
+            <tr><th scope="row">오프라인 음성 전사</th><td>지원</td><td>지원</td><td>지원</td><td>지원</td></tr>
+            <tr><th scope="row">일괄 전사</th><td>지원</td><td>지원</td><td>지원</td><td>폴더 감시</td></tr>
+            <tr><th scope="row">GPU 가속</th><td><bdi dir="ltr" translate="no">NVIDIA (CUDA); Apple Silicon (MLX)</bdi></td><td><bdi dir="ltr" translate="no">NVIDIA (CUDA), Vulkan, Metal</bdi></td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">화자 라벨</th><td>지원</td><td>엔진에 따라 다름</td><td>지원</td><td>지원</td></tr>
+            <tr><th scope="row">YouTube 입력</th><td>다운로드 후 전사</td><td>URL에서 스트리밍</td><td>URL에서 전사</td><td>URL에서 전사</td></tr>
+            <tr><th scope="row">내보내기 형식</th><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF + 10</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, ASS</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, TXT</bdi></td></tr>
             <tr><th scope="row">서명된 Windows 설치 프로그램</th><td>아니요</td><td>명시되지 않음</td><td>예, 자체 문서 기준</td><td>아니요</td></tr>
-            <tr><th scope="row">인터페이스 언어</th><td>42</td><td>35</td><td>22</td><td>16</td></tr>
-            <tr><th scope="row">이럴 때 선택하세요</th><td>실시간 마이크 입력, 동영상 다운로드, 14가지 출력 형식, OpenAI 호환 경로가 있는 로컬 네트워크 모드를 함께 사용하고 싶을 때</td><td>다양한 음성 엔진(Parakeet, Canary, Qwen3-ASR 등)이나 공증을 받은 Mac 앱을 원할 때</td><td>문서상 서명된 것으로 명시된 Windows 설치 프로그램이 필요하거나, AMD 및 Intel이 명시된 GPU 지원을 원할 때</td><td>Linux 패키지(Flatpak, Snap, AppImage) 또는 PyPI 설치를 원할 때</td></tr>
+            <tr><th scope="row">인터페이스 언어</th><td>42</td><td>36</td><td>22</td><td>15</td></tr>
+            <tr><th scope="row">페르시아어 인터페이스</th><td>지원</td><td>지원</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">오른쪽에서 왼쪽으로 배치</th><td>지원</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">실시간 자막</th><td>지원</td><td>—</td><td>—</td><td>지원</td></tr>
+            <tr><th scope="row">오디오 트랙 선택</th><td>지원</td><td>지원</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">손상된 미디어 복구</th><td>지원</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">전사문 편집</th><td>지원</td><td>지원</td><td>—</td><td>지원</td></tr>
+            <tr><th scope="row">다시 전사한 결과 비교</th><td>지원</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">로컬 MCP로 AI 도우미 연결</th><td>지원</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">GPU 온도 제한</th><td><bdi dir="ltr" translate="no">NVIDIA</bdi></td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row" translate="no">Obsidian / n8n</th><td>지원</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">내장 서버</th><td>웹 및 API</td><td>—</td><td><bdi dir="ltr" translate="no">HTTP API</bdi></td><td>—</td></tr>
           </tbody>
         </table>
       </div>
+      <p class="compare-note" id="compare-note"><time dir="ltr" datetime="2026-11-26">2026-11-26</time>에 확인했습니다. 대시는 확인하지 못한 기능을 뜻합니다. <a href="/compare/" hreflang="en">공식 출처</a>를 참고하세요.</p>
     </div>
   </section>
 

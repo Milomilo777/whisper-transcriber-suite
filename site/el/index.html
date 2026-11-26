@@ -82,7 +82,7 @@
 
 <link rel="preload" href="/assets/shots/transcribe.webp" as="image" type="image/webp" imagesrcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" imagesizes="(max-width: 1080px) 72vw, 480px">
 <script src="/js/motion-init.js?v=20260927b"></script>
-<link rel="stylesheet" href="/styles.css?v=20261022a">
+<link rel="stylesheet" href="/styles.css?v=20261126geo">
 
 <script type="application/ld+json">
 {
@@ -904,6 +904,7 @@
       <div class="rail sr" aria-hidden="true"><span class="rail-pulse"></span></div>
       <a class="text-link sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md" rel="noopener">Διαβάστε την πλήρη αρχιτεκτονική<svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
       <p class="muted guide-links">Οδηγοί βήμα προς βήμα: <a href="/el/youtube-to-text/">Βίντεο YouTube σε κείμενο</a> · <a href="/el/video-to-srt/">Βίντεο σε υπότιτλους SRT</a> · <a href="/el/speaker-labels/">Μεταγραφές με ετικέτες ομιλητών</a></p>
+      <p class="muted guide-links"><a href="/windows-offline-transcription/" hreflang="en">Μεταγραφή εκτός σύνδεσης στα Windows (στα αγγλικά)</a></p>
     </div>
   </section>
 
@@ -957,6 +958,13 @@ python gui.py</code></pre>
           <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS — εγκατάσταση με μία γραμμή</p>
           <h3>Επικολλήστε στο Terminal. Αυτό ήταν.</h3>
           <p>Κάνει λήψη της κατάλληλης έκδοσης για το Mac σας (Apple Silicon σε macOS 14+, διαφορετικά Intel μέσω Rosetta), αντιγράφει την εφαρμογή στο <code>Applications</code> και την ανοίγει. Τα αρχεία που λαμβάνονται από το <code>curl</code> δεν τίθενται σε καραντίνα, επομένως δεν υπάρχει προειδοποίηση "μη αναγνωρισμένου προγραμματιστή" για να παρακάμψετε.</p>
+          <table class="mac-builds">
+            <thead><tr><th scope="col">Mac</th><th scope="col">Ελάχιστη έκδοση macOS</th><th scope="col">Λήψη</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Intel</bdi></th><td><bdi dir="ltr" translate="no">macOS 12+</bdi></td><td><bdi dir="ltr" translate="no">x64 DMG</bdi></td></tr>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Apple Silicon</bdi></th><td><bdi dir="ltr" translate="no">macOS 14+</bdi></td><td><bdi dir="ltr" translate="no">arm64 DMG</bdi></td></tr>
+            </tbody>
+          </table>
         </div>
         <div class="code-box">
           <button class="copy-btn" type="button" data-copy="#mac-cmd">Αντιγραφή</button>
@@ -974,24 +982,39 @@ python gui.py</code></pre>
       <header class="section-head sr">
         <p class="eyebrow">Σύγκριση</p>
         <h2 id="compare-title">Πώς συγκρίνεται με άλλες εφαρμογές Whisper;</h2>
-        <p class="section-lede">Το Whisper Transcriber Suite είναι μία από τις πολλές δωρεάν εφαρμογές ανοιχτού κώδικα για υπολογιστές που πραγματοποιούν μεταγραφή στον δικό σας υπολογιστή. Δείτε πώς συγκρίνεται με τα Subtitle Edit, Vibe και Buzz, καθώς και πότε μια άλλη εφαρμογή ταιριάζει καλύτερα. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">Διαβάστε την πλήρη σύγκριση</a>, με πηγή για κάθε στοιχείο και δύο επιπλέον εφαρμογές, το noScribe και το aTrain.</p>
+        <p class="section-lede"><a href="/compare/" hreflang="en">Πλήρης σύγκριση (στα αγγλικά)</a></p>
       </header>
-      <div class="table-wrap sr">
-        <table class="compare-table">
-          <caption>Ελέγχθηκε στις 2026-10-05 με βάση το README, την τεκμηρίωση και τις εκδόσεις του κάθε έργου. Οι εφαρμογές αλλάζουν γρήγορα: δείτε την <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">πλήρη σύγκριση</a> για τις πηγές.</caption>
+      <div class="table-wrap sr" tabindex="0" role="region" aria-labelledby="compare-title">
+        <table class="compare-table" aria-describedby="compare-note">
           <thead>
             <tr><th scope="col"><span class="sr-only">Χαρακτηριστικό</span></th><th scope="col">Whisper Transcriber Suite</th><th scope="col">Subtitle Edit</th><th scope="col">Vibe</th><th scope="col">Buzz</th></tr>
           </thead>
           <tbody>
             <tr><th scope="row">Τιμή, άδεια χρήσης</th><td>Δωρεάν, BSD-3-Clause</td><td>Δωρεάν, MIT</td><td>Δωρεάν, MIT</td><td>Δωρεάν, MIT</td></tr>
-            <tr><th scope="row">Λήψεις</th><td>Πρόγραμμα εγκατάστασης και φορητό ZIP για Windows, macOS (Apple silicon, Intel)· Linux από πηγαίο κώδικα</td><td>Windows (x64, ARM64), macOS, Linux (Flatpak, tar.gz)</td><td>Windows, macOS, Linux (.deb, .rpm)</td><td>Windows, macOS (η 1.4.5 είναι η τελευταία για Intel Mac), Linux (Flatpak, Snap, AppImage), PyPI</td></tr>
-            <tr><th scope="row">Επιτάχυνση GPU</th><td>NVIDIA (CUDA)</td><td>NVIDIA (CUDA), Vulkan</td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Λήψεις</th><td>Πρόγραμμα εγκατάστασης και φορητό ZIP για Windows, macOS (Apple silicon, Intel)· Linux από πηγαίο κώδικα</td><td>Windows: πρόγραμμα εγκατάστασης και ZIP · macOS · Linux</td><td>Windows: πρόγραμμα εγκατάστασης · macOS · Linux</td><td>Windows: πρόγραμμα εγκατάστασης · macOS · Linux</td></tr>
+            <tr><th scope="row">Μεταγραφή εκτός σύνδεσης</th><td>Ναι</td><td>Ναι</td><td>Ναι</td><td>Ναι</td></tr>
+            <tr><th scope="row">Μαζική μεταγραφή</th><td>Ναι</td><td>Ναι</td><td>Ναι</td><td>παρακολούθηση φακέλου</td></tr>
+            <tr><th scope="row">Επιτάχυνση GPU</th><td><bdi dir="ltr" translate="no">NVIDIA (CUDA); Apple Silicon (MLX)</bdi></td><td><bdi dir="ltr" translate="no">NVIDIA (CUDA), Vulkan, Metal</bdi></td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Ετικέτες ομιλητών</th><td>Ναι</td><td>Ανάλογα με τη μηχανή</td><td>Ναι</td><td>Ναι</td></tr>
+            <tr><th scope="row">Πηγή YouTube</th><td>Λήψη και μεταγραφή</td><td>Αναπαραγωγή από URL</td><td>Μεταγραφή από URL</td><td>Μεταγραφή από URL</td></tr>
+            <tr><th scope="row">Μορφές εξαγωγής</th><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF + 10</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, ASS</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, TXT</bdi></td></tr>
             <tr><th scope="row">Υπογεγραμμένο πρόγραμμα εγκατάστασης Windows</th><td>Όχι</td><td>Δεν αναφέρεται</td><td>Ναι, σύμφωνα με την τεκμηρίωσή του</td><td>Όχι</td></tr>
-            <tr><th scope="row">Γλώσσες διεπαφής</th><td>42</td><td>35</td><td>22</td><td>16</td></tr>
-            <tr><th scope="row">Επιλέξτε το αν</th><td>Θέλετε επίσης ζωντανό μικρόφωνο, λήψη βίντεο, 14 μορφές εξόδου και λειτουργία τοπικού δικτύου με διαδρομή συμβατή με το OpenAI</td><td>Θέλετε πολλές μηχανές ομιλίας (Parakeet, Canary, Qwen3-ASR και άλλες) ή μια επικυρωμένη εφαρμογή για Mac</td><td>Θέλετε ένα πρόγραμμα εγκατάστασης Windows που η τεκμηρίωσή του αναφέρει ότι είναι υπογεγραμμένο, ή υποστήριξη GPU που κατονομάζει την AMD και την Intel</td><td>Θέλετε πακέτα Linux (Flatpak, Snap, AppImage) ή εγκατάσταση μέσω PyPI</td></tr>
+            <tr><th scope="row">Γλώσσες διεπαφής</th><td>42</td><td>36</td><td>22</td><td>15</td></tr>
+            <tr><th scope="row">Περιβάλλον στα περσικά</th><td>Ναι</td><td>Ναι</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Διάταξη από δεξιά προς τα αριστερά</th><td>Ναι</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Ζωντανοί υπότιτλοι</th><td>Ναι</td><td>—</td><td>—</td><td>Ναι</td></tr>
+            <tr><th scope="row">Επιλογή κομματιού ήχου</th><td>Ναι</td><td>Ναι</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Ανάκτηση κατεστραμμένων πολυμέσων</th><td>Ναι</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Επεξεργασία μεταγραφής</th><td>Ναι</td><td>Ναι</td><td>—</td><td>Ναι</td></tr>
+            <tr><th scope="row">Σύγκριση νέας μεταγραφής</th><td>Ναι</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Βοηθοί ΤΝ μέσω τοπικού MCP</th><td>Ναι</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Όριο θερμοκρασίας GPU</th><td><bdi dir="ltr" translate="no">NVIDIA</bdi></td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row" translate="no">Obsidian / n8n</th><td>Ναι</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Ενσωματωμένος διακομιστής</th><td>Ιστός και API</td><td>—</td><td><bdi dir="ltr" translate="no">HTTP API</bdi></td><td>—</td></tr>
           </tbody>
         </table>
       </div>
+      <p class="compare-note" id="compare-note">Ελέγχθηκε στις <time dir="ltr" datetime="2026-11-26">2026-11-26</time>. Η παύλα δηλώνει μη επαληθευμένη λειτουργία. Δείτε τις <a href="/compare/" hreflang="en">επίσημες πηγές</a>.</p>
     </div>
   </section>
 

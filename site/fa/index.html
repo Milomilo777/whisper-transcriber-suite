@@ -82,7 +82,7 @@
 
 <link rel="preload" href="/assets/shots/transcribe.webp" as="image" type="image/webp" imagesrcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" imagesizes="(max-width: 1080px) 72vw, 480px">
 <script src="/js/motion-init.js?v=20260927b"></script>
-<link rel="stylesheet" href="/styles.css?v=20261022a">
+<link rel="stylesheet" href="/styles.css?v=20261126geo">
 
 <script type="application/ld+json">
 {
@@ -904,6 +904,7 @@
       <div class="rail sr" aria-hidden="true"><span class="rail-pulse"></span></div>
       <a class="text-link sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md" rel="noopener">مطالعه ساختار فنی کامل<svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
       <p class="muted guide-links">راهنماهای گام‌به‌گام: <a href="/fa/youtube-to-text/">تبدیل ویدیوی YouTube به متن</a> · <a href="/fa/video-to-srt/">تبدیل ویدیو به زیرنویس SRT</a> · <a href="/fa/speaker-labels/">متن رونویسی با برچسب‌های گوینده</a></p>
+      <p class="muted guide-links"><a href="/windows-offline-transcription/" hreflang="en">رونویسی آفلاین در ویندوز (انگلیسی)</a></p>
     </div>
   </section>
 
@@ -957,6 +958,13 @@ python gui.py</code></pre>
           <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS — نصب با یک خط دستور</p>
           <h3>در Terminal بچسبانید. تمام.</h3>
           <p>نسخه مناسب برای Mac شما را دانلود می‌کند (Apple Silicon روی macOS 14+، در غیر این صورت Intel از طریق Rosetta)، برنامه را در <code>Applications</code> کپی کرده و آن را باز می‌کند. فایل‌های دریافت‌شده توسط <code>curl</code> قرنطینه نمی‌شوند، بنابراین هشدار «توسعه‌دهنده ناشناس» برای رد کردن وجود ندارد.</p>
+          <table class="mac-builds">
+            <thead><tr><th scope="col">مک</th><th scope="col">حداقل نسخهٔ macOS</th><th scope="col">دانلود</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Intel</bdi></th><td><bdi dir="ltr" translate="no">macOS 12+</bdi></td><td><bdi dir="ltr" translate="no">x64 DMG</bdi></td></tr>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Apple Silicon</bdi></th><td><bdi dir="ltr" translate="no">macOS 14+</bdi></td><td><bdi dir="ltr" translate="no">arm64 DMG</bdi></td></tr>
+            </tbody>
+          </table>
         </div>
         <div class="code-box">
           <button class="copy-btn" type="button" data-copy="#mac-cmd">کپی</button>
@@ -974,24 +982,39 @@ python gui.py</code></pre>
       <header class="section-head sr">
         <p class="eyebrow">مقایسه</p>
         <h2 id="compare-title">این برنامه چه مقایسه‌ای با سایر برنامه‌های Whisper دارد؟</h2>
-        <p class="section-lede">برنامه Whisper Transcriber Suite یکی از چندین برنامه دسکتاپ رایگان و متن‌باز است که رونویسی را روی کامپیوتر خودتان انجام می‌دهد. در اینجا مقایسه آن با Subtitle Edit، Vibe و Buzz آمده است، از جمله زمان‌هایی که برنامه‌ای دیگر برای کار شما مناسب‌تر است. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">مقایسه کامل را بخوانید</a>، با منبع برای تک‌تک موارد و دو برنامه دیگر یعنی noScribe و aTrain.</p>
+        <p class="section-lede"><a href="/compare/" hreflang="en">مقایسهٔ کامل (انگلیسی)</a></p>
       </header>
-      <div class="table-wrap sr">
-        <table class="compare-table">
-          <caption>بررسی‌شده در 2026-10-05 بر اساس README، مستندات و نسخه‌های منتشرشده هر پروژه. برنامه‌ها سریع تغییر می‌کنند: برای مشاهده منابع، <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">مقایسه کامل</a> را ببینید.</caption>
+      <div class="table-wrap sr" tabindex="0" role="region" aria-labelledby="compare-title">
+        <table class="compare-table" aria-describedby="compare-note">
           <thead>
             <tr><th scope="col"><span class="sr-only">ویژگی</span></th><th scope="col">Whisper Transcriber Suite</th><th scope="col">Subtitle Edit</th><th scope="col">Vibe</th><th scope="col">Buzz</th></tr>
           </thead>
           <tbody>
             <tr><th scope="row">قیمت، مجوز</th><td>رایگان، BSD-3-Clause</td><td>رایگان، MIT</td><td>رایگان، MIT</td><td>رایگان، MIT</td></tr>
-            <tr><th scope="row">دانلودها</th><td>نصب‌کننده Windows و فایل ZIP پرتابل، macOS (پردازنده‌های Apple silicon و Intel)؛ Linux از سورس‌کد</td><td>Windows (نسخه‌های x64 و ARM64)، macOS، Linux (نسخه‌های Flatpak و tar.gz)</td><td>Windows، macOS، Linux (.deb, .rpm)</td><td>Windows، macOS (نسخه 1.4.5 آخرین نسخه برای Macهای Intel است)، Linux (نسخه‌های Flatpak، Snap، AppImage)، PyPI</td></tr>
-            <tr><th scope="row">شتاب‌دهی GPU</th><td>NVIDIA (CUDA)</td><td>NVIDIA (CUDA)، Vulkan</td><td>NVIDIA، AMD، Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA)، Apple silicon، Vulkan</td></tr>
+            <tr><th scope="row">دانلودها</th><td>نصب‌کننده Windows و فایل ZIP پرتابل، macOS (پردازنده‌های Apple silicon و Intel)؛ Linux از سورس‌کد</td><td>ویندوز: نصب‌کننده و ZIP · macOS · لینوکس</td><td>ویندوز: نصب‌کننده · macOS · لینوکس</td><td>ویندوز: نصب‌کننده · macOS · لینوکس</td></tr>
+            <tr><th scope="row">رونویسی آفلاین</th><td>بله</td><td>بله</td><td>بله</td><td>بله</td></tr>
+            <tr><th scope="row">رونویسی دسته‌ای</th><td>بله</td><td>بله</td><td>بله</td><td>پوشهٔ تحت پایش</td></tr>
+            <tr><th scope="row">شتاب‌دهی GPU</th><td><bdi dir="ltr" translate="no">NVIDIA (CUDA); Apple Silicon (MLX)</bdi></td><td><bdi dir="ltr" translate="no">NVIDIA (CUDA), Vulkan, Metal</bdi></td><td>NVIDIA، AMD، Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA)، Apple silicon، Vulkan</td></tr>
+            <tr><th scope="row">برچسب‌های گوینده</th><td>بله</td><td>بسته به موتور</td><td>بله</td><td>بله</td></tr>
+            <tr><th scope="row">ورودی از یوتیوب</th><td>دانلود و رونویسی</td><td>پخش از نشانی اینترنتی</td><td>رونویسی از نشانی اینترنتی</td><td>رونویسی از نشانی اینترنتی</td></tr>
+            <tr><th scope="row">قالب‌های خروجی</th><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF + 10</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, ASS</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, TXT</bdi></td></tr>
             <tr><th scope="row">نصب‌کننده دارای امضای دیجیتال Windows</th><td>خیر</td><td>ذکر نشده</td><td>بله، بر اساس مستندات آن</td><td>خیر</td></tr>
-            <tr><th scope="row">زبان‌های رابط کاربری</th><td>42</td><td>35</td><td>22</td><td>16</td></tr>
-            <tr><th scope="row">این گزینه را انتخاب کنید اگر</th><td>میکروفون زنده، دانلود ویدیو، 14 فرمت خروجی و حالت شبکه محلی با مسیر سازگار با OpenAI نیز می‌خواهید</td><td>موتورهای گفتار متعددی (Parakeet، Canary، Qwen3-ASR و موارد دیگر) یا یک برنامه تأییدشده (notarized) برای Mac می‌خواهید</td><td>نصب‌کننده Windows دارای امضای دیجیتال (طبق مستندات آن) یا پشتیبانی از پردازنده‌های گرافیکی AMD و Intel می‌خواهید</td><td>بسته‌های Linux (شامل Flatpak، Snap، AppImage) یا نصب از طریق PyPI می‌خواهید</td></tr>
+            <tr><th scope="row">زبان‌های رابط کاربری</th><td>42</td><td>36</td><td>22</td><td>15</td></tr>
+            <tr><th scope="row">رابط فارسی</th><td>بله</td><td>بله</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">چیدمان راست‌به‌چپ</th><td>بله</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">زیرنویس زنده</th><td>بله</td><td>—</td><td>—</td><td>بله</td></tr>
+            <tr><th scope="row">انتخاب مسیر صوتی</th><td>بله</td><td>بله</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">بازیابی فایل رسانه‌ای آسیب‌دیده</th><td>بله</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">ویرایش متن رونویسی</th><td>بله</td><td>بله</td><td>—</td><td>بله</td></tr>
+            <tr><th scope="row">مقایسهٔ نتیجهٔ رونویسی مجدد</th><td>بله</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">دستیار هوش مصنوعی از طریق MCP محلی</th><td>بله</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">حد دمای GPU</th><td><bdi dir="ltr" translate="no">NVIDIA</bdi></td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row" translate="no">Obsidian / n8n</th><td>بله</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">سرور داخلی</th><td>وب و API</td><td>—</td><td><bdi dir="ltr" translate="no">HTTP API</bdi></td><td>—</td></tr>
           </tbody>
         </table>
       </div>
+      <p class="compare-note" id="compare-note">بررسی در <time dir="ltr" datetime="2026-11-26">2026-11-26</time> انجام شد. خط تیره یعنی نتوانستیم وجود قابلیت را تأیید کنیم. <a href="/compare/" hreflang="en">منابع رسمی</a> را ببینید.</p>
     </div>
   </section>
 

@@ -84,7 +84,7 @@
 <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/shots/transcribe.webp" as="image" type="image/webp" imagesrcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" imagesizes="(max-width: 1080px) 72vw, 480px">
 <script src="/js/motion-init.js?v=20260927b"></script>
-<link rel="stylesheet" href="/styles.css?v=20261022a">
+<link rel="stylesheet" href="/styles.css?v=20261126geo">
 
 <script type="application/ld+json">
 {
@@ -906,6 +906,7 @@
       <div class="rail sr" aria-hidden="true"><span class="rail-pulse"></span></div>
       <a class="text-link sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md" rel="noopener">Läs om hela arkitekturen<svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
       <p class="muted guide-links">Steg för steg-guider: <a href="/sv/youtube-to-text/">YouTube-video till text</a> · <a href="/sv/video-to-srt/">video till SRT-undertexter</a> · <a href="/sv/speaker-labels/">transkriptioner med talaretiketter</a></p>
+      <p class="muted guide-links"><a href="/windows-offline-transcription/" hreflang="en">Transkribera offline i Windows (på engelska)</a></p>
     </div>
   </section>
 
@@ -959,6 +960,13 @@ python gui.py</code></pre>
           <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS — installation med en rad</p>
           <h3>Klistra in i Terminal. Det är allt.</h3>
           <p>Laddar ned rätt version för din Mac (Apple Silicon på macOS 14+, annars Intel via Rosetta), kopierar appen till <code>Applications</code> och öppnar den. Filer som hämtas av <code>curl</code> sätts inte i karantän, så det finns ingen varning om "oidentifierad utvecklare" att klicka sig förbi.</p>
+          <table class="mac-builds">
+            <thead><tr><th scope="col">Mac</th><th scope="col">Lägsta macOS-version</th><th scope="col">Nedladdning</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Intel</bdi></th><td><bdi dir="ltr" translate="no">macOS 12+</bdi></td><td><bdi dir="ltr" translate="no">x64 DMG</bdi></td></tr>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Apple Silicon</bdi></th><td><bdi dir="ltr" translate="no">macOS 14+</bdi></td><td><bdi dir="ltr" translate="no">arm64 DMG</bdi></td></tr>
+            </tbody>
+          </table>
         </div>
         <div class="code-box">
           <button class="copy-btn" type="button" data-copy="#mac-cmd">Kopiera</button>
@@ -976,24 +984,39 @@ python gui.py</code></pre>
       <header class="section-head sr">
         <p class="eyebrow">Jämför</p>
         <h2 id="compare-title">Hur står den sig mot andra Whisper-appar?</h2>
-        <p class="section-lede">Whisper Transcriber Suite är en av flera gratis skrivbordsappar med öppen källkod som transkriberar på din egen dator. Här ser du hur den står sig mot Subtitle Edit, Vibe och Buzz, inklusive när en annan app passar bättre. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">Läs hela jämförelsen</a>, med en källa för varje uppgift och ytterligare två appar, noScribe och aTrain.</p>
+        <p class="section-lede"><a href="/compare/" hreflang="en">Fullständig jämförelse (på engelska)</a></p>
       </header>
-      <div class="table-wrap sr">
-        <table class="compare-table">
-          <caption>Kontrollerat 2026-10-05 mot respektive projekts egna README, dokumentation och versioner. Appar ändras snabbt: se <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">hela jämförelsen</a> för källor.</caption>
+      <div class="table-wrap sr" tabindex="0" role="region" aria-labelledby="compare-title">
+        <table class="compare-table" aria-describedby="compare-note">
           <thead>
             <tr><th scope="col"><span class="sr-only">Funktion</span></th><th scope="col">Whisper Transcriber Suite</th><th scope="col">Subtitle Edit</th><th scope="col">Vibe</th><th scope="col">Buzz</th></tr>
           </thead>
           <tbody>
             <tr><th scope="row">Pris, licens</th><td>Gratis, BSD-3-Clause</td><td>Gratis, MIT</td><td>Gratis, MIT</td><td>Gratis, MIT</td></tr>
-            <tr><th scope="row">Nedladdningar</th><td>Windows-installerare och portabel ZIP, macOS (Apple silicon, Intel); Linux från källkod</td><td>Windows (x64, ARM64), macOS, Linux (Flatpak, tar.gz)</td><td>Windows, macOS, Linux (.deb, .rpm)</td><td>Windows, macOS (1.4.5 är den sista för Intel-Macar), Linux (Flatpak, Snap, AppImage), PyPI</td></tr>
-            <tr><th scope="row">GPU-acceleration</th><td>NVIDIA (CUDA)</td><td>NVIDIA (CUDA), Vulkan</td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Nedladdningar</th><td>Windows-installerare och portabel ZIP, macOS (Apple silicon, Intel); Linux från källkod</td><td>Windows: installationsprogram och ZIP · macOS · Linux</td><td>Windows: installationsprogram · macOS · Linux</td><td>Windows: installationsprogram · macOS · Linux</td></tr>
+            <tr><th scope="row">Offlinetranskribering</th><td>Ja</td><td>Ja</td><td>Ja</td><td>Ja</td></tr>
+            <tr><th scope="row">Transkribera flera filer</th><td>Ja</td><td>Ja</td><td>Ja</td><td>bevakad mapp</td></tr>
+            <tr><th scope="row">GPU-acceleration</th><td><bdi dir="ltr" translate="no">NVIDIA (CUDA); Apple Silicon (MLX)</bdi></td><td><bdi dir="ltr" translate="no">NVIDIA (CUDA), Vulkan, Metal</bdi></td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Talaretiketter</th><td>Ja</td><td>Beror på motorn</td><td>Ja</td><td>Ja</td></tr>
+            <tr><th scope="row">YouTube som källa</th><td>Ladda ned och transkribera</td><td>Spela upp från URL</td><td>Transkribera från URL</td><td>Transkribera från URL</td></tr>
+            <tr><th scope="row">Exportformat</th><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF + 10</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, ASS</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, TXT</bdi></td></tr>
             <tr><th scope="row">Signerat Windows-installationsprogram</th><td>Nej</td><td>Anges inte</td><td>Ja, enligt dess dokumentation</td><td>Nej</td></tr>
-            <tr><th scope="row">Gränssnittsspråk</th><td>42</td><td>35</td><td>22</td><td>16</td></tr>
-            <tr><th scope="row">Välj den om</th><td>Du vill även ha live-mikrofon, videonedladdningar, 14 utdataformat och ett lokalt nätverksläge med en OpenAI-kompatibel rutt</td><td>Du vill ha många talmotorer (Parakeet, Canary, Qwen3-ASR med flera) eller en notariserad Mac-app</td><td>Du vill ha en Windows-installerare som enligt dokumentationen är signerad, eller GPU-stöd som nämner AMD och Intel</td><td>Du vill ha Linux-paket (Flatpak, Snap, AppImage) eller en PyPI-installation</td></tr>
+            <tr><th scope="row">Gränssnittsspråk</th><td>42</td><td>36</td><td>22</td><td>15</td></tr>
+            <tr><th scope="row">Gränssnitt på persiska</th><td>Ja</td><td>Ja</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Layout från höger till vänster</th><td>Ja</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Direkttextning</th><td>Ja</td><td>—</td><td>—</td><td>Ja</td></tr>
+            <tr><th scope="row">Val av ljudspår</th><td>Ja</td><td>Ja</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Återställning av skadade mediefiler</th><td>Ja</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Redigera transkription</th><td>Ja</td><td>Ja</td><td>—</td><td>Ja</td></tr>
+            <tr><th scope="row">Jämför ny transkription</th><td>Ja</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">AI-assistenter via lokalt MCP</th><td>Ja</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Temperaturgräns för GPU</th><td><bdi dir="ltr" translate="no">NVIDIA</bdi></td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row" translate="no">Obsidian / n8n</th><td>Ja</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Inbyggd server</th><td>Webb och API</td><td>—</td><td><bdi dir="ltr" translate="no">HTTP API</bdi></td><td>—</td></tr>
           </tbody>
         </table>
       </div>
+      <p class="compare-note" id="compare-note">Kontrollerat <time dir="ltr" datetime="2026-11-26">2026-11-26</time>. Ett streck visar att funktionen inte har verifierats. Se <a href="/compare/" hreflang="en">officiella källor</a>.</p>
     </div>
   </section>
 

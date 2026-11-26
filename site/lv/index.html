@@ -84,7 +84,7 @@
 <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/shots/transcribe.webp" as="image" type="image/webp" imagesrcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" imagesizes="(max-width: 1080px) 72vw, 480px">
 <script src="/js/motion-init.js?v=20260927b"></script>
-<link rel="stylesheet" href="/styles.css?v=20261022a">
+<link rel="stylesheet" href="/styles.css?v=20261126geo">
 
 <script type="application/ld+json">
 {
@@ -906,6 +906,7 @@
       <div class="rail sr" aria-hidden="true"><span class="rail-pulse"></span></div>
       <a class="text-link sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md" rel="noopener">Lasiet pilno arhitektūru<svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
       <p class="muted guide-links">Soli pa solim rokasgrāmatas: <a href="/lv/youtube-to-text/">YouTube video uz tekstu</a> · <a href="/lv/video-to-srt/">video uz SRT subtitriem</a> · <a href="/lv/speaker-labels/">transkripti ar runātāju marķējumiem</a></p>
+      <p class="muted guide-links"><a href="/windows-offline-transcription/" hreflang="en">Bezsaistes transkribēšana operētājsistēmā Windows (angliski)</a></p>
     </div>
   </section>
 
@@ -959,6 +960,13 @@ python gui.py</code></pre>
           <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS — instalēšana ar vienu rindu</p>
           <h3>Ielīmējiet terminālī. Tas arī viss.</h3>
           <p>Lejupielādē jūsu Mac datoram atbilstošo versiju (Apple Silicon sistēmā macOS 14+, pretējā gadījumā Intel, izmantojot Rosetta), kopē lietotni mapē <code>Applications</code> un atver to. Faili, ko iegūst <code>curl</code>, netiek karantīnā, tāpēc nav jāizlaiž brīdinājums par "nepazīstamu izstrādātāju".</p>
+          <table class="mac-builds">
+            <thead><tr><th scope="col">Mac</th><th scope="col">Minimālā macOS versija</th><th scope="col">Lejupielāde</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Intel</bdi></th><td><bdi dir="ltr" translate="no">macOS 12+</bdi></td><td><bdi dir="ltr" translate="no">x64 DMG</bdi></td></tr>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Apple Silicon</bdi></th><td><bdi dir="ltr" translate="no">macOS 14+</bdi></td><td><bdi dir="ltr" translate="no">arm64 DMG</bdi></td></tr>
+            </tbody>
+          </table>
         </div>
         <div class="code-box">
           <button class="copy-btn" type="button" data-copy="#mac-cmd">Kopēt</button>
@@ -976,24 +984,39 @@ python gui.py</code></pre>
       <header class="section-head sr">
         <p class="eyebrow">Salīdzināt</p>
         <h2 id="compare-title">Kā tas salīdzinās ar citām Whisper lietotnēm?</h2>
-        <p class="section-lede">Whisper Transcriber Suite ir viena no vairākām bezmaksas, atvērtā pirmkoda darbvirsmas lietotnēm, kas veic transkripciju jūsu pašu datorā. Lūk, kā tā salīdzinās ar Subtitle Edit, Vibe un Buzz, tostarp gadījumiem, kad cita lietotne ir piemērotāka. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">Lasiet pilnu salīdzinājumu</a>, kur katram faktam ir norādīts avots un ir iekļautas vēl divas lietotnes: noScribe un aTrain.</p>
+        <p class="section-lede"><a href="/compare/" hreflang="en">Pilns salīdzinājums (angliski)</a></p>
       </header>
-      <div class="table-wrap sr">
-        <table class="compare-table">
-          <caption>Pārbaudīts 2026-10-05, salīdzinot ar katra projekta paša README, dokumentāciju un laidieniem. Lietotnes mainās ātri: avotus skatiet <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">pilnajā salīdzinājumā</a>.</caption>
+      <div class="table-wrap sr" tabindex="0" role="region" aria-labelledby="compare-title">
+        <table class="compare-table" aria-describedby="compare-note">
           <thead>
             <tr><th scope="col"><span class="sr-only">Funkcija</span></th><th scope="col">Whisper Transcriber Suite</th><th scope="col">Subtitle Edit</th><th scope="col">Vibe</th><th scope="col">Buzz</th></tr>
           </thead>
           <tbody>
             <tr><th scope="row">Cena, licence</th><td>Bezmaksas, BSD-3-Clause</td><td>Bezmaksas, MIT</td><td>Bezmaksas, MIT</td><td>Bezmaksas, MIT</td></tr>
-            <tr><th scope="row">Lejupielādes</th><td>Windows instalators un pārnēsājams ZIP, macOS (Apple silicon, Intel); Linux no pirmkoda</td><td>Windows (x64, ARM64), macOS, Linux (Flatpak, tar.gz)</td><td>Windows, macOS, Linux (.deb, .rpm)</td><td>Windows, macOS (1.4.5 ir pēdējā versija Intel Mac datoriem), Linux (Flatpak, Snap, AppImage), PyPI</td></tr>
-            <tr><th scope="row">GPU paātrinājums</th><td>NVIDIA (CUDA)</td><td>NVIDIA (CUDA), Vulkan</td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Lejupielādes</th><td>Windows instalators un pārnēsājams ZIP, macOS (Apple silicon, Intel); Linux no pirmkoda</td><td>Windows: instalētājs un ZIP · macOS · Linux</td><td>Windows: instalētājs · macOS · Linux</td><td>Windows: instalētājs · macOS · Linux</td></tr>
+            <tr><th scope="row">Bezsaistes transkribēšana</th><td>Jā</td><td>Jā</td><td>Jā</td><td>Jā</td></tr>
+            <tr><th scope="row">Vairāku failu transkribēšana</th><td>Jā</td><td>Jā</td><td>Jā</td><td>uzraudzīta mape</td></tr>
+            <tr><th scope="row">GPU paātrinājums</th><td><bdi dir="ltr" translate="no">NVIDIA (CUDA); Apple Silicon (MLX)</bdi></td><td><bdi dir="ltr" translate="no">NVIDIA (CUDA), Vulkan, Metal</bdi></td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Runātāju etiķetes</th><td>Jā</td><td>Atkarīgs no atpazīšanas moduļa</td><td>Jā</td><td>Jā</td></tr>
+            <tr><th scope="row">YouTube kā avots</th><td>Lejupielādēt un transkribēt</td><td>Atskaņot no URL</td><td>Transkribēt no URL</td><td>Transkribēt no URL</td></tr>
+            <tr><th scope="row">Eksporta formāti</th><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF + 10</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, ASS</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, TXT</bdi></td></tr>
             <tr><th scope="row">Parakstīts Windows instalators</th><td>Nē</td><td>Nav norādīts</td><td>Jā, pēc tās dokumentācijas</td><td>Nē</td></tr>
-            <tr><th scope="row">Saskarnes valodas</th><td>42</td><td>35</td><td>22</td><td>16</td></tr>
-            <tr><th scope="row">Izvēlieties to, ja</th><td>Jūs vēlaties arī dzīvo mikrofonu, video lejupielādes, 14 izvades formātus un lokālā tīkla režīmu ar OpenAI savietojamu maršrutu</td><td>Jūs vēlaties vairākus runas dzinējus (Parakeet, Canary, Qwen3-ASR un citus) vai notarizētu Mac lietotni</td><td>Jūs vēlaties Windows instalatoru, kura dokumentācija norāda, ka tas ir parakstīts, vai GPU atbalstu, kas nosauc AMD un Intel</td><td>Jūs vēlaties Linux pakotnes (Flatpak, Snap, AppImage) vai PyPI instalāciju</td></tr>
+            <tr><th scope="row">Saskarnes valodas</th><td>42</td><td>36</td><td>22</td><td>15</td></tr>
+            <tr><th scope="row">Saskarne persiešu valodā</th><td>Jā</td><td>Jā</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Izkārtojums no labās uz kreiso</th><td>Jā</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Subtitri tiešraidē</th><td>Jā</td><td>—</td><td>—</td><td>Jā</td></tr>
+            <tr><th scope="row">Audio celiņa izvēle</th><td>Jā</td><td>Jā</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Bojātu multivides failu atgūšana</th><td>Jā</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Transkripcijas rediģēšana</th><td>Jā</td><td>Jā</td><td>—</td><td>Jā</td></tr>
+            <tr><th scope="row">Atkārtotas transkripcijas salīdzināšana</th><td>Jā</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">MI asistenti ar lokālu MCP</th><td>Jā</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">GPU temperatūras ierobežojums</th><td><bdi dir="ltr" translate="no">NVIDIA</bdi></td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row" translate="no">Obsidian / n8n</th><td>Jā</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Iebūvēts serveris</th><td>Tīmeklis un API</td><td>—</td><td><bdi dir="ltr" translate="no">HTTP API</bdi></td><td>—</td></tr>
           </tbody>
         </table>
       </div>
+      <p class="compare-note" id="compare-note">Pārbaudīts <time dir="ltr" datetime="2026-11-26">2026-11-26</time>. Svītra apzīmē neapstiprinātu funkciju. Skatiet <a href="/compare/" hreflang="en">oficiālos avotus</a>.</p>
     </div>
   </section>
 
