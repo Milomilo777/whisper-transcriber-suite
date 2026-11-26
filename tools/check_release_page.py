@@ -6,6 +6,7 @@ import json
 import re
 import sys
 import xml.etree.ElementTree as ET
+from html import unescape
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
@@ -18,9 +19,24 @@ from core.updates import release_headline, release_highlights
 from tools.check_public_release import check_release_notes, release_placeholders
 
 LANGUAGES = "en ar bg bn ca cs da de el es fa fi fil fr he hi hr hu id it ja ko lt lv ms nb nl pl pt pt-br ro ru sk sl sr sv th tr uk vi zh-cn zh-tw".split()
-FEATURES = ["presets", "subtitle-quality", "download-limit"]
+SITE_VERSION = "2.5.0"
+SITE_RELEASED = "2026-11-26"
+FEATURES = ["audio-track", "media-recovery", "transcript-edits"]
+SITE_SIZES = {
+    "size-installer": "241 MB",
+    "size-portable": "360 MB",
+    "size-mac-arm64": "279 MB",
+    "size-mac-x64": "305 MB",
+}
 RELEASE = "https://github.com/Milomilo777/whisper-transcriber-suite/releases/"
 BADGES = "https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/badges/"
+SITE_DOWNLOAD = f"{RELEASE}download/v{SITE_VERSION}/WhisperTranscriberSuite-"
+SITE_FILES = {
+    "installer": f"Installer-Windows-v{SITE_VERSION}.exe",
+    "portable": f"Portable-Windows-v{SITE_VERSION}.zip",
+    "mac-arm64": f"v{SITE_VERSION}-macOS-arm64.dmg",
+    "mac-x64": f"v{SITE_VERSION}-macOS-x64.dmg",
+}
 
 
 def check_release_artifacts(notes: str, *, allow_draft: bool = False) -> None:
@@ -121,6 +137,7 @@ class Page(HTMLParser):
         super().__init__(convert_charrefs=True)
         self.features = []
         self.links = []
+        self.downloads = {}
         self.ids = []
         self.tags = []
         self.blocks = 0
@@ -144,7 +161,7 @@ class Page(HTMLParser):
             self.ids.append(a["id"])
         if tag == "section" and a.get("id") == "whats-new":
             self.whats_new_depth = len(self.stack)
-        if a.get("data-release") == "2.4.0":
+        if a.get("data-release") == SITE_VERSION:
             assert self.whats_new_depth is not None, "release block outside whats-new section"
             self.blocks += 1
             self.release_depth = len(self.stack)
@@ -157,6 +174,8 @@ class Page(HTMLParser):
             self.release_headings += 1
         if self.article_depth is not None and tag == "h3":
             self.headings[-1] += 1
+        if tag == "a" and "data-auto-href" in a:
+            self.downloads.setdefault(a["data-auto-href"], []).append(a.get("href"))
         for key in ("href", "src", "data-still", "data-anim", "poster"):
             if a.get(key):
                 self.links.append(a[key])
@@ -181,15 +200,23 @@ def check_page(html: str, lang: str, site: Path, relative: Path) -> None:
     assert page.lang == lang, f"wrong HTML language: {lang}"
     assert page.tags.count("html") == 1 and page.tags.count("body") == 1
     assert len(page.ids) == len(set(page.ids)), f"duplicate IDs: {lang}"
-    assert page.blocks == 1 and page.features == FEATURES, f"missing 2.4.0 feature block: {lang}"
+    assert page.blocks == 1 and page.features == FEATURES, f"missing {SITE_VERSION} feature block: {lang}"
     assert page.release_headings == 1 and page.headings == [1, 1, 1], f"release structure differs: {lang}"
-    assert "2.3.1" not in html, f"old current version: {lang}"
-    assert '"softwareVersion": "2.4.0"' in html
-    for key in ("version", "size-installer", "size-portable", "size-mac-arm64", "size-mac-x64", "released"):
-        match = re.search(rf'data-auto="{key}"[^>]*>([^<]+)', html)
-        assert match, f"missing {key}: {lang}"
-        expected = {"version": "2.4.0", "size-installer": "238 MB", "size-portable": "355 MB", "size-mac-arm64": "277 MB", "size-mac-x64": "304 MB", "released": "2026-11-15"}
-        assert expected[key] in match[1], f"unverified {key}: {lang}"
+    assert f'<h2 id="new-title">{SITE_VERSION}</h2>' in html, f"wrong release heading: {lang}"
+    assert f'"softwareVersion": "{SITE_VERSION}"' in html, f"wrong structured version: {lang}"
+    assert f'"dateModified": "{SITE_RELEASED}"' in html, f"wrong structured release date: {lang}"
+    assert "macOS 12 or later (Intel build) or macOS 14 or later (Apple Silicon build)" in html
+    expected = {"version": f"v{SITE_VERSION}", "released": SITE_RELEASED, **SITE_SIZES}
+    for key, value in expected.items():
+        matches = re.findall(rf'data-auto="{key}"[^>]*>([^<]*)', html)
+        values = [" ".join(unescape(match).split()).removeprefix("~") for match in matches]
+        assert values == [value] * (2 if key == "version" else 1), f"unverified {key}: {lang}"
+    command = re.search(r'data-auto="mac-oneliner"[^>]*>([^<]*)', html)
+    assert command and SITE_DOWNLOAD + f"v{SITE_VERSION}-macOS-$A.dmg" in command[1], f"wrong Mac command: {lang}"
+    assert page.downloads == {
+        key: [SITE_DOWNLOAD + name] * (2 if key == "installer" else 1) for key, name in SITE_FILES.items()
+    }, f"wrong download markers: {lang}"
+    assert "2.3.1" not in html and "2.4.0" not in html, f"old current version: {lang}"
     for link in page.links:
         u = urlsplit(link)
         if u.netloc == "whisper-transcriber-suite.com":
@@ -204,8 +231,7 @@ def check_page(html: str, lang: str, site: Path, relative: Path) -> None:
             continue
         if u.scheme or u.netloc:
             if link.startswith(RELEASE + "download/"):
-                assert link.startswith(RELEASE + "download/v2.4.0/"), f"wrong download: {link}"
-                assert re.fullmatch(r"WhisperTranscriberSuite-(?:Installer-Windows-v2\.4\.0\.exe|Portable-Windows-v2\.4\.0\.zip|v2\.4\.0-macOS-(?:arm64|x64)\.dmg)", u.path.rsplit("/", 1)[-1])
+                assert link in {SITE_DOWNLOAD + name for name in SITE_FILES.values()}, f"wrong download: {link}"
             continue
         if not u.path:
             assert not u.fragment or u.fragment in page.ids, f"missing anchor: {link} ({lang})"

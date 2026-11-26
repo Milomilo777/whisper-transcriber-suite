@@ -1,4 +1,4 @@
-"""Release draft checks, including causal mutations on copies of the real inputs."""
+"""Historical release notes and current website checks."""
 import json
 import re
 import subprocess
@@ -41,11 +41,11 @@ def test_language_release_block_and_links(lang):
 def test_missing_one_feature_is_rejected():
     relative = Path("fil/index.html")
     html = (ROOT / "site" / relative).read_text(encoding="utf-8")
-    damaged, count = re.subn(r'<article[^>]*data-release-feature="subtitle-quality"[^>]*>.*?</article>', "", html, count=1, flags=re.S)
+    damaged, count = re.subn(r'<article[^>]*data-release-feature="media-recovery"[^>]*>.*?</article>', "", html, count=1, flags=re.S)
     assert count == 1
-    assert 'data-release-feature="presets"' in damaged
-    assert 'data-release-feature="download-limit"' in damaged
-    with pytest.raises(AssertionError, match="missing 2.4.0 feature block: fil"):
+    assert 'data-release-feature="audio-track"' in damaged
+    assert 'data-release-feature="transcript-edits"' in damaged
+    with pytest.raises(AssertionError, match=r"missing 2\.5\.0 feature block: fil"):
         check_page(damaged, "fil", ROOT / "site", relative)
 
 
@@ -60,7 +60,7 @@ def test_second_animation_shortening_is_rejected():
 def test_feature_outside_release_section_is_rejected():
     relative = Path("index.html")
     html = (ROOT / "site" / relative).read_text(encoding="utf-8")
-    article = re.search(r'<article[^>]*data-release-feature="subtitle-quality"[^>]*>.*?</article>', html, re.S)[0]
+    article = re.search(r'<article[^>]*data-release-feature="media-recovery"[^>]*>.*?</article>', html, re.S)[0]
     damaged = html.replace(article, "", 1).replace("</body>", article + "</body>")
     with pytest.raises(AssertionError, match="feature outside release section"):
         check_page(damaged, "en", ROOT / "site", relative)
@@ -69,7 +69,7 @@ def test_feature_outside_release_section_is_rejected():
 def test_release_block_in_wrong_section_is_rejected():
     relative = Path("index.html")
     html = (ROOT / "site" / relative).read_text(encoding="utf-8")
-    block = re.search(r'<div data-release="2.4.0">.*?</div>\s*</div>', html, re.S)[0]
+    block = re.search(r'<div data-release="2\.5\.0">.*?</div>\s*</div>', html, re.S)[0]
     damaged = html.replace(block, "", 1).replace("</body>", block + "</body>")
     with pytest.raises(AssertionError, match="release block outside whats-new section"):
         check_page(damaged, "en", ROOT / "site", relative)
@@ -94,17 +94,40 @@ def test_artifact_row_with_extra_build_metadata_is_rejected(row):
 
 def test_machine_readable_release_facts():
     facts = json.loads((ROOT / "site/facts.json").read_text(encoding="utf-8"))
-    assert facts["version"] == "v2.4.0"
+    assert facts["version"] == "v2.5.0"
     assert facts["release_status"] == "published"
-    assert facts["released"] == "2026-11-15"
+    assert facts["released"] == "2026-11-26"
+    assert facts["release_features"] == release_checks.FEATURES
+    assert {
+        f"size-{name}": f"{round(row['bytes'] / 1048576)} MB"
+        for name, row in facts["files"].items()
+    } == release_checks.SITE_SIZES
     assert set(facts["website_languages"]) == set(LANGUAGES)
     for name in ("llms.txt", "llms-full.txt"):
         text = (ROOT / "site" / name).read_text(encoding="utf-8")
         summary = text.split("# Full text", 1)[0]
-        assert "2.4.0" in summary and "Unpublished draft" not in summary
+        assert "2.5.0" in summary and "Unpublished draft" not in summary
         assert "v2.3.1" not in summary
     ET = __import__("xml.etree.ElementTree", fromlist=["ElementTree"])
     ET.parse(ROOT / "site/sitemap.xml")
+
+
+def test_latest_release_summary_has_no_stale_draft():
+    full = (ROOT / "site/llms-full.txt").read_text(encoding="utf-8")
+    assert "## Version 2.5.0" in full
+    assert "Prepared for 2.4.0 (unpublished)" not in full
+    assert "This candidate has not been published" not in full
+
+
+def test_stale_second_version_marker_is_rejected():
+    relative = Path("index.html")
+    html = (ROOT / "site" / relative).read_text(encoding="utf-8")
+    marker = '<span data-auto="version">v2.5.0</span>'
+    head, sep, tail = html.rpartition(marker)
+    assert sep and marker in head
+    damaged = head + sep.replace("2.5.0", "2.4.0") + tail
+    with pytest.raises(AssertionError, match="unverified version: en"):
+        check_page(damaged, "en", ROOT / "site", relative)
 
 
 def test_readiness_document_is_explicitly_a_draft():

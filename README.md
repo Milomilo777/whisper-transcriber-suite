@@ -36,7 +36,7 @@ Step-by-step guides: [YouTube video to text](https://whisper-transcriber-suite.c
 
 ## Contents
 
-- [Prepared for 2.4.0 (unpublished)](#prepared-for-240-unpublished)
+- [Changes in 2.4.0](#changes-in-240)
 - [Who it is for](#who-it-is-for) · [What's new in 2.2](#whats-new-in-22) · [Quick start](#quick-start) · [Features](#features)
 - [Try it in your browser (no install)](#try-it-in-your-browser-no-install)
 - [Speech engines and models](#speech-engines-and-models) · [Accuracy and speed](#accuracy-and-speed) · [Languages](#languages)
@@ -78,9 +78,9 @@ Typical uses:
 <img src="docs/img/screenshot-transcribe.png" alt="The Transcribe tab: a drop target, language and accuracy pickers, speaker-label and word-timestamp options" width="80%">
 </div>
 
-## Prepared for 2.4.0 (unpublished)
+## Changes in 2.4.0
 
-The 2.4.0 candidate adds three desktop workflow improvements alongside the
+Version 2.4.0 added three desktop workflow improvements alongside the
 reliability fixes in the [changelog](docs/CHANGELOG.md):
 
 - **Named transcription presets:** save a language, catalog Whisper model and
@@ -96,8 +96,8 @@ reliability fixes in the [changelog](docs/CHANGELOG.md):
   the limit; ffmpeg-based transfers can exceed it.
   [Bandwidth guide](docs/FEATURE_240_DOWNLOAD_RATE.md).
 
-This candidate has not been published. The download links below still refer to
-the latest public release. Preparation status: [work board](docs/BOARD.md).
+Version 2.4.0 was released on 2026-11-15. The download links below point to the
+latest public release. For current work, see the [work board](docs/BOARD.md).
 
 ## What's new in 2.2
 
@@ -769,7 +769,7 @@ Latest release: **[releases page](https://github.com/Milomilo777/whisper-transcr
 | `WhisperTranscriberSuite-vX.Y.Z-macOS-arm64.dmg` | Macs with Apple silicon, macOS 14 or newer. |
 | `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` | Intel Macs, macOS 12 or newer. |
 
-The 2.4.0 Intel package currently requires macOS 12.0. Earlier published Intel versions retain their stated compatibility requirements.
+The 2.5.0 Intel package requires macOS 12 or later. Earlier releases retain their stated compatibility requirements.
 
 Linux runs from source: [platform/linux/README.md](platform/linux/README.md).
 

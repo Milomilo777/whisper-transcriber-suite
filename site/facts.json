@@ -1,24 +1,24 @@
 {
   "name": "Whisper Transcriber Suite",
   "summary": "Free, offline desktop app that transcribes audio and video locally with OpenAI Whisper models.",
-  "version": "v2.4.0",
+  "version": "v2.5.0",
   "complete_interface_catalogs": 42,
-  "released": "2026-11-15",
+  "released": "2026-11-26",
   "release_status": "published",
-  "release_features": ["presets", "subtitle-quality", "download-limit"],
+  "release_features": ["audio-track", "media-recovery", "transcript-edits"],
   "artifact_verification": "verified shipping bytes",
   "files": {
     "installer": {
-      "bytes": 249966543
+      "bytes": 252662454
     },
     "portable": {
-      "bytes": 372186966
+      "bytes": 377051612
     },
     "mac-arm64": {
-      "bytes": 290491083
+      "bytes": 292523185
     },
     "mac-x64": {
-      "bytes": 318631923
+      "bytes": 319624173
     }
   },
   "license": "BSD-3-Clause",

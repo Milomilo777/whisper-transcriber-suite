@@ -4,6 +4,10 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Changed
+
+- Update the website's release highlights and download details to 2.5.0 in all 42 languages.
+
 ## [2.5.0] - 2026-11-26
 
 ### Added
