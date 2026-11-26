@@ -33,7 +33,8 @@ language picker remains per-session. Changes use the app's normal save path.
 Stdio loads the configured model for subsequent jobs; restart an already running
 HTTP server after changing model, device or compute type. Install model weights
 in the app first. `list_models` reports availability; no model-download tool is
-provided. GPU limits are not present in this version's configuration.
+provided. The temperature limit paces transcription on supported NVIDIA GPUs
+when the app can read their temperature.
 
 ## Claude Desktop
 

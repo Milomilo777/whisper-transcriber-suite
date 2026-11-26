@@ -59,6 +59,16 @@ def test_cli_flags_in_docs(user_docs_content: str) -> None:
     assert not missing, f"CLI flags missing from docs: {missing}"
 
 
+def test_mcp_docs_describe_the_configurable_gpu_temperature_limit(docs_by_file: dict[str, str]) -> None:
+    from core.server.mcp_control import SAFE_KEYS
+
+    doc = docs_by_file["AI_ASSISTANTS.md"]
+    for key in SAFE_KEYS:
+        if key.startswith("gpu_temperature_limit_"):
+            assert f"`{key}`" in doc
+    assert "The temperature limit paces transcription on supported NVIDIA GPUs" in doc
+
+
 def test_formats_in_docs(user_docs_content: str) -> None:
     """Every standard writer format must appear in the docs."""
     formats = core.writers.supported_formats()
