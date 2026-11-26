@@ -167,7 +167,9 @@ The batch script:
 9. Runs `tools\check_embed_tree.py` on the tree and fails the build
    (exit code 11) if a `.dll`, `.pyd` or `.exe` imports a DLL that is not
    in the tree, not an API-set name and not on its list of DLLs every
-   Windows 10 has, or if `app\` or `core\` holds any `__pycache__`.
+   Windows 10 has. It also fails if a bundled media tool or speaker
+   identification model is missing, or if `app\` or `core\` holds any
+   `__pycache__`.
 
 **Before running this script for a release**, re-check the `tokenizers`
 pin in `requirements.txt` against the `transformers` pin in

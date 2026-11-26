@@ -22,6 +22,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 - Keep recovered audio available when clearing a completed job while a comparison rerun still needs it.
 - Catch numeric commit IDs in release-note links and revision labels.
+- Reject Windows installer and Portable builds that are missing bundled media tools or speaker identification models.
 - Keep the original audio track when transcribing again from the transcript viewer.
 - Report denied media reads and writes as access errors, including macOS privacy denials.
 - Resume interrupted transcription from the saved decode position even when aligned cues extend past it.

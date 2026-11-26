@@ -163,7 +163,7 @@ def test_reader_on_real_windows_binaries():
 # ------------------------------------------------------------------ the tree check
 
 def _tree(tmp_path: Path) -> Path:
-    """A clean tree: python.exe + runtime, an extension module that needs msvcp140, app/ and core/."""
+    """A clean tree with the runtime, an extension, source packages and bundled tools."""
     root = tmp_path / "embed_build"
     put(root, "python/python.exe", make_pe(["KERNEL32.dll", "VCRUNTIME140.dll", "api-ms-win-crt-runtime-l1-1-0.dll"]))
     put(root, "python/vcruntime140.dll", make_pe(["KERNEL32.dll"]))
@@ -172,6 +172,10 @@ def _tree(tmp_path: Path) -> Path:
     put(root, "Lib/site-packages/pkg/helper.dll", make_pe(["USER32.dll", "ext-ms-win-ntuser-window-l1-1-0.dll"]))
     put(root, "app/__init__.py", b"")
     put(root, "core/__init__.py", b"")
+    for name in ("ffmpeg", "ffprobe", "yt-dlp", "deno"):
+        put(root, f"bin/{name}.exe", make_pe())
+    for name in ("segmentation", "embedding"):
+        put(root, f"bin/diarization/{name}.onnx", b"model")
     return root
 
 
@@ -279,6 +283,17 @@ def test_main_exit_codes(tmp_path, capsys):
     assert cet.main([str(root)]) == 1
     assert "FAIL" in capsys.readouterr().out
     assert cet.main([str(tmp_path / "nope")]) == 2
+
+
+@pytest.mark.parametrize("missing", [
+    "bin/ffmpeg.exe", "bin/ffprobe.exe", "bin/yt-dlp.exe", "bin/deno.exe",
+    "bin/diarization/segmentation.onnx", "bin/diarization/embedding.onnx",
+])
+def test_embed_gate_rejects_missing_bundled_payload(tmp_path, capsys, missing):
+    root = _tree(tmp_path)
+    (root / missing).unlink()
+    assert cet.main([str(root)]) == 1
+    assert f"{missing}: missing" in capsys.readouterr().out
 
 
 def test_the_inno_setup_uninstaller_in_the_install_dir_passes(tmp_path):
