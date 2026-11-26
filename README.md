@@ -800,6 +800,7 @@ release — older versions stay published and their counts are never
 reset):
 
 [![all versions](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/badges/total-all-versions.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases)
+[![v2.5.0](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/badges/v2.5.0.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v2.5.0)
 [![v2.4.0](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/badges/v2.4.0.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v2.4.0)
 [![v2.3.0](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/badges/v2.3.0.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v2.3.0) [![v2.3.1](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/badges/v2.3.1.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v2.3.1)
 [![v2.2.0](https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/badges/v2.2.0.svg)](https://github.com/Milomilo777/whisper-transcriber-suite/releases/tag/v2.2.0)

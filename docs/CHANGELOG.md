@@ -4,8 +4,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
-- Preserve subtitle cue ends when the VAD timestamp map already places them on the correct speech boundary.
-- Keep unaligned batched VAD cues from jumping to speech outside the window that decoded them.
+## [2.5.0] - 2026-11-26
 
 ### Added
 
@@ -20,6 +19,8 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Preserve subtitle cue ends when the VAD timestamp map already places them on the correct speech boundary.
+- Keep unaligned batched VAD cues from jumping to speech outside the window that decoded them.
 - Preserve the selected preset and outputs when a transcript comparison resumes after restart.
 - Keep available assistant media folders usable when another allowed folder is disconnected.
 - Clarify when the assistant's NVIDIA GPU temperature settings affect transcription.

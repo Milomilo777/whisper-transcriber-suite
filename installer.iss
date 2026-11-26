@@ -9,7 +9,7 @@
 ; whisper_project_onedir.spec) and emits a single
 ; WhisperTranscriberSuite-Setup.exe under dist_installer\.
 
-#define MyAppVersion "2.4.0"
+#define MyAppVersion "2.5.0"
 
 [Setup]
 ; Stable AppId — keeps a single, upgradable Add/Remove Programs entry
