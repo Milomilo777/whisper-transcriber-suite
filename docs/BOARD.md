@@ -1,6 +1,6 @@
 # Work board and RESUME
 
-2.4.0 shipped on 2026-11-15. 2.4.1 is the next patch release.
+2.4.0 shipped on 2026-11-15. 2.5.0 is the next release: it adds features as well as fixes.
 
 ## Changes on `master`
 
@@ -12,7 +12,7 @@
 
 - Optional installs keep a recovery record, engine checks run outside the window's thread, interrupted jobs resume from the saved decode position, and subtitle cues stay inside their speech chunks after long silences. The new interface text is translated into all supported languages.
 
-## Before 2.4.1
+## Before 2.5.0
 
 - Done: edge-case tests for interruptions, full disks, hostile inputs, a 6.5-hour file, long subtitles, and the upgrade from 2.4.0.
 - Open: a full CPU run with speaker detection, a server memory-growth check, and the macOS disk image on a supported macOS.
