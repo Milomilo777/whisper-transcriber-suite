@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" width="100%" height="100%" role="img" aria-labelledby="promo-title promo-desc">
   <title id="promo-title">Whisper Transcriber Suite — Sound in. Text out. Your audio stays on your computer.</title>
-  <desc id="promo-desc">Animated typographic promo for version 2.4: sound becomes a timed transcript, with saved transcription presets and subtitle quality review, then SRT, DOCX and PDF on your computer.</desc>
+  <desc id="promo-desc">Animated typographic promo for version 2.5: sound becomes a timed transcript; pick the audio track and compare a re-run, then SRT, DOCX and PDF on your computer.</desc>
 
   <defs>
     <linearGradient id="brand-grad" x1="0%" y1="0%" x2="98%" y2="18%">
