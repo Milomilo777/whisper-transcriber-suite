@@ -18,6 +18,16 @@ def test_diagnostics_keep_the_current_status(message):
     assert status_line(message) is None
 
 
+@pytest.mark.parametrize("message", [
+    "[file=audio.flac] GPU at 74 °C, ceiling 75 °C: reducing GPU load to 80%",
+    "GPU temperature cooled: full speed restored.",
+    "GPU temperature limit inactive: temperature unavailable.",
+    "GPU temperature limit inactive: multiple decode devices.",
+])
+def test_thermal_diagnostics_keep_the_localized_progress_status(message):
+    assert status_line(message) is None
+
+
 def test_a_segment_line_becomes_progress_and_text():
     line = status_line("[file=audio.flac] [12%] 00:01:37 --> 00:01:38 | 我给你")
     assert line == "audio.flac: 12% done — “我给你”"  # quoted: they are the recording's words

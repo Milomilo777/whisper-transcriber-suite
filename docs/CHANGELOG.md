@@ -24,6 +24,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Keep available assistant media folders usable when another allowed folder is disconnected.
 - Clarify when the assistant's NVIDIA GPU temperature settings affect transcription.
 - Save paragraph exports on filesystems without hard links while preserving existing files.
+- Keep GPU pacing diagnostics in the log so they cannot replace translated progress.
 - Update bundled yt-dlp to 2026.11.23 so YouTube format discovery works without a player warning.
 - Keep the viewer clock visible beside the seek bar, stop calling the viewer read-only when VLC is missing, and show progress times and speed within the audio's length.
 - Keep recovered audio available when clearing a completed job while a comparison rerun still needs it.

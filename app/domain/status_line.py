@@ -26,6 +26,7 @@ _LOG_ONLY = (
     re.compile(r"\b(avg_logprob|compression_ratio|no_speech_prob)="),
     re.compile(r"^Resume: transcribing tail slice\b"),
     re.compile(r"^model_path_resolved\b"),
+    re.compile(r"^GPU (?:temperature (?:limit inactive|cooled):|at .+: reducing GPU load to )"),
 )
 
 
