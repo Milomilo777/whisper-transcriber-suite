@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="100" height="20" role="img" aria-label="basic-v0.1.0: 3">
+  <title>basic-v0.1.0: 3</title>
+  <clipPath id="rounded"><rect width="100" height="20" rx="3"/></clipPath>
+  <g clip-path="url(#rounded)">
+    <rect width="83" height="20" fill="#555"/>
+    <rect x="83" width="17" height="20" fill="#8a8a8a"/>
+  </g>
+  <g fill="#fff" text-anchor="middle" font-family="Verdana,DejaVu Sans,sans-serif" font-size="11">
+    <text x="41.5" y="14">basic-v0.1.0</text>
+    <text x="91.5" y="14">3</text>
+  </g>
+</svg>
