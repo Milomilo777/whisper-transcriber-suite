@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from typing import Any
+import os
 import uuid
+from typing import Any
 
 
 class TranscriptionTask:
@@ -178,6 +179,14 @@ def task_run_options(task: TranscriptionTask) -> dict[str, Any]:
     languages = getattr(task, "languages", None)
     if languages:
         out["languages"] = [str(code) for code in languages]
+    source = getattr(task, "comparison_source", None)
+    if source:
+        from .task_settings import history_snapshot
+
+        out["comparison_source"] = source
+        out["comparison_formats"] = list(task.output_formats or ["json"])
+        if task.task_settings is not None:
+            out["comparison_settings"] = history_snapshot(task.task_settings)
     return out
 
 
@@ -208,6 +217,24 @@ def apply_run_options(task: TranscriptionTask, options: Any) -> None:
     if (isinstance(languages, list) and len(languages) == 2
             and all(isinstance(code, str) and code for code in languages)):
         task.languages = (languages[0], languages[1])
+    source = options.get("comparison_source")
+    if isinstance(source, str) and "\x00" not in source and os.path.isabs(source):
+        from .task_settings import history_snapshot
+        from .writers import supported_formats
+
+        task.comparison_source = source
+        supported = set(supported_formats())
+        formats = options.get("comparison_formats")
+        task.output_formats = []
+        if isinstance(formats, list):
+            task.output_formats.extend(
+                value for value in formats if isinstance(value, str) and value in supported
+            )
+        if "json" not in task.output_formats:
+            task.output_formats.append("json")
+        settings = options.get("comparison_settings")
+        if isinstance(settings, dict):
+            task.task_settings = history_snapshot(settings) or None
 
 
 def task_repair_path(task: TranscriptionTask) -> str | None:

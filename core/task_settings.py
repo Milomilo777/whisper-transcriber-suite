@@ -29,11 +29,12 @@ from __future__ import annotations
 import copy
 import json
 import logging
+import math
 import os
 from typing import Any, Mapping
 from urllib.parse import urlsplit
 
-from .config import effective_word_timestamps, load_config
+from .config import DEFAULT_CONFIG, _PROJECT_KEY_RANGES, effective_word_timestamps, load_config
 
 logger = logging.getLogger(__name__)
 
@@ -174,6 +175,26 @@ def snapshot(cfg: Mapping[str, Any]) -> dict[str, Any]:
             continue
         out[key] = copy.deepcopy(value)
     return out
+
+
+def history_snapshot(settings: dict[str, Any]) -> dict[str, Any]:
+    """Filter persisted comparison settings without supplying missing defaults."""
+    saved: dict[str, Any] = {}
+    for key, value in snapshot(settings).items():
+        if key not in settings:
+            continue
+        default = DEFAULT_CONFIG.get(key, FALLBACKS.get(key))
+        if type(default) in (int, float):
+            if type(value) not in (int, float) or (isinstance(value, float) and not math.isfinite(value)):
+                continue
+            if key in _PROJECT_KEY_RANGES:
+                low, high = _PROJECT_KEY_RANGES[key]
+                if not low <= value <= high:
+                    continue
+        elif type(value) is not type(default):
+            continue
+        saved[key] = value
+    return saved
 
 
 def _no_ui_from_disk() -> dict[str, Any]:

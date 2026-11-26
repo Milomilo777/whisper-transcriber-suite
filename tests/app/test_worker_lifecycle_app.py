@@ -273,6 +273,56 @@ def test_rows_stay_offered_when_the_model_never_loads(tmp_path: Path, monkeypatc
         db.close()
 
 
+def test_crash_resume_preserves_transcript_comparison(tmp_path, monkeypatch):
+    from app import app as app_module
+    from app.app import App
+    from app.services.transcription_service import output_formats_for, transcribe_command
+    from core.history import HistoryDB
+    from core.task import TranscriptionTask, task_run_options
+
+    original = TranscriptionTask(str(tmp_path / "speech.wav"))
+    (tmp_path / "speech.wav").touch()
+    original.comparison_source = str(tmp_path / "speech.json")
+    original.output_formats = ["srt", "json"]
+    original.task_settings = {"word_timestamps": True, "vad_enabled": False}
+    monkeypatch.setattr(app_module.messagebox, "askyesno", lambda *a, **k: True)
+
+    path = tmp_path / "history.db"
+    with HistoryDB(path) as db:
+        db.insert_transcription(original.file_path, run_options=task_run_options(original))
+        db.mark_interrupted()
+    with HistoryDB(path) as db:
+        app = SimpleNamespace(history=db, queue=[], refresh=lambda: None, log=lambda m: None,
+                              _when_worker_ready=lambda on_ready, **k: on_ready())
+        App._maybe_offer_crash_resume(app)
+
+    (resumed,) = app.queue
+    assert resumed.comparison_source == original.comparison_source
+    assert output_formats_for(resumed, ["txt"]) == ["srt", "json"]
+    assert transcribe_command(resumed)["settings"] == original.task_settings
+
+
+def test_comparison_ignores_damaged_history_settings(tmp_path):
+    from core.task import TranscriptionTask, apply_run_options
+
+    task = TranscriptionTask(str(tmp_path / "voice.wav"))
+    apply_run_options(task, {
+        "comparison_source": str(tmp_path / "voice.json"),
+        "comparison_formats": [{}, "unsupported", "srt"],
+        "comparison_settings": {
+            "vad_enabled": False,
+            "diarization_enabled": "false",
+            "batch_size": 100_000,
+            "vad_threshold": float("nan"),
+            "llm_remote_base_url": "https://example.test/?token=private",
+            "llm_remote_api_key": "private",
+        },
+    })
+
+    assert task.output_formats == ["srt", "json"]
+    assert task.task_settings == {"vad_enabled": False}
+
+
 def test_a_second_instance_does_not_offer_crash_resume(tmp_path: Path, monkeypatch):
     from app import app as app_module
     from app.app import App

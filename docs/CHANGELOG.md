@@ -20,6 +20,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Fixed
 
+- Preserve the selected preset and outputs when a transcript comparison resumes after restart.
 - Update bundled yt-dlp to 2026.11.23 so YouTube format discovery works without a player warning.
 - Keep the viewer clock visible beside the seek bar, stop calling the viewer read-only when VLC is missing, and show progress times and speed within the audio's length.
 - Keep recovered audio available when clearing a completed job while a comparison rerun still needs it.
