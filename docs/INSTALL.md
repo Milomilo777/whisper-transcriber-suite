@@ -28,7 +28,7 @@ and contain the same app (`X.Y.Z` is the version number).
 
 Download `WhisperTranscriberSuite-vX.Y.Z-macOS-arm64.dmg` for Apple silicon
 (macOS 14 or newer) or `WhisperTranscriberSuite-vX.Y.Z-macOS-x64.dmg` for
-Intel (macOS 10.15 or newer), open it and drag the app into Applications.
+Intel (macOS 12 or newer), open it and drag the app into Applications.
 The app is not notarized by Apple, so the first launch is blocked with
 "Apple cannot check it for malicious software". To open it anyway:
 
