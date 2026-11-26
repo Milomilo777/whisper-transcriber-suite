@@ -12,6 +12,8 @@ import socket
 import time
 import urllib.request
 
+import pytest
+
 from core.server import ServerHandle, find_available_port
 
 
@@ -72,6 +74,19 @@ def test_free_port_rejects_out_of_range_preferred():
 
 
 # --- ServerHandle lifecycle --------------------------------------------------
+
+def test_invalid_webhook_header_does_not_block_the_next_start():
+    handle = ServerHandle(transcribe_fn=_writing_transcribe, load_model=False)
+    try:
+        with pytest.raises(ValueError, match="webhook header name"):
+            handle.start(port=0, auto_port=False, webhook_secret="example",
+                         webhook_header="Content-Type")
+        assert not handle._starting  # Check before retry so a regression cannot hang.
+        handle.start(port=0, auto_port=False, webhook_secret="example",
+                     webhook_header="X-Webhook-Key")
+        assert handle.is_running()
+    finally:
+        handle.stop()
 
 def test_handle_start_stop_lifecycle(tmp_path):
     handle = ServerHandle(transcribe_fn=_writing_transcribe, load_model=False)

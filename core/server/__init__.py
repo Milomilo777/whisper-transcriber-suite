@@ -578,22 +578,21 @@ class ServerHandle:
                 return  # already running — idempotent double-start guard
             self._starting = True
             self._start_cancelled = False
-        if webhook_secret:
-            if (webhook_header
-                    and not webhook_header_name_valid(webhook_header)):
-                # The app shows this text in its "could not start" box.
-                raise ValueError(
-                    "The webhook header name is not a valid HTTP header "
-                    "name (or is one the request sets itself).")
-            if not webhook_secret_valid(webhook_secret):
-                logger.warning(
-                    "server: the webhook secret cannot be used in an HTTP "
-                    "header; every webhook delivery will be refused")
-            elif webhook_url_is_plain_http(webhook_url):
-                logger.warning(
-                    "server: the webhook secret is sent in plain text to an "
-                    "http:// address; use an https:// receiver")
         try:
+            if webhook_secret:
+                if webhook_header and not webhook_header_name_valid(webhook_header):
+                    # The app shows this text in its "could not start" box.
+                    raise ValueError(
+                        "The webhook header name is not a valid HTTP header "
+                        "name (or is one the request sets itself).")
+                if not webhook_secret_valid(webhook_secret):
+                    logger.warning(
+                        "server: the webhook secret cannot be used in an HTTP "
+                        "header; every webhook delivery will be refused")
+                elif webhook_url_is_plain_http(webhook_url):
+                    logger.warning(
+                        "server: the webhook secret is sent in plain text to an "
+                        "http:// address; use an https:// receiver")
             if auto_port:
                 port = find_available_port(port, host)
             ssl_context = None

@@ -39,6 +39,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Reuse loaded local speech models between assistant jobs with the same model settings.
 - Save assistant exports beside the original media only after the complete file is written.
 - Keep assistant jobs recoverable when the original media moves during transcription.
+- Allow the server to start after a rejected webhook header is corrected.
 - Subtitle cues end at the preceding speech when a timestamp overshoots into voice activity detection padding.
 - A subtitle that begins at a silence cut now starts with its speech instead of covering the preceding gap.
 
