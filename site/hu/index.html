@@ -84,7 +84,7 @@
 <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/shots/transcribe.webp" as="image" type="image/webp" imagesrcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" imagesizes="(max-width: 1080px) 72vw, 480px">
 <script src="/js/motion-init.js?v=20260927b"></script>
-<link rel="stylesheet" href="/styles.css?v=20261022a">
+<link rel="stylesheet" href="/styles.css?v=20261126geo">
 
 <script type="application/ld+json">
 {
@@ -906,6 +906,7 @@
       <div class="rail sr" aria-hidden="true"><span class="rail-pulse"></span></div>
       <a class="text-link sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md" rel="noopener">Olvasd el a teljes architektúrát<svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
       <p class="muted guide-links">Lépésről lépésre útmutatók: <a href="/hu/youtube-to-text/">YouTube-videóból szöveg</a> · <a href="/hu/video-to-srt/">videóból SRT-felirat</a> · <a href="/hu/speaker-labels/">átiratok beszélőcímkékkel</a></p>
+      <p class="muted guide-links"><a href="/windows-offline-transcription/" hreflang="en">Offline átírás Windowson (angolul)</a></p>
     </div>
   </section>
 
@@ -959,6 +960,13 @@ python gui.py</code></pre>
           <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS — egysoros telepítés</p>
           <h3>Illeszd be a Terminálba. Ennyi.</h3>
           <p>Letölti a Mac-edhez megfelelő buildet (macOS 14+ rendszeren Apple Silicon, egyébként Intel a Rosettán keresztül), bemásolja az alkalmazást a(z) <code>Applications</code> mappába, és megnyitja. A(z) <code>curl</code> által letöltött fájlok nem kerülnek karanténba, így nem kell átkattintanod a „nem azonosított fejlesztő” figyelmeztetést sem.</p>
+          <table class="mac-builds">
+            <thead><tr><th scope="col">Mac</th><th scope="col">Minimális macOS-verzió</th><th scope="col">Letöltés</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Intel</bdi></th><td><bdi dir="ltr" translate="no">macOS 12+</bdi></td><td><bdi dir="ltr" translate="no">x64 DMG</bdi></td></tr>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Apple Silicon</bdi></th><td><bdi dir="ltr" translate="no">macOS 14+</bdi></td><td><bdi dir="ltr" translate="no">arm64 DMG</bdi></td></tr>
+            </tbody>
+          </table>
         </div>
         <div class="code-box">
           <button class="copy-btn" type="button" data-copy="#mac-cmd">Másolás</button>
@@ -976,24 +984,39 @@ python gui.py</code></pre>
       <header class="section-head sr">
         <p class="eyebrow">Összehasonlítás</p>
         <h2 id="compare-title">Hogyan viszonyul más Whisper-alkalmazásokhoz?</h2>
-        <p class="section-lede">A Whisper Transcriber Suite egyike azon ingyenes, nyílt forráskódú asztali alkalmazásoknak, amelyek a saját számítógépeden végzik az átírást. Íme az összehasonlítás a Subtitle Edit, a Vibe és a Buzz programokkal, kitérve arra is, mikor válhat be jobban egy másik alkalmazás. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">Olvasd el a teljes összehasonlítást</a>, amely minden tényhez forrást jelöl meg, és két további alkalmazást (noScribe és aTrain) is bemutat.</p>
+        <p class="section-lede"><a href="/compare/" hreflang="en">Teljes összehasonlítás (angolul)</a></p>
       </header>
-      <div class="table-wrap sr">
-        <table class="compare-table">
-          <caption>Ellenőrizve 2026-10-05-én az egyes projektek saját README-je, dokumentációja és kiadásai alapján. Az alkalmazások gyorsan változnak: a forrásokért tekintsd meg a <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">teljes összehasonlítást</a>.</caption>
+      <div class="table-wrap sr" tabindex="0" role="region" aria-labelledby="compare-title">
+        <table class="compare-table" aria-describedby="compare-note">
           <thead>
             <tr><th scope="col"><span class="sr-only">Funkció</span></th><th scope="col">Whisper Transcriber Suite</th><th scope="col">Subtitle Edit</th><th scope="col">Vibe</th><th scope="col">Buzz</th></tr>
           </thead>
           <tbody>
             <tr><th scope="row">Ár, licenc</th><td>Ingyenes, BSD-3-Clause</td><td>Ingyenes, MIT</td><td>Ingyenes, MIT</td><td>Ingyenes, MIT</td></tr>
-            <tr><th scope="row">Letöltések</th><td>Windows-telepítő és hordozható ZIP, macOS (Apple silicon, Intel); Linux forráskódból</td><td>Windows (x64, ARM64), macOS, Linux (Flatpak, tar.gz)</td><td>Windows, macOS, Linux (.deb, .rpm)</td><td>Windows, macOS (az 1.4.5 az utolsó az Intel Mac-ekhez), Linux (Flatpak, Snap, AppImage), PyPI</td></tr>
-            <tr><th scope="row">GPU-gyorsítás</th><td>NVIDIA (CUDA)</td><td>NVIDIA (CUDA), Vulkan</td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Letöltések</th><td>Windows-telepítő és hordozható ZIP, macOS (Apple silicon, Intel); Linux forráskódból</td><td>Windows: telepítő és ZIP · macOS · Linux</td><td>Windows: telepítő · macOS · Linux</td><td>Windows: telepítő · macOS · Linux</td></tr>
+            <tr><th scope="row">Offline átírás</th><td>Igen</td><td>Igen</td><td>Igen</td><td>Igen</td></tr>
+            <tr><th scope="row">Kötegelt átírás</th><td>Igen</td><td>Igen</td><td>Igen</td><td>figyelt mappa</td></tr>
+            <tr><th scope="row">GPU-gyorsítás</th><td><bdi dir="ltr" translate="no">NVIDIA (CUDA); Apple Silicon (MLX)</bdi></td><td><bdi dir="ltr" translate="no">NVIDIA (CUDA), Vulkan, Metal</bdi></td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Beszélőcímkék</th><td>Igen</td><td>Motortól függ</td><td>Igen</td><td>Igen</td></tr>
+            <tr><th scope="row">YouTube-forrás</th><td>Letöltés és átírás</td><td>Lejátszás URL-ről</td><td>Átírás URL-ről</td><td>Átírás URL-ről</td></tr>
+            <tr><th scope="row">Exportálási formátumok</th><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF + 10</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, ASS</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, TXT</bdi></td></tr>
             <tr><th scope="row">Aláírt Windows-telepítő</th><td>Nem</td><td>Nincs feltüntetve</td><td>Igen, a dokumentációja szerint</td><td>Nem</td></tr>
-            <tr><th scope="row">A felület nyelvei</th><td>42</td><td>35</td><td>22</td><td>16</td></tr>
-            <tr><th scope="row">Akkor válaszd, ha</th><td>Élő mikrofonbemenetet, videóletöltést, 14 kimeneti formátumot és helyi hálózati módot is szeretnél OpenAI-kompatibilis végponttal</td><td>Sok beszédfelismerő motort szeretnél (Parakeet, Canary, Qwen3-ASR és mások), vagy hitelesített Mac-alkalmazást</td><td>Olyan Windows-telepítőt szeretnél, amely a dokumentációja szerint alá van írva, vagy olyan GPU-támogatást, amely nevesíti az AMD-t és az Intelt</td><td>Linux-csomagokat szeretnél (Flatpak, Snap, AppImage), vagy PyPI-telepítést</td></tr>
+            <tr><th scope="row">A felület nyelvei</th><td>42</td><td>36</td><td>22</td><td>15</td></tr>
+            <tr><th scope="row">Perzsa felület</th><td>Igen</td><td>Igen</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Jobbról balra elrendezés</th><td>Igen</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Élő feliratok</th><td>Igen</td><td>—</td><td>—</td><td>Igen</td></tr>
+            <tr><th scope="row">Hangsáv kiválasztása</th><td>Igen</td><td>Igen</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Sérült média helyreállítása</th><td>Igen</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Átirat szerkesztése</th><td>Igen</td><td>Igen</td><td>—</td><td>Igen</td></tr>
+            <tr><th scope="row">Új átirat összehasonlítása</th><td>Igen</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">MI-asszisztensek helyi MCP-n át</th><td>Igen</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">GPU-hőmérsékleti korlát</th><td><bdi dir="ltr" translate="no">NVIDIA</bdi></td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row" translate="no">Obsidian / n8n</th><td>Igen</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Beépített kiszolgáló</th><td>Web és API</td><td>—</td><td><bdi dir="ltr" translate="no">HTTP API</bdi></td><td>—</td></tr>
           </tbody>
         </table>
       </div>
+      <p class="compare-note" id="compare-note">Ellenőrizve: <time dir="ltr" datetime="2026-11-26">2026-11-26</time>. A gondolatjel nem ellenőrzött funkciót jelöl. Lásd a <a href="/compare/" hreflang="en">hivatalos forrásokat</a>.</p>
     </div>
   </section>
 

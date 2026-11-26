@@ -84,7 +84,7 @@
 <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/shots/transcribe.webp" as="image" type="image/webp" imagesrcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" imagesizes="(max-width: 1080px) 72vw, 480px">
 <script src="/js/motion-init.js?v=20260927b"></script>
-<link rel="stylesheet" href="/styles.css?v=20261022a">
+<link rel="stylesheet" href="/styles.css?v=20261126geo">
 
 <script type="application/ld+json">
 {
@@ -906,6 +906,7 @@
       <div class="rail sr" aria-hidden="true"><span class="rail-pulse"></span></div>
       <a class="text-link sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md" rel="noopener">Lees de volledige architectuur<svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
       <p class="muted guide-links">Stapsgewijze handleidingen: <a href="/nl/youtube-to-text/">YouTube-video naar tekst</a> · <a href="/nl/video-to-srt/">video naar SRT-ondertitels</a> · <a href="/nl/speaker-labels/">transcripten met sprekerslabels</a></p>
+      <p class="muted guide-links"><a href="/windows-offline-transcription/" hreflang="en">Offline transcriberen in Windows (Engels)</a></p>
     </div>
   </section>
 
@@ -959,6 +960,13 @@ python gui.py</code></pre>
           <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS — installatie via één regel</p>
           <h3>Plak in Terminal. Dat is alles.</h3>
           <p>Downloadt de juiste build voor je Mac (Apple Silicon op macOS 14+, anders Intel via Rosetta), kopieert de app naar <code>Applications</code> en opent deze. Bestanden die via <code>curl</code> zijn opgehaald, worden niet in quarantaine geplaatst, dus er is geen waarschuwing over een "onbekende ontwikkelaar" waar je voorbij moet klikken.</p>
+          <table class="mac-builds">
+            <thead><tr><th scope="col">Mac</th><th scope="col">Minimale macOS-versie</th><th scope="col">Download</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Intel</bdi></th><td><bdi dir="ltr" translate="no">macOS 12+</bdi></td><td><bdi dir="ltr" translate="no">x64 DMG</bdi></td></tr>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Apple Silicon</bdi></th><td><bdi dir="ltr" translate="no">macOS 14+</bdi></td><td><bdi dir="ltr" translate="no">arm64 DMG</bdi></td></tr>
+            </tbody>
+          </table>
         </div>
         <div class="code-box">
           <button class="copy-btn" type="button" data-copy="#mac-cmd">Kopiëren</button>
@@ -976,24 +984,39 @@ python gui.py</code></pre>
       <header class="section-head sr">
         <p class="eyebrow">Vergelijken</p>
         <h2 id="compare-title">Hoe verhoudt het zich tot andere Whisper-apps?</h2>
-        <p class="section-lede">Whisper Transcriber Suite is een van meerdere gratis, open-source desktop-apps die op je eigen computer transcriberen. Hier zie je hoe de app zich verhoudt tot Subtitle Edit, Vibe en Buzz, inclusief wanneer een andere app beter past. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">Lees de volledige vergelijking</a>, met een bron voor elk feit en nog twee apps, noScribe en aTrain.</p>
+        <p class="section-lede"><a href="/compare/" hreflang="en">Volledige vergelijking (Engels)</a></p>
       </header>
-      <div class="table-wrap sr">
-        <table class="compare-table">
-          <caption>Gecontroleerd op 2026-10-05 aan de hand van de eigen README, documentatie en releases van elk project. Apps veranderen snel: zie de <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">volledige vergelijking</a> voor bronnen.</caption>
+      <div class="table-wrap sr" tabindex="0" role="region" aria-labelledby="compare-title">
+        <table class="compare-table" aria-describedby="compare-note">
           <thead>
             <tr><th scope="col"><span class="sr-only">Functie</span></th><th scope="col">Whisper Transcriber Suite</th><th scope="col">Subtitle Edit</th><th scope="col">Vibe</th><th scope="col">Buzz</th></tr>
           </thead>
           <tbody>
             <tr><th scope="row">Prijs, licentie</th><td>Gratis, BSD-3-Clause</td><td>Gratis, MIT</td><td>Gratis, MIT</td><td>Gratis, MIT</td></tr>
-            <tr><th scope="row">Downloads</th><td>Windows-installatieprogramma en draagbare ZIP, macOS (Apple silicon, Intel); Linux vanuit broncode</td><td>Windows (x64, ARM64), macOS, Linux (Flatpak, tar.gz)</td><td>Windows, macOS, Linux (.deb, .rpm)</td><td>Windows, macOS (1.4.5 is de laatste voor Intel-Macs), Linux (Flatpak, Snap, AppImage), PyPI</td></tr>
-            <tr><th scope="row">GPU-versnelling</th><td>NVIDIA (CUDA)</td><td>NVIDIA (CUDA), Vulkan</td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Downloads</th><td>Windows-installatieprogramma en draagbare ZIP, macOS (Apple silicon, Intel); Linux vanuit broncode</td><td>Windows: installatieprogramma en ZIP · macOS · Linux</td><td>Windows: installatieprogramma · macOS · Linux</td><td>Windows: installatieprogramma · macOS · Linux</td></tr>
+            <tr><th scope="row">Offline transcriberen</th><td>Ja</td><td>Ja</td><td>Ja</td><td>Ja</td></tr>
+            <tr><th scope="row">Batchtranscriptie</th><td>Ja</td><td>Ja</td><td>Ja</td><td>bewaakte map</td></tr>
+            <tr><th scope="row">GPU-versnelling</th><td><bdi dir="ltr" translate="no">NVIDIA (CUDA); Apple Silicon (MLX)</bdi></td><td><bdi dir="ltr" translate="no">NVIDIA (CUDA), Vulkan, Metal</bdi></td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Sprekerslabels</th><td>Ja</td><td>Afhankelijk van de engine</td><td>Ja</td><td>Ja</td></tr>
+            <tr><th scope="row">YouTube als bron</th><td>Downloaden en transcriberen</td><td>Streamen via URL</td><td>Transcriberen via URL</td><td>Transcriberen via URL</td></tr>
+            <tr><th scope="row">Exportformaten</th><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF + 10</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, ASS</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, TXT</bdi></td></tr>
             <tr><th scope="row">Ondertekend Windows-installatieprogramma</th><td>Nee</td><td>Niet vermeld</td><td>Ja, volgens de documentatie</td><td>Nee</td></tr>
-            <tr><th scope="row">Interfacetalen</th><td>42</td><td>35</td><td>22</td><td>16</td></tr>
-            <tr><th scope="row">Kies hiervoor als</th><td>Je ook een live-microfoon, videodownloads, 14 uitvoerformaten en een lokale netwerkmodus met een OpenAI-compatibele route wilt</td><td>Je veel spraak-engines (Parakeet, Canary, Qwen3-ASR en meer) of een genotariseerde Mac-app wilt</td><td>Je een Windows-installatieprogramma wilt dat volgens de documentatie ondertekend is, of GPU-ondersteuning die AMD en Intel noemt</td><td>Je Linux-pakketten (Flatpak, Snap, AppImage) of een installatie via PyPI wilt</td></tr>
+            <tr><th scope="row">Interfacetalen</th><td>42</td><td>36</td><td>22</td><td>15</td></tr>
+            <tr><th scope="row">Perzische interface</th><td>Ja</td><td>Ja</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Indeling van rechts naar links</th><td>Ja</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Live-ondertiteling</th><td>Ja</td><td>—</td><td>—</td><td>Ja</td></tr>
+            <tr><th scope="row">Audiospoor kiezen</th><td>Ja</td><td>Ja</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Beschadigde media herstellen</th><td>Ja</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Transcript bewerken</th><td>Ja</td><td>Ja</td><td>—</td><td>Ja</td></tr>
+            <tr><th scope="row">Nieuwe transcriptie vergelijken</th><td>Ja</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">AI-assistenten via lokale MCP</th><td>Ja</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">GPU-temperatuurlimiet</th><td><bdi dir="ltr" translate="no">NVIDIA</bdi></td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row" translate="no">Obsidian / n8n</th><td>Ja</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Ingebouwde server</th><td>Web en API</td><td>—</td><td><bdi dir="ltr" translate="no">HTTP API</bdi></td><td>—</td></tr>
           </tbody>
         </table>
       </div>
+      <p class="compare-note" id="compare-note">Gecontroleerd op <time dir="ltr" datetime="2026-11-26">2026-11-26</time>. Een streepje betekent dat de functie niet is bevestigd. Zie de <a href="/compare/" hreflang="en">officiële bronnen</a>.</p>
     </div>
   </section>
 

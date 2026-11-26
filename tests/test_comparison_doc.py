@@ -1,9 +1,9 @@
-"""docs/COMPARISON.md and the site's compare section must stay honest and linked.
+"""The comparison document and website must stay honest and linked.
 
 The WTS column is checked against the code (version, engines, output formats),
 every relative link in the page must resolve (file and heading anchor), every
-rival fact table row must carry a source URL, the page and the site section
-must carry the same check date, and neither may use superlatives.
+rival fact table row must carry a source URL, the live comparison and home
+table must carry the same check date, and comparisons must avoid superlatives.
 """
 from __future__ import annotations
 
@@ -20,9 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
 COMPARISON_MD = DOCS / "COMPARISON.md"
 SITE_INDEX = ROOT / "site" / "index.html"
-COMPARISON_URL = (
-    "https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md"
-)
+SITE_COMPARISON = ROOT / "site" / "compare" / "index.html"
 
 # How each engine in the picker is named on the comparison page. A new engine
 # in ENGINE_CHOICES fails the engine test until it is added here and on the page.
@@ -82,6 +80,11 @@ def page() -> str:
 
 
 @pytest.fixture(scope="module")
+def site_comparison() -> str:
+    return SITE_COMPARISON.read_text(encoding="utf-8")
+
+
+@pytest.fixture(scope="module")
 def site_section() -> str:
     html = SITE_INDEX.read_text(encoding="utf-8")
     m = re.search(r'<section class="section compare".*?</section>', html, re.S)
@@ -111,10 +114,11 @@ def test_relative_links_resolve(page):
     assert checked >= 15  # the WTS source table alone links about 20 files
 
 
-def test_check_date_matches_site(page, site_section):
-    m = re.search(r"^Last checked: (\d{4}-\d{2}-\d{2})$", page, re.M)
-    assert m, "docs/COMPARISON.md has no 'Last checked: YYYY-MM-DD' line"
-    assert f"Checked {m.group(1)}" in site_section
+def test_check_date_matches_current_site_comparison(page, site_section, site_comparison):
+    assert re.search(r"^Last checked: \d{4}-\d{2}-\d{2}$", page, re.M)
+    home_date = re.search(r'<time[^>]+datetime="(\d{4}-\d{2}-\d{2})">\1</time>', site_section)
+    assert home_date, "homepage comparison needs a visible ISO date"
+    assert f'<time datetime="{home_date[1]}">' in site_comparison
 
 
 def test_wts_version_matches_code(page):
@@ -134,7 +138,12 @@ def test_output_format_count_matches_code(page, site_section):
     # smtv_docx is a project-specific layout of the docx output, not a format of its own.
     count = len(set(supported_formats()) - {"smtv_docx"})
     assert f"{count} output formats" in page
-    assert f"{count} output formats" in site_section
+    cell = re.search(r'<th scope="row">Export formats</th><td><bdi[^>]*>([^<]+)</bdi></td>', site_section)
+    assert cell, "homepage comparison needs the app's example formats and count"
+    examples, extra = cell[1].split(" + ")
+    names = {part.strip().lower() for part in examples.split(",")}
+    assert names <= set(supported_formats())
+    assert len(names) + int(extra) == count
 
 
 def test_every_rival_fact_row_has_a_source(page):
@@ -152,14 +161,17 @@ def test_every_rival_fact_row_has_a_source(page):
             assert "https://" in line, f"{rival}: source row without a URL: {line}"
 
 
-def test_no_superlatives(page, site_section):
-    for name, text in (("docs/COMPARISON.md", page), ("site compare section", site_section)):
+def test_no_superlatives(page, site_section, site_comparison):
+    for name, text in (
+        ("docs/COMPARISON.md", page), ("site compare section", site_section), ("site/compare/", site_comparison)
+    ):
         hit = _SUPERLATIVES.search(text)
         assert hit is None, f"superlative {hit.group(0)!r} in {name}"
 
 
-def test_site_and_hub_link_the_page(site_section):
-    assert COMPARISON_URL in site_section
+def test_home_links_the_live_comparison_and_docs_hub_links_its_comparison(site_section, site_comparison):
+    assert 'href="/compare/"' in site_section
+    assert '<link rel="canonical" href="https://whisper-transcriber-suite.com/compare/">' in site_comparison
     for rival in RIVALS[:3]:
         assert f'<th scope="col">{rival}</th>' in site_section
     hub = (DOCS / "README.md").read_text(encoding="utf-8")

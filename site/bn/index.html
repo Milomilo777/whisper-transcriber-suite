@@ -82,7 +82,7 @@
 
 <link rel="preload" href="/assets/shots/transcribe.webp" as="image" type="image/webp" imagesrcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" imagesizes="(max-width: 1080px) 72vw, 480px">
 <script src="/js/motion-init.js?v=20260927b"></script>
-<link rel="stylesheet" href="/styles.css?v=20261022a">
+<link rel="stylesheet" href="/styles.css?v=20261126geo">
 
 <script type="application/ld+json">
 {
@@ -904,6 +904,7 @@
       <div class="rail sr" aria-hidden="true"><span class="rail-pulse"></span></div>
       <a class="text-link sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md" rel="noopener">সম্পূর্ণ আর্কিটেকচার পড়ুন<svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
       <p class="muted guide-links">ধাপে ধাপে গাইড: <a href="/bn/youtube-to-text/">YouTube ভিডিও থেকে টেক্সট</a> · <a href="/bn/video-to-srt/">ভিডিও থেকে SRT সাবটাইটেল</a> · <a href="/bn/speaker-labels/">বক্তা লেবেল সহ ট্রান্সক্রিপ্ট</a></p>
+      <p class="muted guide-links"><a href="/windows-offline-transcription/" hreflang="en">Windows-এ অফলাইন প্রতিলিপি (ইংরেজিতে)</a></p>
     </div>
   </section>
 
@@ -957,6 +958,13 @@ python gui.py</code></pre>
           <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS — এক লাইনে ইনস্টল</p>
           <h3>টার্মিনালে পেস্ট করুন। ব্যস, কাজ শেষ।</h3>
           <p>আপনার Mac-এর জন্য সঠিক বিল্ড ডাউনলোড করে (macOS 14+ এ Apple Silicon, অন্যথায় Rosetta-এর মাধ্যমে Intel), অ্যাপটি <code>Applications</code>-এ কপি করে এবং খুলে দেয়। <code>curl</code> দ্বারা আনা ফাইলগুলো কোয়ারেন্টাইন করা হয় না, তাই "অজ্ঞাত পরিচয়ধারী ডেভেলপার" সতর্কতা বার্তাটি ক্লিক করে পার হওয়ার প্রয়োজন নেই।</p>
+          <table class="mac-builds">
+            <thead><tr><th scope="col">Mac</th><th scope="col">macOS-এর সর্বনিম্ন সংস্করণ</th><th scope="col">ডাউনলোড</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Intel</bdi></th><td><bdi dir="ltr" translate="no">macOS 12+</bdi></td><td><bdi dir="ltr" translate="no">x64 DMG</bdi></td></tr>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Apple Silicon</bdi></th><td><bdi dir="ltr" translate="no">macOS 14+</bdi></td><td><bdi dir="ltr" translate="no">arm64 DMG</bdi></td></tr>
+            </tbody>
+          </table>
         </div>
         <div class="code-box">
           <button class="copy-btn" type="button" data-copy="#mac-cmd">কপি করুন</button>
@@ -974,24 +982,39 @@ python gui.py</code></pre>
       <header class="section-head sr">
         <p class="eyebrow">তুলনা</p>
         <h2 id="compare-title">অন্যান্য Whisper অ্যাপগুলোর সাথে এর তুলনা কেমন?</h2>
-        <p class="section-lede">Whisper Transcriber Suite হলো বেশ কয়েকটি ফ্রি, ওপেন-সোর্স ডেস্কটপ অ্যাপের মধ্যে একটি, যা আপনার নিজের কম্পিউটারেই ট্রান্সক্রিপশন করে। এখানে Subtitle Edit, Vibe এবং Buzz-এর সাথে এর তুলনা দেওয়া হলো, যার মধ্যে কখন অন্য কোনো অ্যাপ বেশি মানানসই তা-ও বলা হয়েছে। <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">সম্পূর্ণ তুলনাটি পড়ুন</a>, যেখানে প্রতিটি তথ্যের উৎস এবং আরও দুটি অ্যাপ, noScribe এবং aTrain সম্পর্কে জানতে পারবেন।</p>
+        <p class="section-lede"><a href="/compare/" hreflang="en">সম্পূর্ণ তুলনা (ইংরেজিতে)</a></p>
       </header>
-      <div class="table-wrap sr">
-        <table class="compare-table">
-          <caption>2026-10-05 তারিখে প্রতিটি প্রোজেক্টের নিজস্ব README, ডকস এবং রিলিজের সাথে মিলিয়ে যাচাই করা হয়েছে। অ্যাপগুলো দ্রুত পরিবর্তিত হয়: উৎসের জন্য <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">সম্পূর্ণ তুলনা</a> দেখুন।</caption>
+      <div class="table-wrap sr" tabindex="0" role="region" aria-labelledby="compare-title">
+        <table class="compare-table" aria-describedby="compare-note">
           <thead>
             <tr><th scope="col"><span class="sr-only">ফিচার</span></th><th scope="col">Whisper Transcriber Suite</th><th scope="col">Subtitle Edit</th><th scope="col">Vibe</th><th scope="col">Buzz</th></tr>
           </thead>
           <tbody>
             <tr><th scope="row">মূল্য, লাইসেন্স</th><td>ফ্রি, BSD-3-Clause</td><td>ফ্রি, MIT</td><td>ফ্রি, MIT</td><td>ফ্রি, MIT</td></tr>
-            <tr><th scope="row">ডাউনলোড</th><td>Windows ইনস্টলার এবং পোর্টেবল ZIP, macOS (Apple silicon, Intel); Linux-এ সোর্স থেকে</td><td>Windows (x64, ARM64), macOS, Linux (Flatpak, tar.gz)</td><td>Windows, macOS, Linux (.deb, .rpm)</td><td>Windows, macOS (1.4.5 হলো Intel Macs-এর জন্য শেষ ভার্সন), Linux (Flatpak, Snap, AppImage), PyPI</td></tr>
-            <tr><th scope="row">GPU অ্যাক্সিলারেশন</th><td>NVIDIA (CUDA)</td><td>NVIDIA (CUDA), Vulkan</td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">ডাউনলোড</th><td>Windows ইনস্টলার এবং পোর্টেবল ZIP, macOS (Apple silicon, Intel); Linux-এ সোর্স থেকে</td><td>Windows: ইনস্টলার ও ZIP · macOS · Linux</td><td>Windows: ইনস্টলার · macOS · Linux</td><td>Windows: ইনস্টলার · macOS · Linux</td></tr>
+            <tr><th scope="row">অফলাইন প্রতিলিপি</th><td>হ্যাঁ</td><td>হ্যাঁ</td><td>হ্যাঁ</td><td>হ্যাঁ</td></tr>
+            <tr><th scope="row">একসঙ্গে একাধিক ফাইলের প্রতিলিপি</th><td>হ্যাঁ</td><td>হ্যাঁ</td><td>হ্যাঁ</td><td>নজরদারির ফোল্ডার</td></tr>
+            <tr><th scope="row">GPU অ্যাক্সিলারেশন</th><td><bdi dir="ltr" translate="no">NVIDIA (CUDA); Apple Silicon (MLX)</bdi></td><td><bdi dir="ltr" translate="no">NVIDIA (CUDA), Vulkan, Metal</bdi></td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">বক্তার লেবেল</th><td>হ্যাঁ</td><td>ইঞ্জিনের ওপর নির্ভর করে</td><td>হ্যাঁ</td><td>হ্যাঁ</td></tr>
+            <tr><th scope="row">YouTube থেকে ইনপুট</th><td>ডাউনলোড করে প্রতিলিপি তৈরি</td><td>URL থেকে স্ট্রিম</td><td>URL থেকে প্রতিলিপি</td><td>URL থেকে প্রতিলিপি</td></tr>
+            <tr><th scope="row">রপ্তানির ফরম্যাট</th><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF + 10</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, ASS</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, TXT</bdi></td></tr>
             <tr><th scope="row">সাইনড Windows ইনস্টলার</th><td>না</td><td>উল্লেখ নেই</td><td>হ্যাঁ, এর ডকস অনুযায়ী</td><td>না</td></tr>
-            <tr><th scope="row">ইন্টারফেস ভাষা</th><td>42</td><td>35</td><td>22</td><td>16</td></tr>
-            <tr><th scope="row">এটি বেছে নিন যদি</th><td>আপনি যদি একটি লাইভ মাইক্রোফোন, ভিডিও ডাউনলোড, ১৪টি আউটপুট ফরম্যাট এবং OpenAI-সামঞ্জস্যপূর্ণ রুট সহ একটি লোকাল-নেটওয়ার্ক মোডও চান</td><td>আপনি যদি একাধিক স্পিচ ইঞ্জিন (Parakeet, Canary, Qwen3-ASR এবং আরও) বা একটি নোটারাইজড Mac অ্যাপ চান</td><td>আপনি যদি এমন একটি Windows ইনস্টলার চান যার ডকসে সাইনড বলা আছে, অথবা AMD এবং Intel-এর নাম উল্লেখ করে এমন GPU সাপোর্ট চান</td><td>আপনি যদি Linux প্যাকেজ (Flatpak, Snap, AppImage) বা একটি PyPI ইনস্টল চান</td></tr>
+            <tr><th scope="row">ইন্টারফেস ভাষা</th><td>42</td><td>36</td><td>22</td><td>15</td></tr>
+            <tr><th scope="row">ফারসি ইন্টারফেস</th><td>হ্যাঁ</td><td>হ্যাঁ</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">ডান থেকে বাঁয়ে বিন্যাস</th><td>হ্যাঁ</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">লাইভ ক্যাপশন</th><td>হ্যাঁ</td><td>—</td><td>—</td><td>হ্যাঁ</td></tr>
+            <tr><th scope="row">অডিও ট্র্যাক বাছাই</th><td>হ্যাঁ</td><td>হ্যাঁ</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">ক্ষতিগ্রস্ত মিডিয়া উদ্ধার</th><td>হ্যাঁ</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">প্রতিলিপি সম্পাদনা</th><td>হ্যাঁ</td><td>হ্যাঁ</td><td>—</td><td>হ্যাঁ</td></tr>
+            <tr><th scope="row">আবার তৈরি প্রতিলিপির সঙ্গে তুলনা</th><td>হ্যাঁ</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">স্থানীয় MCP দিয়ে AI সহকারী</th><td>হ্যাঁ</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">GPU তাপমাত্রার সীমা</th><td><bdi dir="ltr" translate="no">NVIDIA</bdi></td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row" translate="no">Obsidian / n8n</th><td>হ্যাঁ</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">অন্তর্নির্মিত সার্ভার</th><td>ওয়েব ও API</td><td>—</td><td><bdi dir="ltr" translate="no">HTTP API</bdi></td><td>—</td></tr>
           </tbody>
         </table>
       </div>
+      <p class="compare-note" id="compare-note"><time dir="ltr" datetime="2026-11-26">2026-11-26</time> তারিখে যাচাই করা হয়েছে। ড্যাশ চিহ্নিত সুবিধাগুলো যাচাই করা যায়নি। <a href="/compare/" hreflang="en">অফিসিয়াল সূত্র</a> দেখুন।</p>
     </div>
   </section>
 

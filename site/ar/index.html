@@ -82,7 +82,7 @@
 
 <link rel="preload" href="/assets/shots/transcribe.webp" as="image" type="image/webp" imagesrcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" imagesizes="(max-width: 1080px) 72vw, 480px">
 <script src="/js/motion-init.js?v=20260927b"></script>
-<link rel="stylesheet" href="/styles.css?v=20261022a">
+<link rel="stylesheet" href="/styles.css?v=20261126geo">
 
 <script type="application/ld+json">
 {
@@ -904,6 +904,7 @@
       <div class="rail sr" aria-hidden="true"><span class="rail-pulse"></span></div>
       <a class="text-link sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md" rel="noopener">اقرأ البنية الكاملة<svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
       <p class="muted guide-links">أدلة خطوة بخطوة: <a href="/ar/youtube-to-text/">تحويل فيديو YouTube إلى نص</a> · <a href="/ar/video-to-srt/">تحويل فيديو إلى ترجمات SRT</a> · <a href="/ar/speaker-labels/">تفريغات نصية مع تسميات المتحدثين</a></p>
+      <p class="muted guide-links"><a href="/windows-offline-transcription/" hreflang="en">تحويل الكلام إلى نص دون اتصال على Windows (بالإنجليزية)</a></p>
     </div>
   </section>
 
@@ -957,6 +958,13 @@ python gui.py</code></pre>
           <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS — تثبيت بسطر واحد</p>
           <h3>الصقها في الطرفية. هذا كل شيء.</h3>
           <p>ينزل الإصدار المناسب لجهاز Mac الخاص بك (Apple Silicon على macOS 14+، وإلا Intel عبر Rosetta)، وينسخ التطبيق إلى <code>Applications</code> ويفتحه. الملفات التي يجلبها <code>curl</code> لا يتم عزلها، لذلك لا يوجد تحذير "مطور غير معروف" يجب تجاوزه بالنقر عليه.</p>
+          <table class="mac-builds">
+            <thead><tr><th scope="col">Mac</th><th scope="col">أدنى إصدار من macOS</th><th scope="col">تنزيل</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Intel</bdi></th><td><bdi dir="ltr" translate="no">macOS 12+</bdi></td><td><bdi dir="ltr" translate="no">x64 DMG</bdi></td></tr>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Apple Silicon</bdi></th><td><bdi dir="ltr" translate="no">macOS 14+</bdi></td><td><bdi dir="ltr" translate="no">arm64 DMG</bdi></td></tr>
+            </tbody>
+          </table>
         </div>
         <div class="code-box">
           <button class="copy-btn" type="button" data-copy="#mac-cmd">نسخ</button>
@@ -974,24 +982,39 @@ python gui.py</code></pre>
       <header class="section-head sr">
         <p class="eyebrow">مقارنة</p>
         <h2 id="compare-title">كيف يقارن بتطبيقات Whisper الأخرى؟</h2>
-        <p class="section-lede">Whisper Transcriber Suite هو أحد عدة تطبيقات سطح مكتب مجانية ومفتوحة المصدر تقوم بالتفريغ الصوتي على جهازك الخاص. إليك كيف يقارن بـ Subtitle Edit وVibe وBuzz، بما في ذلك متى يكون تطبيق آخر أكثر ملاءمة. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">اقرأ المقارنة الكاملة</a>، مع مصدر لكل حقيقة وتطبيقين إضافيين، noScribe وaTrain.</p>
+        <p class="section-lede"><a href="/compare/" hreflang="en">المقارنة الكاملة (بالإنجليزية)</a></p>
       </header>
-      <div class="table-wrap sr">
-        <table class="compare-table">
-          <caption>تم التحقق في 2026-10-05 مقابل README والوثائق والإصدارات الخاصة بكل مشروع. تتغير التطبيقات بسرعة: راجع <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">المقارنة الكاملة</a> للمصادر.</caption>
+      <div class="table-wrap sr" tabindex="0" role="region" aria-labelledby="compare-title">
+        <table class="compare-table" aria-describedby="compare-note">
           <thead>
             <tr><th scope="col"><span class="sr-only">الميزة</span></th><th scope="col">Whisper Transcriber Suite</th><th scope="col">Subtitle Edit</th><th scope="col">Vibe</th><th scope="col">Buzz</th></tr>
           </thead>
           <tbody>
             <tr><th scope="row">السعر، الترخيص</th><td>مجاني، BSD-3-Clause</td><td>مجاني، MIT</td><td>مجاني، MIT</td><td>مجاني، MIT</td></tr>
-            <tr><th scope="row">التنزيلات</th><td>مثبت Windows وملف ZIP محمول، macOS (Apple silicon، Intel)؛ Linux من المصدر</td><td>Windows (x64، ARM64)، macOS، Linux (Flatpak، tar.gz)</td><td>Windows، macOS، Linux (.deb، .rpm)</td><td>Windows، macOS (1.4.5 هو الأخير لأجهزة Intel Mac)، Linux (Flatpak، Snap، AppImage)، PyPI</td></tr>
-            <tr><th scope="row">تسريع GPU</th><td>NVIDIA (CUDA)</td><td>NVIDIA (CUDA)، Vulkan</td><td>NVIDIA، AMD، Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA)، Apple silicon، Vulkan</td></tr>
+            <tr><th scope="row">التنزيلات</th><td>مثبت Windows وملف ZIP محمول، macOS (Apple silicon، Intel)؛ Linux من المصدر</td><td>Windows: مثبّت وملف ZIP · macOS · Linux</td><td>Windows: مثبّت · macOS · Linux</td><td>Windows: مثبّت · macOS · Linux</td></tr>
+            <tr><th scope="row">تفريغ دون اتصال</th><td>نعم</td><td>نعم</td><td>نعم</td><td>نعم</td></tr>
+            <tr><th scope="row">تفريغ ملفات دفعة واحدة</th><td>نعم</td><td>نعم</td><td>نعم</td><td>مجلد مراقَب</td></tr>
+            <tr><th scope="row">تسريع GPU</th><td><bdi dir="ltr" translate="no">NVIDIA (CUDA); Apple Silicon (MLX)</bdi></td><td><bdi dir="ltr" translate="no">NVIDIA (CUDA), Vulkan, Metal</bdi></td><td>NVIDIA، AMD، Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA)، Apple silicon، Vulkan</td></tr>
+            <tr><th scope="row">وسوم المتحدثين</th><td>نعم</td><td>حسب المحرّك</td><td>نعم</td><td>نعم</td></tr>
+            <tr><th scope="row">YouTube كمصدر</th><td>تنزيل وتفريغ</td><td>بث من الرابط</td><td>تفريغ من الرابط</td><td>تفريغ من الرابط</td></tr>
+            <tr><th scope="row">صيغ التصدير</th><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF + 10</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, ASS</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, TXT</bdi></td></tr>
             <tr><th scope="row">مثبت Windows موقع</th><td>لا</td><td>غير مذكور</td><td>نعم، حسب وثائقه</td><td>لا</td></tr>
-            <tr><th scope="row">لغات الواجهة</th><td>42</td><td>35</td><td>22</td><td>16</td></tr>
-            <tr><th scope="row">اختره إذا</th><td>كنت ترغب أيضاً في استخدام ميكروفون مباشر، وتنزيل مقاطع الفيديو، و14 صيغة إخراج، ووضع شبكة محلية مع مسار متوافق مع OpenAI</td><td>كنت تريد العديد من محركات الكلام (Parakeet، Canary، Qwen3-ASR والمزيد) أو تطبيق Mac مصدق</td><td>كنت تريد مثبت Windows تقول وثائقه إنه موقع، أو دعم GPU يذكر AMD وIntel</td><td>كنت تريد حزم Linux (Flatpak، Snap، AppImage) أو تثبيت عبر PyPI</td></tr>
+            <tr><th scope="row">لغات الواجهة</th><td>42</td><td>36</td><td>22</td><td>15</td></tr>
+            <tr><th scope="row">واجهة بالفارسية</th><td>نعم</td><td>نعم</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">تخطيط من اليمين إلى اليسار</th><td>نعم</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">تسميات توضيحية مباشرة</th><td>نعم</td><td>—</td><td>—</td><td>نعم</td></tr>
+            <tr><th scope="row">اختيار مسار الصوت</th><td>نعم</td><td>نعم</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">استعادة الوسائط التالفة</th><td>نعم</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">تحرير النص المفرّغ</th><td>نعم</td><td>نعم</td><td>—</td><td>نعم</td></tr>
+            <tr><th scope="row">مقارنة نتيجة إعادة التفريغ</th><td>نعم</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">مساعدو الذكاء الاصطناعي عبر MCP محلي</th><td>نعم</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">حد حرارة GPU</th><td><bdi dir="ltr" translate="no">NVIDIA</bdi></td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row" translate="no">Obsidian / n8n</th><td>نعم</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">خادم مدمج</th><td>ويب وواجهة API</td><td>—</td><td><bdi dir="ltr" translate="no">HTTP API</bdi></td><td>—</td></tr>
           </tbody>
         </table>
       </div>
+      <p class="compare-note" id="compare-note">تم التحقق في <time dir="ltr" datetime="2026-11-26">2026-11-26</time>. تشير الشرطة إلى ميزة تعذّر التحقق منها. راجع <a href="/compare/" hreflang="en">المصادر الرسمية</a>.</p>
     </div>
   </section>
 

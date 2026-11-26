@@ -84,7 +84,7 @@
 <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/shots/transcribe.webp" as="image" type="image/webp" imagesrcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" imagesizes="(max-width: 1080px) 72vw, 480px">
 <script src="/js/motion-init.js?v=20260927b"></script>
-<link rel="stylesheet" href="/styles.css?v=20261022a">
+<link rel="stylesheet" href="/styles.css?v=20261126geo">
 
 <script type="application/ld+json">
 {
@@ -906,6 +906,7 @@
       <div class="rail sr" aria-hidden="true"><span class="rail-pulse"></span></div>
       <a class="text-link sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md" rel="noopener">Les om hele arkitekturen<svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
       <p class="muted guide-links">Trinn-for-trinn-veiledninger: <a href="/nb/youtube-to-text/">YouTube-video til tekst</a> · <a href="/nb/video-to-srt/">video til SRT-undertekster</a> · <a href="/nb/speaker-labels/">transkripsjoner med taleretiketter</a></p>
+      <p class="muted guide-links"><a href="/windows-offline-transcription/" hreflang="en">Transkriber frakoblet i Windows (på engelsk)</a></p>
     </div>
   </section>
 
@@ -959,6 +960,13 @@ python gui.py</code></pre>
           <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS — énlinjes installasjon</p>
           <h3>Lim inn i Terminal. Det er alt.</h3>
           <p>Laster ned riktig versjon for Mac-en din (Apple Silicon på macOS 14+, ellers Intel via Rosetta), kopierer appen til <code>Applications</code> og åpner den. Filer hentet med <code>curl</code> blir ikke satt i karantene, så det er ingen advarsel om «uidentifisert utvikler» du må klikke deg forbi.</p>
+          <table class="mac-builds">
+            <thead><tr><th scope="col">Mac</th><th scope="col">Laveste macOS-versjon</th><th scope="col">Nedlasting</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Intel</bdi></th><td><bdi dir="ltr" translate="no">macOS 12+</bdi></td><td><bdi dir="ltr" translate="no">x64 DMG</bdi></td></tr>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Apple Silicon</bdi></th><td><bdi dir="ltr" translate="no">macOS 14+</bdi></td><td><bdi dir="ltr" translate="no">arm64 DMG</bdi></td></tr>
+            </tbody>
+          </table>
         </div>
         <div class="code-box">
           <button class="copy-btn" type="button" data-copy="#mac-cmd">Kopier</button>
@@ -976,24 +984,39 @@ python gui.py</code></pre>
       <header class="section-head sr">
         <p class="eyebrow">Sammenlign</p>
         <h2 id="compare-title">Hvordan står den seg mot andre Whisper-apper?</h2>
-        <p class="section-lede">Whisper Transcriber Suite er en av flere gratis skrivebordsapper med åpen kildekode som transkriberer på din egen datamaskin. Her ser du hvordan den står seg mot Subtitle Edit, Vibe og Buzz, inkludert når en annen app passer bedre. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">Les hele sammenligningen</a>, med kilde for hvert faktum og to apper til, noScribe og aTrain.</p>
+        <p class="section-lede"><a href="/compare/" hreflang="en">Full sammenligning (på engelsk)</a></p>
       </header>
-      <div class="table-wrap sr">
-        <table class="compare-table">
-          <caption>Kontrollert 2026-10-05 mot hvert prosjekts egne README-, dokumentasjons- og utgivelsessider. Apper endrer seg raskt: se <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">hele sammenligningen</a> for kilder.</caption>
+      <div class="table-wrap sr" tabindex="0" role="region" aria-labelledby="compare-title">
+        <table class="compare-table" aria-describedby="compare-note">
           <thead>
             <tr><th scope="col"><span class="sr-only">Funksjon</span></th><th scope="col">Whisper Transcriber Suite</th><th scope="col">Subtitle Edit</th><th scope="col">Vibe</th><th scope="col">Buzz</th></tr>
           </thead>
           <tbody>
             <tr><th scope="row">Pris, lisens</th><td>Gratis, BSD-3-Clause</td><td>Gratis, MIT</td><td>Gratis, MIT</td><td>Gratis, MIT</td></tr>
-            <tr><th scope="row">Nedlastinger</th><td>Windows-installasjonsprogram og portabel ZIP, macOS (Apple silicon, Intel); Linux fra kildekode</td><td>Windows (x64, ARM64), macOS, Linux (Flatpak, tar.gz)</td><td>Windows, macOS, Linux (.deb, .rpm)</td><td>Windows, macOS (1.4.5 er den siste for Intel-Mac-er), Linux (Flatpak, Snap, AppImage), PyPI</td></tr>
-            <tr><th scope="row">GPU-akselerasjon</th><td>NVIDIA (CUDA)</td><td>NVIDIA (CUDA), Vulkan</td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Nedlastinger</th><td>Windows-installasjonsprogram og portabel ZIP, macOS (Apple silicon, Intel); Linux fra kildekode</td><td>Windows: installasjonsprogram og ZIP · macOS · Linux</td><td>Windows: installasjonsprogram · macOS · Linux</td><td>Windows: installasjonsprogram · macOS · Linux</td></tr>
+            <tr><th scope="row">Frakoblet transkribering</th><td>Ja</td><td>Ja</td><td>Ja</td><td>Ja</td></tr>
+            <tr><th scope="row">Transkribering av flere filer</th><td>Ja</td><td>Ja</td><td>Ja</td><td>overvåket mappe</td></tr>
+            <tr><th scope="row">GPU-akselerasjon</th><td><bdi dir="ltr" translate="no">NVIDIA (CUDA); Apple Silicon (MLX)</bdi></td><td><bdi dir="ltr" translate="no">NVIDIA (CUDA), Vulkan, Metal</bdi></td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Talermerking</th><td>Ja</td><td>Avhenger av motoren</td><td>Ja</td><td>Ja</td></tr>
+            <tr><th scope="row">YouTube som kilde</th><td>Last ned og transkriber</td><td>Spill av fra URL</td><td>Transkriber fra URL</td><td>Transkriber fra URL</td></tr>
+            <tr><th scope="row">Eksportformater</th><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF + 10</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, ASS</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, TXT</bdi></td></tr>
             <tr><th scope="row">Signert Windows-installasjonsprogram</th><td>Nei</td><td>Ikke oppgitt</td><td>Ja, ifølge dokumentasjonen</td><td>Nei</td></tr>
-            <tr><th scope="row">Grensesnittspråk</th><td>42</td><td>35</td><td>22</td><td>16</td></tr>
-            <tr><th scope="row">Velg denne hvis</th><td>Du vil også ha sanntidsmikrofon, videonedlasting, 14 utdataformater og en lokalnettverksmodus med en OpenAI-kompatibel rute</td><td>Du vil ha mange talemotorer (Parakeet, Canary, Qwen3-ASR med flere) eller en notarisert Mac-app</td><td>Du vil ha et Windows-installasjonsprogram som ifølge dokumentasjonen er signert, eller GPU-støtte som nevner AMD og Intel</td><td>Du vil ha Linux-pakker (Flatpak, Snap, AppImage) eller en PyPI-installasjon</td></tr>
+            <tr><th scope="row">Grensesnittspråk</th><td>42</td><td>36</td><td>22</td><td>15</td></tr>
+            <tr><th scope="row">Persisk grensesnitt</th><td>Ja</td><td>Ja</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Oppsett fra høyre mot venstre</th><td>Ja</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Direkteteksting</th><td>Ja</td><td>—</td><td>—</td><td>Ja</td></tr>
+            <tr><th scope="row">Valg av lydspor</th><td>Ja</td><td>Ja</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Gjenoppretting av skadede mediefiler</th><td>Ja</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Rediger transkripsjon</th><td>Ja</td><td>Ja</td><td>—</td><td>Ja</td></tr>
+            <tr><th scope="row">Sammenlign ny transkripsjon</th><td>Ja</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">KI-assistenter via lokal MCP</th><td>Ja</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Temperaturgrense for GPU</th><td><bdi dir="ltr" translate="no">NVIDIA</bdi></td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row" translate="no">Obsidian / n8n</th><td>Ja</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Innebygd server</th><td>Nett og API</td><td>—</td><td><bdi dir="ltr" translate="no">HTTP API</bdi></td><td>—</td></tr>
           </tbody>
         </table>
       </div>
+      <p class="compare-note" id="compare-note">Kontrollert <time dir="ltr" datetime="2026-11-26">2026-11-26</time>. En strek viser at funksjonen ikke er bekreftet. Se <a href="/compare/" hreflang="en">offisielle kilder</a>.</p>
     </div>
   </section>
 

@@ -84,7 +84,7 @@
 <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/shots/transcribe.webp" as="image" type="image/webp" imagesrcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" imagesizes="(max-width: 1080px) 72vw, 480px">
 <script src="/js/motion-init.js?v=20260927b"></script>
-<link rel="stylesheet" href="/styles.css?v=20261022a">
+<link rel="stylesheet" href="/styles.css?v=20261126geo">
 
 <script type="application/ld+json">
 {
@@ -906,6 +906,7 @@
       <div class="rail sr" aria-hidden="true"><span class="rail-pulse"></span></div>
       <a class="text-link sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md" rel="noopener">Přečtěte si podrobný popis architektury<svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
       <p class="muted guide-links">Návody krok za krokem: <a href="/cs/youtube-to-text/">YouTube video na text</a> · <a href="/cs/video-to-srt/">video na titulky SRT</a> · <a href="/cs/speaker-labels/">přepisy s označením mluvčích</a></p>
+      <p class="muted guide-links"><a href="/windows-offline-transcription/" hreflang="en">Přepis offline ve Windows (anglicky)</a></p>
     </div>
   </section>
 
@@ -959,6 +960,13 @@ python gui.py</code></pre>
           <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS — instalace jedním řádkem</p>
           <h3>Vložte do Terminálu. To je vše.</h3>
           <p>Stáhne správné sestavení pro váš Mac (Apple Silicon na macOS 14+, jinak Intel přes Rosetta), zkopíruje aplikaci do <code>Applications</code> a otevře ji. Soubory stažené pomocí <code>curl</code> nejsou v karanténě, takže nemusíte odklikávat žádné varování o „neidentifikovaném vývojáři“.</p>
+          <table class="mac-builds">
+            <thead><tr><th scope="col">Mac</th><th scope="col">Minimální verze macOS</th><th scope="col">Stažení</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Intel</bdi></th><td><bdi dir="ltr" translate="no">macOS 12+</bdi></td><td><bdi dir="ltr" translate="no">x64 DMG</bdi></td></tr>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Apple Silicon</bdi></th><td><bdi dir="ltr" translate="no">macOS 14+</bdi></td><td><bdi dir="ltr" translate="no">arm64 DMG</bdi></td></tr>
+            </tbody>
+          </table>
         </div>
         <div class="code-box">
           <button class="copy-btn" type="button" data-copy="#mac-cmd">Kopírovat</button>
@@ -976,24 +984,39 @@ python gui.py</code></pre>
       <header class="section-head sr">
         <p class="eyebrow">Srovnání</p>
         <h2 id="compare-title">Jak si stojí ve srovnání s ostatními aplikacemi pro Whisper?</h2>
-        <p class="section-lede">Whisper Transcriber Suite je jednou z několika bezplatných open-source desktopových aplikací, které přepisují přímo na vašem počítači. Zde je srovnání s aplikacemi Subtitle Edit, Vibe a Buzz, včetně případů, kdy se lépe hodí jiná aplikace. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">Přečtěte si celé srovnání</a> se zdrojem ke každému údaji a dalšími dvěma aplikacemi, noScribe a aTrain.</p>
+        <p class="section-lede"><a href="/compare/" hreflang="en">Úplné srovnání (anglicky)</a></p>
       </header>
-      <div class="table-wrap sr">
-        <table class="compare-table">
-          <caption>Ověřeno 2026-10-05 podle souborů README, dokumentace a vydání jednotlivých projektů. Aplikace se rychle mění: zdroje najdete v <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">celém srovnání</a>.</caption>
+      <div class="table-wrap sr" tabindex="0" role="region" aria-labelledby="compare-title">
+        <table class="compare-table" aria-describedby="compare-note">
           <thead>
             <tr><th scope="col"><span class="sr-only">Funkce</span></th><th scope="col">Whisper Transcriber Suite</th><th scope="col">Subtitle Edit</th><th scope="col">Vibe</th><th scope="col">Buzz</th></tr>
           </thead>
           <tbody>
             <tr><th scope="row">Cena, licence</th><td>Zdarma, BSD-3-Clause</td><td>Zdarma, MIT</td><td>Zdarma, MIT</td><td>Zdarma, MIT</td></tr>
-            <tr><th scope="row">Stahování</th><td>Instalátor a přenosný ZIP pro Windows, macOS (Apple silicon, Intel); Linux ze zdrojového kódu</td><td>Windows (x64, ARM64), macOS, Linux (Flatpak, tar.gz)</td><td>Windows, macOS, Linux (.deb, .rpm)</td><td>Windows, macOS (1.4.5 je poslední pro Macy s procesory Intel), Linux (Flatpak, Snap, AppImage), PyPI</td></tr>
-            <tr><th scope="row">Akcelerace GPU</th><td>NVIDIA (CUDA)</td><td>NVIDIA (CUDA), Vulkan</td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Stahování</th><td>Instalátor a přenosný ZIP pro Windows, macOS (Apple silicon, Intel); Linux ze zdrojového kódu</td><td>Windows: instalátor a ZIP · macOS · Linux</td><td>Windows: instalátor · macOS · Linux</td><td>Windows: instalátor · macOS · Linux</td></tr>
+            <tr><th scope="row">Přepis offline</th><td>Ano</td><td>Ano</td><td>Ano</td><td>Ano</td></tr>
+            <tr><th scope="row">Dávkový přepis</th><td>Ano</td><td>Ano</td><td>Ano</td><td>sledovaná složka</td></tr>
+            <tr><th scope="row">Akcelerace GPU</th><td><bdi dir="ltr" translate="no">NVIDIA (CUDA); Apple Silicon (MLX)</bdi></td><td><bdi dir="ltr" translate="no">NVIDIA (CUDA), Vulkan, Metal</bdi></td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Označení mluvčích</th><td>Ano</td><td>Podle enginu</td><td>Ano</td><td>Ano</td></tr>
+            <tr><th scope="row">Zdroj z YouTube</th><td>Stáhnout a přepsat</td><td>Přehrát z URL</td><td>Přepsat z URL</td><td>Přepsat z URL</td></tr>
+            <tr><th scope="row">Formáty exportu</th><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF + 10</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, ASS</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, TXT</bdi></td></tr>
             <tr><th scope="row">Podepsaný instalátor pro Windows</th><td>Ne</td><td>Neuvedeno</td><td>Ano, podle dokumentace</td><td>Ne</td></tr>
-            <tr><th scope="row">Jazyky rozhraní</th><td>42</td><td>35</td><td>22</td><td>16</td></tr>
-            <tr><th scope="row">Zvolte, pokud</th><td>Chcete také živý mikrofon, stahování videí, 14 výstupních formátů a režim místní sítě s rozhraním kompatibilním s OpenAI</td><td>Chcete mnoho řečových modulů (Parakeet, Canary, Qwen3-ASR a další) nebo notářsky ověřenou aplikaci pro Mac</td><td>Chcete instalátor pro Windows, který je podle dokumentace podepsaný, nebo podporu GPU, která uvádí AMD a Intel</td><td>Chcete balíčky pro Linux (Flatpak, Snap, AppImage) nebo instalaci přes PyPI</td></tr>
+            <tr><th scope="row">Jazyky rozhraní</th><td>42</td><td>36</td><td>22</td><td>15</td></tr>
+            <tr><th scope="row">Perské rozhraní</th><td>Ano</td><td>Ano</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Rozvržení zprava doleva</th><td>Ano</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Živé titulky</th><td>Ano</td><td>—</td><td>—</td><td>Ano</td></tr>
+            <tr><th scope="row">Výběr zvukové stopy</th><td>Ano</td><td>Ano</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Obnova poškozených médií</th><td>Ano</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Úprava přepisu</th><td>Ano</td><td>Ano</td><td>—</td><td>Ano</td></tr>
+            <tr><th scope="row">Porovnání nového přepisu</th><td>Ano</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Asistenti AI přes místní MCP</th><td>Ano</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Limit teploty GPU</th><td><bdi dir="ltr" translate="no">NVIDIA</bdi></td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row" translate="no">Obsidian / n8n</th><td>Ano</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Vestavěný server</th><td>Web a API</td><td>—</td><td><bdi dir="ltr" translate="no">HTTP API</bdi></td><td>—</td></tr>
           </tbody>
         </table>
       </div>
+      <p class="compare-note" id="compare-note">Ověřeno <time dir="ltr" datetime="2026-11-26">2026-11-26</time>. Pomlčka označuje neověřenou funkci. Viz <a href="/compare/" hreflang="en">oficiální zdroje</a>.</p>
     </div>
   </section>
 

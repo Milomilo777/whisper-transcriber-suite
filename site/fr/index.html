@@ -84,7 +84,7 @@
 <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/shots/transcribe.webp" as="image" type="image/webp" imagesrcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" imagesizes="(max-width: 1080px) 72vw, 480px">
 <script src="/js/motion-init.js?v=20260927b"></script>
-<link rel="stylesheet" href="/styles.css?v=20261022a">
+<link rel="stylesheet" href="/styles.css?v=20261126geo">
 
 <script type="application/ld+json">
 {
@@ -906,6 +906,7 @@
       <div class="rail sr" aria-hidden="true"><span class="rail-pulse"></span></div>
       <a class="text-link sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md" rel="noopener">Découvrir l'architecture complète<svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
       <p class="muted guide-links">Guides pas à pas : <a href="/fr/youtube-to-text/">De la vidéo YouTube au texte</a> · <a href="/fr/video-to-srt/">De la vidéo aux sous-titres SRT</a> · <a href="/fr/speaker-labels/">Transcriptions avec identification des locuteurs</a></p>
+      <p class="muted guide-links"><a href="/windows-offline-transcription/" hreflang="en">Transcription hors ligne sous Windows (en anglais)</a></p>
     </div>
   </section>
 
@@ -959,6 +960,13 @@ python gui.py</code></pre>
           <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS — installation en une ligne</p>
           <h3>Collez dans Terminal. C'est tout.</h3>
           <p>Télécharge la version adaptée à votre Mac (Apple Silicon sur macOS 14+, sinon Intel via Rosetta), copie l'application dans <code>Applications</code> et l'ouvre. Les fichiers récupérés par <code>curl</code> ne sont pas mis en quarantaine, il n'y a donc aucun avertissement « développeur non identifié » à franchir.</p>
+          <table class="mac-builds">
+            <thead><tr><th scope="col">Mac</th><th scope="col">Version minimale de macOS</th><th scope="col">Téléchargement</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Intel</bdi></th><td><bdi dir="ltr" translate="no">macOS 12+</bdi></td><td><bdi dir="ltr" translate="no">x64 DMG</bdi></td></tr>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Apple Silicon</bdi></th><td><bdi dir="ltr" translate="no">macOS 14+</bdi></td><td><bdi dir="ltr" translate="no">arm64 DMG</bdi></td></tr>
+            </tbody>
+          </table>
         </div>
         <div class="code-box">
           <button class="copy-btn" type="button" data-copy="#mac-cmd">Copier</button>
@@ -976,24 +984,39 @@ python gui.py</code></pre>
       <header class="section-head sr">
         <p class="eyebrow">Comparatif</p>
         <h2 id="compare-title">Comment se positionne-t-elle par rapport aux autres applications Whisper ?</h2>
-        <p class="section-lede">Whisper Transcriber Suite fait partie des quelques applications de bureau gratuites et open source qui transcrivent sur votre propre ordinateur. Voici comment elle se compare à Subtitle Edit, Vibe et Buzz, y compris dans les cas où une autre application conviendrait mieux. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">Lire le comparatif complet</a>, avec une source pour chaque information et deux autres applications, noScribe et aTrain.</p>
+        <p class="section-lede"><a href="/compare/" hreflang="en">Comparatif complet (en anglais)</a></p>
       </header>
-      <div class="table-wrap sr">
-        <table class="compare-table">
-          <caption>Vérifié le 2026-10-05 d'après le README, la documentation et les versions de chaque projet. Les applications évoluent vite : consultez le <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">comparatif complet</a> pour les sources.</caption>
+      <div class="table-wrap sr" tabindex="0" role="region" aria-labelledby="compare-title">
+        <table class="compare-table" aria-describedby="compare-note">
           <thead>
             <tr><th scope="col"><span class="sr-only">Fonctionnalité</span></th><th scope="col">Whisper Transcriber Suite</th><th scope="col">Subtitle Edit</th><th scope="col">Vibe</th><th scope="col">Buzz</th></tr>
           </thead>
           <tbody>
             <tr><th scope="row">Prix, licence</th><td>Gratuit, BSD-3-Clause</td><td>Gratuit, MIT</td><td>Gratuit, MIT</td><td>Gratuit, MIT</td></tr>
-            <tr><th scope="row">Téléchargements</th><td>Programme d'installation Windows et ZIP portable, macOS (Apple silicon, Intel) ; Linux depuis les sources</td><td>Windows (x64, ARM64), macOS, Linux (Flatpak, tar.gz)</td><td>Windows, macOS, Linux (.deb, .rpm)</td><td>Windows, macOS (la 1.4.5 est la dernière pour les Mac Intel), Linux (Flatpak, Snap, AppImage), PyPI</td></tr>
-            <tr><th scope="row">Accélération GPU</th><td>NVIDIA (CUDA)</td><td>NVIDIA (CUDA), Vulkan</td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Téléchargements</th><td>Programme d'installation Windows et ZIP portable, macOS (Apple silicon, Intel) ; Linux depuis les sources</td><td>Windows: installateur et ZIP · macOS · Linux</td><td>Windows: installateur · macOS · Linux</td><td>Windows: installateur · macOS · Linux</td></tr>
+            <tr><th scope="row">Transcription hors ligne</th><td>Oui</td><td>Oui</td><td>Oui</td><td>Oui</td></tr>
+            <tr><th scope="row">Transcription par lot</th><td>Oui</td><td>Oui</td><td>Oui</td><td>dossier surveillé</td></tr>
+            <tr><th scope="row">Accélération GPU</th><td><bdi dir="ltr" translate="no">NVIDIA (CUDA); Apple Silicon (MLX)</bdi></td><td><bdi dir="ltr" translate="no">NVIDIA (CUDA), Vulkan, Metal</bdi></td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Étiquettes de locuteurs</th><td>Oui</td><td>Selon le moteur</td><td>Oui</td><td>Oui</td></tr>
+            <tr><th scope="row">Source YouTube</th><td>Télécharger et transcrire</td><td>Lire depuis une URL</td><td>Transcrire depuis une URL</td><td>Transcrire depuis une URL</td></tr>
+            <tr><th scope="row">Formats d’export</th><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF + 10</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, ASS</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, TXT</bdi></td></tr>
             <tr><th scope="row">Programme d'installation Windows signé</th><td>Non</td><td>Non précisé</td><td>Oui, d'après sa documentation</td><td>Non</td></tr>
-            <tr><th scope="row">Langues de l'interface</th><td>42</td><td>35</td><td>22</td><td>16</td></tr>
-            <tr><th scope="row">À choisir si</th><td>Vous souhaitez également un micro en direct, le téléchargement de vidéos, 14 formats de sortie et un mode réseau local avec une route compatible OpenAI</td><td>Vous souhaitez de nombreux moteurs vocaux (Parakeet, Canary, Qwen3-ASR et d'autres) ou une application Mac notariée</td><td>Vous voulez un installateur Windows indiqué comme signé dans sa documentation, ou une compatibilité GPU mentionnant AMD et Intel</td><td>Vous souhaitez des paquets Linux (Flatpak, Snap, AppImage) ou une installation via PyPI</td></tr>
+            <tr><th scope="row">Langues de l'interface</th><td>42</td><td>36</td><td>22</td><td>15</td></tr>
+            <tr><th scope="row">Interface en persan</th><td>Oui</td><td>Oui</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Disposition de droite à gauche</th><td>Oui</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Sous-titres en direct</th><td>Oui</td><td>—</td><td>—</td><td>Oui</td></tr>
+            <tr><th scope="row">Choix de la piste audio</th><td>Oui</td><td>Oui</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Récupération de médias endommagés</th><td>Oui</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Modification de la transcription</th><td>Oui</td><td>Oui</td><td>—</td><td>Oui</td></tr>
+            <tr><th scope="row">Comparaison après retranscription</th><td>Oui</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Assistants IA via MCP local</th><td>Oui</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Limite de température du GPU</th><td><bdi dir="ltr" translate="no">NVIDIA</bdi></td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row" translate="no">Obsidian / n8n</th><td>Oui</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Serveur intégré</th><td>Web et API</td><td>—</td><td><bdi dir="ltr" translate="no">HTTP API</bdi></td><td>—</td></tr>
           </tbody>
         </table>
       </div>
+      <p class="compare-note" id="compare-note">Vérifié le <time dir="ltr" datetime="2026-11-26">2026-11-26</time>. Un tiret signale une fonction non vérifiée. Voir les <a href="/compare/" hreflang="en">sources officielles</a>.</p>
     </div>
   </section>
 

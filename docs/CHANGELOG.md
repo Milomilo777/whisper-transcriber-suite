@@ -6,6 +6,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 
 ### Changed
 
+- Expand the website comparison and add a guide to offline Whisper transcription on Windows.
 - Update the website's release highlights and download details to 2.5.0 in all 42 languages.
 - Publish download badges from the main branch.
 - Expand the English homepage with eight 2.5 highlights and four 2.4 release cards.

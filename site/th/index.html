@@ -82,7 +82,7 @@
 
 <link rel="preload" href="/assets/shots/transcribe.webp" as="image" type="image/webp" imagesrcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" imagesizes="(max-width: 1080px) 72vw, 480px">
 <script src="/js/motion-init.js?v=20260927b"></script>
-<link rel="stylesheet" href="/styles.css?v=20261022a">
+<link rel="stylesheet" href="/styles.css?v=20261126geo">
 
 <script type="application/ld+json">
 {
@@ -904,6 +904,7 @@
       <div class="rail sr" aria-hidden="true"><span class="rail-pulse"></span></div>
       <a class="text-link sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md" rel="noopener">อ่านสถาปัตยกรรมทั้งหมด<svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
       <p class="muted guide-links">คู่มือทีละขั้นตอน: <a href="/th/youtube-to-text/">แปลงวิดีโอ YouTube เป็นข้อความ</a> · <a href="/th/video-to-srt/">แปลงวิดีโอเป็นคำบรรยาย SRT</a> · <a href="/th/speaker-labels/">ถอดเสียงพร้อมป้ายกำกับผู้พูด</a></p>
+      <p class="muted guide-links"><a href="/windows-offline-transcription/" hreflang="en">ถอดเสียงแบบออฟไลน์บน Windows (ภาษาอังกฤษ)</a></p>
     </div>
   </section>
 
@@ -957,6 +958,13 @@ python gui.py</code></pre>
           <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS — ติดตั้งด้วยคำสั่งเดียว</p>
           <h3>วางลงใน Terminal เป็นอันเสร็จ</h3>
           <p>ดาวน์โหลดเวอร์ชันที่เหมาะสมสำหรับ Mac ของคุณ (Apple Silicon บน macOS 14+ หรือไม่ก็ Intel ผ่าน Rosetta), คัดลอกแอปไปยัง <code>Applications</code> และเปิดใช้งาน ไฟล์ที่ดาวน์โหลดโดย <code>curl</code> จะไม่ถูกกักกัน จึงไม่มีคำเตือน "unidentified developer" ให้ต้องคลิกข้าม</p>
+          <table class="mac-builds">
+            <thead><tr><th scope="col">Mac</th><th scope="col">เวอร์ชัน macOS ขั้นต่ำ</th><th scope="col">ดาวน์โหลด</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Intel</bdi></th><td><bdi dir="ltr" translate="no">macOS 12+</bdi></td><td><bdi dir="ltr" translate="no">x64 DMG</bdi></td></tr>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Apple Silicon</bdi></th><td><bdi dir="ltr" translate="no">macOS 14+</bdi></td><td><bdi dir="ltr" translate="no">arm64 DMG</bdi></td></tr>
+            </tbody>
+          </table>
         </div>
         <div class="code-box">
           <button class="copy-btn" type="button" data-copy="#mac-cmd">คัดลอก</button>
@@ -974,24 +982,39 @@ python gui.py</code></pre>
       <header class="section-head sr">
         <p class="eyebrow">เปรียบเทียบ</p>
         <h2 id="compare-title">เปรียบเทียบกับแอป Whisper อื่นๆ อย่างไร?</h2>
-        <p class="section-lede">Whisper Transcriber Suite เป็นหนึ่งในแอปเดสก์ท็อปฟรีและโอเพนซอร์สหลายตัวที่ถอดเสียงบนคอมพิวเตอร์ของคุณเอง นี่คือการเปรียบเทียบกับ Subtitle Edit, Vibe และ Buzz รวมถึงกรณีที่แอปอื่นเหมาะสมกว่า <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">อ่านการเปรียบเทียบฉบับเต็ม</a> พร้อมแหล่งอ้างอิงสำหรับทุกข้อมูล และอีกสองแอปคือ noScribe และ aTrain</p>
+        <p class="section-lede"><a href="/compare/" hreflang="en">การเปรียบเทียบฉบับเต็ม (ภาษาอังกฤษ)</a></p>
       </header>
-      <div class="table-wrap sr">
-        <table class="compare-table">
-          <caption>ตรวจสอบเมื่อ 2026-10-05 กับ README, เอกสาร และการเปิดตัวของแต่ละโปรเจกต์ แอปเปลี่ยนแปลงเร็ว: ดู <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">การเปรียบเทียบฉบับเต็ม</a> สำหรับแหล่งอ้างอิง</caption>
+      <div class="table-wrap sr" tabindex="0" role="region" aria-labelledby="compare-title">
+        <table class="compare-table" aria-describedby="compare-note">
           <thead>
             <tr><th scope="col"><span class="sr-only">คุณสมบัติ</span></th><th scope="col">Whisper Transcriber Suite</th><th scope="col">Subtitle Edit</th><th scope="col">Vibe</th><th scope="col">Buzz</th></tr>
           </thead>
           <tbody>
             <tr><th scope="row">ราคา, ลิขสิทธิ์</th><td>ฟรี, BSD-3-Clause</td><td>ฟรี, MIT</td><td>ฟรี, MIT</td><td>ฟรี, MIT</td></tr>
-            <tr><th scope="row">ดาวน์โหลด</th><td>ตัวติดตั้ง Windows และ ZIP แบบพกพา, macOS (Apple silicon, Intel); Linux จาก source</td><td>Windows (x64, ARM64), macOS, Linux (Flatpak, tar.gz)</td><td>Windows, macOS, Linux (.deb, .rpm)</td><td>Windows, macOS (1.4.5 เป็นเวอร์ชันสุดท้ายสำหรับ Intel Macs), Linux (Flatpak, Snap, AppImage), PyPI</td></tr>
-            <tr><th scope="row">การเร่งความเร็วด้วย GPU</th><td>NVIDIA (CUDA)</td><td>NVIDIA (CUDA), Vulkan</td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">ดาวน์โหลด</th><td>ตัวติดตั้ง Windows และ ZIP แบบพกพา, macOS (Apple silicon, Intel); Linux จาก source</td><td>Windows: ตัวติดตั้งและ ZIP · macOS · Linux</td><td>Windows: ตัวติดตั้ง · macOS · Linux</td><td>Windows: ตัวติดตั้ง · macOS · Linux</td></tr>
+            <tr><th scope="row">ถอดเสียงแบบออฟไลน์</th><td>รองรับ</td><td>รองรับ</td><td>รองรับ</td><td>รองรับ</td></tr>
+            <tr><th scope="row">ถอดเสียงหลายไฟล์</th><td>รองรับ</td><td>รองรับ</td><td>รองรับ</td><td>เฝ้าดูโฟลเดอร์</td></tr>
+            <tr><th scope="row">การเร่งความเร็วด้วย GPU</th><td><bdi dir="ltr" translate="no">NVIDIA (CUDA); Apple Silicon (MLX)</bdi></td><td><bdi dir="ltr" translate="no">NVIDIA (CUDA), Vulkan, Metal</bdi></td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">ป้ายผู้พูด</th><td>รองรับ</td><td>ขึ้นอยู่กับเอนจิน</td><td>รองรับ</td><td>รองรับ</td></tr>
+            <tr><th scope="row">แหล่งข้อมูลจาก YouTube</th><td>ดาวน์โหลดและถอดเสียง</td><td>สตรีมจาก URL</td><td>ถอดเสียงจาก URL</td><td>ถอดเสียงจาก URL</td></tr>
+            <tr><th scope="row">รูปแบบส่งออก</th><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF + 10</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, ASS</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, TXT</bdi></td></tr>
             <tr><th scope="row">ตัวติดตั้ง Windows ที่ลงชื่อดิจิทัล</th><td>ไม่</td><td>ไม่ระบุ</td><td>ใช่ ตามเอกสารของแอป</td><td>ไม่</td></tr>
-            <tr><th scope="row">ภาษาของอินเทอร์เฟซ</th><td>42</td><td>35</td><td>22</td><td>16</td></tr>
-            <tr><th scope="row">เลือกแอปนี้ถ้า</th><td>คุณต้องการใช้ไมโครโฟนแบบเรียลไทม์, ดาวน์โหลดวิดีโอ, รูปแบบไฟล์ 14 แบบ และโหมดเครือข่ายภายในเครื่องที่รองรับเส้นทางแบบ OpenAI</td><td>คุณต้องการใช้เอนจินถอดเสียงหลายตัว (Parakeet, Canary, Qwen3-ASR และอื่นๆ) หรือแอป Mac ที่ผ่านการรับรองโดย Apple (notarized)</td><td>คุณต้องการตัวติดตั้ง Windows ที่เอกสารระบุว่าลงชื่อดิจิทัลแล้ว หรือการรองรับ GPU ที่ระบุชื่อ AMD และ Intel</td><td>คุณต้องการแพ็กเกจ Linux (Flatpak, Snap, AppImage) หรือการติดตั้ผ่าน PyPI</td></tr>
+            <tr><th scope="row">ภาษาของอินเทอร์เฟซ</th><td>42</td><td>36</td><td>22</td><td>15</td></tr>
+            <tr><th scope="row">อินเทอร์เฟซภาษาเปอร์เซีย</th><td>รองรับ</td><td>รองรับ</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">เค้าโครงจากขวาไปซ้าย</th><td>รองรับ</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">คำบรรยายสด</th><td>รองรับ</td><td>—</td><td>—</td><td>รองรับ</td></tr>
+            <tr><th scope="row">เลือกแทร็กเสียง</th><td>รองรับ</td><td>รองรับ</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">กู้คืนสื่อที่เสียหาย</th><td>รองรับ</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">แก้ไขข้อความถอดเสียง</th><td>รองรับ</td><td>รองรับ</td><td>—</td><td>รองรับ</td></tr>
+            <tr><th scope="row">เปรียบเทียบผลจากการถอดเสียงใหม่</th><td>รองรับ</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">ผู้ช่วย AI ผ่าน MCP ในเครื่อง</th><td>รองรับ</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">ขีดจำกัดอุณหภูมิ GPU</th><td><bdi dir="ltr" translate="no">NVIDIA</bdi></td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row" translate="no">Obsidian / n8n</th><td>รองรับ</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">เซิร์ฟเวอร์ในตัว</th><td>เว็บและ API</td><td>—</td><td><bdi dir="ltr" translate="no">HTTP API</bdi></td><td>—</td></tr>
           </tbody>
         </table>
       </div>
+      <p class="compare-note" id="compare-note">ตรวจสอบเมื่อ <time dir="ltr" datetime="2026-11-26">2026-11-26</time> ขีดหมายถึงฟีเจอร์ที่ยังยืนยันไม่ได้ ดู<a href="/compare/" hreflang="en">แหล่งข้อมูลทางการ</a></p>
     </div>
   </section>
 

@@ -84,7 +84,7 @@
 <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/shots/transcribe.webp" as="image" type="image/webp" imagesrcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" imagesizes="(max-width: 1080px) 72vw, 480px">
 <script src="/js/motion-init.js?v=20260927b"></script>
-<link rel="stylesheet" href="/styles.css?v=20261022a">
+<link rel="stylesheet" href="/styles.css?v=20261126geo">
 
 <script type="application/ld+json">
 {
@@ -906,6 +906,7 @@
       <div class="rail sr" aria-hidden="true"><span class="rail-pulse"></span></div>
       <a class="text-link sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md" rel="noopener">Baca arsitektur lengkapnya<svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
       <p class="muted guide-links">Panduan langkah demi langkah: <a href="/id/youtube-to-text/">Video YouTube ke teks</a> · <a href="/id/video-to-srt/">video ke subtitle SRT</a> · <a href="/id/speaker-labels/">transkrip dengan label pembicara</a></p>
+      <p class="muted guide-links"><a href="/windows-offline-transcription/" hreflang="en">Transkripsi luring di Windows (bahasa Inggris)</a></p>
     </div>
   </section>
 
@@ -959,6 +960,13 @@ python gui.py</code></pre>
           <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS — instalasi satu baris</p>
           <h3>Tempel ke Terminal. Selesai.</h3>
           <p>Unduhan versi yang tepat untuk Mac Anda (Apple Silicon di macOS 14+, selain itu Intel melalui Rosetta), menyalin aplikasi ke <code>Applications</code> dan membukanya. Berkas yang diambil oleh <code>curl</code> tidak dikarantina, sehingga tidak ada peringatan "pengembang tidak dikenal" yang harus diabaikan.</p>
+          <table class="mac-builds">
+            <thead><tr><th scope="col">Mac</th><th scope="col">Versi minimum macOS</th><th scope="col">Unduhan</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Intel</bdi></th><td><bdi dir="ltr" translate="no">macOS 12+</bdi></td><td><bdi dir="ltr" translate="no">x64 DMG</bdi></td></tr>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Apple Silicon</bdi></th><td><bdi dir="ltr" translate="no">macOS 14+</bdi></td><td><bdi dir="ltr" translate="no">arm64 DMG</bdi></td></tr>
+            </tbody>
+          </table>
         </div>
         <div class="code-box">
           <button class="copy-btn" type="button" data-copy="#mac-cmd">Salin</button>
@@ -976,24 +984,39 @@ python gui.py</code></pre>
       <header class="section-head sr">
         <p class="eyebrow">Bandingkan</p>
         <h2 id="compare-title">Bagaimana perbandingannya dengan aplikasi Whisper lainnya?</h2>
-        <p class="section-lede">Whisper Transcriber Suite adalah salah satu dari beberapa aplikasi desktop gratis dan sumber terbuka yang mentranskripsikan di komputer Anda sendiri. Berikut adalah perbandingannya dengan Subtitle Edit, Vibe, dan Buzz, termasuk kapan aplikasi lain lebih cocok. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">Baca perbandingan lengkap</a>, dengan sumber untuk setiap fakta dan dua aplikasi lainnya, noScribe dan aTrain.</p>
+        <p class="section-lede"><a href="/compare/" hreflang="en">Perbandingan lengkap (bahasa Inggris)</a></p>
       </header>
-      <div class="table-wrap sr">
-        <table class="compare-table">
-          <caption>Diperiksa 2026-10-05 terhadap README, dokumen, dan rilis dari setiap proyek. Aplikasi berubah dengan cepat: lihat <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">perbandingan lengkap</a> untuk sumbernya.</caption>
+      <div class="table-wrap sr" tabindex="0" role="region" aria-labelledby="compare-title">
+        <table class="compare-table" aria-describedby="compare-note">
           <thead>
             <tr><th scope="col"><span class="sr-only">Fitur</span></th><th scope="col">Whisper Transcriber Suite</th><th scope="col">Subtitle Edit</th><th scope="col">Vibe</th><th scope="col">Buzz</th></tr>
           </thead>
           <tbody>
             <tr><th scope="row">Harga, lisensi</th><td>Gratis, BSD-3-Clause</td><td>Gratis, MIT</td><td>Gratis, MIT</td><td>Gratis, MIT</td></tr>
-            <tr><th scope="row">Unduhan</th><td>Penginstal Windows dan ZIP portabel, macOS (Apple silicon, Intel); Linux dari sumber</td><td>Windows (x64, ARM64), macOS, Linux (Flatpak, tar.gz)</td><td>Windows, macOS, Linux (.deb, .rpm)</td><td>Windows, macOS (1.4.5 adalah yang terakhir untuk Intel Mac), Linux (Flatpak, Snap, AppImage), PyPI</td></tr>
-            <tr><th scope="row">Akselerasi GPU</th><td>NVIDIA (CUDA)</td><td>NVIDIA (CUDA), Vulkan</td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Unduhan</th><td>Penginstal Windows dan ZIP portabel, macOS (Apple silicon, Intel); Linux dari sumber</td><td>Windows: penginstal dan ZIP · macOS · Linux</td><td>Windows: penginstal · macOS · Linux</td><td>Windows: penginstal · macOS · Linux</td></tr>
+            <tr><th scope="row">Transkripsi luring</th><td>Ya</td><td>Ya</td><td>Ya</td><td>Ya</td></tr>
+            <tr><th scope="row">Transkripsi banyak berkas</th><td>Ya</td><td>Ya</td><td>Ya</td><td>folder pantauan</td></tr>
+            <tr><th scope="row">Akselerasi GPU</th><td><bdi dir="ltr" translate="no">NVIDIA (CUDA); Apple Silicon (MLX)</bdi></td><td><bdi dir="ltr" translate="no">NVIDIA (CUDA), Vulkan, Metal</bdi></td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Label pembicara</th><td>Ya</td><td>Bergantung pada mesin</td><td>Ya</td><td>Ya</td></tr>
+            <tr><th scope="row">Sumber YouTube</th><td>Unduh dan transkripsikan</td><td>Putar dari URL</td><td>Transkripsikan dari URL</td><td>Transkripsikan dari URL</td></tr>
+            <tr><th scope="row">Format ekspor</th><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF + 10</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, ASS</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, TXT</bdi></td></tr>
             <tr><th scope="row">Installer Windows bertanda tangan</th><td>Tidak</td><td>Tidak disebutkan</td><td>Ya, menurut dokumennya</td><td>Tidak</td></tr>
-            <tr><th scope="row">Bahasa antarmuka</th><td>42</td><td>35</td><td>22</td><td>16</td></tr>
-            <tr><th scope="row">Pilih jika</th><td>Anda juga ingin mikrofon langsung, unduhan video, 14 format keluaran, dan mode jaringan lokal dengan rute yang kompatibel dengan OpenAI</td><td>Anda ingin banyak mesin ucapan (Parakeet, Canary, Qwen3-ASR, dan lainnya) atau aplikasi Mac yang notarized</td><td>Anda menginginkan penginstal Windows yang menurut dokumennya telah ditandatangani, atau dukungan GPU yang menyebutkan AMD dan Intel</td><td>Anda ingin paket Linux (Flatpak, Snap, AppImage) atau instalasi PyPI</td></tr>
+            <tr><th scope="row">Bahasa antarmuka</th><td>42</td><td>36</td><td>22</td><td>15</td></tr>
+            <tr><th scope="row">Antarmuka bahasa Persia</th><td>Ya</td><td>Ya</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Tata letak kanan ke kiri</th><td>Ya</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Takarir langsung</th><td>Ya</td><td>—</td><td>—</td><td>Ya</td></tr>
+            <tr><th scope="row">Pilih trek audio</th><td>Ya</td><td>Ya</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Pemulihan media rusak</th><td>Ya</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Edit transkrip</th><td>Ya</td><td>Ya</td><td>—</td><td>Ya</td></tr>
+            <tr><th scope="row">Bandingkan hasil transkripsi ulang</th><td>Ya</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Asisten AI melalui MCP lokal</th><td>Ya</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Batas suhu GPU</th><td><bdi dir="ltr" translate="no">NVIDIA</bdi></td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row" translate="no">Obsidian / n8n</th><td>Ya</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Server bawaan</th><td>Web dan API</td><td>—</td><td><bdi dir="ltr" translate="no">HTTP API</bdi></td><td>—</td></tr>
           </tbody>
         </table>
       </div>
+      <p class="compare-note" id="compare-note">Diperiksa pada <time dir="ltr" datetime="2026-11-26">2026-11-26</time>. Tanda pisah menunjukkan fitur yang belum terverifikasi. Lihat <a href="/compare/" hreflang="en">sumber resmi</a>.</p>
     </div>
   </section>
 

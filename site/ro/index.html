@@ -84,7 +84,7 @@
 <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/shots/transcribe.webp" as="image" type="image/webp" imagesrcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" imagesizes="(max-width: 1080px) 72vw, 480px">
 <script src="/js/motion-init.js?v=20260927b"></script>
-<link rel="stylesheet" href="/styles.css?v=20261022a">
+<link rel="stylesheet" href="/styles.css?v=20261126geo">
 
 <script type="application/ld+json">
 {
@@ -906,6 +906,7 @@
       <div class="rail sr" aria-hidden="true"><span class="rail-pulse"></span></div>
       <a class="text-link sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md" rel="noopener">Citiți arhitectura completă<svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
       <p class="muted guide-links">Ghiduri pas cu pas: <a href="/ro/youtube-to-text/">video YouTube în text</a> · <a href="/ro/video-to-srt/">video în subtitrări SRT</a> · <a href="/ro/speaker-labels/">transcrieri cu etichete pentru vorbitori</a></p>
+      <p class="muted guide-links"><a href="/windows-offline-transcription/" hreflang="en">Transcriere offline în Windows (în engleză)</a></p>
     </div>
   </section>
 
@@ -959,6 +960,13 @@ python gui.py</code></pre>
           <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS — instalare printr-o singură linie</p>
           <h3>Lipiți în Terminal. Asta e tot.</h3>
           <p>Descarcă versiunea potrivită pentru Mac-ul dvs. (Apple Silicon pe macOS 14+, altfel Intel prin Rosetta), copiază aplicația în <code>Applications</code> și o deschide. Fișierele descărcate prin <code>curl</code> nu sunt puse în carantină, așa că nu există niciun avertisment „unidentified developer” peste care să trebuiască să treceți.</p>
+          <table class="mac-builds">
+            <thead><tr><th scope="col">Mac</th><th scope="col">Versiune minimă macOS</th><th scope="col">Descărcare</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Intel</bdi></th><td><bdi dir="ltr" translate="no">macOS 12+</bdi></td><td><bdi dir="ltr" translate="no">x64 DMG</bdi></td></tr>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Apple Silicon</bdi></th><td><bdi dir="ltr" translate="no">macOS 14+</bdi></td><td><bdi dir="ltr" translate="no">arm64 DMG</bdi></td></tr>
+            </tbody>
+          </table>
         </div>
         <div class="code-box">
           <button class="copy-btn" type="button" data-copy="#mac-cmd">Copiați</button>
@@ -976,24 +984,39 @@ python gui.py</code></pre>
       <header class="section-head sr">
         <p class="eyebrow">Comparație</p>
         <h2 id="compare-title">Cum se compară cu alte aplicații Whisper?</h2>
-        <p class="section-lede">Whisper Transcriber Suite este una dintre numeroasele aplicații desktop gratuite și open-source care transcriu pe propriul dvs. computer. Iată cum se compară cu Subtitle Edit, Vibe și Buzz, inclusiv situațiile în care o altă aplicație este mai potrivită. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">Citiți comparația completă</a>, cu o sursă pentru fiecare afirmație și încă două aplicații, noScribe și aTrain.</p>
+        <p class="section-lede"><a href="/compare/" hreflang="en">Comparație completă (în engleză)</a></p>
       </header>
-      <div class="table-wrap sr">
-        <table class="compare-table">
-          <caption>Verificat la 2026-10-05 pe baza propriilor fișiere README, a documentației și a versiunilor fiecărui proiect. Aplicațiile se schimbă rapid: consultați <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">comparația completă</a> pentru surse.</caption>
+      <div class="table-wrap sr" tabindex="0" role="region" aria-labelledby="compare-title">
+        <table class="compare-table" aria-describedby="compare-note">
           <thead>
             <tr><th scope="col"><span class="sr-only">Funcționalitate</span></th><th scope="col">Whisper Transcriber Suite</th><th scope="col">Subtitle Edit</th><th scope="col">Vibe</th><th scope="col">Buzz</th></tr>
           </thead>
           <tbody>
             <tr><th scope="row">Preț, licență</th><td>Gratuit, BSD-3-Clause</td><td>Gratuit, MIT</td><td>Gratuit, MIT</td><td>Gratuit, MIT</td></tr>
-            <tr><th scope="row">Descărcări</th><td>Program de instalare și ZIP portabil pentru Windows, macOS (Apple silicon, Intel); Linux din surse</td><td>Windows (x64, ARM64), macOS, Linux (Flatpak, tar.gz)</td><td>Windows, macOS, Linux (.deb, .rpm)</td><td>Windows, macOS (1.4.5 este ultima versiune pentru Mac-urile cu Intel), Linux (Flatpak, Snap, AppImage), PyPI</td></tr>
-            <tr><th scope="row">Accelerare GPU</th><td>NVIDIA (CUDA)</td><td>NVIDIA (CUDA), Vulkan</td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Descărcări</th><td>Program de instalare și ZIP portabil pentru Windows, macOS (Apple silicon, Intel); Linux din surse</td><td>Windows: program de instalare și ZIP · macOS · Linux</td><td>Windows: program de instalare · macOS · Linux</td><td>Windows: program de instalare · macOS · Linux</td></tr>
+            <tr><th scope="row">Transcriere offline</th><td>Da</td><td>Da</td><td>Da</td><td>Da</td></tr>
+            <tr><th scope="row">Transcriere în lot</th><td>Da</td><td>Da</td><td>Da</td><td>dosar monitorizat</td></tr>
+            <tr><th scope="row">Accelerare GPU</th><td><bdi dir="ltr" translate="no">NVIDIA (CUDA); Apple Silicon (MLX)</bdi></td><td><bdi dir="ltr" translate="no">NVIDIA (CUDA), Vulkan, Metal</bdi></td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">Etichete vorbitori</th><td>Da</td><td>Depinde de motor</td><td>Da</td><td>Da</td></tr>
+            <tr><th scope="row">Sursă YouTube</th><td>Descarcă și transcrie</td><td>Redă de la URL</td><td>Transcrie de la URL</td><td>Transcrie de la URL</td></tr>
+            <tr><th scope="row">Formate de export</th><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF + 10</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, ASS</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, TXT</bdi></td></tr>
             <tr><th scope="row">Program de instalare Windows semnat</th><td>Nu</td><td>Nespecificat</td><td>Da, conform documentației sale</td><td>Nu</td></tr>
-            <tr><th scope="row">Limbile interfeței</th><td>42</td><td>35</td><td>22</td><td>16</td></tr>
-            <tr><th scope="row">Alegeți-o dacă</th><td>Doriți și microfon în timp real, descărcare de videoclipuri, 14 formate de ieșire și un mod de rețea locală cu o rută compatibilă cu OpenAI</td><td>Doriți multe motoare de recunoaștere a vorbirii (Parakeet, Canary, Qwen3-ASR și altele) sau o aplicație Mac notarizată</td><td>Doriți un program de instalare pentru Windows despre care documentația afirmă că este semnat, sau suport GPU care menționează AMD și Intel</td><td>Doriți pachete Linux (Flatpak, Snap, AppImage) sau o instalare prin PyPI</td></tr>
+            <tr><th scope="row">Limbile interfeței</th><td>42</td><td>36</td><td>22</td><td>15</td></tr>
+            <tr><th scope="row">Interfață în persană</th><td>Da</td><td>Da</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Aranjare de la dreapta la stânga</th><td>Da</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Subtitrări în timp real</th><td>Da</td><td>—</td><td>—</td><td>Da</td></tr>
+            <tr><th scope="row">Alegerea pistei audio</th><td>Da</td><td>Da</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Recuperarea fișierelor media deteriorate</th><td>Da</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Editarea transcrierii</th><td>Da</td><td>Da</td><td>—</td><td>Da</td></tr>
+            <tr><th scope="row">Compararea unei noi transcrieri</th><td>Da</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Asistenți IA prin MCP local</th><td>Da</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Limită de temperatură a GPU-ului</th><td><bdi dir="ltr" translate="no">NVIDIA</bdi></td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row" translate="no">Obsidian / n8n</th><td>Da</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">Server integrat</th><td>Web și API</td><td>—</td><td><bdi dir="ltr" translate="no">HTTP API</bdi></td><td>—</td></tr>
           </tbody>
         </table>
       </div>
+      <p class="compare-note" id="compare-note">Verificat la <time dir="ltr" datetime="2026-11-26">2026-11-26</time>. Linia indică o funcție neconfirmată. Vezi <a href="/compare/" hreflang="en">sursele oficiale</a>.</p>
     </div>
   </section>
 

@@ -82,7 +82,7 @@
 
 <link rel="preload" href="/assets/shots/transcribe.webp" as="image" type="image/webp" imagesrcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" imagesizes="(max-width: 1080px) 72vw, 480px">
 <script src="/js/motion-init.js?v=20260927b"></script>
-<link rel="stylesheet" href="/styles.css?v=20261022a">
+<link rel="stylesheet" href="/styles.css?v=20261126geo">
 
 <script type="application/ld+json">
 {
@@ -904,6 +904,7 @@
       <div class="rail sr" aria-hidden="true"><span class="rail-pulse"></span></div>
       <a class="text-link sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md" rel="noopener">阅读完整的架构说明<svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
       <p class="muted guide-links">分步指南：<a href="/zh-cn/youtube-to-text/">YouTube 视频转文本</a> · <a href="/zh-cn/video-to-srt/">视频转 SRT 字幕</a> · <a href="/zh-cn/speaker-labels/">带说话人标签的转录</a></p>
+      <p class="muted guide-links"><a href="/windows-offline-transcription/" hreflang="en">Windows 离线转录（英语）</a></p>
     </div>
   </section>
 
@@ -957,6 +958,13 @@ python gui.py</code></pre>
           <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS —— 一行命令安装</p>
           <h3>粘贴到终端即可。</h3>
           <p>下载适合你 Mac 的版本（macOS 14+ 为 Apple Silicon，否则通过 Rosetta 运行 Intel 版），将应用复制到 <code>Applications</code> 并打开。通过 <code>curl</code> 获取的文件不会被隔离，因此无需点击跳过“未知开发者”的警告。</p>
+          <table class="mac-builds">
+            <thead><tr><th scope="col">Mac</th><th scope="col">最低 macOS 版本</th><th scope="col">下载</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Intel</bdi></th><td><bdi dir="ltr" translate="no">macOS 12+</bdi></td><td><bdi dir="ltr" translate="no">x64 DMG</bdi></td></tr>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Apple Silicon</bdi></th><td><bdi dir="ltr" translate="no">macOS 14+</bdi></td><td><bdi dir="ltr" translate="no">arm64 DMG</bdi></td></tr>
+            </tbody>
+          </table>
         </div>
         <div class="code-box">
           <button class="copy-btn" type="button" data-copy="#mac-cmd">复制</button>
@@ -974,24 +982,39 @@ python gui.py</code></pre>
       <header class="section-head sr">
         <p class="eyebrow">对比</p>
         <h2 id="compare-title">它与其他 Whisper 应用相比如何？</h2>
-        <p class="section-lede">Whisper Transcriber Suite 是几款可在你自己的电脑上进行转录的免费开源桌面应用之一。以下是它与 Subtitle Edit、Vibe 和 Buzz 的对比，包括其他应用更合适的情况。<a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">阅读完整对比</a>，其中包含每个事实的来源，以及另外两款应用 noScribe 和 aTrain。</p>
+        <p class="section-lede"><a href="/compare/" hreflang="en">完整对比（英语）</a></p>
       </header>
-      <div class="table-wrap sr">
-        <table class="compare-table">
-          <caption>已于 2026-10-05 对照各项目自身的 README、文档和发布说明进行核对。应用更新频繁：请查看 <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">完整对比</a> 了解来源。</caption>
+      <div class="table-wrap sr" tabindex="0" role="region" aria-labelledby="compare-title">
+        <table class="compare-table" aria-describedby="compare-note">
           <thead>
             <tr><th scope="col"><span class="sr-only">功能</span></th><th scope="col">Whisper Transcriber Suite</th><th scope="col">Subtitle Edit</th><th scope="col">Vibe</th><th scope="col">Buzz</th></tr>
           </thead>
           <tbody>
             <tr><th scope="row">价格、许可证</th><td>免费，BSD-3-Clause</td><td>免费，MIT</td><td>免费，MIT</td><td>免费，MIT</td></tr>
-            <tr><th scope="row">下载</th><td>Windows 安装程序和便携版 ZIP，macOS（Apple silicon、Intel）；Linux 从源码构建</td><td>Windows (x64, ARM64)、macOS、Linux (Flatpak, tar.gz)</td><td>Windows、macOS、Linux (.deb, .rpm)</td><td>Windows、macOS（1.4.5 是 Intel Mac 的最后一个版本）、Linux (Flatpak, Snap, AppImage)、PyPI</td></tr>
-            <tr><th scope="row">GPU 加速</th><td>NVIDIA (CUDA)</td><td>NVIDIA (CUDA)、Vulkan</td><td>NVIDIA、AMD、Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA)、Apple silicon、Vulkan</td></tr>
+            <tr><th scope="row">下载</th><td>Windows 安装程序和便携版 ZIP，macOS（Apple silicon、Intel）；Linux 从源码构建</td><td>Windows：安装包和 ZIP · macOS · Linux</td><td>Windows：安装包 · macOS · Linux</td><td>Windows：安装包 · macOS · Linux</td></tr>
+            <tr><th scope="row">离线转录</th><td>支持</td><td>支持</td><td>支持</td><td>支持</td></tr>
+            <tr><th scope="row">批量转录</th><td>支持</td><td>支持</td><td>支持</td><td>监控文件夹</td></tr>
+            <tr><th scope="row">GPU 加速</th><td><bdi dir="ltr" translate="no">NVIDIA (CUDA); Apple Silicon (MLX)</bdi></td><td><bdi dir="ltr" translate="no">NVIDIA (CUDA), Vulkan, Metal</bdi></td><td>NVIDIA、AMD、Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA)、Apple silicon、Vulkan</td></tr>
+            <tr><th scope="row">说话人标签</th><td>支持</td><td>视引擎而定</td><td>支持</td><td>支持</td></tr>
+            <tr><th scope="row">YouTube 输入</th><td>下载并转录</td><td>通过网址在线播放</td><td>通过网址转录</td><td>通过网址转录</td></tr>
+            <tr><th scope="row">导出格式</th><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF + 10</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, ASS</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, TXT</bdi></td></tr>
             <tr><th scope="row">已签名的 Windows 安装程序</th><td>否</td><td>未说明</td><td>是，根据其文档</td><td>否</td></tr>
-            <tr><th scope="row">界面语言</th><td>42</td><td>35</td><td>22</td><td>16</td></tr>
-            <tr><th scope="row">适用情况</th><td>你还需要实时麦克风、视频下载、14 种输出格式，以及带有 OpenAI 兼容路由的局域网模式</td><td>你需要多种语音引擎（Parakeet、Canary、Qwen3-ASR 等）或经过公证的 Mac 应用</td><td>你需要文档说明已签名的 Windows 安装程序，或支持 AMD 和 Intel 的 GPU 加速</td><td>你需要 Linux 软件包（Flatpak、Snap、AppImage）或通过 PyPI 安装</td></tr>
+            <tr><th scope="row">界面语言</th><td>42</td><td>36</td><td>22</td><td>15</td></tr>
+            <tr><th scope="row">波斯语界面</th><td>支持</td><td>支持</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">从右到左的布局</th><td>支持</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">实时字幕</th><td>支持</td><td>—</td><td>—</td><td>支持</td></tr>
+            <tr><th scope="row">选择音轨</th><td>支持</td><td>支持</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">恢复损坏的媒体</th><td>支持</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">编辑转录文本</th><td>支持</td><td>支持</td><td>—</td><td>支持</td></tr>
+            <tr><th scope="row">比较重新转录的结果</th><td>支持</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">通过本地 MCP 连接 AI 助手</th><td>支持</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">GPU 温度上限</th><td><bdi dir="ltr" translate="no">NVIDIA</bdi></td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row" translate="no">Obsidian / n8n</th><td>支持</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">内置服务器</th><td>网页和 API</td><td>—</td><td><bdi dir="ltr" translate="no">HTTP API</bdi></td><td>—</td></tr>
           </tbody>
         </table>
       </div>
+      <p class="compare-note" id="compare-note">核对日期：<time dir="ltr" datetime="2026-11-26">2026-11-26</time>。横线表示未能确认此功能。请查阅<a href="/compare/" hreflang="en">官方来源</a>。</p>
     </div>
   </section>
 

@@ -82,7 +82,7 @@
 
 <link rel="preload" href="/assets/shots/transcribe.webp" as="image" type="image/webp" imagesrcset="/assets/shots/transcribe-640.webp 640w, /assets/shots/transcribe.webp 1180w" imagesizes="(max-width: 1080px) 72vw, 480px">
 <script src="/js/motion-init.js?v=20260927b"></script>
-<link rel="stylesheet" href="/styles.css?v=20261022a">
+<link rel="stylesheet" href="/styles.css?v=20261126geo">
 
 <script type="application/ld+json">
 {
@@ -904,6 +904,7 @@
       <div class="rail sr" aria-hidden="true"><span class="rail-pulse"></span></div>
       <a class="text-link sr" href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/ARCHITECTURE.md" rel="noopener">קראו על הארכיטקטורה המלאה<svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
       <p class="muted guide-links">מדריכים שלב-אחר-שלב: <a href="/he/youtube-to-text/">וידאו מ-YouTube לטקסט</a> · <a href="/he/video-to-srt/">וידאו לכתוביות SRT</a> · <a href="/he/speaker-labels/">תמלולים עם תוויות דובר</a></p>
+      <p class="muted guide-links"><a href="/windows-offline-transcription/" hreflang="en">תמלול לא מקוון ב-Windows (באנגלית)</a></p>
     </div>
   </section>
 
@@ -957,6 +958,13 @@ python gui.py</code></pre>
           <p class="dl-os"><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS — התקנה בשורה אחת</p>
           <h3>הדבק לטרמינל. זהו.</h3>
           <p>מוריד את הבנייה הנכונה עבור ה-Mac שלך (Apple Silicon ב-macOS 14+, אחרת Intel דרך Rosetta), מעתיק את האפליקציה אל <code>Applications</code> ופותח אותה. קבצים שמובאים על ידי <code>curl</code> אינם בהסגר, כך שאין אזהרת "מפתח לא מזוהה" שצריך ללחוץ כדי לעבור.</p>
+          <table class="mac-builds">
+            <thead><tr><th scope="col">Mac</th><th scope="col">גרסת macOS מינימלית</th><th scope="col">הורדה</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Intel</bdi></th><td><bdi dir="ltr" translate="no">macOS 12+</bdi></td><td><bdi dir="ltr" translate="no">x64 DMG</bdi></td></tr>
+              <tr><th scope="row"><bdi dir="ltr" translate="no">Apple Silicon</bdi></th><td><bdi dir="ltr" translate="no">macOS 14+</bdi></td><td><bdi dir="ltr" translate="no">arm64 DMG</bdi></td></tr>
+            </tbody>
+          </table>
         </div>
         <div class="code-box">
           <button class="copy-btn" type="button" data-copy="#mac-cmd">העתק</button>
@@ -974,24 +982,39 @@ python gui.py</code></pre>
       <header class="section-head sr">
         <p class="eyebrow">השוואה</p>
         <h2 id="compare-title">כיצד הוא משתווה לאפליקציות Whisper אחרות?</h2>
-        <p class="section-lede">Whisper Transcriber Suite היא אחת ממספר אפליקציות שולחן עבודה חינמיות בקוד פתוח שמתמללות במחשב שלך. הנה כיצד היא משתווה ל-Subtitle Edit, Vibe ו-Buzz, כולל מתי אפליקציה אחרת מתאימה יותר. <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">קראו את ההשוואה המלאה</a>, עם מקור לכל עובדה ועוד שתי אפליקציות, noScribe ו-aTrain.</p>
+        <p class="section-lede"><a href="/compare/" hreflang="en">השוואה מלאה (באנגלית)</a></p>
       </header>
-      <div class="table-wrap sr">
-        <table class="compare-table">
-          <caption>נבדק ב-2026-10-05 מול ה-README, התיעוד והגרסאות של כל פרויקט. אפליקציות משתנות מהר: ראו את <a href="https://github.com/Milomilo777/whisper-transcriber-suite/blob/master/docs/COMPARISON.md" rel="noopener">ההשוואה המלאה</a> למקורות.</caption>
+      <div class="table-wrap sr" tabindex="0" role="region" aria-labelledby="compare-title">
+        <table class="compare-table" aria-describedby="compare-note">
           <thead>
             <tr><th scope="col"><span class="sr-only">תכונה</span></th><th scope="col">Whisper Transcriber Suite</th><th scope="col">Subtitle Edit</th><th scope="col">Vibe</th><th scope="col">Buzz</th></tr>
           </thead>
           <tbody>
             <tr><th scope="row">מחיר, רישיון</th><td>חינמי, BSD-3-Clause</td><td>חינמי, MIT</td><td>חינמי, MIT</td><td>חינמי, MIT</td></tr>
-            <tr><th scope="row">הורדות</th><td>תוכנית התקנה ל-Windows ו-ZIP נייד, macOS (Apple silicon, Intel); Linux מקוד מקור</td><td>Windows (x64, ARM64), macOS, Linux (Flatpak, tar.gz)</td><td>Windows, macOS, Linux (.deb, .rpm)</td><td>Windows, macOS (1.4.5 היא האחרונה ל-Macs של Intel), Linux (Flatpak, Snap, AppImage), PyPI</td></tr>
-            <tr><th scope="row">האצת GPU</th><td>NVIDIA (CUDA)</td><td>NVIDIA (CUDA), Vulkan</td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">הורדות</th><td>תוכנית התקנה ל-Windows ו-ZIP נייד, macOS (Apple silicon, Intel); Linux מקוד מקור</td><td>Windows: מתקין ו-ZIP · macOS · Linux</td><td>Windows: מתקין · macOS · Linux</td><td>Windows: מתקין · macOS · Linux</td></tr>
+            <tr><th scope="row">תמלול לא מקוון</th><td>כן</td><td>כן</td><td>כן</td><td>כן</td></tr>
+            <tr><th scope="row">תמלול מרוכז של קבצים</th><td>כן</td><td>כן</td><td>כן</td><td>מעקב אחר תיקייה</td></tr>
+            <tr><th scope="row">האצת GPU</th><td><bdi dir="ltr" translate="no">NVIDIA (CUDA); Apple Silicon (MLX)</bdi></td><td><bdi dir="ltr" translate="no">NVIDIA (CUDA), Vulkan, Metal</bdi></td><td>NVIDIA, AMD, Intel (Vulkan / CoreML)</td><td>NVIDIA (CUDA), Apple silicon, Vulkan</td></tr>
+            <tr><th scope="row">תוויות דוברים</th><td>כן</td><td>תלוי במנוע</td><td>כן</td><td>כן</td></tr>
+            <tr><th scope="row">YouTube כמקור</th><td>הורדה ותמלול</td><td>הזרמה מקישור</td><td>תמלול מקישור</td><td>תמלול מקישור</td></tr>
+            <tr><th scope="row">פורמטים לייצוא</th><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF + 10</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, ASS</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, DOCX, PDF</bdi></td><td><bdi dir="ltr" translate="no">SRT, VTT, TXT</bdi></td></tr>
             <tr><th scope="row">תוכנית התקנה חתומה ל-Windows</th><td>לא</td><td>לא צוין</td><td>כן, לפי התיעוד שלו</td><td>לא</td></tr>
-            <tr><th scope="row">שפות ממשק</th><td>42</td><td>35</td><td>22</td><td>16</td></tr>
-            <tr><th scope="row">בחרו בו אם</th><td>אתם רוצים גם מיקרופון חי, הורדות סרטונים, 14 פורמטי פלט ומצב רשת מקומית עם נתיב תואם OpenAI</td><td>אתם רוצים מנועי דיבור רבים (Parakeet, Canary, Qwen3-ASR ועוד) או אפליקציית Mac נוטרית</td><td>אתם רוצים תוכנית התקנה ל-Windows שהתיעוד שלה אומר שהיא חתומה, או תמיכת GPU שמזכירה את AMD ו-Intel</td><td>אתם רוצים חבילות Linux (Flatpak, Snap, AppImage) או התקנת PyPI</td></tr>
+            <tr><th scope="row">שפות ממשק</th><td>42</td><td>36</td><td>22</td><td>15</td></tr>
+            <tr><th scope="row">ממשק בפרסית</th><td>כן</td><td>כן</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">פריסה מימין לשמאל</th><td>כן</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">כתוביות בזמן אמת</th><td>כן</td><td>—</td><td>—</td><td>כן</td></tr>
+            <tr><th scope="row">בחירת רצועת שמע</th><td>כן</td><td>כן</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">שחזור קובצי מדיה פגומים</th><td>כן</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">עריכת תמלול</th><td>כן</td><td>כן</td><td>—</td><td>כן</td></tr>
+            <tr><th scope="row">השוואה לתמלול חוזר</th><td>כן</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">עוזרי בינה מלאכותית דרך MCP מקומי</th><td>כן</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">מגבלת טמפרטורה ל-GPU</th><td><bdi dir="ltr" translate="no">NVIDIA</bdi></td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row" translate="no">Obsidian / n8n</th><td>כן</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><th scope="row">שרת מובנה</th><td>ממשק ווב ו-API</td><td>—</td><td><bdi dir="ltr" translate="no">HTTP API</bdi></td><td>—</td></tr>
           </tbody>
         </table>
       </div>
+      <p class="compare-note" id="compare-note">נבדק ב־<time dir="ltr" datetime="2026-11-26">2026-11-26</time>. קו מפריד מציין תכונה שלא הצלחנו לאמת. ראו <a href="/compare/" hreflang="en">מקורות רשמיים</a>.</p>
     </div>
   </section>
 
