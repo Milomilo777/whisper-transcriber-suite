@@ -92,6 +92,18 @@ def test_ytdlp_and_deno_match_the_windows_pins():
     assert v["DENO_VERSION"] == _windows_pin("deno")["version"]
 
 
+def test_ytdlp_bundles_the_youtube_player_fix():
+    # 2026.11.23 switches the default player variant (upstream issue #18123).
+    pin = _windows_pin("yt-dlp")
+    version = pin["version"]
+    assert tuple(map(int, version.split("."))) >= (2026, 11, 23)
+    assert pin["url"] == f"https://github.com/yt-dlp/yt-dlp/releases/download/{version}/yt-dlp.exe"
+    assert pin["files"][0]["sha256"] == pin["sha256"]
+    notices = (ROOT / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
+    assert f"/yt-dlp/tree/{version}#licensing" in notices
+    assert f"/yt-dlp/blob/{version}/THIRD_PARTY_LICENSES.txt" in notices
+
+
 def test_diarization_models_match_the_windows_pins():
     text = FETCH.read_text(encoding="utf-8")
     v = _vars(text)

@@ -582,13 +582,12 @@ def _vlc_missing_hint(platform: str) -> str:
         return _(
             "VLC media player isn't installed (or is the 32-bit build — "
             "this app is 64-bit and needs the 64-bit VLC). Install the "
-            "64-bit VLC to enable embedded playback. The viewer still "
-            "works in read-only mode."
+            "64-bit VLC to enable embedded playback."
         )
     return _(
         "VLC media player isn't installed (or doesn't match this "
         "computer's architecture). Install VLC to enable embedded "
-        "playback. The viewer still works in read-only mode."
+        "playback."
     )
 
 
@@ -598,13 +597,12 @@ def _vlc_start_failed_hint(platform: str) -> str:
         return _(
             "VLC loaded but could not start (its plugins may be missing or "
             "the architecture doesn't match — this app is 64-bit). "
-            "Reinstall the 64-bit VLC to enable embedded playback. The "
-            "viewer still works in read-only mode."
+            "Reinstall the 64-bit VLC to enable embedded playback."
         )
     return _(
         "VLC loaded but could not start (its plugins may be missing or "
         "the architecture doesn't match). Reinstall VLC to enable "
-        "embedded playback. The viewer still works in read-only mode."
+        "embedded playback."
     )
 
 
@@ -1361,16 +1359,21 @@ class TranscriptViewer(tk.Toplevel):
         self._transport = ttk.Frame(parent)
         self._transport.pack(fill="x", pady=(8, 0))
 
+        seek_row = ttk.Frame(self._transport)
+        seek_row.pack(fill="x")
+        # Reserve the clock's width before giving the remaining space to the slider.
+        self.time_var = tk.StringVar(value="00:00 / 00:00")
+        ttk.Label(seek_row, textvariable=self.time_var).pack(side="right", padx=(8, 0))
         self.seek_var = tk.DoubleVar(value=0.0)
         self.seek_scale = ttk.Scale(
-            self._transport,
+            seek_row,
             from_=0.0,
             to=float(_SEEK_SLIDER_MAX),
             orient="horizontal",
             variable=self.seek_var,
             command=self._on_seek_drag,
         )
-        self.seek_scale.pack(fill="x")
+        self.seek_scale.pack(side="left", fill="x", expand=True)
         # Drag lifecycle: press → suppress auto-update; release → commit
         # the seek to the player and resume auto-update.
         self.seek_scale.bind("<ButtonPress-1>", self._on_seek_press)
@@ -1391,12 +1394,6 @@ class TranscriptViewer(tk.Toplevel):
             )
             b.pack(side="left", padx=(0, 4))
             self._skip_btns.append(b)
-
-        # MM:SS / MM:SS readout. Kept in its own var (separate from the
-        # legacy HH:MM:SS position_var used elsewhere) so the transport
-        # bar shows the compact clock the spec asks for.
-        self.time_var = tk.StringVar(value="00:00 / 00:00")
-        ttk.Label(skips, textvariable=self.time_var).pack(side="right")
 
         # Retained for backwards compatibility — some callers/tests refer
         # to position_var. The loop keeps it updated alongside time_var.

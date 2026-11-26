@@ -130,6 +130,52 @@ def test_saved_segment_and_words_stop_at_selected_audio_end(endpoint_case, monke
     assert_written_bound(case, task, start, end)
 
 
+def test_progress_log_uses_the_bounded_cue_time(endpoint_case, monkeypatch):
+    case = endpoint_case
+    install_model(monkeypatch, [Segment(2.14, 3.12, words=[Word(2.3, 3.12)])])
+    task = output_task(case)
+    log = []
+    tr.transcribe(task, log_cb=log.append)
+    assert_written_bound(case, task, 2.14, case.duration)
+    cues = [line for line in log if " --> " in line]
+    assert cues == ["[file=input.wav] [100%] 00:00:02 --> 00:00:02 | last words"]
+
+
+@pytest.mark.parametrize("resumed", [False, True])
+def test_finished_speed_uses_the_audio_end_instead_of_the_decoded_overhang(
+    endpoint_case, monkeypatch, resumed,
+):
+    from itertools import count
+
+    from app.domain.speed_text import task_summary_text
+
+    case = endpoint_case
+    duration = 34.0
+    with wave.open(str(case.audio), "wb") as source:
+        source.setparams((1, 2, 16000, 0, "NONE", ""))
+        source.writeframes(b"\0\0" * int(duration * 16000))
+    monkeypatch.setattr(tr, "get_duration", lambda path: duration)
+    task = output_task(case)
+    offset = 10.0 if resumed else 0.0
+    start, end = 33.0 - offset, 35.0 - offset
+    install_model(monkeypatch, [Segment(start, end, words=[Word(start, end)])], duration=duration - offset)
+    clock = count().__next__
+    meter_type = tr._speed_meter.SpeedMeter
+    monkeypatch.setattr(tr._speed_meter, "SpeedMeter", lambda *args: meter_type(*args, clock=clock))
+    if resumed:
+        tr._write_periodic_checkpoint(task, [{"start": 0, "end": offset, "text": "prior"}],
+                                      offset, "en", 0.9, None)
+        assert tr.resume_transcription(task)
+        assert [cue["text"] for cue in case.writes[-1]] == ["prior", "last words"]
+    else:
+        log = []
+        tr.transcribe(task, log_cb=log.append)
+        assert_written_bound(case, task, 33.0, duration)
+        assert "[file=input.wav] [100%] 00:00:33 --> 00:00:34 | last words" in log
+    assert case.writes[-1][-1]["end"] == duration
+    assert task_summary_text(task).startswith(f"{int(duration - offset)} s of audio transcribed")
+
+
 def test_periodic_and_completed_checkpoints_keep_bounded_end(endpoint_case, monkeypatch):
     case = endpoint_case
     install_model(monkeypatch, [Segment(2.14, 3.12, words=[Word(2.3, 3.12)])])

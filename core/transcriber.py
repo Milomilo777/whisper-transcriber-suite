@@ -4097,6 +4097,9 @@ def transcribe(
             raise
         _clue_phase(task, "worker.segments")
         _remember_audio_end(task, audio_path, info, offset=_ts_offset)
+        audio_end = task._audio_end
+        if audio_end is not None:
+            meter.end_pos = audio_end
         if _ts_offset:
             segments = _shift_segments(segments, _ts_offset)
 
@@ -4207,19 +4210,15 @@ def transcribe(
                     min(100, max(0, int(((seg.end - _clip_start_s) / progress_span) * 100)))
                     if progress_span else 0
                 )
-                meter.update(float(seg.end))
+                # The decoded media length is authoritative for speed readouts.
+                pos = float(seg.end)
+                meter.update(min(pos, audio_end) if audio_end is not None else pos)
                 _publish_speed(task, meter)
                 if isinstance(seg, _loop_guard.LoopGuardTick):
                     # A dropped loop copy: cancel, pause and progress only.
                     if progress_cb:
                         progress_cb(percent)
                     continue
-                msg = f"[{percent}%] {fmt(seg.start)} --> {fmt(seg.end)} | {(seg.text or '').strip()}"
-                log(msg, log_cb)
-
-                if progress_cb:
-                    progress_cb(percent)
-
                 decoded = _guarded_segment_to_dict(seg, want_words, _guard_stats)
                 bounded = [decoded]
                 # Publish to the resumable prefix only after validation. The
@@ -4230,6 +4229,12 @@ def transcribe(
                     convert=lambda raw: _guarded_segment_to_dict(raw, want_words, _guard_stats),
                     runner=runner, log_cb=log_cb,
                 )
+                if bounded:
+                    cue = bounded[0]
+                    log(f"[{percent}%] {fmt(cue['start'])} --> {fmt(cue['end'])} | {cue['text']}",
+                        log_cb)
+                if progress_cb:
+                    progress_cb(percent)
                 if not bounded:
                     continue
                 segments_data.append(bounded[0])
@@ -5272,6 +5277,9 @@ def resume_transcription(
                     transcribe_slice, **transcribe_kwargs
                 )
             _remember_audio_end(task, transcribe_slice, info, offset=last_end_time)
+            audio_end = task._audio_end
+            if audio_end is not None:
+                meter.end_pos = audio_end
             _enforce_audio_end(task, prior_segments, log_cb=log_cb)
             # Same repetition-loop guard as transcribe(), on the tail's own
             # timeline (shifted below). The last checkpointed line seeds its
@@ -5351,7 +5359,8 @@ def resume_transcription(
                 if _handle_resume_cancelled():
                     return True
 
-                meter.update(float(seg.end) + last_end_time)
+                pos = float(seg.end) + last_end_time
+                meter.update(min(pos, audio_end) if audio_end is not None else pos)
                 _publish_speed(task, meter)
                 if isinstance(seg, _loop_guard.LoopGuardTick):
                     # A dropped loop copy: cancel, pause and progress only.
