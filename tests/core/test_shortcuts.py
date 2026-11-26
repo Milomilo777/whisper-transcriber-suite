@@ -129,6 +129,17 @@ def test_vlc_hint_mentions_bitness_only_on_windows(monkeypatch):
     assert "64-bit" in tv._vlc_start_failed_hint("win32")
 
 
+@pytest.mark.parametrize("platform", ["win32", "darwin", "linux"])
+def test_vlc_hints_describe_playback_without_claiming_editing_is_locked(platform):
+    from app.dialogs import transcript_viewer as tv
+
+    install = tv._vlc_missing_hint(platform)
+    reinstall = tv._vlc_start_failed_hint(platform)
+    assert "Install " in install and "embedded playback" in install
+    assert "Reinstall " in reinstall and "embedded playback" in reinstall
+    assert "read-only" not in install and "read-only" not in reinstall
+
+
 # ---------------------------------------------------------------------------
 # Call sites (real widgets), with shortcuts.is_mac patched
 # ---------------------------------------------------------------------------

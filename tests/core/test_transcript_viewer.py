@@ -100,6 +100,55 @@ def test_viewer_handles_missing_media_gracefully(sample_json):
         root.destroy()
 
 
+@pytest.mark.parametrize("mapped", [False, True], ids=["requested", "desktop"])
+def test_viewer_clock_fits_when_skip_buttons_fill_the_media_pane(sample_json, monkeypatch, mapped):
+    from tkinter import ttk
+
+    from app.dialogs import transcript_viewer as tv
+
+    monkeypatch.setattr(tv, "_try_load_vlc", lambda: (None, ""))
+    root = tk.Tk()
+    root.withdraw()
+    try:
+        viewer = tv.TranscriptViewer(root, sample_json)
+        try:
+            viewer.time_var.set("100:00:00 / 120:00:00")
+            viewer.update_idletasks()
+            clock = next(
+                label for frame in viewer._transport.winfo_children()
+                for label in frame.winfo_children()
+                if isinstance(label, ttk.Label) and str(label["textvariable"]) == str(viewer.time_var)
+            )
+            # Leave room for all four skips, but little space beside them.
+            skips_width = sum(b.winfo_reqwidth() + 4 for b in viewer._skip_btns)
+            assert clock.winfo_reqwidth() > 12
+            target = skips_width + 12
+            transport = viewer._transport
+            assert transport.winfo_reqwidth() <= target
+
+            if not mapped:
+                return
+            root.deiconify()
+            viewer.deiconify()
+            viewer.update()
+            if not viewer.winfo_ismapped():
+                pytest.skip("requires a mapped desktop")
+            viewer._right_notebook.select(transport.master)
+            viewer.update_idletasks()
+            panes = viewer.tree.master.master
+            panes.sashpos(0, panes.sashpos(0) + transport.winfo_width() - target)
+            viewer.update_idletasks()
+            assert transport.winfo_width() == target
+            assert clock.winfo_ismapped()
+            assert clock.winfo_width() >= clock.winfo_reqwidth()
+            assert viewer.seek_scale.winfo_width() > 1
+            assert all(b.winfo_width() >= b.winfo_reqwidth() for b in viewer._skip_btns)
+        finally:
+            viewer._on_close()
+    finally:
+        root.destroy()
+
+
 def test_viewer_invalid_json_shows_empty_list(tmp_path, monkeypatch):
     """If the JSON is invalid, the viewer must not crash on
     construction — it logs the error via a messagebox and shows

@@ -2,19 +2,19 @@
  "vlc_hints": [
   [
    "missing:win32",
-   "VLC media player isn't installed (or is the 32-bit build — this app is 64-bit and needs the 64-bit VLC). Install the 64-bit VLC to enable embedded playback. The viewer still works in read-only mode."
+   "VLC media player isn't installed (or is the 32-bit build — this app is 64-bit and needs the 64-bit VLC). Install the 64-bit VLC to enable embedded playback."
   ],
   [
    "missing:darwin",
-   "VLC media player isn't installed (or doesn't match this computer's architecture). Install VLC to enable embedded playback. The viewer still works in read-only mode."
+   "VLC media player isn't installed (or doesn't match this computer's architecture). Install VLC to enable embedded playback."
   ],
   [
    "start_failed:win32",
-   "VLC loaded but could not start (its plugins may be missing or the architecture doesn't match — this app is 64-bit). Reinstall the 64-bit VLC to enable embedded playback. The viewer still works in read-only mode."
+   "VLC loaded but could not start (its plugins may be missing or the architecture doesn't match — this app is 64-bit). Reinstall the 64-bit VLC to enable embedded playback."
   ],
   [
    "start_failed:linux",
-   "VLC loaded but could not start (its plugins may be missing or the architecture doesn't match). Reinstall VLC to enable embedded playback. The viewer still works in read-only mode."
+   "VLC loaded but could not start (its plugins may be missing or the architecture doesn't match). Reinstall VLC to enable embedded playback."
   ],
   [
    "load:not_installed",
@@ -22,7 +22,7 @@
   ],
   [
    "load:start_failed",
-   "VLC loaded but could not start (its plugins may be missing or the architecture doesn't match — this app is 64-bit). Reinstall the 64-bit VLC to enable embedded playback. The viewer still works in read-only mode."
+   "VLC loaded but could not start (its plugins may be missing or the architecture doesn't match — this app is 64-bit). Reinstall the 64-bit VLC to enable embedded playback."
   ]
  ],
  "ai_config": [
@@ -187,28 +187,28 @@
    "Open in system player"
   ],
   [
-   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame.!frame3.!frame.!button",
-   "⏪ -10s"
-  ],
-  [
-   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame.!frame3.!frame.!button2",
-   "◀ -5s"
-  ],
-  [
-   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame.!frame3.!frame.!button3",
-   "+5s ▶"
-  ],
-  [
-   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame.!frame3.!frame.!button4",
-   "+10s ⏩"
-  ],
-  [
    ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame.!frame3.!frame.!label",
    "00:00 / 00:00"
   ],
   [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame.!frame3.!frame2.!button",
+   "⏪ -10s"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame.!frame3.!frame2.!button2",
+   "◀ -5s"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame.!frame3.!frame2.!button3",
+   "+5s ▶"
+  ],
+  [
+   ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame.!frame3.!frame2.!button4",
+   "+10s ⏩"
+  ],
+  [
    ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame.!label3",
-   "VLC media player isn't installed (or is the 32-bit build — this app is 64-bit and needs the 64-bit VLC). Install the 64-bit VLC to enable embedded playback. The viewer still works in read-only mode."
+   "VLC media player isn't installed (or is the 32-bit build — this app is 64-bit and needs the 64-bit VLC). Install the 64-bit VLC to enable embedded playback."
   ],
   [
    ".!transcriptviewer.!frame.!panedwindow.!frame2.!notebook.!frame2.!label",
@@ -787,24 +787,24 @@
    "Open in system player"
   ],
   [
-   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame.!frame3.!frame.!button",
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame.!frame3.!frame.!label",
+   "00:00 / 00:00"
+  ],
+  [
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame.!frame3.!frame2.!button",
    "⏪ -10s"
   ],
   [
-   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame.!frame3.!frame.!button2",
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame.!frame3.!frame2.!button2",
    "◀ -5s"
   ],
   [
-   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame.!frame3.!frame.!button3",
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame.!frame3.!frame2.!button3",
    "+5s ▶"
   ],
   [
-   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame.!frame3.!frame.!button4",
+   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame.!frame3.!frame2.!button4",
    "+10s ⏩"
-  ],
-  [
-   ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame.!frame3.!frame.!label",
-   "00:00 / 00:00"
   ],
   [
    ".!transcriptviewer2.!frame.!panedwindow.!frame2.!notebook.!frame.!label3",
