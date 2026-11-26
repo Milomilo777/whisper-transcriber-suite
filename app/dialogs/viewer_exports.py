@@ -26,6 +26,7 @@ import zipfile
 import zlib
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Callable, Iterator
 from urllib.parse import urlsplit
 from urllib.request import url2pathname
@@ -259,7 +260,18 @@ def write_atomically(
         ):
             raise ChangedWhileBuilding(path)
         if create_only and os.name != "nt":
-            os.link(part, path)  # publish atomically without replacing an existing name
+            try:
+                os.link(part, path)  # publish atomically without replacing an existing name
+            except OSError as error:
+                from core.server.mcp_files import _LINK_UNAVAILABLE, confined_open
+
+                if error.errno not in _LINK_UNAVAILABLE:
+                    raise
+                destination = Path(path)
+                parent = destination.parent.resolve(strict=True)
+                with confined_open(parent, parent, destination.name, "xb") as output:
+                    output.write(data)
+                    _checkpoint._flush_to_disk(output)
         else:
             publish = os.rename if create_only else os.replace
             publish(part, path)  # Windows rename fails if the target already exists

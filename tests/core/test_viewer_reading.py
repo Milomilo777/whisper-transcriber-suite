@@ -1,7 +1,14 @@
 """Reading paragraphs preserve the timeline and logical Unicode."""
 from __future__ import annotations
 
+import errno
+import os
+from types import SimpleNamespace
+
+import pytest
+
 from app.dialogs import transcript_viewer as tv
+from app.dialogs import viewer_exports
 from core import segment_ops
 
 
@@ -52,3 +59,26 @@ def test_reading_export_refuses_an_existing_file(tmp_path, monkeypatch):
     monkeypatch.setattr(tv, "notify", lambda *a, **k: None)
     viewer._export_paragraphs("txt")
     assert elsewhere.read_text(encoding="utf-8") == "سلام\n"
+
+
+@pytest.mark.parametrize("destination_exists", [False, True])
+def test_new_paragraph_export_on_a_volume_without_hard_links(tmp_path, monkeypatch, destination_exists):
+    destination = tmp_path / "paragraphs.md"
+    if destination_exists:
+        destination.write_bytes(b"earlier export")
+
+    def unsupported_link(*_args):
+        raise OSError(errno.ENOTSUP, "hard links unavailable")
+
+    monkeypatch.setattr(viewer_exports, "os", SimpleNamespace(
+        name="posix", path=os.path, stat=os.stat, unlink=os.unlink, link=unsupported_link,
+    ))
+    content = "سلام\n".encode("utf-8")
+    if destination_exists:
+        with pytest.raises(FileExistsError):
+            viewer_exports.write_atomically(str(destination), content, create_only=True)
+        assert destination.read_bytes() == b"earlier export"
+    else:
+        viewer_exports.write_atomically(str(destination), content, create_only=True)
+        assert destination.read_bytes() == content
+    assert list(tmp_path.iterdir()) == [destination]
