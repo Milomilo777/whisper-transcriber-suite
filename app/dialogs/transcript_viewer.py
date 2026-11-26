@@ -1163,6 +1163,7 @@ class TranscriptViewer(tk.Toplevel):
             notify(self, _("Paragraphs exported."), "success")
 
     def _transcribe_again(self) -> None:
+        from core.media_audio import audio_ordinal
         from core.presets import PresetStore
 
         media = self._comparison_media_path
@@ -1184,7 +1185,17 @@ class TranscriptViewer(tk.Toplevel):
         dialog = ComparisonPresetDialog(self, [name for name, _preset in choices])
         queue = getattr(self.master, "queue_transcript_comparison", None)
         if dialog.result is not None and callable(queue):
-            queue(media, self.json_path, choices[dialog.result][1])
+            tracks = {audio_ordinal(cue.get("audio_track")) for cue in self.segments}
+            tracks.discard(None)
+            # A repaired playback file contains just the salvaged track.
+            if any(cue.get("audio_repaired") is True for cue in self.segments):
+                tracks.clear()
+            track = next(iter(tracks)) if len(tracks) == 1 else None
+            if not self.segments:
+                find_track = getattr(self.master, "comparison_audio_track", None)
+                if callable(find_track):
+                    track = find_track(media, self.json_path)
+            queue(media, self.json_path, choices[dialog.result][1], audio_track=track)
 
     def _open_comparison(self) -> None:
         parent = self.master
