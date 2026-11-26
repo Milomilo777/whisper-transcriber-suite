@@ -97,14 +97,17 @@ def allowed_file(raw: Any, cfg: dict[str, Any]) -> tuple[Path, Path]:
         # Windows alternate data streams and device namespace paths are not media.
         if ":" in physical.name or raw.startswith(("\\\\?\\", "\\\\.\\")):
             raise _ToolError("special device paths are refused")
-        for folder in folders:
-            if not isinstance(folder, str) or not Path(folder).is_absolute():
-                continue
+    except (OSError, ValueError, RuntimeError):
+        raise _ToolError("local media path is unavailable") from None
+    for folder in folders:
+        if not isinstance(folder, str) or not Path(folder).is_absolute():
+            continue
+        try:
             root = Path(folder).resolve(strict=True)
             if root.is_dir() and physical.is_relative_to(root):
                 return physical, root
-    except (OSError, ValueError, RuntimeError):
-        raise _ToolError("local media path is unavailable") from None
+        except (OSError, ValueError, RuntimeError):
+            continue  # An unavailable grant never authorizes a path.
     raise _ToolError("file is outside mcp_allowed_folders")
 
 

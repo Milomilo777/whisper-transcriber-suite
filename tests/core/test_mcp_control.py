@@ -109,6 +109,23 @@ def test_settings_save_atomic_validation(monkeypatch):
     assert cfg["batch_size"] == 4
 
 
+def test_missing_grant_does_not_block_another_trusted_folder(monkeypatch, tmp_path):
+    from core import config
+
+    folder = tmp_path / "connected"
+    folder.mkdir()
+    media = folder / "sample.wav"
+    media.touch()
+    monkeypatch.setattr(config, "load_config", lambda: {
+        **config.DEFAULT_CONFIG,
+        "mcp_allowed_folders": [str(tmp_path / "disconnected"), str(folder)],
+    })
+    manager = Mock()
+    manager.submit_local.return_value = "job"
+    assert call("transcribe_file", {"path": str(media)}, manager=manager)["result"]["isError"] is False
+    assert manager.submit_local.call_args.args[:2] == (str(media.resolve()), str(folder.resolve()))
+
+
 def test_settings_save_failure_hides_paths(monkeypatch):
     from core import config
     monkeypatch.setattr(config, "load_config", lambda: dict(config.DEFAULT_CONFIG))
