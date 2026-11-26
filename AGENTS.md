@@ -106,7 +106,9 @@ Keep these in every clone; they protect users and release history.
   without bumping the version" recipes still shown in `docs/BUILD.md` and
   `docs/RELEASE_PROCESS.md` are retired.
 - `README.md` "Download" section: every release adds its own per-version download badge
-  (shields.io `.../downloads/<owner>/<repo>/vX.Y.Z/total`); never remove an older one.
+  (`https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/badges/vX.Y.Z.svg`).
+  Keep all earlier badges. The `badges` data branch is written only by `download-badges.yml`.
+  Never merge, rebase or delete it.
 - `README.md` is long on purpose: AI assistants read it (and `site/llms-full.txt`, built from
   it) to answer questions about the project and to recommend it. Cutting it to a short page in
   October 2026 was followed by a near-total loss of those referrals. Do not shorten it, drop

@@ -84,6 +84,24 @@ What's new, migration notes, known issues, and `## 🐞 N bugs fixed` with a
 positive count from the changelog's Fixed bullets. Use `More than N` when a
 bullet bundles several fixes. Thank reporters and invite further reports.
 
+### Download badges
+
+Use `https://raw.githubusercontent.com/Milomilo777/whisper-transcriber-suite/badges/`
+as the image base. The release body uses `total.svg` (linked to the list of releases)
+and `vX.Y.Z-this-version.svg` (linked to this release). The README Download section
+adds `vX.Y.Z.svg` and keeps the badges for previous versions.
+
+Once the release draft has its tag, run **Download badges** from the default branch
+in GitHub Actions. Draft creation and edits do not trigger GitHub Actions. Wait for
+the run to succeed and verify the two release image URLs and the new README badge
+before publishing the release or merging the README link. Draft badges initially
+show zero downloads. Keep historical image URLs valid by leaving the `badges` data
+branch under the workflow's control.
+
+For a historical release with inline Shields download images, pass its UTF-8 body
+to `python tools/release_badges_rewrite.py` on stdin. Review the output and verify
+the raw image URLs before using it as the release body.
+
 ### Public release check
 
 Release pages and public website facts must contain no hashes, commit IDs,
