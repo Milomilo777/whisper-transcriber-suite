@@ -204,7 +204,7 @@
   <g id="bar2-dialogue" class="vb">
     <text id="speaker1-line" class="vb" x="264" y="256" font-size="56" font-weight="800" fill="#0c1a2b"><tspan fill="#0c9d95">Speaker 1</tspan> · Interview</text>
     <text id="speaker2-line" class="vb" x="264" y="410" font-size="56" font-weight="800" fill="#0c1a2b"><tspan fill="#f2604c">Speaker 2</tspan> · Answer</text>
-    <text id="speed-line" class="vb" x="640" y="510" text-anchor="middle" font-size="48" font-weight="700" fill="#6a5cf0">Saved presets · 2.4</text>
+    <text id="speed-line" class="vb" x="640" y="510" text-anchor="middle" font-size="48" font-weight="700" fill="#6a5cf0">Pick the audio track · 2.5</text>
   </g>
 
   <!-- BAR 3: THE PERIOD MULTIPLIES -->
@@ -212,7 +212,7 @@
     <circle id="split-dot-1" class="vb" cx="0" cy="0" r="11" fill="#0c1a2b"/>
     <circle id="split-dot-2" class="vb" cx="0" cy="0" r="11" fill="#0c1a2b"/>
     <circle id="split-dot-3" class="vb" cx="0" cy="0" r="11" fill="#0c1a2b"/>
-    <text id="bar3-sub" class="vb" x="640" y="510" text-anchor="middle" font-size="48" font-weight="700" fill="#0c1a2b">Subtitle quality review</text>
+    <text id="bar3-sub" class="vb" x="640" y="510" text-anchor="middle" font-size="48" font-weight="700" fill="#0c1a2b">Compare a re-run</text>
   </g>
 
   <!-- SHARED FORMAT EXTENSIONS -->
