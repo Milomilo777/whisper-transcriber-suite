@@ -46,8 +46,8 @@ FFMPEG_ARM64_SHA256="c8ed4c4e6978a03c485edbfe4e0a5dc2380f8a30bba5150531b31b09449
 FFPROBE_ARM64_URL="https://ffmpeg.martin-riedl.de/download/macos/arm64/1789931890_9.0.2/ffprobe.zip"
 FFPROBE_ARM64_SHA256="fcbe839537485eaee7a7a8bc5cbc0f90d53617e80943e8a5b2e31cb851197ea6"
 # yt-dlp onedir build (universal2), hash from the release's SHA2-256SUMS.
-YTDLP_VERSION="2026.10.26"
-YTDLP_MACOS_ZIP_SHA256="20d98fa608998eff87d1d35a6e9fb65e4b874639a6cc89addc19da3becde3ef1"
+YTDLP_VERSION="2026.11.23"
+YTDLP_MACOS_ZIP_SHA256="43fc87fc581f64b48c366ce20b9cacb9c2949cc1ac4b9eca56fe25ac52dbb63b"
 # Deno, hashes from the release's .sha256sum files.
 DENO_VERSION="2.9.7"
 DENO_X86_64_SHA256="95daaff11c116a52ad54785e7914c8e9c9cdcaba793c5ed929c74ca2d8e6259a"
