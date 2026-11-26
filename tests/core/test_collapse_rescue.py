@@ -166,6 +166,22 @@ def test_cancel_stops_the_rescue():
     assert out == CALL
 
 
+def test_cancel_during_a_rescue_keeps_the_original_span():
+    original = [seg(0, 30, "original tail words")]
+    reads = []
+
+    def read(start, end):
+        reads.append((start, end))
+        return [seg(start, end, "a longer first piece with enough words to pass")]
+
+    out, report = cr.rescue(
+        original, 30.0, _speech_everywhere, read, cancelled=lambda: bool(reads),
+    )
+    assert reads == [(0.0, 15.0)]
+    assert out == original
+    assert not report.rescued
+
+
 # --- properties -----------------------------------------------------------------------------------
 
 hypothesis = pytest.importorskip("hypothesis")
