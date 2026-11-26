@@ -146,7 +146,9 @@ class Page(HTMLParser):
         self.release_depth = None
         self.article_depth = None
         self.headings = []
-        self.release_headings = 0
+        self.release_headings = []
+        self.release_heading_depth = None
+        self.release_heading_content = []
         self.whats_new_depth = None
 
     def handle_starttag(self, tag, attrs):
@@ -171,7 +173,10 @@ class Page(HTMLParser):
             self.headings.append(0)
             self.article_depth = len(self.stack)
         if self.release_depth is not None and tag == "h2":
-            self.release_headings += 1
+            self.release_headings.append(a.get("id"))
+            self.release_heading_depth = len(self.stack)
+        elif self.release_heading_depth is not None:
+            self.release_heading_content.append(self.get_starttag_text())
         if self.article_depth is not None and tag == "h3":
             self.headings[-1] += 1
         if tag == "a" and "data-auto-href" in a:
@@ -183,6 +188,11 @@ class Page(HTMLParser):
     def handle_endtag(self, tag):
         if tag in self.stack:
             depth = len(self.stack) - self.stack[::-1].index(tag)
+            if self.release_heading_depth is not None:
+                if depth <= self.release_heading_depth:
+                    self.release_heading_depth = None
+                else:
+                    self.release_heading_content.append(f"</{tag}>")
             if self.article_depth is not None and depth <= self.article_depth:
                 self.article_depth = None
             if self.release_depth is not None and depth <= self.release_depth:
@@ -190,6 +200,10 @@ class Page(HTMLParser):
             if self.whats_new_depth is not None and depth <= self.whats_new_depth:
                 self.whats_new_depth = None
             del self.stack[depth - 1:]
+
+    def handle_data(self, data):
+        if self.release_heading_depth is not None:
+            self.release_heading_content.append(data)
 
 
 def check_page(html: str, lang: str, site: Path, relative: Path) -> None:
@@ -201,8 +215,15 @@ def check_page(html: str, lang: str, site: Path, relative: Path) -> None:
     assert page.tags.count("html") == 1 and page.tags.count("body") == 1
     assert len(page.ids) == len(set(page.ids)), f"duplicate IDs: {lang}"
     assert page.blocks == 1 and page.features == FEATURES, f"missing {SITE_VERSION} feature block: {lang}"
-    assert page.release_headings == 1 and page.headings == [1, 1, 1], f"release structure differs: {lang}"
-    assert f'<h2 id="new-title">{SITE_VERSION}</h2>' in html, f"wrong release heading: {lang}"
+    assert page.release_headings == ["new-title"] and page.headings == [1, 1, 1], f"release structure differs: {lang}"
+    title = "".join(page.release_heading_content)
+    if lang == "en":
+        series = SITE_VERSION.rsplit(".", 1)[0]
+        heading = rf"What's new in {re.escape(series)}\. " + r'<span class="h2-soft">[^<]+</span>'
+        valid_title = re.fullmatch(heading, title) is not None
+    else:
+        valid_title = title == SITE_VERSION
+    assert valid_title, f"wrong release heading: {lang}"
     assert f'"softwareVersion": "{SITE_VERSION}"' in html, f"wrong structured version: {lang}"
     assert f'"dateModified": "{SITE_RELEASED}"' in html, f"wrong structured release date: {lang}"
     assert "macOS 12 or later (Intel build) or macOS 14 or later (Apple Silicon build)" in html

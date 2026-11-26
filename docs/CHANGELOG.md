@@ -7,6 +7,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 ### Changed
 
 - Update the website's release highlights and download details to 2.5.0 in all 42 languages.
+- Expand the English homepage with eight 2.5 highlights and four 2.4 release cards.
 
 ## [2.5.0] - 2026-11-26
 

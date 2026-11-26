@@ -38,6 +38,33 @@ def test_language_release_block_and_links(lang):
     check_page((ROOT / "site" / relative).read_text(encoding="utf-8"), lang, ROOT / "site", relative)
 
 
+def test_english_home_has_full_release_history():
+    html = (ROOT / "site/index.html").read_text(encoding="utf-8")
+    visible = re.sub(r"<!--.*?-->", "", html, flags=re.S)
+    release = visible.split('<div data-release="2.5.0">', 1)[1]
+    current, history = re.split(r"</div>\s*</div>", release, maxsplit=1)
+    assert '<p class="eyebrow">New in 2.5</p>' in current
+    assert '<h2 id="new-title">What\'s new in 2.5. <span class="h2-soft">' in current
+    assert "more than 60 bugs fixed" in current
+    cards = re.findall(r'<article class="new-card"[^>]*>\s*<p class="new-tag">2\.5 · [^<]+</p>\s*'
+                       r'<h3>[^<]+</h3>\s*<p>.+?</p>\s*</article>', current, re.S)
+    assert len(cards) == 8
+    cards_24 = list(re.finditer(r'<p class="new-tag">2\.4 · [^<]+</p>', history))
+    assert 3 <= len(cards_24) <= 4
+    assert cards_24[-1].end() < history.index('<h2 id="release-history-title">')
+
+
+@pytest.mark.parametrize("hidden", ["<!-- {} -->", "<script>/* {} */</script>"])
+def test_english_release_heading_cannot_be_replaced_by_hidden_markup(hidden):
+    relative = Path("index.html")
+    html = (ROOT / "site" / relative).read_text(encoding="utf-8")
+    title = re.search(r'<h2 id="new-title">What\'s new in 2\.5\..*?</h2>', html)[0]
+    damaged = html.replace(title, '<h2 id="new-title">Release details</h2>', 1)
+    damaged = damaged.replace("</body>", hidden.format(title) + "</body>")
+    with pytest.raises(AssertionError, match="wrong release heading: en"):
+        check_page(damaged, "en", ROOT / "site", relative)
+
+
 def test_missing_one_feature_is_rejected():
     relative = Path("fil/index.html")
     html = (ROOT / "site" / relative).read_text(encoding="utf-8")
