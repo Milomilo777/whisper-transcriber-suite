@@ -2,6 +2,7 @@
 import http.client
 import io
 import json
+import os
 from pathlib import Path
 import threading
 from types import SimpleNamespace
@@ -224,3 +225,30 @@ def test_chapter_sidecar_is_not_the_json_transcript(tmp_path, monkeypatch):
     out = manager._collect_outputs(job, SimpleNamespace(output_paths=written))
     assert len(out) == 1 and out[0][0] == "json"
     assert json.loads(Path(out[0][1]).read_text(encoding="utf-8"))[0]["text"] == "Hello"
+
+
+@pytest.mark.parametrize("stem", ["meeting", "会议.chapters"])
+@pytest.mark.parametrize("has_transcript", [True, False])
+def test_legacy_scan_skips_newer_chapter_sidecars(tmp_path, monkeypatch, stem, has_transcript):
+    monkeypatch.setattr(transcriber, "config", {
+        **DEFAULT_CONFIG, "output_filename_template": "{base}.{ext}",
+    })
+    media = tmp_path / f"{stem}.wav"
+    written = transcriber._write_outputs(
+        str(media.with_suffix("")), [{"start": 0, "end": 1, "text": "Hello"}],
+        str(media), formats=["json"], chapters=[{
+            "index": 0, "start": 0, "end": 1, "title": "Chapter",
+        }],
+    )
+    transcript, sidecar = map(Path, written)
+    upper_sidecar = sidecar.with_name(sidecar.stem.removesuffix(".chapters") + ".CHAPTERS.JSON")
+    sidecar.rename(upper_sidecar)
+    os.utime(transcript, (100, 100))
+    os.utime(upper_sidecar, (200, 200))
+    if not has_transcript:
+        transcript.unlink()
+    job = Job(job_id="test", kind="upload", formats=["json"],
+              media_path=str(media), work_dir=str(tmp_path))
+    manager = object.__new__(JobManager)
+    expected = [("json", str(transcript))] if has_transcript else []
+    assert manager._collect_outputs(job, SimpleNamespace(output_paths=[])) == expected
