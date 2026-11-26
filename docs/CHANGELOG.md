@@ -25,6 +25,7 @@ All notable changes to this project. Follows [Keep a Changelog](https://keepacha
 - Reject Windows installer and Portable builds that are missing bundled media tools or speaker identification models.
 - Prepare the bundled macOS tools when the app starts in MCP mode.
 - Restore the default GPU temperature limit with the other transcription settings.
+- Support punctuation in Windows build paths and allow the Portable launcher to run from a network share.
 - Keep the original audio track when transcribing again from the transcript viewer.
 - Report denied media reads and writes as access errors, including macOS privacy denials.
 - Resume interrupted transcription from the saved decode position even when aligned cues extend past it.
